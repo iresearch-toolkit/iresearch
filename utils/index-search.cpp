@@ -465,27 +465,8 @@ int search(
       const timers_t building_timers("building");
       const timers_t execution_timers("execution");
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-      #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
-        typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
-        typedef irs::memory::memory_pool_multi_size_allocator<Entry, pool_t> alloc_t;
-      #else
-        typedef irs::memory::memory_pool<irs::memory::identity_grow> pool_t;
-        typedef irs::memory::memory_pool_allocator<Entry, pool_t> alloc_t;
-      #endif
-
-      pool_t pool(limit + 1); // +1 for least significant overflow element
-
-      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-        return order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(
-        comparer, alloc_t{pool}
-      );
-#else
       std::vector<std::pair<float_t, irs::doc_id_t>> sorted;
       sorted.reserve(limit + 1); // +1 for least significant overflow element
-#endif
 
       // process a single task
       for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
@@ -516,10 +497,6 @@ int search(
             const irs::score& score = irs::score::extract(attributes);
             const irs::document* doc = attributes.get<irs::document>().get();
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-            // ensure we avoid COW for pre c++11 std::basic_string
-            const irs::bytes_ref raw_score_value = score->value();                        
-#endif
             const auto& score_value = &score != &irs::score::no_score()
               ? order.get<float>(score.c_str(), 0)
               : EMPTY_SCORE;
@@ -528,27 +505,16 @@ int search(
               ++doc_count;
               score.evaluate();
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-              sorted.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(raw_score_value),
-                std::forward_as_tuple(docs->value(), score_value)
-              );
+              if (sorted.size() < limit) {
+                sorted.emplace_back(score_value, doc->value);
 
-              sorted.emplace(score_value, doc->value);
-
-              if (sorted.size() > limit) {
-                sorted.erase(--(sorted.end()));
-              }
-#else
-              std::push_heap(
-                sorted.begin(), sorted.end(),
-                [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                   const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                  return lhs.first < rhs.first;
-              });
-
-              if (sorted.size() > limit) {
+                std::push_heap(
+                  sorted.begin(), sorted.end(),
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                    return lhs.first < rhs.first;
+                });
+              } else if (sorted.front().first < score_value) {
                 std::pop_heap(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
@@ -556,13 +522,20 @@ int search(
                     return lhs.first < rhs.first;
                 });
 
-                sorted.pop_back();
+                auto& back = sorted.back();
+                back.first = score_value;
+                back.second = doc->value;
+
+                std::push_heap(
+                  sorted.begin(), sorted.end(),
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                    return lhs.first < rhs.first;
+                });
               }
-#endif
             }
           }
 
-#ifndef IRESEARCH_COMPLEX_SCORING
           auto end = sorted.end();
           for (auto begin = sorted.begin(); begin != end; --end) {
             std::pop_heap(
@@ -572,7 +545,6 @@ int search(
                 return lhs.first < rhs.first;
             });
           }
-#endif
         }
 
         const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
@@ -588,11 +560,7 @@ int search(
                 << "  thread " << std::this_thread::get_id() << '\n';
 
             for (auto& entry : sorted) {
-#ifdef IRESEARCH_COMPLEX_SCORING
-              ss << "  doc=" << entry.second.id << " score=" << entry.second.score << std::endl;
-#else
               ss << "  doc=" << entry.second << " score=" << entry.first << '\n';
-#endif
             }
 
             ss << '\n';
