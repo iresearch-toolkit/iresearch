@@ -354,6 +354,7 @@ int search(
     return 1;
   }
 
+  limit = (std::max)(size_t(1), limit); // ensure limit is greater than 0
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -444,15 +445,6 @@ int search(
     prepareTasks(tasks, in, tasks_max);
     task_provider.reset(std::move(tasks), repeat, shuffle);
   }
-
-  struct Entry {
-    Entry(irs::doc_id_t i, float s)
-      : id(i), score(s) {
-    }
-
-    irs::doc_id_t id;
-    float score;
-  };
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
