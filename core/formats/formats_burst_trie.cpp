@@ -537,18 +537,17 @@ class block_iterator : util::noncopyable {
   byte_type cur_meta_; // current block metadata
   bool dirty_{ true }; // current block is dirty
   bool leaf_{ false }; // current block is leaf block
-};
+}; // block_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @class term_iterator
+/// @class term_iterator_base
+/// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator final : public irs::seek_term_iterator {
+class term_iterator_base : public seek_term_iterator {
  public:
-  explicit term_iterator(const term_reader& owner)
+  explicit term_iterator_base(const term_reader& owner)
     : owner_(&owner),
-      matcher_(owner.fst_, fst::MATCH_INPUT), // pass pointer to avoid copying FST
-      attrs_(2), // version10::term_meta + frequency
-      cur_block_(nullptr) {
+      attrs_(2) { // version10::term_meta + frequency
     assert(owner_);
     attrs_.emplace(state_);
 
@@ -557,20 +556,21 @@ class term_iterator final : public irs::seek_term_iterator {
     }
   }
 
-  virtual void read() override {
-    // read attributes
-    assert(cur_block_);
-    cur_block_->load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
+  // read attributes
+  void read(block_iterator& it) {
+    it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
   }
-  virtual bool next() override;
-  const irs::attribute_view& attributes() const noexcept override {
+
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
+    return ::cookie::make(state_, freq_.value);
+  }
+
+  virtual const irs::attribute_view& attributes() const noexcept final {
     return attrs_;
   }
-  const bytes_ref& value() const override { return term_; }
-  virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override {
-    return SeekResult::FOUND == seek_equal(term);
-  }
+
+  virtual const bytes_ref& value() const noexcept final { return term_; }
+
   virtual bool seek(
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
@@ -588,23 +588,14 @@ class term_iterator final : public irs::seek_term_iterator {
     term_.reset();
     term_ += term;
 
-    // reset seek state
-    sstate_.resize(0);
-
-    // mark block as invalid
-    cur_block_ = nullptr;
     return true;
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
-    return ::cookie::make(state_, freq_.value);
-  }
-
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  doc_iterator::ptr postings(block_iterator* it, const flags& features) const {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
-    if (cur_block_) {
-      cur_block_->load_data(field, attrs_, state_, pr); // read attributes
+    if (it) {
+      it->load_data(field, attrs_, state_, pr); // read attributes
     }
     return pr.iterator(field.features, attrs_, features);
   }
@@ -615,8 +606,95 @@ class term_iterator final : public irs::seek_term_iterator {
     return owner_->owner_->terms_in_cipher_.get();
   }
 
- private:
+ protected:
   typedef term_reader::fst_t fst_t;
+
+  void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
+    const auto size = prefix_size + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
+  }
+
+  const field_meta& field() const noexcept {
+    assert(owner_);
+    return owner_->field_;
+  }
+
+  fst_t& fst() const noexcept {
+    assert(owner_ && owner_->fst_);
+    return *owner_->fst_;
+  }
+
+  const term_reader* owner_;
+  irs::attribute_view attrs_;
+  mutable version10::term_meta state_;
+  frequency freq_;
+  mutable index_input::ptr terms_in_;
+  bytes_builder term_;
+  byte_weight weight_; // aggregated fst output
+}; // term_iterator_base
+
+index_input& term_iterator_base::terms_input() const {
+  if (!terms_in_) {
+    terms_in_ = owner_->owner_->terms_in_->reopen(); // reopen thread-safe stream
+
+    if (!terms_in_) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+
+      throw io_error("failed to reopen terms input");
+    }
+  }
+
+  return *terms_in_;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class term_iterator
+///////////////////////////////////////////////////////////////////////////////
+class term_iterator final : public term_iterator_base {
+ public:
+  explicit term_iterator(const term_reader& owner)
+    : term_iterator_base(owner),
+      matcher_(&fst(), fst::MATCH_INPUT), // pass pointer to avoid copying FST
+      cur_block_(nullptr) {
+    assert(owner_);
+    attrs_.emplace(state_);
+
+    if (field().features.check<frequency>()) {
+      attrs_.emplace(freq_);
+    }
+  }
+
+  virtual bool next() override;
+  virtual SeekResult seek_ge(const bytes_ref& term) override;
+  virtual bool seek(const bytes_ref& term) override {
+    return SeekResult::FOUND == seek_equal(term);
+  }
+  virtual bool seek(
+      const bytes_ref& term,
+      const irs::seek_term_iterator::seek_cookie& cookie) override {
+    term_iterator_base::seek(term, cookie);
+
+    // reset seek state
+    sstate_.resize(0);
+
+    // mark block as invalid
+    cur_block_ = nullptr;
+    return true;
+  }
+
+  virtual void read() override {
+    assert(cur_block_);
+    term_iterator_base::read(*cur_block_);
+  }
+
+  virtual doc_iterator::ptr postings(const flags& features) const override {
+    return term_iterator_base::postings(cur_block_, features);
+  }
+
+ private:
   typedef fst::SortedMatcher<fst_t> sorted_matcher_t;
   typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
@@ -625,7 +703,7 @@ class term_iterator final : public irs::seek_term_iterator {
   struct arc {
     typedef fst_byte_builder::stateid_t stateid_t;
 
-    arc() : block{} { }
+    arc() = default;
 
     arc(arc&& rhs) noexcept
       : state(rhs.state), 
@@ -640,7 +718,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
     stateid_t state;
     byte_weight weight;
-    block_iterator* block;
+    block_iterator* block{};
   }; // arc
 
   typedef std::vector<arc> seek_state_t;
@@ -687,56 +765,26 @@ class term_iterator final : public irs::seek_term_iterator {
     return &block_stack_.back();
   }
 
-  void copy(const byte_type* suffix, size_t suffix_size) {
-    const auto prefix = cur_block_->prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
-  }
-
-  const term_reader* owner_;
   matcher_t matcher_;
-  irs::attribute_view attrs_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  mutable version10::term_meta state_;
-  frequency freq_;
-  mutable index_input::ptr terms_in_;
-  bytes_builder term_;
-  byte_weight weight_; // aggregated fst output
 }; // term_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class automaton_term_iterator final : public irs::seek_term_iterator {
+class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
-    : a_(&a),
+    : term_iterator_base(owner),
+      a_(&a),
       matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho),
-      owner_(&owner),
-      attrs_(2), // version10::term_meta + frequency
       cur_block_(nullptr) {
-    assert(owner_);
-    attrs_.emplace(state_);
-
-    if (owner_->field_.features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
-  virtual void read() override {
-    // read attributes
-    assert(cur_block_);
-    cur_block_->it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
-  }
   virtual bool next() override;
-  const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
-  const bytes_ref& value() const override { return term_; }
+
   virtual SeekResult seek_ge(const bytes_ref& term) override {
     if (!irs::seek(*this, term)) {
       return SeekResult::END;
@@ -744,61 +792,28 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
 
     return term_ == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }
+
   virtual bool seek(const bytes_ref& term) override {
     return SeekResult::FOUND == seek_ge(term);
   }
+
   virtual bool seek(
       const bytes_ref& term,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
-#ifdef IRESEARCH_DEBUG
-    const auto& state = dynamic_cast<const ::cookie&>(cookie);
-#else
-    const auto& state = static_cast<const ::cookie&>(cookie);
-#endif // IRESEARCH_DEBUG
-
-    // copy state
-    state_ = state.meta;
-    freq_.value = state.term_freq;
-
-    // copy term
-    term_.reset();
-    term_ += term;
+    term_iterator_base::seek(term, cookie);
 
     // mark block as invalid
     cur_block_ = nullptr;
     return true;
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
-    return ::cookie::make(state_, freq_.value);
+  virtual void read() override {
+    assert(cur_block_);
+    term_iterator_base::read(cur_block_->it);
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    const field_meta& field = owner_->field_;
-    postings_reader& pr = *owner_->owner_->pr_;
-    if (cur_block_) {
-      cur_block_->it.load_data(field, attrs_, state_, pr); // read attributes
-    }
-    return pr.iterator(field.features, attrs_, features);
-  }
-
-  index_input& terms_input() const {
-    if (!terms_in_) {
-      terms_in_ = owner_->owner_->terms_in_->reopen(); // reopen thread-safe stream
-
-      if (!terms_in_) {
-        // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
-
-        throw io_error("failed to reopen terms input");
-      }
-    }
-
-    return *terms_in_;
-  }
-
-  irs::encryption::stream* terms_cipher() const noexcept {
-    return owner_->owner_->terms_in_cipher_.get();
+    return term_iterator_base::postings(cur_block_ ? &cur_block_->it : nullptr, features);
   }
 
  private:
@@ -836,25 +851,10 @@ class automaton_term_iterator final : public irs::seek_term_iterator {
     return &block_stack_.back();
   }
 
-  void copy(const byte_type* suffix, size_t suffix_size) {
-    const auto prefix = cur_block_->it.prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
-  }
-
   const automaton* a_;
   fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_;
-  const term_reader* owner_;
-  irs::attribute_view attrs_;
   block_stack_t block_stack_;
   block_state* cur_block_;
-  mutable version10::term_meta state_;
-  frequency freq_;
-  mutable index_input::ptr terms_in_;
-  byte_weight weight_; // aggregated fst output
-  bytes_builder term_;
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -862,7 +862,7 @@ bool automaton_term_iterator::next() {
   if (!cur_block_) {
     if (term_.empty()) {
       // iterator at the beginning
-      const auto& fst = *owner_->fst_;
+      const auto& fst = this->fst();
       cur_block_ = push_block(fst.Final(fst.Start()), 0, a_->Start());
       cur_block_->it.load(terms_input(), terms_cipher());
     } else {
@@ -903,12 +903,12 @@ bool automaton_term_iterator::next() {
     switch (cur_block_->it.type()) {
       case ET_TERM: {
         if (a_->Final(state)) {
-          copy(suffix, suffix_size);
+          copy(suffix, cur_block_->it.prefix(), suffix_size);
           match = true;
         }
       } break;
       case ET_BLOCK: {
-        copy(suffix, suffix_size);
+        copy(suffix, cur_block_->it.prefix(), suffix_size);
         cur_block_ = push_block(cur_block_->it.sub_start(), term_.size(), state);
         cur_block_->it.load(terms_input(), terms_cipher());
       } break;
@@ -1286,7 +1286,7 @@ bool term_iterator::next() {
   if (!cur_block_) {
     if (term_.empty()) {
       // iterator at the beginning
-      const auto& fst = *owner_->fst_;
+      const auto& fst = this->fst();
       cur_block_ = push_block(fst.Final(fst.Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
@@ -1332,7 +1332,7 @@ bool term_iterator::next() {
   }
 
   auto copy_suffix = [this](const byte_type* suffix, size_t suffix_size) {
-    copy(suffix, suffix_size);
+    copy(suffix, cur_block_->prefix(), suffix_size);
   };
 
   // push new block or next term
@@ -1403,9 +1403,9 @@ ptrdiff_t term_iterator::seek_cached(
 }
 
 bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
-  assert(owner_->fst_ && owner_->fst_->GetImpl());
+  assert(fst().GetImpl());
 
-  const auto& fst = *owner_->fst_->GetImpl();
+  auto& fst = *this->fst().GetImpl();
 
   prefix = 0; // number of current symbol to process
   arc::stateid_t state = fst.Start(); // start state
@@ -1552,21 +1552,6 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
 #elif defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
-
-index_input& term_iterator::terms_input() const {
-  if (!terms_in_) {
-    terms_in_ = owner_->owner_->terms_in_->reopen(); // reopen thread-safe stream
-
-    if (!terms_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen terms input");
-    }
-  }
-
-  return *terms_in_;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        term_reader implementation
