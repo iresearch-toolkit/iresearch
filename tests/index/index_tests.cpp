@@ -11228,8 +11228,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
     add_segment(gen);
   }
 
+  // prefix
   {
-    auto acceptor = irs::from_wildcard<char>("ab");
+    auto acceptor = irs::from_wildcard<char>("forb%");
+    assert_index(0, &acceptor);
+  }
+
+  // part
+  {
+    auto acceptor = irs::from_wildcard<char>("%ende%");
+    assert_index(0, &acceptor);
+  }
+
+  // suffix
+  {
+    auto acceptor = irs::from_wildcard<char>("%ione");
     assert_index(0, &acceptor);
   }
 }

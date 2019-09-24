@@ -453,15 +453,12 @@ class block_iterator : util::noncopyable {
   void end();
   void reset();
 
-  const version10::term_meta& state() const { return state_; }
-  bool dirty() const { return dirty_; }
-  byte_type meta() const { return cur_meta_; }
+  const version10::term_meta& state() const noexcept { return state_; }
+  bool dirty() const noexcept { return dirty_; }
+  byte_type meta() const noexcept { return cur_meta_; }
   size_t prefix() const { return prefix_; }
   uint64_t sub_count() const { return sub_count_; }
   EntryType type() const { return cur_type_; }
-  uint64_t pos() const { return cur_ent_; }
-  uint64_t terms_seen() const { return term_count_; }
-  uint64_t count() const { return ent_count_; }
   uint64_t sub_start() const { return cur_block_start_; }
   uint64_t start() const { return start_; }
   bool block_end() const { return cur_ent_ == ent_count_; }
@@ -500,9 +497,9 @@ class block_iterator : util::noncopyable {
   void read_entry_leaf(Reader& reader) {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
+    ++term_count_;
     const auto suffix = vread<uint64_t>(suffix_begin_);
     reader(suffix_begin_, suffix);
-    ++term_count_;
     suffix_begin_ += suffix;
     assert(suffix_begin_ <= suffix_end_);
   }
@@ -1033,7 +1030,7 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
     ? ET_BLOCK 
     : ET_TERM;
 
-  reader(suffix_begin_, suffix);
+  const byte_type* begin = suffix_begin_;
   suffix_begin_ += suffix;
   assert(suffix_begin_ <= suffix_end_);
 
@@ -1042,6 +1039,9 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
     case ET_BLOCK: cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_); break;
     default: assert(false); break;
   }
+
+  // read after state is updated
+  reader(begin, suffix);
 
   assert(suffix_begin_ <= suffix_end_);
 }

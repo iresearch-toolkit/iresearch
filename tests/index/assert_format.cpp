@@ -794,9 +794,11 @@ void assert_terms_next(
   }
 
   // check term reader
-  ASSERT_EQ(expected_term_reader.size(), actual_size);
-  ASSERT_EQ((expected_term_reader.min)(), actual_min);
-  ASSERT_EQ((expected_term_reader.max)(), actual_max);
+  if (!acceptor) {
+    ASSERT_EQ(expected_term_reader.size(), actual_size);
+    ASSERT_EQ((expected_term_reader.min)(), actual_min);
+    ASSERT_EQ((expected_term_reader.max)(), actual_max);
+  }
 }
 
 void assert_terms_seek(

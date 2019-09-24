@@ -458,7 +458,7 @@ int search(
       const timers_t execution_timers("execution");
 
       std::vector<std::pair<float_t, irs::doc_id_t>> sorted;
-      sorted.reserve(limit + 1); // +1 for least significant overflow element
+      sorted.reserve(limit);
 
       // process a single task
       for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
