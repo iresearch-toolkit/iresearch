@@ -488,7 +488,7 @@ class block_iterator : util::noncopyable {
     return res;
   }
 
-  //  scan to floor block
+  // scan to floor block
   void scan_to_sub_block(const bytes_ref& term);
 
   // scan to entry with the following start address
@@ -1160,33 +1160,23 @@ SeekResult block_iterator::scan_to_term_nonleaf(
 void block_iterator::scan_to_sub_block(const bytes_ref& term) {
   assert(sub_count_ != UNDEFINED);
 
-  if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
+  if (!block_meta::floor(meta_) || term.size() <= prefix_) {
     // no sub-blocks, nothing to do
     return;
   }
 
-  const byte_type label = term[prefix_];
-  if (label < next_label_) {
-    // search does not required
-    return;
-  }
-
-  // TODO: better to use binary search here
+  const int16_t label = term[prefix_];
   uint64_t start = cur_start_;
-  for (;;) {
+
+  // FIXME: better to use binary search here
+  for (; sub_count_ && next_label_ <= label; --sub_count_) {
     start = start_ + vread<uint64_t>(header_begin_);
     cur_meta_ = *header_begin_++;
-    --sub_count_;
+    next_label_ = *header_begin_++;
+  }
 
-    if (0 == sub_count_) {
-      next_label_ = block_t::INVALID_LABEL;
-      break;
-    } else {
-      next_label_ = *header_begin_++;
-      if (label < next_label_) {
-        break;
-      }
-    }
+  if (0 == sub_count_) {
+    next_label_ = block_t::INVALID_LABEL;
   }
 
   if (start != cur_start_) {
