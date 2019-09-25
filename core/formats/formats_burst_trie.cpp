@@ -424,19 +424,24 @@ class block_iterator : util::noncopyable {
   block_iterator(uint64_t start, size_t prefix) noexcept
     : start_(start),
       cur_start_(start),
+      cur_end_(start),
       prefix_(prefix),
       sub_count_(UNDEFINED) {
   }
 
   void load(index_input& in, encryption::stream* cipher);
 
-  void next_block() {
-    assert(sub_count_);
+  bool next_sub_block() noexcept {
+    if (!sub_count_) {
+      return false;
+    }
+
     cur_start_ = cur_end_;
     if (sub_count_ != UNDEFINED) {
       --sub_count_;
     }
     dirty_ = true;
+    return true;
   }
 
   template<typename Reader>
@@ -450,18 +455,19 @@ class block_iterator : util::noncopyable {
     ++cur_ent_;
   }
 
-  void end();
   void reset();
 
   const version10::term_meta& state() const noexcept { return state_; }
   bool dirty() const noexcept { return dirty_; }
   byte_type meta() const noexcept { return cur_meta_; }
-  size_t prefix() const { return prefix_; }
-  uint64_t sub_count() const { return sub_count_; }
-  EntryType type() const { return cur_type_; }
-  uint64_t sub_start() const { return cur_block_start_; }
-  uint64_t start() const { return start_; }
-  bool block_end() const { return cur_ent_ == ent_count_; }
+  size_t prefix() const noexcept { return prefix_; }
+  EntryType type() const noexcept { return cur_type_; }
+  uint64_t block_start() const noexcept {
+    assert(ET_BLOCK == cur_type_);
+    return cur_block_start_;
+  }
+  uint64_t start() const noexcept { return start_; }
+  bool end() const noexcept { return cur_ent_ == ent_count_; }
 
   template<typename Reader>
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
@@ -483,7 +489,7 @@ class block_iterator : util::noncopyable {
   }
 
   //  scan to floor block
-  void scan_to_block(const bytes_ref& term);
+  void scan_to_sub_block(const bytes_ref& term);
 
   // scan to entry with the following start address
   void scan_to_block(uint64_t ptr);
@@ -532,9 +538,9 @@ class block_iterator : util::noncopyable {
   size_t prefix_; // block prefix length
   uint64_t sub_count_; // number of sub-blocks
   int16_t next_label_{ block_t::INVALID_LABEL }; // next label (of the next sub-block)
-  EntryType cur_type_; // term or block
-  byte_type meta_; // initial block metadata
-  byte_type cur_meta_; // current block metadata
+  EntryType cur_type_{ ET_INVALID }; // term or block
+  byte_type meta_{ }; // initial block metadata
+  byte_type cur_meta_{ }; // current block metadata
   bool dirty_{ true }; // current block is dirty
   bool leaf_{ false }; // current block is leaf block
 }; // block_iterator
@@ -909,7 +915,7 @@ bool automaton_term_iterator::next() {
       } break;
       case ET_BLOCK: {
         copy(suffix, cur_block_->it.prefix(), suffix_size);
-        cur_block_ = push_block(cur_block_->it.sub_start(), term_.size(), state);
+        cur_block_ = push_block(cur_block_->it.block_start(), term_.size(), state);
         cur_block_->it.load(terms_input(), terms_cipher());
       } break;
       default: {
@@ -920,9 +926,8 @@ bool automaton_term_iterator::next() {
 
   for (;;) {
     // pop finished blocks
-    while (cur_block_->it.block_end()) {
-      if (cur_block_->it.sub_count() > 0) {
-        cur_block_->it.next_block();
+    while (cur_block_->it.end()) {
+      if (cur_block_->it.next_sub_block()) {
         cur_block_->it.load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
@@ -932,9 +937,9 @@ bool automaton_term_iterator::next() {
         const uint64_t start = cur_block_->it.start();
         cur_block_ = pop_block();
         state_ = cur_block_->it.state();
-        if (cur_block_->it.dirty() || cur_block_->it.sub_start() != start) {
+        if (cur_block_->it.dirty() || cur_block_->it.block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          cur_block_->it.scan_to_block(term_); // to sub-block
+          cur_block_->it.scan_to_sub_block(term_); // to sub-block
           cur_block_->it.load(terms_input(), terms_cipher());
           cur_block_->it.scan_to_block(start);
         }
@@ -947,7 +952,7 @@ bool automaton_term_iterator::next() {
       if (match) {
         return true;
       }
-    } while (!cur_block_->it.block_end());
+    } while (!cur_block_->it.end());
   }
 }
 
@@ -960,7 +965,7 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
     prefix_(prefix),
     sub_count_(0) {
   cur_meta_ = meta_ = *header_begin_++;
-  cur_start_ = start_ = vread<uint64_t>(header_begin_);
+  cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_begin_);
   if (block_meta::floor(meta_)) {
     sub_count_ = vread<uint64_t>(header_begin_);
     next_label_ = *header_begin_++;
@@ -1152,7 +1157,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(
   return SeekResult::END;
 }
 
-void block_iterator::scan_to_block(const bytes_ref& term) {
+void block_iterator::scan_to_sub_block(const bytes_ref& term) {
   assert(sub_count_ != UNDEFINED);
 
   if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
@@ -1307,9 +1312,8 @@ bool term_iterator::next() {
   }
 
   // pop finished blocks
-  while (cur_block_->block_end()) {
-    if (cur_block_->sub_count() > 0) {
-      cur_block_->next_block();
+  while (cur_block_->end()) {
+    if (cur_block_->next_sub_block()) {
       cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
@@ -1320,9 +1324,9 @@ bool term_iterator::next() {
       const uint64_t start = cur_block_->start();
       cur_block_ = pop_block();
       state_ = cur_block_->state();
-      if (cur_block_->dirty() || cur_block_->sub_start() != start) {
+      if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
-        cur_block_->scan_to_block(term_); // to sub-block
+        cur_block_->scan_to_sub_block(term_); // to sub-block
         cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
@@ -1339,7 +1343,7 @@ bool term_iterator::next() {
   for (cur_block_->next(copy_suffix);
        EntryType::ET_BLOCK == cur_block_->type();
        cur_block_->next(copy_suffix)) {
-    cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+    cur_block_ = push_block(cur_block_->block_start(), term_.size());
     cur_block_->load(terms_input(), terms_cipher());
   }
 
@@ -1465,7 +1469,7 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
 
   assert(cur_block_);
   sstate_.resize(cur_block_->prefix());
-  cur_block_->scan_to_block(term);
+  cur_block_->scan_to_sub_block(term);
 
   return false;
 }
@@ -1529,7 +1533,7 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
           return SeekResult::NOT_FOUND;
         case ET_BLOCK:
           // we're at the greater block, load it and call next
-          cur_block_ = push_block(cur_block_->sub_start(), term_.size());
+          cur_block_ = push_block(cur_block_->block_start(), term_.size());
           cur_block_->load(terms_input(), terms_cipher());
           break;
         default:
