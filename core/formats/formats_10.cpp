@@ -379,24 +379,35 @@ class postings_writer_base : public irs::postings_writer {
   }; // stream
 
   struct doc_stream : stream {
-    void doc(doc_id_t delta) { deltas[size] = delta; }
-    bool full() const { return BLOCK_SIZE == size; }
-    void next(doc_id_t id) { last = id, ++size; }
-    void freq(uint32_t frq) { freqs[size] = frq; }
+    bool full() const noexcept {
+      return delta == std::end(deltas);
+    }
+
+    bool empty() const noexcept {
+      return delta == deltas;
+    }
+
+    void push(doc_id_t doc, uint32_t freq) noexcept {
+      *this->delta++ = doc - last;
+      *this->freq++ = freq;
+      last = doc;
+    }
 
     void reset() noexcept {
       stream::reset();
+      delta = deltas;
+      freq = freqs;
       last = doc_limits::invalid();
-      block_last = 0;
-      size = 0;
+      block_last = doc_limits::invalid();
     }
 
-    doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    std::unique_ptr<uint32_t[]> freqs; // document frequencies
+    doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
+    uint32_t freqs[BLOCK_SIZE]{};
+    doc_id_t* delta{ deltas };
+    uint32_t* freq{ freqs };
     doc_id_t last{ doc_limits::invalid() }; // last buffered document id
-    doc_id_t block_last{}; // last document id in a block
-    uint32_t size{}; // number of buffered elements
+    doc_id_t block_last{ doc_limits::invalid() }; // last document id in a block
   }; // doc_stream
 
   struct pos_stream : stream {
@@ -511,11 +522,6 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
   auto& features = *state.features;
-  if (features.check<frequency>() && !doc_.freqs) {
-    // prepare frequency stream
-    doc_.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
-    std::memset(doc_.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
-  }
 
   if (features.check<position>()) {
     // prepare proximity stream
@@ -670,7 +676,8 @@ void postings_writer_base::end_doc() {
       }
     }
 
-    doc_.size = 0;
+    doc_.delta = doc_.deltas;
+    doc_.freq = doc_.freqs;
   }
 }
 
@@ -685,30 +692,33 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
     // write remaining documents using
     // variable length encoding
     auto& out = *doc_out_;
+    auto* doc_delta = doc_.deltas;
 
-    for (uint32_t i = 0; i < doc_.size; ++i) {
-      const doc_id_t doc_delta = doc_.deltas[i];
-
-      if (!features_.freq()) {
-        out.write_vint(doc_delta);
-      } else {
-        assert(doc_.freqs);
-        const uint32_t freq = doc_.freqs[i];
+    if (features_.freq()) {
+      auto* doc_freq = doc_.freqs;
+      for (; doc_delta < doc_.delta; ++doc_delta) {
+        const uint32_t freq = *doc_freq;
 
         if (1 == freq) {
-          out.write_vint(shift_pack_32(doc_delta, true));
+          out.write_vint(shift_pack_32(*doc_delta, true));
         } else {
-          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vint(shift_pack_32(*doc_delta, false));
           out.write_vint(freq);
         }
+
+        ++doc_freq;
+      }
+    } else {
+      for (; doc_delta < doc_.delta; ++doc_delta) {
+        out.write_vint(*doc_delta);
       }
     }
   }
 
   meta.pos_end = type_limits<type_t::address_t>::invalid();
 
-  /* write remaining position using
-   * variable length encoding */
+  // write remaining position using
+  // variable length encoding
   if (features_.position()) {
     assert(pos_ && pos_out_);
 
@@ -779,7 +789,8 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   docs_count_ = 0;
-  doc_.size = 0;
+  doc_.delta = doc_.deltas;
+  doc_.freq = doc_.freqs;
   doc_.last = 0;
   meta.doc_start = doc_.start;
 
@@ -798,7 +809,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
 template<typename FormatTraits>
 void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
-  if (doc_limits::valid(doc_.block_last) && 0 == doc_.size) {
+  if (doc_limits::valid(doc_.block_last) && doc_.empty()) {
     skip_.skip(docs_count_);
   }
 
@@ -809,22 +820,23 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
     ));
   }
 
-  doc_.doc(id - doc_.last);
-  if (freq) {
-    doc_.freq(freq->value);
-  }
+  doc_.push(id, freq ? freq->value : 0);
 
-  doc_.next(id);
   if (doc_.full()) {
     FormatTraits::write_block(*doc_out_, doc_.deltas, BLOCK_SIZE, buf_);
 
     if (freq) {
-      FormatTraits::write_block(*doc_out_, doc_.freqs.get(), BLOCK_SIZE, buf_);
+      FormatTraits::write_block(*doc_out_, doc_.freqs, BLOCK_SIZE, buf_);
     }
   }
 
-  if (pos_) pos_->last = 0;
-  if (pay_) pay_->last = 0;
+  if (pos_) {
+    pos_->last = 0;
+  }
+
+  if (pay_) {
+    pay_->last = 0;
+  }
 
   ++docs_count_;
 }
