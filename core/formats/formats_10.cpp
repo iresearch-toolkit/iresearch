@@ -147,6 +147,8 @@ NS_LOCAL
 
 using namespace irs;
 
+const frequency NO_FREQUENCY;
+
 bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
 class noop_compressor final : compression::compressor {
@@ -289,18 +291,14 @@ inline void prepare_input(
 //                          ^                       ^       (level 0 skip point)
 //
 // ----------------------------------------------------------------------------
-class postings_writer final: public irs::postings_writer {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class postings_writer_base
+//////////////////////////////////////////////////////////////////////////////
+class postings_writer_base : public irs::postings_writer {
  public:
-  static const string_ref TERMS_FORMAT_NAME;
   static const int32_t TERMS_FORMAT_MIN = 0;
   static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
-
-  static const string_ref DOC_FORMAT_NAME;
-  static const string_ref DOC_EXT;
-  static const string_ref POS_FORMAT_NAME;
-  static const string_ref POS_EXT;
-  static const string_ref PAY_FORMAT_NAME;
-  static const string_ref PAY_EXT;
 
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = FORMAT_MIN;
@@ -309,8 +307,25 @@ class postings_writer final: public irs::postings_writer {
   static const uint32_t BLOCK_SIZE = format_traits::BLOCK_SIZE;
   static const uint32_t SKIP_N = 8;
 
-  explicit postings_writer(bool volatile_attributes);
+  static const string_ref DOC_FORMAT_NAME;
+  static const string_ref DOC_EXT;
+  static const string_ref POS_FORMAT_NAME;
+  static const string_ref POS_EXT;
+  static const string_ref PAY_FORMAT_NAME;
+  static const string_ref PAY_EXT;
+  static const string_ref TERMS_FORMAT_NAME;
 
+ protected:
+  postings_writer_base(int32_t postings_format_version, int32_t terms_format_version)
+    : skip_(BLOCK_SIZE, SKIP_N),
+      postings_format_version_(postings_format_version),
+      terms_format_version_(terms_format_version) {
+    assert(postings_format_version >= FORMAT_MIN && postings_format_version <= FORMAT_MAX);
+    assert(terms_format_version >= TERMS_FORMAT_MIN && terms_format_version <= TERMS_FORMAT_MAX);
+    attrs_.emplace(docs_);
+  }
+
+ public:
   // ------------------------------------------
   // const_attributes_provider
   // ------------------------------------------
@@ -323,36 +338,53 @@ class postings_writer final: public irs::postings_writer {
   // postings_writer
   // ------------------------------------------
 
-  virtual void prepare(index_output& out, const irs::flush_state& state) override;
-  virtual void begin_field(const irs::flags& meta) override;
-  virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
-  virtual void begin_block() override;
-  virtual void encode(data_output& out, const irs::term_meta& attrs) override;
-  virtual void end() override;
+  virtual void begin_field(const irs::flags& field) final {
+    features_ = ::features(field);
+    docs_.value.clear();
+    last_state_.clear();
+  }
+
+  virtual void begin_block() final {
+    // clear state in order to write
+    // absolute address of the first
+    // entry in the block
+    last_state_.clear();
+  }
+
+  virtual void prepare(index_output& out, const irs::flush_state& state) final;
+  virtual void encode(data_output& out, const irs::term_meta& attrs) final;
+  virtual void end() final;
 
  protected:
-  virtual void release(irs::term_meta *meta) noexcept override;
+  virtual void release(irs::term_meta *meta) noexcept final {
+  #ifdef IRESEARCH_DEBUG
+    auto* state = dynamic_cast<version10::term_meta*>(meta);
+  #else
+    auto* state = static_cast<version10::term_meta*>(meta);
+  #endif // IRESEARCH_DEBUG
+    assert(state);
 
- private:
+    alloc_.destroy(state);
+    alloc_.deallocate(state);
+  }
+
   struct stream {
-    void reset() {
+    void reset() noexcept {
       start = end = 0;
     }
 
     uint64_t skip_ptr[MAX_SKIP_LEVELS]{}; // skip data
-    index_output::ptr out;                // output stream
     uint64_t start{};                     // start position of block
     uint64_t end{};                       // end position of block
   }; // stream
 
   struct doc_stream : stream {
     void doc(doc_id_t delta) { deltas[size] = delta; }
-    void flush(uint32_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
     void freq(uint32_t frq) { freqs[size] = frq; }
 
-    void reset() {
+    void reset() noexcept {
       stream::reset();
       last = doc_limits::invalid();
       block_last = 0;
@@ -370,13 +402,11 @@ class postings_writer final: public irs::postings_writer {
   struct pos_stream : stream {
     DECLARE_UNIQUE_PTR(pos_stream);
 
-    void flush(uint32_t* buf);
-
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
     void pos(uint32_t pos) { buf[size] = pos; }
 
-    void reset() {
+    void reset() noexcept {
       stream::reset();
       last = 0;
       block_last = 0;
@@ -392,13 +422,22 @@ class postings_writer final: public irs::postings_writer {
   struct pay_stream : stream {
     DECLARE_UNIQUE_PTR(pay_stream);
 
-    void flush_payload(uint32_t* buf);
-    void flush_offsets(uint32_t* buf);
+    void push_payload(uint32_t i, const bytes_ref& pay) {
+      if (!pay.empty()) {
+        pay_buf_.append(pay.c_str(), pay.size());
+      }
+      pay_sizes[i] = static_cast<uint32_t>(pay.size());
+    }
 
-    void payload(uint32_t i, const bytes_ref& pay);
-    void offsets(uint32_t i, uint32_t start, uint32_t end);
+    void push_offset(uint32_t i, uint32_t start, uint32_t end) {
+      assert(start >= last && start <= end);
 
-    void reset() {
+      offs_start_buf[i] = start - last;
+      offs_len_buf[i] = end - start;
+      last = start;
+    }
+
+    void reset() noexcept {
       stream::reset();
       pay_buf_.clear();
       block_last = 0;
@@ -413,98 +452,53 @@ class postings_writer final: public irs::postings_writer {
     uint32_t last{};                        // last start offset
   }; // pay_stream
 
-  void write_skip(size_t level, index_output& out);
   void begin_term();
+  void end_term(version10::term_meta& meta, const uint32_t* tfreq);
+
+  template<typename FormatTraits>
   void begin_doc(doc_id_t id, const frequency* freq);
-  void add_position( uint32_t pos, const offset* offs, const payload* pay );
+  template<typename FormatTraits>
+  void add_position(uint32_t pos, const offset* offs, const payload* pay);
   void end_doc();
-  void end_term(version10::term_meta& state, const uint32_t* tfreq);
+
+  void write_skip(size_t level, index_output& out);
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_view attrs_;
-  uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
   version10::term_meta last_state_; // last final term state
-  doc_stream doc_;                 // document stream
-  pos_stream::ptr pos_;            // proximity stream
-  pay_stream::ptr pay_;            // payloads and offsets stream
-  size_t docs_count_{};             // count of processed documents
-  version10::documents docs_;      // bit set of all processed documents
-  features features_;              // features supported by current field
-  bool volatile_attributes_;       // attribute value memory locations may change after next()
-}; // postings_writer
+  version10::documents docs_;       // bit set of all processed documents
+  features features_;               // features supported by current field
+  index_output::ptr doc_out_;       // postings (doc + freq)
+  index_output::ptr pos_out_;       // positions
+  index_output::ptr pay_out_;       // payload (payl + offs)
+  uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
+  doc_stream doc_;                  // document stream
+  pos_stream::ptr pos_;             // proximity stream
+  pay_stream::ptr pay_;             // payloads and offsets stream
+  size_t docs_count_{};             // number of processed documents
+  const int32_t postings_format_version_;
+  const int32_t terms_format_version_;
+};
 
 MSVC2015_ONLY(__pragma(warning(push)))
 MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 
-const string_ref postings_writer::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
+const string_ref postings_writer_base::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
 
-const string_ref postings_writer::DOC_FORMAT_NAME = "iresearch_10_postings_documents";
-const string_ref postings_writer::DOC_EXT = "doc";
+const string_ref postings_writer_base::DOC_FORMAT_NAME = "iresearch_10_postings_documents";
+const string_ref postings_writer_base::DOC_EXT = "doc";
 
-const string_ref postings_writer::POS_FORMAT_NAME = "iresearch_10_postings_positions";
-const string_ref postings_writer::POS_EXT = "pos";
+const string_ref postings_writer_base::POS_FORMAT_NAME = "iresearch_10_postings_positions";
+const string_ref postings_writer_base::POS_EXT = "pos";
 
-const string_ref postings_writer::PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
-const string_ref postings_writer::PAY_EXT = "pay";
+const string_ref postings_writer_base::PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
+const string_ref postings_writer_base::PAY_EXT = "pay";
 
 MSVC2015_ONLY(__pragma(warning(pop)))
 
-void postings_writer::doc_stream::flush(uint32_t* buf, bool freq) {
-  format_traits::write_block(*out, deltas, BLOCK_SIZE, buf);
-
-  if (freq) {
-    format_traits::write_block(*out, freqs.get(), BLOCK_SIZE, buf);
-  }
-}
-
-void postings_writer::pos_stream::flush(uint32_t* comp_buf) {
-  format_traits::write_block(*out, this->buf, BLOCK_SIZE, comp_buf);
-  size = 0;
-}
-
-/* postings_writer::pay_stream */
-
-void postings_writer::pay_stream::payload(uint32_t i, const bytes_ref& pay) {
-  if (!pay.empty()) {
-    pay_buf_.append(pay.c_str(), pay.size());
-  }
-
-  pay_sizes[i] = static_cast<uint32_t>(pay.size());
-}
-
-void postings_writer::pay_stream::offsets(
-    uint32_t i, uint32_t start_offset, uint32_t end_offset) {
-  assert(start_offset >= last && start_offset <= end_offset);
-
-  offs_start_buf[i] = start_offset - last;
-  offs_len_buf[i] = end_offset - start_offset;
-  last = start_offset;
-}
-
-void postings_writer::pay_stream::flush_payload(uint32_t* buf) {
-  out->write_vint(static_cast<uint32_t>(pay_buf_.size()));
-  if (pay_buf_.empty()) {
-    return;
-  }
-  format_traits::write_block(*out, pay_sizes, BLOCK_SIZE, buf);
-  out->write_bytes(pay_buf_.c_str(), pay_buf_.size());
-  pay_buf_.clear();
-}
-
-void postings_writer::pay_stream::flush_offsets(uint32_t* buf) {
-  format_traits::write_block(*out, offs_start_buf, BLOCK_SIZE, buf);
-  format_traits::write_block(*out, offs_len_buf, BLOCK_SIZE, buf);
-}
-
-postings_writer::postings_writer(bool volatile_attributes)
-  : skip_(BLOCK_SIZE, SKIP_N),
-    volatile_attributes_(volatile_attributes) {
-  attrs_.emplace(docs_);
-}
-
-void postings_writer::prepare(index_output& out, const irs::flush_state& state) {
+void postings_writer_base::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
 
@@ -514,7 +508,7 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
   std::string name;
 
   // prepare document stream
-  prepare_output(name, doc_.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
+  prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
   auto& features = *state.features;
   if (features.check<frequency>() && !doc_.freqs) {
@@ -526,11 +520,11 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
   if (features.check<position>()) {
     // prepare proximity stream
     if (!pos_) {
-      pos_ = memory::make_unique< pos_stream >();
+      pos_ = memory::make_unique<pos_stream>();
     }
 
     pos_->reset();
-    prepare_output(name, pos_->out, state, POS_EXT, POS_FORMAT_NAME, FORMAT_MAX);
+    prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
     if (features.check<payload>() || features.check<offset>()) {
       // prepare payload stream
@@ -539,7 +533,7 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
       }
 
       pay_->reset();
-      prepare_output(name, pay_->out, state, PAY_EXT, PAY_FORMAT_NAME, FORMAT_MAX);
+      prepare_output(name, pay_out_, state, PAY_EXT, PAY_FORMAT_NAME, postings_format_version_);
     }
   }
 
@@ -550,363 +544,14 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
     directory_utils::get_allocator(*state.dir)
   );
 
-  // write postings format name
-  format_utils::write_header(out, TERMS_FORMAT_NAME, TERMS_FORMAT_MAX);
-  // write postings block size
-  out.write_vint(BLOCK_SIZE);
+  format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
+  out.write_vint(BLOCK_SIZE); // write postings block size
 
   // prepare documents bitset
   docs_.value.reset(state.doc_count);
 }
 
-void postings_writer::begin_field(const irs::flags& field) {
-  features_ = ::features(field);
-  docs_.value.clear();
-  last_state_.clear();
-}
-
-void postings_writer::begin_block() {
-  /* clear state in order to write
-   * absolute address of the first
-   * entry in the block */
-  last_state_.clear();
-}
-
-#if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
-irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
-  REGISTER_TIMER_DETAILED();
-  auto& freq = docs.attributes().get<frequency>();
-
-  auto& pos = freq
-    ? docs.attributes().get<position>()
-    : irs::attribute_view::ref<position>::NIL;
-
-  const offset* offs = nullptr;
-  const payload* pay = nullptr;
-
-  uint32_t* tfreq = nullptr;
-
-  auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
-
-  if (freq) {
-    if (pos && !volatile_attributes_) {
-      auto& attrs = pos->attributes();
-      offs = attrs.get<offset>().get();
-      pay = attrs.get<payload>().get();
-    }
-
-    tfreq = &meta->freq;
-  }
-
-  begin_term();
-
-  while (docs.next()) {
-    const auto did = docs.value();
-
-    assert(doc_limits::valid(did));
-    begin_doc(did, freq.get());
-    docs_.value.set(did - doc_limits::min());
-
-    if (pos) {
-      if (volatile_attributes_) {
-        auto& attrs = pos->attributes();
-        offs = attrs.get<offset>().get();
-        pay = attrs.get<payload>().get();
-      }
-
-      while (pos->next()) {
-        add_position(pos->value(), offs, pay);
-      }
-    }
-
-    ++meta->docs_count;
-    if (tfreq) {
-      (*tfreq) += freq->value;
-    }
-
-    end_doc();
-  }
-
-  end_term(*meta, tfreq);
-
-  return make_state(*meta.release());
-}
-
-void postings_writer::release(irs::term_meta *meta) noexcept {
-#ifdef IRESEARCH_DEBUG
-  auto* state = dynamic_cast<version10::term_meta*>(meta);
-#else
-  auto* state = static_cast<version10::term_meta*>(meta);
-#endif // IRESEARCH_DEBUG
-  assert(state);
-
-  alloc_.destroy(state);
-  alloc_.deallocate(state);
-}
-
-#if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-void postings_writer::begin_term() {
-  doc_.start = doc_.out->file_pointer();
-  std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
-  if (features_.position()) {
-    assert(pos_ && pos_->out);
-    pos_->start = pos_->out->file_pointer();
-    std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.any(features::OFFS | features::PAY)) {
-      assert(pay_ && pay_->out);
-      pay_->start = pay_->out->file_pointer();
-      std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
-    }
-  }
-
-  doc_.last = doc_limits::min(); // for proper delta of 1st id
-  doc_.block_last = doc_limits::invalid();
-  skip_.reset();
-}
-
-void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
-  if (doc_limits::valid(doc_.block_last) && 0 == doc_.size) {
-    skip_.skip(docs_count_);
-  }
-
-  if (id < doc_.last) {
-    throw index_error(string_utils::to_string(
-      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc_.last
-    ));
-  }
-
-  doc_.doc(id - doc_.last);
-  if (freq) {
-    doc_.freq(freq->value);
-  }
-
-  doc_.next(id);
-  if (doc_.full()) {
-    doc_.flush(buf_, freq != nullptr);
-  }
-
-  if (pos_) pos_->last = 0;
-  if (pay_) pay_->last = 0;
-
-  ++docs_count_;
-}
-
-void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
-  assert(!offs || offs->start <= offs->end);
-  assert(features_.position() && pos_ && pos_->out); /* at least positions stream should be created */
-
-  pos_->pos(pos - pos_->last);
-  if (pay) pay_->payload(pos_->size, pay->value);
-  if (offs) pay_->offsets(pos_->size, offs->start, offs->end);
-
-  pos_->next(pos);
-
-  if (pos_->full()) {
-    pos_->flush(buf_);
-
-    if (pay) {
-      assert(features_.payload() && pay_ && pay_->out);
-      pay_->flush_payload(buf_);
-    }
-
-    if (offs) {
-      assert(features_.offset() && pay_ && pay_->out);
-      pay_->flush_offsets(buf_);
-    }
-  }
-}
-
-void postings_writer::end_doc() {
-  if (doc_.full()) {
-    doc_.block_last = doc_.last;
-    doc_.end = doc_.out->file_pointer();
-    if (features_.position()) {
-      assert(pos_ && pos_->out);
-      pos_->end = pos_->out->file_pointer();
-      // documents stream is full, but positions stream is not
-      // save number of positions to skip before the next block
-      pos_->block_last = pos_->size;
-      if (features_.any(features::OFFS | features::PAY)) {
-        assert(pay_ && pay_->out);
-        pay_->end = pay_->out->file_pointer();
-        pay_->block_last = pay_->pay_buf_.size();
-      }
-    }
-
-    doc_.size = 0;
-  }
-}
-
-void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
-  if (docs_count_ == 0) {
-    return; // no documents to write
-  }
-
-  if (1 == meta.docs_count) {
-    meta.e_single_doc = doc_.deltas[0];
-  } else {
-    // write remaining documents using
-    // variable length encoding
-    data_output& out = *doc_.out;
-
-    for (uint32_t i = 0; i < doc_.size; ++i) {
-      const doc_id_t doc_delta = doc_.deltas[i];
-
-      if (!features_.freq()) {
-        out.write_vint(doc_delta);
-      } else {
-        assert(doc_.freqs);
-        const uint32_t freq = doc_.freqs[i];
-
-        if (1 == freq) {
-          out.write_vint(shift_pack_32(doc_delta, true));
-        } else {
-          out.write_vint(shift_pack_32(doc_delta, false));
-          out.write_vint(freq);
-        }
-      }
-    }
-  }
-
-  meta.pos_end = type_limits<type_t::address_t>::invalid();
-
-  /* write remaining position using
-   * variable length encoding */
-  if (features_.position()) {
-    assert(pos_ && pos_->out);
-
-    if (meta.freq > BLOCK_SIZE) {
-      meta.pos_end = pos_->out->file_pointer() - pos_->start;
-    }
-
-    if (pos_->size > 0) {
-      data_output& out = *pos_->out;
-      uint32_t last_pay_size = integer_traits<uint32_t>::const_max;
-      uint32_t last_offs_len = integer_traits<uint32_t>::const_max;
-      uint32_t pay_buf_start = 0;
-      for (uint32_t i = 0; i < pos_->size; ++i) {
-        const uint32_t pos_delta = pos_->buf[i];
-        if (features_.payload()) {
-          assert(pay_ && pay_->out);
-
-          const uint32_t size = pay_->pay_sizes[i];
-          if (last_pay_size != size) {
-            last_pay_size = size;
-            out.write_vint(shift_pack_32(pos_delta, true));
-            out.write_vint(size);
-          } else {
-            out.write_vint(shift_pack_32(pos_delta, false));
-          }
-
-          if (size != 0) {
-            out.write_bytes(pay_->pay_buf_.c_str() + pay_buf_start, size);
-            pay_buf_start += size;
-          }
-        } else {
-          out.write_vint(pos_delta);
-        }
-
-        if (features_.offset()) {
-          assert(pay_ && pay_->out);
-
-          const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
-          const uint32_t len = pay_->offs_len_buf[i];
-          if (len == last_offs_len) {
-            out.write_vint(shift_pack_32(pay_offs_delta, false));
-          } else {
-            out.write_vint(shift_pack_32(pay_offs_delta, true));
-            out.write_vint(len);
-            last_offs_len = len;
-          }
-        }
-      }
-
-      if (features_.payload()) {
-        assert(pay_ && pay_->out);
-        pay_->pay_buf_.clear();
-      }
-    }
-  }
-
-  if (!tfreq) {
-    meta.freq = integer_traits<uint32_t>::const_max;
-  }
-
-  /* if we have flushed at least
-   * one block there was buffered
-   * skip data, so we need to flush it*/
-  if (docs_count_ > BLOCK_SIZE) {
-    //const uint64_t start = doc.out->file_pointer();
-    meta.e_skip_start = doc_.out->file_pointer() - doc_.start;
-    skip_.flush(*doc_.out);
-  }
-
-  docs_count_ = 0;
-  doc_.size = 0;
-  doc_.last = 0;
-  meta.doc_start = doc_.start;
-
-  if (pos_) {
-    pos_->size = 0;
-    meta.pos_start = pos_->start;
-  }
-
-  if (pay_) {
-    //pay_->buf_size = 0;
-    pay_->pay_buf_.clear();
-    pay_->last = 0;
-    meta.pay_start = pay_->start;
-  }
-}
-
-void postings_writer::write_skip(size_t level, index_output& out) {
-  const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
-  const uint64_t doc_ptr = doc_.out->file_pointer();
-
-  out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
-
-  doc_.skip_doc[level] = doc_.block_last;
-  doc_.skip_ptr[level] = doc_ptr;
-
-  if (features_.position()) {
-    assert(pos_);
-
-    const uint64_t pos_ptr = pos_->out->file_pointer();
-
-    out.write_vint(pos_->block_last);
-    out.write_vlong(pos_ptr - pos_->skip_ptr[level]);
-
-    pos_->skip_ptr[level] = pos_ptr;
-
-    if (features_.any(features::OFFS | features::PAY)) {
-      assert(pay_ && pay_->out);
-
-      if (features_.payload()) {
-        out.write_vint(static_cast<uint32_t>(pay_->block_last));
-      }
-
-      const uint64_t pay_ptr = pay_->out->file_pointer();
-
-      out.write_vlong(pay_ptr - pay_->skip_ptr[level]);
-      pay_->skip_ptr[level] = pay_ptr;
-    }
-  }
-}
-
-void postings_writer::encode(
+void postings_writer_base::encode(
     data_output& out,
     const irs::term_meta& state) {
 #ifdef IRESEARCH_DEBUG
@@ -932,27 +577,384 @@ void postings_writer::encode(
     }
   }
 
-  if (1U == meta.docs_count || meta.docs_count > postings_writer::BLOCK_SIZE) {
+  if (1U == meta.docs_count || meta.docs_count > BLOCK_SIZE) {
     out.write_vlong(meta.e_skip_start);
   }
 
   last_state_ = meta;
 }
 
-void postings_writer::end() {
-  format_utils::write_footer(*doc_.out);
-  doc_.out.reset(); // ensure stream is closed
+void postings_writer_base::end() {
+  format_utils::write_footer(*doc_out_);
+  doc_out_.reset(); // ensure stream is closed
 
-  if (pos_ && pos_->out) { // check both for the case where the writer is reused
-    format_utils::write_footer(*pos_->out);
-    pos_->out.reset(); // ensure stream is closed
+  if (pos_ && pos_out_) { // check both for the case where the writer is reused
+    format_utils::write_footer(*pos_out_);
+    pos_out_.reset(); // ensure stream is closed
   }
 
-  if (pay_ && pay_->out) { // check both for the case where the writer is reused
-    format_utils::write_footer(*pay_->out);
-    pay_->out.reset(); // ensure stream is closed
+  if (pay_ && pay_out_) { // check both for the case where the writer is reused
+    format_utils::write_footer(*pay_out_);
+    pay_out_.reset(); // ensure stream is closed
   }
 }
+
+void postings_writer_base::write_skip(size_t level, index_output& out) {
+  const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
+  const uint64_t doc_ptr = doc_out_->file_pointer();
+
+  out.write_vint(doc_delta);
+  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
+
+  doc_.skip_doc[level] = doc_.block_last;
+  doc_.skip_ptr[level] = doc_ptr;
+
+  if (features_.position()) {
+    assert(pos_);
+
+    const uint64_t pos_ptr = pos_out_->file_pointer();
+
+    out.write_vint(pos_->block_last);
+    out.write_vlong(pos_ptr - pos_->skip_ptr[level]);
+
+    pos_->skip_ptr[level] = pos_ptr;
+
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_out_);
+
+      if (features_.payload()) {
+        out.write_vint(static_cast<uint32_t>(pay_->block_last));
+      }
+
+      const uint64_t pay_ptr = pay_out_->file_pointer();
+
+      out.write_vlong(pay_ptr - pay_->skip_ptr[level]);
+      pay_->skip_ptr[level] = pay_ptr;
+    }
+  }
+}
+
+void postings_writer_base::begin_term() {
+  doc_.start = doc_out_->file_pointer();
+  std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
+  if (features_.position()) {
+    assert(pos_ && pos_out_);
+    pos_->start = pos_out_->file_pointer();
+    std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_out_);
+      pay_->start = pay_out_->file_pointer();
+      std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
+    }
+  }
+
+  doc_.last = doc_limits::min(); // for proper delta of 1st id
+  doc_.block_last = doc_limits::invalid();
+  skip_.reset();
+}
+
+void postings_writer_base::end_doc() {
+  if (doc_.full()) {
+    doc_.block_last = doc_.last;
+    doc_.end = doc_out_->file_pointer();
+    if (features_.position()) {
+      assert(pos_ && pos_out_);
+      pos_->end = pos_out_->file_pointer();
+      // documents stream is full, but positions stream is not
+      // save number of positions to skip before the next block
+      pos_->block_last = pos_->size;
+      if (features_.any(features::OFFS | features::PAY)) {
+        assert(pay_ && pay_out_);
+        pay_->end = pay_out_->file_pointer();
+        pay_->block_last = pay_->pay_buf_.size();
+      }
+    }
+
+    doc_.size = 0;
+  }
+}
+
+void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
+  if (docs_count_ == 0) {
+    return; // no documents to write
+  }
+
+  if (1 == meta.docs_count) {
+    meta.e_single_doc = doc_.deltas[0];
+  } else {
+    // write remaining documents using
+    // variable length encoding
+    auto& out = *doc_out_;
+
+    for (uint32_t i = 0; i < doc_.size; ++i) {
+      const doc_id_t doc_delta = doc_.deltas[i];
+
+      if (!features_.freq()) {
+        out.write_vint(doc_delta);
+      } else {
+        assert(doc_.freqs);
+        const uint32_t freq = doc_.freqs[i];
+
+        if (1 == freq) {
+          out.write_vint(shift_pack_32(doc_delta, true));
+        } else {
+          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vint(freq);
+        }
+      }
+    }
+  }
+
+  meta.pos_end = type_limits<type_t::address_t>::invalid();
+
+  /* write remaining position using
+   * variable length encoding */
+  if (features_.position()) {
+    assert(pos_ && pos_out_);
+
+    if (meta.freq > BLOCK_SIZE) {
+      meta.pos_end = pos_out_->file_pointer() - pos_->start;
+    }
+
+    if (pos_->size > 0) {
+      data_output& out = *pos_out_;
+      uint32_t last_pay_size = integer_traits<uint32_t>::const_max;
+      uint32_t last_offs_len = integer_traits<uint32_t>::const_max;
+      uint32_t pay_buf_start = 0;
+      for (uint32_t i = 0; i < pos_->size; ++i) {
+        const uint32_t pos_delta = pos_->buf[i];
+        if (features_.payload()) {
+          assert(pay_ && pay_out_);
+
+          const uint32_t size = pay_->pay_sizes[i];
+          if (last_pay_size != size) {
+            last_pay_size = size;
+            out.write_vint(shift_pack_32(pos_delta, true));
+            out.write_vint(size);
+          } else {
+            out.write_vint(shift_pack_32(pos_delta, false));
+          }
+
+          if (size != 0) {
+            out.write_bytes(pay_->pay_buf_.c_str() + pay_buf_start, size);
+            pay_buf_start += size;
+          }
+        } else {
+          out.write_vint(pos_delta);
+        }
+
+        if (features_.offset()) {
+          assert(pay_ && pay_out_);
+
+          const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
+          const uint32_t len = pay_->offs_len_buf[i];
+          if (len == last_offs_len) {
+            out.write_vint(shift_pack_32(pay_offs_delta, false));
+          } else {
+            out.write_vint(shift_pack_32(pay_offs_delta, true));
+            out.write_vint(len);
+            last_offs_len = len;
+          }
+        }
+      }
+
+      if (features_.payload()) {
+        assert(pay_ && pay_out_);
+        pay_->pay_buf_.clear();
+      }
+    }
+  }
+
+  if (!tfreq) {
+    meta.freq = integer_traits<uint32_t>::const_max;
+  }
+
+  // if we have flushed at least
+  // one block there was buffered
+  // skip data, so we need to flush it*/
+  if (docs_count_ > BLOCK_SIZE) {
+    //const uint64_t start = doc.out->file_pointer();
+    meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
+    skip_.flush(*doc_out_);
+  }
+
+  docs_count_ = 0;
+  doc_.size = 0;
+  doc_.last = 0;
+  meta.doc_start = doc_.start;
+
+  if (pos_) {
+    pos_->size = 0;
+    meta.pos_start = pos_->start;
+  }
+
+  if (pay_) {
+    //pay_->buf_size = 0;
+    pay_->pay_buf_.clear();
+    pay_->last = 0;
+    meta.pay_start = pay_->start;
+  }
+}
+
+template<typename FormatTraits>
+void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
+  if (doc_limits::valid(doc_.block_last) && 0 == doc_.size) {
+    skip_.skip(docs_count_);
+  }
+
+  if (id < doc_.last) {
+    throw index_error(string_utils::to_string(
+      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc_.last
+    ));
+  }
+
+  doc_.doc(id - doc_.last);
+  if (freq) {
+    doc_.freq(freq->value);
+  }
+
+  doc_.next(id);
+  if (doc_.full()) {
+    FormatTraits::write_block(*doc_out_, doc_.deltas, BLOCK_SIZE, buf_);
+
+    if (freq) {
+      FormatTraits::write_block(*doc_out_, doc_.freqs.get(), BLOCK_SIZE, buf_);
+    }
+  }
+
+  if (pos_) pos_->last = 0;
+  if (pay_) pay_->last = 0;
+
+  ++docs_count_;
+}
+
+template<typename FormatTraits>
+void postings_writer_base::add_position(uint32_t pos, const offset* offs, const payload* pay) {
+  assert(!offs || offs->start <= offs->end);
+  assert(features_.position() && pos_ && pos_out_); /* at least positions stream should be created */
+
+  pos_->pos(pos - pos_->last);
+
+  if (pay) {
+    pay_->push_payload(pos_->size, pay->value);
+  }
+
+  if (offs) {
+    pay_->push_offset(pos_->size, offs->start, offs->end);
+  }
+
+  pos_->next(pos);
+
+  if (pos_->full()) {
+    FormatTraits::write_block(*pos_out_, pos_->buf, BLOCK_SIZE, buf_);
+    pos_->size = 0;
+
+    if (pay) {
+      assert(features_.payload() && pay_ && pay_out_);
+      auto& pay_buf = pay_->pay_buf_;
+
+      pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
+      if (!pay_buf.empty()) {
+        FormatTraits::write_block(*pay_out_, pay_->pay_sizes, BLOCK_SIZE, buf_);
+        pay_out_->write_bytes(pay_buf.c_str(), pay_buf.size());
+        pay_buf.clear();
+      }
+    }
+
+    if (offs) {
+      assert(features_.offset() && pay_ && pay_out_);
+      FormatTraits::write_block(*pay_out_, pay_->offs_start_buf, BLOCK_SIZE, buf_);
+      FormatTraits::write_block(*pay_out_, pay_->offs_len_buf, BLOCK_SIZE, buf_);
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class postings_writer
+//////////////////////////////////////////////////////////////////////////////
+template<typename FormatTraits, bool VolatileAttributes>
+class postings_writer final: public postings_writer_base {
+ public:
+  explicit postings_writer()
+    : postings_writer_base(FORMAT_MAX, TERMS_FORMAT_MAX) {
+  }
+
+  virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
+}; // postings_writer
+
+#if defined(_MSC_VER)
+  #pragma warning( disable : 4706 )
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
+template<typename FormatTraits, bool VolatileAttributes>
+irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(irs::doc_iterator& docs) {
+  REGISTER_TIMER_DETAILED();
+  auto& freq = docs.attributes().get<frequency>();
+
+  auto& pos = freq
+    ? docs.attributes().get<position>()
+    : irs::attribute_view::ref<position>::NIL;
+
+  const offset* offs = nullptr;
+  const payload* pay = nullptr;
+
+  uint32_t* tfreq = nullptr;
+
+  auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
+
+  if (freq) {
+    if (pos && !VolatileAttributes) {
+      auto& attrs = pos->attributes();
+      offs = attrs.get<offset>().get();
+      pay = attrs.get<payload>().get();
+    }
+
+    tfreq = &meta->freq;
+  }
+
+  begin_term();
+
+  while (docs.next()) {
+    const auto did = docs.value();
+
+    assert(doc_limits::valid(did));
+    begin_doc<FormatTraits>(did, freq.get());
+    docs_.value.set(did - doc_limits::min());
+
+    if (pos) {
+      if (VolatileAttributes) {
+        auto& attrs = pos->attributes();
+        offs = attrs.get<offset>().get();
+        pay = attrs.get<payload>().get();
+      }
+
+      while (pos->next()) {
+        add_position<FormatTraits>(pos->value(), offs, pay);
+      }
+    }
+
+    ++meta->docs_count;
+    if (tfreq) {
+      (*tfreq) += freq->value;
+    }
+
+    end_doc();
+  }
+
+  end_term(*meta, tfreq);
+
+  return make_state(*meta.release());
+}
+
+#if defined(_MSC_VER)
+  #pragma warning( default : 4706 )
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 struct skip_state {
   uint64_t doc_ptr{}; // pointer to the beginning of document block
@@ -983,20 +985,20 @@ struct doc_state {
 // ----------------------------------------------------------------------------
 
 FORCE_INLINE void skip_positions(index_input& in) {
-  format_traits::skip_block(in, postings_writer::BLOCK_SIZE);
+  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
 }
 
 FORCE_INLINE void skip_payload(index_input& in) {
   const size_t size = in.read_vint();
   if (size) {
-    format_traits::skip_block(in, postings_writer::BLOCK_SIZE);
+    format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
     in.seek(in.file_pointer() + size);
   }
 }
 
 FORCE_INLINE void skip_offsets(index_input& in) {
-  format_traits::skip_block(in, postings_writer::BLOCK_SIZE);
-  format_traits::skip_block(in, postings_writer::BLOCK_SIZE);
+  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1008,8 +1010,8 @@ class doc_iterator : public irs::doc_iterator_base {
 
   doc_iterator() noexcept
     : skip_levels_(1),
-      skip_(postings_writer::BLOCK_SIZE, postings_writer::SKIP_N) {
-    std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, doc_limits::invalid());
+      skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
+    std::fill(docs_, docs_ + postings_writer_base::BLOCK_SIZE, doc_limits::invalid());
   }
 
   void prepare(
@@ -1194,11 +1196,11 @@ class doc_iterator : public irs::doc_iterator_base {
   void refill() {
     const auto left = term_state_.docs_count - cur_pos_;
 
-    if (left >= postings_writer::BLOCK_SIZE) {
+    if (left >= postings_writer_base::BLOCK_SIZE) {
       // read doc deltas
       format_traits::read_block(
         *doc_in_,
-        postings_writer::BLOCK_SIZE,
+        postings_writer_base::BLOCK_SIZE,
         enc_buf_,
         docs_
       );
@@ -1209,18 +1211,18 @@ class doc_iterator : public irs::doc_iterator_base {
         if (enabled_.freq()) {
           format_traits::read_block(
             *doc_in_,
-            postings_writer::BLOCK_SIZE,
+            postings_writer_base::BLOCK_SIZE,
             enc_buf_,
             doc_freqs_
           );
         } else {
           format_traits::skip_block(
             *doc_in_,
-            postings_writer::BLOCK_SIZE
+            postings_writer_base::BLOCK_SIZE
           );
         }
       }
-      end_ = docs_ + postings_writer::BLOCK_SIZE;
+      end_ = docs_ + postings_writer_base::BLOCK_SIZE;
     } else if (1 == term_state_.docs_count) {
       docs_[0] = term_state_.e_single_doc;
       if (term_freq_) {
@@ -1238,15 +1240,15 @@ class doc_iterator : public irs::doc_iterator_base {
     }
 
     begin_ = docs_;
-    doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
+    doc_freq_ = docs_ + postings_writer_base::BLOCK_SIZE;
   }
 
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  uint32_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
-  doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
-  uint32_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
+  uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
+  doc_id_t docs_[postings_writer_base::BLOCK_SIZE]; // doc values
+  uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
@@ -1262,7 +1264,7 @@ class doc_iterator : public irs::doc_iterator_base {
 
 void doc_iterator::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer::BLOCK_SIZE) {
+  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
     skip_ctx_ = &last;
 
@@ -1399,7 +1401,7 @@ class pos_iterator: public position {
       pend_pos_ = freq;
     }
 
-    if (buf_pos_ == postings_writer::BLOCK_SIZE) {
+    if (buf_pos_ == postings_writer_base::BLOCK_SIZE) {
       refill();
       buf_pos_ = 0;
     }
@@ -1434,7 +1436,7 @@ class pos_iterator: public position {
   virtual void prepare(const skip_state& state) {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
-    buf_pos_ = postings_writer::BLOCK_SIZE;
+    buf_pos_ = postings_writer_base::BLOCK_SIZE;
   }
 
  protected:
@@ -1463,22 +1465,22 @@ class pos_iterator: public position {
         }
       }
     } else {
-      format_traits::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
     }
   }
 
   virtual void skip(uint32_t count) {
-    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
+    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
-      while (count >= postings_writer::BLOCK_SIZE) {
+      while (count >= postings_writer_base::BLOCK_SIZE) {
         // skip positions
         skip_positions(*pos_in_);
-        count -= postings_writer::BLOCK_SIZE;
+        count -= postings_writer_base::BLOCK_SIZE;
       }
       refill();
       buf_pos_ = 0;
-      left = postings_writer::BLOCK_SIZE;
+      left = postings_writer_base::BLOCK_SIZE;
     }
 
     if (count < left) {
@@ -1488,13 +1490,13 @@ class pos_iterator: public position {
     value_ = 0;
   }
 
-  uint32_t pos_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store position deltas */
+  uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; /* buffer to store position deltas */
   const uint32_t* freq_; /* lenght of the posting list for a document */
   uint32_t* enc_buf_; /* auxillary buffer to decode data */
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
+  uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */
 
@@ -1554,19 +1556,19 @@ class offs_pay_iterator final: public pos_iterator {
   }
 
   virtual void skip(uint32_t count) override {
-    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
+    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
-      while (count >= postings_writer::BLOCK_SIZE) {
+      while (count >= postings_writer_base::BLOCK_SIZE) {
         skip_positions(*pos_in_);
         skip_payload(*pay_in_);
         skip_offsets(*pay_in_);
-        count -= postings_writer::BLOCK_SIZE;
+        count -= postings_writer_base::BLOCK_SIZE;
       }
       refill();
       buf_pos_ = 0;
-      left = postings_writer::BLOCK_SIZE;
+      left = postings_writer_base::BLOCK_SIZE;
     }
 
     if (count < left) {
@@ -1617,12 +1619,12 @@ class offs_pay_iterator final: public pos_iterator {
         }
       }
     } else {
-      format_traits::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // read payloads
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
         string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
@@ -1635,8 +1637,8 @@ class offs_pay_iterator final: public pos_iterator {
       }
 
       // read offsets
-      format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
     pay_data_pos_ = 0;
   }
@@ -1644,9 +1646,9 @@ class offs_pay_iterator final: public pos_iterator {
   index_input::ptr pay_in_;
   offset offs_;
   payload pay_;
-  uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset starts */
-  uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset lengths */
-  uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store offset starts */
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store offset lengths */
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store payload lengths */
   size_t pay_data_pos_{}; /* current position in a payload buffer */
   bstring pay_data_; // buffer to store payload data
 }; // pay_offs_iterator
@@ -1718,7 +1720,7 @@ class offs_iterator final : public pos_iterator {
         }
       }
     } else {
-      format_traits::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       // skip payload
       if (features_.payload()) {
@@ -1726,27 +1728,27 @@ class offs_iterator final : public pos_iterator {
       }
 
       // read offsets
-      format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, offs_lengts_);
+      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
     }
   }
 
   virtual void skip(uint32_t count) override {
-    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
+    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
-      while (count >= postings_writer::BLOCK_SIZE) {
+      while (count >= postings_writer_base::BLOCK_SIZE) {
         skip_positions(*pos_in_);
         if (features_.payload()) {
           skip_payload(*pay_in_);
         }
         skip_offsets(*pay_in_);
-        count -= postings_writer::BLOCK_SIZE;
+        count -= postings_writer_base::BLOCK_SIZE;
       }
       refill();
       buf_pos_ = 0;
-      left = postings_writer::BLOCK_SIZE;
+      left = postings_writer_base::BLOCK_SIZE;
     }
 
     if (count < left) {
@@ -1758,8 +1760,8 @@ class offs_iterator final : public pos_iterator {
 
   index_input::ptr pay_in_;
   offset offs_;
-  uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store offset starts */
-  uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]; /* buffer to store offset lengths */
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]; /* buffer to store offset starts */
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]; /* buffer to store offset lengths */
 }; // offs_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1809,21 +1811,21 @@ class pay_iterator final : public pos_iterator {
   }
 
   virtual void skip(uint32_t count) override {
-    auto left = postings_writer::BLOCK_SIZE - buf_pos_;
+    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
     if (count >= left) {
       count -= left;
       // skip block by block
-      while (count >= postings_writer::BLOCK_SIZE) {
+      while (count >= postings_writer_base::BLOCK_SIZE) {
         skip_positions(*pos_in_);
         skip_payload(*pay_in_);
         if (features_.offset()) {
           skip_offsets(*pay_in_);
         }
-        count -= postings_writer::BLOCK_SIZE;
+        count -= postings_writer_base::BLOCK_SIZE;
       }
       refill();
       buf_pos_ = 0;
-      left = postings_writer::BLOCK_SIZE;
+      left = postings_writer_base::BLOCK_SIZE;
     }
 
     if (count < left) {
@@ -1875,12 +1877,12 @@ class pay_iterator final : public pos_iterator {
         }
       }
     } else {
-      format_traits::read_block(*pos_in_, postings_writer::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       /* read payloads */
       const uint32_t size = pay_in_->read_vint();
       if (size) {
-        format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
+        format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
         string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
@@ -1902,7 +1904,7 @@ class pay_iterator final : public pos_iterator {
 
   index_input::ptr pay_in_;
   payload pay_;
-  uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store payload lengths */
   uint64_t pay_data_pos_{}; /* current postition in payload buffer */
   bstring pay_data_; // buffer to store payload data
 }; // pay_iterator
@@ -2018,15 +2020,15 @@ void pos_doc_iterator<PosItrType>::prepare_attributes(
   state.features = features_;
   state.enc_buf = enc_buf_;
 
-  if (term_freq_ < postings_writer::BLOCK_SIZE) {
+  if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
     state.tail_start = term_state_.pos_start;
-  } else if (term_freq_ == postings_writer::BLOCK_SIZE) {
+  } else if (term_freq_ == postings_writer_base::BLOCK_SIZE) {
     state.tail_start = type_limits<type_t::address_t>::invalid();
   } else {
     state.tail_start = term_state_.pos_start + term_state_.pos_end;
   }
 
-  state.tail_length = term_freq_ % postings_writer::BLOCK_SIZE;
+  state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
   pos_.prepare(state);
   attrs_.emplace(pos_);
 }
@@ -5309,10 +5311,10 @@ void postings_reader::prepare(
   // prepare document input
   prepare_input(
     buf, doc_in_, irs::IOAdvice::RANDOM, state,
-    postings_writer::DOC_EXT,
-    postings_writer::DOC_FORMAT_NAME,
-    postings_writer::FORMAT_MIN,
-    postings_writer::FORMAT_MAX
+    postings_writer_base::DOC_EXT,
+    postings_writer_base::DOC_FORMAT_NAME,
+    postings_writer_base::FORMAT_MIN,
+    postings_writer_base::FORMAT_MAX
   );
 
   // Since terms doc postings too large
@@ -5326,10 +5328,10 @@ void postings_reader::prepare(
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
-      postings_writer::POS_EXT,
-      postings_writer::POS_FORMAT_NAME,
-      postings_writer::FORMAT_MIN,
-      postings_writer::FORMAT_MAX
+      postings_writer_base::POS_EXT,
+      postings_writer_base::POS_FORMAT_NAME,
+      postings_writer_base::FORMAT_MIN,
+      postings_writer_base::FORMAT_MAX
     );
 
     // Since terms pos postings too large
@@ -5343,10 +5345,10 @@ void postings_reader::prepare(
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
-        postings_writer::PAY_EXT,
-        postings_writer::PAY_FORMAT_NAME,
-        postings_writer::FORMAT_MIN,
-        postings_writer::FORMAT_MAX
+        postings_writer_base::PAY_EXT,
+        postings_writer_base::PAY_FORMAT_NAME,
+        postings_writer_base::FORMAT_MIN,
+        postings_writer_base::FORMAT_MAX
       );
 
       // Since terms pos postings too large
@@ -5360,14 +5362,14 @@ void postings_reader::prepare(
 
   // check postings format
   format_utils::check_header(in,
-    postings_writer::TERMS_FORMAT_NAME,
-    postings_writer::TERMS_FORMAT_MIN,
-    postings_writer::TERMS_FORMAT_MAX
+    postings_writer_base::TERMS_FORMAT_NAME,
+    postings_writer_base::TERMS_FORMAT_MIN,
+    postings_writer_base::TERMS_FORMAT_MAX
   );
 
   const uint64_t block_size = in.read_vint();
 
-  if (block_size != postings_writer::BLOCK_SIZE) {
+  if (block_size != postings_writer_base::BLOCK_SIZE) {
     throw index_error(string_utils::to_string(
       "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
       block_size
@@ -5398,7 +5400,7 @@ size_t postings_reader::decode(
   if (term_freq && term_freq->value && meta.check<position>()) {
     term_meta.pos_start += vread<uint64_t>(p);
 
-    term_meta.pos_end = term_freq->value > postings_writer::BLOCK_SIZE
+    term_meta.pos_end = term_freq->value > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
@@ -5407,7 +5409,7 @@ size_t postings_reader::decode(
     }
   }
 
-  if (1U == term_meta.docs_count || term_meta.docs_count > postings_writer::BLOCK_SIZE) {
+  if (1U == term_meta.docs_count || term_meta.docs_count > postings_writer_base::BLOCK_SIZE) {
     term_meta.e_skip_start = vread<uint64_t>(p);
   }
 
@@ -5491,8 +5493,8 @@ class format10 : public irs::version10::format {
   virtual columnstore_writer::ptr get_columnstore_writer() const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override final;
 
-  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
-  virtual postings_reader::ptr get_postings_reader() const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format10(const irs::format::type_id& type) noexcept
@@ -5576,7 +5578,11 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
-  return irs::postings_writer::make<::postings_writer>(volatile_state);
+  if (volatile_state) {
+    return memory::make_unique<::postings_writer<::format_traits, true>>();
+  }
+
+  return memory::make_unique<::postings_writer<::format_traits, false>>();
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
