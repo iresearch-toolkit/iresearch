@@ -1160,23 +1160,33 @@ SeekResult block_iterator::scan_to_term_nonleaf(
 void block_iterator::scan_to_sub_block(const bytes_ref& term) {
   assert(sub_count_ != UNDEFINED);
 
-  if (!block_meta::floor(meta_) || term.size() <= prefix_) {
+  if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
     // no sub-blocks, nothing to do
     return;
   }
 
   const int16_t label = term[prefix_];
-  uint64_t start = cur_start_;
 
-  // FIXME: better to use binary search here
-  for (; sub_count_ && next_label_ <= label; --sub_count_) {
-    start = start_ + vread<uint64_t>(header_begin_);
-    cur_meta_ = *header_begin_++;
-    next_label_ = *header_begin_++;
+  if (label < next_label_) {
+    // we don't need search
+    return;
   }
 
-  if (0 == sub_count_) {
-    next_label_ = block_t::INVALID_LABEL;
+  // FIXME: better to use binary search here
+  uint64_t start = cur_start_;
+  for (;;) {
+    start = start_ + vread<uint64_t>(header_begin_);
+    cur_meta_ = *header_begin_++;
+    if (--sub_count_) {
+      next_label_ = *header_begin_++;
+
+      if (label < next_label_) {
+        break;
+      }
+    } else {
+      next_label_ = block_t::INVALID_LABEL;
+      break;
+    }
   }
 
   if (start != cur_start_) {
