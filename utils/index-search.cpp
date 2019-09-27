@@ -592,7 +592,7 @@ int search(const cmdline::parser& args) {
   const auto scorer = args.get<std::string>(SCORER);
   const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::NIL;
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
-  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
@@ -633,8 +633,8 @@ int search(int argc, char* argv[]) {
   cmdline::parser cmdsearch;
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
-  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
-  cmdsearch.add(FORMAT, 0, "Format (1_0|1_0-optimized)", false, std::string("1_0"));
+  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("mmap"));
+  cmdsearch.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2sse)", false, std::string("1_0"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));
