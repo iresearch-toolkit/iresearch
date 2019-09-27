@@ -80,8 +80,6 @@ NS_LOCAL
 using namespace irs;
 
 struct format_traits {
-  static const uint32_t BLOCK_SIZE = 128;
-
   FORCE_INLINE static void write_block(
       index_output& out,
       const uint32_t* in,
@@ -105,8 +103,6 @@ struct format_traits {
 #ifdef IRESEARCH_SSE2
 
 struct format_traits_sse {
-  static const uint32_t BLOCK_SIZE = 128;
-
   FORCE_INLINE static void write_block(
       index_output& out,
       const uint32_t* in,
@@ -285,7 +281,7 @@ class postings_writer_base : public irs::postings_writer {
   static const int32_t FORMAT_MAX = 1; // sse
 
   static const uint32_t MAX_SKIP_LEVELS = 10;
-  static const uint32_t BLOCK_SIZE = format_traits::BLOCK_SIZE;
+  static const uint32_t BLOCK_SIZE = 128;
   static const uint32_t SKIP_N = 8;
 
   static const string_ref DOC_FORMAT_NAME;
@@ -977,27 +973,10 @@ struct doc_state {
 // --SECTION--                                                 helper functions
 // ----------------------------------------------------------------------------
 
-FORCE_INLINE void skip_positions(index_input& in) {
-  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
-}
-
-FORCE_INLINE void skip_payload(index_input& in) {
-  const size_t size = in.read_vint();
-  if (size) {
-    format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
-    in.seek(in.file_pointer() + size);
-  }
-}
-
-FORCE_INLINE void skip_offsets(index_input& in) {
-  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
-  format_traits::skip_block(in, postings_writer_base::BLOCK_SIZE);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<bool Offset, bool Payload>
+template<bool Offset, bool Payload, typename FormatTraits>
 class pos_iterator final : public position {
  public:
   pos_iterator(size_t reserve_attrs = 0)
@@ -1108,7 +1087,10 @@ class pos_iterator final : public position {
     }
   }
 
- protected:
+ private:
+  template<bool, bool, bool, bool, typename>
+  friend class doc_iterator;
+
   void refill() {
     if (pos_in_->file_pointer() == tail_start_) {
       size_t pos = 0;
@@ -1227,13 +1209,13 @@ class pos_iterator final : public position {
         }
       }
     } else {
-      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      FormatTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
       if /*constexpr*/ (Payload || Offset) {
         if /*constexpr*/ (Payload) {
           const uint32_t size = pay_in_->read_vint();
           if (size) {
-            format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
+            FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
             string_utils::oversize(pay_data_, size);
 
             #ifdef IRESEARCH_DEBUG
@@ -1245,14 +1227,14 @@ class pos_iterator final : public position {
             #endif // IRESEARCH_DEBUG
           }
         } else if (features_.payload()) {
-          skip_payload(*pay_in_);
+          skip_payload();
         }
 
         if /*constexpr*/ (Offset) {
-          format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-          format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
+          FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+          FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
         } else if (features_.offset()) {
-          skip_offsets(*pay_in_);
+          skip_offsets();
         }
       }
     }
@@ -1267,14 +1249,14 @@ class pos_iterator final : public position {
     if (count >= left) {
       count -= left;
       while (count >= postings_writer_base::BLOCK_SIZE) {
-        skip_positions(*pos_in_);
+        FormatTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
 
         if (/*constexpr*/Payload || features_.payload()) {
-          skip_payload(*pay_in_);
+          skip_payload();
         }
 
         if (/*constexpr*/Offset || features_.offset()) {
-          skip_offsets(*pay_in_);
+          skip_offsets();
         }
 
         count -= postings_writer_base::BLOCK_SIZE;
@@ -1298,6 +1280,20 @@ class pos_iterator final : public position {
     value_ = 0;
   }
 
+  void skip_payload() {
+    assert(pay_in_);
+    const size_t size = pay_in_->read_vint();
+    if (size) {
+      FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+      pay_in_->seek(pay_in_->file_pointer() + size);
+    }
+  }
+
+  void skip_offsets() {
+    FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+    FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+  }
+
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
@@ -1316,16 +1312,12 @@ class pos_iterator final : public position {
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
-
- private:
-  template<bool, bool, bool, bool>
-  friend class doc_iterator;
 }; // pos_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<bool Freq, bool Pos, bool Offset, bool Payload>
+template<bool Freq, bool Pos, bool Offset, bool Payload, typename FormatTraits>
 class doc_iterator final : public irs::doc_iterator_base {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
@@ -1341,13 +1333,11 @@ class doc_iterator final : public irs::doc_iterator_base {
 
   void prepare(
       const features& field,
-      const features& enabled,
       const attribute_view& attrs,
       const index_input* doc_in,
       const index_input* pos_in,
       const index_input* pay_in) {
     features_ = field; // set field features
-    enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
     attrs_.emplace(doc_);
@@ -1500,7 +1490,7 @@ class doc_iterator final : public irs::doc_iterator_base {
   #pragma GCC diagnostic pop
 #endif
 
- protected:
+ private:
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
@@ -1552,30 +1542,27 @@ class doc_iterator final : public irs::doc_iterator_base {
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
       // read doc deltas
-      format_traits::read_block(
+      FormatTraits::read_block(
         *doc_in_,
         postings_writer_base::BLOCK_SIZE,
         enc_buf_,
         docs_
       );
 
-      if (features_.freq()) {
-        // read frequency it is required by
-        // the iterator or just skip it otherwise
-        if (enabled_.freq()) {
-          format_traits::read_block(
-            *doc_in_,
-            postings_writer_base::BLOCK_SIZE,
-            enc_buf_,
-            doc_freqs_
-          );
-        } else {
-          format_traits::skip_block(
-            *doc_in_,
-            postings_writer_base::BLOCK_SIZE
-          );
-        }
+      if /*constexpr*/ (Freq) {
+        FormatTraits::read_block(
+          *doc_in_,
+          postings_writer_base::BLOCK_SIZE,
+          enc_buf_,
+          doc_freqs_
+        );
+      } else if (features_.freq()) {
+        FormatTraits::skip_block(
+          *doc_in_,
+          postings_writer_base::BLOCK_SIZE
+        );
       }
+
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
     } else if (1 == term_state_.docs_count) {
       docs_[0] = term_state_.e_single_doc;
@@ -1613,12 +1600,11 @@ class doc_iterator final : public irs::doc_iterator_base {
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  features enabled_; // enabled iterator features
-  pos_iterator<Offset, Payload> pos_;
+  pos_iterator<Offset, Payload, FormatTraits> pos_;
 }; // doc_iterator
 
-template<bool Freq, bool Pos, bool Offset, bool Payload>
-void doc_iterator<Freq, Pos, Offset, Payload>::seek_to_block(doc_id_t target) {
+template<bool Freq, bool Pos, bool Offset, bool Payload, typename FormatTraits>
+void doc_iterator<Freq, Pos, Offset, Payload, FormatTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
@@ -5094,33 +5080,33 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<true, true, true, true>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<true, true, true, true, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS | features::OFFS: {
-      auto it = memory::make_shared<doc_iterator<true, true, true, false>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<true, true, true, false, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<true, true, false, true>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<true, true, false, true, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS: {
-      auto it = memory::make_shared<doc_iterator<true, true, false, false>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<true, true, false, false, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ: {
-      auto it = memory::make_shared<doc_iterator<true, false, false, false>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<true, false, false, false, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     default: {
-      auto it = memory::make_shared<doc_iterator<false, false, false, false>>();
-      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      auto it = memory::make_shared<doc_iterator<false, false, false, false, FormatTraits>>();
+      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
   }
@@ -5372,6 +5358,8 @@ REGISTER_FORMAT(::format12);
 // --SECTION--                                                      format12sse
 // ----------------------------------------------------------------------------
 
+#ifdef IRESEARCH_SSE2
+
 class format12sse final : public format12 {
  public:
   DECLARE_FORMAT_TYPE();
@@ -5407,6 +5395,8 @@ irs::postings_reader::ptr format12sse::get_postings_reader() const {
 DEFINE_FORMAT_TYPE_NAMED(::format12sse, "1_2sse");
 REGISTER_FORMAT(::format12sse);
 
+#endif // IRESEARCH_SSE2
+
 NS_END
 
 NS_ROOT
@@ -5417,7 +5407,9 @@ void init() {
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
+#ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12sse);
+#endif // IRESEARCH_SSE2
 #endif
 }
 

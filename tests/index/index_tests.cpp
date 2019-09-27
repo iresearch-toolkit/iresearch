@@ -21839,7 +21839,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_2")
+    ::testing::Values("1_2", "1_2sse")
   ),
   tests::to_string
 );
@@ -22580,7 +22580,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_1", "1_2")
+    ::testing::Values("1_1", "1_2", "1_2sse")
   ),
   tests::to_string
 );
