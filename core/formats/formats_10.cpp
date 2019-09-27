@@ -969,17 +969,13 @@ struct doc_state {
   ::features features;
 }; // doc_state
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 helper functions
-// ----------------------------------------------------------------------------
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<bool Offset, bool Payload, typename FormatTraits>
 class pos_iterator final : public position {
  public:
-  pos_iterator(size_t reserve_attrs = 0)
+  pos_iterator()
     : position(size_t(Offset) + size_t(Payload)) {
     if /*constexpr*/ (Offset) {
       attrs_.emplace(offs_);
@@ -987,18 +983,6 @@ class pos_iterator final : public position {
 
     if /*constexpr*/ (Payload) {
       attrs_.emplace(pay_);
-    }
-  }
-
-  virtual void clear() override {
-    value_ = pos_limits::invalid();
-
-    if /*constexpr*/ (Offset) {
-      offs_.clear();
-    }
-
-    if /*constexpr*/ (Payload) {
-      pay_.clear();
     }
   }
 
@@ -1084,6 +1068,18 @@ class pos_iterator final : public position {
       if /*constexpr*/ (Payload) {
         pay_data_pos_ = state.pay_pos;
       }
+    }
+  }
+
+  void clear() noexcept {
+    value_ = pos_limits::invalid();
+
+    if /*constexpr*/ (Offset) {
+      offs_.clear();
+    }
+
+    if /*constexpr*/ (Payload) {
+      pay_.clear();
     }
   }
 

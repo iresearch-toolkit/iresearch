@@ -392,7 +392,7 @@ class doc_iterator : public irs::doc_iterator {
       }
     }
 
-    void clear() override {
+    void clear() {
       next_ = owner_.prev_->positions().begin();
       value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       offs_.clear();
