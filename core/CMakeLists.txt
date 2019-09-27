@@ -77,12 +77,6 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
-if (USE_SIMDCOMP)
-  set(IResearch_core_optimized_sources
-    ./store/store_utils_optimized.cpp
-  )
-endif()
-
 set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
@@ -138,6 +132,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
+  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
   ./utils/automaton_utils.cpp
@@ -504,10 +499,8 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-if (USE_SIMDCOMP)
-  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-  set(SIMD_LIBRARY_STATIC "simdcomp-static")
-endif()
+set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+set(SIMD_LIBRARY_STATIC "simdcomp-static")
 
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
@@ -596,11 +589,8 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
-
-if (USE_SIMDCOMP)
-  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
-endif()
 
 if (MSVC)
   foreach(ELEMENT
@@ -1526,12 +1516,6 @@ endif()
 ################################################################################
 ### format plugin: format-1_0
 ################################################################################
-
-if (USE_SIMDCOMP)
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
-else()
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
-endif()
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp

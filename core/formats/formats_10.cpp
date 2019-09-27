@@ -67,87 +67,68 @@
 #include "utils/type_limits.hpp"
 #include "utils/std.hpp"
 
+#ifdef IRESEARCH_SSE2
+  #include "store/store_utils_optimized.hpp"
+#endif
+
 #if defined(_MSC_VER)
   #pragma warning(disable : 4351)
-#endif
-
-#if (!defined(IRESEARCH_FORMAT10_CODEC) || (IRESEARCH_FORMAT10_CODEC == 0))
-
-NS_LOCAL
-
-struct format_traits {
-  static const uint32_t BLOCK_SIZE = 128;
-
-  FORCE_INLINE static void write_block(
-      irs::index_output& out,
-      const uint32_t* in,
-      uint32_t size,
-      uint32_t* buf) {
-    irs::encode::bitpack::write_block(out, in, size, buf);
-  }
-
-  FORCE_INLINE static void read_block(
-      irs::index_input& in,
-      uint32_t size,
-      uint32_t* buf,
-      uint32_t* out) {
-    irs::encode::bitpack::read_block(in, size, buf, out);
-  }
-
-  FORCE_INLINE static void skip_block(
-      irs::index_input& in,
-      size_t size) {
-    irs::encode::bitpack::skip_block32(in, size);
-  }
-}; // format_traits
-
-NS_END
-
-#elif (IRESEARCH_FORMAT10_CODEC == 1) // simdpack
-
-#ifndef IRESEARCH_SSE2
-  #error "Optimized format requires SSE2 support"
-#endif
-
-#include "store/store_utils_optimized.hpp"
-
-NS_LOCAL
-
-struct format_traits {
-  static const uint32_t BLOCK_SIZE = 128;
-
-  FORCE_INLINE static void write_block(
-      irs::index_output& out,
-      const uint32_t* in,
-      size_t size,
-      uint32_t* buf) {
-    irs::encode::bitpack::write_block_optimized(out, in, size, buf);
-  }
-
-  FORCE_INLINE static void read_block(
-      irs::index_input& in,
-      size_t size,
-      uint32_t* buf,
-      uint32_t* out) {
-    irs::encode::bitpack::read_block_optimized(in, size, buf, out);
-  }
-
-  FORCE_INLINE static void skip_block(
-      irs::index_input& in,
-      size_t size) {
-    irs::encode::bitpack::skip_block32(in, size);
-  }
-}; // format_traits
-
-NS_END
-
 #endif
 
 NS_LOCAL
 
 using namespace irs;
 
-const frequency NO_FREQUENCY;
+struct format_traits {
+  static const uint32_t BLOCK_SIZE = 128;
+
+  FORCE_INLINE static void write_block(
+      index_output& out,
+      const uint32_t* in,
+      uint32_t size,
+      uint32_t* buf) {
+    encode::bitpack::write_block(out, in, size, buf);
+  }
+
+  FORCE_INLINE static void read_block( index_input& in,
+      uint32_t size,
+      uint32_t* buf,
+      uint32_t* out) {
+    encode::bitpack::read_block(in, size, buf, out);
+  }
+
+  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
+    encode::bitpack::skip_block32(in, size);
+  }
+}; // format_traits
+
+#ifdef IRESEARCH_SSE2
+
+struct format_traits_sse {
+  static const uint32_t BLOCK_SIZE = 128;
+
+  FORCE_INLINE static void write_block(
+      index_output& out,
+      const uint32_t* in,
+      size_t size,
+      uint32_t* buf) {
+    encode::bitpack::write_block_optimized(out, in, size, buf);
+  }
+
+  FORCE_INLINE static void read_block(
+      index_input& in,
+      size_t size,
+      uint32_t* buf,
+      uint32_t* out) {
+    encode::bitpack::read_block_optimized(in, size, buf, out);
+  }
+
+  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
+    encode::bitpack::skip_block32(in, size);
+  }
+}; // format_traits_sse
+
+#endif // IRESEARCH_SSE2
 
 bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
@@ -301,7 +282,7 @@ class postings_writer_base : public irs::postings_writer {
   static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1; // sse
 
   static const uint32_t MAX_SKIP_LEVELS = 10;
   static const uint32_t BLOCK_SIZE = format_traits::BLOCK_SIZE;
@@ -888,8 +869,8 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
 template<typename FormatTraits, bool VolatileAttributes>
 class postings_writer final: public postings_writer_base {
  public:
-  explicit postings_writer()
-    : postings_writer_base(FORMAT_MAX, TERMS_FORMAT_MAX) {
+  explicit postings_writer(int32_t version)
+    : postings_writer_base(version, TERMS_FORMAT_MAX) {
   }
 
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
@@ -1014,16 +995,348 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator
+///////////////////////////////////////////////////////////////////////////////
+template<bool Offset, bool Payload>
+class pos_iterator final : public position {
+ public:
+  pos_iterator(size_t reserve_attrs = 0)
+    : position(size_t(Offset) + size_t(Payload)) {
+    if /*constexpr*/ (Offset) {
+      attrs_.emplace(offs_);
+    }
+
+    if /*constexpr*/ (Payload) {
+      attrs_.emplace(pay_);
+    }
+  }
+
+  virtual void clear() override {
+    value_ = pos_limits::invalid();
+
+    if /*constexpr*/ (Offset) {
+      offs_.clear();
+    }
+
+    if /*constexpr*/ (Payload) {
+      pay_.clear();
+    }
+  }
+
+  virtual bool next() override {
+    if (0 == pend_pos_) {
+      value_ = pos_limits::eof();
+
+      return false;
+    }
+
+    const uint32_t freq = *freq_;
+
+    if (pend_pos_ > freq) {
+      skip(pend_pos_ - freq);
+      pend_pos_ = freq;
+    }
+
+    if (buf_pos_ == postings_writer_base::BLOCK_SIZE) {
+      refill();
+      buf_pos_ = 0;
+    }
+
+    value_ += pos_deltas_[buf_pos_];
+
+    if /*constexpr*/ (Offset) {
+      offs_.start += offs_start_deltas_[buf_pos_];
+      offs_.end = offs_.start + offs_lengts_[buf_pos_];
+    }
+
+    if /*constexpr*/ (Payload) {
+      pay_.value = bytes_ref(
+        pay_data_.c_str() + pay_data_pos_,
+        pay_lengths_[buf_pos_]);
+      pay_data_pos_ += pay_lengths_[buf_pos_];
+    }
+
+    ++buf_pos_;
+    --pend_pos_;
+    return true;
+  }
+
+  // prepares iterator to work
+  void prepare(const doc_state& state) {
+    pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
+
+    if (!pos_in_) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen positions input in: %s", __FUNCTION__);
+
+      throw io_error("failed to reopen positions input");
+    }
+
+    pos_in_->seek(state.term_state->pos_start);
+    freq_ = state.freq;
+    features_ = state.features;
+    enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
+    tail_start_ = state.tail_start;
+    tail_length_ = state.tail_length;
+
+    if /*constexpr*/ (Offset || Payload) {
+      pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
+
+      if (!pay_in_) {
+        // implementation returned wrong pointer
+        IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+
+        throw io_error("failed to reopen payload input");
+      }
+
+      pay_in_->seek(state.term_state->pay_start);
+    }
+  }
+
+  // notifies iterator that doc iterator has skipped to a new block
+  void prepare(const skip_state& state) {
+    pos_in_->seek(state.pos_ptr);
+    pend_pos_ = state.pend_pos;
+    buf_pos_ = postings_writer_base::BLOCK_SIZE;
+
+    if /*constexpr*/ (Offset || Payload) {
+      pay_in_->seek(state.pay_ptr);
+
+      if /*constexpr*/ (Payload) {
+        pay_data_pos_ = state.pay_pos;
+      }
+    }
+  }
+
+ protected:
+  void refill() {
+    if (pos_in_->file_pointer() == tail_start_) {
+      size_t pos = 0;
+
+      if /*constexpr*/ (Payload && Offset) {
+        for (size_t i = 0; i < tail_length_; ++i) {
+          // read payloads
+          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
+            pay_lengths_[i] = pos_in_->read_vint();
+          } else {
+            assert(i);
+            pay_lengths_[i] = pay_lengths_[i-1];
+          }
+
+          if (pay_lengths_[i]) {
+            const auto size = pay_lengths_[i]; // length of current payload
+
+            string_utils::oversize(pay_data_, pos + size);
+
+            #ifdef IRESEARCH_DEBUG
+              const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+              assert(read == size);
+              UNUSED(read);
+            #else
+              pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+            #endif // IRESEARCH_DEBUG
+
+            pos += size;
+          }
+
+          if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
+            offs_lengts_[i] = pos_in_->read_vint();
+          } else {
+            assert(i);
+            offs_lengts_[i] = offs_lengts_[i - 1];
+          }
+        }
+      } else if /*constexpr*/ (Payload) {
+        for (size_t i = 0; i < tail_length_; ++i) {
+          // read payloads
+          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
+            pay_lengths_[i] = pos_in_->read_vint();
+          } else {
+            assert(i);
+            pay_lengths_[i] = pay_lengths_[i-1];
+          }
+
+          if (pay_lengths_[i]) {
+            const auto size = pay_lengths_[i]; // current payload length
+
+            string_utils::oversize(pay_data_, pos + size);
+
+            #ifdef IRESEARCH_DEBUG
+              const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+              assert(read == size);
+              UNUSED(read);
+            #else
+              pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+            #endif // IRESEARCH_DEBUG
+
+            pos += size;
+          }
+
+          // skip offsets
+          if (features_.offset()) {
+            uint32_t code;
+            if (shift_unpack_32(pos_in_->read_vint(), code)) {
+              pos_in_->read_vint();
+            }
+          }
+        }
+      } else if /*constexpr*/ (Offset) {
+        uint32_t pay_size = 0;
+        for (size_t i = 0; i < tail_length_; ++i) {
+          // skip payloads
+          if (features_.payload()) {
+            if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
+              pay_size = pos_in_->read_vint();
+            }
+            if (pay_size) {
+              pos_in_->seek(pos_in_->file_pointer() + pay_size);
+            }
+          } else {
+            pos_deltas_[i] = pos_in_->read_vint();
+          }
+
+          /* read offsets */
+          if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
+            offs_lengts_[i] = pos_in_->read_vint();
+          } else {
+            assert(i);
+            offs_lengts_[i] = offs_lengts_[i - 1];
+          }
+        }
+
+      } else {
+        uint32_t pay_size = 0;
+        for (size_t i = 0; i < tail_length_; ++i) {
+          if (features_.payload()) {
+            if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
+              pay_size = pos_in_->read_vint();
+            }
+            if (pay_size) {
+              pos_in_->seek(pos_in_->file_pointer() + pay_size);
+            }
+          } else {
+            pos_deltas_[i] = pos_in_->read_vint();
+          }
+
+          if (features_.offset()) {
+            uint32_t delta;
+            if (shift_unpack_32(pos_in_->read_vint(), delta)) {
+              pos_in_->read_vint();
+            }
+          }
+        }
+      }
+    } else {
+      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
+
+      if /*constexpr*/ (Payload || Offset) {
+        if /*constexpr*/ (Payload) {
+          const uint32_t size = pay_in_->read_vint();
+          if (size) {
+            format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
+            string_utils::oversize(pay_data_, size);
+
+            #ifdef IRESEARCH_DEBUG
+              const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
+              assert(read == size);
+              UNUSED(read);
+            #else
+              pay_in_->read_bytes(&(pay_data_[0]), size);
+            #endif // IRESEARCH_DEBUG
+          }
+        } else if (features_.payload()) {
+          skip_payload(*pay_in_);
+        }
+
+        if /*constexpr*/ (Offset) {
+          format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+          format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
+        } else if (features_.offset()) {
+          skip_offsets(*pay_in_);
+        }
+      }
+    }
+
+    if /*constexpr*/ (Payload) {
+      pay_data_pos_ = 0;
+    }
+  }
+
+  void skip(uint32_t count) {
+    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
+    if (count >= left) {
+      count -= left;
+      while (count >= postings_writer_base::BLOCK_SIZE) {
+        skip_positions(*pos_in_);
+
+        if (/*constexpr*/Payload || features_.payload()) {
+          skip_payload(*pay_in_);
+        }
+
+        if (/*constexpr*/Offset || features_.offset()) {
+          skip_offsets(*pay_in_);
+        }
+
+        count -= postings_writer_base::BLOCK_SIZE;
+      }
+      refill();
+      buf_pos_ = 0;
+      left = postings_writer_base::BLOCK_SIZE;
+    }
+
+    if (count < left) {
+      if /*constexpr*/ (Payload) {
+        // current payload start
+        const auto begin = pay_lengths_ + buf_pos_;
+        const auto end = begin + count;
+        pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
+      }
+
+      buf_pos_ += count;
+    }
+    clear();
+    value_ = 0;
+  }
+
+  uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
+  const uint32_t* freq_; // lenght of the posting list for a document
+  uint32_t* enc_buf_; // auxillary buffer to decode data
+  uint32_t pend_pos_{}; // how many positions "behind" we are
+  uint64_t tail_start_; // file pointer where the last (vInt encoded) pos delta block is
+  size_t tail_length_; // number of positions in the last (vInt encoded) pos delta block
+  uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE } ; // current position in pos_deltas_ buffer
+  index_input::ptr pos_in_;
+  features features_; // field features
+
+  index_input::ptr pay_in_;
+  offset offs_;
+  payload pay_;
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
+  size_t pay_data_pos_{}; // current position in a payload buffer
+  bstring pay_data_; // buffer to store payload data
+
+ private:
+  template<bool, bool, bool, bool>
+  friend class doc_iterator;
+}; // pos_iterator
+
+///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class doc_iterator : public irs::doc_iterator_base {
+template<bool Freq, bool Pos, bool Offset, bool Payload>
+class doc_iterator final : public irs::doc_iterator_base {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() noexcept
     : skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
-    std::fill(docs_, docs_ + postings_writer_base::BLOCK_SIZE, doc_limits::invalid());
+    assert(
+      std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
+                  [](doc_id_t doc) { return doc == doc_limits::invalid(); })
+    );
   }
 
   void prepare(
@@ -1061,7 +1374,36 @@ class doc_iterator : public irs::doc_iterator_base {
       assert(!doc_in_->eof());
     }
 
-    prepare_attributes(enabled, attrs, pos_in, pay_in);
+    estimate(term_state_.docs_count); // estimate iterator
+    attrs_.emplace(scr_); // make score accessible from outside
+
+    if /*constexpr*/ (Freq) {
+      assert(attrs.contains<frequency>());
+      attrs_.emplace(freq_);
+      term_freq_ = attrs.get<frequency>()->value;
+
+      if /*constexpr*/ (Pos) {
+        doc_state state;
+        state.pos_in = pos_in;
+        state.pay_in = pay_in;
+        state.term_state = &term_state_;
+        state.freq = &freq_.value;
+        state.features = features_;
+        state.enc_buf = enc_buf_;
+
+        if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
+          state.tail_start = term_state_.pos_start;
+        } else if (term_freq_ == postings_writer_base::BLOCK_SIZE) {
+          state.tail_start = type_limits<type_t::address_t>::invalid();
+        } else {
+          state.tail_start = term_state_.pos_start + term_state_.pos_end;
+        }
+
+        state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
+        pos_.prepare(state);
+        attrs_.emplace(pos_);
+      }
+    }
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -1086,11 +1428,24 @@ class doc_iterator : public irs::doc_iterator_base {
     while (begin_ < end_ ) {
       doc_.value += *begin_++;
 
-      if (doc_.value >= target) {
-        doc_freq_ = doc_freqs_ + relative_pos();
+      if /*constexpr*/ (!Pos) {
+        if (doc_.value >= target) {
+          if /*constexpr*/ (Freq) {
+            doc_freq_ = doc_freqs_ + relative_pos();
+            freq_.value = *doc_freq_++;
+          }
+          return doc_.value;
+        }
+      } else {
+        assert(Freq);
         freq_.value = *doc_freq_++;
 
-        return doc_.value;
+        pos_.pend_pos_ += freq_.value;
+
+        if (doc_.value >= target) {
+          pos_.clear();
+          return doc_.value;
+        }
       }
     }
 
@@ -1125,8 +1480,16 @@ class doc_iterator : public irs::doc_iterator_base {
       refill();
     }
 
-    doc_.value += *begin_++;
-    freq_.value = *doc_freq_++;
+    doc_.value += *begin_++; // update document attribute
+
+    if /*constexpr*/ (Freq) {
+      freq_.value = *doc_freq_++; // update frequency attribute
+
+      if /*constexpr*/ (Pos) {
+        pos_.pend_pos_ += freq_.value; // update position attribute
+        pos_.clear();
+      }
+    }
 
     return true;
   }
@@ -1138,27 +1501,6 @@ class doc_iterator : public irs::doc_iterator_base {
 #endif
 
  protected:
-  virtual void prepare_attributes(
-      const features& enabled,
-      const irs::attribute_view& attrs,
-      const index_input* pos_in,
-      const index_input* pay_in) {
-    UNUSED(pos_in);
-    UNUSED(pay_in);
-    estimate(term_state_.docs_count); // estimate iterator
-    attrs_.emplace(scr_); // make score accessible from outside
-
-    // term frequency attributes
-    if (enabled.freq()) {
-      assert(attrs.contains<frequency>());
-      attrs_.emplace(freq_);
-      term_freq_ = attrs.get<frequency>()->value;
-    }
-  }
-
-  virtual void seek_notify(const skip_context& /*ctx*/) {
-  }
-
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
@@ -1259,7 +1601,7 @@ class doc_iterator : public irs::doc_iterator_base {
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
-  doc_id_t docs_[postings_writer_base::BLOCK_SIZE]; // doc values
+  doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
   uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
@@ -1272,9 +1614,11 @@ class doc_iterator : public irs::doc_iterator_base {
   version10::term_meta term_state_;
   features features_; // field features
   features enabled_; // enabled iterator features
+  pos_iterator<Offset, Payload> pos_;
 }; // doc_iterator
 
-void doc_iterator::seek_to_block(doc_id_t target) {
+template<bool Freq, bool Pos, bool Offset, bool Payload>
+void doc_iterator<Freq, Pos, Offset, Payload>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
@@ -1336,713 +1680,11 @@ void doc_iterator::seek_to_block(doc_id_t target) {
       doc_.value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
-      seek_notify(last); // notifies derivatives
-    }
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class mask_doc_iterator
-///////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
-class mask_doc_iterator final: public DocIterator {
- public:
-  typedef DocIterator doc_iterator_t;
-
-  static_assert(
-    std::is_base_of<irs::doc_iterator, doc_iterator_t>::value,
-    "DocIterator must be derived from irs::doc_iterator"
-   );
-
-  explicit mask_doc_iterator(const document_mask& mask)
-    : mask_(mask) {
-  }
-
-  virtual bool next() override {
-    while (doc_iterator_t::next()) {
-      if (mask_.find(this->value()) == mask_.end()) {
-        return true;
+      if /*constexpr*/ (Pos) {
+        pos_.prepare(last); // notify positions
       }
     }
-
-    return false;
   }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = doc_iterator_t::seek(target);
-
-    if (mask_.find(doc) == mask_.end()) {
-      return doc;
-    }
-
-    this->next();
-
-    return this->value();
-  }
-
- private:
-  const document_mask& mask_; /* excluded document ids */
-}; // mask_doc_iterator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator
-///////////////////////////////////////////////////////////////////////////////
-class pos_iterator: public position {
- public:
-  DECLARE_UNIQUE_PTR(pos_iterator);
-
-  pos_iterator(size_t reserve_attrs = 0)
-    : position(reserve_attrs) {
-  }
-
-  virtual void clear() override {
-    value_ = pos_limits::invalid();
-  }
-
-  virtual bool next() override {
-    if (0 == pend_pos_) {
-      value_ = pos_limits::eof();
-
-      return false;
-    }
-
-    const uint32_t freq = *freq_;
-
-    if (pend_pos_ > freq) {
-      skip(pend_pos_ - freq);
-      pend_pos_ = freq;
-    }
-
-    if (buf_pos_ == postings_writer_base::BLOCK_SIZE) {
-      refill();
-      buf_pos_ = 0;
-    }
-
-    value_ += pos_deltas_[buf_pos_];
-    read_attributes();
-    ++buf_pos_;
-    --pend_pos_;
-    return true;
-  }
-
-  // prepares iterator to work
-  virtual void prepare(const doc_state& state) {
-    pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
-
-    if (!pos_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen positions input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen positions input");
-    }
-
-    pos_in_->seek(state.term_state->pos_start);
-    freq_ = state.freq;
-    features_ = state.features;
-    enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
-    tail_start_ = state.tail_start;
-    tail_length_ = state.tail_length;
-  }
-
-  // notifies iterator that doc iterator has skipped to a new block
-  virtual void prepare(const skip_state& state) {
-    pos_in_->seek(state.pos_ptr);
-    pend_pos_ = state.pend_pos;
-    buf_pos_ = postings_writer_base::BLOCK_SIZE;
-  }
-
- protected:
-  virtual void read_attributes() { }
-
-  virtual void refill() {
-    if (pos_in_->file_pointer() == tail_start_) {
-      uint32_t pay_size = 0;
-      for (size_t i = 0; i < tail_length_; ++i) {
-        if (features_.payload()) {
-          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-            pay_size = pos_in_->read_vint();
-          }
-          if (pay_size) {
-            pos_in_->seek(pos_in_->file_pointer() + pay_size);
-          }
-        } else {
-          pos_deltas_[i] = pos_in_->read_vint();
-        }
-
-        if (features_.offset()) {
-          uint32_t delta;
-          if (shift_unpack_32(pos_in_->read_vint(), delta)) {
-            pos_in_->read_vint();
-          }
-        }
-      }
-    } else {
-      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
-    }
-  }
-
-  virtual void skip(uint32_t count) {
-    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
-    if (count >= left) {
-      count -= left;
-      while (count >= postings_writer_base::BLOCK_SIZE) {
-        // skip positions
-        skip_positions(*pos_in_);
-        count -= postings_writer_base::BLOCK_SIZE;
-      }
-      refill();
-      buf_pos_ = 0;
-      left = postings_writer_base::BLOCK_SIZE;
-    }
-
-    if (count < left) {
-      buf_pos_ += count;
-    }
-    clear();
-    value_ = 0;
-  }
-
-  uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; /* buffer to store position deltas */
-  const uint32_t* freq_; /* lenght of the posting list for a document */
-  uint32_t* enc_buf_; /* auxillary buffer to decode data */
-  uint32_t pend_pos_{}; /* how many positions "behind" we are */
-  uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
-  size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
-  index_input::ptr pos_in_;
-  features features_; /* field features */
-
- private:
-  template<typename T>
-  friend class pos_doc_iterator;
-}; // pos_iterator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class offs_pay_iterator
-///////////////////////////////////////////////////////////////////////////////
-class offs_pay_iterator final: public pos_iterator {
- public:
-  DECLARE_UNIQUE_PTR(offs_pay_iterator);
-
-  offs_pay_iterator()
-    : pos_iterator(2) { // offset + payload
-    attrs_.emplace(offs_);
-    attrs_.emplace(pay_);
-  }
-
-  virtual void clear() override {
-    pos_iterator::clear();
-    offs_.clear();
-    pay_.clear();
-  }
-
-  virtual void prepare(const doc_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
-
-    if (!pay_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen payload input");
-    }
-
-    pay_in_->seek(state.term_state->pay_start);
-  }
-
-  virtual void prepare(const skip_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_->seek(state.pay_ptr);
-    pay_data_pos_ = state.pay_pos;
-  }
-
- protected:
-  virtual void read_attributes() override {
-    offs_.start += offs_start_deltas_[buf_pos_];
-    offs_.end = offs_.start + offs_lengts_[buf_pos_];
-
-    pay_.value = bytes_ref(
-      pay_data_.c_str() + pay_data_pos_,
-      pay_lengths_[buf_pos_]);
-    pay_data_pos_ += pay_lengths_[buf_pos_];
-  }
-
-  virtual void skip(uint32_t count) override {
-    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
-    if (count >= left) {
-      count -= left;
-      // skip block by block
-      while (count >= postings_writer_base::BLOCK_SIZE) {
-        skip_positions(*pos_in_);
-        skip_payload(*pay_in_);
-        skip_offsets(*pay_in_);
-        count -= postings_writer_base::BLOCK_SIZE;
-      }
-      refill();
-      buf_pos_ = 0;
-      left = postings_writer_base::BLOCK_SIZE;
-    }
-
-    if (count < left) {
-      // current payload start
-      const auto begin = pay_lengths_ + buf_pos_;
-      const auto end = begin + count;
-      pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
-      buf_pos_ += count;
-    }
-    clear();
-    value_ = 0;
-  }
-
-  virtual void refill() override {
-    if (pos_in_->file_pointer() == tail_start_) {
-      size_t pos = 0;
-
-      for (size_t i = 0; i < tail_length_; ++i) {
-        // read payloads
-        if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-          pay_lengths_[i] = pos_in_->read_vint();
-        } else {
-          assert(i);
-          pay_lengths_[i] = pay_lengths_[i-1];
-        }
-
-        if (pay_lengths_[i]) {
-          const auto size = pay_lengths_[i]; // length of current payload
-
-          string_utils::oversize(pay_data_, pos + size);
-
-          #ifdef IRESEARCH_DEBUG
-            const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-            assert(read == size);
-            UNUSED(read);
-          #else
-            pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-          #endif // IRESEARCH_DEBUG
-
-          pos += size;
-        }
-
-        if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
-          offs_lengts_[i] = pos_in_->read_vint();
-        } else {
-          assert(i);
-          offs_lengts_[i] = offs_lengts_[i - 1];
-        }
-      }
-    } else {
-      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
-
-      // read payloads
-      const uint32_t size = pay_in_->read_vint();
-      if (size) {
-        format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        string_utils::oversize(pay_data_, size);
-
-        #ifdef IRESEARCH_DEBUG
-          const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
-          assert(read == size);
-          UNUSED(read);
-        #else
-          pay_in_->read_bytes(&(pay_data_[0]), size);
-        #endif // IRESEARCH_DEBUG
-      }
-
-      // read offsets
-      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
-    }
-    pay_data_pos_ = 0;
-  }
-
-  index_input::ptr pay_in_;
-  offset offs_;
-  payload pay_;
-  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store offset starts */
-  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store offset lengths */
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store payload lengths */
-  size_t pay_data_pos_{}; /* current position in a payload buffer */
-  bstring pay_data_; // buffer to store payload data
-}; // pay_offs_iterator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class offs_iterator
-///////////////////////////////////////////////////////////////////////////////
-class offs_iterator final : public pos_iterator {
- public:
-  DECLARE_UNIQUE_PTR(offs_iterator);
-
-  offs_iterator()
-    : pos_iterator(1) { // offset
-    attrs_.emplace(offs_);
-  }
-
-  virtual void clear() override {
-    pos_iterator::clear();
-    offs_.clear();
-  }
-
-  virtual void prepare(const doc_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
-
-    if (!pay_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen payload input");
-    }
-
-    pay_in_->seek(state.term_state->pay_start);
-  }
-
-  virtual void prepare(const skip_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_->seek(state.pay_ptr);
-  }
-
- protected:
-  virtual void read_attributes() override {
-    offs_.start += offs_start_deltas_[buf_pos_];
-    offs_.end = offs_.start + offs_lengts_[buf_pos_];
-  }
-
-  virtual void refill() override {
-    if (pos_in_->file_pointer() == tail_start_) {
-      uint32_t pay_size = 0;
-      for (size_t i = 0; i < tail_length_; ++i) {
-        /* skip payloads */
-        if (features_.payload()) {
-          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-            pay_size = pos_in_->read_vint();
-          }
-          if (pay_size) {
-            pos_in_->seek(pos_in_->file_pointer() + pay_size);
-          }
-        } else {
-          pos_deltas_[i] = pos_in_->read_vint();
-        }
-
-        /* read offsets */
-        if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
-          offs_lengts_[i] = pos_in_->read_vint();
-        } else {
-          assert(i);
-          offs_lengts_[i] = offs_lengts_[i - 1];
-        }
-      }
-    } else {
-      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
-
-      // skip payload
-      if (features_.payload()) {
-        skip_payload(*pay_in_);
-      }
-
-      // read offsets
-      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-      format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
-    }
-  }
-
-  virtual void skip(uint32_t count) override {
-    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
-    if (count >= left) {
-      count -= left;
-      // skip block by block
-      while (count >= postings_writer_base::BLOCK_SIZE) {
-        skip_positions(*pos_in_);
-        if (features_.payload()) {
-          skip_payload(*pay_in_);
-        }
-        skip_offsets(*pay_in_);
-        count -= postings_writer_base::BLOCK_SIZE;
-      }
-      refill();
-      buf_pos_ = 0;
-      left = postings_writer_base::BLOCK_SIZE;
-    }
-
-    if (count < left) {
-      buf_pos_ += count;
-    }
-    clear();
-    value_ = 0;
-  }
-
-  index_input::ptr pay_in_;
-  offset offs_;
-  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]; /* buffer to store offset starts */
-  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]; /* buffer to store offset lengths */
-}; // offs_iterator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class pay_iterator
-///////////////////////////////////////////////////////////////////////////////
-class pay_iterator final : public pos_iterator {
- public:
-  DECLARE_UNIQUE_PTR(pay_iterator);
-
-  pay_iterator()
-    : pos_iterator(1) { // payload
-    attrs_.emplace(pay_);
-  }
-
-  virtual void clear() override {
-    pos_iterator::clear();
-    pay_.clear();
-  }
-
-  virtual void prepare(const doc_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
-
-    if (!pay_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen payload input");
-    }
-
-    pay_in_->seek(state.term_state->pay_start);
-  }
-
-  virtual void prepare(const skip_state& state) override {
-    pos_iterator::prepare(state);
-    pay_in_->seek(state.pay_ptr);
-    pay_data_pos_ = state.pay_pos;
-  }
-
- protected:
-  virtual void read_attributes() override {
-    pay_.value = bytes_ref(
-      pay_data_.data() + pay_data_pos_,
-      pay_lengths_[buf_pos_]
-    );
-    pay_data_pos_ += pay_lengths_[buf_pos_];
-  }
-
-  virtual void skip(uint32_t count) override {
-    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
-    if (count >= left) {
-      count -= left;
-      // skip block by block
-      while (count >= postings_writer_base::BLOCK_SIZE) {
-        skip_positions(*pos_in_);
-        skip_payload(*pay_in_);
-        if (features_.offset()) {
-          skip_offsets(*pay_in_);
-        }
-        count -= postings_writer_base::BLOCK_SIZE;
-      }
-      refill();
-      buf_pos_ = 0;
-      left = postings_writer_base::BLOCK_SIZE;
-    }
-
-    if (count < left) {
-      // current payload start
-      const auto begin = pay_lengths_ + buf_pos_;
-      const auto end = begin + count;
-      pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
-      buf_pos_ += count;
-    }
-    clear();
-    value_ = 0;
-  }
-
-  virtual void refill() override {
-    if (pos_in_->file_pointer() == tail_start_) {
-      size_t pos = 0;
-
-      for (size_t i = 0; i < tail_length_; ++i) {
-        // read payloads
-        if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-          pay_lengths_[i] = pos_in_->read_vint();
-        } else {
-          assert(i);
-          pay_lengths_[i] = pay_lengths_[i-1];
-        }
-
-        if (pay_lengths_[i]) {
-          const auto size = pay_lengths_[i]; // current payload length
-
-          string_utils::oversize(pay_data_, pos + size);
-
-          #ifdef IRESEARCH_DEBUG
-            const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-            assert(read == size);
-            UNUSED(read);
-          #else
-            pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-          #endif // IRESEARCH_DEBUG
-
-          pos += size;
-        }
-
-        // skip offsets
-        if (features_.offset()) {
-          uint32_t code;
-          if (shift_unpack_32(pos_in_->read_vint(), code)) {
-            pos_in_->read_vint();
-          }
-        }
-      }
-    } else {
-      format_traits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
-
-      /* read payloads */
-      const uint32_t size = pay_in_->read_vint();
-      if (size) {
-        format_traits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        string_utils::oversize(pay_data_, size);
-
-        #ifdef IRESEARCH_DEBUG
-          const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
-          assert(read == size);
-          UNUSED(read);
-        #else
-          pay_in_->read_bytes(&(pay_data_[0]), size);
-        #endif // IRESEARCH_DEBUG
-      }
-
-      // skip offsets
-      if (features_.offset()) {
-        skip_offsets(*pay_in_);
-      }
-    }
-    pay_data_pos_ = 0;
-  }
-
-  index_input::ptr pay_in_;
-  payload pay_;
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; /* buffer to store payload lengths */
-  uint64_t pay_data_pos_{}; /* current postition in payload buffer */
-  bstring pay_data_; // buffer to store payload data
-}; // pay_iterator
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_doc_iterator
-///////////////////////////////////////////////////////////////////////////////
-template<typename PosItrType>
-class pos_doc_iterator final: public doc_iterator {
- public:
-  virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
-    }
-
-    seek_to_block(target);
-
-    if (begin_ == end_) {
-      cur_pos_ += relative_pos();
-
-      if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
-        begin_ = end_ = docs_; // seal the iterator
-        return doc_limits::eof();
-      }
-
-      refill();
-    }
-
-    while (begin_ < end_) {
-      doc_.value += *begin_++;
-      freq_.value = *doc_freq_++;
-      pos_.pend_pos_ += freq_.value;
-
-      if (doc_.value >= target) {
-        pos_.clear();
-        return doc_.value;
-      }
-    }
-
-    while (doc_.value < target) {
-      next();
-    }
-
-    return doc_.value;
-  }
-
-  virtual bool next() override {
-    if (begin_ == end_) {
-      cur_pos_ += relative_pos();
-
-      if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
-        begin_ = end_ = docs_; // seal the iterator
-        return false;
-      }
-
-      refill();
-    }
-
-    // update document attribute
-    doc_.value += *begin_++;
-
-    // update frequency attribute
-    freq_.value = *doc_freq_++;
-
-    // update position attribute
-    pos_.pend_pos_ += freq_.value;
-    pos_.clear();
-
-    return true;
-  }
-
- protected:
-  virtual void prepare_attributes(
-    const ::features& features,
-    const irs::attribute_view& attrs,
-    const index_input* pos_in,
-    const index_input* pay_in
-  ) final;
-
-  virtual void seek_notify(const skip_context &ctx) override final {
-    pos_.prepare(ctx); // notify positions
-  }
-
- private:
-  PosItrType pos_;
-}; // pos_doc_iterator
-
-template<typename PosItrType>
-void pos_doc_iterator<PosItrType>::prepare_attributes(
-    const ::features& enabled,
-    const irs::attribute_view& attrs,
-    const index_input* pos_in,
-    const index_input* pay_in) {
-  assert(attrs.contains<frequency>());
-  assert(enabled.position());
-  attrs_.emplace(freq_);
-  term_freq_ = attrs.get<frequency>()->value;
-
-  estimate(term_state_.docs_count); // estimate iterator
-  attrs_.emplace(scr_); // make score accessible from outside
-
-  // ...........................................................................
-  // position attribute
-  // ...........................................................................
-
-  doc_state state;
-  state.pos_in = pos_in;
-  state.pay_in = pay_in;
-  state.term_state = &term_state_;
-  state.freq = &freq_.value;
-  state.features = features_;
-  state.enc_buf = enc_buf_;
-
-  if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
-    state.tail_start = term_state_.pos_start;
-  } else if (term_freq_ == postings_writer_base::BLOCK_SIZE) {
-    state.tail_start = type_limits<type_t::address_t>::invalid();
-  } else {
-    state.tail_start = term_state_.pos_start + term_state_.pos_end;
-  }
-
-  state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
-  pos_.prepare(state);
-  attrs_.emplace(pos_);
 }
 
 // ----------------------------------------------------------------------------
@@ -5287,34 +4929,28 @@ NS_END // columns
 // --SECTION--                                                  postings_reader
 // ----------------------------------------------------------------------------
 
-class postings_reader final: public irs::postings_reader {
+class postings_reader_base : public irs::postings_reader {
  public:
   virtual void prepare(
     index_input& in,
     const reader_state& state,
     const flags& features
-  ) override;
+  ) final;
 
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
     const attribute_view& attrs,
     irs::term_meta& state
-  ) override;
+  ) final;
 
-  virtual irs::doc_iterator::ptr iterator(
-    const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) override;
-
- private:
+ protected:
   index_input::ptr doc_in_;
   index_input::ptr pos_in_;
   index_input::ptr pay_in_;
 }; // postings_reader
 
-void postings_reader::prepare(
+void postings_reader_base::prepare(
     index_input& in,
     const reader_state& state,
     const flags& features) {
@@ -5389,7 +5025,7 @@ void postings_reader::prepare(
   }
 }
 
-size_t postings_reader::decode(
+size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
     const attribute_view& attrs,
@@ -5429,13 +5065,24 @@ size_t postings_reader::decode(
   return size_t(std::distance(in, p));
 }
 
+template<typename FormatTraits>
+class postings_reader final: public postings_reader_base {
+ public:
+  virtual irs::doc_iterator::ptr iterator(
+    const flags& field,
+    const attribute_view& attrs,
+    const flags& features
+  ) override;
+}; // postings_reader
+
 #if defined(_MSC_VER)
 #elif defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
-irs::doc_iterator::ptr postings_reader::iterator(
+template<typename FormatTraits>
+irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
     const flags& field,
     const attribute_view& attrs,
     const flags& req) {
@@ -5444,31 +5091,42 @@ irs::doc_iterator::ptr postings_reader::iterator(
   // get enabled features:
   // find intersection between requested and available features
   const auto enabled = features & req;
-  doc_iterator::ptr it;
 
   switch (enabled) {
-   case features::FREQ | features::POS | features::OFFS | features::PAY:
-    it = memory::make_shared<pos_doc_iterator<offs_pay_iterator>>();
-    break;
-   case features::FREQ | features::POS | features::OFFS:
-    it = memory::make_shared<pos_doc_iterator<offs_iterator>>();
-    break;
-   case features::FREQ | features::POS | features::PAY:
-    it = memory::make_shared<pos_doc_iterator<pay_iterator>>();
-    break;
-   case features::FREQ | features::POS:
-    it = memory::make_shared<pos_doc_iterator<pos_iterator>>();
-    break;
-   default:
-    it = memory::make_shared<doc_iterator>();
+    case features::FREQ | features::POS | features::OFFS | features::PAY: {
+      auto it = memory::make_shared<doc_iterator<true, true, true, true>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
+    case features::FREQ | features::POS | features::OFFS: {
+      auto it = memory::make_shared<doc_iterator<true, true, true, false>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
+    case features::FREQ | features::POS | features::PAY: {
+      auto it = memory::make_shared<doc_iterator<true, true, false, true>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
+    case features::FREQ | features::POS: {
+      auto it = memory::make_shared<doc_iterator<true, true, false, false>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
+    case features::FREQ: {
+      auto it = memory::make_shared<doc_iterator<true, false, false, false>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
+    default: {
+      auto it = memory::make_shared<doc_iterator<false, false, false, false>>();
+      it->prepare(features, enabled, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+      return it;
+    }
   }
 
-  it->prepare(
-    features, enabled, attrs,
-    doc_in_.get(), pos_in_.get(), pay_in_.get()
-  );
-
-  return it;
+  assert(false);
+  return irs::doc_iterator::empty();
 }
 
 #if defined(_MSC_VER)
@@ -5590,15 +5248,17 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
+  constexpr const auto VERSION = postings_writer_base::FORMAT_MIN;
+
   if (volatile_state) {
-    return memory::make_unique<::postings_writer<::format_traits, true>>();
+    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<::format_traits, false>>();
+  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader>();
+  return irs::postings_reader::make<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format10::make() {
@@ -5677,7 +5337,7 @@ REGISTER_FORMAT(::format11);
 // --SECTION--                                                         format12
 // ----------------------------------------------------------------------------
 
-class format12 final : public format11 {
+class format12 : public format11 {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
@@ -5685,6 +5345,11 @@ class format12 final : public format11 {
   format12() noexcept : format11(format12::type()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
+
+ protected:
+  explicit format12(const irs::format::type_id& type) noexcept
+    : format11(type) {
+  }
 }; // format12
 
 columnstore_writer::ptr format12::get_columnstore_writer() const {
@@ -5703,6 +5368,45 @@ columnstore_writer::ptr format12::get_columnstore_writer() const {
 DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
 REGISTER_FORMAT(::format12);
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                      format12sse
+// ----------------------------------------------------------------------------
+
+class format12sse final : public format12 {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format12sse() noexcept : format12(format12sse::type()) { }
+
+  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
+}; // format12sse
+
+irs::postings_writer::ptr format12sse::get_postings_writer(bool volatile_state) const {
+  constexpr const auto VERSION = postings_writer_base::FORMAT_MAX;
+
+  if (volatile_state) {
+    return memory::make_unique<::postings_writer<format_traits_sse, true>>(VERSION);
+  }
+
+  return memory::make_unique<::postings_writer<format_traits_sse, false>>(VERSION);
+}
+
+irs::postings_reader::ptr format12sse::get_postings_reader() const {
+  return irs::postings_reader::make<::postings_reader<format_traits_sse>>();
+}
+
+/*static*/ irs::format::ptr format12sse::make() {
+  static const ::format12sse INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+DEFINE_FORMAT_TYPE_NAMED(::format12sse, "1_2sse");
+REGISTER_FORMAT(::format12sse);
+
 NS_END
 
 NS_ROOT
@@ -5713,6 +5417,7 @@ void init() {
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
+  REGISTER_FORMAT(::format12sse);
 #endif
 }
 
