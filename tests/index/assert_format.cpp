@@ -935,20 +935,20 @@ void assert_index(
       continue;
     }
 
-    /* setting up test reader/writer */
+    // setting up test reader/writer
     const tests::index_segment& expected_segment = expected_index[i];
     tests::field_reader expected_reader(expected_segment);
 
-    /* get field name iterators */
+    // get field name iterators
     auto& expected_fields = expected_segment.fields();
     auto expected_fields_begin = expected_fields.begin();
     auto expected_fields_end = expected_fields.end();
 
     auto actual_fields = actual_sub_reader.fields();
 
-    /* iterate over fields */
+    // iterate over fields
     for (;actual_fields->next(); ++expected_fields_begin) {
-      /* check field name */
+      // check field name
       ASSERT_EQ(expected_fields_begin->first, actual_fields->value().meta().name);
 
       // check field terms

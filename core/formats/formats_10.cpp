@@ -944,61 +944,401 @@ struct doc_state {
 }; // doc_state
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator
+/// @class pos_iterator_base
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits,
+         bool Offset = IteratorTraits::offset(),
+         bool Payload = IteratorTraits::payload()>
+struct pos_iterator_impl;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator_base (position + payload + offset)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class pos_iterator final : public position {
- public:
-  pos_iterator()
-    : position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
-    if /*constexpr*/ (IteratorTraits::offset()) {
-      attrs_.emplace(offs_);
+struct pos_iterator_impl<IteratorTraits, true, true>
+    : public pos_iterator_impl<IteratorTraits, false, false> {
+  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+
+  void prepare(attribute_view& attrs) {
+    attrs.emplace(offs_);
+    attrs.emplace(pay_);
+  }
+
+  void prepare(const doc_state& state) {
+    base::prepare(state);
+
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
+
+    if (!pay_in_) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw io_error("failed to reopen payload input");
     }
 
-    if /*constexpr*/ (IteratorTraits::payload()) {
-      attrs_.emplace(pay_);
+    pay_in_->seek(state.term_state->pay_start);
+  }
+
+  void prepare(const skip_state& state)  {
+    base::prepare(state);
+
+    pay_in_->seek(state.pay_ptr);
+    pay_data_pos_ = state.pay_pos;
+  }
+
+  void read_attributes() noexcept {
+    offs_.start += offs_start_deltas_[this->buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[this->buf_pos_];
+
+    pay_.value = bytes_ref(
+      pay_data_.c_str() + pay_data_pos_,
+      pay_lengths_[this->buf_pos_]);
+    pay_data_pos_ += pay_lengths_[this->buf_pos_];
+  }
+
+  void clear_attributes() noexcept {
+    offs_.clear();
+    pay_.clear();
+  }
+
+  void read_block() {
+    base::read_block();
+
+    // read payload
+    const uint32_t size = pay_in_->read_vint();
+    if (size) {
+      IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, pay_lengths_);
+      string_utils::oversize(pay_data_, size);
+
+      #ifdef IRESEARCH_DEBUG
+        const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
+        assert(read == size);
+        UNUSED(read);
+      #else
+        pay_in_->read_bytes(&(pay_data_[0]), size);
+      #endif // IRESEARCH_DEBUG
+    }
+
+    // read offsets
+    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_start_deltas_);
+    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_lengts_);
+
+    pay_data_pos_ = 0;
+  }
+
+  void read_tail_block() {
+    size_t pos = 0;
+
+    for (size_t i = 0; i < this->tail_length_; ++i) {
+      // read payloads
+      if (shift_unpack_32(this->pos_in_->read_vint(), base::pos_deltas_[i])) {
+        pay_lengths_[i] = this->pos_in_->read_vint();
+      } else {
+        assert(i);
+        pay_lengths_[i] = pay_lengths_[i-1];
+      }
+
+      if (pay_lengths_[i]) {
+        const auto size = pay_lengths_[i]; // length of current payload
+
+        string_utils::oversize(pay_data_, pos + size);
+
+        #ifdef IRESEARCH_DEBUG
+          const auto read = this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          assert(read == size);
+          UNUSED(read);
+        #else
+          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+        #endif // IRESEARCH_DEBUG
+
+        pos += size;
+      }
+
+      if (shift_unpack_32(this->pos_in_->read_vint(), offs_start_deltas_[i])) {
+        offs_lengts_[i] = this->pos_in_->read_vint();
+      } else {
+        assert(i);
+        offs_lengts_[i] = offs_lengts_[i - 1];
+      }
+    }
+
+    pay_data_pos_ = 0;
+  }
+
+  void skip_block() {
+    base::skip_block();
+    base::skip_payload(*pay_in_);
+    base::skip_offsets(*pay_in_);
+  }
+
+  void skip(size_t count) noexcept {
+    // current payload start
+    const auto begin = this->pay_lengths_ + this->buf_pos_;
+    const auto end = begin + count;
+    this->pay_data_pos_ = std::accumulate(begin, end, this->pay_data_pos_);
+
+    base::skip(count);
+  }
+
+  index_input::ptr pay_in_;
+  offset offs_;
+  payload pay_;
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
+  size_t pay_data_pos_{}; // current position in a payload buffer
+  bstring pay_data_; // buffer to store payload data
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator_base (position + payload)
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits>
+struct pos_iterator_impl<IteratorTraits, false, true>
+    : public pos_iterator_impl<IteratorTraits, false, false> {
+  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+
+  void prepare(attribute_view& attrs) {
+    attrs.emplace(pay_);
+  }
+
+  void prepare(const doc_state& state) {
+    base::prepare(state);
+
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
+
+    if (!pay_in_) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw io_error("failed to reopen payload input");
+    }
+
+    pay_in_->seek(state.term_state->pay_start);
+
+  }
+
+  void prepare(const skip_state& state)  {
+    base::prepare(state);
+
+    pay_in_->seek(state.pay_ptr);
+    pay_data_pos_ = state.pay_pos;
+  }
+
+  void read_attributes() noexcept {
+    pay_.value = bytes_ref(
+      pay_data_.c_str() + pay_data_pos_,
+      pay_lengths_[this->buf_pos_]);
+    pay_data_pos_ += pay_lengths_[this->buf_pos_];
+  }
+
+  void clear_attributes() noexcept {
+    pay_.clear();
+  }
+
+  void read_block() {
+    base::read_block();
+
+    // read payload
+    const uint32_t size = pay_in_->read_vint();
+    if (size) {
+      IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, pay_lengths_);
+      string_utils::oversize(pay_data_, size);
+
+      #ifdef IRESEARCH_DEBUG
+        const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
+        assert(read == size);
+        UNUSED(read);
+      #else
+        pay_in_->read_bytes(&(pay_data_[0]), size);
+      #endif // IRESEARCH_DEBUG
+    }
+
+    if (this->features_.offset()) {
+      base::skip_offsets(*pay_in_);
+    }
+
+    pay_data_pos_ = 0;
+  }
+
+  void read_tail_block() {
+    size_t pos = 0;
+
+    for (size_t i = 0; i < this->tail_length_; ++i) {
+      // read payloads
+      if (shift_unpack_32(this->pos_in_->read_vint(), this->pos_deltas_[i])) {
+        pay_lengths_[i] = this->pos_in_->read_vint();
+      } else {
+        assert(i);
+        pay_lengths_[i] = pay_lengths_[i-1];
+      }
+
+      if (pay_lengths_[i]) {
+        const auto size = pay_lengths_[i]; // current payload length
+
+        string_utils::oversize(pay_data_, pos + size);
+
+        #ifdef IRESEARCH_DEBUG
+          const auto read = this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          assert(read == size);
+          UNUSED(read);
+        #else
+          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+        #endif // IRESEARCH_DEBUG
+
+        pos += size;
+      }
+
+      // skip offsets
+      if (this->features_.offset()) {
+        uint32_t code;
+        if (shift_unpack_32(this->pos_in_->read_vint(), code)) {
+          this->pos_in_->read_vint();
+        }
+      }
+    }
+
+    pay_data_pos_ = 0;
+  }
+
+  void skip_block() {
+    base::skip_block();
+    base::skip_payload(*pay_in_);
+    if (this->features_.offset()) {
+      base::skip_offsets(*pay_in_);
     }
   }
 
-  virtual bool next() override {
-    if (0 == pend_pos_) {
-      value_ = pos_limits::eof();
+  void skip(size_t count) noexcept {
+    // current payload start
+    const auto begin = this->pay_lengths_ + this->buf_pos_;
+    const auto end = begin + count;
+    this->pay_data_pos_ = std::accumulate(begin, end, this->pay_data_pos_);
 
-      return false;
-    }
-
-    const uint32_t freq = *freq_;
-
-    if (pend_pos_ > freq) {
-      skip(pend_pos_ - freq);
-      pend_pos_ = freq;
-    }
-
-    if (buf_pos_ == postings_writer_base::BLOCK_SIZE) {
-      refill();
-      buf_pos_ = 0;
-    }
-
-    value_ += pos_deltas_[buf_pos_];
-
-    if /*constexpr*/ (IteratorTraits::offset()) {
-      offs_.start += offs_start_deltas_[buf_pos_];
-      offs_.end = offs_.start + offs_lengts_[buf_pos_];
-    }
-
-    if /*constexpr*/ (IteratorTraits::payload()) {
-      pay_.value = bytes_ref(
-        pay_data_.c_str() + pay_data_pos_,
-        pay_lengths_[buf_pos_]);
-      pay_data_pos_ += pay_lengths_[buf_pos_];
-    }
-
-    ++buf_pos_;
-    --pend_pos_;
-    return true;
+    base::skip(count);
   }
 
-  // prepares iterator to work
+  index_input::ptr pay_in_;
+  payload pay_;
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
+  size_t pay_data_pos_{}; // current position in a payload buffer
+  bstring pay_data_; // buffer to store payload data
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator_base (position + offset)
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits>
+struct pos_iterator_impl<IteratorTraits, true, false>
+    : public pos_iterator_impl<IteratorTraits, false, false> {
+  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+
+  void prepare(attribute_view& attrs) {
+    attrs.emplace(offs_);
+  }
+
+  void prepare(const doc_state& state) {
+    base::prepare(state);
+
+    pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
+
+    if (!pay_in_) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+
+      throw io_error("failed to reopen payload input");
+    }
+
+    pay_in_->seek(state.term_state->pay_start);
+
+  }
+
+  void prepare(const skip_state& state) {
+    base::prepare(state);
+
+    pay_in_->seek(state.pay_ptr);
+  }
+
+  void read_attributes() noexcept {
+    offs_.start += offs_start_deltas_[this->buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[this->buf_pos_];
+  }
+
+  void clear_attributes() noexcept {
+    offs_.clear();
+  }
+
+  void read_block() {
+    base::read_block();
+
+    if (this->features_.payload()) {
+      base::skip_payload(*pay_in_);
+    }
+
+    // read offsets
+    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_start_deltas_);
+    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_lengts_);
+  }
+
+  void read_tail_block() {
+    uint32_t pay_size = 0;
+    for (size_t i = 0; i < this->tail_length_; ++i) {
+      // skip payloads
+      if (this->features_.payload()) {
+        if (shift_unpack_32(this->pos_in_->read_vint(), this->pos_deltas_[i])) {
+          pay_size = this->pos_in_->read_vint();
+        }
+        if (pay_size) {
+          this->pos_in_->seek(this->pos_in_->file_pointer() + pay_size);
+        }
+      } else {
+        this->pos_deltas_[i] = this->pos_in_->read_vint();
+      }
+
+      // read offsets
+      if (shift_unpack_32(this->pos_in_->read_vint(), offs_start_deltas_[i])) {
+        offs_lengts_[i] = this->pos_in_->read_vint();
+      } else {
+        assert(i);
+        offs_lengts_[i] = offs_lengts_[i - 1];
+      }
+    }
+  }
+
+  void skip_block() {
+    base::skip_block();
+    if (this->features_.payload()) {
+      base::skip_payload(*pay_in_);
+    }
+    base::skip_offsets(*pay_in_);
+  }
+
+  index_input::ptr pay_in_;
+  offset offs_;
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator_base (position)
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits>
+struct pos_iterator_impl<IteratorTraits, false, false> {
+  static void skip_payload(index_input& in) {
+    const size_t size = in.read_vint();
+    if (size) {
+      IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+      in.seek(in.file_pointer() + size);
+    }
+  }
+
+  static void skip_offsets(index_input& in) {
+    IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+    IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+  }
+
+  void prepare(attribute_view&) noexcept { }
+
   void prepare(const doc_state& state) {
     pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
 
@@ -1015,254 +1355,52 @@ class pos_iterator final : public position {
     enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
-
-    if /*constexpr*/ (IteratorTraits::offset() || IteratorTraits::payload()) {
-      pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
-
-      if (!pay_in_) {
-        // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
-
-        throw io_error("failed to reopen payload input");
-      }
-
-      pay_in_->seek(state.term_state->pay_start);
-    }
   }
 
-  // notifies iterator that doc iterator has skipped to a new block
   void prepare(const skip_state& state) {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer_base::BLOCK_SIZE;
-
-    if /*constexpr*/ (IteratorTraits::offset() || IteratorTraits::payload()) {
-      pay_in_->seek(state.pay_ptr);
-
-      if /*constexpr*/ (IteratorTraits::payload()) {
-        pay_data_pos_ = state.pay_pos;
-      }
-    }
   }
 
-  void clear() noexcept {
-    value_ = pos_limits::invalid();
+  void read_attributes() { }
 
-    if /*constexpr*/ (IteratorTraits::offset()) {
-      offs_.clear();
-    }
+  void clear_attributes() { }
 
-    if /*constexpr*/ (IteratorTraits::payload()) {
-      pay_.clear();
-    }
-  }
-
- private:
-  template<typename> friend class doc_iterator;
-
-  void refill() {
-    if (pos_in_->file_pointer() == tail_start_) {
-      size_t pos = 0;
-
-      if /*constexpr*/ (IteratorTraits::payload() && IteratorTraits::offset()) {
-        for (size_t i = 0; i < tail_length_; ++i) {
-          // read payloads
-          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-            pay_lengths_[i] = pos_in_->read_vint();
-          } else {
-            assert(i);
-            pay_lengths_[i] = pay_lengths_[i-1];
-          }
-
-          if (pay_lengths_[i]) {
-            const auto size = pay_lengths_[i]; // length of current payload
-
-            string_utils::oversize(pay_data_, pos + size);
-
-            #ifdef IRESEARCH_DEBUG
-              const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-              assert(read == size);
-              UNUSED(read);
-            #else
-              pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-            #endif // IRESEARCH_DEBUG
-
-            pos += size;
-          }
-
-          if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
-            offs_lengts_[i] = pos_in_->read_vint();
-          } else {
-            assert(i);
-            offs_lengts_[i] = offs_lengts_[i - 1];
-          }
+  void read_tail_block() {
+    uint32_t pay_size = 0;
+    for (size_t i = 0; i < tail_length_; ++i) {
+      if (features_.payload()) {
+        if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
+          pay_size = pos_in_->read_vint();
         }
-      } else if /*constexpr*/ (IteratorTraits::payload()) {
-        for (size_t i = 0; i < tail_length_; ++i) {
-          // read payloads
-          if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-            pay_lengths_[i] = pos_in_->read_vint();
-          } else {
-            assert(i);
-            pay_lengths_[i] = pay_lengths_[i-1];
-          }
-
-          if (pay_lengths_[i]) {
-            const auto size = pay_lengths_[i]; // current payload length
-
-            string_utils::oversize(pay_data_, pos + size);
-
-            #ifdef IRESEARCH_DEBUG
-              const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-              assert(read == size);
-              UNUSED(read);
-            #else
-              pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-            #endif // IRESEARCH_DEBUG
-
-            pos += size;
-          }
-
-          // skip offsets
-          if (features_.offset()) {
-            uint32_t code;
-            if (shift_unpack_32(pos_in_->read_vint(), code)) {
-              pos_in_->read_vint();
-            }
-          }
+        if (pay_size) {
+          pos_in_->seek(pos_in_->file_pointer() + pay_size);
         }
-      } else if /*constexpr*/ (IteratorTraits::offset()) {
-        uint32_t pay_size = 0;
-        for (size_t i = 0; i < tail_length_; ++i) {
-          // skip payloads
-          if (features_.payload()) {
-            if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-              pay_size = pos_in_->read_vint();
-            }
-            if (pay_size) {
-              pos_in_->seek(pos_in_->file_pointer() + pay_size);
-            }
-          } else {
-            pos_deltas_[i] = pos_in_->read_vint();
-          }
-
-          /* read offsets */
-          if (shift_unpack_32(pos_in_->read_vint(), offs_start_deltas_[i])) {
-            offs_lengts_[i] = pos_in_->read_vint();
-          } else {
-            assert(i);
-            offs_lengts_[i] = offs_lengts_[i - 1];
-          }
-        }
-
       } else {
-        uint32_t pay_size = 0;
-        for (size_t i = 0; i < tail_length_; ++i) {
-          if (features_.payload()) {
-            if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
-              pay_size = pos_in_->read_vint();
-            }
-            if (pay_size) {
-              pos_in_->seek(pos_in_->file_pointer() + pay_size);
-            }
-          } else {
-            pos_deltas_[i] = pos_in_->read_vint();
-          }
+        pos_deltas_[i] = pos_in_->read_vint();
+      }
 
-          if (features_.offset()) {
-            uint32_t delta;
-            if (shift_unpack_32(pos_in_->read_vint(), delta)) {
-              pos_in_->read_vint();
-            }
-          }
+      if (features_.offset()) {
+        uint32_t delta;
+        if (shift_unpack_32(pos_in_->read_vint(), delta)) {
+          pos_in_->read_vint();
         }
       }
-    } else {
-      IteratorTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
-
-      if /*constexpr*/ (IteratorTraits::payload() || IteratorTraits::offset()) {
-        if /*constexpr*/ (IteratorTraits::payload()) {
-          const uint32_t size = pay_in_->read_vint();
-          if (size) {
-            IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
-            string_utils::oversize(pay_data_, size);
-
-            #ifdef IRESEARCH_DEBUG
-              const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
-              assert(read == size);
-              UNUSED(read);
-            #else
-              pay_in_->read_bytes(&(pay_data_[0]), size);
-            #endif // IRESEARCH_DEBUG
-          }
-        } else if (features_.payload()) {
-          skip_payload();
-        }
-
-        if /*constexpr*/ (IteratorTraits::offset()) {
-          IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-          IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
-        } else if (features_.offset()) {
-          skip_offsets();
-        }
-      }
-    }
-
-    if /*constexpr*/ (IteratorTraits::payload()) {
-      pay_data_pos_ = 0;
     }
   }
 
-  void skip(uint32_t count) {
-    auto left = postings_writer_base::BLOCK_SIZE - buf_pos_;
-    if (count >= left) {
-      count -= left;
-      while (count >= postings_writer_base::BLOCK_SIZE) {
-        IteratorTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
-
-        if (IteratorTraits::payload() || IteratorTraits::offset() ) {
-          if (/*constexpr*/ IteratorTraits::payload() || features_.payload()) {
-           skip_payload();
-         }
-
-         if (/*constexpr*/ IteratorTraits::offset() || features_.offset()) {
-           skip_offsets();
-         }
-        }
-
-        count -= postings_writer_base::BLOCK_SIZE;
-      }
-      refill();
-      buf_pos_ = 0;
-      left = postings_writer_base::BLOCK_SIZE;
-    }
-
-    if (count < left) {
-      if /*constexpr*/ (IteratorTraits::payload()) {
-        // current payload start
-        const auto begin = pay_lengths_ + buf_pos_;
-        const auto end = begin + count;
-        pay_data_pos_ = std::accumulate(begin, end, pay_data_pos_);
-      }
-
-      buf_pos_ += count;
-    }
-    clear();
-    value_ = 0;
+  void read_block() {
+    IteratorTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
   }
 
-  void skip_payload() {
-    assert(pay_in_);
-    const size_t size = pay_in_->read_vint();
-    if (size) {
-      IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
-      pay_in_->seek(pay_in_->file_pointer() + size);
-    }
+  void skip_block() {
+    IteratorTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
   }
 
-  void skip_offsets() {
-    IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
-    IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+  // skip within a block
+  void skip(size_t count) noexcept {
+    buf_pos_ += count;
   }
 
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
@@ -1273,17 +1411,109 @@ class pos_iterator final : public position {
   size_t tail_length_; // number of positions in the last (vInt encoded) pos delta block
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE } ; // current position in pos_deltas_ buffer
   index_input::ptr pos_in_;
-  features features_; // field features
+  features features_;
+};
 
-  index_input::ptr pay_in_;
-  offset offs_;
-  payload pay_;
-  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
-  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
-  size_t pay_data_pos_{}; // current position in a payload buffer
-  bstring pay_data_; // buffer to store payload data
+template<typename IteratorTraits, bool Position = IteratorTraits::position()>
+class pos_iterator final : public position,
+                           protected pos_iterator_impl<IteratorTraits> {
+ public:
+  typedef pos_iterator_impl<IteratorTraits> impl;
+
+  pos_iterator()
+    : position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
+    impl::prepare(attrs_); // prepare attributes
+  }
+
+  virtual bool next() override {
+    if (0 == this->pend_pos_) {
+      value_ = pos_limits::eof();
+
+      return false;
+    }
+
+    const uint32_t freq = *this->freq_;
+
+    if (this->pend_pos_ > freq) {
+      skip(this->pend_pos_ - freq);
+      this->pend_pos_ = freq;
+    }
+
+    if (this->buf_pos_ == postings_writer_base::BLOCK_SIZE) {
+      refill();
+      this->buf_pos_ = 0;
+    }
+
+    value_ += this->pos_deltas_[this->buf_pos_];
+
+    this->read_attributes();
+
+    ++this->buf_pos_;
+    --this->pend_pos_;
+    return true;
+  }
+
+  // prepares iterator to work
+  // or notifies iterator that doc iterator has skipped to a new block
+  using impl::prepare;
+
+  // notify iterator that corresponding doc_iterator has moved forward
+  void notify(uint32_t n) {
+    this->pend_pos_ += n;
+  }
+
+  void clear() noexcept {
+    value_ = pos_limits::invalid();
+    impl::clear_attributes();
+  }
+
+ private:
+  template<typename> friend class doc_iterator;
+
+  void refill() {
+    if (this->pos_in_->file_pointer() == this->tail_start_) {
+      this->read_tail_block();
+    } else {
+      this->read_block();
+    }
+  }
+
+  void skip(uint32_t count) {
+    auto left = postings_writer_base::BLOCK_SIZE - this->buf_pos_;
+    if (count >= left) {
+      count -= left;
+      while (count >= postings_writer_base::BLOCK_SIZE) {
+        this->skip_block();
+        count -= postings_writer_base::BLOCK_SIZE;
+      }
+      refill();
+      this->buf_pos_ = 0;
+      left = postings_writer_base::BLOCK_SIZE;
+    }
+
+    if (count < left) {
+      impl::skip(count);
+    }
+
+    clear();
+    value_ = 0;
+  }
 }; // pos_iterator
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class pos_iterator (empty)
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits>
+struct pos_iterator<IteratorTraits, false> : attribute {
+  DECLARE_ATTRIBUTE_TYPE () {
+    return position::type();
+  }
+
+  void prepare(doc_state&) { }
+  void prepare(skip_state&) { }
+  void notify(uint32_t) { }
+  void clear() { }
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
@@ -1309,6 +1539,11 @@ class doc_iterator final : public irs::doc_iterator_base {
       const index_input* pos_in,
       const index_input* pay_in) {
     features_ = field; // set field features
+
+    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
+    assert(!IteratorTraits::position() || IteratorTraits::position() == features_.position());
+    assert(!IteratorTraits::offset() || IteratorTraits::offset() == features_.offset());
+    assert(!IteratorTraits::payload() || IteratorTraits::payload() == features_.payload());
 
     // add mandatory attributes
     attrs_.emplace(doc_);
@@ -1401,7 +1636,7 @@ class doc_iterator final : public irs::doc_iterator_base {
         assert(IteratorTraits::frequency());
         freq_.value = *doc_freq_++;
 
-        pos_.pend_pos_ += freq_.value;
+        pos_.notify(freq_.value);
 
         if (doc_.value >= target) {
           pos_.clear();
@@ -1447,7 +1682,7 @@ class doc_iterator final : public irs::doc_iterator_base {
       freq_.value = *doc_freq_++; // update frequency attribute
 
       if /*constexpr*/ (IteratorTraits::position()) {
-        pos_.pend_pos_ += freq_.value; // update position attribute
+        pos_.notify(freq_.value);
         pos_.clear();
       }
     }
