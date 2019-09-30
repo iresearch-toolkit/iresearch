@@ -68,7 +68,7 @@
 #include "utils/std.hpp"
 
 #ifdef IRESEARCH_SSE2
-  #include "store/store_utils_optimized.hpp"
+#include "store/store_utils_simd.hpp"
 #endif
 
 #if defined(_MSC_VER)
@@ -5581,7 +5581,7 @@ struct format_traits_sse {
       const uint32_t* in,
       size_t size,
       uint32_t* buf) {
-    encode::bitpack::write_block_optimized(out, in, size, buf);
+    encode::bitpack::write_block_simd(out, in, size, buf);
   }
 
   FORCE_INLINE static void read_block(
@@ -5589,7 +5589,7 @@ struct format_traits_sse {
       size_t size,
       uint32_t* buf,
       uint32_t* out) {
-    encode::bitpack::read_block_optimized(in, size, buf, out);
+    encode::bitpack::read_block_simd(in, size, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in, size_t size) {
