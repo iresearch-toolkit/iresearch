@@ -5575,7 +5575,7 @@ REGISTER_FORMAT(::format12);
 
 #ifdef IRESEARCH_SSE2
 
-struct format_traits_sse {
+struct format_traits_simd {
   FORCE_INLINE static void write_block(
       index_output& out,
       const uint32_t* in,
@@ -5595,42 +5595,42 @@ struct format_traits_sse {
   FORCE_INLINE static void skip_block(index_input& in, size_t size) {
     encode::bitpack::skip_block32(in, size);
   }
-}; // format_traits_sse
+}; // format_traits_simd
 
-class format12sse final : public format12 {
+class format12simd final : public format12 {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format12sse() noexcept : format12(format12sse::type()) { }
+  format12simd() noexcept : format12(format12simd::type()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
-}; // format12sse
+}; // format12simd
 
-irs::postings_writer::ptr format12sse::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_MAX;
 
   if (volatile_state) {
-    return memory::make_unique<::postings_writer<format_traits_sse, true>>(VERSION);
+    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<format_traits_sse, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
 }
 
-irs::postings_reader::ptr format12sse::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits_sse>>();
+irs::postings_reader::ptr format12simd::get_postings_reader() const {
+  return irs::postings_reader::make<::postings_reader<format_traits_simd>>();
 }
 
-/*static*/ irs::format::ptr format12sse::make() {
-  static const ::format12sse INSTANCE;
+/*static*/ irs::format::ptr format12simd::make() {
+  static const ::format12simd INSTANCE;
 
   // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format12sse, "1_2sse");
-REGISTER_FORMAT(::format12sse);
+DEFINE_FORMAT_TYPE_NAMED(::format12simd, "1_2simd");
+REGISTER_FORMAT(::format12simd);
 
 #endif // IRESEARCH_SSE2
 
@@ -5645,7 +5645,7 @@ void init() {
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
 #ifdef IRESEARCH_SSE2
-  REGISTER_FORMAT(::format12sse);
+  REGISTER_FORMAT(::format12simd);
 #endif // IRESEARCH_SSE2
 #endif
 }
