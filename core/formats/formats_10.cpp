@@ -100,32 +100,6 @@ struct format_traits {
   }
 }; // format_traits
 
-#ifdef IRESEARCH_SSE2
-
-struct format_traits_sse {
-  FORCE_INLINE static void write_block(
-      index_output& out,
-      const uint32_t* in,
-      size_t size,
-      uint32_t* buf) {
-    encode::bitpack::write_block_optimized(out, in, size, buf);
-  }
-
-  FORCE_INLINE static void read_block(
-      index_input& in,
-      size_t size,
-      uint32_t* buf,
-      uint32_t* out) {
-    encode::bitpack::read_block_optimized(in, size, buf, out);
-  }
-
-  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
-    encode::bitpack::skip_block32(in, size);
-  }
-}; // format_traits_sse
-
-#endif // IRESEARCH_SSE2
-
 bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
 class noop_compressor final : compression::compressor {
@@ -972,16 +946,16 @@ struct doc_state {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<bool Offset, bool Payload, typename FormatTraits>
+template<typename IteratorTraits>
 class pos_iterator final : public position {
  public:
   pos_iterator()
-    : position(size_t(Offset) + size_t(Payload)) {
-    if /*constexpr*/ (Offset) {
+    : position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
+    if /*constexpr*/ (IteratorTraits::offset()) {
       attrs_.emplace(offs_);
     }
 
-    if /*constexpr*/ (Payload) {
+    if /*constexpr*/ (IteratorTraits::payload()) {
       attrs_.emplace(pay_);
     }
   }
@@ -1007,12 +981,12 @@ class pos_iterator final : public position {
 
     value_ += pos_deltas_[buf_pos_];
 
-    if /*constexpr*/ (Offset) {
+    if /*constexpr*/ (IteratorTraits::offset()) {
       offs_.start += offs_start_deltas_[buf_pos_];
       offs_.end = offs_.start + offs_lengts_[buf_pos_];
     }
 
-    if /*constexpr*/ (Payload) {
+    if /*constexpr*/ (IteratorTraits::payload()) {
       pay_.value = bytes_ref(
         pay_data_.c_str() + pay_data_pos_,
         pay_lengths_[buf_pos_]);
@@ -1042,7 +1016,7 @@ class pos_iterator final : public position {
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
 
-    if /*constexpr*/ (Offset || Payload) {
+    if /*constexpr*/ (IteratorTraits::offset() || IteratorTraits::payload()) {
       pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
 
       if (!pay_in_) {
@@ -1062,10 +1036,10 @@ class pos_iterator final : public position {
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer_base::BLOCK_SIZE;
 
-    if /*constexpr*/ (Offset || Payload) {
+    if /*constexpr*/ (IteratorTraits::offset() || IteratorTraits::payload()) {
       pay_in_->seek(state.pay_ptr);
 
-      if /*constexpr*/ (Payload) {
+      if /*constexpr*/ (IteratorTraits::payload()) {
         pay_data_pos_ = state.pay_pos;
       }
     }
@@ -1074,24 +1048,23 @@ class pos_iterator final : public position {
   void clear() noexcept {
     value_ = pos_limits::invalid();
 
-    if /*constexpr*/ (Offset) {
+    if /*constexpr*/ (IteratorTraits::offset()) {
       offs_.clear();
     }
 
-    if /*constexpr*/ (Payload) {
+    if /*constexpr*/ (IteratorTraits::payload()) {
       pay_.clear();
     }
   }
 
  private:
-  template<bool, bool, bool, bool, typename>
-  friend class doc_iterator;
+  template<typename> friend class doc_iterator;
 
   void refill() {
     if (pos_in_->file_pointer() == tail_start_) {
       size_t pos = 0;
 
-      if /*constexpr*/ (Payload && Offset) {
+      if /*constexpr*/ (IteratorTraits::payload() && IteratorTraits::offset()) {
         for (size_t i = 0; i < tail_length_; ++i) {
           // read payloads
           if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
@@ -1124,7 +1097,7 @@ class pos_iterator final : public position {
             offs_lengts_[i] = offs_lengts_[i - 1];
           }
         }
-      } else if /*constexpr*/ (Payload) {
+      } else if /*constexpr*/ (IteratorTraits::payload()) {
         for (size_t i = 0; i < tail_length_; ++i) {
           // read payloads
           if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
@@ -1158,7 +1131,7 @@ class pos_iterator final : public position {
             }
           }
         }
-      } else if /*constexpr*/ (Offset) {
+      } else if /*constexpr*/ (IteratorTraits::offset()) {
         uint32_t pay_size = 0;
         for (size_t i = 0; i < tail_length_; ++i) {
           // skip payloads
@@ -1205,13 +1178,13 @@ class pos_iterator final : public position {
         }
       }
     } else {
-      FormatTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
+      IteratorTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
 
-      if /*constexpr*/ (Payload || Offset) {
-        if /*constexpr*/ (Payload) {
+      if /*constexpr*/ (IteratorTraits::payload() || IteratorTraits::offset()) {
+        if /*constexpr*/ (IteratorTraits::payload()) {
           const uint32_t size = pay_in_->read_vint();
           if (size) {
-            FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
+            IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pay_lengths_);
             string_utils::oversize(pay_data_, size);
 
             #ifdef IRESEARCH_DEBUG
@@ -1226,16 +1199,16 @@ class pos_iterator final : public position {
           skip_payload();
         }
 
-        if /*constexpr*/ (Offset) {
-          FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
-          FormatTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
+        if /*constexpr*/ (IteratorTraits::offset()) {
+          IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_start_deltas_);
+          IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, offs_lengts_);
         } else if (features_.offset()) {
           skip_offsets();
         }
       }
     }
 
-    if /*constexpr*/ (Payload) {
+    if /*constexpr*/ (IteratorTraits::payload()) {
       pay_data_pos_ = 0;
     }
   }
@@ -1245,14 +1218,16 @@ class pos_iterator final : public position {
     if (count >= left) {
       count -= left;
       while (count >= postings_writer_base::BLOCK_SIZE) {
-        FormatTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
+        IteratorTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
 
-        if (/*constexpr*/Payload || features_.payload()) {
-          skip_payload();
-        }
+        if (IteratorTraits::payload() || IteratorTraits::offset() ) {
+          if (/*constexpr*/ IteratorTraits::payload() || features_.payload()) {
+           skip_payload();
+         }
 
-        if (/*constexpr*/Offset || features_.offset()) {
-          skip_offsets();
+         if (/*constexpr*/ IteratorTraits::offset() || features_.offset()) {
+           skip_offsets();
+         }
         }
 
         count -= postings_writer_base::BLOCK_SIZE;
@@ -1263,7 +1238,7 @@ class pos_iterator final : public position {
     }
 
     if (count < left) {
-      if /*constexpr*/ (Payload) {
+      if /*constexpr*/ (IteratorTraits::payload()) {
         // current payload start
         const auto begin = pay_lengths_ + buf_pos_;
         const auto end = begin + count;
@@ -1280,14 +1255,14 @@ class pos_iterator final : public position {
     assert(pay_in_);
     const size_t size = pay_in_->read_vint();
     if (size) {
-      FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+      IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
       pay_in_->seek(pay_in_->file_pointer() + size);
     }
   }
 
   void skip_offsets() {
-    FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
-    FormatTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+    IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
+    IteratorTraits::skip_block(*pay_in_, postings_writer_base::BLOCK_SIZE);
   }
 
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
@@ -1313,7 +1288,7 @@ class pos_iterator final : public position {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<bool Freq, bool Pos, bool Offset, bool Payload, typename FormatTraits>
+template<typename IteratorTraits>
 class doc_iterator final : public irs::doc_iterator_base {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
@@ -1363,12 +1338,12 @@ class doc_iterator final : public irs::doc_iterator_base {
     estimate(term_state_.docs_count); // estimate iterator
     attrs_.emplace(scr_); // make score accessible from outside
 
-    if /*constexpr*/ (Freq) {
+    if /*constexpr*/ (IteratorTraits::frequency()) {
       assert(attrs.contains<frequency>());
       attrs_.emplace(freq_);
       term_freq_ = attrs.get<frequency>()->value;
 
-      if /*constexpr*/ (Pos) {
+      if /*constexpr*/ (IteratorTraits::position()) {
         doc_state state;
         state.pos_in = pos_in;
         state.pay_in = pay_in;
@@ -1411,19 +1386,19 @@ class doc_iterator final : public irs::doc_iterator_base {
       refill();
     }
 
-    while (begin_ < end_ ) {
+    while (begin_ < end_) {
       doc_.value += *begin_++;
 
-      if /*constexpr*/ (!Pos) {
+      if /*constexpr*/ (!IteratorTraits::position()) {
         if (doc_.value >= target) {
-          if /*constexpr*/ (Freq) {
+          if /*constexpr*/ (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
             freq_.value = *doc_freq_++;
           }
           return doc_.value;
         }
       } else {
-        assert(Freq);
+        assert(IteratorTraits::frequency());
         freq_.value = *doc_freq_++;
 
         pos_.pend_pos_ += freq_.value;
@@ -1468,10 +1443,10 @@ class doc_iterator final : public irs::doc_iterator_base {
 
     doc_.value += *begin_++; // update document attribute
 
-    if /*constexpr*/ (Freq) {
+    if /*constexpr*/ (IteratorTraits::frequency()) {
       freq_.value = *doc_freq_++; // update frequency attribute
 
-      if /*constexpr*/ (Pos) {
+      if /*constexpr*/ (IteratorTraits::position()) {
         pos_.pend_pos_ += freq_.value; // update position attribute
         pos_.clear();
       }
@@ -1538,22 +1513,22 @@ class doc_iterator final : public irs::doc_iterator_base {
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
       // read doc deltas
-      FormatTraits::read_block(
+      IteratorTraits::read_block(
         *doc_in_,
         postings_writer_base::BLOCK_SIZE,
         enc_buf_,
         docs_
       );
 
-      if /*constexpr*/ (Freq) {
-        FormatTraits::read_block(
+      if /*constexpr*/ (IteratorTraits::frequency()) {
+        IteratorTraits::read_block(
           *doc_in_,
           postings_writer_base::BLOCK_SIZE,
           enc_buf_,
           doc_freqs_
         );
       } else if (features_.freq()) {
-        FormatTraits::skip_block(
+        IteratorTraits::skip_block(
           *doc_in_,
           postings_writer_base::BLOCK_SIZE
         );
@@ -1596,11 +1571,11 @@ class doc_iterator final : public irs::doc_iterator_base {
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  pos_iterator<Offset, Payload, FormatTraits> pos_;
+  pos_iterator<IteratorTraits> pos_;
 }; // doc_iterator
 
-template<bool Freq, bool Pos, bool Offset, bool Payload, typename FormatTraits>
-void doc_iterator<Freq, Pos, Offset, Payload, FormatTraits>::seek_to_block(doc_id_t target) {
+template<typename IteratorTraits>
+void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
@@ -1662,7 +1637,7 @@ void doc_iterator<Freq, Pos, Offset, Payload, FormatTraits>::seek_to_block(doc_i
       doc_.value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
-      if /*constexpr*/ (Pos) {
+      if /*constexpr*/ (IteratorTraits::position()) {
         pos_.prepare(last); // notify positions
       }
     }
@@ -5050,6 +5025,14 @@ size_t postings_reader_base::decode(
 template<typename FormatTraits>
 class postings_reader final: public postings_reader_base {
  public:
+  template<bool Freq, bool Pos, bool Offset, bool Payload>
+  struct iterator_traits : FormatTraits {
+    static constexpr bool frequency() { return Freq; }
+    static constexpr bool position() { return Freq && Pos; }
+    static constexpr bool offset() { return position() && Offset; }
+    static constexpr bool payload() { return position() && Payload; }
+  };
+
   virtual irs::doc_iterator::ptr iterator(
     const flags& field,
     const attribute_view& attrs,
@@ -5068,6 +5051,7 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
     const flags& field,
     const attribute_view& attrs,
     const flags& req) {
+
   // compile field features
   const auto features = ::features(field);
   // get enabled features:
@@ -5076,32 +5060,32 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<true, true, true, true, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, true>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS | features::OFFS: {
-      auto it = memory::make_shared<doc_iterator<true, true, true, false, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, false>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<true, true, false, true, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, true>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ | features::POS: {
-      auto it = memory::make_shared<doc_iterator<true, true, false, false, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, false>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     case features::FREQ: {
-      auto it = memory::make_shared<doc_iterator<true, false, false, false, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<true, false, false, false>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
     default: {
-      auto it = memory::make_shared<doc_iterator<false, false, false, false, FormatTraits>>();
+      auto it = memory::make_shared<doc_iterator<iterator_traits<false, false, false, false>>>();
       it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
       return it;
     }
@@ -5355,6 +5339,28 @@ REGISTER_FORMAT(::format12);
 // ----------------------------------------------------------------------------
 
 #ifdef IRESEARCH_SSE2
+
+struct format_traits_sse {
+  FORCE_INLINE static void write_block(
+      index_output& out,
+      const uint32_t* in,
+      size_t size,
+      uint32_t* buf) {
+    encode::bitpack::write_block_optimized(out, in, size, buf);
+  }
+
+  FORCE_INLINE static void read_block(
+      index_input& in,
+      size_t size,
+      uint32_t* buf,
+      uint32_t* out) {
+    encode::bitpack::read_block_optimized(in, size, buf, out);
+  }
+
+  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
+    encode::bitpack::skip_block32(in, size);
+  }
+}; // format_traits_sse
 
 class format12sse final : public format12 {
  public:
