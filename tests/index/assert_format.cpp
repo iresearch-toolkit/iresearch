@@ -330,8 +330,6 @@ void field_writer::end() { }
  * field_reader
  * ------------------------------------------------------------------*/
 
-NS_BEGIN( detail )
-
 class pos_iterator;
 
 class doc_iterator : public irs::doc_iterator {
@@ -450,7 +448,7 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
     attrs_.emplace(freq_);
   }
 
-  if (features.check< irs::position >()) {
+  if (features.check<irs::position>()) {
     attrs_.emplace(pos_);
   }
 }
@@ -520,7 +518,7 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
   virtual doc_iterator::ptr postings(const irs::flags& features) const override {
-    return doc_iterator::make< detail::doc_iterator >( features, *prev_ );
+    return doc_iterator::make<doc_iterator>(data_.features & features, *prev_);
   }
 
   virtual bool seek(
@@ -542,25 +540,9 @@ class term_iterator : public irs::seek_term_iterator {
   irs::bytes_ref value_;
 };
 
-size_t term_reader::size() const {
-  return data_.terms.size();
-}
-
-uint64_t term_reader::docs_count() const {
-  return data_.docs.size();
-}
-
-const irs::bytes_ref& (term_reader::min)() const {
-  return min_;
-}
-
-const irs::bytes_ref& (term_reader::max)() const {
-  return max_;
-}
-
 irs::seek_term_iterator::ptr term_reader::iterator() const {
   return irs::memory::make_managed<irs::seek_term_iterator>(
-    irs::memory::make_unique<detail::term_iterator>(data_)
+    irs::memory::make_unique<term_iterator>(data_)
   );
 }
 
@@ -570,23 +552,13 @@ irs::seek_term_iterator::ptr term_reader::iterator(const irs::automaton& a) cons
   );
 }
 
-const irs::field_meta& term_reader::meta() const {
-  return data_;
-}
-
-const irs::attribute_view& term_reader::attributes() const noexcept {
-  return irs::attribute_view::empty_instance();
-}
-
-NS_END
-
 field_reader::field_reader(const index_segment& data)
   : data_(data) {
 
   readers_.reserve(data.fields().size());
 
   for (const auto& pair : data_.fields()) {
-    readers_.emplace_back(irs::term_reader::make<detail::term_reader>(pair.second));
+    readers_.emplace_back(irs::term_reader::make<term_reader>(pair.second));
   }
 }
 
@@ -699,11 +671,13 @@ REGISTER_FORMAT(tests::format);
 void assert_term(
     const irs::term_iterator& expected_term,
     const irs::term_iterator& actual_term,
-    const irs::flags& features) {
+    const irs::flags& requested_features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
-  const irs::doc_iterator::ptr expected_docs = expected_term.postings(features);
-  const irs::doc_iterator::ptr actual_docs = actual_term.postings(features);
+  const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
+  const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
+
+  ASSERT_EQ(expected_docs->attributes().features() & requested_features, actual_docs->attributes().features() & requested_features);
 
   // check docs
   for (; expected_docs->next();) {
@@ -714,7 +688,6 @@ void assert_term(
     {
       auto& expected_attrs = expected_docs->attributes();
       auto& actual_attrs = actual_docs->attributes();
-      ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
 
       auto& expected_freq = expected_attrs.get<irs::frequency>();
       auto& actual_freq = actual_attrs.get<irs::frequency>();
@@ -724,8 +697,8 @@ void assert_term(
         ASSERT_EQ(expected_freq->value, actual_freq->value);
       }
 
-      auto& expected_pos = expected_attrs.get< irs::position >();
-      auto& actual_pos = actual_attrs.get< irs::position >();
+      auto& expected_pos = expected_attrs.get<irs::position>();
+      auto& actual_pos = actual_attrs.get<irs::position>();
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
@@ -765,12 +738,6 @@ void assert_terms_next(
     const irs::term_reader& actual_term_reader,
     const irs::flags& features,
     const irs::automaton* acceptor) {
-  // check term reader
-  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
-  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
-  ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
-  ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
-
   irs::bytes_ref actual_min{ irs::bytes_ref::NIL };
   irs::bytes_ref actual_max{ irs::bytes_ref::NIL };
   irs::bstring actual_min_buf;
@@ -807,12 +774,6 @@ void assert_terms_seek(
     const irs::flags& features,
     const irs::automaton* acceptor,
     size_t lookahead /* = 10 */) {
-  // check term reader
-  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
-  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
-  ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
-  ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
-
   auto expected_term = acceptor ? expected_term_reader.iterator(*acceptor) : expected_term_reader.iterator();
   auto actual_term_with_state = acceptor ? actual_term_reader.iterator(*acceptor) : actual_term_reader.iterator();
   for (; expected_term->next();) {
@@ -959,12 +920,32 @@ void assert_index(
 
       const irs::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
       ASSERT_NE(nullptr, expected_field);
-      auto features_to_check = features & expected_field->features;
 
-      assert_terms_next(*expected_term_reader, *actual_term_reader, features_to_check, acceptor);
-      assert_terms_seek(*expected_term_reader, *actual_term_reader, features_to_check, acceptor);
+      // check term reader
+      ASSERT_EQ((expected_term_reader->min)(), (actual_term_reader->min)());
+      ASSERT_EQ((expected_term_reader->max)(), (actual_term_reader->max)());
+      ASSERT_EQ(expected_term_reader->size(), actual_term_reader->size());
+      ASSERT_EQ(expected_term_reader->docs_count(), actual_term_reader->docs_count());
+      ASSERT_EQ(expected_term_reader->meta(), actual_term_reader->meta());
+
+      auto& expected_attributes = expected_term_reader->attributes();
+      auto& actual_attributes = actual_term_reader->attributes();
+      auto expected_features = expected_term_reader->attributes().features();
+      auto actual_features = actual_term_reader->attributes().features();
+      ASSERT_EQ(expected_features, actual_features);
+
+      if (expected_attributes.contains<irs::frequency>()) {
+        auto& expected_freq = expected_attributes.get<irs::frequency>();
+        auto& actual_freq = actual_attributes.get<irs::frequency>();
+        ASSERT_TRUE(bool(actual_freq));
+        ASSERT_EQ(expected_freq->value, actual_freq->value);
+      }
+
+      assert_terms_next(*expected_term_reader, *actual_term_reader, features, acceptor);
+      assert_terms_seek(*expected_term_reader, *actual_term_reader, features, acceptor);
     }
     ++i;
+    ASSERT_EQ(expected_fields_end, expected_fields_begin);
   }
 }
 

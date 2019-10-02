@@ -949,15 +949,15 @@ struct doc_state {
 template<typename IteratorTraits,
          bool Offset = IteratorTraits::offset(),
          bool Payload = IteratorTraits::payload()>
-struct pos_iterator_impl;
+struct position_impl;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload + offset)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-struct pos_iterator_impl<IteratorTraits, true, true>
-    : public pos_iterator_impl<IteratorTraits, false, false> {
-  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+struct position_impl<IteratorTraits, true, true>
+    : public position_impl<IteratorTraits, false, false> {
+  typedef position_impl<IteratorTraits, false, false> base;
 
   void prepare(attribute_view& attrs) {
     attrs.emplace(offs_);
@@ -1088,15 +1088,15 @@ struct pos_iterator_impl<IteratorTraits, true, true>
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
-};
+}; // position_impl
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-struct pos_iterator_impl<IteratorTraits, false, true>
-    : public pos_iterator_impl<IteratorTraits, false, false> {
-  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+struct position_impl<IteratorTraits, false, true>
+    : public position_impl<IteratorTraits, false, false> {
+  typedef position_impl<IteratorTraits, false, false> base;
 
   void prepare(attribute_view& attrs) {
     attrs.emplace(pay_);
@@ -1223,15 +1223,15 @@ struct pos_iterator_impl<IteratorTraits, false, true>
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
-};
+}; // position_impl
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + offset)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-struct pos_iterator_impl<IteratorTraits, true, false>
-    : public pos_iterator_impl<IteratorTraits, false, false> {
-  typedef pos_iterator_impl<IteratorTraits, false, false> base;
+struct position_impl<IteratorTraits, true, false>
+    : public position_impl<IteratorTraits, false, false> {
+  typedef position_impl<IteratorTraits, false, false> base;
 
   void prepare(attribute_view& attrs) {
     attrs.emplace(offs_);
@@ -1317,13 +1317,13 @@ struct pos_iterator_impl<IteratorTraits, true, false>
   offset offs_;
   uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
   uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
-};
+}; // position_impl
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-struct pos_iterator_impl<IteratorTraits, false, false> {
+struct position_impl<IteratorTraits, false, false> {
   static void skip_payload(index_input& in) {
     const size_t size = in.read_vint();
     if (size) {
@@ -1412,16 +1412,16 @@ struct pos_iterator_impl<IteratorTraits, false, false> {
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE } ; // current position in pos_deltas_ buffer
   index_input::ptr pos_in_;
   features features_;
-};
+}; // position_impl
 
 template<typename IteratorTraits, bool Position = IteratorTraits::position()>
-class pos_iterator final : public position,
-                           protected pos_iterator_impl<IteratorTraits> {
+class position final : public irs::position,
+                       protected position_impl<IteratorTraits> {
  public:
-  typedef pos_iterator_impl<IteratorTraits> impl;
+  typedef position_impl<IteratorTraits> impl;
 
-  pos_iterator()
-    : position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
+  position()
+    : irs::position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
     impl::prepare(attrs_); // prepare attributes
   }
 
@@ -1498,22 +1498,22 @@ class pos_iterator final : public position,
     clear();
     value_ = 0;
   }
-}; // pos_iterator
+}; // position
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator (empty)
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-struct pos_iterator<IteratorTraits, false> : attribute {
+struct position<IteratorTraits, false> : attribute {
   DECLARE_ATTRIBUTE_TYPE () {
-    return position::type();
+    return irs::position::type();
   }
 
   void prepare(doc_state&) { }
   void prepare(skip_state&) { }
   void notify(uint32_t) { }
   void clear() { }
-};
+}; // position
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
@@ -1806,7 +1806,7 @@ class doc_iterator final : public irs::doc_iterator_base {
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  pos_iterator<IteratorTraits> pos_;
+  position<IteratorTraits> pos_;
 }; // doc_iterator
 
 template<typename IteratorTraits>
@@ -5164,7 +5164,7 @@ void postings_reader_base::prepare(
   //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
-  if (features.check<position>()) {
+  if (features.check<irs::position>()) {
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
@@ -5237,7 +5237,7 @@ size_t postings_reader_base::decode(
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (term_freq && term_freq->value && meta.check<position>()) {
+  if (term_freq && term_freq->value && meta.check<irs::position>()) {
     term_meta.pos_start += vread<uint64_t>(p);
 
     term_meta.pos_end = term_freq->value > postings_writer_base::BLOCK_SIZE

@@ -546,7 +546,7 @@ int put(int argc, char* argv[]) {
   cmdput.add(HELP, '?', "Produce help message");
   cmdput.add(INDEX_DIR, 0, "Path to index directory", true, std::string());
   cmdput.add(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("mmap"));
-  cmdput.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2sse)", false, std::string("1_0"));
+  cmdput.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false, std::string("1_0"));
   cmdput.add(INPUT, 0, "Input file", true, std::string());
   cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
   cmdput.add(CONSOLIDATE, 0, "Consolidate segments", false, false);

@@ -110,13 +110,8 @@ struct term {
 
 class field : public irs::field_meta {
  public:
-  field(
-    const irs::string_ref& name,
-    const irs::flags& features
-  );
-
+  field(const irs::string_ref& name, const irs::flags& features);
   field(field&& rhs) noexcept;
-
   field& operator=(field&& rhs) noexcept;
 
   term& add(const irs::bytes_ref& term);
@@ -233,30 +228,38 @@ class index_segment: irs::util::noncopyable {
   irs::document_mask doc_mask_;
 };
 
-namespace detail {
-
 class term_reader : public irs::term_reader {
  public:
-  term_reader(const tests::field& data):
-    data_(data), min_(data_.terms.begin()->value), max_(data_.terms.rbegin()->value) {
+  term_reader(const tests::field& data)
+    : data_(data),
+      min_(data_.terms.begin()->value),
+      max_(data_.terms.rbegin()->value) {
+    if (meta().features.check<irs::frequency>()) {
+      for (auto& term : data.terms) {
+        for (auto& p : term.postings) {
+          freq_.value += p.positions().size();
+        }
+      }
+      attrs_.emplace(freq_);
+    }
   }
 
   virtual irs::seek_term_iterator::ptr iterator() const override;
   virtual irs::seek_term_iterator::ptr iterator(const irs::automaton& a) const override;
-  virtual const irs::field_meta& meta() const override;
-  virtual size_t size() const override;
-  virtual uint64_t docs_count() const override;
-  virtual const irs::bytes_ref& (min)() const override;
-  virtual const irs::bytes_ref& (max)() const override;
-  virtual const irs::attribute_view& attributes() const noexcept override;
+  virtual const irs::field_meta& meta() const override { return data_; }
+  virtual size_t size() const override { return data_.terms.size(); }
+  virtual uint64_t docs_count() const override { return data_.docs.size(); }
+  virtual const irs::bytes_ref& (min)() const override { return min_; }
+  virtual const irs::bytes_ref& (max)() const override { return max_; }
+  virtual const irs::attribute_view& attributes() const noexcept override { return attrs_; }
 
  private:
   const tests::field& data_;
-  irs::bytes_ref max_;
+  irs::attribute_view attrs_;
+  irs::frequency freq_;
   irs::bytes_ref min_;
+  irs::bytes_ref max_;
 };
-
-} // detail
 
 struct index_meta_writer: public irs::index_meta_writer {
   virtual std::string filename(
