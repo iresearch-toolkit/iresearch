@@ -22,12 +22,12 @@
 
 #include "shared.hpp"
 #include "wildcard_filter.hpp"
+#include "limited_sample_scorer.hpp"
 #include "all_filter.hpp"
 #include "disjunction.hpp"
 #include "range_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
-
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
@@ -79,10 +79,9 @@ WildcardType wildcard_type(const irs::bstring& expr) noexcept {
   return WildcardType::WILDCARD;
 }
 
-struct multiterm_state {
-  const term_reader* reader;
-  cost::cost_t estimation;
+struct multiterm_state : limited_sample_state {
   std::vector<seek_term_iterator::seek_cookie::ptr> cookies;
+  cost::cost_t estimation{};
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -151,7 +150,7 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
 
 filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const order::prepared& order,
     boost_t boost,
     const attribute_view& ctx) const {
   const string_ref field = this->field();
@@ -159,12 +158,12 @@ filter::prepared::ptr by_wildcard::prepare(
 
   switch (wildcard_type) {
     case WildcardType::MATCH_ALL:
-      return all().prepare(index, ord, this->boost()*boost, ctx);
+      return all().prepare(index, order, this->boost()*boost, ctx);
     case WildcardType::TERM:
-      return term_query::make(index, ord, this->boost()*boost, field, term());
+      return term_query::make(index, order, this->boost()*boost, field, term());
     case WildcardType::PREFIX:
       assert(!term().empty());
-      return range_query::make_from_prefix(index, ord, this->boost()*boost, field,
+      return range_query::make_from_prefix(index, order, this->boost()*boost, field,
                                            bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
                                            scored_terms_limit());
     default:
@@ -173,10 +172,11 @@ filter::prepared::ptr by_wildcard::prepare(
 
   assert(WildcardType::WILDCARD == wildcard_type);
 
+  limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
   multiterm_query::states_t states(index.size());
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
   auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
 
+  size_t segment_id = 0;
   for (const auto& segment : index) {
     // get term dictionary for field
     const term_reader* reader = segment.field(field);
@@ -198,11 +198,17 @@ filter::prepared::ptr by_wildcard::prepare(
       do {
         it->read(); // read term attributes
 
+        // highest valid doc_id in reader
+        state.unscored_docs.reset((doc_limits::min)() + segment.docs_count());
         state.cookies.emplace_back(it->cookie());
         state.estimation += docs_count;
+
+        scorer.collect(docs_count, segment_id++, state, segment, *it);
       } while (it->next());
     }
   }
+
+  scorer.score(index, order);
 
   return memory::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
 }

@@ -115,6 +115,7 @@ set(IResearch_core_sources
   ./search/filter.cpp
   ./search/term_filter.cpp
   ./search/prefix_filter.cpp
+  ./search/limited_sample_scorer.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp

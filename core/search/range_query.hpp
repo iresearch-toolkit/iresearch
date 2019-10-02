@@ -29,6 +29,7 @@
 
 #include "filter.hpp"
 #include "cost.hpp"
+#include "limited_sample_scorer.hpp"
 #include "utils/bitset.hpp"
 #include "utils/string.hpp"
 
@@ -43,90 +44,40 @@ struct range;
 /// @class range_state
 /// @brief cached per reader range state
 //////////////////////////////////////////////////////////////////////////////
-struct range_state : private util::noncopyable {
+struct range_state : public limited_sample_state,
+                     private util::noncopyable {
   range_state() = default;
 
-  range_state(range_state&& rhs) noexcept {
-    *this = std::move(rhs);
+  range_state(range_state&& rhs) noexcept
+    : limited_sample_state(std::move(rhs)),
+      min_term(std::move(rhs.min_term)),
+      min_cookie(std::move(rhs.min_cookie)),
+      estimation(rhs.estimation),
+      count(rhs.count) {
+    rhs.reader = nullptr;
+    rhs.count = 0;
+    rhs.estimation = 0;
   }
 
-  range_state& operator=(range_state&& other) noexcept {
-    if (this == &other) {
-      return *this;
+  range_state& operator=(range_state&& rhs) noexcept {
+    if (this != &rhs) {
+      limited_sample_state::operator=(std::move(rhs));
+      min_term = std::move(rhs.min_term);
+      min_cookie = std::move(rhs.min_cookie);
+      estimation = std::move(rhs.estimation);
+      rhs.estimation = 0;
+      count = std::move(rhs.count);
+      rhs.count = 0;
     }
-
-    reader = std::move(other.reader);
-    min_term = std::move(other.min_term);
-    min_cookie = std::move(other.min_cookie);
-    estimation = std::move(other.estimation);
-    count = std::move(other.count);
-    scored_states = std::move(other.scored_states);
-    unscored_docs = std::move(other.unscored_docs);
-    other.reader = nullptr;
-    other.count = 0;
-    other.estimation = 0;
 
     return *this;
   }
 
-  const term_reader* reader{}; // reader using for iterate over the terms
   bstring min_term; // minimum term to start from
   seek_term_iterator::seek_cookie::ptr min_cookie; // cookie corresponding to the start term
   cost::cost_t estimation{}; // per-segment query estimation
   size_t count{}; // number of terms to process from start term
-
-  // scored states/stats by their offset in range_state (i.e. offset from min_term)
-  // range_query::execute(...) expects an orderd map
-  std::map<size_t, bstring> scored_states;
-
-  // matching doc_ids that may have been skipped while collecting statistics and should not be scored by the disjunction
-  bitset unscored_docs;
 }; // reader_state
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief object to collect and track a limited number of scorers
-//////////////////////////////////////////////////////////////////////////////
-class limited_sample_scorer {
- public:
-  limited_sample_scorer(size_t scored_terms_limit);
-  void collect(
-    size_t priority, // priority of this entry, lowest priority removed first
-    size_t scored_state_id, // state identifier used for querying of attributes
-    irs::range_state& scored_state, // state containing this scored term
-    const irs::sub_reader& reader, // segment reader for the current term
-    const seek_term_iterator& term_itr // term-iterator positioned at the current term
-  );
-  void score(const index_reader& index, const order::prepared& order);
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of a term cookie with its asociated range_state
-  //////////////////////////////////////////////////////////////////////////////
-  struct scored_term_state_t {
-    seek_term_iterator::cookie_ptr cookie; // term offset cache
-    irs::range_state& state; // state containing this scored term
-    size_t state_offset;
-    const irs::sub_reader& sub_reader; // segment reader for the current term
-    bstring term; // actual term value this state is for
-
-    scored_term_state_t(
-      const irs::sub_reader& sr,
-      irs::range_state& scored_state,
-      size_t scored_state_offset,
-      const seek_term_iterator& term_itr
-    ):
-      cookie(term_itr.cookie()),
-      state(scored_state),
-      state_offset(scored_state_offset),
-      sub_reader(sr),
-      term(term_itr.value()) {
-    }
-  };
-
-  typedef std::multimap<size_t, scored_term_state_t> scored_term_states_t;
-  scored_term_states_t scored_states_;
-  size_t scored_terms_limit_;
-};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class range_query
