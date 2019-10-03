@@ -89,11 +89,11 @@ class phrase_query : public filter::prepared {
       states_t&& states,
       positions_t&& positions,
       bstring&& stats,
-      boost_t boost
-  ) noexcept
-    : prepared(std::move(stats), boost),
+      boost_t boost) noexcept
+    : prepared(boost),
       states_(std::move(states)),
-      positions_(std::move(positions)) {
+      positions_(std::move(positions)),
+      stats_(std::move(stats)) {
   }
 
   using filter::prepared::execute;
@@ -154,7 +154,7 @@ class phrase_query : public filter::prepared {
       std::move(positions),
       rdr,
       *phrase_state->reader,
-      stats(),
+      stats_.c_str(),
       ord,
       boost()
     );
@@ -163,6 +163,7 @@ class phrase_query : public filter::prepared {
  private:
   states_t states_;
   positions_t positions_;
+  bstring stats_;
 }; // phrase_query
 
 // -----------------------------------------------------------------------------

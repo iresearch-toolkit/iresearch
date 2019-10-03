@@ -106,8 +106,8 @@ class range_query : public filter::prepared {
     const range<bstring>& range,
     size_t scored_terms_limit);
 
-  explicit range_query(states_t&& states, boost_t boost)
-    : prepared(boost), states_(std::move(states)) {
+  explicit range_query(states_t&& states, std::vector<bstring>&& stats, boost_t boost)
+    : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {
   }
 
   virtual doc_iterator::ptr execute(
@@ -117,6 +117,7 @@ class range_query : public filter::prepared {
 
  private:
   states_t states_;
+  std::vector<bstring> stats_;
 }; // range_query 
 
 NS_END // ROOT

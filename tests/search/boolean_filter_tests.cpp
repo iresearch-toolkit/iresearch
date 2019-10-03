@@ -308,11 +308,12 @@ struct boosted: public irs::filter {
       const irs::attribute_view& /*ctx*/
     ) const override {
       return irs::doc_iterator::make<basic_doc_iterator>(
-        docs.begin(), docs.end(), this->stats(), ord, boost()
+        docs.begin(), docs.end(), stats.c_str(), ord, boost()
       );
     }
 
     basic_doc_iterator::docids_t docs;
+    irs::bstring stats;
   }; // prepared
 
   DECLARE_FACTORY();

@@ -34,7 +34,8 @@ struct state_t {
   }
 
   irs::order::prepared::collectors collectors;
-  irs::bstring stats; // filter stats for a the current state/term
+  size_t stats_offset;
+//  irs::bstring stats; // filter stats for a the current state/term
 };
 
 void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term) {
@@ -65,7 +66,9 @@ limited_sample_scorer::limited_sample_scorer(size_t scored_terms_limit)
   scored_states_.reserve(scored_terms_limit);
 }
 
-void limited_sample_scorer::score(const index_reader& index, const order::prepared& order) {
+void limited_sample_scorer::score(const index_reader& index,
+                                  const order::prepared& order,
+                                  std::vector<bstring>& stats) {
   if (!scored_terms_limit_) {
     return; // nothing to score (optimization)
   }
@@ -73,6 +76,7 @@ void limited_sample_scorer::score(const index_reader& index, const order::prepar
   std::unordered_map<hashed_bytes_ref, state_t> term_stats; // stats for a specific term
 
   // iterate over all the states from which statistcis should be collected
+  size_t stats_offset = 0;
   for (auto& entry: scored_states_) {
     auto& scored_state = entry.second;
     auto term_itr = scored_state.state->reader->iterator();
@@ -93,6 +97,8 @@ void limited_sample_scorer::score(const index_reader& index, const order::prepar
       for (auto& sr: index) {
         collectors.collect(sr, field); // collect field statistics once per segment
       }
+
+      stats_entry.stats_offset = stats_offset++;
     }
 
     // find term attributes using cached state
@@ -104,29 +110,24 @@ void limited_sample_scorer::score(const index_reader& index, const order::prepar
       continue; // some internal error that caused the term to disapear
     }
 
-    collectors.collect(segment, field, 0, term_itr->attributes()); // collect statistics, 0 because only 1 term
-
-    entry.second.stats = &stats_entry.stats;
-  }
-
-  // iterate over all stats and apply/store order stats
-  for (auto& entry: term_stats) {
-    entry.second.stats.resize(order.stats_size());
-    auto* stats_buf = const_cast<byte_type*>(entry.second.stats.data());
-
-    order.prepare_stats(stats_buf);
-    entry.second.collectors.finish(stats_buf, index);
-  }
-
-  // set filter attributes for each corresponding term
-  for (auto& entry: scored_states_) {
-    auto& scored_state = entry.second;
-    assert(scored_state.stats);
+    // collect statistics, 0 because only 1 term
+    collectors.collect(segment, field, 0, term_itr->attributes());
 
     // filter stats is copied since it's shared among multiple states
     scored_state.state->scored_states.emplace_back(
       std::move(scored_state.cookie),
-      *scored_state.stats);
+      stats_entry.stats_offset);
+  }
+
+  // iterate over all stats and apply/store order stats
+  stats.resize(stats_offset);
+  for (auto& entry: term_stats) {
+    auto& stats_entry = stats[entry.second.stats_offset];
+    stats_entry.resize(order.stats_size());
+    auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
+
+    order.prepare_stats(stats_buf);
+    entry.second.collectors.finish(stats_buf, index);
   }
 }
 

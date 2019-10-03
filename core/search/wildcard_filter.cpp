@@ -208,7 +208,8 @@ filter::prepared::ptr by_wildcard::prepare(
     }
   }
 
-  scorer.score(index, order);
+  std::vector<bstring> stats;
+  scorer.score(index, order, stats);
 
   return memory::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
 }

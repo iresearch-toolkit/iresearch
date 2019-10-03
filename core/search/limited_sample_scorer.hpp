@@ -59,7 +59,7 @@ struct limited_sample_state {
   const term_reader* reader{};
 
   // scored term states/stats
-  std::vector<std::pair<seek_term_iterator::seek_cookie::ptr, bstring>> scored_states;
+  std::vector<std::pair<seek_term_iterator::seek_cookie::ptr, size_t>> scored_states;
 
   // matching doc_ids that may have been skipped
   // while collecting statistics and should not be scored by the disjunction
@@ -88,7 +88,8 @@ class limited_sample_scorer : util::noncopyable {
                const seek_term_iterator& term_itr);
 
   void score(const index_reader& index,
-             const order::prepared& order);
+             const order::prepared& order,
+             std::vector<bstring>& stats);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +115,6 @@ class limited_sample_scorer : util::noncopyable {
     size_t state_offset;
     const irs::sub_reader* segment; // segment reader for the current term
     bstring term; // actual term value this state is for
-    const bstring* stats{}; // pointer to terms shared stats
   }; // scored_term_state_t
 
   typedef std::vector<std::pair<size_t, scored_term_state_t>> scored_term_states_t;

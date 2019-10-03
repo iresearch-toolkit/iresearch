@@ -587,7 +587,8 @@ filter::prepared::ptr by_granular_range::prepare(
     collect_terms_within(states, sr, *tr, *terms, prefix_size, rng_.min, rng_.max, BoundType::INCLUSIVE == rng_.min_type, BoundType::INCLUSIVE == rng_.max_type, scorer);
   }
 
-  scorer.score(rdr, ord);
+  std::vector<bstring> stats;
+  scorer.score(rdr, ord, stats);
 
   // ...........................................................................
   // group the range states into a minimal number of groups per sub_reader
@@ -640,7 +641,7 @@ filter::prepared::ptr by_granular_range::prepare(
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
-    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state), irs::no_boost());
+    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state), std::move(stats), irs::no_boost());
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

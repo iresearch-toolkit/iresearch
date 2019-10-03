@@ -78,6 +78,7 @@ class term_query : public filter::prepared {
 
  private:
   states_cache<reader_term_state> states_;
+  bstring stats_;
 }; // term_query
 
 NS_END // ROOT

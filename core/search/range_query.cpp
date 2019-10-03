@@ -117,7 +117,7 @@ doc_iterator::ptr range_query::execute(
       return doc_iterator::empty(); // internal error
     }
 
-    auto* stats = entry.second.c_str();
+    auto* stats = stats_[entry.second].c_str();
     auto docs = terms->postings(features);
     auto& attrs = docs->attributes();
 
@@ -205,9 +205,10 @@ doc_iterator::ptr range_query::execute(
     }
   }
 
-  scorer.score(index, ord);
+  std::vector<bstring> stats;
+  scorer.score(index, ord, stats);
 
-  return memory::make_shared<range_query>(std::move(states), boost);
+  return memory::make_shared<range_query>(std::move(states), std::move(stats), boost);
 }
 
 /*static*/ range_query::ptr range_query::make_from_prefix(
@@ -267,9 +268,10 @@ doc_iterator::ptr range_query::execute(
     }
   }
 
-  scorer.score(index, ord);
+  std::vector<bstring> stats;
+  scorer.score(index, ord, stats);
 
-  return memory::make_shared<range_query>(std::move(states), boost);
+  return memory::make_shared<range_query>(std::move(states), std::move(stats), boost);
 }
 
 NS_END // ROOT

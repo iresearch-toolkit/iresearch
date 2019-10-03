@@ -88,8 +88,9 @@ term_query::term_query(
     term_query::states_t&& states,
     bstring&& stats,
     boost_t boost)
-  : filter::prepared(std::move(stats), boost),
-    states_(std::move(states)) {
+  : filter::prepared(boost),
+    states_(std::move(states)),
+    stats_(std::move(stats)) {
 }
 
 doc_iterator::ptr term_query::execute(
@@ -119,7 +120,7 @@ doc_iterator::ptr term_query::execute(
   auto& score = attrs.get<irs::score>();
 
   if (score) {
-    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats(), attrs, boost()));
+    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
   }
 
   return docs;

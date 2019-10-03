@@ -90,8 +90,9 @@ class column_existence_query final : public irs::filter::prepared {
       const std::string& field,
       irs::bstring&& stats,
       irs::boost_t boost)
-    : irs::filter::prepared(std::move(stats), boost),
-      field_(field) {
+    : irs::filter::prepared(boost),
+      field_(field),
+      stats_(std::move(stats)) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -107,7 +108,7 @@ class column_existence_query final : public irs::filter::prepared {
 
     return irs::doc_iterator::make<column_existence_iterator>(
       rdr,
-      stats(), // prepared_filter attributes
+      stats_.c_str(),
       column->iterator(),
       ord,
       column->size(),
@@ -117,6 +118,7 @@ class column_existence_query final : public irs::filter::prepared {
 
  private:
   std::string field_;
+  irs::bstring stats_;
 }; // column_existence_query
 
 class column_prefix_existence_query final : public irs::filter::prepared {
@@ -125,8 +127,9 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       const std::string& prefix,
       irs::bstring&& stats,
       irs::boost_t boost)
-    : irs::filter::prepared(std::move(stats), boost),
-      prefix_(prefix) {
+    : irs::filter::prepared(boost),
+      prefix_(prefix),
+      stats_(std::move(stats)) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -153,7 +156,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
       auto column_it = irs::memory::make_shared<column_existence_iterator>(
         rdr,
-        stats(), // prepared_filter attributes
+        stats_.c_str(),
         column->iterator(),
         ord,
         column->size(),
@@ -172,6 +175,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
  private:
   std::string prefix_;
+  irs::bstring stats_;
 }; // column_prefix_existence_query
 
 NS_END

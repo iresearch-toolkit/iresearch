@@ -174,7 +174,7 @@ class same_position_query final : public filter::prepared {
       // set score
       auto& score = attrs.get<irs::score>();
       if (score) {
-        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, stats(), attrs, boost()));
+        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), attrs, boost()));
       }
 
       // add iterator
