@@ -58,9 +58,8 @@ struct limited_sample_state {
   // reader using for iterate over the terms
   const term_reader* reader{};
 
-  // scored states/stats by their offset in range_state (i.e. offset from min_term)
-  // range_query::execute(...) expects an orderd map
-  std::map<size_t, bstring> scored_states;
+  // scored term states/stats
+  std::vector<std::pair<seek_term_iterator::seek_cookie::ptr, bstring>> scored_states;
 
   // matching doc_ids that may have been skipped
   // while collecting statistics and should not be scored by the disjunction
@@ -73,9 +72,7 @@ struct limited_sample_state {
 //////////////////////////////////////////////////////////////////////////////
 class limited_sample_scorer : util::noncopyable {
  public:
-  explicit limited_sample_scorer(size_t scored_terms_limit)
-    : scored_terms_limit_(scored_terms_limit) {
-  }
+  explicit limited_sample_scorer(size_t scored_terms_limit);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @param priority priority of this entry, lowest priority removed first
@@ -90,7 +87,8 @@ class limited_sample_scorer : util::noncopyable {
                const sub_reader& reader,
                const seek_term_iterator& term_itr);
 
-  void score(const index_reader& index, const order::prepared& order);
+  void score(const index_reader& index,
+             const order::prepared& order);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -98,25 +96,28 @@ class limited_sample_scorer : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   struct scored_term_state_t {
     scored_term_state_t(
-      const sub_reader& sr,
-      limited_sample_state& scored_state,
-      size_t scored_state_offset,
-      const seek_term_iterator& term_itr)
-    : cookie(term_itr.cookie()),
-      state(scored_state),
-      state_offset(scored_state_offset),
-      sub_reader(sr),
-      term(term_itr.value()) {
+        const sub_reader& segment,
+        limited_sample_state& scored_state,
+        size_t scored_state_offset,
+        const bytes_ref& term,
+        seek_term_iterator::seek_cookie::ptr&& cookie)
+      : cookie(std::move(cookie)),
+        state(&scored_state),
+        state_offset(scored_state_offset),
+        segment(&segment),
+        term(term) {
+      assert(this->cookie);
     }
 
     seek_term_iterator::cookie_ptr cookie; // term offset cache
-    limited_sample_state& state; // state containing this scored term
+    limited_sample_state* state; // state containing this scored term
     size_t state_offset;
-    const irs::sub_reader& sub_reader; // segment reader for the current term
+    const irs::sub_reader* segment; // segment reader for the current term
     bstring term; // actual term value this state is for
+    const bstring* stats{}; // pointer to terms shared stats
   }; // scored_term_state_t
 
-  typedef std::multimap<size_t, scored_term_state_t> scored_term_states_t;
+  typedef std::vector<std::pair<size_t, scored_term_state_t>> scored_term_states_t;
 
   scored_term_states_t scored_states_;
   size_t scored_terms_limit_;

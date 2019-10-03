@@ -51,8 +51,7 @@ void collect_terms(
     state.reader = &field;
     state.min_term = value;
     state.min_cookie = terms.cookie();
-    state.unscored_docs.reset((irs::doc_limits::min)() + segment.docs_count()
-    ); // highest valid doc_id in segment
+    state.unscored_docs.reset((irs::doc_limits::min)() + segment.docs_count()); // highest valid doc_id in segment
 
     // get term metadata
     auto& meta = terms.attributes().get<irs::term_meta>();
@@ -87,6 +86,7 @@ doc_iterator::ptr range_query::execute(
 
   // get term state for the specified reader
   auto state = states_.find(rdr);
+
   if (!state) {
     // invalid state
     return doc_iterator::empty();
@@ -94,11 +94,6 @@ doc_iterator::ptr range_query::execute(
 
   // get terms iterator
   auto terms = state->reader->iterator();
-
-  // find min term using cached state
-  if (!terms->seek(state->min_term, *(state->min_cookie))) {
-    return doc_iterator::empty();
-  }
 
   // prepared disjunction
   const bool has_bit_set = state->unscored_docs.any();
@@ -115,20 +110,14 @@ doc_iterator::ptr range_query::execute(
     ));
   }
 
-  size_t last_offset = 0;
-
   // add an iterator for each of the scored states
   for (auto& entry: state->scored_states) {
-    auto offset = entry.first;
-    auto* stats = entry.second.c_str();
-    assert(offset >= last_offset);
-
-    if (!skip(*terms, offset - last_offset)) {
-      continue; // reached end of iterator
+    assert(entry.first);
+    if (!terms->seek(bytes_ref::NIL, *entry.first)) {
+      return doc_iterator::empty(); // internal error
     }
 
-    last_offset = offset;
-
+    auto* stats = entry.second.c_str();
     auto docs = terms->postings(features);
     auto& attrs = docs->attributes();
 
