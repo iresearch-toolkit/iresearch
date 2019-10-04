@@ -113,6 +113,7 @@ enum class category_t {
   OrHighMed,
   OrHighLow,
   Prefix3,
+  Wildcard
   UNKNOWN
 };
 
@@ -130,6 +131,7 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "OrHighMed") return category_t::OrHighMed;
   if (value == "OrHighLow") return category_t::OrHighLow;
   if (value == "Prefix3") return category_t::Prefix3;
+  if (value == "Wildcard") return category_t::Wildcard;
 
   return category_t::UNKNOWN;
 }
@@ -149,6 +151,7 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::OrHighMed: return "OrHighMed";
    case category_t::OrHighLow: return "OrHighLow";
    case category_t::Prefix3: return "Prefix3";
+   case category_t::Wildcard: return "Wildcard";
    default: return "<unknown>";
   }
 }
@@ -272,6 +275,13 @@ irs::filter::prepared::ptr prepareFilter(
     query.field("body").term(terms);
 
     return query.prepare(reader, order);
+   }
+   case category_t::Wildcard: {
+    irs::by_wildcard query;
+    query.scored_terms_limit(scored_terms_limit);
+
+    terms = irs::string_ref(text, text.size());
+    query.field("body").term(terms);
    }
   }
 
