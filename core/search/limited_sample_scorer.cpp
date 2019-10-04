@@ -28,17 +28,31 @@
 
 NS_LOCAL
 
-struct state_t {
-  explicit state_t(const irs::order::prepared& order)
+struct state {
+  explicit state(const irs::index_reader& index,
+                   const irs::term_reader& field,
+                   const irs::order::prepared& order,
+                   size_t& state_offset)
     : collectors(order.prepare_collectors(1)) { // 1 term per bstring because a range is treated as a disjunction
+
+    // once per every 'state' collect field statistics over the entire index
+    for (auto& segment: index) {
+      collectors.collect(segment, field); // collect field statistics once per segment
+    }
+
+    stats_offset = state_offset++;
   }
 
   irs::order::prepared::collectors collectors;
   size_t stats_offset;
-//  irs::bstring stats; // filter stats for a the current state/term
 };
 
-void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term) {
+void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term, size_t docs_count) {
+  docs_count += (irs::doc_limits::min)();
+  if (buf.size() < docs_count) {
+    buf.reset(docs_count); // ensure we have enough space
+  }
+
   auto itr = term.postings(irs::flags::empty_instance());
 
   if (!itr) {
@@ -57,6 +71,12 @@ void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term) {
   }
 };
 
+bool less(size_t lhs_priority, size_t rhs_priority,
+          size_t lhs_state_offset, size_t rhs_state_offset) noexcept {
+  return rhs_priority < lhs_priority
+      || (rhs_priority == lhs_priority && lhs_state_offset < rhs_state_offset);
+}
+
 NS_END
 
 NS_ROOT
@@ -73,47 +93,33 @@ void limited_sample_scorer::score(const index_reader& index,
     return; // nothing to score (optimization)
   }
 
-  std::unordered_map<hashed_bytes_ref, state_t> term_stats; // stats for a specific term
+  // stats for a specific term
+  std::unordered_map<hashed_bytes_ref, state> term_stats;
 
   // iterate over all the states from which statistcis should be collected
   size_t stats_offset = 0;
-  for (auto& entry: scored_states_) {
-    auto& scored_state = entry.second;
-    auto term_itr = scored_state.state->reader->iterator();
+  for (auto& scored_state : scored_states_) {
+    assert(scored_state.cookie);
+    auto& field = *scored_state.state->reader;
+    auto term_itr = field.iterator(); // FIXME
+    assert(term_itr);
 
     // find the stats for the current term
-    auto res = map_utils::try_emplace(
+    const auto res = map_utils::try_emplace(
       term_stats,
       make_hashed_ref(bytes_ref(scored_state.term), std::hash<bytes_ref>()),
-      order);
-    auto inserted = res.second;
-    auto& stats_entry = res.first->second;
-    auto& collectors = stats_entry.collectors;
-    auto& field = *scored_state.state->reader;
-    auto& segment = *scored_state.segment;
-
-    // once per every 'state_t' collect field statistics over the entire index
-    if (inserted) {
-      for (auto& sr: index) {
-        collectors.collect(sr, field); // collect field statistics once per segment
-      }
-
-      stats_entry.stats_offset = stats_offset++;
-    }
+      index, field, order, stats_offset);
 
     // find term attributes using cached state
-    // use bytes_ref::NIL here since we just "jump" to cached state,
-    // and we are not interested in term value itself
-    if (!term_itr
-        || !scored_state.cookie
-        || !term_itr->seek(bytes_ref::NIL, *(scored_state.cookie))) {
+    if (!term_itr->seek(bytes_ref::NIL, *(scored_state.cookie))) {
       continue; // some internal error that caused the term to disapear
     }
 
-    // collect statistics, 0 because only 1 term
-    collectors.collect(segment, field, 0, term_itr->attributes());
+    auto& stats_entry = res.first->second;
 
-    // filter stats is copied since it's shared among multiple states
+    // collect statistics, 0 because only 1 term
+    stats_entry.collectors.collect(*scored_state.segment, field, 0, term_itr->attributes());
+
     scored_state.state->scored_states.emplace_back(
       std::move(scored_state.cookie),
       stats_entry.stats_offset);
@@ -121,7 +127,7 @@ void limited_sample_scorer::score(const index_reader& index,
 
   // iterate over all stats and apply/store order stats
   stats.resize(stats_offset);
-  for (auto& entry: term_stats) {
+  for (auto& entry : term_stats) {
     auto& stats_entry = stats[entry.second.stats_offset];
     stats_entry.resize(order.stats_size());
     auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
@@ -138,46 +144,38 @@ void limited_sample_scorer::collect(
     const sub_reader& segment,
     const seek_term_iterator& term_itr) {
   if (!scored_terms_limit_) {
-    assert(scored_state.unscored_docs.size() >= (doc_limits::min)() + segment.docs_count()); // otherwise set will fail
-    set_doc_ids(scored_state.unscored_docs, term_itr);
+    // state will not be scored
+    // add all doc_ids from the doc_iterator to the unscored_docs
+    set_doc_ids(scored_state.unscored_docs, term_itr, segment.docs_count());
 
     return; // nothing to collect (optimization)
   }
 
-  auto less = [](const std::pair<size_t, scored_term_state_t>& lhs,
-                 const std::pair<size_t, scored_term_state_t>& rhs) noexcept {
-    if (rhs.first == lhs.first) {
-      return lhs.second.state_offset < rhs.second.state_offset;
-    }
-
-    return rhs.first < lhs.first;
+  auto less = [](const scored_term_state& lhs,
+                 const scored_term_state& rhs) noexcept {
+    return ::less(lhs.priority, rhs.priority, lhs.state_offset, rhs.state_offset);
   };
 
   if (scored_states_.size() < scored_terms_limit_) {
     // have not reached the scored state limit yet
-    scored_states_.emplace_back(std::piecewise_construct,
-                                std::forward_as_tuple(priority),
-                                std::forward_as_tuple(segment, scored_state, scored_state_id, term_itr.value(), term_itr.cookie()));
+    scored_states_.emplace_back(priority, segment, scored_state, scored_state_id, term_itr.value(), term_itr.cookie());
 
     std::push_heap(scored_states_.begin(), scored_states_.end(), less);
-  } else if (scored_states_.front().first < priority || (scored_states_.front().first == priority && scored_states_.front().second.state_offset < scored_state_id)) {
+  } else if (::less(priority, scored_states_.front().priority, scored_states_.front().state_offset, scored_state_id)) { // FIXME
     std::pop_heap(scored_states_.begin(), scored_states_.end(), less);
 
-    auto& back = scored_states_.back();
-    auto& state = back.second;
-
+    auto& state = scored_states_.back();
     auto state_term_it = state.state->reader->iterator(); // FIXME cache iterator???
 
     assert(state.cookie);
     if (state_term_it->seek(bytes_ref::NIL, *state.cookie)) {
       // state will not be scored
       // add all doc_ids from the doc_iterator to the unscored_docs
-      assert(scored_state.unscored_docs.size() >= (doc_limits::min)() + segment.docs_count()); // otherwise set will fail
-      set_doc_ids(state.state->unscored_docs, *state_term_it);
+      set_doc_ids(state.state->unscored_docs, *state_term_it, state.segment->docs_count());
     }
 
     // update min state
-    back.first = priority;
+    state.priority = priority;
     state.state = &scored_state;
     state.cookie = term_itr.cookie();
     state.term = term_itr.value();
@@ -188,8 +186,7 @@ void limited_sample_scorer::collect(
   } else {
     // state will not be scored
     // add all doc_ids from the doc_iterator to the unscored_docs
-    assert(scored_state.unscored_docs.size() >= (doc_limits::min)() + segment.docs_count()); // otherwise set will fail
-    set_doc_ids(scored_state.unscored_docs, term_itr);
+    set_doc_ids(scored_state.unscored_docs, term_itr, segment.docs_count());
   }
 }
 

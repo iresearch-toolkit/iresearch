@@ -90,7 +90,6 @@ irs::range_state& collect_terms(
   state.reader = &tr;
   state.min_term = terms.value();
   state.min_cookie = terms.cookie();
-  state.unscored_docs.reset((irs::doc_limits::min)() + reader.docs_count()); // highest valid doc_id in reader
 
   auto& meta = terms.attributes().get<irs::term_meta>(); // get term metadata
   const decltype(irs::term_meta::docs_count) NO_DOCS = 0;

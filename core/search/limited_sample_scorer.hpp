@@ -58,7 +58,7 @@ struct limited_sample_state {
   // reader using for iterate over the terms
   const term_reader* reader{};
 
-  // scored term states/stats
+  // scored term states (cookie + stat offset)
   std::vector<std::pair<seek_term_iterator::seek_cookie::ptr, size_t>> scored_states;
 
   // matching doc_ids that may have been skipped
@@ -95,8 +95,9 @@ class limited_sample_scorer : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a representation of a term cookie with its asociated range_state
   //////////////////////////////////////////////////////////////////////////////
-  struct scored_term_state_t {
-    scored_term_state_t(
+  struct scored_term_state {
+    scored_term_state(
+        size_t priority,
         const sub_reader& segment,
         limited_sample_state& scored_state,
         size_t scored_state_offset,
@@ -105,6 +106,7 @@ class limited_sample_scorer : util::noncopyable {
       : cookie(std::move(cookie)),
         state(&scored_state),
         state_offset(scored_state_offset),
+        priority(priority),
         segment(&segment),
         term(term) {
       assert(this->cookie);
@@ -113,11 +115,12 @@ class limited_sample_scorer : util::noncopyable {
     seek_term_iterator::cookie_ptr cookie; // term offset cache
     limited_sample_state* state; // state containing this scored term
     size_t state_offset;
+    size_t priority;
     const irs::sub_reader* segment; // segment reader for the current term
     bstring term; // actual term value this state is for
   }; // scored_term_state_t
 
-  typedef std::vector<std::pair<size_t, scored_term_state_t>> scored_term_states_t;
+  typedef std::vector<scored_term_state> scored_term_states_t;
 
   scored_term_states_t scored_states_;
   size_t scored_terms_limit_;

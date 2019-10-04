@@ -27,6 +27,7 @@
 #include "disjunction.hpp"
 #include "range_query.hpp"
 #include "term_query.hpp"
+#include "bitset_doc_iterator.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
@@ -80,7 +81,6 @@ WildcardType wildcard_type(const irs::bstring& expr) noexcept {
 }
 
 struct multiterm_state : limited_sample_state {
-  std::vector<seek_term_iterator::seek_cookie::ptr> cookies;
   cost::cost_t estimation{};
 };
 
@@ -94,8 +94,10 @@ class multiterm_query : public filter::prepared {
 
   DECLARE_SHARED_PTR(multiterm_query);
 
-  explicit multiterm_query(states_t&& states, boost_t boost)
-    : prepared(boost), states_(std::move(states)) {
+  explicit multiterm_query(states_t&& states, std::vector<bstring>&& stats, boost_t boost)
+    : prepared(boost),
+      states_(std::move(states)),
+      stats_(std::move(stats)) {
   }
 
   virtual doc_iterator::ptr execute(
@@ -105,12 +107,16 @@ class multiterm_query : public filter::prepared {
 
  private:
   states_t states_;
+  std::vector<bstring> stats_;
 }; // multiterm_query
 
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
     const attribute_view& /*ctx*/) const {
+  typedef disjunction<doc_iterator::ptr> disjunction_t;
+
+  // get term state for the specified reader
   auto state = states_.find(segment);
 
   if (!state) {
@@ -118,23 +124,42 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  typedef disjunction<doc_iterator::ptr> disjunction_t;
-
-  disjunction_t::doc_iterators_t itrs;
-  itrs.reserve(state->cookies.size());
-
+  // get terms iterator
   auto terms = state->reader->iterator();
+
+  // prepared disjunction
+  const bool has_bit_set = state->unscored_docs.any();
+  disjunction_t::doc_iterators_t itrs;
+  itrs.reserve(state->scored_states.size() + size_t(has_bit_set)); // +1 for possible bitset_doc_iterator
 
   // get required features for order
   auto& features = ord.features();
 
-  for (auto& cookie : state->cookies) {
-    if (!terms->seek(irs::bytes_ref::NIL, *cookie)) {
-      // wrong cookie
-      continue;
+  // add an iterator for the unscored docs
+  if (has_bit_set) {
+    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
+      state->unscored_docs
+    ));
+  }
+
+  // add an iterator for each of the scored states
+  for (auto& entry : state->scored_states) {
+    assert(entry.first);
+    if (!terms->seek(bytes_ref::NIL, *entry.first)) {
+      return doc_iterator::empty(); // internal error
     }
 
-    itrs.emplace_back(terms->postings(features));
+    auto* stats = stats_[entry.second].c_str();
+    auto docs = terms->postings(features);
+    auto& attrs = docs->attributes();
+
+    // set score
+    auto& score = attrs.get<irs::score>();
+    if (score) {
+      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stats, attrs, boost()));
+    }
+
+    itrs.emplace_back(std::move(docs));
 
     if (IRS_UNLIKELY(!itrs.back().it)) {
       itrs.pop_back();
@@ -198,9 +223,6 @@ filter::prepared::ptr by_wildcard::prepare(
       do {
         it->read(); // read term attributes
 
-        // highest valid doc_id in reader
-        state.unscored_docs.reset((doc_limits::min)() + segment.docs_count());
-        state.cookies.emplace_back(it->cookie());
         state.estimation += docs_count;
 
         scorer.collect(docs_count, segment_id++, state, segment, *it);
@@ -211,7 +233,7 @@ filter::prepared::ptr by_wildcard::prepare(
   std::vector<bstring> stats;
   scorer.score(index, order, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), this->boost()*boost);
+  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), this->boost()*boost);
 }
 
 by_wildcard::by_wildcard() noexcept

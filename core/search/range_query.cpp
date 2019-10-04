@@ -51,7 +51,6 @@ void collect_terms(
     state.reader = &field;
     state.min_term = value;
     state.min_cookie = terms.cookie();
-    state.unscored_docs.reset((irs::doc_limits::min)() + segment.docs_count()); // highest valid doc_id in segment
 
     // get term metadata
     auto& meta = terms.attributes().get<irs::term_meta>();
@@ -60,8 +59,7 @@ void collect_terms(
 
     do {
       // fill scoring candidates
-      scorer.collect(docs_count , state.count, state, segment, terms);
-      ++state.count;
+      scorer.collect(docs_count, state.count++, state, segment, terms);
       state.estimation += docs_count;
 
       if (!terms.next()) {
@@ -252,7 +250,6 @@ doc_iterator::ptr range_query::execute(
       state.reader = reader;
       state.min_term = value;
       state.min_cookie = terms->cookie();
-      state.unscored_docs.reset((doc_limits::min)() + segment.docs_count()); // highest valid doc_id in reader
 
       do {
         // fill scoring candidates

@@ -24,15 +24,31 @@
 #define IRESEARCH_AUTOMATON_H
 
 #include "shared.hpp"
-#include "string.hpp"
+
+#include <functional>
+#include <iostream>
+#include <ios>
+
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 
 #include <fst/vector-fst.h>
 #include <fst/arcsort.h>
 #include <fst/matcher.h>
 #include <fst/determinize.h>
-#include <functional>
-#include <iostream>
-#include <ios>
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+#include "string.hpp"
 
 NS_BEGIN(fst)
 NS_BEGIN(fsa)
