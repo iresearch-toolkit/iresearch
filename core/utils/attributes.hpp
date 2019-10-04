@@ -479,7 +479,7 @@ template<
 // Prevent using MSVS lett than 16.3 due to: `fatal error C1001: An internal
 // error has occurred in the compiler (compiler file 'msc1.cpp', line 1527)`
 #if defined _MSC_VER
-  static_assert(_MSC_VER >= 1923, "_MSC_VER < 1923");
+  static_assert(_MSC_VER < 1920 || _MSC_VER >= 1923, "_MSC_VER < 1920 || _MSC_VER >= 1923");
 #endif
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
