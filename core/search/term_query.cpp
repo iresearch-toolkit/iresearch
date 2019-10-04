@@ -56,7 +56,7 @@ term_query::ptr term_query::make(
     // find term
     auto terms = reader->iterator();
 
-    if (!terms->seek(term)) {
+    if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
       continue;
     }
 
@@ -106,6 +106,10 @@ doc_iterator::ptr term_query::execute(
 
   // find term using cached state
   auto terms = state->reader->iterator();
+
+  if (IRS_UNLIKELY(!terms)) {
+    return doc_iterator::empty();
+  }
 
   // use bytes_ref::blank here since we need just to "jump" to the cached state,
   // and we are not interested in term value itself

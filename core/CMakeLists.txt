@@ -121,7 +121,7 @@ set(IResearch_core_sources
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/wildcard_filter.cpp
-  ./search/range_query.cpp
+  ./search/multiterm_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./store/data_input.cpp 
@@ -203,7 +203,7 @@ set(IResearch_core_headers
   ./search/prefix_filter.hpp
   ./search/range_filter.hpp
   ./search/column_existence_filter.hpp
-  ./search/range_query.hpp
+  ./search/multiterm_query.hpp
   ./search/term_query.hpp
   ./search/boolean_filter.hpp
   ./search/disjunction.hpp

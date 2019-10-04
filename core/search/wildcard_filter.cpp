@@ -25,7 +25,7 @@
 #include "limited_sample_scorer.hpp"
 #include "all_filter.hpp"
 #include "disjunction.hpp"
-#include "range_query.hpp"
+#include "multiterm_query.hpp"
 #include "term_query.hpp"
 #include "bitset_doc_iterator.hpp"
 #include "index/index_reader.hpp"
@@ -80,96 +80,6 @@ WildcardType wildcard_type(const irs::bstring& expr) noexcept {
   return WildcardType::WILDCARD;
 }
 
-struct multiterm_state : limited_sample_state {
-  cost::cost_t estimation{};
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_query
-/// @brief compiled query suitable for filters with non adjacent set of terms
-//////////////////////////////////////////////////////////////////////////////
-class multiterm_query : public filter::prepared {
- public:
-  typedef states_cache<multiterm_state> states_t;
-
-  DECLARE_SHARED_PTR(multiterm_query);
-
-  explicit multiterm_query(states_t&& states, std::vector<bstring>&& stats, boost_t boost)
-    : prepared(boost),
-      states_(std::move(states)),
-      stats_(std::move(stats)) {
-  }
-
-  virtual doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override;
-
- private:
-  states_t states_;
-  std::vector<bstring> stats_;
-}; // multiterm_query
-
-doc_iterator::ptr multiterm_query::execute(
-    const sub_reader& segment,
-    const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
-  typedef disjunction<doc_iterator::ptr> disjunction_t;
-
-  // get term state for the specified reader
-  auto state = states_.find(segment);
-
-  if (!state) {
-    // invalid state
-    return doc_iterator::empty();
-  }
-
-  // get terms iterator
-  auto terms = state->reader->iterator();
-
-  // prepared disjunction
-  const bool has_bit_set = state->unscored_docs.any();
-  disjunction_t::doc_iterators_t itrs;
-  itrs.reserve(state->scored_states.size() + size_t(has_bit_set)); // +1 for possible bitset_doc_iterator
-
-  // get required features for order
-  auto& features = ord.features();
-
-  // add an iterator for the unscored docs
-  if (has_bit_set) {
-    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      state->unscored_docs
-    ));
-  }
-
-  // add an iterator for each of the scored states
-  for (auto& entry : state->scored_states) {
-    assert(entry.first);
-    if (!terms->seek(bytes_ref::NIL, *entry.first)) {
-      return doc_iterator::empty(); // internal error
-    }
-
-    auto* stats = stats_[entry.second].c_str();
-    auto docs = terms->postings(features);
-    auto& attrs = docs->attributes();
-
-    // set score
-    auto& score = attrs.get<irs::score>();
-    if (score) {
-      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stats, attrs, boost()));
-    }
-
-    itrs.emplace_back(std::move(docs));
-
-    if (IRS_UNLIKELY(!itrs.back().it)) {
-      itrs.pop_back();
-      continue;
-    }
-  }
-
-  return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
-}
-
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
@@ -188,9 +98,9 @@ filter::prepared::ptr by_wildcard::prepare(
       return term_query::make(index, order, this->boost()*boost, field, term());
     case WildcardType::PREFIX:
       assert(!term().empty());
-      return range_query::make_from_prefix(index, order, this->boost()*boost, field,
-                                           bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
-                                           scored_terms_limit());
+      return by_prefix::prepare(index, order, this->boost()*boost, field,
+                                bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
+                                scored_terms_limit());
     default:
       break;
   }
@@ -201,7 +111,6 @@ filter::prepared::ptr by_wildcard::prepare(
   multiterm_query::states_t states(index.size());
   auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
 
-  size_t segment_id = 0;
   for (const auto& segment : index) {
     // get term dictionary for field
     const term_reader* reader = segment.field(field);
@@ -224,8 +133,7 @@ filter::prepared::ptr by_wildcard::prepare(
         it->read(); // read term attributes
 
         state.estimation += docs_count;
-
-        scorer.collect(docs_count, segment_id++, state, segment, *it);
+        scorer.collect(docs_count, state.count++, state, segment, *it);
       } while (it->next());
     }
   }
