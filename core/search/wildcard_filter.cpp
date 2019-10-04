@@ -87,18 +87,22 @@ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_view& /*ctx*/) const {
+  boost *= this->boost();
+
   const string_ref field = this->field();
   const auto wildcard_type = irs::wildcard_type(term());
 
   switch (wildcard_type) {
-    case WildcardType::MATCH_ALL:
-      return all().prepare(index, order, this->boost()*boost, ctx);
     case WildcardType::TERM:
-      return term_query::make(index, order, this->boost()*boost, field, term());
+      return term_query::make(index, order, boost, field, term());
+    case WildcardType::MATCH_ALL:
+      return by_prefix::prepare(index, order, boost, field,
+                                bytes_ref::EMPTY, // empty prefix == match all
+                                scored_terms_limit());
     case WildcardType::PREFIX:
       assert(!term().empty());
-      return by_prefix::prepare(index, order, this->boost()*boost, field,
+      return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
                                 scored_terms_limit());
     default:
@@ -141,7 +145,7 @@ filter::prepared::ptr by_wildcard::prepare(
   std::vector<bstring> stats;
   scorer.score(index, order, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), this->boost()*boost);
+  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
 }
 
 by_wildcard::by_wildcard() noexcept
