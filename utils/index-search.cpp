@@ -55,6 +55,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/filter.hpp"
 #include "search/phrase_filter.hpp"
+#include "search/wildcard_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
@@ -113,7 +114,7 @@ enum class category_t {
   OrHighMed,
   OrHighLow,
   Prefix3,
-  Wildcard
+  Wildcard,
   UNKNOWN
 };
 
@@ -282,10 +283,12 @@ irs::filter::prepared::ptr prepareFilter(
 
     terms = irs::string_ref(text, text.size());
     query.field("body").term(terms);
-   }
-  }
 
-  return nullptr;
+    return query.prepare(reader, order);
+   }
+   default:
+    return nullptr;
+  }
 }
 
 void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_category) {
