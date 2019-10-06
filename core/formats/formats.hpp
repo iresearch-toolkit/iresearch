@@ -36,7 +36,7 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
-#include "utils/fst_decl.hpp"
+#include "utils/automaton_decl.hpp"
 
 NS_ROOT
 

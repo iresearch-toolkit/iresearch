@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "wildcard_filter.hpp"
+
+#include "shared.hpp"
 #include "limited_sample_scorer.hpp"
 #include "all_filter.hpp"
 #include "disjunction.hpp"

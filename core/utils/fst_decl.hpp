@@ -46,8 +46,6 @@ typedef fst::VectorFst<byte_arc> vector_byte_fst;
 template<typename Key, typename Weight> class fst_builder;
 typedef fst_builder<byte_type, vector_byte_fst> fst_byte_builder;
 
-typedef fst::VectorFst<fst::fsa::Transition> automaton;
-
 NS_END
 
 #endif
