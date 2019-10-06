@@ -32,7 +32,7 @@ template<typename Label> class StringLeftWeight;
 
 NS_BEGIN(fsa)
 
-class Transition;
+struct Transition;
 
 NS_END // fsa
 NS_END // fst
