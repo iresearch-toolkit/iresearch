@@ -187,8 +187,12 @@
   #define MSVC2017_ONLY(...)
 #endif
 
+// hook for MSVC2019-only code (2019.0 || 2019.1 || 2019.2 || 2019.3)
 #if defined(_MSC_VER) \
-    && (_MSC_VER == 1920)
+    && (_MSC_VER == 1920 \
+        || _MSC_VER == 1921 \
+        || _MSC_VER == 1922 \
+        || _MSC_VER == 1923)
 #define MSVC2019_ONLY(...) __VA_ARGS__
 #else
 #define MSVC2019_ONLY(...)
