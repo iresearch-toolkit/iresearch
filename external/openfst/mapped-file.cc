@@ -5,9 +5,13 @@
 #include <fst/mapped-file.h>
 
 #include <fcntl.h>
+#ifdef HAVE_SYS_MMAN
 #include <sys/mman.h>
+#endif // HAVE_SYS_MMAN
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif  // _MSC_VER
 
 #include <algorithm>
 #include <cerrno>
@@ -22,12 +26,15 @@ MappedFile::MappedFile(const MemoryRegion &region) : region_(region) {}
 
 MappedFile::~MappedFile() {
   if (region_.size != 0) {
+#ifdef HAVE_SYS_MMAN
     if (region_.mmap) {
       VLOG(2) << "munmap'ed " << region_.size << " bytes at " << region_.mmap;
       if (munmap(region_.mmap, region_.size) != 0) {
         LOG(ERROR) << "Failed to unmap region: " << strerror(errno);
       }
-    } else {
+    } else 
+#endif  // HAVE_SYS_MMAN    
+    {
       if (region_.data) {
         operator delete(static_cast<char *>(region_.data) - region_.offset);
       }
@@ -37,6 +44,8 @@ MappedFile::~MappedFile() {
 
 MappedFile *MappedFile::Map(std::istream *istrm, bool memorymap,
                             const std::string &source, size_t size) {
+  (void) memorymap;
+#ifdef HAVE_SYS_MMAN
   const auto spos = istrm->tellg();
   VLOG(2) << "memorymap: " << (memorymap ? "true" : "false") << " source: \""
           << source << "\""
@@ -64,6 +73,8 @@ MappedFile *MappedFile::Map(std::istream *istrm, bool memorymap,
     LOG(WARNING) << "File mapping at offset " << spos << " of file " << source
                  << " could not be honored, reading instead";
   }
+  #endif  // HAVE_SYS_MMAN
+
   // Reads the file into the buffer in chunks not larger than kMaxReadChunk.
   std::unique_ptr<MappedFile> mf(Allocate(size));
   auto *buffer = static_cast<char *>(mf->mutable_data());
@@ -83,6 +94,7 @@ MappedFile *MappedFile::Map(std::istream *istrm, bool memorymap,
 }
 
 MappedFile *MappedFile::MapFromFileDescriptor(int fd, size_t pos, size_t size) {
+#ifdef HAVE_SYS_MMAN
   const int pagesize = sysconf(_SC_PAGESIZE);
   const off_t offset = pos % pagesize;
   const off_t upsize = size + offset;
@@ -98,6 +110,9 @@ MappedFile *MappedFile::MapFromFileDescriptor(int fd, size_t pos, size_t size) {
   region.data = static_cast<void *>(static_cast<char *>(map) + offset);
   region.offset = offset;
   return new MappedFile(region);
+#else
+  return nullptr;
+#endif  // HAVE_SYS_MMAN
 }
 
 MappedFile *MappedFile::Allocate(size_t size, size_t align) {
