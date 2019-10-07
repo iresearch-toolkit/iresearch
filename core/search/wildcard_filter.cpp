@@ -90,11 +90,9 @@ filter::prepared::ptr by_wildcard::prepare(
     boost_t boost,
     const attribute_view& /*ctx*/) const {
   boost *= this->boost();
-
   const string_ref field = this->field();
-  const auto wildcard_type = irs::wildcard_type(term());
 
-  switch (wildcard_type) {
+  switch (wildcard_type(term())) {
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term());
     case WildcardType::MATCH_ALL:
@@ -106,15 +104,13 @@ filter::prepared::ptr by_wildcard::prepare(
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
                                 scored_terms_limit());
-    default:
-      break;
+    case WildcardType::WILDCARD:
+      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
+                                      scored_terms_limit(), index, order, boost);
   }
 
-  assert(WildcardType::WILDCARD == wildcard_type);
-  auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
-
-  // prepare automaton query
-  return prepare_automaton_filter(field, acceptor, scored_terms_limit(), index, order, boost);
+  assert(false);
+  return prepared::empty();
 }
 
 by_wildcard::by_wildcard() noexcept
