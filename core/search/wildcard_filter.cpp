@@ -111,42 +111,10 @@ filter::prepared::ptr by_wildcard::prepare(
   }
 
   assert(WildcardType::WILDCARD == wildcard_type);
-
-  limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
   auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
 
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const term_reader* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
-    }
-
-    auto it = reader->iterator(acceptor);
-
-    auto& meta = it->attributes().get<term_meta>(); // get term metadata
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
-
-    if (it->next()) {
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        it->read(); // read term attributes
-
-        state.estimation += docs_count;
-        scorer.collect(docs_count, state.count++, state, segment, *it);
-      } while (it->next());
-    }
-  }
-
-  std::vector<bstring> stats;
-  scorer.score(index, order, stats);
-
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  // prepare automaton query
+  return prepare_automaton_filter(field, acceptor, scored_terms_limit(), index, order, boost);
 }
 
 by_wildcard::by_wildcard() noexcept

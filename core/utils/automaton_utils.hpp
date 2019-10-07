@@ -25,6 +25,7 @@
 
 #include "automaton.hpp"
 #include "formats/formats.hpp"
+#include "search/filter.hpp"
 
 NS_ROOT
 
@@ -249,10 +250,16 @@ class automaton_term_iterator final : public seek_term_iterator {
   matcher_t matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
-}; // intersect_term_iterator
+}; // automaton_term_iterator
+
+IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
+  const string_ref& field,
+  const automaton& acceptor,
+  size_t scored_terms_limit,
+  const index_reader& index,
+  const order::prepared& order,
+  boost_t boost);
 
 NS_END
-
-
 
 #endif
