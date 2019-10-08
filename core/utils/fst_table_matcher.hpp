@@ -48,7 +48,7 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
   return { labels.begin(), labels.end() };
 }
 
-template<typename F, size_t CacheSize = 256, fst::MatchType TYPE = MATCH_INPUT>
+template<typename F, typename F::Arc::Label Rho, size_t CacheSize = 256, fst::MatchType TYPE = MATCH_INPUT>
 class TableMatcher : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
@@ -83,26 +83,34 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
       auto begin = start_labels_.begin();
       auto end = start_labels_.end();
 
-      for (; !aiter.Done() && begin != end;) {
-        for (; !aiter.Done() && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) < *begin; aiter.Next()) { }
-
-        if (aiter.Done()) {
-          break;
-        }
-
-        for (; begin != end  && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) > *begin; ++begin) { }
-
-        if (begin == end) {
-          break;
-        }
-
-        auto& arc = aiter.Value();
-        if ((TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel) == *begin) {
-          transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), begin)] = arc.nextstate;
-          ++begin;
-          aiter.Next();
+      fst::SortedMatcher<FST> matcher(&fst, fst::MATCH_INPUT);
+      matcher.SetState(state);
+      for (auto t = transitions_.data() + state*start_labels_.size(); begin != end; ++begin, ++t) {
+        if (matcher.Find(*begin))  {
+          *t = matcher.Value().nextstate;
         }
       }
+
+      //for (; !aiter.Done() && begin != end;) {
+      //  for (; !aiter.Done() && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) < *begin; aiter.Next()) { }
+
+      //  if (aiter.Done()) {
+      //    break;
+      //  }
+
+      //  for (; begin != end  && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) > *begin; ++begin) { }
+
+      //  if (begin == end) {
+      //    break;
+      //  }
+
+      //  auto& arc = aiter.Value();
+      //  if ((TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel) == *begin) {
+      //    transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), begin)] = arc.nextstate;
+      //    ++begin;
+      //    aiter.Next();
+      //  }
+      //}
     }
 
     // initialize lookup table for first CacheSize labels,
@@ -124,8 +132,8 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     }
   }
 
-  virtual TableMatcher<FST>* Copy(bool) const override {
-    return new TableMatcher<FST>(*this);
+  virtual TableMatcher<FST, Rho>* Copy(bool) const override {
+    return new TableMatcher<FST, Rho>(*this);
   }
 
   virtual MatchType Type(bool test) const override {
@@ -160,13 +168,16 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual bool Find(Label label) noexcept final {
-    const auto label_offset = (label < IRESEARCH_COUNTOF(cached_label_offsets_)
-                               ? cached_label_offsets_[size_t(label)]
-                               : find_label_offset(label));
+    auto label_offset = (label < IRESEARCH_COUNTOF(cached_label_offsets_)
+                           ? cached_label_offsets_[size_t(label)]
+                           : find_label_offset(label));
 
     if (label_offset == start_labels_.size()) {
-      arc_.nextstate = kNoStateId;
-      return false;
+      if (start_labels_.back() != Rho) {
+        return false;
+      }
+
+      label_offset = start_labels_.size() - 1;
     }
 
     state_ = state_begin_ + label_offset;

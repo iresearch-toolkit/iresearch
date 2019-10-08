@@ -80,6 +80,7 @@
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 #include "utils/fst_matcher.hpp"
+#include "utils/fst_table_matcher.hpp"
 
 NS_LOCAL
 
@@ -784,8 +785,7 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
     : term_iterator_base(owner),
-      a_(&a),
-      matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho),
+      a_(&a), matcher_(a),
       cur_block_(nullptr) {
   }
 
@@ -858,7 +858,7 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   const automaton* a_;
-  fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_;
+  fst::TableMatcher<fst::fsa::Automaton, fst::fsa::kRho> matcher_;
   block_stack_t block_stack_;
   block_state* cur_block_;
 }; // automaton_term_iterator
