@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+#include "fst/matcher.h"
 #include "utils/automaton.hpp"
 #include "utils/fst_table_matcher.hpp"
 
@@ -54,13 +55,22 @@ TEST(fst_table_matcher_test, test_matcher) {
   // check automaton
   {
     using matcher_t = fst::TableMatcher<fst::fsa::Automaton>;
+    using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton>;
 
+    expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
     matcher_t matcher(a);
-    matcher.SetState(3);
-    ASSERT_TRUE(matcher.Find(1));
-    ASSERT_EQ(4, matcher.Value().nextstate);
-    ASSERT_FALSE(matcher.Find(2));
-    ASSERT_EQ(fst::kNoStateId, matcher.Value().nextstate);
+    for (fst::fsa::Automaton::StateId state = 0; state < a.NumStates(); ++state) {
+      expected_matcher.SetState(state);
+      matcher.SetState(state);
+
+      for (matcher_t::Label min = 1, max = 2049; min < max; ++min) {
+        const auto found = expected_matcher.Find(min);
+        ASSERT_EQ(found, matcher.Find(min));
+        if (found) {
+          ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
+        }
+      }
+    }
   }
 }
 

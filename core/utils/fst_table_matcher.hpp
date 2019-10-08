@@ -114,11 +114,12 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     auto end = start_labels_.end();
     for (size_t i = 0, offset = 0;
          i < IRESEARCH_COUNTOF(cached_label_offsets_); ++i) {
-      cached_label_offsets_[i] = offset;
-
       if (begin != end && *begin == i) {
+        cached_label_offsets_[i] = offset;
         ++offset;
         ++begin;
+      } else {
+        cached_label_offsets_[i] = start_labels_.size();
       }
     }
   }
@@ -159,9 +160,16 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual bool Find(Label label) noexcept final {
-    state_ = state_begin_ + (label < IRESEARCH_COUNTOF(cached_label_offsets_)
-                             ? cached_label_offsets_[size_t(label)]
-                             : find_label_offset(label));
+    const auto label_offset = (label < IRESEARCH_COUNTOF(cached_label_offsets_)
+                               ? cached_label_offsets_[size_t(label)]
+                               : find_label_offset(label));
+
+    if (label_offset == start_labels_.size()) {
+      arc_.nextstate = kNoStateId;
+      return false;
+    }
+
+    state_ = state_begin_ + label_offset;
     assert(state_ < state_end_);
     arc_.nextstate = *state_;
     return arc_.nextstate != kNoStateId;
@@ -200,6 +208,10 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
  private:
   size_t find_label_offset(Label label) const noexcept {
     const auto it = std::lower_bound(start_labels_.begin(), start_labels_.end(), label);
+    if (it == start_labels_.end() || *it != label) {
+      return start_labels_.size();
+    }
+
     assert(it != start_labels_.end());
     assert(start_labels_.begin() <= it);
     return size_t(std::distance(start_labels_.begin(), it));
