@@ -76,8 +76,8 @@ NS_BEGIN(analysis)
 struct text_token_stream::state_t {
   struct ngram_state_t {
     const byte_type* it; // iterator
-    bool ngram_started{}; // if word ngram started
     uint32_t length{};
+    bool ngram_started{}; // if word ngram started
   };
 
   std::shared_ptr<icu::BreakIterator> break_iterator;
@@ -89,10 +89,10 @@ struct text_token_stream::state_t {
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<icu::Transliterator> transliterator;
+  ngram_state_t ngram_state;
   bytes_term term;
   uint32_t start{};
   uint32_t end{};
-  ngram_state_t ngram_state;
   state_t(const options_t& opts, const stopwords_t& stopw) :
     icu_locale("C"), options(opts), stopwords(stopw) {
     // NOTE: use of the default constructor for Locale() or
@@ -1078,7 +1078,7 @@ bool text_token_stream::next_ngram() {
     do {
         utf8::unchecked::next(state_->ngram_state.it);
         ++state_->ngram_state.length;
-    } while ((++i < state_->options.min_gram) &&
+    } while (++i < state_->options.min_gram &&
         state_->ngram_state.it != end);
   } else {
     // not first ngram in a word
@@ -1086,7 +1086,7 @@ bool text_token_stream::next_ngram() {
     utf8::unchecked::next(state_->ngram_state.it);
     ++state_->ngram_state.length;
   }
-  // if a word have finished
+  // if a word has finished
   if (state_->ngram_state.it == end) {
     // no unwatched ngrams in a word
     state_->ngram_state.ngram_started = false;

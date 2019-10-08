@@ -40,16 +40,16 @@ class text_token_stream : public analyzer, util::noncopyable {
     // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
-    bool explicit_stopwords_set{};
     std::locale locale;
-    bool accent{false}; // remove accents from letters, mach original implementation
-    bool stemming{true}; // try to stem if possible, match original implementation
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
+    size_t max_gram{};
+    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
+    bool explicit_stopwords_set{};
+    bool accent{}; // remove accents from letters, mach original implementation
+    bool stemming{true}; // try to stem if possible, match original implementation
     // needed for mark empty min_gram as valid and prevent loading from defaults
     bool min_gram_set{};
-    size_t max_gram{};
     // needed for mark empty max_gram as valid and prevent loading from defaults
     bool max_gram_set{};
     bool preserve_original{}; // emit input data as a token

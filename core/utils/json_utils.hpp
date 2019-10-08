@@ -29,15 +29,43 @@
 
 NS_ROOT
 
-bool get_uint64(rapidjson::Document const& json,
-     const irs::string_ref& name,
-     uint64_t& value);
+inline bool get_uint64(
+    rapidjson::Document const& json,
+    const irs::string_ref& name,
+    uint64_t& value
+) {
+  if (!json.HasMember(name.c_str())) {
+    return false;
+  }
 
-bool get_bool(
+  const auto& attr = json[name.c_str()];
+
+  if (!attr.IsNumber()) {
+    return false;
+  }
+
+  value = attr.GetUint64();
+  return true;
+}
+
+inline bool get_bool(
     rapidjson::Document const& json,
     const irs::string_ref& name,
     bool& value
-);
+) {
+  if (!json.HasMember(name.c_str())) {
+    return false;
+  }
+
+  const auto& attr = json[name.c_str()];
+
+  if (!attr.IsBool()) {
+    return false;
+  }
+
+  value = attr.GetBool();
+  return true;
+}
 
 NS_END
 
