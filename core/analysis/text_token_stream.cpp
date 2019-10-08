@@ -1098,9 +1098,9 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  auto set_ngram_finished = irs::make_finally([state = this->state_, &finished]()->void {
+  auto set_ngram_finished = irs::make_finally([this, &finished]()->void {
     if (finished) {
-      state->set_ngram_finished();
+      state_->set_ngram_finished();
     }
   });
 
