@@ -79,7 +79,8 @@ inline automaton match_char(automaton::Arc::Label c) {
 template<
   typename Char,
   typename Traits = wildcard_traits<Char>,
-  typename = typename std::enable_if<sizeof(Char) < sizeof(fst::fsa::kMaxLabel)>::type,
+  // brackets over condition are for circumventing MSVC parser bug
+  typename = typename std::enable_if<(sizeof(Char) < sizeof(fst::fsa::kMaxLabel))>::type, 
   typename = typename std::enable_if<Traits::MATCH_ANY_CHAR != Traits::MATCH_ANY_STRING>::type>
 automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   automaton a;
