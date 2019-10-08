@@ -99,7 +99,6 @@ class text_token_stream : public analyzer, util::noncopyable {
  private:
   bool next_word();
   bool next_ngram();
-  bool is_search_ngram() const;
 
  private:
   irs::attribute_view attrs_;

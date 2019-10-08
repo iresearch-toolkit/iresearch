@@ -77,7 +77,6 @@ struct text_token_stream::state_t {
   struct ngram_state_t {
     const byte_type* it; // iterator
     uint32_t length{};
-    bool ngram_started{}; // if word ngram started
   };
 
   std::shared_ptr<icu::BreakIterator> break_iterator;
@@ -89,7 +88,7 @@ struct text_token_stream::state_t {
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<icu::Transliterator> transliterator;
-  ngram_state_t ngram_state;
+  ngram_state_t ngram;
   bytes_term term;
   uint32_t start{};
   uint32_t end{};
@@ -99,6 +98,20 @@ struct text_token_stream::state_t {
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
     icu_locale.setToBogus(); // set to uninitialized
+  }
+
+  bool is_search_ngram() const {
+    // if min or max or preserveOriginal are set then search ngram
+    return options.min_gram_set || options.max_gram_set ||
+      options.preserve_original_set;
+  }
+
+  bool is_ngram_finished() const {
+    return 0 == ngram.length;
+  }
+
+  void set_ngram_finished() {
+    ngram.length = 0;
   }
 };
 
@@ -1011,21 +1024,20 @@ bool text_token_stream::reset(const string_ref& data) {
   state_->term.value(bytes_ref::NIL);
   state_->start = integer_traits<uint32_t>::const_max;
   state_->end = integer_traits<uint32_t>::const_max;
-  state_->ngram_state.ngram_started = false;
-  state_->ngram_state.length = 0;
+  state_->set_ngram_finished();
   inc_.clear();
 
   return true;
 }
 
 bool text_token_stream::next() {
-  if (is_search_ngram()) {
+  if (state_->is_search_ngram()) {
     while (true) {
       // if a word has not started for ngrams yet
-      if (!state_->ngram_state.ngram_started && !next_word()) {
+      if (state_->is_ngram_finished() && !next_word()) {
         return false;
       }
-      // get next ngram taking in account min and max
+      // get next ngram taking into account min and max
       if (next_ngram()) {
         return true;
       }
@@ -1068,60 +1080,61 @@ bool text_token_stream::next_word() {
 bool text_token_stream::next_ngram() {
   auto end = state_->term.value().end();
   // if there are no ngrams yet then a new word started
-  if (!state_->ngram_state.ngram_started) {
-    state_->ngram_state.it = state_->term.value().begin();
-    state_->ngram_state.ngram_started = true;
-    state_->ngram_state.length = 0;
+  if (state_->is_ngram_finished()) {
+    state_->ngram.it = state_->term.value().begin();
     inc_.clear();
     decltype(state_->options.min_gram) i = 0;
     // find the first ngram > min
     do {
-        utf8::unchecked::next(state_->ngram_state.it);
-        ++state_->ngram_state.length;
+        utf8::unchecked::next(state_->ngram.it);
+        ++state_->ngram.length;
     } while (++i < state_->options.min_gram &&
-        state_->ngram_state.it != end);
+        state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc_.value = 0; // staying on the current pos
-    utf8::unchecked::next(state_->ngram_state.it);
-    ++state_->ngram_state.length;
+    utf8::unchecked::next(state_->ngram.it);
+    ++state_->ngram.length;
   }
+
+  bool finished{};
+  auto set_ngram_finished = irs::make_finally([state = this->state_, &finished]()->void {
+    if (finished) {
+      state->set_ngram_finished();
+    }
+  });
+
   // if a word has finished
-  if (state_->ngram_state.it == end) {
+  if (state_->ngram.it == end) {
     // no unwatched ngrams in a word
-    state_->ngram_state.ngram_started = false;
+    finished = true;
   }
 
   // if length > max
-  if (state_->options.max_gram_set && state_->ngram_state.length > state_->options.max_gram) {
+  if (state_->options.max_gram_set && state_->ngram.length > state_->options.max_gram) {
     // no unwatched ngrams in a word
-    state_->ngram_state.ngram_started = false;
+    finished = true;
     if (state_->options.preserve_original) {
-      state_->ngram_state.it = end;
+      state_->ngram.it = end;
     } else {
       return false;
     }
   }
 
   // if length > min or preserveOriginal
-  if (state_->ngram_state.length >= state_->options.min_gram || state_->options.preserve_original) {
+  if (state_->ngram.length >= state_->options.min_gram || state_->options.preserve_original) {
     // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
     static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
 
-    auto size = static_cast<uint32_t>(std::distance(state_->term.value().begin(), state_->ngram_state.it));
+    auto size = static_cast<uint32_t>(std::distance(state_->term.value().begin(), state_->ngram.it));
     term_.value(irs::bstring(state_->term.value().c_str(), size));
     offs_.start = state_->start;
     offs_.end = state_->start + size;
 
     return true;
   }
-  return false;
-}
 
-bool text_token_stream::is_search_ngram() const {
-  // if min or max or preserveOriginal are set then search ngram
-  return state_->options.min_gram_set || state_->options.max_gram_set ||
-    state_->options.preserve_original_set;
+  return false;
 }
 
 NS_END // analysis
