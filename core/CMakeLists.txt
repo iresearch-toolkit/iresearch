@@ -151,6 +151,7 @@ set(IResearch_core_sources
   ./utils/mmap_utils.cpp 
   ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
+  ./utils/json_utils.cpp
   ./utils/math_utils.cpp 
   ./utils/memory.cpp
   ./utils/text_format.cpp
