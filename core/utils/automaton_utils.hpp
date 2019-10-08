@@ -98,6 +98,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
     escaped = false;
     if (match_all_state != fst::kNoStateId) {
       auto state = a.AddState();
+      a.ReserveArcs(state, 2);
       a.EmplaceArc(match_all_state, fst::fsa::kRho, state);
       a.EmplaceArc(state, fst::fsa::kRho, state);
       a.EmplaceArc(state, c, to);
