@@ -183,7 +183,7 @@ install:
   ############################################################################
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" mkdir %BOOST_ROOT%
   - cd %BOOST_ROOT%
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" appveyor DownloadFile "https://dl.bintray.com/boostorg/release/%BOOST_VERSION%/source/boost_%BOOST_ARCHIVE%.7z" -FileName boost_%BOOST_ARCHIVE%.7z && 7z x boost_%BOOST_ARCHIVE%.7z -o. > nul
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" appveyor DownloadFile "https://dl.bintray.com/boostorg/release/%BOOST_VERSION%/source/%BOOST_ARCHIVE%.7z" -FileName boost_%BOOST_ARCHIVE%.7z && 7z x boost_%BOOST_ARCHIVE%.7z -o. > nul
   - bootstrap.bat
   - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-locale --with-system --with-thread
 
