@@ -1088,9 +1088,9 @@ bool text_token_stream::next_ngram() {
     inc_.clear();
     // find the first ngram > min
     do {
-        utf8::unchecked::next(state_->ngram.it);
+      utf8::unchecked::next(state_->ngram.it);
     } while (++state_->ngram.length < state_->options.min_gram &&
-        state_->ngram.it != end);
+             state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc_.value = 0; // staying on the current pos
@@ -1112,7 +1112,8 @@ bool text_token_stream::next_ngram() {
   }
 
   // if length > max
-  if (state_->options.max_gram_set && state_->ngram.length > state_->options.max_gram) {
+  if (state_->options.max_gram_set &&
+      state_->ngram.length > state_->options.max_gram) {
     // no unwatched ngrams in a word
     finished = true;
     if (state_->options.preserve_original) {
@@ -1123,7 +1124,8 @@ bool text_token_stream::next_ngram() {
   }
 
   // if length >= min or preserveOriginal
-  if (state_->ngram.length >= state_->options.min_gram || state_->options.preserve_original) {
+  if (state_->ngram.length >= state_->options.min_gram ||
+      state_->options.preserve_original) {
     // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
     static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
 
