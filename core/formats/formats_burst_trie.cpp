@@ -664,8 +664,7 @@ class term_iterator final : public term_iterator_base {
  public:
   explicit term_iterator(const term_reader& owner)
     : term_iterator_base(owner),
-      matcher_(&fst(), fst::MATCH_INPUT), // pass pointer to avoid copying FST
-      cur_block_(nullptr) {
+      matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
     attrs_.emplace(state_);
 
@@ -775,7 +774,7 @@ class term_iterator final : public term_iterator_base {
   matcher_t matcher_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
-  block_iterator* cur_block_;
+  block_iterator* cur_block_{};
 }; // term_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -785,8 +784,7 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
     : term_iterator_base(owner),
-      a_(&a), matcher_(a),
-      cur_block_(nullptr) {
+      a_(&a) {
   }
 
   virtual bool next() override;
@@ -858,9 +856,9 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   const automaton* a_;
-  fst::TableMatcher<fst::fsa::Automaton, fst::fsa::kRho> matcher_;
+  fst::TableMatcher<fst::fsa::Automaton, fst::fsa::kRho> matcher_{ *a_ };
   block_stack_t block_stack_;
-  block_state* cur_block_;
+  block_state* cur_block_{};
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {

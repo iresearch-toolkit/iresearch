@@ -62,8 +62,8 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
 
   explicit TableMatcher(const FST& fst)
     : start_labels_(fst::getStartLabels<F, TYPE>(fst)),
-      fst_(&fst),
-      arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId) {
+      arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
+      fst_(&fst) {
     static constexpr auto props = (TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
         | (TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
         | (TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
@@ -83,34 +83,34 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
       auto begin = start_labels_.begin();
       auto end = start_labels_.end();
 
-      fst::SortedMatcher<FST> matcher(&fst, fst::MATCH_INPUT);
-      matcher.SetState(state);
-      for (auto t = transitions_.data() + state*start_labels_.size(); begin != end; ++begin, ++t) {
-        if (matcher.Find(*begin))  {
-          *t = matcher.Value().nextstate;
+      aiter.Seek(fst.NumArcs(state)-1);
+      if (!aiter.Done()) {
+        const auto& arc = aiter.Value();
+        if (Rho == (TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel)) {
+          std::fill_n(transitions_.begin() + state*start_labels_.size(), start_labels_.size(), arc.nextstate);
         }
       }
 
-      //for (; !aiter.Done() && begin != end;) {
-      //  for (; !aiter.Done() && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) < *begin; aiter.Next()) { }
+      for (aiter.Seek(0); !aiter.Done() && begin != end;) {
+        for (; !aiter.Done() && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) < *begin; aiter.Next()) { }
 
-      //  if (aiter.Done()) {
-      //    break;
-      //  }
+        if (aiter.Done()) {
+          break;
+        }
 
-      //  for (; begin != end  && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) > *begin; ++begin) { }
+        for (; begin != end  && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) > *begin; ++begin) { }
 
-      //  if (begin == end) {
-      //    break;
-      //  }
+        if (begin == end) {
+          break;
+        }
 
-      //  auto& arc = aiter.Value();
-      //  if ((TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel) == *begin) {
-      //    transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), begin)] = arc.nextstate;
-      //    ++begin;
-      //    aiter.Next();
-      //  }
-      //}
+        auto& arc = aiter.Value();
+        if ((TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel) == *begin) {
+          transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), begin)] = arc.nextstate;
+          ++begin;
+          aiter.Next();
+        }
+      }
     }
 
     // initialize lookup table for first CacheSize labels,
