@@ -1078,10 +1078,13 @@ bool text_token_stream::next_word() {
 }
 
 bool text_token_stream::next_ngram() {
+  auto begin = state_->term.value().begin();
   auto end = state_->term.value().end();
+  assert(begin != end);
+
   // if there are no ngrams yet then a new word started
   if (state_->is_ngram_finished()) {
-    state_->ngram.it = state_->term.value().begin();
+    state_->ngram.it = begin;
     inc_.clear();
     // find the first ngram > min
     do {
@@ -1119,12 +1122,12 @@ bool text_token_stream::next_ngram() {
     }
   }
 
-  // if length > min or preserveOriginal
+  // if length >= min or preserveOriginal
   if (state_->ngram.length >= state_->options.min_gram || state_->options.preserve_original) {
     // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
     static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
 
-    auto size = static_cast<uint32_t>(std::distance(state_->term.value().begin(), state_->ngram.it));
+    auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
     term_.value(irs::bstring(state_->term.value().c_str(), size));
     offs_.start = state_->start;
     offs_.end = state_->start + size;
