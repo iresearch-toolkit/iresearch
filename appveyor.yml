@@ -89,7 +89,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -98,7 +98,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -107,7 +107,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -116,7 +116,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -125,7 +125,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -134,7 +134,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ARCHIVE: "boost_1_69_0"
       BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:/Libraries/boost_1_69_0"
+      BOOST_ROOT: "C:\Libraries\boost_1_69_0"
       CONFIGURATION: Release
 
 install:  
