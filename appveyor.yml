@@ -87,36 +87,36 @@ environment:
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_69_0"
-      BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_69_0"
+      BOOST_ARCHIVE: "boost_1_71_0"
+      BOOST_VERSION: "1.71.0"
+      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_69_0"
-      BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_69_0"
+      BOOST_ARCHIVE: "boost_1_71_0"
+      BOOST_VERSION: "1.71.0"
+      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2019
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_69_0"
-      BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_69_0"
+      BOOST_ARCHIVE: "boost_1_71_0"
+      BOOST_VERSION: "1.71.0"
+      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2019
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_69_0"
-      BOOST_VERSION: "1.69.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_69_0"
+      BOOST_ARCHIVE: "boost_1_71_0"
+      BOOST_VERSION: "1.71.0"
+      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
       CONFIGURATION: Release
 
 install:
