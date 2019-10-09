@@ -1083,12 +1083,10 @@ bool text_token_stream::next_ngram() {
   if (state_->is_ngram_finished()) {
     state_->ngram.it = state_->term.value().begin();
     inc_.clear();
-    decltype(state_->options.min_gram) i = 0;
     // find the first ngram > min
     do {
         utf8::unchecked::next(state_->ngram.it);
-        ++state_->ngram.length;
-    } while (++i < state_->options.min_gram &&
+    } while (++state_->ngram.length < state_->options.min_gram &&
         state_->ngram.it != end);
   } else {
     // not first ngram in a word

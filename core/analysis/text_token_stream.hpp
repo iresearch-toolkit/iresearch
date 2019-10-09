@@ -46,7 +46,7 @@ class text_token_stream : public analyzer, util::noncopyable {
     size_t max_gram{};
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{};
-    bool accent{}; // remove accents from letters, mach original implementation
+    bool accent{}; // remove accents from letters, match original implementation
     bool stemming{true}; // try to stem if possible, match original implementation
     // needed for mark empty min_gram as valid and prevent loading from defaults
     bool min_gram_set{};
