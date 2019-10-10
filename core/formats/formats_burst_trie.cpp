@@ -939,8 +939,8 @@ bool automaton_term_iterator::next() {
       }
 
       if (arc == arcend) {
-        // pop current block
         if (!rhoarc) {
+          // pop current block
           match = POP;
           return;
         }
@@ -953,7 +953,7 @@ bool automaton_term_iterator::next() {
           state = arc->nextstate;
         } else {
           if (!rhoarc) {
-            match = POP;
+            // skip current entry
             return;
           }
 
@@ -1027,17 +1027,17 @@ bool automaton_term_iterator::next() {
 
       if (MATCH == match) {
         return true;
-      }
+      } else if (POP == match) {
+        if (&block_stack_.front() == cur_block_) {
+          // need to pop root block, we're done
+          term_.reset();
+          cur_block_->it.reset();
+          return false;
+        }
 
-//      if (POP == match) {
-//        if (&block_stack_.front() == cur_block_) {
-//          term_.reset();
-//          return false;
-//        }
-//
-//        cur_block_ = pop_block();
-//        break;
-//      }
+        cur_block_ = pop_block();
+        break; // continue with popped block
+      }
     } while (!cur_block_->it.end());
   }
 }
