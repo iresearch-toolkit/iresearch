@@ -74,8 +74,6 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
 
     // initialize transition table
     transitions_.resize(num_states*start_labels_.size(), kNoStateId);
-
-    size_t i = 0;
     for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
 
@@ -195,8 +193,14 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual void Next() noexcept final {
-    while (!Done() && *state_ != kNoStateId) {
-      ++state_;
+    assert(state_ < state_end_);
+    while (!Done()) {
+      if (*++state_ != kNoLabel) {
+        auto& label = (TYPE == MATCH_INPUT ? arc_.ilabel : arc_.olabel);
+        label = start_labels_[size_t(std::distance(state_begin_, state_))];
+        arc_.nextstate = *state_;
+        break;
+      }
     }
   }
 
@@ -208,7 +212,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     return MatcherBase<Arc>::Priority(s);
   }
 
-  virtual const FST &GetFst() const noexcept override { 
+  virtual const FST &GetFst() const noexcept override {
     return *fst_;
   }
 

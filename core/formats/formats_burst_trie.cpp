@@ -821,18 +821,41 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
  private:
-  struct block_state {
-    block_state(byte_weight&& out, size_t prefix, automaton::StateId state)
-      : it(std::move(out), prefix), state(state) {
+  static const automaton::Arc* rho_arc(const automaton::Arc* begin,
+                                       const automaton::Arc* end) noexcept {
+    if (begin != end) {
+      auto* back = end-1;
+      if (back->ilabel == fst::fsa::kRho) {
+        return back;
+      }
     }
 
-    block_state(uint64_t start, size_t prefix, automaton::StateId state)
-      : it(start, prefix), state(state) {
+    return nullptr;
+  }
+
+  struct block_state {
+    block_state(byte_weight&& out, size_t prefix,
+                automaton::StateId state,
+                const automaton::Arc* arcs, size_t narcs) noexcept
+      : it(std::move(out), prefix), state(state),
+        arc(arcs), arcend(arcs + narcs),
+        rhoarc(rho_arc(arc, arcend)) {
+    }
+
+    block_state(uint64_t start, size_t prefix,
+                automaton::StateId state,
+                const automaton::Arc* arcs, size_t narcs) noexcept
+      : it(start, prefix), state(state),
+        arc(arcs), arcend(arcs + narcs),
+        rhoarc(rho_arc(arc, arcend)) {
     }
 
     block_iterator it;
-    automaton::StateId state;
-  };
+    automaton::StateId state;       // state to which current block belongs
+    const automaton::Arc* arc;      // current arc
+    const automaton::Arc* arcend;   // end of arcs range
+    const automaton::Arc* rhoarc;   // rho arc if present
+  }; // block_state
 
   typedef std::deque<block_state> block_stack_t;
 
@@ -846,12 +869,18 @@ class automaton_term_iterator final : public term_iterator_base {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix, state);
+    fst::ArcIteratorData<automaton::Arc> data;
+    a_->InitArcIterator(state, &data);
+
+    block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
   }
 
   block_state* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
-    block_stack_.emplace_back(start, prefix, state);
+    fst::ArcIteratorData<automaton::Arc> data;
+    a_->InitArcIterator(state, &data);
+
+    block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
   }
 
@@ -882,24 +911,73 @@ bool automaton_term_iterator::next() {
     }
   }
 
-  bool match;
+  enum {
+    MATCH, // current entry is valid term
+    SKIP,  // skip current entry
+    POP    // pop current block
+  } match;
+
   automaton::StateId state;
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
-    match = false;
+    match = SKIP;
     state = cur_block_->state;
 
-    auto begin = suffix;
-    const auto end = begin + suffix_size;
+    const auto* begin = suffix;
+    const auto* end = begin + suffix_size;
 
-    for (matcher_.SetState(state); begin < end; ++begin) {
-      if (!matcher_.Find(*begin)) {
-        // suffix doesn't match
-        return;
+    if (begin != end) {
+      const auto* arc = cur_block_->arc;
+      const auto* arcend = cur_block_->arcend;
+      const auto* rhoarc = cur_block_->rhoarc;
+
+      // binary search???
+      for (;arc != arcend; ++arc) {
+        if (*begin <= arc->ilabel) {
+          break;
+        }
       }
 
-      state = matcher_.Value().nextstate;
-      matcher_.SetState(state);
+      if (arc == arcend) {
+        // pop current block
+        if (!rhoarc) {
+          match = POP;
+          return;
+        }
+
+        state = rhoarc->nextstate;
+      } else {
+        cur_block_->arc = arc; // update arc in current block
+
+        if (*begin == arc->ilabel) {
+          state = arc->nextstate;
+        } else {
+          if (!rhoarc) {
+            match = POP;
+            return;
+          }
+
+          state = rhoarc->nextstate;
+        }
+      }
+
+#ifdef IRESEARCH_DEBUG
+      matcher_.SetState(cur_block_->state);
+      assert(matcher_.Find(*begin));
+      assert(matcher_.Value().nextstate == state);
+#endif
+
+      ++begin; // already match first suffix label
+
+      for (matcher_.SetState(state); begin < end; ++begin) {
+        if (!matcher_.Find(*begin)) {
+          // suffix doesn't match
+          return;
+        }
+
+        state = matcher_.Value().nextstate;
+        matcher_.SetState(state);
+      }
     }
 
     assert(begin == end);
@@ -908,7 +986,7 @@ bool automaton_term_iterator::next() {
       case ET_TERM: {
         if (a_->Final(state)) {
           copy(suffix, cur_block_->it.prefix(), suffix_size);
-          match = true;
+          match = MATCH;
         }
       } break;
       case ET_BLOCK: {
@@ -947,9 +1025,19 @@ bool automaton_term_iterator::next() {
     do {
       cur_block_->it.next(read_suffix);
 
-      if (match) {
+      if (MATCH == match) {
         return true;
       }
+
+//      if (POP == match) {
+//        if (&block_stack_.front() == cur_block_) {
+//          term_.reset();
+//          return false;
+//        }
+//
+//        cur_block_ = pop_block();
+//        break;
+//      }
     } while (!cur_block_->it.end());
   }
 }
@@ -1781,11 +1869,18 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   const size_t begin = end - count;
   size_t block_start = begin; // begin of current block to write
 
+  size_t min_suffix = integer_traits<size_t>::const_max;
+  size_t max_suffix = 0;
+
   int16_t last_label = block_t::INVALID_LABEL; // last lead suffix label
   int16_t next_label = block_t::INVALID_LABEL; // next lead suffix label in current block
   for (size_t i = begin; i < end; ++i) {
     const entry& e = stack_[i];
     const irs::bytes_ref& data = e.data();
+
+    const size_t suffix = data.size() - prefix;
+    min_suffix = std::min(suffix, min_suffix);
+    max_suffix = std::max(suffix, max_suffix);
 
     const int16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
@@ -1801,6 +1896,8 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
+        min_suffix = integer_traits<size_t>::const_max;
+        max_suffix = 0;
       }
 
       last_label = label;
