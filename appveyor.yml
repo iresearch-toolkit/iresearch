@@ -15,69 +15,69 @@ environment:
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
 
-  ############################################################################
-  # Visual Studio 2015
-  ############################################################################
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Release
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2015
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Release
-
-  ############################################################################
-  # Visual Studio 2017
-  ############################################################################
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ROOT: C:/Libraries/boost_1_64_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ROOT: C:/Libraries/boost_1_64_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2017
-      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ROOT: C:/Libraries/boost_1_64_0
-      CONFIGURATION: Release
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2017
-      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ROOT: C:/Libraries/boost_1_64_0
-      CONFIGURATION: Release
+#  ############################################################################
+#  # Visual Studio 2015
+#  ############################################################################
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+#      BUILD_TYPE: shared
+#      TEST_OPTIONS: --gtest_filter=*type_utils*
+#      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
+#      BOOST_ROOT: C:/Libraries/boost_1_60_0
+#      CONFIGURATION: Debug
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+#      BUILD_TYPE: static
+#      TEST_OPTIONS: --gtest_filter=*type_utils*
+#      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
+#      BOOST_ROOT: C:/Libraries/boost_1_60_0
+#      CONFIGURATION: Debug
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+#      BUILD_TYPE: shared
+#      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs*
+#      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
+#      BOOST_ROOT: C:/Libraries/boost_1_60_0
+#      CONFIGURATION: Release
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+#      BUILD_TYPE: static
+#      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2015
+#      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
+#      BOOST_ROOT: C:/Libraries/boost_1_60_0
+#      CONFIGURATION: Release
+#
+#  ############################################################################
+#  # Visual Studio 2017
+#  ############################################################################
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      BUILD_TYPE: shared
+#      TEST_OPTIONS: --gtest_filter=*type_utils*
+#      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
+#      BOOST_ROOT: C:/Libraries/boost_1_64_0
+#      CONFIGURATION: Debug
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      BUILD_TYPE: static
+#      TEST_OPTIONS: --gtest_filter=*type_utils*
+#      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
+#      BOOST_ROOT: C:/Libraries/boost_1_64_0
+#      CONFIGURATION: Debug
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      BUILD_TYPE: shared
+#      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2017
+#      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
+#      BOOST_ROOT: C:/Libraries/boost_1_64_0
+#      CONFIGURATION: Release
+#
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      BUILD_TYPE: static
+#      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2017
+#      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
+#      BOOST_ROOT: C:/Libraries/boost_1_64_0
+#      CONFIGURATION: Release
 
   ############################################################################
   # Visual Studio 2019
@@ -87,36 +87,28 @@ environment:
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_71_0"
-      BOOST_VERSION: "1.71.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
+      BOOST_ROOT: C:/Libraries/boost_1_71_0
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_71_0"
-      BOOST_VERSION: "1.71.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
+      BOOST_ROOT: C:/Libraries/boost_1_71_0
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2019
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_71_0"
-      BOOST_VERSION: "1.71.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
+      BOOST_ROOT: C:/Libraries/boost_1_71_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2019
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
-      BOOST_ARCHIVE: "boost_1_71_0"
-      BOOST_VERSION: "1.71.0"
-      BOOST_ROOT: "C:\\Libraries\\boost_1_71_0"
+      BOOST_ROOT: C:/Libraries/boost_1_71_0
       CONFIGURATION: Release
 
 install:
@@ -163,9 +155,7 @@ install:
   ############################################################################
   # Install Boost
   ############################################################################
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" mkdir %BOOST_ROOT%
   - cd %BOOST_ROOT%
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" appveyor DownloadFile "https://dl.bintray.com/boostorg/release/%BOOST_VERSION%/source/%BOOST_ARCHIVE%.7z" -FileName boost_%BOOST_ARCHIVE%.7z && 7z x boost_%BOOST_ARCHIVE%.7z -o.. > nul
   - bootstrap.bat
   - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-locale --with-system --with-thread
 
