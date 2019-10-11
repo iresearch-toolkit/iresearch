@@ -491,7 +491,7 @@ class block_iterator : util::noncopyable {
   }
 
   // scan to floor block
-  void scan_to_sub_block(const bytes_ref& term);
+  void scan_to_sub_block(byte_type label);
 
   // scan to entry with the following start address
   void scan_to_block(uint64_t ptr);
@@ -830,7 +830,7 @@ class automaton_term_iterator final : public term_iterator_base {
     }
 
     const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
-      // binary search???
+      // FIXME: binary search???
       for (;begin_ != end_; ++begin_) {
         if (label <= begin_->ilabel) {
           return label == begin_->ilabel ? begin_ : rho_;
@@ -1021,7 +1021,8 @@ bool automaton_term_iterator::next() {
         state_ = cur_block_->it.state();
         if (cur_block_->it.dirty() || cur_block_->it.block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          cur_block_->it.scan_to_sub_block(term_); // to sub-block
+          assert(cur_block_->it.prefix() < term_.size());
+          cur_block_->it.scan_to_sub_block(term_[cur_block_->it.prefix()]); // to sub-block
           cur_block_->it.load(terms_input(), terms_cipher());
           cur_block_->it.scan_to_block(start);
         }
@@ -1249,22 +1250,22 @@ SeekResult block_iterator::scan_to_term_nonleaf(
   return SeekResult::END;
 }
 
-void block_iterator::scan_to_sub_block(const bytes_ref& term) {
+void block_iterator::scan_to_sub_block(byte_type label) {
   assert(sub_count_ != UNDEFINED);
 
-  if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
+  if (!sub_count_ || !block_meta::floor(meta_)) {
     // no sub-blocks, nothing to do
     return;
   }
 
-  const int16_t label = term[prefix_];
+  const int16_t widelabel = label; // avoid byte_type vs int16_t comparison
 
-  if (label < next_label_) {
+  if (widelabel < next_label_) {
     // we don't need search
     return;
   }
 
-  // FIXME: better to use binary search here
+  // FIXME: binary search???
   uint64_t start = cur_start_;
   for (;;) {
     start = start_ + vread<uint64_t>(header_begin_);
@@ -1272,7 +1273,7 @@ void block_iterator::scan_to_sub_block(const bytes_ref& term) {
     if (--sub_count_) {
       next_label_ = *header_begin_++;
 
-      if (label < next_label_) {
+      if (widelabel < next_label_) {
         break;
       }
     } else {
@@ -1418,7 +1419,8 @@ bool term_iterator::next() {
       state_ = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
-        cur_block_->scan_to_sub_block(term_); // to sub-block
+        assert(cur_block_->prefix() < term_.size());
+        cur_block_->scan_to_sub_block(term_[cur_block_->prefix()]); // to sub-block
         cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
@@ -1543,7 +1545,7 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
       cur_block_ = push_block(fst::Times(weight_, weight), prefix);
     } else if (fst_byte_builder::final == arc.nextstate) {
       // ensure final state has no weight assigned
-      // the only case when it's wrong is degerated FST composed of only
+      // the only case when it's wrong is degenerated FST composed of only
       // 'fst_byte_builder::final' state.
       // in that case we'll never get there due to the loop condition above.
       assert(fst.FinalRef(fst_byte_builder::final).Empty());
@@ -1560,8 +1562,12 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   }
 
   assert(cur_block_);
-  sstate_.resize(cur_block_->prefix());
-  cur_block_->scan_to_sub_block(term);
+  prefix = cur_block_->prefix();
+  sstate_.resize(prefix);
+
+  if (prefix < term.size()) {
+    cur_block_->scan_to_sub_block(term[prefix]);
+  }
 
   return false;
 }
