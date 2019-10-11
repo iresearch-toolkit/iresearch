@@ -467,6 +467,7 @@ class block_iterator : util::noncopyable {
     assert(ET_BLOCK == cur_type_);
     return cur_block_start_;
   }
+  uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
 
@@ -821,40 +822,66 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
  private:
-  static const automaton::Arc* rho_arc(const automaton::Arc* begin,
-                                       const automaton::Arc* end) noexcept {
-    if (begin != end) {
-      auto* back = end-1;
-      if (back->ilabel == fst::fsa::kRho) {
-        return back;
-      }
+  class arc_matcher {
+   public:
+    arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
+      : begin_(arcs), end_(arcs + narcs),
+        rho_(rho_arc(begin_, end_)) {
     }
 
-    return nullptr;
-  }
+    const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
+      // binary search???
+      for (;begin_ != end_; ++begin_) {
+        if (label <= begin_->ilabel) {
+          return label == begin_->ilabel ? begin_ : rho_;
+        }
+      }
+
+      return nullptr;
+    }
+
+    bool done() const noexcept {
+      return begin_ == end_;
+    }
+
+   private:
+    static const automaton::Arc* rho_arc(const automaton::Arc* begin,
+                                         const automaton::Arc* end) noexcept {
+      if (begin != end) {
+        auto* back = end-1;
+        if (back->ilabel == fst::fsa::kRho) {
+          return back;
+        }
+      }
+
+      return nullptr;
+    }
+
+    const automaton::Arc* begin_;  // current arc
+    const automaton::Arc* end_;    // end of arcs range
+    const automaton::Arc* rho_{};  // rho arc if present
+  }; // begin_matcher
 
   struct block_state {
     block_state(byte_weight&& out, size_t prefix,
                 automaton::StateId state,
                 const automaton::Arc* arcs, size_t narcs) noexcept
-      : it(std::move(out), prefix), state(state),
-        arc(arcs), arcend(arcs + narcs),
-        rhoarc(rho_arc(arc, arcend)) {
+      : it(std::move(out), prefix),
+        arcs(arcs, narcs),
+        state(state) {
     }
 
     block_state(uint64_t start, size_t prefix,
                 automaton::StateId state,
                 const automaton::Arc* arcs, size_t narcs) noexcept
-      : it(start, prefix), state(state),
-        arc(arcs), arcend(arcs + narcs),
-        rhoarc(rho_arc(arc, arcend)) {
+      : it(start, prefix),
+        arcs(arcs, narcs),
+        state(state) {
     }
 
     block_iterator it;
+    arc_matcher arcs;
     automaton::StateId state;       // state to which current block belongs
-    const automaton::Arc* arc;      // current arc
-    const automaton::Arc* arcend;   // end of arcs range
-    const automaton::Arc* rhoarc;   // rho arc if present
   }; // block_state
 
   typedef std::deque<block_state> block_stack_t;
@@ -927,39 +954,18 @@ bool automaton_term_iterator::next() {
     const auto* end = begin + suffix_size;
 
     if (begin != end) {
-      const auto* arc = cur_block_->arc;
-      const auto* arcend = cur_block_->arcend;
-      const auto* rhoarc = cur_block_->rhoarc;
+      const auto* arc = cur_block_->arcs.seek(*begin);
 
-      // binary search???
-      for (;arc != arcend; ++arc) {
-        if (*begin <= arc->ilabel) {
-          break;
+      if (!arc) {
+        if (cur_block_->arcs.done()) {
+          match = POP; // pop current block
         }
+
+        return;
       }
 
-      if (arc == arcend) {
-        if (!rhoarc) {
-          // pop current block
-          match = POP;
-          return;
-        }
-
-        state = rhoarc->nextstate;
-      } else {
-        cur_block_->arc = arc; // update arc in current block
-
-        if (*begin == arc->ilabel) {
-          state = arc->nextstate;
-        } else {
-          if (!rhoarc) {
-            // skip current entry
-            return;
-          }
-
-          state = rhoarc->nextstate;
-        }
-      }
+      assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
+      state = arc->nextstate;
 
 #ifdef IRESEARCH_DEBUG
       matcher_.SetState(cur_block_->state);
