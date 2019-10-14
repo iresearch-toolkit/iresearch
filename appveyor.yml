@@ -177,7 +177,10 @@ install:
   # Setup bison
   ############################################################################
   - if not "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=C:\cygwin64\bin;%PATH%
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=C:\msys64\usr\bin;%PATH%
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" appveyor DownloadFile https://liquidtelecom.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.5.20.zip -FileName win_flex_bison-2.5.20.zip
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" 7z x win_flex_bison-2.5.20.zip -o"win_flex_bison-2.5.20" > nul
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" mv win_flex_bison-2.5.20\win_bison.exe win_flex_bison-2.5.20\bison.exe
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=%cd%\win_flex_bison-2.5.20;%PATH%
   - bison --version
 
 before_build:
