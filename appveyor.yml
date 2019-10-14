@@ -15,16 +15,16 @@ environment:
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
 
-#  ############################################################################
-#  # Visual Studio 2015
-#  ############################################################################
-#
-#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-#      BUILD_TYPE: shared
-#      TEST_OPTIONS: --gtest_filter=*type_utils*
-#      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-#      BOOST_ROOT: C:/Libraries/boost_1_60_0
-#      CONFIGURATION: Debug
+  ############################################################################
+  # Visual Studio 2015
+  ############################################################################
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      BUILD_TYPE: shared
+      TEST_OPTIONS: --gtest_filter=*type_utils*
+      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
+      CONFIGURATION: Debug
 #
 #    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
 #      BUILD_TYPE: static
@@ -47,16 +47,16 @@ environment:
 #      BOOST_ROOT: C:/Libraries/boost_1_60_0
 #      CONFIGURATION: Release
 
-#  ############################################################################
-#  # Visual Studio 2017
-#  ############################################################################
-#
-#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-#      BUILD_TYPE: shared
-#      TEST_OPTIONS: --gtest_filter=*type_utils*
-#      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
-#      BOOST_ROOT: C:/Libraries/boost_1_64_0
-#      CONFIGURATION: Debug
+  ############################################################################
+  # Visual Studio 2017
+  ############################################################################
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      BUILD_TYPE: shared
+      TEST_OPTIONS: --gtest_filter=*type_utils*
+      VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
+      BOOST_ROOT: C:/Libraries/boost_1_64_0
+      CONFIGURATION: Debug
 #
 #    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
 #      BUILD_TYPE: static
@@ -89,7 +89,7 @@ environment:
       VSINSTALL: "Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_71_0
       CONFIGURATION: Debug
-#
+
 #    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
 #      BUILD_TYPE: static
 #      TEST_OPTIONS: --gtest_filter=*type_utils*
@@ -176,11 +176,16 @@ install:
   ############################################################################
   # Setup bison
   ############################################################################
-  - if not "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=C:\cygwin64\bin;%PATH%
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" 7z x win_flex_bison-2.4.12.zip -o"win_flex_bison-2.4.12" > nul
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=%cd%\win_flex_bison-2.4.12;%PATH%
+  # bison 2.7 from Win flex-bison 2.4.12 is the least to generate buildable
+  # parser.cc (only used for Visual Studio 2019 which has 3+ bison via MSYS2)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (
+      appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip &&
+      7z x win_flex_bison-2.4.12.zip -o"win_flex_bison-2.4.12" > nul &&
+      mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe &&
+      set PATH=%cd%\win_flex_bison-2.4.12;%PATH%
+  ) else (
+      set PATH=C:\cygwin64\bin;%PATH%
+  )
   - bison --version
 
 before_build:
