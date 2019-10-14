@@ -176,7 +176,7 @@ install:
   ############################################################################
   # Setup bison
   ############################################################################
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" != "Visual Studio 2019" set PATH=C:\cygwin64\bin;%PATH%
+  - if not "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=C:\cygwin64\bin;%PATH%
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" set PATH=C:\msys64\usr\bin;%PATH%
   - bison --version
 
