@@ -127,13 +127,13 @@ install:
       appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip&
       7z x win_flex_bison-2.4.12.zip -o"win_flex_bison-2.4.12" > nul&
       mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe&
-      set PATH=%cd%\win_flex_bison-2.4.12%PATH%&
+      set BISON_PATH=%cd%\win_flex_bison-2.4.12&
       echo "A"
     ) else (
-      set PATH=C:\cygwin64\bin%PATH%&
+      set BISON_PATH=C:\cygwin64\bin&
       echo "B"
     )
-  - echo %PATH%
+  - set PATH=%BISON_PATH%;%PATH%
   - bison --version
   - bogus --version
 
