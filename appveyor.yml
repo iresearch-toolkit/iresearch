@@ -126,9 +126,9 @@ install:
   - echo %cd%
   - echo %PATH%
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" (
-      appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip &&
-      7z x win_flex_bison-2.4.12.zip -o win_flex_bison-2.4.12 > nul &&
-      mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe &&
+      appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip ;
+      7z x win_flex_bison-2.4.12.zip -owin_flex_bison-2.4.12 > nul ;
+      mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe ;
       echo "A"
     ) else (
       echo "B"
