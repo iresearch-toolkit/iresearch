@@ -1015,7 +1015,23 @@ bool automaton_term_iterator::next() {
   for (;;) {
     // pop finished blocks
     while (cur_block_->it.end()) {
-      if (cur_block_->it.next_sub_block()) {
+      if (cur_block_->it.sub_count()) {
+        if (block_t::INVALID_LABEL != cur_block_->it.next_label()) {
+          cur_block_->arcs.seek(cur_block_->it.next_label());
+
+          if (cur_block_->arcs.done()) {
+            if (&block_stack_.front() == cur_block_) {
+              // need to pop root block, we're done
+              term_.reset();
+              cur_block_->it.reset();
+              return false;
+            }
+
+            cur_block_ = pop_block();
+            continue;
+          }
+        }
+        cur_block_->it.next_sub_block();
         cur_block_->it.load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
@@ -1275,9 +1291,9 @@ void block_iterator::scan_to_sub_block(byte_type label) {
   }
 
   // FIXME: binary search???
-  uint64_t start = cur_start_;
+  uint64_t start_delta = 0;
   for (;;) {
-    start = start_ + vread<uint64_t>(header_begin_);
+    start_delta = vread<uint64_t>(header_begin_);
     cur_meta_ = *header_begin_++;
     if (--sub_count_) {
       next_label_ = *header_begin_++;
@@ -1291,8 +1307,8 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     }
   }
 
-  if (start != cur_start_) {
-    cur_start_ = start;
+  if (start_delta) {
+    cur_start_ = start_ + start_delta;
     cur_ent_ = 0;
     dirty_ = true;
   }
