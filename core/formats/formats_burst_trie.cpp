@@ -1017,7 +1017,7 @@ bool automaton_term_iterator::next() {
     while (cur_block_->it.end()) {
       if (cur_block_->it.sub_count()) {
         if (block_t::INVALID_LABEL != cur_block_->it.next_label()) {
-          cur_block_->arcs.seek(cur_block_->it.next_label());
+          const auto* arc = cur_block_->arcs.seek(cur_block_->it.next_label());
 
           if (cur_block_->arcs.done()) {
             if (&block_stack_.front() == cur_block_) {
@@ -1030,8 +1030,15 @@ bool automaton_term_iterator::next() {
             cur_block_ = pop_block();
             continue;
           }
+
+          if (arc && arc->ilabel != fst::fsa::kRho) {
+            cur_block_->it.scan_to_sub_block(arc->ilabel);
+          } else {
+            cur_block_->it.next_sub_block();
+          }
+        } else {
+          cur_block_->it.next_sub_block();
         }
-        cur_block_->it.next_sub_block();
         cur_block_->it.load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
@@ -1283,9 +1290,9 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     return;
   }
 
-  const int16_t widelabel = label; // avoid byte_type vs int16_t comparison
+  const int16_t target = label; // avoid byte_type vs int16_t comparison
 
-  if (widelabel < next_label_) {
+  if (target < next_label_) {
     // we don't need search
     return;
   }
@@ -1298,7 +1305,7 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     if (--sub_count_) {
       next_label_ = *header_begin_++;
 
-      if (widelabel < next_label_) {
+      if (target < next_label_) {
         break;
       }
     } else {
