@@ -537,6 +537,14 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${SIMD_LIBRARY_STATIC}
 )
 
+if (CLANG_TIDY_EXE)
+  set_target_properties(
+    ${IResearch_TARGET_NAME}-static 
+    PROPERTIES 
+    CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-header-filter=.;-checks=clang-analyzer-cplusplus*,google-*,performance-*,readability-*"
+  )
+endif()
+
 # setup CRT
 if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
