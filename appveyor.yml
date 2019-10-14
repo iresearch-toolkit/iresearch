@@ -119,21 +119,6 @@ install:
   - mkdir %DEPS_DIR%
 
   ############################################################################
-  # Setup bison
-  ############################################################################
-  # bison 2.7 from Win flex-bison 2.4.12 is the least to generate buildable
-  # parser.cc (only used for Visual Studio 2019 which has 3+ bison via MSYS2)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" (
-      appveyor DownloadFile https://excellmedia.dl.sourceforge.net/project/winflexbison/win_flex_bison-2.4.12.zip -FileName win_flex_bison-2.4.12.zip&
-      7z x win_flex_bison-2.4.12.zip -o"win_flex_bison-2.4.12" > nul&
-      mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe&
-      set BISON_PATH=%cd%\win_flex_bison-2.4.12)
-    else (set BISON_PATH=C:\cygwin64\bin)
-  - set PATH=%BISON_PATH%;%PATH%
-  - bison --version
-  - bogus --version
-
-  ############################################################################
   # Install snowball
   ############################################################################
   - set SNOWBALL_DIR=%DEPS_DIR%\snowball
@@ -187,6 +172,20 @@ install:
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
   - set LZ4_ROOT=%LZ4_DIR%\build
+
+  ############################################################################
+  # Setup bison
+  ############################################################################
+  # bison 3.0.4 from Win flex-bison 2.5.14 is the least to generate buildable
+  # parser.cc (only used for Visual Studio 2019 which has 3.4 bison via MSYS2)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" (
+      appveyor DownloadFile https://netcologne.dl.sourceforge.net/project/winflexbison/old_versions/win_flex_bison-2.5.14.zip -FileName win_flex_bison-2.5.14.zip&
+      7z x win_flex_bison-2.5.14.zip -o"win_flex_bison-2.5.14" > nul&
+      mv win_flex_bison-2.5.14\win_bison.exe win_flex_bison-2.5.14\bison.exe&
+      set BISON_PATH=%cd%\win_flex_bison-2.5.14)
+    else (set BISON_PATH=C:\cygwin64\bin)
+  - set PATH=%BISON_PATH%;%PATH%
+  - bison --version
 
 before_build:
   - C:\"Program Files (x86)"\"%VSINSTALL%"\vcvarsall.bat amd64
