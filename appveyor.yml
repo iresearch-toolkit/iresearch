@@ -183,9 +183,9 @@ install:
       7z x win_flex_bison-2.4.12.zip -o"win_flex_bison-2.4.12" > nul &&
       mv win_flex_bison-2.4.12\win_bison.exe win_flex_bison-2.4.12\bison.exe &&
       set PATH=%cd%\win_flex_bison-2.4.12;%PATH%
-  ) else (
+    ) else (
       set PATH=C:\cygwin64\bin;%PATH%
-  )
+    )
   - bison --version
 
 before_build:
