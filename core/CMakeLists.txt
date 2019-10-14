@@ -539,8 +539,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
 
 if (CLANG_TIDY_EXE)
   set_target_properties(
-    ${IResearch_TARGET_NAME}-static 
-    PROPERTIES 
+    ${IResearch_TARGET_NAME}-static
+    PROPERTIES
     CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-header-filter=.;-checks=clang-analyzer-cplusplus*,google-*,performance-*,readability-*"
   )
 endif()

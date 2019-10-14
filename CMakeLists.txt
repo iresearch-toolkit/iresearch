@@ -98,6 +98,8 @@ endif()
 ### setup clang-tidy
 ################################################################################
 
+unset(CLANG_TIDY_EXE CACHE)
+
 if (USE_CLANG_TIDY)
   find_program(
     CLANG_TIDY_EXE
@@ -105,10 +107,10 @@ if (USE_CLANG_TIDY)
     DOC "Path to clang-tidy executable"
   )
 
-  if(NOT CLANG_TIDY_EXE)
-    message(STATUS "clang-tidy not found.")
-  else()
+  if(CLANG_TIDY_EXE)
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+  else()
+    message(STATUS "clang-tidy not found.")
   endif()
 endif()
 
