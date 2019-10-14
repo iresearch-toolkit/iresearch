@@ -467,6 +467,7 @@ class block_iterator : util::noncopyable {
     assert(ET_BLOCK == cur_type_);
     return cur_block_start_;
   }
+  int16_t next_label() const noexcept { return next_label_; }
   uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
@@ -525,6 +526,7 @@ class block_iterator : util::noncopyable {
   const byte_type* suffix_begin_{suffix_block_.c_str()}; // beginning of suffix input stream
   const byte_type* stats_begin_{stats_block_.c_str()}; // beginning of suffix stats stream
 #ifdef IRESEARCH_DEBUG
+  const byte_type* header_end_{header_begin_}; // end of valid header input stream
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
@@ -840,6 +842,10 @@ class automaton_term_iterator final : public term_iterator_base {
       return nullptr;
     }
 
+    const automaton::Arc* value() const noexcept {
+      return begin_;
+    }
+
     bool done() const noexcept {
       return begin_ == end_;
     }
@@ -1057,13 +1063,16 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_(std::move(header)),
     prefix_(prefix),
     sub_count_(0) {
+#ifdef IRESEARCH_DEBUG
+  header_end_ = header_.c_str() + header_.Size();
+#endif
   cur_meta_ = meta_ = *header_begin_++;
   cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_begin_);
   if (block_meta::floor(meta_)) {
     sub_count_ = vread<uint64_t>(header_begin_);
     next_label_ = *header_begin_++;
   }
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
@@ -1288,7 +1297,7 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     dirty_ = true;
   }
 
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 void block_iterator::scan_to_block(uint64_t start) {
@@ -1372,7 +1381,7 @@ void block_iterator::reset() {
   }
   dirty_ = true;
 
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 // -----------------------------------------------------------------------------
