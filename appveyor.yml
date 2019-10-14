@@ -123,10 +123,10 @@ install:
   ############################################################################
   # bison 2.7 from Win flex-bison 2.4.12 is the least to generate buildable
   # parser.cc (only used for Visual Studio 2019 which has 3+ bison via MSYS2)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (
-      set PATH=%cd%\win_flex_bison-2.4.12;%PATH%
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2019" (
+      set PATH="%cd%\win_flex_bison-2.4.12;%PATH%"
     ) else (
-      set PATH=C:\cygwin64\bin;%PATH%
+      set PATH="C:\cygwin64\bin;%PATH%"
     )
   - bison2 --version
 
