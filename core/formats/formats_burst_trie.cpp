@@ -1031,10 +1031,11 @@ bool automaton_term_iterator::next() {
             continue;
           }
 
-          if (arc && arc->ilabel != fst::fsa::kRho) {
-            cur_block_->it.scan_to_sub_block(arc->ilabel);
-          } else {
+          if (arc && arc->ilabel == fst::fsa::kRho) {
             cur_block_->it.next_sub_block();
+          } else {
+            assert(cur_block_->arcs.value()->ilabel <= integer_traits<byte_type>::const_max);
+            cur_block_->it.scan_to_sub_block(byte_type(cur_block_->arcs.value()->ilabel));
           }
         } else {
           cur_block_->it.next_sub_block();
@@ -1824,8 +1825,8 @@ void field_writer::write_block(
 
   pw_->begin_block();
 
-  for (size_t i = begin; i < end; ++i) {
-    auto& e = stack_[i];
+  for (; begin < end; ++begin) {
+    auto& e = stack_[begin];
     assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
 
     switch (e.type()) {
