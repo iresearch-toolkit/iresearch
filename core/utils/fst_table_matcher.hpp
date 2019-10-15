@@ -28,6 +28,7 @@
 #include "fst/matcher.h"
 #include "utils/misc.hpp"
 #include "utils/integer.hpp"
+#include "utils/std.hpp"
 
 NS_BEGIN(fst)
 
@@ -73,40 +74,48 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     const size_t num_states = fst.NumStates();
 
     // initialize transition table
+    ArcIteratorData<Arc> data;
     transitions_.resize(num_states*start_labels_.size(), kNoStateId);
     for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
 
-      ArcIterator<FST> aiter(fst, state);
-      auto begin = start_labels_.begin();
-      auto end = start_labels_.end();
+      fst.InitArcIterator(state, &data);
 
-      aiter.Seek(fst.NumArcs(state)-1);
-      if (!aiter.Done()) {
-        const auto& arc = aiter.Value();
-        if (Rho == (TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel)) {
-          std::fill_n(transitions_.begin() + state*start_labels_.size(), start_labels_.size(), arc.nextstate);
+      // fill rho transitions if any
+      {
+        std::reverse_iterator<decltype(data.arcs)> rbegin(data.arcs + data.narcs);
+        std::reverse_iterator<decltype(data.arcs)> rend(data.arcs);
+
+        for (; rbegin != rend; ++rbegin) {
+          if (Rho == get_label(*rbegin)) {
+            std::fill_n(transitions_.begin() + state*start_labels_.size(), start_labels_.size(), rbegin->nextstate);
+            break;
+          }
         }
       }
 
-      for (aiter.Seek(0); !aiter.Done() && begin != end;) {
-        for (; !aiter.Done() && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) < *begin; aiter.Next()) { }
+      // fill existing transitions
+      auto arc = data.arcs;
+      auto arc_end = data.arcs + data.narcs;
+      auto label = start_labels_.begin();
+      auto label_end = start_labels_.end();
+      for (; arc != arc_end && label != label_end;) {
+        for (; arc != arc_end && get_label(*arc) < *label; ++arc) { }
 
-        if (aiter.Done()) {
+        if (arc == arc_end) {
           break;
         }
 
-        for (; begin != end  && (TYPE == MATCH_INPUT ? aiter.Value().ilabel : aiter.Value().olabel) > *begin; ++begin) { }
+        for (; label != label_end  && get_label(*arc) > *label; ++label) { }
 
-        if (begin == end) {
+        if (label == label_end) {
           break;
         }
 
-        auto& arc = aiter.Value();
-        if ((TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel) == *begin) {
-          transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), begin)] = arc.nextstate;
-          ++begin;
-          aiter.Next();
+        if (get_label(*arc) == *label) {
+          transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), label)] = arc->nextstate;
+          ++label;
+          ++arc;
         }
       }
     }
@@ -196,7 +205,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     assert(state_ < state_end_);
     while (!Done()) {
       if (*++state_ != kNoLabel) {
-        auto& label = (TYPE == MATCH_INPUT ? arc_.ilabel : arc_.olabel);
+        auto& label = get_label(arc_);
         label = start_labels_[size_t(std::distance(state_begin_, state_))];
         arc_.nextstate = *state_;
         break;
@@ -221,8 +230,14 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
  private:
+  template<typename Arc>
+  static typename irs::irstd::adjust_const<Arc, typename Arc::Label>::reference& get_label(Arc& arc) {
+    return (TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel);
+  }
+
   size_t find_label_offset(Label label) const noexcept {
     const auto it = std::lower_bound(start_labels_.begin(), start_labels_.end(), label);
+
     if (it == start_labels_.end() || *it != label) {
       return start_labels_.size();
     }
