@@ -197,7 +197,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   virtual seek_term_iterator::ptr iterator() const = 0;
 
   // returns an intersection of a specified automaton and term reader
-  virtual seek_term_iterator::ptr iterator(const automaton& a) const = 0;
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;

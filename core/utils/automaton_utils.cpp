@@ -25,6 +25,7 @@
 #include "index/index_reader.hpp"
 #include "search/limited_sample_scorer.hpp"
 #include "search/multiterm_query.hpp"
+#include "utils/fst_table_matcher.hpp"
 
 NS_ROOT
 
@@ -34,6 +35,7 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
                                                const index_reader& index,
                                                const order::prepared& order,
                                                boost_t boost) {
+  automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
   limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
@@ -45,7 +47,7 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
       continue;
     }
 
-    auto it = reader->iterator(acceptor);
+    auto it = reader->iterator(matcher);
 
     auto& meta = it->attributes().get<term_meta>(); // get term metadata
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;

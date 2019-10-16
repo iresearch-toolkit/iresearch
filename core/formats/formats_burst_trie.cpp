@@ -785,9 +785,11 @@ class term_iterator final : public term_iterator_base {
 ///////////////////////////////////////////////////////////////////////////////
 class automaton_term_iterator final : public term_iterator_base {
  public:
-  explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
+  explicit automaton_term_iterator(const term_reader& owner,
+                                   automaton_table_matcher& matcher)
     : term_iterator_base(owner),
-      a_(&a) {
+      acceptor_(&matcher.GetFst()),
+      matcher_(&matcher) {
   }
 
   virtual bool next() override;
@@ -903,7 +905,7 @@ class automaton_term_iterator final : public term_iterator_base {
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
     fst::ArcIteratorData<automaton::Arc> data;
-    a_->InitArcIterator(state, &data);
+    acceptor_->InitArcIterator(state, &data);
 
     block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
@@ -911,14 +913,14 @@ class automaton_term_iterator final : public term_iterator_base {
 
   block_state* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
     fst::ArcIteratorData<automaton::Arc> data;
-    a_->InitArcIterator(state, &data);
+    acceptor_->InitArcIterator(state, &data);
 
     block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
   }
 
-  const automaton* a_;
-  fst::TableMatcher<fst::fsa::Automaton, fst::fsa::kRho> matcher_{ *a_ };
+  const automaton* acceptor_;
+  automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
   block_state* cur_block_{};
 }; // automaton_term_iterator
@@ -929,7 +931,7 @@ bool automaton_term_iterator::next() {
     if (term_.empty()) {
       // iterator at the beginning
       const auto& fst = this->fst();
-      cur_block_ = push_block(fst.Final(fst.Start()), 0, a_->Start());
+      cur_block_ = push_block(fst.Final(fst.Start()), 0, acceptor_->Start());
       cur_block_->it.load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
@@ -974,21 +976,21 @@ bool automaton_term_iterator::next() {
       state = arc->nextstate;
 
 #ifdef IRESEARCH_DEBUG
-      matcher_.SetState(cur_block_->state);
-      assert(matcher_.Find(*begin));
-      assert(matcher_.Value().nextstate == state);
+      matcher_->SetState(cur_block_->state);
+      assert(matcher_->Find(*begin));
+      assert(matcher_->Value().nextstate == state);
 #endif
 
       ++begin; // already match first suffix label
 
-      for (matcher_.SetState(state); begin < end; ++begin) {
-        if (!matcher_.Find(*begin)) {
+      for (matcher_->SetState(state); begin < end; ++begin) {
+        if (!matcher_->Find(*begin)) {
           // suffix doesn't match
           return;
         }
 
-        state = matcher_.Value().nextstate;
-        matcher_.SetState(state);
+        state = matcher_->Value().nextstate;
+        matcher_->SetState(state);
       }
     }
 
@@ -996,7 +998,7 @@ bool automaton_term_iterator::next() {
 
     switch (cur_block_->it.type()) {
       case ET_TERM: {
-        if (a_->Final(state)) {
+        if (acceptor_->Final(state)) {
           copy(suffix, cur_block_->it.prefix(), suffix_size);
           match = MATCH;
         }
@@ -1724,9 +1726,9 @@ seek_term_iterator::ptr term_reader::iterator() const {
   );
 }
 
-seek_term_iterator::ptr term_reader::iterator(const automaton& a) const {
+seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
   return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::automaton_term_iterator>(*this, a)
+    memory::make_unique<detail::automaton_term_iterator>(*this, matcher)
   );
 }
 

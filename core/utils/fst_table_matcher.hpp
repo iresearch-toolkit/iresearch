@@ -49,7 +49,7 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
   return { labels.begin(), labels.end() };
 }
 
-template<typename F, typename F::Arc::Label Rho, size_t CacheSize = 256, fst::MatchType TYPE = MATCH_INPUT>
+template<typename F, size_t CacheSize = 256, bool MatchInput = true>
 class TableMatcher : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
@@ -61,21 +61,27 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   using MatcherBase<Arc>::Flags;
   using MatcherBase<Arc>::Properties;
 
-  explicit TableMatcher(const FST& fst)
+  static constexpr fst::MatchType TYPE = MatchInput
+    ? fst::MATCH_INPUT
+    : fst::MATCH_OUTPUT;
+
+  explicit TableMatcher(const FST& fst, Label rho)
     : start_labels_(fst::getStartLabels<F, TYPE>(fst)),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
-      fst_(&fst) {
+      rho_(rho), fst_(&fst) {
+#ifdef IRESEARCH_DEBUG
     static constexpr auto props = (TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
         | (TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
         | (TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
         | kAcceptor;
     assert(fst.Properties(props, true) == props);
+#endif
 
-    const size_t num_states = fst.NumStates();
+    const size_t numLabels = start_labels_.size();
 
     // initialize transition table
     ArcIteratorData<Arc> data;
-    transitions_.resize(num_states*start_labels_.size(), kNoStateId);
+    transitions_.resize(fst.NumStates()*numLabels , kNoStateId);
     for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
 
@@ -87,8 +93,8 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
         std::reverse_iterator<decltype(data.arcs)> rend(data.arcs);
 
         for (; rbegin != rend; ++rbegin) {
-          if (Rho == get_label(*rbegin)) {
-            std::fill_n(transitions_.begin() + state*start_labels_.size(), start_labels_.size(), rbegin->nextstate);
+          if (rho_ == get_label(*rbegin)) {
+            std::fill_n(transitions_.begin() + state*numLabels, numLabels, rbegin->nextstate);
             break;
           }
         }
@@ -113,7 +119,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
         }
 
         if (get_label(*arc) == *label) {
-          transitions_[state*start_labels_.size() + std::distance(start_labels_.begin(), label)] = arc->nextstate;
+          transitions_[state*numLabels + std::distance(start_labels_.begin(), label)] = arc->nextstate;
           ++label;
           ++arc;
         }
@@ -134,13 +140,13 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
         ++offset;
         ++begin;
       } else {
-        cached_label_offsets_[i] = start_labels_.size();
+        cached_label_offsets_[i] = numLabels;
       }
     }
   }
 
-  virtual TableMatcher<FST, Rho>* Copy(bool) const override {
-    return new TableMatcher<FST, Rho>(*this);
+  virtual TableMatcher* Copy(bool) const override {
+    return new TableMatcher(*this);
   }
 
   virtual MatchType Type(bool test) const override {
@@ -180,7 +186,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
                            : find_label_offset(label));
 
     if (label_offset == start_labels_.size()) {
-      if (start_labels_.back() != Rho) {
+      if (start_labels_.back() != rho_) {
         return false;
       }
 
@@ -251,6 +257,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   std::vector<Label> start_labels_;
   std::vector<StateId> transitions_;
   Arc arc_;
+  Label rho_;
   const FST* fst_;                   // FST for matching
   const Label* state_begin_{};       // Matcher state begin
   const Label* state_end_{};         // Matcher state end

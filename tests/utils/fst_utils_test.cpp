@@ -58,7 +58,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton>;
 
     expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
-    matcher_t matcher(a);
+    matcher_t matcher(a, fst::fsa::kRho);
     for (fst::fsa::Automaton::StateId state = 0; state < a.NumStates(); ++state) {
       expected_matcher.SetState(state);
       matcher.SetState(state);
