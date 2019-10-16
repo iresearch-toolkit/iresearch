@@ -31,7 +31,7 @@
 
 NS_LOCAL
 
-irs::cost empty_cost() NOEXCEPT {
+irs::cost empty_cost() noexcept {
   irs::cost cost;
   cost.value(0);
   return cost;
@@ -60,7 +60,7 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();
     return INSTANCE;
   }
@@ -79,7 +79,7 @@ struct empty_term_iterator final : irs::term_iterator {
   }
   virtual void read() override { }
   virtual bool next() override { return false; }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 }; // empty_term_iterator
@@ -94,7 +94,7 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 

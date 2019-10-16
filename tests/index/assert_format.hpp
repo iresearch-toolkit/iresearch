@@ -53,11 +53,11 @@ class posting {
   posting(irs::doc_id_t id, std::set<position>&& positions)
     : positions_(std::move(positions)), id_(id) {
   }
-  posting(posting&& rhs) NOEXCEPT
+  posting(posting&& rhs) noexcept
     : positions_(std::move(rhs.positions_)),
       id_(rhs.id_) {
   }
-  posting& operator=(posting&& rhs) NOEXCEPT {
+  posting& operator=(posting&& rhs) noexcept {
     if (this != &rhs) {
       positions_ = std::move(rhs.positions_);
       id_ = rhs.id_;
@@ -115,9 +115,9 @@ class field : public irs::field_meta {
     const irs::flags& features
   );
 
-  field(field&& rhs) NOEXCEPT;
+  field(field&& rhs) noexcept;
 
-  field& operator=(field&& rhs) NOEXCEPT;
+  field& operator=(field&& rhs) noexcept;
 
   term& add(const irs::bytes_ref& term);
   term* find(const irs::bytes_ref& term);
@@ -140,8 +140,8 @@ class index_segment: irs::util::noncopyable {
   typedef field_map_t::const_iterator iterator;
 
   index_segment();
-  index_segment(index_segment&& rhs) NOEXCEPT;
-  index_segment& operator=(index_segment&& rhs) NOEXCEPT;
+  index_segment(index_segment&& rhs) noexcept;
+  index_segment& operator=(index_segment&& rhs) noexcept;
    
   size_t doc_count() const { return count_; }
   size_t size() const { return fields_.size(); }
@@ -247,7 +247,7 @@ class term_reader : public irs::term_reader {
   virtual uint64_t docs_count() const override;
   virtual const irs::bytes_ref& (min)() const override;
   virtual const irs::bytes_ref& (max)() const override;
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override;
+  virtual const irs::attribute_view& attributes() const noexcept override;
 
  private:
   const tests::field& data_;
@@ -266,7 +266,7 @@ struct index_meta_writer: public irs::index_meta_writer {
     irs::index_meta& meta
   ) override;
   virtual bool commit() override;
-  virtual void rollback() NOEXCEPT override;
+  virtual void rollback() noexcept override;
 };
 
 struct index_meta_reader : public irs::index_meta_reader {
@@ -316,7 +316,7 @@ class document_mask_writer: public irs::document_mask_writer {
 class field_reader : public irs::field_reader {
  public:
   field_reader( const index_segment& data );
-  field_reader(field_reader&& other) NOEXCEPT;
+  field_reader(field_reader&& other) noexcept;
 
   virtual void prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;

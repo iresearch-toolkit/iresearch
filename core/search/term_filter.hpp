@@ -76,11 +76,11 @@ class IRESEARCH_API by_term : public filter {
     return term_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
   by_term(const type_id& type);
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

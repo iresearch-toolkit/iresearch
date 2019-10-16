@@ -28,7 +28,7 @@
 
 NS_ROOT
 
-class all_iterator final : public irs::basic_doc_iterator_base {
+class all_iterator final : public irs::doc_iterator_base {
  public:
   all_iterator(
     const irs::sub_reader& reader,
@@ -50,7 +50,7 @@ class all_iterator final : public irs::basic_doc_iterator_base {
     return doc_.value;
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return doc_.value;
   }
 

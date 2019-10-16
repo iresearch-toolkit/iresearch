@@ -54,7 +54,7 @@ struct basic_sort : irs::sort {
     : irs::sort(basic_sort::type()), idx(idx) {
   }
 
-  struct basic_scorer : irs::sort::score_ctx {
+  struct basic_scorer : irs::score_ctx {
     explicit basic_scorer(size_t idx) : idx(idx) {}
 
     size_t idx;
@@ -80,7 +80,7 @@ struct basic_sort : irs::sort {
       return nullptr; // do not need to collect stats
     }
 
-    std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
@@ -88,8 +88,8 @@ struct basic_sort : irs::sort {
         irs::boost_t
     ) const override {
       return {
-        score_ctx::ptr(new basic_scorer(idx)),
-        [](const void* ctx, irs::byte_type* score) {
+        irs::score_ctx_ptr(new basic_scorer(idx)),
+        [](const irs::score_ctx* ctx, irs::byte_type* score) {
           auto& state = *reinterpret_cast<const basic_scorer*>(ctx);
           sort::score_cast<size_t>(score) = state.idx;
         }
@@ -115,7 +115,7 @@ struct basic_sort : irs::sort {
     }
 
     std::pair<size_t, size_t> score_size() const override {
-      return std::make_pair(sizeof(size_t), ALIGNOF(size_t));
+      return std::make_pair(sizeof(size_t), alignof(size_t));
     }
 
     std::pair<size_t, size_t> stats_size() const override {
@@ -134,7 +134,7 @@ struct basic_sort : irs::sort {
 
 DEFINE_SORT_TYPE(::tests::detail::basic_sort)
 
-class basic_doc_iterator: public irs::doc_iterator {
+class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  public:
   typedef std::vector<irs::doc_id_t> docids_t;
 
@@ -170,7 +170,7 @@ class basic_doc_iterator: public irs::doc_iterator {
         boost
       );
 
-      score_.prepare(ord, this, [](const void* ctx, irs::byte_type* score) {
+      score_.prepare(ord, this, [](const irs::score_ctx* ctx, irs::byte_type* score) {
         auto& self = *static_cast<const basic_doc_iterator*>(ctx);
         self.scorers_.score(score);
       });
@@ -198,7 +198,7 @@ class basic_doc_iterator: public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -1262,7 +1262,7 @@ struct unestimated: public irs::filter {
       // prevent iterator to filter out
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
     }
 
@@ -1316,7 +1316,7 @@ struct estimated: public irs::filter {
       // prevent iterator to filter out
       return irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
     }
 

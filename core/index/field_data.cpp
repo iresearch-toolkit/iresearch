@@ -38,6 +38,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
@@ -54,6 +55,12 @@ NS_LOCAL
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
+
+const column_info NORM_COLUMN{
+  compression::lz4::type(),
+  compression::options(),
+  false
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -101,7 +108,7 @@ FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
   irs::vwrite<uint32_t>(out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF)); // slice offset
 }
 
-FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) NOEXCEPT {
+FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
   assert(offset <= integer_traits<byte_type>::const_max);
   return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
 }
@@ -113,7 +120,7 @@ FORCE_INLINE uint64_t read_cookie(Reader& in) {
   return cookie(slice_offset, offset);
 }
 
-FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) NOEXCEPT {
+FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stream) noexcept {
   // we don't span slices over the buffers
   const auto slice_offset = stream.slice_offset();
   return cookie(slice_offset, stream.pool_offset() - slice_offset);
@@ -122,7 +129,7 @@ FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stre
 FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
     const byte_block_pool& pool,
     uint64_t cookie
-) NOEXCEPT {
+) noexcept {
   return byte_block_pool::sliced_greedy_reader(
     pool,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -133,7 +140,7 @@ FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
 FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
     byte_block_pool::inserter& writer,
     uint64_t cookie
-) NOEXCEPT {
+) noexcept {
   return byte_block_pool::sliced_greedy_inserter(
     writer,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -170,7 +177,7 @@ class pos_iterator final: public irs::position {
       prox_in_(EMPTY_POOL) {
   }
 
-  virtual void clear() NOEXCEPT override {
+  virtual void clear() noexcept override {
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();
@@ -246,7 +253,7 @@ NS_ROOT
 bool memcmp_less(
     const byte_type* lhs, size_t lhs_size,
     const byte_type* rhs, size_t rhs_size
-) NOEXCEPT {
+) noexcept {
   assert(lhs && rhs);
 
   const size_t size = std::min(lhs_size, rhs_size);
@@ -271,7 +278,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_in_(EMPTY_POOL) {
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -319,11 +326,11 @@ class doc_iterator : public irs::doc_iterator {
     }
   }
 
-  uint64_t cookie() const NOEXCEPT {
+  uint64_t cookie() const noexcept {
     return cookie_;
   }
 
-  size_t cost() const NOEXCEPT {
+  size_t cost() const noexcept {
     return posting_->size;
   }
 
@@ -332,7 +339,7 @@ class doc_iterator : public irs::doc_iterator {
     return value();
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -448,20 +455,20 @@ class sorting_doc_iterator : public irs::doc_iterator {
     it_ = docs_.begin();
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
-  virtual doc_id_t seek(doc_id_t doc) NOEXCEPT override {
+  virtual doc_id_t seek(doc_id_t doc) noexcept override {
     irs::seek(*this, doc);
     return value();
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
-  virtual bool next() NOEXCEPT override {
+  virtual bool next() noexcept override {
     while (it_ != docs_.end()) {
       if (doc_limits::eof(it_->doc)) {
         // skip invalid docs
@@ -491,7 +498,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
  private:
   struct doc_entry {
     doc_entry() = default;
-    doc_entry(doc_id_t doc, uint32_t freq, uint64_t cookie) NOEXCEPT
+    doc_entry(doc_id_t doc, uint32_t freq, uint64_t cookie) noexcept
       : doc(doc), freq(freq), cookie(cookie) {
     }
 
@@ -546,7 +553,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     std::sort(
       docs_.begin(), docs_.end(),
-      [](const doc_entry& lhs, const doc_entry& rhs) NOEXCEPT {
+      [](const doc_entry& lhs, const doc_entry& rhs) noexcept {
         return lhs.doc < rhs.doc;
     });
   }
@@ -599,16 +606,16 @@ class term_iterator : public irs::term_iterator {
     next_ = postings_.begin();
   }
 
-  virtual const bytes_ref& value() const NOEXCEPT override {
+  virtual const bytes_ref& value() const noexcept override {
     assert(it_ != postings_.end());
     return it_->first;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attribute_view::empty_instance();
   }
 
-  virtual void read() NOEXCEPT override {
+  virtual void read() noexcept override {
     // Does nothing now
   }
 
@@ -629,13 +636,13 @@ class term_iterator : public irs::term_iterator {
     return true;
   }
 
-  const field_meta& meta() const NOEXCEPT {
+  const field_meta& meta() const noexcept {
     return field_->meta();
   }
 
  private:
   struct less_t {
-    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const NOEXCEPT {
+    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const noexcept {
       return memcmp_less(lhs, rhs);
     }
   };
@@ -686,7 +693,7 @@ class term_iterator : public irs::term_iterator {
   map_t::iterator next_{ postings_.end() };
   map_t::iterator it_{ postings_.end() };
   const field_data* field_{};
-  const doc_map* doc_map_;
+  const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
 }; // term_iterator
@@ -705,23 +712,23 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     it_.reset(field, docmap, min_, max_);
   }
 
-  virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (min)() const noexcept override {
     return *min_;
   }
 
-  virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (max)() const noexcept override {
     return *max_;
   }
 
-  virtual const irs::field_meta& meta() const NOEXCEPT override {
+  virtual const irs::field_meta& meta() const noexcept override {
     return it_.meta();
   }
 
-  virtual irs::term_iterator::ptr iterator() const NOEXCEPT override {
+  virtual irs::term_iterator::ptr iterator() const noexcept override {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attribute_view::empty_instance();
   }
 
@@ -784,7 +791,9 @@ void field_data::reset(doc_id_t doc_id) {
 
 data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
-    auto handle = writer.push_column();
+    // FIXME encoder for norms???
+    // do not encrypt norms
+    auto handle = writer.push_column(NORM_COLUMN);
     norms_ = std::move(handle.second);
     meta_.norm = handle.first;
   }
@@ -1160,7 +1169,7 @@ fields_data::fields_data(const comparer* comparator /*= nullptr*/)
 field_data& fields_data::emplace(const hashed_string_ref& name) {
   static auto generator = [](
       const hashed_string_ref& key,
-      const field_data& value) NOEXCEPT {
+      const field_data& value) noexcept {
     // reuse hash but point ref at value
     return hashed_string_ref(key.hash(), value.meta().name);
   };
@@ -1184,7 +1193,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     bool operator()(
         const field_data* lhs,
         const field_data* rhs
-    ) const NOEXCEPT {
+    ) const noexcept {
       return lhs->meta().name < rhs->meta().name;
     }
   };
@@ -1214,7 +1223,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   fw.end();
 }
 
-void fields_data::reset() NOEXCEPT {
+void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   features_.clear();
   fields_.clear();

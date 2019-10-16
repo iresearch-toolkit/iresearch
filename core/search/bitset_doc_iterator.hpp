@@ -31,7 +31,7 @@
 
 NS_ROOT
 
-class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyable {
+class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
  public:
   explicit bitset_doc_iterator(const bitset& set);
 
@@ -43,9 +43,9 @@ class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyab
     boost_t boost
   );
 
-  virtual bool next() NOEXCEPT override;
-  virtual doc_id_t seek(doc_id_t target) NOEXCEPT override;
-  virtual doc_id_t value() const NOEXCEPT override { return doc_.value; }
+  virtual bool next() noexcept override;
+  virtual doc_id_t seek(doc_id_t target) noexcept override;
+  virtual doc_id_t value() const noexcept override { return doc_.value; }
 
  private:
   document doc_;

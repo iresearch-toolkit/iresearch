@@ -966,7 +966,7 @@ int search(
               std::push_heap(
                 sorted.begin(), sorted.end(),
                 [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                   const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                   const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                   return lhs.first < rhs.first;
               });
 
@@ -974,7 +974,7 @@ int search(
                 std::pop_heap(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first < rhs.first;
                 });
 
@@ -986,7 +986,7 @@ int search(
                 std::pop_heap(
                   begin, end,
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first < rhs.first;
                 });
               }

@@ -82,16 +82,16 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 
-by_range::by_range() NOEXCEPT
+by_range::by_range() noexcept
   : filter(by_range::type()) {
 }
 
-bool by_range::equals(const filter& rhs) const NOEXCEPT {
+bool by_range::equals(const filter& rhs) const noexcept {
   const by_range& trhs = static_cast<const by_range&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
 }
 
-size_t by_range::hash() const NOEXCEPT {
+size_t by_range::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

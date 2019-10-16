@@ -31,7 +31,7 @@ NS_ROOT
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
-class phrase_iterator final : public basic_doc_iterator_base {
+class phrase_iterator final : public doc_iterator_base {
  public:
   typedef std::pair<
     position::ref, // position attribute
@@ -82,7 +82,9 @@ class phrase_iterator final : public basic_doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    approx_.seek(target);
+    if (approx_.seek(target) == target) {
+      return target;
+    }
 
     if (doc_limits::eof(value()) || (phrase_freq_.value = phrase_freq())) {
       return value();

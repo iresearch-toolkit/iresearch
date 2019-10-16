@@ -92,7 +92,7 @@ field::field(
   this->features = features;
 }
 
-field::field(field&& rhs) NOEXCEPT
+field::field(field&& rhs) noexcept
   : field_meta(std::move(rhs)),
     terms( std::move(rhs.terms)),
     docs(std::move(rhs.docs)),
@@ -120,13 +120,13 @@ size_t field::remove(const irs::bytes_ref& t) {
 
 index_segment::index_segment() : count_( 0 ) {}
 
-index_segment::index_segment(index_segment&& rhs) NOEXCEPT
+index_segment::index_segment(index_segment&& rhs) noexcept
   : fields_( std::move( rhs.fields_)),
     count_( rhs.count_) {
   rhs.count_ = 0;
 }
 
-index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
+index_segment& index_segment::operator=(index_segment&& rhs) noexcept {
   if ( this != &rhs ) {
     fields_ = std::move( rhs.fields_ );
     count_ = rhs.count_;
@@ -137,9 +137,10 @@ index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
 }
 
 void index_segment::add_sorted(const ifield& f) {
-  irs::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   if (f.write(out)) {
-    const irs::bytes_ref value = out;
+    const irs::bytes_ref value = buf;
     const auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
     sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
   }
@@ -198,7 +199,7 @@ bool index_meta_writer::prepare(
 
 bool index_meta_writer::commit() { return true; }
 
-void index_meta_writer::rollback() NOEXCEPT { }
+void index_meta_writer::rollback() noexcept { }
 
 /* -------------------------------------------------------------------
  * index_meta_reader
@@ -339,7 +340,7 @@ class doc_iterator : public irs::doc_iterator {
     return doc_.value;
   }
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -450,7 +451,7 @@ class term_iterator : public irs::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -556,7 +557,7 @@ const irs::field_meta& term_reader::meta() const {
   return data_;
 }
 
-const irs::attribute_view& term_reader::attributes() const NOEXCEPT {
+const irs::attribute_view& term_reader::attributes() const noexcept {
   return irs::attribute_view::empty_instance();
 }
 
@@ -572,7 +573,7 @@ field_reader::field_reader(const index_segment& data)
   }
 }
 
-field_reader::field_reader(field_reader&& other) NOEXCEPT
+field_reader::field_reader(field_reader&& other) noexcept
   : readers_(std::move(other.readers_)), data_(std::move(other.data_)) {
 }
 

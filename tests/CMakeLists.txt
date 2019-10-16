@@ -88,6 +88,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/compression_test.cpp
   ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
@@ -121,10 +122,6 @@ set(IReSearch_tests_headers
   ./index/index_tests.hpp
   ./search/filter_test_case_base.hpp
   ./formats/formats_test_case_base.hpp
-  ./unicode/utf8.h
-  ./unicode/utf8/checked.h
-  ./unicode/utf8/unchecked.h
-  ./unicode/utf8/core.h
   ./tests_config.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
@@ -147,6 +144,7 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-shared)
 add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
 add_executable(${IResearchTests_TARGET_NAME}-static
@@ -155,9 +153,11 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./analysis/text_analyzer_tests.cpp
   ./formats/formats_10_tests.cpp
   ./formats/formats_11_tests.cpp
+  ./formats/formats_12_tests.cpp
   ./iql/parser_test.cpp
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
@@ -266,6 +266,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

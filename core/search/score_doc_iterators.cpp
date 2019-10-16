@@ -26,58 +26,6 @@
 
 NS_ROOT
 
-void basic_doc_iterator_base::prepare_score(
-    const order::prepared& order,
-    order::prepared::scorers&& scorers) {
-  scorers_ = std::move(scorers);
-
-  switch (scorers_.size()) {
-    case 0: {
-      // let order initialize empty score
-      doc_iterator_base::prepare_score(order, nullptr, [](const void*, byte_type*){ });
-    } break;
-    case 1: {
-      auto& scorer = scorers_[0];
-
-      if (scorer.offset) {
-        doc_iterator_base::prepare_score(
-            order, &scorer, 
-            [](const void* ctx, byte_type* score) {
-          auto& scorer = *static_cast<const order::prepared::scorers::entry*>(ctx);
-          (*scorer.func)(scorer.ctx.get(), score + scorer.offset);
-        });
-      } else {
-        doc_iterator_base::prepare_score(order, scorer.ctx.get(), scorer.func);
-      }
-    } break;
-    case 2: {
-      if (scorers_[0].offset) {
-        doc_iterator_base::prepare_score(
-            order, &scorers_, [](const void* ctx, byte_type* score) {
-          auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
-          (*scorers[0].func)(scorers[0].ctx.get(), score + scorers[0].offset);
-          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
-        });
-      } else {
-        doc_iterator_base::prepare_score(
-            order, &scorers_, [](const void* ctx, byte_type* score) {
-          auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
-          (*scorers[0].func)(scorers[0].ctx.get(), score);
-          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
-        });
-      }
-    } break;
-    default: {
-      doc_iterator_base::prepare_score(
-          order, &scorers_,
-          [](const void* ctx, byte_type* score) {
-        auto& scorers = *static_cast<const order::prepared::scorers*>(ctx);
-        scorers.score(score);
-      });
-    } break;
-  }
-}
-
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
@@ -92,7 +40,7 @@ basic_doc_iterator::basic_doc_iterator(
     doc_iterator::ptr&& it,
     const order::prepared& ord,
     cost::cost_t estimation,
-    boost_t boost) NOEXCEPT
+    boost_t boost) noexcept
   : it_(std::move(it)),
     stats_(stats) {
   assert(it_);

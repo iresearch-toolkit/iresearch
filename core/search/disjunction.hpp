@@ -86,7 +86,7 @@ NS_END // detail
 ////////////////////////////////////////////////////////////////////////////////
 /// @class basic_disjunction
 ////////////////////////////////////////////////////////////////////////////////
-class basic_disjunction final : public doc_iterator_base {
+class basic_disjunction final : public doc_iterator_base, score_ctx {
  public:
   typedef score_iterator_adapter doc_iterator_t;
 
@@ -114,7 +114,7 @@ class basic_disjunction final : public doc_iterator_base {
     estimate(est);
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -155,7 +155,7 @@ class basic_disjunction final : public doc_iterator_base {
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.ord_->prepare_score(score);
         self.score_iterator_impl(self.lhs_, score);
@@ -164,7 +164,7 @@ class basic_disjunction final : public doc_iterator_base {
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.ord_->prepare_score(score);
         self.score_iterator_impl(self.lhs_, score);
@@ -172,7 +172,7 @@ class basic_disjunction final : public doc_iterator_base {
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
       assert(lhs_.score == &irs::score::no_score());
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.ord_->prepare_score(score);
         self.score_iterator_impl(self.rhs_, score);
@@ -180,7 +180,7 @@ class basic_disjunction final : public doc_iterator_base {
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score(ord, nullptr, [](const void*, byte_type*) {/*NOOP*/});
+      prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
     }
   }
 
@@ -223,7 +223,7 @@ class basic_disjunction final : public doc_iterator_base {
 /// @class small_disjunction
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
-class small_disjunction : public doc_iterator_base {
+class small_disjunction : public doc_iterator_base, score_ctx {
  public:
   typedef score_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -251,7 +251,7 @@ class small_disjunction : public doc_iterator_base {
     });
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -356,9 +356,9 @@ class small_disjunction : public doc_iterator_base {
 
     // prepare score
     if (scored_itrs_.empty()) {
-      prepare_score(ord, nullptr, [](const void*, byte_type*){ /*NOOP*/ });
+      prepare_score(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
     } else {
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const small_disjunction*>(ctx);
         self.ord_->prepare_score(score);
 
@@ -402,7 +402,7 @@ class small_disjunction : public doc_iterator_base {
 ///   [n]   <-- lead (accepted iterator)
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class disjunction : public doc_iterator_base {
+class disjunction : public doc_iterator_base, score_ctx {
  public:
   typedef small_disjunction small_disjunction_t;
   typedef basic_disjunction basic_disjunction_t;
@@ -432,7 +432,7 @@ class disjunction : public doc_iterator_base {
     });
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -501,7 +501,7 @@ class disjunction : public doc_iterator_base {
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
     // prepare score
-    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
       self.ord_->prepare_score(score);
       self.score_impl(score);
@@ -511,7 +511,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
@@ -521,7 +521,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
@@ -550,13 +550,13 @@ class disjunction : public doc_iterator_base {
     pop(begin, end);
   }
 
-  inline doc_iterator_t& lead() NOEXCEPT {
+  inline doc_iterator_t& lead() noexcept {
     assert(!heap_.empty());
     assert(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
-  inline doc_iterator_t& top() NOEXCEPT {
+  inline doc_iterator_t& top() noexcept {
     assert(!heap_.empty());
     assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
