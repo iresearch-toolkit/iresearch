@@ -818,11 +818,11 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual void read() override {
     assert(cur_block_);
-    term_iterator_base::read(cur_block_->it);
+    term_iterator_base::read(*cur_block_);
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    return term_iterator_base::postings(cur_block_ ? &cur_block_->it : nullptr, features);
+    return term_iterator_base::postings(cur_block_ ? cur_block_: nullptr, features);
   }
 
  private:
@@ -870,37 +870,42 @@ class automaton_term_iterator final : public term_iterator_base {
     const automaton::Arc* rho_{};  // rho arc if present
   }; // begin_matcher
 
-  struct block_state {
-    block_state(byte_weight&& out, size_t prefix,
+  class block_iterator : public detail::block_iterator {
+   public:
+    block_iterator(byte_weight&& out, size_t prefix,
                 automaton::StateId state,
                 const automaton::Arc* arcs, size_t narcs) noexcept
-      : it(std::move(out), prefix),
-        arcs(arcs, narcs),
-        state(state) {
+      : detail::block_iterator(std::move(out), prefix),
+        arcs_(arcs, narcs),
+        state_(state) {
     }
 
-    block_state(uint64_t start, size_t prefix,
+    block_iterator(uint64_t start, size_t prefix,
                 automaton::StateId state,
                 const automaton::Arc* arcs, size_t narcs) noexcept
-      : it(start, prefix),
-        arcs(arcs, narcs),
-        state(state) {
+      : detail::block_iterator(start, prefix),
+        arcs_(arcs, narcs),
+        state_(state) {
     }
 
-    block_iterator it;
-    arc_matcher arcs;
-    automaton::StateId state;       // state to which current block belongs
-  }; // block_state
+   public:
+    arc_matcher& arcs() noexcept { return arcs_; }
+    automaton::StateId acceptor_state() const noexcept { return state_; }
 
-  typedef std::deque<block_state> block_stack_t;
+   private:
+    arc_matcher arcs_;
+    automaton::StateId state_;  // state to which current block belongs
+  }; // block_iterator
 
-  block_state* pop_block() noexcept {
+  typedef std::deque<block_iterator> block_stack_t;
+
+  block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
     assert(!block_stack_.empty());
     return &block_stack_.back();
   }
 
-  block_state* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
+  block_iterator* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
@@ -911,7 +916,7 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_state* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
+  block_iterator* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
     fst::ArcIteratorData<automaton::Arc> data;
     acceptor_->InitArcIterator(state, &data);
 
@@ -922,7 +927,7 @@ class automaton_term_iterator final : public term_iterator_base {
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
-  block_state* cur_block_{};
+  block_iterator* cur_block_{};
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -932,7 +937,7 @@ bool automaton_term_iterator::next() {
       // iterator at the beginning
       const auto& fst = this->fst();
       cur_block_ = push_block(fst.Final(fst.Start()), 0, acceptor_->Start());
-      cur_block_->it.load(terms_input(), terms_cipher());
+      cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
@@ -956,16 +961,16 @@ bool automaton_term_iterator::next() {
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
     match = SKIP;
-    state = cur_block_->state;
+    state = cur_block_->acceptor_state();
 
     const auto* begin = suffix;
     const auto* end = begin + suffix_size;
 
     if (begin != end) {
-      const auto* arc = cur_block_->arcs.seek(*begin);
+      const auto* arc = cur_block_->arcs().seek(*begin);
 
       if (!arc) {
-        if (cur_block_->arcs.done()) {
+        if (cur_block_->arcs().done()) {
           match = POP; // pop current block
         }
 
@@ -976,7 +981,7 @@ bool automaton_term_iterator::next() {
       state = arc->nextstate;
 
 #ifdef IRESEARCH_DEBUG
-      matcher_->SetState(cur_block_->state);
+      matcher_->SetState(cur_block_->acceptor_state());
       assert(matcher_->Find(*begin));
       assert(matcher_->Value().nextstate == state);
 #endif
@@ -996,17 +1001,17 @@ bool automaton_term_iterator::next() {
 
     assert(begin == end);
 
-    switch (cur_block_->it.type()) {
+    switch (cur_block_->type()) {
       case ET_TERM: {
         if (acceptor_->Final(state)) {
-          copy(suffix, cur_block_->it.prefix(), suffix_size);
+          copy(suffix, cur_block_->prefix(), suffix_size);
           match = MATCH;
         }
       } break;
       case ET_BLOCK: {
-        copy(suffix, cur_block_->it.prefix(), suffix_size);
-        cur_block_ = push_block(cur_block_->it.block_start(), term_.size(), state);
-        cur_block_->it.load(terms_input(), terms_cipher());
+        copy(suffix, cur_block_->prefix(), suffix_size);
+        cur_block_ = push_block(cur_block_->block_start(), term_.size(), state);
+        cur_block_->load(terms_input(), terms_cipher());
       } break;
       default: {
         assert(false);
@@ -1016,16 +1021,16 @@ bool automaton_term_iterator::next() {
 
   for (;;) {
     // pop finished blocks
-    while (cur_block_->it.end()) {
-      if (cur_block_->it.sub_count()) {
-        if (block_t::INVALID_LABEL != cur_block_->it.next_label()) {
-          const auto* arc = cur_block_->arcs.seek(cur_block_->it.next_label());
+    while (cur_block_->end()) {
+      if (cur_block_->sub_count()) {
+        if (block_t::INVALID_LABEL != cur_block_->next_label()) {
+          const auto* arc = cur_block_->arcs().seek(cur_block_->next_label());
 
-          if (cur_block_->arcs.done()) {
+          if (cur_block_->arcs().done()) {
             if (&block_stack_.front() == cur_block_) {
               // need to pop root block, we're done
               term_.reset();
-              cur_block_->it.reset();
+              cur_block_->reset();
               return false;
             }
 
@@ -1034,35 +1039,35 @@ bool automaton_term_iterator::next() {
           }
 
           if (arc && arc->ilabel == fst::fsa::kRho) {
-            cur_block_->it.next_sub_block();
+            cur_block_->next_sub_block();
           } else {
-            assert(cur_block_->arcs.value()->ilabel <= integer_traits<byte_type>::const_max);
-            cur_block_->it.scan_to_sub_block(byte_type(cur_block_->arcs.value()->ilabel));
+            assert(cur_block_->arcs().value()->ilabel <= integer_traits<byte_type>::const_max);
+            cur_block_->scan_to_sub_block(byte_type(cur_block_->arcs().value()->ilabel));
           }
         } else {
-          cur_block_->it.next_sub_block();
+          cur_block_->next_sub_block();
         }
-        cur_block_->it.load(terms_input(), terms_cipher());
+        cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
-        cur_block_->it.reset();
+        cur_block_->reset();
         return false;
       } else {
-        const uint64_t start = cur_block_->it.start();
+        const uint64_t start = cur_block_->start();
         cur_block_ = pop_block();
-        state_ = cur_block_->it.state();
-        if (cur_block_->it.dirty() || cur_block_->it.block_start() != start) {
+        state_ = cur_block_->state();
+        if (cur_block_->dirty() || cur_block_->block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          assert(cur_block_->it.prefix() < term_.size());
-          cur_block_->it.scan_to_sub_block(term_[cur_block_->it.prefix()]); // to sub-block
-          cur_block_->it.load(terms_input(), terms_cipher());
-          cur_block_->it.scan_to_block(start);
+          assert(cur_block_->prefix() < term_.size());
+          cur_block_->scan_to_sub_block(term_[cur_block_->prefix()]); // to sub-block
+          cur_block_->load(terms_input(), terms_cipher());
+          cur_block_->scan_to_block(start);
         }
       }
     }
 
     do {
-      cur_block_->it.next(read_suffix);
+      cur_block_->next(read_suffix);
 
       if (MATCH == match) {
         return true;
@@ -1070,14 +1075,14 @@ bool automaton_term_iterator::next() {
         if (&block_stack_.front() == cur_block_) {
           // need to pop root block, we're done
           term_.reset();
-          cur_block_->it.reset();
+          cur_block_->reset();
           return false;
         }
 
         cur_block_ = pop_block();
         break; // continue with popped block
       }
-    } while (!cur_block_->it.end());
+    } while (!cur_block_->end());
   }
 }
 
