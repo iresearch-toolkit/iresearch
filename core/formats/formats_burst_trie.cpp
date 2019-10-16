@@ -1024,9 +1024,10 @@ bool automaton_term_iterator::next() {
     while (cur_block_->end()) {
       if (cur_block_->sub_count()) {
         if (block_t::INVALID_LABEL != cur_block_->next_label()) {
-          const auto* arc = cur_block_->arcs().seek(cur_block_->next_label());
+          auto& arcs = cur_block_->arcs();
+          const auto* arc = arcs.seek(cur_block_->next_label());
 
-          if (cur_block_->arcs().done()) {
+          if (arcs.done()) {
             if (&block_stack_.front() == cur_block_) {
               // need to pop root block, we're done
               term_.reset();
@@ -1041,8 +1042,8 @@ bool automaton_term_iterator::next() {
           if (arc && arc->ilabel == fst::fsa::kRho) {
             cur_block_->next_sub_block();
           } else {
-            assert(cur_block_->arcs().value()->ilabel <= integer_traits<byte_type>::const_max);
-            cur_block_->scan_to_sub_block(byte_type(cur_block_->arcs().value()->ilabel));
+            assert(arcs.value()->ilabel <= integer_traits<byte_type>::const_max);
+            cur_block_->scan_to_sub_block(byte_type(arcs.value()->ilabel));
           }
         } else {
           cur_block_->next_sub_block();
