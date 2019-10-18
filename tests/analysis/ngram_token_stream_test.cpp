@@ -160,6 +160,7 @@ TEST(ngram_token_stream_test, next_utf8)
         end_marker(irs::string_ref::EMPTY) {}
     utf8token(const irs::string_ref& value, size_t start, size_t end, irs::string_ref sm, irs::string_ref em) noexcept
       : value(value.c_str(), value.size()), start(start), end(end), start_marker(sm), end_marker(em) {}
+
     irs::string_ref start_marker;
     irs::string_ref end_marker;
     irs::string_ref value;
@@ -222,13 +223,13 @@ TEST(ngram_token_stream_test, next_utf8)
 
     const std::vector<utf8token> expected {
       { "a", 0, 1 },
-      { irs::string_ref("\xc2\xa2", 2), 1, 3 },
+      { "\xc2\xa2", 1, 3 },
       { "b", 3, 4 },
-      { irs::string_ref("\xc2\xa3", 2), 4, 6 },
+      { "\xc2\xa3", 4, 6 },
       { "c", 6, 7 },
-      { irs::string_ref("\xc2\xa4", 2), 7, 9 },
+      { "\xc2\xa4", 7, 9 },
       { "d", 9, 10 },
-      { irs::string_ref("\xc2\xa5", 2), 10, 12 }
+      { "\xc2\xa5", 10, 12 }
     };
     assert_utf8tokens(expected, data, stream);
 
@@ -236,11 +237,11 @@ TEST(ngram_token_stream_test, next_utf8)
     data.resize(data.size() - 1);
     const std::vector<utf8token> expected2 {
       { "a", 0, 1 },
-      { irs::string_ref("\xc2\xa2", 2), 1, 3 },
+      { "\xc2\xa2", 1, 3 },
       { "b", 3, 4 },
-      { irs::string_ref("\xc2\xa3", 2), 4, 6 },
+      { "\xc2\xa3", 4, 6 },
       { "c", 6, 7 },
-      { irs::string_ref("\xc2\xa4", 2), 7, 9 },
+      { "\xc2\xa4", 7, 9 },
       { "d", 9, 10 }
     };
     assert_utf8tokens(expected2, data, stream);
@@ -285,19 +286,19 @@ TEST(ngram_token_stream_test, next_utf8)
     const std::vector<utf8token> expected{
       { "a", 0, 1 },
       { "a\xc2\xa2", 0, 3 },
-      { irs::string_ref("\xc2\xa2", 2), 1, 3 },
+      { "\xc2\xa2", 1, 3 },
       { "\xc2\xa2""b", 1, 4 },
       { "b", 3, 4 },
       { "b""\xc2\xa3", 3, 6 },
-      { irs::string_ref("\xc2\xa3", 2), 4, 6 },
+      { "\xc2\xa3", 4, 6 },
       { "\xc2\xa3""c", 4, 7 },
       { "c", 6, 7 },
       { "c""\xc2\xa4", 6, 9 },
-      { irs::string_ref("\xc2\xa4", 2), 7, 9 },
+      { "\xc2\xa4", 7, 9 },
       { "\xc2\xa4""d", 7, 10 },
       { "d", 9, 10 },
       { "d""\xc2\xa5", 9, 12 },
-      { irs::string_ref("\xc2\xa5", 2), 10, 12 }
+      { "\xc2\xa5", 10, 12 }
     };
     assert_utf8tokens(expected, data, stream);
   }
@@ -366,19 +367,19 @@ TEST(ngram_token_stream_test, next_utf8)
     const std::vector<utf8token> expected{
       { "\xc2\xa1""a", 0, 1, "\xc2\xa1", irs::string_ref::EMPTY },
       { "\xc2\xa1""a""\xc2\xa2", 0, 3, "\xc2\xa1", irs::string_ref::EMPTY },
-      { irs::string_ref("\xc2\xa2", 2), 1, 3 },
+      { "\xc2\xa2", 1, 3 },
       { "\xc2\xa2""b", 1, 4 },
       { "b", 3, 4 },
       { "b""\xc2\xa3", 3, 6 },
-      { irs::string_ref("\xc2\xa3", 2), 4, 6 },
+      { "\xc2\xa3", 4, 6 },
       { "\xc2\xa3""c", 4, 7 },
       { "c", 6, 7 },
       { "c""\xc2\xa4", 6, 9 },
-      { irs::string_ref("\xc2\xa4", 2), 7, 9 },
+      { "\xc2\xa4", 7, 9 },
       { "\xc2\xa4""d", 7, 10 },
       { "d", 9, 10 },
       { "d""\xc2\xa5", 9, 12 },
-      { irs::string_ref("\xc2\xa5", 2), 10, 12 }
+      { "\xc2\xa5", 10, 12 }
     };
     assert_utf8tokens(expected, data, stream);
   }
@@ -398,19 +399,19 @@ TEST(ngram_token_stream_test, next_utf8)
       { "\xc2\xa1""a", 0, 1, "\xc2\xa1", irs::string_ref::EMPTY },
       { "\xc2\xa1""a""\xc2\xa2", 0, 3, "\xc2\xa1", irs::string_ref::EMPTY },
       { "\xc2\xa1""a""\xc2\xa2""b""\xc2\xa3""c""\xc2\xa4""d""\xc2\xa5", 0, 12, "\xc2\xa1", irs::string_ref::EMPTY},
-      { irs::string_ref("\xc2\xa2", 2), 1, 3 },
+      { "\xc2\xa2", 1, 3 },
       { "\xc2\xa2""b", 1, 4 },
       { "b", 3, 4 },
       { "b""\xc2\xa3", 3, 6 },
-      { irs::string_ref("\xc2\xa3", 2), 4, 6 },
+      { "\xc2\xa3", 4, 6 },
       { "\xc2\xa3""c", 4, 7 },
       { "c", 6, 7 },
       { "c""\xc2\xa4", 6, 9 },
-      { irs::string_ref("\xc2\xa4", 2), 7, 9 },
+      { "\xc2\xa4", 7, 9 },
       { "\xc2\xa4""d", 7, 10 },
       { "d", 9, 10 },
       { "d""\xc2\xa5", 9, 12 },
-      { irs::string_ref("\xc2\xa5", 2), 10, 12 }
+      { "\xc2\xa5", 10, 12 }
     };
     assert_utf8tokens(expected, data, stream);
   }
@@ -592,8 +593,15 @@ TEST(ngram_token_stream_test, reset_too_big) {
 TEST(ngram_token_stream_test, next) {
   struct token {
     token(const irs::string_ref& value, size_t start, size_t end) noexcept
-      : value(value), start(start), end(end) {
-    }
+      : value(value), start(start), end(end) ,
+        start_marker(irs::string_ref::EMPTY),
+        end_marker(irs::string_ref::EMPTY) {}
+
+    token(const irs::string_ref& value, size_t start, size_t end, irs::string_ref sm, irs::string_ref em) noexcept
+      : value(value.c_str(), value.size()), start(start), end(end), start_marker(sm), end_marker(em) {}
+
+    irs::string_ref start_marker;
+    irs::string_ref end_marker;
 
     irs::string_ref value;
     size_t start;
@@ -619,8 +627,17 @@ TEST(ngram_token_stream_test, next) {
       ASSERT_EQ(expected_token->start, offset->start);
       ASSERT_EQ(expected_token->end, offset->end);
       pos += inc->value;
-      ASSERT_EQ(irs::string_ref(data.begin() + pos, value->value().size()),
-                irs::ref_cast<char>(value->value()));
+      const auto size = value->value().size() - expected_token->start_marker.size() - expected_token->end_marker.size();
+      ASSERT_GT(size, 0);
+      irs::bstring bs;
+      if (!expected_token->start_marker.empty()) {
+        bs.append(reinterpret_cast<const irs::byte_type*>(expected_token->start_marker.c_str()), expected_token->start_marker.size());
+      }
+      bs.append(reinterpret_cast<const irs::byte_type*>(data.c_str()) + pos, size);
+      if (!expected_token->end_marker.empty()) {
+        bs.append(reinterpret_cast<const irs::byte_type*>(expected_token->end_marker.c_str()), expected_token->end_marker.size());
+      }
+      ASSERT_EQ(bs, value->value());
       ++expected_token;
     }
     ASSERT_EQ(expected_token, expected.end());
@@ -637,6 +654,23 @@ TEST(ngram_token_stream_test, next) {
       { "i", 2, 3 },
       { "c", 3, 4 },
       { "k", 4, 5 }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
+  {
+    SCOPED_TRACE("1-gram start marker end marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
+        1, 1, false, irs::analysis::ngram_token_stream::options_t::BinaryStream, 
+        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
+        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+
+    const std::vector<token> expected{
+      { "$q", 0, 1, "$", irs::string_ref::EMPTY},
+      { "u", 1, 2 },
+      { "i", 2, 3 },
+      { "c", 3, 4 },
+      { "k^", 4, 5, irs::string_ref::EMPTY, "^" }
     };
 
     assert_tokens(expected, "quick", stream);
@@ -658,6 +692,25 @@ TEST(ngram_token_stream_test, next) {
     assert_tokens(expected, "quick", stream);
   }
 
+  {
+    SCOPED_TRACE("1-gram  preserve original start marker end marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
+        1, 1, true, irs::analysis::ngram_token_stream::options_t::BinaryStream,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
+        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+
+    const std::vector<token> expected{
+      { "$q", 0, 1, "$", irs::string_ref::EMPTY},
+      {"$quick", 0, 5, "$", irs::string_ref::EMPTY},
+      {"quick^", 0, 5, irs::string_ref::EMPTY, "^"},
+      { "u", 1, 2 },
+      { "i", 2, 3 },
+      { "c", 3, 4 },
+      { "k^", 4, 5, irs::string_ref::EMPTY, "^" }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
 
   {
     SCOPED_TRACE("2-gram");
@@ -674,7 +727,7 @@ TEST(ngram_token_stream_test, next) {
   }
 
   {
-    SCOPED_TRACE("2-gram, preserver original");
+    SCOPED_TRACE("2-gram, preserve original");
     irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, true));
 
     const std::vector<token> expected {
@@ -743,6 +796,31 @@ TEST(ngram_token_stream_test, next) {
 
     assert_tokens(expected, "quick", stream);
   }
+  {
+    SCOPED_TRACE("1..3-gram start marker end marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
+        1, 3, false,
+        irs::analysis::ngram_token_stream::options_t::BinaryStream,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
+        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+
+    const std::vector<token> expected{
+      { "$q",   0, 1, "$", irs::string_ref::EMPTY },
+      { "$qu",  0, 2, "$", irs::string_ref::EMPTY },
+      { "$qui", 0, 3, "$", irs::string_ref::EMPTY },
+      { "u",   1, 2 },
+      { "ui",  1, 3 },
+      { "uic", 1, 4 },
+      { "i",   2, 3 },
+      { "ic",  2, 4 },
+      { "ick^", 2, 5, irs::string_ref::EMPTY, "^" },
+      { "c",   3, 4 },
+      { "ck^",  3, 5, irs::string_ref::EMPTY, "^" },
+      { "k^",   4, 5, irs::string_ref::EMPTY, "^" }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
 
   {
     SCOPED_TRACE("2..3-gram");
@@ -775,6 +853,70 @@ TEST(ngram_token_stream_test, next) {
       { "ic",  2, 4 },
       { "ick", 2, 5 },
       { "ck",  3, 5 }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
+
+  {
+    SCOPED_TRACE("2..3-gram, preserve origianl start marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
+        2, 3, true, irs::analysis::ngram_token_stream::options_t::BinaryStream,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
+        irs::bytes_ref::EMPTY));
+
+    const std::vector<token> expected{
+      { "$qu",  0, 2, "$", irs::string_ref::EMPTY  },
+      { "$qui", 0, 3, "$", irs::string_ref::EMPTY  },
+      { "$quick", 0, 5, "$", irs::string_ref::EMPTY },
+      { "ui",  1, 3 },
+      { "uic", 1, 4 },
+      { "ic",  2, 4 },
+      { "ick", 2, 5 },
+      { "ck",  3, 5 }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
+
+  {
+    SCOPED_TRACE("2..3-gram, preserve origianl end marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true,
+      irs::analysis::ngram_token_stream::options_t::BinaryStream,
+      irs::bytes_ref::EMPTY,
+      irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+
+    const std::vector<token> expected{
+      { "qu",  0, 2 },
+      { "qui", 0, 3 },
+      {"quick^", 0, 5, irs::string_ref::EMPTY, "^"},
+      { "ui",  1, 3 },
+      { "uic", 1, 4 },
+      { "ic",  2, 4 },
+      { "ick^", 2, 5, irs::string_ref::EMPTY, "^" },
+      { "ck^",  3, 5, irs::string_ref::EMPTY, "^" }
+    };
+
+    assert_tokens(expected, "quick", stream);
+  }
+
+  {
+    SCOPED_TRACE("2..3-gram, preserve origianl start marker end marker");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true,
+      irs::analysis::ngram_token_stream::options_t::BinaryStream,
+      irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
+      irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+
+    const std::vector<token> expected{
+      { "$qu",  0, 2, "$", irs::string_ref::EMPTY  },
+      { "$qui", 0, 3, "$", irs::string_ref::EMPTY  },
+      { "$quick", 0, 5, "$", irs::string_ref::EMPTY },
+      { "quick^", 0, 5, irs::string_ref::EMPTY, "^"},
+      { "ui",  1, 3 },
+      { "uic", 1, 4 },
+      { "ic",  2, 4 },
+      { "ick^", 2, 5, irs::string_ref::EMPTY, "^" },
+      { "ck^",  3, 5, irs::string_ref::EMPTY, "^" }
     };
 
     assert_tokens(expected, "quick", stream);

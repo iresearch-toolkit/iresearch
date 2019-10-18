@@ -344,8 +344,8 @@ void ngram_token_stream::emit_ngram() noexcept {
       marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
       term_.value(marked_term_buffer_);
     } else {
-      term_.value(irs::bytes_ref(begin_, ngram_byte_len));
       assert(ngram_byte_len <= integer_traits<uint32_t>::const_max);
+      term_.value(irs::bytes_ref(begin_, ngram_byte_len));
     }
   } else {
     emit_original();
