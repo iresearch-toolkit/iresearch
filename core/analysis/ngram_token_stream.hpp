@@ -40,14 +40,14 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   
 
   struct options_t {
-    enum stream_bytes_t {
+    enum class stream_bytes_t {
       BinaryStream, // input is treaten as generic bytes 
-      Ut8Stream,    // input is treaten as ut8-encoded bytes
+      Ut8Stream,    // input is treaten as ut8-encoded string
     };
     options_t() : min_gram(0), max_gram(0), preserve_original(true),
-      stream_bytes_type(BinaryStream) {}
+      stream_bytes_type(stream_bytes_t::BinaryStream) {}
     options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max), 
-      stream_bytes_type(BinaryStream), preserve_original(original) {}
+      stream_bytes_type(stream_bytes_t::BinaryStream), preserve_original(original) {}
     options_t(size_t min, size_t max, bool original, stream_bytes_t stream_type, 
               const irs::bytes_ref start, const irs::bytes_ref end)
       : start_marker(start), end_marker(end), min_gram(min), max_gram(max), 
@@ -110,16 +110,21 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   const byte_type* ngram_end_{};
   size_t length_{};
 
-  enum emit_original_t {
+  enum class emit_original_t {
     None,
     WithoutMarkers,
     WithStartMarker,
     WithEndMarker
   };
 
-  emit_original_t emit_original_{ None };
+  emit_original_t emit_original_{ emit_original_t::None };
 
+  // buffer for emitting ngram with start/stop marker
+  // we need continious memory for value so can not use
+  // pointers to input memory block
   bstring marked_term_buffer_;
+
+  // 
   uint32_t next_inc_val_{ 0 };
 
   // keep position for next ngram  - is used 

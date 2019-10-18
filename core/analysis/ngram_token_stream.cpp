@@ -41,8 +41,8 @@ const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 const std::unordered_map<
     std::string,
     irs::analysis::ngram_token_stream::options_t::stream_bytes_t> STREAM_TYPE_CONVERT_MAP = {
-  { "binary", irs::analysis::ngram_token_stream::options_t::BinaryStream },
-  { "utf8", irs::analysis::ngram_token_stream::options_t::Ut8Stream }
+  { "binary", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream },
+  { "utf8", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream }
 };
 
 bool parse_json_config(const irs::string_ref& args,
@@ -68,7 +68,7 @@ bool parse_json_config(const irs::string_ref& args,
 
   uint64_t min, max;
   bool preserve_original;
-  auto stream_bytes_type = irs::analysis::ngram_token_stream::options_t::BinaryStream;
+  auto stream_bytes_type = irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream;
   irs::bstring start_marker, end_marker;
 
   if (!get_uint64(json, MIN_PARAM_NAME, min)) {
@@ -284,16 +284,6 @@ ngram_token_stream::ngram_token_stream(
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
   attrs_.emplace(term_);
-  const size_t max_marker_size = std::max(options_.start_marker.size(), options_.end_marker.size());
-  if (max_marker_size > 0) {
-    // we have at least one marker. As we need to append marker to ngtram and provide term 
-    // value as continious buffer, we can`t return pointer to some byte inside input stream
-    // but rather we return pointer to buffer with copied values of ngram and marker
-    // For sake of performance we allocate requested memory right now
-    size_t buffer_size = options_.preserve_original ? data_.size() : std::min(data_.size(), options_.max_gram);
-    buffer_size += max_marker_size;
-    marked_term_buffer_.reserve(buffer_size);
-  }
 }
 
 bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
@@ -302,18 +292,18 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
       return false;
     }
     switch (options_.stream_bytes_type) {
-    case options_t::BinaryStream:
-      it++;
-      break;
-    case options_t::Ut8Stream:
-      utf8::unchecked::next(it);
-      break;
-    default:
-      IRS_ASSERT(false);
-      IR_FRMT_ERROR(
-        "Invalid stream type value %d",
-        static_cast<int>(options_.stream_bytes_type));
-      return false;
+      case options_t::stream_bytes_t::BinaryStream:
+        it++;
+        break;
+      case options_t::stream_bytes_t::Ut8Stream:
+        utf8::unchecked::next(it);
+        break;
+      default:
+        IRS_ASSERT(false);
+        IR_FRMT_ERROR(
+          "Invalid stream type value %d",
+          static_cast<int>(options_.stream_bytes_type));
+        return false;
     }
   } else {
     // special case - stream entry
@@ -324,8 +314,7 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
 
 void ngram_token_stream::emit_ngram() noexcept {
   const auto ngram_byte_len = std::distance(begin_, ngram_end_);
-  if (emit_original_ == None || begin_ != data_.begin() || ngram_byte_len < data_.size()) {
-    offset_.start = std::distance(data_.begin(), begin_);
+  if (emit_original_ == emit_original_t::None || ngram_byte_len < data_.size()) {
     offset_.end = offset_.start + ngram_byte_len;
     inc_.value = next_inc_val_;
     next_inc_val_ = 0;
@@ -348,23 +337,23 @@ void ngram_token_stream::emit_ngram() noexcept {
       term_.value(irs::bytes_ref(begin_, ngram_byte_len));
     }
   } else {
+    // if ngram covers original stream we need to process it specially
     emit_original();
   }
 }
 
 void ngram_token_stream::emit_original() noexcept {
   switch (emit_original_) {
-    case WithoutMarkers:
+    case emit_original_t::WithoutMarkers:
       term_.value(data_);
       assert(data_.size() <= integer_traits<uint32_t>::const_max);
-      offset_.start = 0;
       offset_.end = uint32_t(data_.size());
-      emit_original_ = None;
+      emit_original_ = emit_original_t::None;
       inc_.value = next_inc_val_;
       next_inc_val_ = 1;
       keep_ngram_position_ = false;
       break;
-    case WithEndMarker:
+    case emit_original_t::WithEndMarker:
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + data_.size()));
       marked_term_buffer_.append(data_.begin(), data_.end());
@@ -373,12 +362,12 @@ void ngram_token_stream::emit_original() noexcept {
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
       offset_.start = 0;
       offset_.end = uint32_t(data_.size());
-      emit_original_ = None; // end marker is emitted last, so we are done emitting original
+      emit_original_ = emit_original_t::None; // end marker is emitted last, so we are done emitting original
       keep_ngram_position_ = false;
       inc_.value = next_inc_val_;
       next_inc_val_ = 1;
       break;
-    case WithStartMarker:
+    case emit_original_t::WithStartMarker:
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + data_.size()));
       marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
@@ -387,10 +376,10 @@ void ngram_token_stream::emit_original() noexcept {
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
       offset_.start = 0;
       offset_.end = uint32_t(data_.size());
-      emit_original_ = options_.end_marker.empty()? None : WithEndMarker;
+      emit_original_ = options_.end_marker.empty()? emit_original_t::None : emit_original_t::WithEndMarker;
       inc_.value = next_inc_val_;
-      next_inc_val_ = emit_original_ != None ? 0 : 1;
-      keep_ngram_position_ = emit_original_ != None;
+      next_inc_val_ = emit_original_ != emit_original_t::None ? 0 : 1;
+      keep_ngram_position_ = emit_original_ != emit_original_t::None;
       break;
   }
 }
@@ -406,19 +395,20 @@ bool ngram_token_stream::next() noexcept {
         return true;
       }
     } else {
-      // need to move to next position
-      if (emit_original_ == None ) {
+      // need to move to next position (if we have emitted original or doesn`t need to do this)
+      if (emit_original_ == emit_original_t::None) {
         if (next_symbol(begin_)) {
           next_inc_val_ = 1;
           length_ = 0;
           ngram_end_ = begin_;
+          offset_.start = std::distance(data_.begin(), begin_);
         } else {
           return false; // stream exhausted
         }
       } else {
         // as stream has unsigned incremet attribute
-        // we cannot go back, so we must emit original 
-        // as token(s) from pos = 0 if needed (as it starts from pos=0 in stream)
+        // we cannot go back, so we must emit original before we leave start pos in stream
+        // (as it starts from pos=0 in stream)
         emit_original();
         return true;
       }
@@ -444,22 +434,32 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
   data_ = ref_cast<byte_type>(value);
   begin_ = data_.begin();
   ngram_end_ = data_.begin();
+  offset_.start = 0;
   length_ = 0;
   if (options_.preserve_original) {
     if (!options_.start_marker.empty()) {
-      emit_original_ = WithStartMarker;
+      emit_original_ = emit_original_t::WithStartMarker;
     } else if (!options_.end_marker.empty()) {
-      emit_original_ = WithEndMarker;
+      emit_original_ = emit_original_t::WithEndMarker;
     } else {
-      emit_original_ = WithoutMarkers;
+      emit_original_ = emit_original_t::WithoutMarkers;
     }
   } else {
-    emit_original_ = None;
+    emit_original_ = emit_original_t::None;
   }
   next_inc_val_ = 1;
   keep_ngram_position_ = false;
   assert(length_ < options_.min_gram);
-
+  const size_t max_marker_size = std::max(options_.start_marker.size(), options_.end_marker.size());
+  if (max_marker_size > 0) {
+    // we have at least one marker. As we need to append marker to ngtram and provide term
+    // value as continious buffer, we can`t return pointer to some byte inside input stream
+    // but rather we return pointer to buffer with copied values of ngram and marker
+    // For sake of performance we allocate requested memory right now
+    size_t buffer_size = options_.preserve_original ? data_.size() : std::min(data_.size(), options_.max_gram);
+    buffer_size += max_marker_size;
+    marked_term_buffer_.reserve(buffer_size);
+  }
   return true;
 }
 
