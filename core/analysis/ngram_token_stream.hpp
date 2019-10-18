@@ -37,16 +37,27 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream: public analyzer, util::noncopyable {
  public:
-  struct options_t {
-    options_t() : min_gram(0), max_gram(0), preserve_original(true) {}
-    options_t(size_t min, size_t max, bool original) {
-      min_gram = min;
-      max_gram = max;
-      preserve_original = original;
-    }
+  
 
+  struct options_t {
+    enum stream_bytes_t {
+      BinaryStream, // input is treaten as generic bytes 
+      Ut8Stream,    // input is treaten as ut8-encoded bytes
+    };
+    options_t() : min_gram(0), max_gram(0), preserve_original(true),
+      stream_bytes_type(BinaryStream) {}
+    options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max), 
+      stream_bytes_type(BinaryStream), preserve_original(original) {}
+    options_t(size_t min, size_t max, bool original, stream_bytes_t stream_type, 
+              const irs::bytes_ref start, const irs::bytes_ref end)
+      : start_marker(start), end_marker(end), min_gram(min), max_gram(max), 
+      stream_bytes_type(stream_type), preserve_original(original) {}
+
+    irs::bstring start_marker; // marker of ngrams at the beginning of stream
+    irs::bstring end_marker; // marker of ngrams at the end of strem
     size_t min_gram;
     size_t max_gram;
+    stream_bytes_t stream_bytes_type;
     bool preserve_original; // emit input data as a token
   };
 
@@ -74,11 +85,21 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
+  bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept;
+  void emit_original() noexcept;
+  void emit_ngram() noexcept;
+
   class term_attribute final: public irs::term_attribute {
    public:
     void value(const bytes_ref& value) { value_ = value; }
   };
 
+  struct ngram_word_state_t {
+    const byte_type* ngram_word_start{};
+    const byte_type* ngram_word_end{};
+  };
+
+  ngram_word_state_t ngram_word_state_;
   options_t options_;
   attribute_view attrs_;
   bytes_ref data_; // data to process
@@ -86,8 +107,24 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   offset offset_;
   term_attribute term_;
   const byte_type* begin_{};
+  const byte_type* ngram_end_{};
   size_t length_{};
-  bool emit_original_{ false };
+
+  enum emit_original_t {
+    None,
+    WithoutMarkers,
+    WithStartMarker,
+    WithEndMarker
+  };
+
+  emit_original_t emit_original_{ None };
+
+  bstring marked_term_buffer_;
+  uint32_t next_inc_val_{ 0 };
+
+  // keep position for next ngram  - is used 
+  // for emitting same ngram with different start/end markers
+  bool keep_ngram_position_{ false };
 }; // ngram_token_stream
 
 
