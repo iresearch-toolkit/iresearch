@@ -124,7 +124,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   // pointers to input memory block
   bstring marked_term_buffer_;
 
-  // 
+  // increment value for next token
   uint32_t next_inc_val_{ 0 };
 
   // keep position for next ngram  - is used 

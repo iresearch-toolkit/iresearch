@@ -69,7 +69,7 @@ bool parse_json_config(const irs::string_ref& args,
   uint64_t min, max;
   bool preserve_original;
   auto stream_bytes_type = irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream;
-  irs::bstring start_marker, end_marker;
+  std::string start_marker, end_marker;
 
   if (!get_uint64(json, MIN_PARAM_NAME, min)) {
     IR_FRMT_ERROR(
@@ -98,9 +98,7 @@ bool parse_json_config(const irs::string_ref& args,
   if (json.HasMember(START_MARKER_PARAM_NAME.c_str())) {
     auto& start_marker_json = json[START_MARKER_PARAM_NAME.c_str()];
     if (start_marker_json.IsString()) {
-      static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) == sizeof(char)");
-      start_marker.assign(reinterpret_cast<const irs::byte_type*>(start_marker_json.GetString()),
-                          start_marker_json.GetStringLength());
+      start_marker = start_marker_json.GetString();
     } else {
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
@@ -113,9 +111,7 @@ bool parse_json_config(const irs::string_ref& args,
   if (json.HasMember(END_MARKER_PARAM_NAME.c_str())) {
     auto& end_marker_json = json[END_MARKER_PARAM_NAME.c_str()];
     if (end_marker_json.IsString()) {
-      static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) == sizeof(char)");
-      end_marker.assign(reinterpret_cast<const irs::byte_type*>(end_marker_json.GetString()),
-                          end_marker_json.GetStringLength());
+      end_marker = end_marker_json.GetString();
     } else {
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
@@ -151,8 +147,8 @@ bool parse_json_config(const irs::string_ref& args,
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = preserve_original;
-  options.start_marker = start_marker;
-  options.end_marker = end_marker;
+  options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
+  options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
   options.stream_bytes_type = stream_bytes_type;
   return true;
 }
@@ -287,27 +283,22 @@ ngram_token_stream::ngram_token_stream(
 }
 
 bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
-  if (it != nullptr) {
-    if (it >= data_.end()) {
-      return false;
-    }
-    switch (options_.stream_bytes_type) {
-      case options_t::stream_bytes_t::BinaryStream:
-        it++;
-        break;
-      case options_t::stream_bytes_t::Ut8Stream:
-        utf8::unchecked::next(it);
-        break;
-      default:
-        IRS_ASSERT(false);
-        IR_FRMT_ERROR(
-          "Invalid stream type value %d",
-          static_cast<int>(options_.stream_bytes_type));
-        return false;
-    }
-  } else {
-    // special case - stream entry
-    it = data_.begin();
+  if (it >= data_.end()) {
+    return false;
+  }
+  switch (options_.stream_bytes_type) {
+  case options_t::stream_bytes_t::BinaryStream:
+    it++;
+    break;
+  case options_t::stream_bytes_t::Ut8Stream:
+    utf8::unchecked::next(it);
+    break;
+  default:
+    IRS_ASSERT(false);
+    IR_FRMT_ERROR(
+      "Invalid stream type value %d",
+      static_cast<int>(options_.stream_bytes_type));
+    return false;
   }
   return it <= data_.end();
 }
@@ -395,7 +386,7 @@ bool ngram_token_stream::next() noexcept {
         return true;
       }
     } else {
-      // need to move to next position (if we have emitted original or doesn`t need to do this)
+      // need to move to next position
       if (emit_original_ == emit_original_t::None) {
         if (next_symbol(begin_)) {
           next_inc_val_ = 1;
@@ -458,7 +449,9 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
     // For sake of performance we allocate requested memory right now
     size_t buffer_size = options_.preserve_original ? data_.size() : std::min(data_.size(), options_.max_gram);
     buffer_size += max_marker_size;
-    marked_term_buffer_.reserve(buffer_size);
+    if (buffer_size > marked_term_buffer_.capacity()) {
+      marked_term_buffer_.reserve(buffer_size);
+    }
   }
   return true;
 }
