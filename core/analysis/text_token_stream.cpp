@@ -28,7 +28,7 @@
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-#include <utfcpp/utf8.h>
+#include <utils/utf8_utils.hpp>
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
 #if defined(_MSC_VER)
@@ -1088,13 +1088,25 @@ bool text_token_stream::next_ngram() {
     inc_.clear();
     // find the first ngram > min
     do {
-      utf8::unchecked::next(state_->ngram.it);
+      const auto symbol_length = irs::utf8_utils::symbol_length(*state_->ngram.it);
+      if (IRS_UNLIKELY(0 == symbol_length)) {
+        IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
+        return false;
+      }
+      state_->ngram.it += symbol_length;
     } while (++state_->ngram.length < state_->options.min_gram &&
              state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc_.value = 0; // staying on the current pos
-    utf8::unchecked::next(state_->ngram.it);
+    {
+      const auto symbol_length = irs::utf8_utils::symbol_length(*state_->ngram.it);
+      if (IRS_UNLIKELY(0 == symbol_length)) {
+        IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
+        return false;
+      }
+      state_->ngram.it += symbol_length;
+    }
     ++state_->ngram.length;
   }
 

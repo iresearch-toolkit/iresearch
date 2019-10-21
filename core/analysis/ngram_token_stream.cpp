@@ -27,6 +27,7 @@
 
 #include "ngram_token_stream.hpp"
 #include "utils/json_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 NS_LOCAL
 
@@ -278,6 +279,7 @@ ngram_token_stream::ngram_token_stream(
 }
 
 bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
+  IRS_ASSERT(it);
   if (it < data_end_) {
     switch (options_.stream_bytes_type) {
       case options_t::stream_bytes_t::BinaryStream:
@@ -285,20 +287,12 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
         return true;
       case options_t::stream_bytes_t::Ut8Stream:
        {
-         uint8_t utf8_marker_byte = static_cast<uint8_t>(0xFF & *it);
-         if (utf8_marker_byte < 0x80) {
-            ++it;
-          } else if ((utf8_marker_byte >> 5) == 0x6) {
-            it += 2;
-          } else if ((utf8_marker_byte >> 4) == 0xe) {
-            it += 3;
-          } else if ((utf8_marker_byte >> 3) == 0x1e) {
-            it += 4;
-          } else {
-            IRS_ASSERT(false);
-            IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
-            return false;
-          }
+         uint8_t symbol_size = irs::utf8_utils::symbol_length(*it);
+         if (IRS_UNLIKELY(0 == symbol_size)) {
+           IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
+           return false;
+         }
+         it += symbol_size;
        }
        return it <= data_end_;
       default:
@@ -357,7 +351,8 @@ bool ngram_token_stream::next() noexcept {
       // we have next ngram from current position
       ++length_;
       if (length_ >= options_.min_gram) {
-        const auto ngram_byte_len = std::distance(begin_, ngram_end_);
+        IRS_ASSERT(begin_ <= ngram_end_);
+        const auto ngram_byte_len = static_cast<size_t>(std::distance(begin_, ngram_end_));
         if (emit_original_t::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
           offset_.end = offset_.start + ngram_byte_len;
           inc_.value = next_inc_val_;

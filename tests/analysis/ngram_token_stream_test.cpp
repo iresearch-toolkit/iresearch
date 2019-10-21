@@ -1203,7 +1203,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 }
 
 // Performance tests below are convenient way to quickly analyze performance changes
-// However no point to run them as part of regular tests and no point to spoil output by marking them disabled
+// However  there is no point to run them as part of regular tests and no point to spoil output by marking them disabled
 //
 //TEST(ngram_token_stream_test, performance_next_utf8) {
 //  irs::analysis::ngram_token_stream stream(
