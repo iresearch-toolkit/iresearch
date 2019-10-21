@@ -177,7 +177,7 @@ TEST(ngram_token_stream_test, performance_next) {
 
   std::string data = "quickbro";
   for (size_t i = 0; i < 100000; ++i) {
-    data += "quickbro";;
+    data += "quickbro";
   }
   std::cerr << "Set debug breakpoint here";
   for (size_t i = 0; i < 10; ++i) {

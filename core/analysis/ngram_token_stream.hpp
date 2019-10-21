@@ -85,9 +85,10 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
-  inline bool next_symbol(const byte_type*& it) const noexcept;
-  inline void emit_original() noexcept;
-  inline void emit_ngram() noexcept;
+  inline bool next_symbol_binary(const byte_type*& it) const noexcept;
+  inline bool next_symbol_utf8(const byte_type*& it) const noexcept;
+
+  void emit_original() noexcept;
 
   class term_attribute final: public irs::term_attribute {
    public:
@@ -103,6 +104,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   const byte_type* begin_{};
   const byte_type* ngram_end_{};
   size_t length_{};
+  const byte_type* data_end_{};
 
   enum class emit_original_t {
     None,

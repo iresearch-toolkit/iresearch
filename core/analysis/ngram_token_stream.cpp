@@ -281,17 +281,14 @@ ngram_token_stream::ngram_token_stream(
   attrs_.emplace(term_);
 }
 
-
-
 bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
-  if (it < data_.end()) {
+  if (it < data_end_) {
     switch (options_.stream_bytes_type) {
       case options_t::stream_bytes_t::BinaryStream:
         ++it;
         return true;
       case options_t::stream_bytes_t::Ut8Stream:
        {
-        
          uint8_t utf8_marker_byte = static_cast<uint8_t>(0xFF & *it);
          if (utf8_marker_byte < 0x80) {
             ++it;
@@ -307,7 +304,7 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
             return false;
           }
        }
-       return it <= data_.end();
+       return it <= data_end_;
       default:
         IRS_ASSERT(false);
         IR_FRMT_ERROR(
@@ -315,38 +312,8 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
           static_cast<int>(options_.stream_bytes_type));
         return false;
     }
-  } 
-  return false;
-}
-
-void ngram_token_stream::emit_ngram() noexcept {
-  const auto ngram_byte_len = std::distance(begin_, ngram_end_);
-  if (emit_original_ == emit_original_t::None || 0 != offset_.start || ngram_byte_len != data_.size()) {
-    offset_.end = offset_.start + ngram_byte_len;
-    inc_.value = next_inc_val_;
-    next_inc_val_ = 0;
-    if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_.end())) {
-      assert(ngram_byte_len <= integer_traits<uint32_t>::const_max);
-      term_.value(irs::bytes_ref(begin_, ngram_byte_len));
-    } else if (0 == offset_.start && !start_marker_empty_) {
-      marked_term_buffer_.clear();
-      IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
-      marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
-      marked_term_buffer_.append(begin_, ngram_byte_len);
-      term_.value(marked_term_buffer_);
-      assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
-    } else {
-      IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_.end());
-      marked_term_buffer_.clear();
-      IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
-      marked_term_buffer_.append(begin_, ngram_byte_len);
-      marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
-      term_.value(marked_term_buffer_);
-    } 
-  } else {
-    // if ngram covers original stream we need to process it specially
-    emit_original();
   }
+  return false;
 }
 
 void ngram_token_stream::emit_original() noexcept {
@@ -361,7 +328,7 @@ void ngram_token_stream::emit_original() noexcept {
     case emit_original_t::WithEndMarker:
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + data_.size()));
-      marked_term_buffer_.append(data_.begin(), data_.end());
+      marked_term_buffer_.append(data_.begin(), data_end_);
       marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
       term_.value(marked_term_buffer_);
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
@@ -374,7 +341,7 @@ void ngram_token_stream::emit_original() noexcept {
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + data_.size()));
       marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
-      marked_term_buffer_.append(data_.begin(), data_.end());
+      marked_term_buffer_.append(data_.begin(), data_end_);
       term_.value(marked_term_buffer_);
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
       offset_.start = 0;
@@ -383,20 +350,45 @@ void ngram_token_stream::emit_original() noexcept {
       inc_.value = next_inc_val_;
       break;
     default:
-      IRS_ASSERT(false); // should not be called when None 
+      IRS_ASSERT(false); // should not be called when None
       break;
   }
   next_inc_val_ = 0;
 }
 
-
 bool ngram_token_stream::next() noexcept {
-  while (begin_ < data_.end()) {
+  while (begin_ < data_end_) {
     if (length_ < options_.max_gram && next_symbol(ngram_end_)) {
       // we have next ngram from current position
-      length_++;
+      ++length_;
       if (length_ >= options_.min_gram) {
-        emit_ngram();
+        const auto ngram_byte_len = std::distance(begin_, ngram_end_);
+        if (emit_original_ == emit_original_t::None || 0 != offset_.start || ngram_byte_len != data_.size()) {
+          offset_.end = offset_.start + ngram_byte_len;
+          inc_.value = next_inc_val_;
+          next_inc_val_ = 0;
+          if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_.end())) {
+            assert(ngram_byte_len <= integer_traits<uint32_t>::const_max);
+            term_.value(irs::bytes_ref(begin_, ngram_byte_len));
+          } else if (0 == offset_.start && !start_marker_empty_) {
+            marked_term_buffer_.clear();
+            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
+            marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
+            marked_term_buffer_.append(begin_, ngram_byte_len);
+            term_.value(marked_term_buffer_);
+            assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
+          } else {
+            IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_.end());
+            marked_term_buffer_.clear();
+            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
+            marked_term_buffer_.append(begin_, ngram_byte_len);
+            marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
+            term_.value(marked_term_buffer_);
+          }
+        } else {
+          // if ngram covers original stream we need to process it specially
+          emit_original();
+        }
         return true;
       }
     } else {
@@ -438,13 +430,14 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
   // reset stream
   data_ = ref_cast<byte_type>(value);
   begin_ = data_.begin();
-  ngram_end_ = data_.begin();
+  ngram_end_ = begin_;
+  data_end_ = data_.end();
   offset_.start = 0;
   length_ = 0;
   if (options_.preserve_original) {
-    if (!options_.start_marker.empty()) {
+    if (!start_marker_empty_) {
       emit_original_ = emit_original_t::WithStartMarker;
-    } else if (!options_.end_marker.empty()) {
+    } else if (!end_marker_empty_) {
       emit_original_ = emit_original_t::WithEndMarker;
     } else {
       emit_original_ = emit_original_t::WithoutMarkers;
