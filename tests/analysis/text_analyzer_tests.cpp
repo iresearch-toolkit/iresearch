@@ -1188,64 +1188,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       testFunc(data, stream.get());
     }
   }
-
-  //  min and max and preserveOriginal == true and no stopwords
-  {
-    std::string data = " A  hErd of";
-
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
-      ASSERT_TRUE(pStream->reset(data));
-
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
-      auto& offset = pStream->attributes().get<irs::offset>();
-      ASSERT_TRUE(offset);
-      auto& inc = pStream->attributes().get<irs::increment>();
-      uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
-
-      ASSERT_TRUE(pStream->next());
-      pos += inc->value;
-      ASSERT_EQ("a", irs::ref_cast<char>(pValue->value()));
-      ASSERT_EQ(0, pos);
-      ASSERT_EQ(1, offset->start);
-      ASSERT_EQ(2, offset->end);
-
-      ASSERT_TRUE(pStream->next());
-      pos += inc->value;
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
-      ASSERT_EQ(1, pos);
-      ASSERT_EQ(4, offset->start);
-      ASSERT_EQ(6, offset->end);
-
-      ASSERT_TRUE(pStream->next());
-      pos += inc->value;
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
-      ASSERT_EQ(1, pos);
-      ASSERT_EQ(4, offset->start);
-      ASSERT_EQ(7, offset->end);
-
-      ASSERT_TRUE(pStream->next());
-      pos += inc->value;
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
-      ASSERT_EQ(1, pos);
-      ASSERT_EQ(4, offset->start);
-      ASSERT_EQ(8, offset->end);
-
-      ASSERT_TRUE(pStream->next());
-      pos += inc->value;
-      ASSERT_EQ(2, pos);
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
-      ASSERT_EQ(9, offset->start);
-      ASSERT_EQ(11, offset->end);
-
-      ASSERT_FALSE(pStream->next());
-    };
-
-    {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"min\":2, \"max\":3, \"preserveOriginal\":true}");
-      ASSERT_NE(nullptr, stream);
-      testFunc(data, stream.get());
-    }
-  }
 }
 
 
