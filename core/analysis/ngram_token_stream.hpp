@@ -85,21 +85,15 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
-  //bool next_symbol(const byte_type*& it) noexcept;
-  void emit_original() noexcept;
-  void emit_ngram() noexcept;
+  inline bool next_symbol(const byte_type*& it) const noexcept;
+  inline void emit_original() noexcept;
+  inline void emit_ngram() noexcept;
 
   class term_attribute final: public irs::term_attribute {
    public:
     void value(const bytes_ref& value) { value_ = value; }
   };
 
-  struct ngram_word_state_t {
-    const byte_type* ngram_word_start{};
-    const byte_type* ngram_word_end{};
-  };
-
-  ngram_word_state_t ngram_word_state_;
   options_t options_;
   attribute_view attrs_;
   bytes_ref data_; // data to process
@@ -127,8 +121,9 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   // increment value for next token
   uint32_t next_inc_val_{ 0 };
 
-  typedef std::function<bool(const byte_type * &it)> next_symbol_func;
-  next_symbol_func next_symbol;
+  // Aux flags to speed up marker properties access;
+  bool start_marker_empty_;
+  bool end_marker_empty_;
 }; // ngram_token_stream
 
 
