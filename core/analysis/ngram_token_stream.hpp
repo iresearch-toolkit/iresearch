@@ -85,7 +85,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
-  bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept;
+  //bool next_symbol(const byte_type*& it) noexcept;
   void emit_original() noexcept;
   void emit_ngram() noexcept;
 
@@ -127,9 +127,8 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   // increment value for next token
   uint32_t next_inc_val_{ 0 };
 
-  // keep position for next ngram  - is used 
-  // for emitting same ngram with different start/end markers
-  bool keep_ngram_position_{ false };
+  typedef std::function<bool(const byte_type * &it)> next_symbol_func;
+  next_symbol_func next_symbol;
 }; // ngram_token_stream
 
 

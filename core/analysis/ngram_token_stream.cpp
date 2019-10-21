@@ -280,28 +280,66 @@ ngram_token_stream::ngram_token_stream(
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
   attrs_.emplace(term_);
+
+  typedef std::function<next_symbol_func(const bytes_ref* data)> CallbackFactory;
+  static CallbackFactory const callbackFactories[]{
+    [](const bytes_ref* data) {
+      return [data](const byte_type*& it) {
+        if (it < data->end()) {
+          ++it;
+          return true;
+        }
+        return false;
+      };
+    },
+    [](const bytes_ref* data) {
+      return [data](const byte_type*& it) {
+        if (it < data->end()) {
+          utf8::unchecked::next(it);
+          return it <= data->end();
+        }
+        return false;
+      };
+    }
+  };
+  switch (options_.stream_bytes_type) {
+    case options_t::stream_bytes_t::BinaryStream:
+      next_symbol = callbackFactories[0](&data_);
+      break;
+    case options_t::stream_bytes_t::Ut8Stream:
+      next_symbol = callbackFactories[1](&data_);
+      break;
+    default:
+      IRS_ASSERT(false);
+      IR_FRMT_ERROR(
+        "Invalid stream type value %d",
+        static_cast<int>(options_.stream_bytes_type));
+  }
 }
 
-bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
-  if (it >= data_.end()) {
-    return false;
-  }
-  switch (options_.stream_bytes_type) {
-  case options_t::stream_bytes_t::BinaryStream:
-    it++;
-    break;
-  case options_t::stream_bytes_t::Ut8Stream:
-    utf8::unchecked::next(it);
-    break;
-  default:
-    IRS_ASSERT(false);
-    IR_FRMT_ERROR(
-      "Invalid stream type value %d",
-      static_cast<int>(options_.stream_bytes_type));
-    return false;
-  }
-  return it <= data_.end();
-}
+
+
+//bool ngram_token_stream::next_symbol(const byte_type*& it) noexcept {
+//  if (it < data_.end()) {
+//    switch (options_.stream_bytes_type) {
+//    case options_t::stream_bytes_t::BinaryStream:
+//      it++;
+//      break;
+//    case options_t::stream_bytes_t::Ut8Stream:
+//      utf8::unchecked::next(it);
+//      break;
+//    default:
+//      IRS_ASSERT(false);
+//      IR_FRMT_ERROR(
+//        "Invalid stream type value %d",
+//        static_cast<int>(options_.stream_bytes_type));
+//      return false;
+//    }
+//    return it <= data_.end();
+//  } else {
+//    return false;
+//  }
+//}
 
 void ngram_token_stream::emit_ngram() noexcept {
   const auto ngram_byte_len = std::distance(begin_, ngram_end_);
@@ -309,7 +347,6 @@ void ngram_token_stream::emit_ngram() noexcept {
     offset_.end = offset_.start + ngram_byte_len;
     inc_.value = next_inc_val_;
     next_inc_val_ = 0;
-    keep_ngram_position_ = false;
     if (0 == offset_.start && !options_.start_marker.empty()) {
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
@@ -341,8 +378,6 @@ void ngram_token_stream::emit_original() noexcept {
       offset_.end = uint32_t(data_.size());
       emit_original_ = emit_original_t::None;
       inc_.value = next_inc_val_;
-      next_inc_val_ = 1;
-      keep_ngram_position_ = false;
       break;
     case emit_original_t::WithEndMarker:
       marked_term_buffer_.clear();
@@ -354,9 +389,7 @@ void ngram_token_stream::emit_original() noexcept {
       offset_.start = 0;
       offset_.end = uint32_t(data_.size());
       emit_original_ = emit_original_t::None; // end marker is emitted last, so we are done emitting original
-      keep_ngram_position_ = false;
       inc_.value = next_inc_val_;
-      next_inc_val_ = 1;
       break;
     case emit_original_t::WithStartMarker:
       marked_term_buffer_.clear();
@@ -369,16 +402,18 @@ void ngram_token_stream::emit_original() noexcept {
       offset_.end = uint32_t(data_.size());
       emit_original_ = options_.end_marker.empty()? emit_original_t::None : emit_original_t::WithEndMarker;
       inc_.value = next_inc_val_;
-      next_inc_val_ = emit_original_ != emit_original_t::None ? 0 : 1;
-      keep_ngram_position_ = emit_original_ != emit_original_t::None;
+      break;
+    default:
+      IRS_ASSERT(false); // should not be called when None 
       break;
   }
+  next_inc_val_ = 0;
 }
 
 
 bool ngram_token_stream::next() noexcept {
   while (begin_ < data_.end()) {
-    if (!keep_ngram_position_ && length_ < options_.max_gram && next_symbol(ngram_end_)) {
+    if (length_ < options_.max_gram && next_symbol(ngram_end_)) {
       // we have next ngram from current position
       length_++;
       if (length_ >= options_.min_gram) {
@@ -439,7 +474,6 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
     emit_original_ = emit_original_t::None;
   }
   next_inc_val_ = 1;
-  keep_ngram_position_ = false;
   assert(length_ < options_.min_gram);
   const size_t max_marker_size = std::max(options_.start_marker.size(), options_.end_marker.size());
   if (max_marker_size > 0) {

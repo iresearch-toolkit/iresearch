@@ -150,26 +150,82 @@ TEST(ngram_token_stream_test, construct) {
   }
 }
 
-//TEST(ngram_token_stream_test, next_utf8_performance) {
-//  irs::analysis::ngram_token_stream stream(
-//    irs::analysis::ngram_token_stream::options_t(1, 3, true,
-//      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
-//
-//  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  for (size_t i = 0; i < 20000; ++i) {
-//    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  }
-//  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-//  std::string data;
-//  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-//  std::cerr << " Just to debug";
-//  for (size_t i = 0; i < 10; ++i) {
-//    stream.reset(data);
-//    while (stream.next()) {};
-//  }
-//  ASSERT_FALSE(stream.next());
-//}
+TEST(ngram_token_stream_test, performance_next_utf8) {
+  irs::analysis::ngram_token_stream stream(
+    irs::analysis::ngram_token_stream::options_t(1, 3, true,
+      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
+      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+
+  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  for (size_t i = 0; i < 100000; ++i) {
+    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  }
+  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+  std::string data;
+  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+  std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {};
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+TEST(ngram_token_stream_test, performance_next) {
+  irs::analysis::ngram_token_stream stream(
+    irs::analysis::ngram_token_stream::options_t(1, 3, true));
+
+  std::string data = "quickbro";
+  for (size_t i = 0; i < 100000; ++i) {
+    data += "quickbro";;
+  }
+  std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {};
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+
+TEST(ngram_token_stream_test, performance_next_utf8_marker) {
+  irs::analysis::ngram_token_stream stream(
+    irs::analysis::ngram_token_stream::options_t(1, 3, true,
+      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
+      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
+
+  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  for (size_t i = 0; i < 100000; ++i) {
+    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  }
+  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+  std::string data;
+  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+  std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {};
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+TEST(ngram_token_stream_test, performance_next_marker) {
+  irs::analysis::ngram_token_stream stream(
+    irs::analysis::ngram_token_stream::options_t(1, 3, true,
+      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream,
+      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
+
+  std::string data = "quickbro";
+  for (size_t i = 0; i < 100000; ++i) {
+    data += "quickbro";;
+  }
+  std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {};
+  }
+  ASSERT_FALSE(stream.next());
+}
 
 TEST(ngram_token_stream_test, next_utf8) 
 { 
