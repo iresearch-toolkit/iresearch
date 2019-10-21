@@ -142,7 +142,6 @@ bool parse_json_config(const irs::string_ref& args,
       stream_bytes_type = itr->second;
   }
 
-
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = preserve_original;

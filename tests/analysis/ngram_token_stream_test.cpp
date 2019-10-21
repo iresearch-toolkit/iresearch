@@ -163,10 +163,10 @@ TEST(ngram_token_stream_test, performance_next_utf8) {
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-  std::cerr << "Set debug breakpoint here";
+  //std::cerr << "Set debug breakpoint here";
   for (size_t i = 0; i < 10; ++i) {
     stream.reset(data);
-    while (stream.next()) {};
+    while (stream.next()) {}
   }
   ASSERT_FALSE(stream.next());
 }
@@ -179,10 +179,10 @@ TEST(ngram_token_stream_test, performance_next) {
   for (size_t i = 0; i < 100000; ++i) {
     data += "quickbro";
   }
-  std::cerr << "Set debug breakpoint here";
+  //std::cerr << "Set debug breakpoint here";
   for (size_t i = 0; i < 10; ++i) {
     stream.reset(data);
-    while (stream.next()) {};
+    while (stream.next()) {}
   }
   ASSERT_FALSE(stream.next());
 }
@@ -201,10 +201,10 @@ TEST(ngram_token_stream_test, performance_next_utf8_marker) {
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-  std::cerr << "Set debug breakpoint here";
+  //std::cerr << "Set debug breakpoint here";
   for (size_t i = 0; i < 10; ++i) {
     stream.reset(data);
-    while (stream.next()) {};
+    while (stream.next()) {}
   }
   ASSERT_FALSE(stream.next());
 }
@@ -219,19 +219,18 @@ TEST(ngram_token_stream_test, performance_next_marker) {
   for (size_t i = 0; i < 100000; ++i) {
     data += "quickbro";;
   }
-  std::cerr << "Set debug breakpoint here";
+  //std::cerr << "Set debug breakpoint here";
   for (size_t i = 0; i < 10; ++i) {
     stream.reset(data);
-    while (stream.next()) {};
+    while (stream.next()) {}
   }
   ASSERT_FALSE(stream.next());
 }
 
-TEST(ngram_token_stream_test, next_utf8) 
-{ 
+TEST(ngram_token_stream_test, next_utf8) {
   struct utf8token {
     utf8token(const irs::string_ref& value, size_t start, size_t end) noexcept
-      : value(value.c_str(), value.size()), start(start), end(end), 
+      : value(value.c_str(), value.size()), start(start), end(end),
         start_marker(irs::string_ref::EMPTY),
         end_marker(irs::string_ref::EMPTY) {}
     utf8token(const irs::string_ref& value, size_t start, size_t end, irs::string_ref sm, irs::string_ref em) noexcept
@@ -283,7 +282,7 @@ TEST(ngram_token_stream_test, next_utf8)
     ASSERT_FALSE(stream.next());
   };
 
-  auto locale = irs::locale_utils::locale("C.UTF-8"); 
+  auto locale = irs::locale_utils::locale("C.UTF-8");
 
   {
     SCOPED_TRACE("1-gram");
@@ -292,7 +291,7 @@ TEST(ngram_token_stream_test, next_utf8)
         irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5"; 
+    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string data;
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
@@ -330,7 +329,7 @@ TEST(ngram_token_stream_test, next_utf8)
         irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
-    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5"; 
+    std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string data;
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
@@ -429,6 +428,20 @@ TEST(ngram_token_stream_test, next_utf8)
   }
 
   {
+    SCOPED_TRACE("6-gram no output");
+    irs::analysis::ngram_token_stream stream(
+      irs::analysis::ngram_token_stream::options_t(6, 6, false,
+        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream,
+        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string data;
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    ASSERT_TRUE(stream.reset(data));
+    ASSERT_FALSE(stream.next());
+  }
+
+  {
     SCOPED_TRACE("1-2 gram no-preserve-original start-marker");
     irs::analysis::ngram_token_stream stream(
       irs::analysis::ngram_token_stream::options_t(1, 2, false,
@@ -521,7 +534,7 @@ TEST(ngram_token_stream_test, next_utf8)
     };
     assert_utf8tokens(expected, data, stream);
   }
- 
+
   {
     SCOPED_TRACE(" 1-3 gram preserve-original end-marker");
     irs::analysis::ngram_token_stream stream(
@@ -593,9 +606,9 @@ TEST(ngram_token_stream_test, next_utf8)
       { "c""\xc2\xa4""d", 6, 10},
       { "\xc2\xa4", 7, 9 },
       { "\xc2\xa4""d", 7, 10 },
-      { "\xc2\xa4""d""\xc2\xa5""\xc2\xa1", 7, 12,irs::string_ref::EMPTY, "\xc2\xa1"  },
+      { "\xc2\xa4""d""\xc2\xa5""\xc2\xa1", 7, 12, irs::string_ref::EMPTY, "\xc2\xa1" },
       { "d", 9, 10 },
-      { "d""\xc2\xa5""\xc2\xa1", 9, 12,irs::string_ref::EMPTY, "\xc2\xa1"  },
+      { "d""\xc2\xa5""\xc2\xa1", 9, 12, irs::string_ref::EMPTY, "\xc2\xa1" },
       { "\xc2\xa5""\xc2\xa1", 10, 12, irs::string_ref::EMPTY, "\xc2\xa1" }
     };
     assert_utf8tokens(expected, data, stream);
@@ -646,8 +659,7 @@ TEST(ngram_token_stream_test, reset_too_big) {
 
   const irs::string_ref input(
     reinterpret_cast<const char*>(&stream),
-    size_t(std::numeric_limits<uint32_t>::max()) + 1
-  );
+    size_t(std::numeric_limits<uint32_t>::max()) + 1);
 
   ASSERT_FALSE(stream.reset(input));
   ASSERT_EQ(3, stream.attributes().size());
@@ -1092,6 +1104,14 @@ TEST(ngram_token_stream_test, next) {
   }
 
   {
+    SCOPED_TRACE("6-gram no output");
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(6, 6, false));
+
+    ASSERT_TRUE(stream.reset("quick"));
+    ASSERT_FALSE(stream.next());
+  }
+
+  {
     SCOPED_TRACE("1..5-gram");
     irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 5, false));
 
@@ -1193,7 +1213,6 @@ TEST(ngram_token_stream_test, next) {
 }
 
 TEST(ngram_token_stream_test, test_make_config_json) {
-
   //with unknown parameter
   {
     std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
@@ -1258,6 +1277,6 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
       last_pos = pos;
     }
   }
- }
+}
 
 #endif // IRESEARCH_DLL

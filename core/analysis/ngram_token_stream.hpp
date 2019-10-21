@@ -42,7 +42,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   struct options_t {
     enum class stream_bytes_t {
       BinaryStream, // input is treaten as generic bytes 
-      Ut8Stream,    // input is treaten as ut8-encoded string
+      Ut8Stream,    // input is treaten as ut8-encoded symbols
     };
     options_t() : min_gram(0), max_gram(0), preserve_original(true),
       stream_bytes_type(stream_bytes_t::BinaryStream) {}
@@ -85,9 +85,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
-  inline bool next_symbol_binary(const byte_type*& it) const noexcept;
-  inline bool next_symbol_utf8(const byte_type*& it) const noexcept;
-
+  inline bool next_symbol(const byte_type*& it) const noexcept;
   void emit_original() noexcept;
 
   class term_attribute final: public irs::term_attribute {
