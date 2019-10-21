@@ -37,12 +37,9 @@ const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
 const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
 const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
-const std::unordered_map<
-    std::string,
-    irs::analysis::ngram_token_stream::options_t::stream_bytes_t> STREAM_TYPE_CONVERT_MAP = {
-  { "binary", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream },
-  { "utf8", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream }
-};
+const std::unordered_map<std::string, irs::analysis::ngram_token_stream::options_t::stream_bytes_t> STREAM_TYPE_CONVERT_MAP = {
+      { "binary", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream },
+      { "utf8", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream }};
 
 bool parse_json_config(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream::options_t& options) {
@@ -309,7 +306,6 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
         IR_FRMT_ERROR(
           "Invalid stream type value %d",
           static_cast<int>(options_.stream_bytes_type));
-        return false;
     }
   }
   return false;
@@ -362,11 +358,11 @@ bool ngram_token_stream::next() noexcept {
       ++length_;
       if (length_ >= options_.min_gram) {
         const auto ngram_byte_len = std::distance(begin_, ngram_end_);
-        if (emit_original_ == emit_original_t::None || 0 != offset_.start || ngram_byte_len != data_.size()) {
+        if (emit_original_t::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
           offset_.end = offset_.start + ngram_byte_len;
           inc_.value = next_inc_val_;
           next_inc_val_ = 0;
-          if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_.end())) {
+          if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_end_)) {
             assert(ngram_byte_len <= integer_traits<uint32_t>::const_max);
             term_.value(irs::bytes_ref(begin_, ngram_byte_len));
           } else if (0 == offset_.start && !start_marker_empty_) {
@@ -377,7 +373,7 @@ bool ngram_token_stream::next() noexcept {
             term_.value(marked_term_buffer_);
             assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
           } else {
-            IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_.end());
+            IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_end_);
             marked_term_buffer_.clear();
             IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
             marked_term_buffer_.append(begin_, ngram_byte_len);
@@ -392,7 +388,7 @@ bool ngram_token_stream::next() noexcept {
       }
     } else {
       // need to move to next position
-      if (emit_original_ == emit_original_t::None) {
+      if (emit_original_t::None == emit_original_) {
         if (next_symbol(begin_)) {
           next_inc_val_ = 1;
           length_ = 0;
@@ -448,7 +444,7 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
   assert(length_ < options_.min_gram);
   const size_t max_marker_size = std::max(options_.start_marker.size(), options_.end_marker.size());
   if (max_marker_size > 0) {
-    // we have at least one marker. As we need to append marker to ngtram and provide term
+    // we have at least one marker. As we need to append marker to ngram and provide term
     // value as continious buffer, we can`t return pointer to some byte inside input stream
     // but rather we return pointer to buffer with copied values of ngram and marker
     // For sake of performance we allocate requested memory right now
