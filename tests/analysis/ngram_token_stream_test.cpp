@@ -35,7 +35,7 @@ TEST(ngram_token_stream_test, construct) {
     auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":true}");
     ASSERT_NE(nullptr, stream);
 
-    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream&>(*stream);
+    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>&>(*stream);
     ASSERT_EQ(1, impl.min_gram());
     ASSERT_EQ(3, impl.max_gram());
     ASSERT_EQ(true, impl.preserve_original());
@@ -46,7 +46,7 @@ TEST(ngram_token_stream_test, construct) {
     auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":0, \"max\":1, \"preserveOriginal\":false, \"invalidProperty\":true }");
     ASSERT_NE(nullptr, stream);
 
-    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream&>(*stream);
+    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>&>(*stream);
     ASSERT_EQ(1, impl.min_gram());
     ASSERT_EQ(1, impl.max_gram());
     ASSERT_EQ(false, impl.preserve_original());
@@ -67,11 +67,11 @@ TEST(ngram_token_stream_test, construct) {
 
   // 2-gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(2, 2, true));
+    auto stream = irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::make(irs::analysis::ngram_token_stream_options_t(2, 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
+    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::type(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream>(stream);
+    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(2, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -95,11 +95,11 @@ TEST(ngram_token_stream_test, construct) {
 
   // 0 == min_gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(0, 2, true));
+    auto stream = irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::make(irs::analysis::ngram_token_stream_options_t(0, 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
+    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::type(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream>(stream);
+    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(1, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -123,11 +123,11 @@ TEST(ngram_token_stream_test, construct) {
 
   // min_gram > max_gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(std::numeric_limits<size_t>::max(), 2, true));
+    auto stream = irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::make(irs::analysis::ngram_token_stream_options_t(std::numeric_limits<size_t>::max(), 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
+    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::type(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream>(stream);
+    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->min_gram());
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->max_gram());
@@ -169,7 +169,7 @@ TEST(ngram_token_stream_test, next_utf8) {
   auto assert_utf8tokens = [](
       const std::vector<utf8token>& expected,
       const irs::string_ref& data,
-      irs::analysis::ngram_token_stream& stream) {
+      irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8>& stream) {
     ASSERT_TRUE(stream.reset(data));
 
     auto& value = stream.attributes().get<irs::term_attribute>();
@@ -209,9 +209,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("1-gram");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 1, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 1, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -248,9 +248,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("2-gram");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(2, 2, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(2, 2, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -272,9 +272,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("1-2-gram");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 2, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 2, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -304,9 +304,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("5-gram");
-    irs::analysis::ngram_token_stream stream(
-        irs::analysis::ngram_token_stream::options_t(5, 5, false,
-                                                     irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+        irs::analysis::ngram_token_stream_options_t(5, 5, false,
+                                                     irs::analysis::InputType::UTF8,
                                                      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
     std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -319,10 +319,27 @@ TEST(ngram_token_stream_test, next_utf8) {
   }
 
   {
+    SCOPED_TRACE("5-gram with markers");
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(5, 5, false,
+        irs::analysis::InputType::UTF8,
+        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
+    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string data;
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    const std::vector<utf8token> expected{
+      { "\xc2\xa2\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10, "\xc2\xa2", irs::string_ref::EMPTY },
+      { "\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84\xc2\xa1", 0, 10, irs::string_ref::EMPTY, "\xc2\xa1" }
+    };
+    assert_utf8tokens(expected, data, stream);
+  }
+
+  {
     SCOPED_TRACE("5-gram preserve original");
-    irs::analysis::ngram_token_stream stream(
-        irs::analysis::ngram_token_stream::options_t(5, 5, true,
-                                                     irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+        irs::analysis::ngram_token_stream_options_t(5, 5, true,
+                                                     irs::analysis::InputType::UTF8,
                                                      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
     std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -337,9 +354,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("6-gram preserve original");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(6, 6, true,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(6, 6, true,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
     std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -353,9 +370,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("6-gram no output");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(6, 6, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(6, 6, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
     std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -367,9 +384,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("1-2 gram no-preserve-original start-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 2, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 2, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2), irs::bytes_ref::EMPTY));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -398,9 +415,9 @@ TEST(ngram_token_stream_test, next_utf8) {
   }
   {
     SCOPED_TRACE("1-2 gram preserve-original start-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 2, true,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 2, true,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast <const irs::byte_type*>("\xc2\xa1"), 2), irs::bytes_ref::EMPTY));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -430,9 +447,9 @@ TEST(ngram_token_stream_test, next_utf8) {
   }
   {
     SCOPED_TRACE("2-3 gram preserve-original end-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(2, 3, true,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(2, 3, true,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref(reinterpret_cast <const irs::byte_type*>("\xc2\xa1"), 2)));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -461,9 +478,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE(" 1-3 gram preserve-original end-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 3, true,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 3, true,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref::EMPTY, irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -500,9 +517,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("1-3 gram preserve-original start-marker end-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 3, true,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 3, true,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -540,9 +557,9 @@ TEST(ngram_token_stream_test, next_utf8) {
 
   {
     SCOPED_TRACE("1-3 gram no-preserve-original start-marker end-marker");
-    irs::analysis::ngram_token_stream stream(
-      irs::analysis::ngram_token_stream::options_t(1, 3, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+      irs::analysis::ngram_token_stream_options_t(1, 3, false,
+        irs::analysis::InputType::UTF8,
         irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
 
     std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -579,7 +596,7 @@ TEST(ngram_token_stream_test, next_utf8) {
 
 
 TEST(ngram_token_stream_test, reset_too_big) {
-  irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, false));
+  irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 1, false));
 
   const irs::string_ref input(
     reinterpret_cast<const char*>(&stream),
@@ -623,7 +640,7 @@ TEST(ngram_token_stream_test, next) {
   auto assert_tokens = [](
       const std::vector<token>& expected,
       const irs::string_ref& data,
-      irs::analysis::ngram_token_stream& stream) {
+      irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>& stream) {
     ASSERT_TRUE(stream.reset(data));
 
     auto& value = stream.attributes().get<irs::term_attribute>();
@@ -658,7 +675,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 1, false));
 
     const std::vector<token> expected {
       { "q", 0, 1 },
@@ -672,8 +689,8 @@ TEST(ngram_token_stream_test, next) {
   }
   {
     SCOPED_TRACE("1-gram start marker end marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
-        1, 1, false, irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(
+        1, 1, false, irs::analysis::InputType::Binary,
         irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
         irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
 
@@ -690,7 +707,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 1, true));
 
     const std::vector<token> expected {
       { "q", 0, 1 },
@@ -706,8 +723,8 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1-gram  preserve original start marker end marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
-        1, 1, true, irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(
+        1, 1, true, irs::analysis::InputType::Binary,
         irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
         irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
 
@@ -726,7 +743,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 2, false));
 
     const std::vector<token> expected {
       { "qu", 0, 2 },
@@ -740,7 +757,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 2, true));
 
     const std::vector<token> expected {
       { "qu", 0, 2 },
@@ -755,7 +772,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..2-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 2, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 2, false));
 
     const std::vector<token> expected {
       { "q",  0, 1 },
@@ -775,7 +792,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("3-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(3, 3, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(3, 3, false));
 
     const std::vector<token> expected {
       { "qui", 0, 3 },
@@ -789,7 +806,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..3-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 3, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 3, false));
 
     const std::vector<token> expected{
       { "q",   0, 1 },
@@ -810,9 +827,9 @@ TEST(ngram_token_stream_test, next) {
   }
   {
     SCOPED_TRACE("1..3-gram start marker end marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(
         1, 3, false,
-        irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+        irs::analysis::InputType::Binary,
         irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
         irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
 
@@ -836,7 +853,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2..3-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 3, false));
 
     const std::vector<token> expected {
       { "qu",  0, 2 },
@@ -854,7 +871,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2..3-gram, preserve origianl");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 3, true));
 
     const std::vector<token> expected {
       { "qu",  0, 2 },
@@ -872,8 +889,8 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2..3-gram, preserve origianl start marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(
-        2, 3, true, irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(
+        2, 3, true, irs::analysis::InputType::Binary,
         irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
         irs::bytes_ref::EMPTY));
 
@@ -893,8 +910,8 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2..3-gram, preserve origianl end marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true,
-      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 3, true,
+      irs::analysis::InputType::Binary,
       irs::bytes_ref::EMPTY,
       irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
 
@@ -914,8 +931,8 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("2..3-gram, preserve origianl start marker end marker");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true,
-      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(2, 3, true,
+      irs::analysis::InputType::Binary,
       irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
       irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
 
@@ -936,7 +953,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("4-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(4, 4, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(4, 4, false));
 
     const std::vector<token> expected {
       { "quic", 0, 4 },
@@ -948,7 +965,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..4-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 4, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 4, false));
 
     const std::vector<token> expected {
       { "q",    0, 1 },
@@ -972,7 +989,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("5-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(5, 5, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(5, 5, false));
 
     const std::vector<token> expected {
       { "quick", 0, 5 }
@@ -983,7 +1000,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("5-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(5, 5, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(5, 5, true));
 
     const std::vector<token> expected {
       { "quick", 0, 5 }
@@ -994,7 +1011,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("4-5-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(4, 5, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(4, 5, true));
 
     const std::vector<token> expected{
       { "quic", 0, 4 },
@@ -1006,7 +1023,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("4-5-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(4, 5, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(4, 5, false));
 
     const std::vector<token> expected{
       { "quic", 0, 4 },
@@ -1018,7 +1035,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("6-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(6, 6, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(6, 6, true));
 
     const std::vector<token> expected{
       { "quick", 0, 5 }
@@ -1029,7 +1046,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("6-gram no output");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(6, 6, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(6, 6, false));
 
     ASSERT_TRUE(stream.reset("quick"));
     ASSERT_FALSE(stream.next());
@@ -1037,7 +1054,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..5-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 5, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 5, false));
 
     const std::vector<token> expected {
       { "q",     0, 1 },
@@ -1062,7 +1079,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("3..5-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(3, 5, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(3, 5, false));
 
     const std::vector<token> expected {
       { "qui",   0, 3 },
@@ -1078,7 +1095,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("6-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(6, 6, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(6, 6, false));
 
     const std::vector<token> expected { };
 
@@ -1087,7 +1104,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..6-gram");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 6, false));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 6, false));
 
     const std::vector<token> expected {
       { "q",     0, 1 },
@@ -1112,7 +1129,7 @@ TEST(ngram_token_stream_test, next) {
 
   {
     SCOPED_TRACE("1..6-gram, preserve original");
-    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 6, true));
+    irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(irs::analysis::ngram_token_stream_options_t(1, 6, true));
 
     const std::vector<token> expected {
       { "q",     0, 1 },
@@ -1206,81 +1223,121 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 // Performance tests below are convenient way to quickly analyze performance changes
 // However  there is no point to run them as part of regular tests and no point to spoil output by marking them disabled
 //
-//TEST(ngram_token_stream_test, performance_next_utf8) {
-//  irs::analysis::ngram_token_stream stream(
-//    irs::analysis::ngram_token_stream::options_t(1, 3, true,
-//      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
-//      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
-//
-//  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  for (size_t i = 0; i < 100000; ++i) {
-//    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  }
-//  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-//  std::string data;
-//  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-//  //std::cerr << "Set debug breakpoint here";
-//  for (size_t i = 0; i < 10; ++i) {
-//    stream.reset(data);
-//    while (stream.next()) {}
-//  }
-//  ASSERT_FALSE(stream.next());
-//}
-//
-//TEST(ngram_token_stream_test, performance_next) {
-//  irs::analysis::ngram_token_stream stream(
-//    irs::analysis::ngram_token_stream::options_t(1, 3, true));
-//
-//  std::string data = "quickbro";
-//  for (size_t i = 0; i < 100000; ++i) {
-//    data += "quickbro";
-//  }
-//  //std::cerr << "Set debug breakpoint here";
-//  for (size_t i = 0; i < 10; ++i) {
-//    stream.reset(data);
-//    while (stream.next()) {}
-//  }
-//  ASSERT_FALSE(stream.next());
-//}
-//
-//
-//TEST(ngram_token_stream_test, performance_next_utf8_marker) {
-//  irs::analysis::ngram_token_stream stream(
-//    irs::analysis::ngram_token_stream::options_t(1, 3, true,
-//      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8,
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
-//
-//  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  for (size_t i = 0; i < 100000; ++i) {
-//    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
-//  }
-//  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-//  std::string data;
-//  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-//  //std::cerr << "Set debug breakpoint here";
-//  for (size_t i = 0; i < 10; ++i) {
-//    stream.reset(data);
-//    while (stream.next()) {}
-//  }
-//  ASSERT_FALSE(stream.next());
-//}
-//
-//TEST(ngram_token_stream_test, performance_next_marker) {
-//  irs::analysis::ngram_token_stream stream(
-//    irs::analysis::ngram_token_stream::options_t(1, 3, true,
-//      irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary,
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
-//
-//  std::string data = "quickbro";
-//  for (size_t i = 0; i < 100000; ++i) {
-//    data += "quickbro";;
-//  }
-//  //std::cerr << "Set debug breakpoint here";
-//  for (size_t i = 0; i < 10; ++i) {
-//    stream.reset(data);
-//    while (stream.next()) {}
-//  }
-//  ASSERT_FALSE(stream.next());
-//}
+TEST(ngram_token_stream_test, performance_next_utf8) {
+  irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+    irs::analysis::ngram_token_stream_options_t(1, 3, true,
+      irs::analysis::InputType::UTF8,
+      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+
+  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  for (size_t i = 0; i < 100000; ++i) {
+    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  }
+  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+  std::string data;
+  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+  //std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {}
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+TEST(ngram_token_stream_test, performance_next) {
+  irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(
+    irs::analysis::ngram_token_stream_options_t(1, 3, true));
+
+  std::string data = "quickbro";
+  for (size_t i = 0; i < 100000; ++i) {
+    data += "quickbro";
+  }
+  //std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {}
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+
+TEST(ngram_token_stream_test, performance_next_utf8_marker) {
+  irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8> stream(
+    irs::analysis::ngram_token_stream_options_t(1, 3, true,
+      irs::analysis::InputType::UTF8,
+      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
+
+  std::wstring sDataUCS2 = L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  for (size_t i = 0; i < 100000; ++i) {
+    sDataUCS2 += L"a\u00A2b\u00A3c\u00A4d\u00A5";
+  }
+  auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+  std::string data;
+  ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+  //std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {}
+  }
+  ASSERT_FALSE(stream.next());
+}
+
+TEST(ngram_token_stream_test, performance_next_marker) {
+  irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary> stream(
+    irs::analysis::ngram_token_stream_options_t(1, 3, true,
+      irs::analysis::InputType::Binary,
+      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2), irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2)));
+
+  std::string data = "quickbro";
+  for (size_t i = 0; i < 100000; ++i) {
+    data += "quickbro";;
+  }
+  //std::cerr << "Set debug breakpoint here";
+  for (size_t i = 0; i < 10; ++i) {
+    stream.reset(data);
+    while (stream.next()) {}
+  }
+  ASSERT_FALSE(stream.next());
+}
 
 #endif // IRESEARCH_DLL
+
+TEST(ngram_token_stream_test, test_load) {
+  {
+    irs::string_ref data("quick"); 
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto& inc = stream->attributes().get<irs::increment>();
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(5, offset->end);
+    ASSERT_EQ("quick", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(1, inc->value);
+    ASSERT_FALSE(stream->next());
+  }
+  {
+    std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string data;
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"utf8\"}");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto& offset = stream->attributes().get<irs::offset>();
+    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto& inc = stream->attributes().get<irs::increment>();
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(10, offset->end);
+    ASSERT_EQ("\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(1, inc->value);
+    ASSERT_FALSE(stream->next());
+  }
+}

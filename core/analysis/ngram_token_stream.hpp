@@ -30,40 +30,41 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
+enum class InputType {
+  Binary, // input is treaten as generic bytes 
+  UTF8,   // input is treaten as ut8-encoded symbols
+};
+
+struct ngram_token_stream_options_t {
+  ngram_token_stream_options_t() : min_gram(0), max_gram(0), preserve_original(true),
+    stream_bytes_type(InputType::Binary) {}
+  ngram_token_stream_options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max),
+    stream_bytes_type(InputType::Binary), preserve_original(original) {}
+  ngram_token_stream_options_t(size_t min, size_t max, bool original, InputType stream_type,
+    const irs::bytes_ref start, const irs::bytes_ref end)
+    : start_marker(start), end_marker(end), min_gram(min), max_gram(max),
+    stream_bytes_type(stream_type), preserve_original(original) {}
+
+  irs::bstring start_marker; // marker of ngrams at the beginning of stream
+  irs::bstring end_marker; // marker of ngrams at the end of strem
+  size_t min_gram;
+  size_t max_gram;
+  InputType stream_bytes_type;
+  bool preserve_original; // emit input data as a token
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
 /// @brief produces ngram from a specified input in a range of 
 //         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
+
+template<InputType StreamType>
 class ngram_token_stream: public analyzer, util::noncopyable {
  public:
-  
-
-  struct options_t {
-    enum class stream_bytes_t {
-      Binary, // input is treaten as generic bytes 
-      UTF8,    // input is treaten as ut8-encoded symbols
-    };
-    options_t() : min_gram(0), max_gram(0), preserve_original(true),
-      stream_bytes_type(stream_bytes_t::Binary) {}
-    options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max), 
-      stream_bytes_type(stream_bytes_t::Binary), preserve_original(original) {}
-    options_t(size_t min, size_t max, bool original, stream_bytes_t stream_type, 
-              const irs::bytes_ref start, const irs::bytes_ref end)
-      : start_marker(start), end_marker(end), min_gram(min), max_gram(max), 
-      stream_bytes_type(stream_type), preserve_original(original) {}
-
-    irs::bstring start_marker; // marker of ngrams at the beginning of stream
-    irs::bstring end_marker; // marker of ngrams at the end of strem
-    size_t min_gram;
-    size_t max_gram;
-    stream_bytes_t stream_bytes_type;
-    bool preserve_original; // emit input data as a token
-  };
-
   DECLARE_ANALYZER_TYPE();
 
-  DECLARE_FACTORY(const options_t& options);
+  DECLARE_FACTORY(const ngram_token_stream_options_t& options);
 
   static void init(); // for trigering registration in a static build
 
@@ -71,7 +72,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   //  : ngram_token_stream(n, n, preserve_original) {
  //}
 
-  ngram_token_stream(const options_t& options);
+  ngram_token_stream(const ngram_token_stream_options_t& options);
 
   virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
@@ -93,7 +94,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
     void value(const bytes_ref& value) { value_ = value; }
   };
 
-  options_t options_;
+  ngram_token_stream_options_t options_;
   attribute_view attrs_;
   bytes_ref data_; // data to process
   increment inc_;
