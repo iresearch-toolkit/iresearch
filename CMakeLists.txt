@@ -252,6 +252,14 @@ if (USE_PVS_STUDIO)
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-html.err
   )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    FORMAT xml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}-xml.err
+  )
 endif()
 
 if (USE_TESTS)
