@@ -1088,25 +1088,13 @@ bool text_token_stream::next_ngram() {
     inc_.clear();
     // find the first ngram > min
     do {
-      const auto symbol_length = irs::utf8_utils::symbol_length(*state_->ngram.it);
-      if (IRS_UNLIKELY(0 == symbol_length)) {
-        IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
-        return false;
-      }
-      state_->ngram.it += symbol_length;
+      state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
     } while (++state_->ngram.length < state_->options.min_gram &&
              state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc_.value = 0; // staying on the current pos
-    {
-      const auto symbol_length = irs::utf8_utils::symbol_length(*state_->ngram.it);
-      if (IRS_UNLIKELY(0 == symbol_length)) {
-        IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
-        return false;
-      }
-      state_->ngram.it += symbol_length;
-    }
+    state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
     ++state_->ngram.length;
   }
 

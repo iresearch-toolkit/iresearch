@@ -41,13 +41,13 @@ class ngram_token_stream: public analyzer, util::noncopyable {
 
   struct options_t {
     enum class stream_bytes_t {
-      BinaryStream, // input is treaten as generic bytes 
-      Ut8Stream,    // input is treaten as ut8-encoded symbols
+      Binary, // input is treaten as generic bytes 
+      UTF8,    // input is treaten as ut8-encoded symbols
     };
     options_t() : min_gram(0), max_gram(0), preserve_original(true),
-      stream_bytes_type(stream_bytes_t::BinaryStream) {}
+      stream_bytes_type(stream_bytes_t::Binary) {}
     options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max), 
-      stream_bytes_type(stream_bytes_t::BinaryStream), preserve_original(original) {}
+      stream_bytes_type(stream_bytes_t::Binary), preserve_original(original) {}
     options_t(size_t min, size_t max, bool original, stream_bytes_t stream_type, 
               const irs::bytes_ref start, const irs::bytes_ref end)
       : start_marker(start), end_marker(end), min_gram(min), max_gram(max), 

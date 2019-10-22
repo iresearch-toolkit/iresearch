@@ -20,28 +20,30 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef IRESEARCH_UTF8_UTILS_H
 #define IRESEARCH_UTF8_UTILS_H
 
-
 #include "shared.hpp"
+#include "log.hpp"
 
 NS_ROOT
 NS_BEGIN(utf8_utils)
 
-inline uint8_t symbol_length(const irs::byte_type symbol_start) noexcept {
+inline  const byte_type* next(const byte_type* it, const byte_type* end) noexcept {
+  const uint8_t symbol_start = *it;
   if (symbol_start < 0x80) {
-    return 1;
-  } else if ((symbol_start >> 5) == 0x6) {
-    return 2;
-  } else if ((symbol_start >> 4) == 0xe) {
-    return 3;
-  } else if ((symbol_start >> 3) == 0x1e) {
-    return 4;
+    ++it;
+  } else if ((symbol_start >> 5) == 0x06) {
+    it += 2;
+  } else if ((symbol_start >> 4) == 0x0E) {
+    it += 3;
+  } else if ((symbol_start >> 3) == 0x1E) {
+    it += 4;
   } else {
-    return 0;
+    IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
+    it = end;
   }
+  return it > end ? end : it;
 }
 
 NS_END

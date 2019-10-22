@@ -39,8 +39,8 @@ const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
 const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
 const std::unordered_map<std::string, irs::analysis::ngram_token_stream::options_t::stream_bytes_t> STREAM_TYPE_CONVERT_MAP = {
-      { "binary", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream },
-      { "utf8", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Ut8Stream }};
+      { "binary", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary },
+      { "utf8", irs::analysis::ngram_token_stream::options_t::stream_bytes_t::UTF8 }};
 
 bool parse_json_config(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream::options_t& options) {
@@ -65,7 +65,7 @@ bool parse_json_config(const irs::string_ref& args,
 
   uint64_t min, max;
   bool preserve_original;
-  auto stream_bytes_type = irs::analysis::ngram_token_stream::options_t::stream_bytes_t::BinaryStream;
+  auto stream_bytes_type = irs::analysis::ngram_token_stream::options_t::stream_bytes_t::Binary;
   std::string start_marker, end_marker;
 
   if (!get_uint64(json, MIN_PARAM_NAME, min)) {
@@ -269,7 +269,9 @@ NS_BEGIN(analysis)
 ngram_token_stream::ngram_token_stream(
     const options_t& options
 ) : analyzer(ngram_token_stream::type()),
-    options_(options), start_marker_empty_(options.start_marker.empty()), end_marker_empty_(options.end_marker.empty()) {
+    options_(options), 
+    start_marker_empty_(options.start_marker.empty()),
+    end_marker_empty_(options.end_marker.empty()) {
   options_.min_gram = std::max(options_.min_gram, size_t(1));
   options_.max_gram = std::max(options_.max_gram, options_.min_gram);
 
@@ -282,19 +284,12 @@ bool ngram_token_stream::next_symbol(const byte_type*& it) const noexcept {
   IRS_ASSERT(it);
   if (it < data_end_) {
     switch (options_.stream_bytes_type) {
-      case options_t::stream_bytes_t::BinaryStream:
+      case options_t::stream_bytes_t::Binary:
         ++it;
         return true;
-      case options_t::stream_bytes_t::Ut8Stream:
-       {
-         uint8_t symbol_size = irs::utf8_utils::symbol_length(*it);
-         if (IRS_UNLIKELY(0 == symbol_size)) {
-           IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
-           return false;
-         }
-         it += symbol_size;
-       }
-       return it <= data_end_;
+      case options_t::stream_bytes_t::UTF8:
+       it = irs::utf8_utils::next(it, data_end_);
+       return true;
       default:
         IRS_ASSERT(false);
         IR_FRMT_ERROR(
@@ -352,13 +347,13 @@ bool ngram_token_stream::next() noexcept {
       ++length_;
       if (length_ >= options_.min_gram) {
         IRS_ASSERT(begin_ <= ngram_end_);
-        const auto ngram_byte_len = static_cast<size_t>(std::distance(begin_, ngram_end_));
+        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= integer_traits<uint32_t>::const_max);
+        const auto ngram_byte_len = static_cast<uint32_t>(std::distance(begin_, ngram_end_));
         if (emit_original_t::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
           offset_.end = offset_.start + ngram_byte_len;
           inc_.value = next_inc_val_;
           next_inc_val_ = 0;
           if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_end_)) {
-            assert(ngram_byte_len <= integer_traits<uint32_t>::const_max);
             term_.value(irs::bytes_ref(begin_, ngram_byte_len));
           } else if (0 == offset_.start && !start_marker_empty_) {
             marked_term_buffer_.clear();
@@ -388,7 +383,7 @@ bool ngram_token_stream::next() noexcept {
           next_inc_val_ = 1;
           length_ = 0;
           ngram_end_ = begin_;
-          offset_.start = std::distance(data_.begin(), begin_);
+          offset_.start = static_cast<uint32_t>(std::distance(data_.begin(), begin_));
         } else {
           return false; // stream exhausted
         }
@@ -445,7 +440,7 @@ bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
     // For sake of performance we allocate requested memory right now
     size_t buffer_size = options_.preserve_original ? data_.size() : std::min(data_.size(), options_.max_gram);
     buffer_size += max_marker_size;
-    if (buffer_size > marked_term_buffer_.capacity()) {
+    if (buffer_size > marked_term_buffer_.capacity()) { // until c++20 this check is needed to avoid shrinking
       marked_term_buffer_.reserve(buffer_size);
     }
   }
