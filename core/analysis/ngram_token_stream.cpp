@@ -43,7 +43,7 @@ const std::unordered_map<std::string, irs::analysis::InputType> STREAM_TYPE_CONV
       { "utf8", irs::analysis::InputType::UTF8 }};
 
 bool parse_json_config(const irs::string_ref& args,
-                        irs::analysis::ngram_token_stream_options_t& options) {
+                        irs::analysis::ngram_token_stream_options& options) {
   rapidjson::Document json;
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
@@ -156,7 +156,7 @@ bool parse_json_config(const irs::string_ref& args,
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  irs::analysis::ngram_token_stream_options_t options;
+  irs::analysis::ngram_token_stream_options options;
   if (parse_json_config(args, options)) {
     switch (options.stream_bytes_type) {
       case irs::analysis::InputType::Binary:
@@ -174,7 +174,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(const irs::analysis::ngram_token_stream_options_t& options,
+bool make_json_config(const irs::analysis::ngram_token_stream_options& options,
                       std::string& definition) {
   rapidjson::Document json;
   json.SetObject();
@@ -246,7 +246,7 @@ bool make_json_config(const irs::analysis::ngram_token_stream_options_t& options
 }
 
 bool normalize_json_config(const irs::string_ref& args, std::string& config) {
-  irs::analysis::ngram_token_stream_options_t options;
+  irs::analysis::ngram_token_stream_options options;
   if (parse_json_config(args, options)) {
     return make_json_config(options, config);
   } else {
@@ -268,7 +268,7 @@ NS_BEGIN(analysis)
 
 template<irs::analysis::InputType StreamType>
 /*static*/ analyzer::ptr ngram_token_stream<StreamType>::make(
-    const ngram_token_stream_options_t& options
+    const ngram_token_stream_options& options
 ) {
   return std::make_shared<ngram_token_stream<StreamType>>(options);
 }
@@ -281,7 +281,7 @@ template<irs::analysis::InputType StreamType>
 
 template<irs::analysis::InputType StreamType>
 ngram_token_stream<StreamType>::ngram_token_stream(
-    const ngram_token_stream_options_t& options
+    const ngram_token_stream_options& options
 ) : analyzer(ngram_token_stream::type()),
     options_(options),
     start_marker_empty_(options.start_marker.empty()),
@@ -313,14 +313,14 @@ bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noe
 template<irs::analysis::InputType StreamType>
 void ngram_token_stream<StreamType>::emit_original() noexcept {
   switch (emit_original_) {
-    case emit_original_t::WithoutMarkers:
+    case EmitOriginal::WithoutMarkers:
       term_.value(data_);
       assert(data_.size() <= integer_traits<uint32_t>::const_max);
       offset_.end = uint32_t(data_.size());
-      emit_original_ = emit_original_t::None;
+      emit_original_ = EmitOriginal::None;
       inc_.value = next_inc_val_;
       break;
-    case emit_original_t::WithEndMarker:
+    case EmitOriginal::WithEndMarker:
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + data_.size()));
       marked_term_buffer_.append(data_.begin(), data_end_);
@@ -329,10 +329,10 @@ void ngram_token_stream<StreamType>::emit_original() noexcept {
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
       offset_.start = 0;
       offset_.end = uint32_t(data_.size());
-      emit_original_ = emit_original_t::None; // end marker is emitted last, so we are done emitting original
+      emit_original_ = EmitOriginal::None; // end marker is emitted last, so we are done emitting original
       inc_.value = next_inc_val_;
       break;
-    case emit_original_t::WithStartMarker:
+    case EmitOriginal::WithStartMarker:
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + data_.size()));
       marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
@@ -341,7 +341,7 @@ void ngram_token_stream<StreamType>::emit_original() noexcept {
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
       offset_.start = 0;
       offset_.end = uint32_t(data_.size());
-      emit_original_ = options_.end_marker.empty()? emit_original_t::None : emit_original_t::WithEndMarker;
+      emit_original_ = options_.end_marker.empty()? EmitOriginal::None : EmitOriginal::WithEndMarker;
       inc_.value = next_inc_val_;
       break;
     default:
@@ -361,7 +361,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
         IRS_ASSERT(begin_ <= ngram_end_);
         assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= integer_traits<uint32_t>::const_max);
         const auto ngram_byte_len = static_cast<uint32_t>(std::distance(begin_, ngram_end_));
-        if (emit_original_t::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
+        if (EmitOriginal::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
           offset_.end = offset_.start + ngram_byte_len;
           inc_.value = next_inc_val_;
           next_inc_val_ = 0;
@@ -377,7 +377,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
             if (ngram_byte_len == data_.size() && !end_marker_empty_) {
               // this term is whole original stream and we have end marker, so we need to emit
               // this term again with end marker just like original, so pretend we need to emit original
-              emit_original_ = emit_original_t::WithEndMarker;
+              emit_original_ = EmitOriginal::WithEndMarker;
             }
           } else {
             IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_end_);
@@ -395,7 +395,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
       }
     } else {
       // need to move to next position
-      if (emit_original_t::None == emit_original_) {
+      if (EmitOriginal::None == emit_original_) {
         if (next_symbol(begin_)) {
           next_inc_val_ = 1;
           length_ = 0;
@@ -439,14 +439,14 @@ bool ngram_token_stream<StreamType>::reset(const irs::string_ref& value) noexcep
   length_ = 0;
   if (options_.preserve_original) {
     if (!start_marker_empty_) {
-      emit_original_ = emit_original_t::WithStartMarker;
+      emit_original_ = EmitOriginal::WithStartMarker;
     } else if (!end_marker_empty_) {
-      emit_original_ = emit_original_t::WithEndMarker;
+      emit_original_ = EmitOriginal::WithEndMarker;
     } else {
-      emit_original_ = emit_original_t::WithoutMarkers;
+      emit_original_ = EmitOriginal::WithoutMarkers;
     }
   } else {
-    emit_original_ = emit_original_t::None;
+    emit_original_ = EmitOriginal::None;
   }
   next_inc_val_ = 1;
   assert(length_ < options_.min_gram);

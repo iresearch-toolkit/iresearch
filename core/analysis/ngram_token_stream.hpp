@@ -35,12 +35,12 @@ enum class InputType {
   UTF8,   // input is treaten as ut8-encoded symbols
 };
 
-struct ngram_token_stream_options_t {
-  ngram_token_stream_options_t() : min_gram(0), max_gram(0), preserve_original(true),
+struct ngram_token_stream_options {
+  ngram_token_stream_options() : min_gram(0), max_gram(0), preserve_original(true),
     stream_bytes_type(InputType::Binary) {}
-  ngram_token_stream_options_t(size_t min, size_t max, bool original) : min_gram(min), max_gram(max),
+  ngram_token_stream_options(size_t min, size_t max, bool original) : min_gram(min), max_gram(max),
     stream_bytes_type(InputType::Binary), preserve_original(original) {}
-  ngram_token_stream_options_t(size_t min, size_t max, bool original, InputType stream_type,
+  ngram_token_stream_options(size_t min, size_t max, bool original, InputType stream_type,
     const irs::bytes_ref start, const irs::bytes_ref end)
     : start_marker(start), end_marker(end), min_gram(min), max_gram(max),
     stream_bytes_type(stream_type), preserve_original(original) {}
@@ -64,7 +64,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
  public:
   DECLARE_ANALYZER_TYPE();
 
-  DECLARE_FACTORY(const ngram_token_stream_options_t& options);
+  DECLARE_FACTORY(const ngram_token_stream_options& options);
 
   static void init(); // for trigering registration in a static build
 
@@ -72,7 +72,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   //  : ngram_token_stream(n, n, preserve_original) {
  //}
 
-  ngram_token_stream(const ngram_token_stream_options_t& options);
+  ngram_token_stream(const ngram_token_stream_options& options);
 
   virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
@@ -94,7 +94,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
     void value(const bytes_ref& value) { value_ = value; }
   };
 
-  ngram_token_stream_options_t options_;
+  ngram_token_stream_options options_;
   attribute_view attrs_;
   bytes_ref data_; // data to process
   increment inc_;
@@ -105,14 +105,14 @@ class ngram_token_stream: public analyzer, util::noncopyable {
   size_t length_{};
   const byte_type* data_end_{};
 
-  enum class emit_original_t {
+  enum class EmitOriginal {
     None,
     WithoutMarkers,
     WithStartMarker,
     WithEndMarker
   };
 
-  emit_original_t emit_original_{ emit_original_t::None };
+  EmitOriginal emit_original_{ EmitOriginal::None };
 
   // buffer for emitting ngram with start/stop marker
   // we need continious memory for value so can not use
