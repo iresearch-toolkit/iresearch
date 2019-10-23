@@ -287,7 +287,6 @@ end_marker_empty_(options.end_marker.empty()) {
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
   attrs_.emplace(term_);
-
 }
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
@@ -394,8 +393,7 @@ bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noe
   if (it < data_end_) {
     if /*constexpr*/ (StreamType == InputType::Binary) {
       ++it;
-    }
-    else if /*constexpr*/ (StreamType == InputType::UTF8) {
+    } else if /*constexpr*/ (StreamType == InputType::UTF8) {
       it = irs::utf8_utils::next(it, data_end_);
     }
     return true;
@@ -419,8 +417,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
           next_inc_val_ = 0;
           if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_end_)) {
             term_.value(irs::bytes_ref(begin_, ngram_byte_len));
-          }
-          else if (0 == offset_.start && !start_marker_empty_) {
+          } else if (0 == offset_.start && !start_marker_empty_) {
             marked_term_buffer_.clear();
             IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
             marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
@@ -432,8 +429,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
               // this term again with end marker just like original, so pretend we need to emit original
               emit_original_ = EmitOriginal::WithEndMarker;
             }
-          }
-          else {
+          } else {
             IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_end_);
             marked_term_buffer_.clear();
             IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
@@ -441,15 +437,13 @@ bool ngram_token_stream<StreamType>::next() noexcept {
             marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
             term_.value(marked_term_buffer_);
           }
-        }
-        else {
+        } else {
           // if ngram covers original stream we need to process it specially
           emit_original();
         }
         return true;
       }
-    }
-    else {
+    } else {
       // need to move to next position
       if (EmitOriginal::None == emit_original_) {
         if (next_symbol(begin_)) {
@@ -457,12 +451,10 @@ bool ngram_token_stream<StreamType>::next() noexcept {
           length_ = 0;
           ngram_end_ = begin_;
           offset_.start = static_cast<uint32_t>(std::distance(data_.begin(), begin_));
-        }
-        else {
+        } else {
           return false; // stream exhausted
         }
-      }
-      else {
+      } else {
         // as stream has unsigned incremet attribute
         // we cannot go back, so we must emit original before we leave start pos in stream
         // (as it starts from pos=0 in stream)
