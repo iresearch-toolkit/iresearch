@@ -38,12 +38,12 @@ const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
 const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
 const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
-const std::unordered_map<std::string, irs::analysis::InputType> STREAM_TYPE_CONVERT_MAP = {
-      { "binary", irs::analysis::InputType::Binary },
-      { "utf8", irs::analysis::InputType::UTF8 }};
+const std::unordered_map<std::string, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
+      { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
+      { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
 
 bool parse_json_config(const irs::string_ref& args,
-                        irs::analysis::ngram_token_stream_options& options) {
+                        irs::analysis::ngram_token_stream_base::Options& options) {
   rapidjson::Document json;
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
@@ -65,7 +65,7 @@ bool parse_json_config(const irs::string_ref& args,
 
   uint64_t min, max;
   bool preserve_original;
-  auto stream_bytes_type = irs::analysis::InputType::Binary;
+  auto stream_bytes_type = irs::analysis::ngram_token_stream_base::InputType::Binary;
   std::string start_marker, end_marker;
 
   if (!get_uint64(json, MIN_PARAM_NAME, min)) {
@@ -156,13 +156,13 @@ bool parse_json_config(const irs::string_ref& args,
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  irs::analysis::ngram_token_stream_options options;
+  irs::analysis::ngram_token_stream_base::Options options;
   if (parse_json_config(args, options)) {
     switch (options.stream_bytes_type) {
-      case irs::analysis::InputType::Binary:
-        return irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>::make(options);
-      case irs::analysis::InputType::UTF8:
-        return irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8>::make(options);
+      case irs::analysis::ngram_token_stream_base::InputType::Binary:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(options);
+      case irs::analysis::ngram_token_stream_base::InputType::UTF8:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>::make(options);
       default:
         return nullptr;
     }
@@ -174,7 +174,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(const irs::analysis::ngram_token_stream_options& options,
+bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& options,
                       std::string& definition) {
   rapidjson::Document json;
   json.SetObject();
@@ -246,7 +246,7 @@ bool make_json_config(const irs::analysis::ngram_token_stream_options& options,
 }
 
 bool normalize_json_config(const irs::string_ref& args, std::string& config) {
-  irs::analysis::ngram_token_stream_options options;
+  irs::analysis::ngram_token_stream_base::Options options;
   if (parse_json_config(args, options)) {
     return make_json_config(options, config);
   } else {
@@ -254,38 +254,33 @@ bool normalize_json_config(const irs::string_ref& args, std::string& config) {
   }
 }
 
-static irs::analysis::analyzer::type_id ngram_type_id("ngram");
 
-// as regardless of input stream types all ngram analyzers share same type "ngram" and same factory methods let only binary version register factories
-// all other types are covered by same factory methods
-REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>, make_json,
-  normalize_json_config);
+REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_json, normalize_json_config);
 
 NS_END
 
 NS_ROOT
 NS_BEGIN(analysis)
 
-template<irs::analysis::InputType StreamType>
+template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 /*static*/ analyzer::ptr ngram_token_stream<StreamType>::make(
-    const ngram_token_stream_options& options
+    const ngram_token_stream_base::Options& options
 ) {
   return std::make_shared<ngram_token_stream<StreamType>>(options);
 }
 
-template<irs::analysis::InputType StreamType>
-/*static*/ void ngram_token_stream<StreamType>::init() {
-  REGISTER_ANALYZER_JSON(ngram_token_stream<InputType::Binary>, make_json,
+/*static*/ void ngram_token_stream_base::init() {
+  REGISTER_ANALYZER_JSON(ngram_token_stream_base, make_json,
                          normalize_json_config); // match registration above
 }
 
-template<irs::analysis::InputType StreamType>
-ngram_token_stream<StreamType>::ngram_token_stream(
-    const ngram_token_stream_options& options
-) : analyzer(ngram_token_stream::type()),
-    options_(options),
-    start_marker_empty_(options.start_marker.empty()),
-    end_marker_empty_(options.end_marker.empty()) {
+
+ngram_token_stream_base::ngram_token_stream_base(
+  const ngram_token_stream_base::Options& options
+) : analyzer(ngram_token_stream_base::type()),
+options_(options),
+start_marker_empty_(options.start_marker.empty()),
+end_marker_empty_(options.end_marker.empty()) {
   options_.min_gram = std::max(options_.min_gram, size_t(1));
   options_.max_gram = std::max(options_.max_gram, options_.min_gram);
 
@@ -293,25 +288,16 @@ ngram_token_stream<StreamType>::ngram_token_stream(
   attrs_.emplace(inc_);
   attrs_.emplace(term_);
 
+}
+
+template<irs::analysis::ngram_token_stream_base::InputType StreamType>
+ngram_token_stream<StreamType>::ngram_token_stream(
+    const ngram_token_stream_base::Options& options
+) : ngram_token_stream_base(options) {
   IRS_ASSERT(StreamType == options_.stream_bytes_type);
 }
 
-template<irs::analysis::InputType StreamType>
-bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noexcept {
-  IRS_ASSERT(it);
-  if (it < data_end_) {
-    if /*constexpr*/ (StreamType == InputType::Binary) {
-      ++it;
-    } else if /*constexpr*/ (StreamType == InputType::UTF8) {
-      it = irs::utf8_utils::next(it, data_end_);
-    }
-    return true;
-  }
-  return false;
-}
-
-template<irs::analysis::InputType StreamType>
-void ngram_token_stream<StreamType>::emit_original() noexcept {
+void ngram_token_stream_base::emit_original() noexcept {
   switch (emit_original_) {
     case EmitOriginal::WithoutMarkers:
       term_.value(data_);
@@ -351,73 +337,7 @@ void ngram_token_stream<StreamType>::emit_original() noexcept {
   next_inc_val_ = 0;
 }
 
-template<irs::analysis::InputType StreamType>
-bool ngram_token_stream<StreamType>::next() noexcept {
-  while (begin_ < data_end_) {
-    if (length_ < options_.max_gram && next_symbol(ngram_end_)) {
-      // we have next ngram from current position
-      ++length_;
-      if (length_ >= options_.min_gram) {
-        IRS_ASSERT(begin_ <= ngram_end_);
-        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= integer_traits<uint32_t>::const_max);
-        const auto ngram_byte_len = static_cast<uint32_t>(std::distance(begin_, ngram_end_));
-        if (EmitOriginal::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
-          offset_.end = offset_.start + ngram_byte_len;
-          inc_.value = next_inc_val_;
-          next_inc_val_ = 0;
-          if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_end_)) {
-            term_.value(irs::bytes_ref(begin_, ngram_byte_len));
-          } else if (0 == offset_.start && !start_marker_empty_) {
-            marked_term_buffer_.clear();
-            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
-            marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
-            marked_term_buffer_.append(begin_, ngram_byte_len);
-            term_.value(marked_term_buffer_);
-            assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
-            if (ngram_byte_len == data_.size() && !end_marker_empty_) {
-              // this term is whole original stream and we have end marker, so we need to emit
-              // this term again with end marker just like original, so pretend we need to emit original
-              emit_original_ = EmitOriginal::WithEndMarker;
-            }
-          } else {
-            IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_end_);
-            marked_term_buffer_.clear();
-            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
-            marked_term_buffer_.append(begin_, ngram_byte_len);
-            marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
-            term_.value(marked_term_buffer_);
-          }
-        } else {
-          // if ngram covers original stream we need to process it specially
-          emit_original();
-        }
-        return true;
-      }
-    } else {
-      // need to move to next position
-      if (EmitOriginal::None == emit_original_) {
-        if (next_symbol(begin_)) {
-          next_inc_val_ = 1;
-          length_ = 0;
-          ngram_end_ = begin_;
-          offset_.start = static_cast<uint32_t>(std::distance(data_.begin(), begin_));
-        } else {
-          return false; // stream exhausted
-        }
-      } else {
-        // as stream has unsigned incremet attribute
-        // we cannot go back, so we must emit original before we leave start pos in stream
-        // (as it starts from pos=0 in stream)
-        emit_original();
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-template<irs::analysis::InputType StreamType>
-bool ngram_token_stream<StreamType>::reset(const irs::string_ref& value) noexcept {
+bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
   if (value.size() > integer_traits<uint32_t>::const_max) {
     // can't handle data which is longer than integer_traits<uint32_t>::const_max
     return false;
@@ -465,17 +385,100 @@ bool ngram_token_stream<StreamType>::reset(const irs::string_ref& value) noexcep
   return true;
 }
 
-template<irs::analysis::InputType StreamType>
-const irs::analysis::analyzer::type_id& ngram_token_stream<StreamType>::type() {
-  return ngram_type_id;
+DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream_base, "ngram")
+
+
+template<irs::analysis::ngram_token_stream_base::InputType StreamType>
+bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noexcept {
+  IRS_ASSERT(it);
+  if (it < data_end_) {
+    if /*constexpr*/ (StreamType == InputType::Binary) {
+      ++it;
+    }
+    else if /*constexpr*/ (StreamType == InputType::UTF8) {
+      it = irs::utf8_utils::next(it, data_end_);
+    }
+    return true;
+  }
+  return false;
 }
 
-//DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream, "ngram")
+template<irs::analysis::ngram_token_stream_base::InputType StreamType>
+bool ngram_token_stream<StreamType>::next() noexcept {
+  while (begin_ < data_end_) {
+    if (length_ < options_.max_gram && next_symbol(ngram_end_)) {
+      // we have next ngram from current position
+      ++length_;
+      if (length_ >= options_.min_gram) {
+        IRS_ASSERT(begin_ <= ngram_end_);
+        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= integer_traits<uint32_t>::const_max);
+        const auto ngram_byte_len = static_cast<uint32_t>(std::distance(begin_, ngram_end_));
+        if (EmitOriginal::None == emit_original_ || 0 != offset_.start || ngram_byte_len != data_.size()) {
+          offset_.end = offset_.start + ngram_byte_len;
+          inc_.value = next_inc_val_;
+          next_inc_val_ = 0;
+          if ((0 != offset_.start || start_marker_empty_) && (end_marker_empty_ || ngram_end_ != data_end_)) {
+            term_.value(irs::bytes_ref(begin_, ngram_byte_len));
+          }
+          else if (0 == offset_.start && !start_marker_empty_) {
+            marked_term_buffer_.clear();
+            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.start_marker.size() + ngram_byte_len));
+            marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
+            marked_term_buffer_.append(begin_, ngram_byte_len);
+            term_.value(marked_term_buffer_);
+            assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
+            if (ngram_byte_len == data_.size() && !end_marker_empty_) {
+              // this term is whole original stream and we have end marker, so we need to emit
+              // this term again with end marker just like original, so pretend we need to emit original
+              emit_original_ = EmitOriginal::WithEndMarker;
+            }
+          }
+          else {
+            IRS_ASSERT(!end_marker_empty_ && ngram_end_ == data_end_);
+            marked_term_buffer_.clear();
+            IRS_ASSERT(marked_term_buffer_.capacity() >= (options_.end_marker.size() + ngram_byte_len));
+            marked_term_buffer_.append(begin_, ngram_byte_len);
+            marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
+            term_.value(marked_term_buffer_);
+          }
+        }
+        else {
+          // if ngram covers original stream we need to process it specially
+          emit_original();
+        }
+        return true;
+      }
+    }
+    else {
+      // need to move to next position
+      if (EmitOriginal::None == emit_original_) {
+        if (next_symbol(begin_)) {
+          next_inc_val_ = 1;
+          length_ = 0;
+          ngram_end_ = begin_;
+          offset_.start = static_cast<uint32_t>(std::distance(data_.begin(), begin_));
+        }
+        else {
+          return false; // stream exhausted
+        }
+      }
+      else {
+        // as stream has unsigned incremet attribute
+        // we cannot go back, so we must emit original before we leave start pos in stream
+        // (as it starts from pos=0 in stream)
+        emit_original();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 
 NS_END // analysis
 NS_END // ROOT
 
 
 // Making library export see template instantinations
-template class irs::analysis::ngram_token_stream<irs::analysis::InputType::Binary>;
-template class irs::analysis::ngram_token_stream<irs::analysis::InputType::UTF8>;
+template class irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>;
+template class irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>;
