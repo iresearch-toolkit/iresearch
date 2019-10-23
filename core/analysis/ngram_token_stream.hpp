@@ -45,14 +45,27 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
    };
 
    struct Options {
-     Options() : min_gram(0), max_gram(0), preserve_original(true),
-       stream_bytes_type(InputType::Binary) {}
-     Options(size_t min, size_t max, bool original) : min_gram(min), max_gram(max),
-       stream_bytes_type(InputType::Binary), preserve_original(original) {}
-     Options(size_t min, size_t max, bool original, InputType stream_type,
-       const irs::bytes_ref start, const irs::bytes_ref end)
-       : start_marker(start), end_marker(end), min_gram(min), max_gram(max),
-       stream_bytes_type(stream_type), preserve_original(original) {}
+     Options() noexcept
+       : min_gram(0), max_gram(0),
+         stream_bytes_type(InputType::Binary) ,
+         preserve_original(true) { 
+     }
+     Options(size_t min, size_t max, bool original)
+         : min_gram(min), max_gram(max),
+           stream_bytes_type(InputType::Binary),
+           preserve_original(original) {
+     }
+     Options(size_t min, size_t max,
+             bool original,
+             InputType stream_type,
+             const irs::bytes_ref start,
+             const irs::bytes_ref end)
+         : start_marker(start),
+           end_marker(end),
+           min_gram(min), max_gram(max),
+           stream_bytes_type(stream_type),
+           preserve_original(original) {
+     }
 
      irs::bstring start_marker; // marker of ngrams at the beginning of stream
      irs::bstring end_marker; // marker of ngrams at the end of strem
