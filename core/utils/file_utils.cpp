@@ -99,9 +99,19 @@ void lock_file_deleter::operator()(void* handle) const {
 }
 
 bool write(HANDLE fd, const char* buf, size_t size) {
-  DWORD written;
-  auto res = ::WriteFile(fd, buf, DWORD(size), &written, NULL);
-  return res && size == written;
+  std::streamsize left = size;
+  const char* current = buf;
+  while (left > 0) {
+    DWORD to_write = std::min(MAXDWORD, left);
+    DWORD written{ 0 };
+    if (WriteFile(fd, current, to_write, &written, NULL)) {
+      left -= written;
+      current += written;
+    } else {
+      break;
+    }
+  }
+  return left == 0;
 }
 
 bool exists(const file_path_t file) {
@@ -319,8 +329,22 @@ bool exists(const file_path_t file) {
 }
 
 bool write(int fd, const char* buf, size_t size) {
-  const ssize_t written = ::write(fd, buf, size);
-  return written >= 0 && size_t(written) == size;
+  static const size_t writeLimit = 1UL << 30;
+  const char* current = buf;
+  size_t left = size;
+  while (size > 0) {
+    size_t to_write = std::min(left, writeLimit);
+    const ssize_t written = ::write(fd, current, to_write);
+    if (written < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    left -= written;
+    current += written;
+  }
+  return left == 0;
 }
 
 bool verify_lock_file(const file_path_t file) {
@@ -631,38 +655,47 @@ bool mtime(time_t& result, int fd) noexcept {
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
-handle_t open(const file_path_t path, const file_path_t mode) noexcept {
+handle_t open(const file_path_t path, OpenMode mode) noexcept {
   #ifdef _WIN32
-    #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
-    #pragma warning(default: 4996)
-  #else
-    handle_t handle(::fopen(path ? path : "/dev/null", mode));
-  #endif
-
-  if (!handle) {
-    // even win32 uses 'errno' for error codes in calls to _wfopen(...)
-    IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-    IR_LOG_STACK_TRACE();
+  if (!path) {
+    return handle_t(nullptr);
   }
 
-  return handle;
+  DWORD desiredAccess;
+  DWORD sharingMode = FILE_SHARE_READ | FILE_SHARE_WRITE; // as *nix does not have sharing restrictions, we put none also
+  switch (mode) {
+    case OpenMode::Read:
+      desiredAccess = GENERIC_READ;
+      break;
+    case OpenMode::Write:
+      desiredAccess = GENERIC_WRITE;
+      break;
+    default:
+      IR_FRMT_ERROR("Invalid OpenMode %d specified for file ", static_cast<int>(mode), path);
+      IRS_ASSERT(false);
+      return handle_t(nullptr);
+  }; 
+  HANDLE hFile = CreateFile(path, desiredAccess, sharingMode, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (hFile != INVALID_HANDLE_VALUE) {
+    return handle_t(hFile);
+  }
+  #else
+    handle_t handle(::fopen(path ? path : "/dev/null", (OpenMode::Read == mode ? "rb" : "wb") ));
+    if (!handle) {
+      IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
+      IR_LOG_STACK_TRACE();
+    }
+    return handle;
+  #endif
 }
 
-handle_t open(FILE* file, const file_path_t mode) noexcept {
+handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open
-    HANDLE handle = HANDLE(::_get_osfhandle(::_fileno(file)));
-
-    if (INVALID_HANDLE_VALUE == HANDLE(handle)) {
-      IR_FRMT_ERROR("Failed to get system handle from file handle, error %d", errno);
-      return nullptr;
-    }
-
     const auto size = MAX_PATH + 1; // +1 for \0
     TCHAR path[size];
-    auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
+    auto length = GetFinalPathNameByHandle(file, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
     if (!length) {
       IR_FRMT_ERROR("Failed to get filename from file handle, error %d", GetLastError());
@@ -684,7 +717,7 @@ handle_t open(FILE* file, const file_path_t mode) noexcept {
     auto buf_size = length + 1; // +1 for \0
     auto buf = irs::memory::make_unique<TCHAR[]>(buf_size);
 
-    length = GetFinalPathNameByHandle(handle, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
+    length = GetFinalPathNameByHandle(file, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
 
     if(length && length < buf_size) {
       buf[length] = '\0';

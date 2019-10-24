@@ -40,7 +40,6 @@
   #define file_stat_t struct _stat64
   #define file_no _fileno
   #define mode_t unsigned short
-  #define file_open(name, mode) iresearch::file_utils::open(name, IR_WSTR(mode))
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
@@ -54,6 +53,8 @@
   #define IR_FADVICE_DONTNEED 4
   #define IR_FADVICE_NOREUSE 5
   #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
+
+  #define IR_FILE void
 #else
   #include <unistd.h> // close
   #include <sys/types.h> // for blksize_t
@@ -64,7 +65,6 @@
   #define file_fstat fstat
   #define file_stat_t struct stat    
   #define file_no fileno
-  #define file_open(name, mode) iresearch::file_utils::open(name, mode)
   #define posix_create creat
   #define posix_open open
   #define posix_close close
@@ -80,7 +80,11 @@
   #define IR_FADVICE_RANDOM POSIX_FADV_RANDOM
   #define IR_FADVICE_DONTNEED POSIX_FADV_DONTNEED
   #define IR_FADVICE_NOREUSE POSIX_FADV_NOREUSE
+  #define IR_FILE FILE
 #endif
+
+#define file_open_read(name) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Read)
+#define file_open_write(name) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Write) 
 
 #include "shared.hpp"
 #include "string.hpp"
@@ -93,10 +97,10 @@ NS_BEGIN(file_utils)
 // -----------------------------------------------------------------------------
 
 struct lock_file_deleter {
-  void operator()(void* handle) const;
+  void operator()(IR_FILE* handle) const;
 }; // lock_file_deleter
 
-typedef std::unique_ptr<void, lock_file_deleter> lock_handle_t;
+typedef std::unique_ptr<IR_FILE, lock_file_deleter> lock_handle_t;
 
 lock_handle_t create_lock_file(const file_path_t file);
 bool verify_lock_file(const file_path_t file);
@@ -123,17 +127,21 @@ bool mtime(time_t& result, int fd) noexcept;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
+enum class OpenMode {
+  Read,
+  Write
+};
 
 struct file_deleter {
-  void operator()(FILE* f) const noexcept {
+  void operator()(IR_FILE* f) const noexcept {
     if (f) ::fclose(f);
   }
 }; // file_deleter
 
-typedef std::unique_ptr<FILE, file_deleter> handle_t;
+typedef std::unique_ptr<IR_FILE, file_deleter> handle_t;
 
-handle_t open(const file_path_t path, const file_path_t mode) noexcept;
-handle_t open(FILE* file, const file_path_t mode) noexcept;
+handle_t open(const file_path_t path, OpenMode mode) noexcept;
+handle_t open(IR_FILE* file, OpenMode mode) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        path utils

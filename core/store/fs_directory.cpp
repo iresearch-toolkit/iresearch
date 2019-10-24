@@ -180,7 +180,7 @@ class fs_index_output : public buffered_index_output {
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
-    file_utils::handle_t handle(file_open(name, "wb"));
+    file_utils::handle_t handle(file_open_write(name));
 
     if (nullptr == handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -189,8 +189,13 @@ class fs_index_output : public buffered_index_output {
 
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
-      // even win32 uses 'errno' fo error codes in calls to file_open(...)
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+#ifdef _WIN32
+       GetLastError(),
+#else
+       errno,
+#endif
+       path.c_str());
 
       return nullptr;
     }
@@ -284,7 +289,7 @@ class fs_index_input : public buffered_index_input {
 
     auto handle = file_handle::make();
 
-    handle->handle = file_open(name, "rb");
+    handle->handle = file_open_read(name);
 
     if (nullptr == handle->handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -294,7 +299,14 @@ class fs_index_input : public buffered_index_input {
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
+#ifdef _WIN32
+        GetLastError(),
+#else
+        errno,
+#endif
+        path.c_str());
+
 
       return nullptr;
     }
@@ -484,12 +496,17 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
-    handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)
+    handle->handle = file_open_read(src); // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
       throw io_error(string_utils::to_string(
-        "Failed to reopen input file, error: %d", errno
+        "Failed to reopen input file, error: %d",
+#ifdef _WIN32
+        GetLastError()
+#else
+        errno
+#endif
       ));
     }
   }
