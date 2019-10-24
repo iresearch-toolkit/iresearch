@@ -72,6 +72,7 @@ option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
+option(USE_CCACHE "Use CCACHE if present" ON)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -100,11 +101,17 @@ endif()
 ### setup ccache
 ################################################################################
 
-find_program(CCACHE_FOUND ccache)
+if (USE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
 
-if(CCACHE_FOUND)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-endif(CCACHE_FOUND)
+  if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+  endif(CCACHE_FOUND)
+endif()
+
+################################################################################
+### setup platform dependent optimizations
+################################################################################
 
 if (USE_OPTIMIZE_FOR_ARCHITECTURE)
   include(OptimizeForArchitecture)
