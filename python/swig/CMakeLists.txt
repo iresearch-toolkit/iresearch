@@ -16,10 +16,19 @@ swig_link_libraries(pyresearch iresearch-python ${PYTHON_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/.. ${IResearch_INCLUDE_DIR})
 
 # Files to install with Python
+if(MSVC)
+set(MSVC_IRESEARCH_PREFIX "$<CONFIG>")
+set(PYTHON_INSTALL_FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/pyresearch.py
+  ${CMAKE_BINARY_DIR}/bin/${MSVC_IRESEARCH_PREFIX}/_pyresearch.pyd
+  ${CMAKE_BINARY_DIR}/bin/${MSVC_IRESEARCH_PREFIX}/iresearch-python.dll
+)
+else()
 set(PYTHON_INSTALL_FILES
   ${CMAKE_CURRENT_BINARY_DIR}/pyresearch.py
   ${CMAKE_BINARY_DIR}/bin/_pyresearch.so
 )
+endif()
 
 # Configure setup.py and copy to output directory
 set(SETUP_PY_IN ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in)
