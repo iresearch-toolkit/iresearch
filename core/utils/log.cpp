@@ -800,9 +800,9 @@ void stack_trace_level(level_t level) {
   logger_ctx::instance().stack_trace_level(level);
 }
 
-std::ostream& stream(level_t level) {
-  return logger_ctx::instance().stream(level);
-}
+//std::ostream& stream(level_t level) {
+//  return logger_ctx::instance().stream(level);
+//}
 
 NS_END // logger
 NS_END

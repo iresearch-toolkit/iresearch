@@ -40,7 +40,6 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
-
 #include <Windows.h>
 #include <Shlwapi.h>
 #include <io.h> // for _get_osfhandle
@@ -98,11 +97,12 @@ void lock_file_deleter::operator()(void* handle) const {
   }
 }
 
-bool write(HANDLE fd, const char* buf, size_t size) {
+bool write(HANDLE fd, const byte_type* buf, size_t size) {
   std::streamsize left = size;
-  const char* current = buf;
+  const byte_type* current = buf;
+  const std::streamsize maxWrite = MAXDWORD;
   while (left > 0) {
-    DWORD to_write = std::min(MAXDWORD, left);
+    DWORD to_write = static_cast<DWORD>(std::min(maxWrite, left));
     DWORD written{ 0 };
     if (WriteFile(fd, current, to_write, &written, NULL)) {
       left -= written;
@@ -112,6 +112,55 @@ bool write(HANDLE fd, const char* buf, size_t size) {
     }
   }
   return left == 0;
+}
+
+size_t read(HANDLE fd, byte_type* buf, size_t size) {
+  std::streamsize left = size;
+  byte_type* current = buf;
+  const std::streamsize maxRead = MAXDWORD;
+  while (left > 0) {
+    DWORD to_read = static_cast<DWORD>(std::min(maxRead, left));
+    DWORD read{ 0 };
+    if (ReadFile(fd, current, to_read, &read, NULL)) {
+      left -= read;
+      current += read;
+    }
+    else {
+      break;
+    }
+  }
+  return size - left;
+}
+
+int fseek(HANDLE fd, long pos, int origin) {
+  LARGE_INTEGER li;
+  li.QuadPart = pos;
+  DWORD moveMethod;
+  switch (origin) {
+    case SEEK_SET:
+      moveMethod = FILE_BEGIN;
+      break;
+    case SEEK_CUR:
+      moveMethod = FILE_CURRENT;
+      break;
+    case SEEK_END:
+      moveMethod = FILE_END;
+      break;
+    default:
+      IRS_ASSERT(false);
+      return 0;
+  }
+  return SetFilePointerEx(fd, li, nullptr, moveMethod);
+}
+
+long ftell(HANDLE fd) {
+  LARGE_INTEGER liOfs = { 0 };
+  LARGE_INTEGER liNew = { 0 };
+  if (SetFilePointerEx(fd, liOfs, &liNew, FILE_CURRENT)) {
+    return static_cast<long>(liNew.LowPart);
+  } else {
+    return -1;
+  }
 }
 
 bool exists(const file_path_t file) {
@@ -208,7 +257,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
     return nullptr;
   }
 
-  if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminate 0
+  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), strlen(buf)+1)) { // include terminate 0
     typedef std::remove_pointer<file_path_t>::type char_t;
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string path;
@@ -224,7 +273,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write PID to lock file 
   const size_t size = sprintf(buf, "%d", get_pid());
-  if (!file_utils::write(fd, buf, size)) {
+  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), size)) {
     typedef std::remove_pointer<file_path_t>::type char_t;
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string path;
@@ -328,9 +377,9 @@ bool exists(const file_path_t file) {
   return 0 == access(file, F_OK);
 }
 
-bool write(int fd, const char* buf, size_t size) {
+bool write(int fd, const byte_type* buf, size_t size) {
   static const size_t writeLimit = 1UL << 30;
-  const char* current = buf;
+  const byte_type* current = buf;
   size_t left = size;
   while (size > 0) {
     size_t to_write = std::min(left, writeLimit);
@@ -515,25 +564,24 @@ bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
 #endif // _WIN32
 }
 
-bool block_size(file_blksize_t& result, int fd) noexcept {
 #ifdef _WIN32
+bool block_size(file_blksize_t& result, HANDLE fd) noexcept {
   // TODO FIXME find a workaround
   UNUSED(fd);
   result = 512;
-
   return true;
+}
 #else
+bool block_size(file_blksize_t& result, int fd) noexcept {
   file_stat_t info;
-
   if (0 != file_fstat(fd, &info)) {
     return false;
   }
-
   result = info.st_blksize;
-
   return true;
-#endif // _WIN32
 }
+#endif // _WIN32
+
 
 bool byte_size(uint64_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
@@ -548,6 +596,18 @@ bool byte_size(uint64_t& result, const file_path_t file) noexcept {
   return true;
 }
 
+#ifdef _WIN32
+bool byte_size(uint64_t& result, HANDLE fd) noexcept {
+  LARGE_INTEGER li;
+
+  if (!GetFileSizeEx(fd, &li)) {
+    return false;
+  }
+  result = static_cast<uint64_t>(li.QuadPart);
+  return true;
+}
+#endif
+
 bool byte_size(uint64_t& result, int fd) noexcept {
   file_stat_t info;
 
@@ -559,6 +619,7 @@ bool byte_size(uint64_t& result, int fd) noexcept {
 
   return true;
 }
+
 
 bool exists(bool& result, const file_path_t file) noexcept {
   assert(file != nullptr);
@@ -639,43 +700,68 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
   return true;
 }
 
-bool mtime(time_t& result, int fd) noexcept {
-  file_stat_t info;
-
-  if (0 != file_fstat(fd, &info)) {
+#ifdef _WIN32
+bool mtime(time_t& result, HANDLE fd) noexcept {
+  FILETIME ft;
+  if (!GetFileTime(fd, NULL, NULL, &ft)) {
     return false;
   }
-
-  result = info.st_mtime;
-
+  SYSTEMTIME st;
+  if (!FileTimeToSystemTime(&ft, &st)) {
+    return false;
+  }
+  struct tm tmtime = { 0 };
+  tmtime.tm_year = st.wYear - 1900;
+  tmtime.tm_mon = st.wMonth - 1;
+  tmtime.tm_mday = st.wDay;
+  tmtime.tm_hour = st.wHour;
+  tmtime.tm_min = st.wMinute;
+  tmtime.tm_sec = st.wSecond;
+  tmtime.tm_wday = 0;
+  tmtime.tm_yday = 0;
+  tmtime.tm_isdst = -1;
+  result = mktime(&tmtime);
   return true;
 }
-
+#else
+bool mtime(time_t& result, int fd) noexcept {
+  file_stat_t info;
+  if (0 != fstat(fd, &info)) {
+    return false;
+  }
+  result = info.st_mtime;
+  return true;
+}
+#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
-handle_t open(const file_path_t path, OpenMode mode) noexcept {
+handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   #ifdef _WIN32
   if (!path) {
     return handle_t(nullptr);
   }
 
-  DWORD desiredAccess;
-  DWORD sharingMode = FILE_SHARE_READ | FILE_SHARE_WRITE; // as *nix does not have sharing restrictions, we put none also
+  DWORD desiredAccess{ 0 };
+  // as *nix does not have sharing restrictions, we put none also
+  // intentionally do not add FILE_SHARE_DELETE to detect bugs
+  // with not properly closed files (error will be triggered on cleanup with error code 32)
+  DWORD sharingMode = FILE_SHARE_READ | FILE_SHARE_WRITE; 
   switch (mode) {
     case OpenMode::Read:
       desiredAccess = GENERIC_READ;
       break;
     case OpenMode::Write:
-      desiredAccess = GENERIC_WRITE;
+      desiredAccess = GENERIC_WRITE | GENERIC_READ;
       break;
     default:
       IR_FRMT_ERROR("Invalid OpenMode %d specified for file ", static_cast<int>(mode), path);
       IRS_ASSERT(false);
       return handle_t(nullptr);
   }; 
-  HANDLE hFile = CreateFile(path, desiredAccess, sharingMode, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
+  HANDLE hFile = CreateFile(path, desiredAccess, sharingMode, NULL, OPEN_ALWAYS, dwFlags, NULL);
   if (hFile != INVALID_HANDLE_VALUE) {
     return handle_t(hFile);
   }
@@ -685,11 +771,14 @@ handle_t open(const file_path_t path, OpenMode mode) noexcept {
       IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       IR_LOG_STACK_TRACE();
     }
+#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+    posix_fadvise(*handle, 0, 0, advice);
+#endif
     return handle;
   #endif
 }
 
-handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
+handle_t open(IR_FILE* file, OpenMode mode, int advice) noexcept {
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open
@@ -706,7 +795,7 @@ handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
     if(length < size) {
       path[length] = '\0';
 
-      return open(path, mode);
+      return open(path, mode, advice);
     }
 
     IR_FRMT_WARN(
@@ -722,7 +811,7 @@ handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
     if(length && length < buf_size) {
       buf[length] = '\0';
 
-      return open(buf.get(), mode);
+      return open(buf.get(), mode, advice);
     }
 
     IR_FRMT_ERROR(
@@ -745,7 +834,7 @@ handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
       return nullptr;
     }
 
-    return open(path, mode);
+    return open(path, mode, advice);
   #else
     // posix approach is to open the original file via the file descriptor link under /proc/self/fd
     // the link is garanteed to point to the original inode even if the original file was removed
@@ -757,7 +846,7 @@ handle_t open(IR_FILE* file, const file_path_t mode) noexcept {
       return nullptr;
     }
 
-    return open(path, mode);
+    return open(path, mode, advice);
   #endif
 }
 

@@ -44,6 +44,8 @@ if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+  # disable min and max macro defined in windows headers as theese breakes std::min and so on
+  add_definitions(-DNOMINMAX)
 
   # set OS specific sources
   set(IResearch_core_os_specific_sources

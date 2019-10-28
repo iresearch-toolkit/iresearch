@@ -39,7 +39,7 @@
 
 NS_LOCAL
 
-inline size_t buffer_size(FILE* file) noexcept {
+inline size_t buffer_size(IR_FILE* file) noexcept {
   UNUSED(file);
   return 1024;
 //  auto block_size = irs::file_utils::block_size(file_no(file));
@@ -180,7 +180,7 @@ class fs_index_output : public buffered_index_output {
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
-    file_utils::handle_t handle(file_open_write(name));
+    file_utils::handle_t handle(file_open_write(name, IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -189,13 +189,11 @@ class fs_index_output : public buffered_index_output {
 
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
 #ifdef _WIN32
-       GetLastError(),
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
 #else
-       errno,
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
 #endif
-       path.c_str());
 
       return nullptr;
     }
@@ -280,16 +278,14 @@ class fs_index_input : public buffered_index_input {
   }
 
   static index_input::ptr open(
-    const file_path_t name, size_t pool_size, IOAdvice /*advice*/
+    const file_path_t name, size_t pool_size, IOAdvice advice
   ) noexcept {
-    // FIXME honor IOAdvice
-    // FIXME On Windows use FILE_FLAG_SEQUENTIAL_SCAN in CreateFile
 
     assert(name);
 
     auto handle = file_handle::make();
-
-    handle->handle = file_open_read(name);
+    handle->posix_open_advice_ = get_posix_fadvice(advice);
+    handle->handle = file_open_read(name, handle->posix_open_advice_);
 
     if (nullptr == handle->handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -298,14 +294,11 @@ class fs_index_input : public buffered_index_input {
 
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
-      // even win32 uses 'errno' for error codes in calls to file_open(...)
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
 #ifdef _WIN32
-        GetLastError(),
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", GetLastError(), path.c_str());
 #else
-        errno,
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
 #endif
-        path.c_str());
 
 
       return nullptr;
@@ -371,16 +364,15 @@ class fs_index_input : public buffered_index_input {
     assert(b);
     assert(handle_->handle);
 
-    FILE* stream = *handle_;
+    IR_FILE* stream = *handle_;
 
     if (handle_->pos != pos_) {
-      if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
+      if (file_fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
         throw io_error(string_utils::to_string(
           "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
-          pos_, ferror(stream)
+          pos_, file_error(stream)
         ));
       }
-
       handle_->pos = pos_;
     }
 
@@ -388,16 +380,17 @@ class fs_index_input : public buffered_index_input {
     pos_ = handle_->pos += read;
 
     if (read != len) {
+#ifndef _WIN32
       if (feof_unlocked(stream)) {
         //eof(true);
         // read past eof
         throw eof_error();
       }
-
+#endif
       // read error
       throw io_error(string_utils::to_string(
         "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, ferror(stream)
+        read, len, file_error(stream)
       ));
     }
 
@@ -415,11 +408,12 @@ class fs_index_input : public buffered_index_input {
     DECLARE_SHARED_PTR(file_handle);
     DECLARE_FACTORY();
 
-    operator FILE*() const { return handle.get(); }
+    operator IR_FILE*() const { return handle.get(); }
 
     file_utils::handle_t handle; /* native file handle */
     size_t size{}; /* file size */
     size_t pos{}; /* current file position*/
+    int posix_open_advice_{ IR_FADVICE_NORMAL };
   }; // file_handle
 
   DEFINE_FACTORY_INLINE(index_input)
@@ -496,7 +490,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
-    handle->handle = file_open_read(src); // same permission as in fs_index_input::open(...)
+    handle->handle = file_open_read(src, src.posix_open_advice_); // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
@@ -509,9 +503,10 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 #endif
       ));
     }
+    handle->posix_open_advice_ = src.posix_open_advice_;
   }
 
-  const auto pos = ::ftell(handle->handle.get()); // match position of file descriptor
+  const auto pos = file_ftell(handle->handle.get()); // match position of file descriptor
 
   if (pos < 0) {
     throw io_error(string_utils::to_string(
