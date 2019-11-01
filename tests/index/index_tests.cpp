@@ -17911,7 +17911,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       writer->commit();
     };
     
-    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count)); // consolidate
+    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count)); 
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
