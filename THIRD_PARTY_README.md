@@ -73,6 +73,10 @@ number of components produced by third parties
     - Copyright: Daniel Lemire
     - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
     - How it's used: compression library
+12. Title: utfcpp
+    - Copyright: Nemanja Trifunovic
+    - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
+    - How it's used: For operating UTF-8 strings in unit tests
 
 ## Third Party Open Source Software licenses
 
@@ -289,7 +293,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-### Boost
+### Boost, utfcpp
 Boost Software License - Version 1.0 - August 17th, 2003
 
 Permission is hereby granted, free of charge, to any person or organization
