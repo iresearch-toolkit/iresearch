@@ -97,7 +97,7 @@ void lock_file_deleter::operator()(void* handle) const {
   }
 }
 
-bool write(HANDLE fd, const byte_type* buf, size_t size) {
+size_t write_unlocked(HANDLE fd, const byte_type* buf, size_t size) {
   std::streamsize left = size;
   const byte_type* current = buf;
   const std::streamsize maxWrite = MAXDWORD;
@@ -111,7 +111,7 @@ bool write(HANDLE fd, const byte_type* buf, size_t size) {
       break;
     }
   }
-  return left == 0;
+  return size - left;
 }
 
 size_t read(HANDLE fd, byte_type* buf, size_t size) {
@@ -765,6 +765,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   if (hFile != INVALID_HANDLE_VALUE) {
     return handle_t(hFile);
   }
+  return handle_t(nullptr);
   #else
     handle_t handle(::fopen(path ? path : "/dev/null", (OpenMode::Read == mode ? "rb" : "wb") ));
     if (!handle) {

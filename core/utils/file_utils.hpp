@@ -32,6 +32,7 @@
 #ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
+  #define NOMINMAX
   #include "windows.h"
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
@@ -47,8 +48,8 @@
   #define posix_close _close
   #define feof_unlocked feof
   #define file_fstat _fstat64
-
-  #define fwrite_unlocked(buf, size, len, fd) iresearch::file_utils::write((fd), (buf), (len) * (size))
+  // write_unlocked returns number of bytes written not just true/false, so need additional wrapper
+  #define fwrite_unlocked(buf, size, len, fd) iresearch::file_utils::write_unlocked((fd), (buf), (len) * (size)) 
   #define fread_unlocked(buf, size, len, fd) iresearch::file_utils::read((fd), (buf), (len) * (size))
   #define file_fseek iresearch::file_utils::fseek
   #define file_error iresearch::file_utils::ferror
@@ -182,7 +183,8 @@ bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
 #ifdef _WIN32 // we do not use CRT files on Win32, so expose native API wrappers
 size_t read(HANDLE fd, byte_type* buf, size_t size);
-bool write(HANDLE fd, const byte_type* buf, size_t size);
+size_t write_unlocked(HANDLE fd, const byte_type* buf, size_t size);
+FORCE_INLINE bool write(HANDLE fd, const byte_type* buf, size_t size) { return write_unlocked(fd, buf, size) == size; }
 int fseek(HANDLE fd, long pos, int origin);
 FORCE_INLINE int ferror(HANDLE) { return static_cast<int>(GetLastError()); }
 long ftell(HANDLE fd);

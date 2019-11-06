@@ -130,7 +130,7 @@ void test_env::prepare(const cmdline::parser& parser) {
   {
     auto log_level = parser.get<irs::logger::level_t>(IRES_LOG_LEVEL);
 
-    irs::logger::output_le(log_level, stderr); // set desired log level
+   // irs::logger::output_le(log_level, stderr); // set desired log level
 
     if (parser.get<bool>(IRES_LOG_STACK)) {
       irs::logger::stack_trace_level(log_level); // force enable stack trace

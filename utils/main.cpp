@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
   });
 
   // set error level
-  irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
+ // irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);
 
   // general description
   cmdline::parser cmdroot;
