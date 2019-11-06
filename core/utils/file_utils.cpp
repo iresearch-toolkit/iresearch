@@ -229,14 +229,26 @@ bool verify_lock_file(const file_path_t file) {
 }
 
 lock_handle_t create_lock_file(const file_path_t file) {
-  HANDLE fd = ::CreateFileW(
-    file,
-    GENERIC_WRITE, // write access
-    0, // prevent access from other processes
-    NULL, // default security attributes
-    CREATE_ALWAYS, // always create file 
-    FILE_FLAG_DELETE_ON_CLOSE, // allow OS to remove file when process finished
-    NULL);
+
+  HANDLE fd = INVALID_HANDLE_VALUE;
+  // windows has a deferred deletion and with rapid locking/unlocking same lock file could fail to be created
+  // so we try several times
+  int try_count = 3; 
+  do {
+    fd = ::CreateFileW(
+      file,
+      GENERIC_WRITE, // write access
+      0, // prevent access from other processes
+      NULL, // default security attributes
+      CREATE_ALWAYS, // always create file 
+      FILE_FLAG_DELETE_ON_CLOSE, // allow OS to remove file when process finished
+      NULL);
+
+    if (INVALID_HANDLE_VALUE != fd || ERROR_ACCESS_DENIED !=  GetLastError() ) {
+      break;
+    }
+    ::Sleep(10);
+  } while ((--try_count) > 0);
 
   if (INVALID_HANDLE_VALUE == fd) {
     typedef std::remove_pointer<file_path_t>::type char_t;
