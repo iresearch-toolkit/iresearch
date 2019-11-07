@@ -87,6 +87,8 @@ if (MSVC)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  # disable min and max macro defined in windows headers as theese breakes std::min and so on
+  add_definitions(-DNOMINMAX)
 
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")

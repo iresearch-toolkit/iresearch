@@ -32,7 +32,6 @@
 #ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
-  #define NOMINMAX
   #include "windows.h"
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'

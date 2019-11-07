@@ -69,31 +69,6 @@ static FILE* dev_null() {
   return nullptr;
 }
 MSVC_ONLY(__pragma(warning(pop)))
-//
-//class file_streambuf: public std::streambuf {
-// public:
-//  typedef std::streambuf::char_type char_type;
-//  typedef std::streambuf::int_type int_type;
-//
-//  file_streambuf(FILE* out): out_(out ? out : dev_null()) {
-//  }
-//
-//  file_streambuf& operator=(FILE* out) {
-//    out_ = out ? out : dev_null();
-//    return *this;
-//  }
-//
-//  virtual std::streamsize xsputn(const char_type* data, std::streamsize size) override {
-//    return std::fwrite(data, sizeof(char_type), size, out_);
-//  }
-//
-//  virtual int_type overflow(int_type ch) override {
-//    return std::fputc(ch, out_);
-//  }
-//
-// private:
-//  FILE* out_;
-//};
 
 class logger_ctx: public iresearch::singleton<logger_ctx> {
  public:
@@ -103,36 +78,27 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     // set everything up to and including INFO to stderr
     for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
       out_[i].file_ = stderr;
-      //out_[i].streambuf_ = stderr;
     }
   }
 
   bool enabled(iresearch::logger::level_t level) const { return dev_null() != out_[level].file_; }
   FILE* file(iresearch::logger::level_t level) const { return out_[level].file_; }
+
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
     out_[level].file_ = out ? out : dev_null();
-    //out_[level].streambuf_ = out;
     return *this;
   }
-  //logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-  //  for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
-  //    output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
-  //  }
-  //  return *this;
-  //}
+
   irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
   logger_ctx& stack_trace_level(irs::logger::level_t level) {
     stack_trace_level_ = level;
     return *this;
   }
-  //std::ostream& stream(iresearch::logger::level_t level) { return out_[level].stream_; }
 
  private:
   struct level_ctx_t {
     FILE* file_;
-    //std::ostream stream_;
-    //file_streambuf streambuf_;
-    level_ctx_t(): file_(dev_null())/*, stream_(&streambuf_), streambuf_(nullptr)*/ {}
+    level_ctx_t(): file_(dev_null()) {}
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
@@ -713,14 +679,6 @@ FILE* output(level_t level) {
   return logger_ctx::instance().file(level);
 }
 
-//void output(level_t level, FILE* out) {
-//  logger_ctx::instance().output(level, out);
-//}
-//
-//void output_le(level_t level, FILE* out) {
-//  logger_ctx::instance().output_le(level, out);
-//}
-
 void stack_trace(level_t level) {
   if (!enabled(level)) {
     return; // skip generating trace if logging is disabled for this level altogether
@@ -799,10 +757,6 @@ irs::logger::level_t stack_trace_level() {
 void stack_trace_level(level_t level) {
   logger_ctx::instance().stack_trace_level(level);
 }
-
-//std::ostream& stream(level_t level) {
-//  return logger_ctx::instance().stream(level);
-//}
 
 NS_END // logger
 NS_END

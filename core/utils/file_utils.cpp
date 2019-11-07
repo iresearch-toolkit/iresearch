@@ -40,7 +40,6 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
-#include <Windows.h>
 #include <Shlwapi.h>
 #include <io.h> // for _get_osfhandle
 #pragma comment(lib, "Shlwapi.lib")
