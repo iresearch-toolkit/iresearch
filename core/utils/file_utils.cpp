@@ -769,7 +769,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
       break;
     case OpenMode::Write:
       desiredAccess = GENERIC_WRITE | GENERIC_READ;
-      create_disposition = OPEN_ALWAYS; // while opening for write we infer creation
+      create_disposition = CREATE_ALWAYS; // while opening for write we infer creation
       break;
     default:
       IR_FRMT_ERROR("Invalid OpenMode %d specified for file %s", static_cast<int>(mode), path);
