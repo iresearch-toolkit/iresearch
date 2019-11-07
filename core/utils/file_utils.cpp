@@ -342,7 +342,7 @@ bool file_sync(int fd) noexcept {
 
 #else
 
-void lock_file_deleter::operator()(void* handle) const {
+void lock_file_deleter::operator()(IR_FILE* handle) const {
   if (handle) {
     const int fd = static_cast<int>(reinterpret_cast<size_t>(handle));
     if (fd < 0) {
@@ -453,14 +453,14 @@ lock_handle_t create_lock_file(const file_path_t file) {
     return nullptr;
   }
 
-  if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminated 0
+  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), strlen(buf)+1)) { // include terminated 0
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
   // write PID to lock file
   size_t size = sprintf(buf, "%d", get_pid());
-  if (!file_utils::write(fd, buf, size)) {
+  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), size)) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
