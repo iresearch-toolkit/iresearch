@@ -75,8 +75,7 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
 
   IR_FRMT_ERROR(
     "fadvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
-    uint32_t(advice)
-  );
+    uint32_t(advice));
 
   return IR_FADVICE_NORMAL;
 }
@@ -203,8 +202,7 @@ class fs_index_output : public buffered_index_output {
     try {
       return fs_index_output::make<fs_index_output>(
         std::move(handle),
-        buf_size
-      );
+        buf_size);
     } catch(...) {
       IR_LOG_EXCEPTION();
     }
@@ -232,8 +230,7 @@ class fs_index_output : public buffered_index_output {
     if (len && len_written != len) {
       throw io_error(string_utils::to_string(
         "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
-        len_written, len
-      ));
+        len_written, len));
     }
   }
 
@@ -333,8 +330,7 @@ class fs_index_input : public buffered_index_input {
       return fs_index_input::make<fs_index_input>(
         std::move(handle),
         buf_size,
-        pool_size
-      );
+        pool_size);
     } catch(...) {
       IR_LOG_EXCEPTION();
     }
@@ -353,8 +349,7 @@ class fs_index_input : public buffered_index_input {
     if (pos >= handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
-        handle_->size, pos
-      ));
+        handle_->size, pos));
     }
 
     pos_ = pos;
@@ -370,8 +365,7 @@ class fs_index_input : public buffered_index_input {
       if (file_fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
         throw io_error(string_utils::to_string(
           "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
-          pos_, file_error(stream)
-        ));
+          pos_, file_error(stream)));
       }
       handle_->pos = pos_;
     }
@@ -380,18 +374,20 @@ class fs_index_input : public buffered_index_input {
     pos_ = handle_->pos += read;
 
     if (read != len) {
-#ifndef _WIN32
+#ifdef _WIN32
+      if (0 == read) {
+#else
       if (feof_unlocked(stream)) {
+#endif
         //eof(true);
         // read past eof
         throw eof_error();
       }
-#endif
+
       // read error
       throw io_error(string_utils::to_string(
         "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, file_error(stream)
-      ));
+        read, len, file_error(stream)));
     }
 
     assert(handle_->pos == pos_);
@@ -510,7 +506,12 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   if (pos < 0) {
     throw io_error(string_utils::to_string(
-      "Failed to obtain currnt position of input file, error: %d", errno
+      "Failed to obtain currnt position of input file, error: %d",
+#ifdef _WIN32
+      GetLastError()
+#else
+      errno
+#endif
     ));
   }
 
