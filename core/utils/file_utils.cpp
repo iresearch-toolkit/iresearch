@@ -90,6 +90,7 @@ NS_ROOT
 NS_BEGIN(file_utils)
 
 #ifdef _WIN32
+#define FS_DEFERRED_DELETE_TIMEOUT 10
 
 void lock_file_deleter::operator()(void* handle) const {
   if (handle) {
@@ -121,7 +122,7 @@ size_t read(HANDLE fd, byte_type* buf, size_t size) {
   while (left > 0) {
     DWORD to_read = static_cast<DWORD>(std::min(maxRead, left));
     DWORD read{ 0 };
-    if (ReadFile(fd, current, to_read, &read, NULL)) {
+    if (ReadFile(fd, current, to_read, &read, NULL) && read > 0) {
       left -= read;
       current += read;
     }
@@ -150,7 +151,7 @@ int fseek(HANDLE fd, long pos, int origin) {
       IRS_ASSERT(false);
       return 0;
   }
-  return SetFilePointerEx(fd, li, nullptr, moveMethod);
+  return !SetFilePointerEx(fd, li, nullptr, moveMethod);
 }
 
 long ftell(HANDLE fd) {
@@ -244,10 +245,11 @@ lock_handle_t create_lock_file(const file_path_t file) {
       FILE_FLAG_DELETE_ON_CLOSE, // allow OS to remove file when process finished
       NULL);
 
-    if (INVALID_HANDLE_VALUE != fd || ERROR_ACCESS_DENIED !=  GetLastError() ) {
+    if (ERROR_ACCESS_DENIED != GetLastError() ) {
       break;
+    } else {
+      ::Sleep(FS_DEFERRED_DELETE_TIMEOUT); // give some time for file system to finalize deletion
     }
-    ::Sleep(10);
   } while ((--try_count) > 0);
 
   if (INVALID_HANDLE_VALUE == fd) {
@@ -316,40 +318,40 @@ lock_handle_t create_lock_file(const file_path_t file) {
 bool file_sync(const file_path_t file) noexcept {
   HANDLE handle = ::CreateFileW(
     file, GENERIC_WRITE,
-    FILE_SHARE_WRITE, NULL,
+    FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
     OPEN_EXISTING,
     0, NULL
   );
 
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      FILE_SHARE_READ, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
+  //// try other sharing modes since MSFT Windows fails sometimes
+  //if (INVALID_HANDLE_VALUE == handle) {
+  //    handle = ::CreateFileW(
+  //    file, GENERIC_WRITE,
+  //    FILE_SHARE_READ, NULL,
+  //    OPEN_EXISTING,
+  //    0, NULL
+  //  );
+  //}
 
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      FILE_SHARE_DELETE, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
+  //// try other sharing modes since MSFT Windows fails sometimes
+  //if (INVALID_HANDLE_VALUE == handle) {
+  //    handle = ::CreateFileW(
+  //    file, GENERIC_WRITE,
+  //    FILE_SHARE_DELETE, NULL,
+  //    OPEN_EXISTING,
+  //    0, NULL
+  //  );
+  //}
 
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      0, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
+  //// try other sharing modes since MSFT Windows fails sometimes
+  //if (INVALID_HANDLE_VALUE == handle) {
+  //    handle = ::CreateFileW(
+  //    file, GENERIC_WRITE,
+  //    0, NULL,
+  //    OPEN_EXISTING,
+  //    0, NULL
+  //  );
+  //}
 
   if (INVALID_HANDLE_VALUE == handle) {
     return false;
@@ -759,24 +761,36 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   // as *nix does not have sharing restrictions, we put none also
   // intentionally do not add FILE_SHARE_DELETE to detect bugs
   // with not properly closed files (error will be triggered on cleanup with error code 32)
-  DWORD sharingMode = FILE_SHARE_READ | FILE_SHARE_WRITE; 
+  DWORD sharing_mode = FILE_SHARE_READ | FILE_SHARE_WRITE; 
+  DWORD create_disposition = OPEN_EXISTING;
   switch (mode) {
     case OpenMode::Read:
       desiredAccess = GENERIC_READ;
       break;
     case OpenMode::Write:
       desiredAccess = GENERIC_WRITE | GENERIC_READ;
+      create_disposition = OPEN_ALWAYS; // while opening for write we infer creation
       break;
     default:
-      IR_FRMT_ERROR("Invalid OpenMode %d specified for file ", static_cast<int>(mode), path);
+      IR_FRMT_ERROR("Invalid OpenMode %d specified for file %s", static_cast<int>(mode), path);
       IRS_ASSERT(false);
       return handle_t(nullptr);
   }; 
   DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
-  HANDLE hFile = CreateFile(path, desiredAccess, sharingMode, NULL, OPEN_ALWAYS, dwFlags, NULL);
-  if (hFile != INVALID_HANDLE_VALUE) {
-    return handle_t(hFile);
+  HANDLE hFile = INVALID_HANDLE_VALUE;
+  int try_count = 3;
+  do {
+    hFile = CreateFile(path, desiredAccess, sharing_mode, NULL, create_disposition, dwFlags, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+      return handle_t(hFile);
+    }
+    if (ERROR_ACCESS_DENIED != GetLastError()) {
+        break;
+    } else {
+      Sleep(FS_DEFERRED_DELETE_TIMEOUT);
+    }
   }
+  while ((--try_count) > 0);
   return handle_t(nullptr);
   #else
     handle_t handle(::fopen(path ? path : "/dev/null", (OpenMode::Read == mode ? "rb" : "wb") ));
