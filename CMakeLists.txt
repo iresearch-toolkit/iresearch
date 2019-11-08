@@ -250,6 +250,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}.err
+    CFG_TEXT "exclude-path=${CMAKE_CURRENT_BINARY_DIR}/core/iql"
   )
 
   pvs_studio_add_target(
@@ -258,6 +259,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-html.err
+    CFG_TEXT "exclude-path=${CMAKE_CURRENT_BINARY_DIR}/core/iql"
   )
 
   pvs_studio_add_target(
@@ -266,6 +268,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-xml.err
+    CFG_TEXT "exclude-path=${CMAKE_CURRENT_BINARY_DIR}/core/iql"
   )
 endif()
 
