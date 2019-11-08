@@ -45,6 +45,7 @@
   #define posix_close _close
   #define feof_unlocked feof
   #define file_fstat _fstat64
+  #define handle_cast(f) f
 
   #define IR_FADVICE_NORMAL 0
   #define IR_FADVICE_SEQUENTIAL FILE_FLAG_SEQUENTIAL_SCAN
@@ -68,6 +69,7 @@
   // MAX doesn't have nolock functions
   #define feof_unlocked feof
 #endif
+  #define handle_cast(f) static_cast<int>(reinterpret_cast<size_t>(f))
 
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
   #define IR_FADVICE_SEQUENTIAL POSIX_FADV_SEQUENTIAL

@@ -96,7 +96,7 @@ void file_deleter::operator()(void* f) const noexcept {
   }
 #else
   if (f) {
-    const int fd = handle_cast(f));
+    const int fd = handle_cast(f);
     if (fd < 0) {
       return; // invalid desriptor
     }
@@ -110,7 +110,7 @@ void lock_file_deleter::operator()(void* handle) const {
 #ifdef _WIN32
     ::CloseHandle(handle);
 #else
-    const int fd = handle_cast(handle)
+    const int fd = handle_cast(handle);
     if (fd < 0) {
       return; // invalid desriptor
     }
@@ -146,7 +146,7 @@ size_t fwrite(void* fd, const void* buf, size_t size) {
   }
 #else
   constexpr size_t writeLimit = 1UL << 30;
-  const int descriptor =handle_cast(fd);
+  const int descriptor = handle_cast(fd);
   while (size > 0) {
     size_t to_write = (std::min)(left, writeLimit);
     const ssize_t written = ::write(descriptor, current, to_write);
