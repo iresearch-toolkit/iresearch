@@ -459,7 +459,7 @@ bool verify_lock_file(const file_path_t file) {
       }
     }
 
-    size = read(lock_handle_t.get(), buf, sizeof buf);
+    size = read(handle.get(), buf, sizeof buf);
   }
 
   if (size <= 0 || sizeof buf == size) {
