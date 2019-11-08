@@ -35,16 +35,15 @@
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
   #define file_path_t wchar_t*
-  #define file_stat _wstat64
- 
   #define file_stat_t struct _stat64
-
   #define mode_t unsigned short
+
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
-  #define feof_unlocked feof
   #define file_fstat _fstat64
+  #define file_stat _wstat64
+
   #define handle_cast(f) f
 
   #define IR_FADVICE_NORMAL 0
@@ -59,16 +58,14 @@
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*
+  #define file_stat_t struct stat    
+
   #define file_stat stat
   #define file_fstat fstat
-  #define file_stat_t struct stat    
   #define posix_create creat
   #define posix_open open
   #define posix_close close
-#ifdef __APPLE__
-  // MAX doesn't have nolock functions
-  #define feof_unlocked feof
-#endif
+
   #define handle_cast(f) static_cast<int>(reinterpret_cast<size_t>(f))
 
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
