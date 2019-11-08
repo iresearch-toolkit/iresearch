@@ -108,7 +108,9 @@ void file_deleter::operator()(void* f) const noexcept {
 void lock_file_deleter::operator()(void* handle) const {
   if (handle) {
 #ifdef _WIN32
-    ::CloseHandle(handle);
+    if (handle != INVALID_HANDLE_VALUE) {
+      ::CloseHandle(handle);
+    }
 #else
     const int fd = handle_cast(handle);
     if (fd < 0) {
