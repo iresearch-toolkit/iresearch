@@ -39,7 +39,7 @@
 
 NS_LOCAL
 
-inline size_t buffer_size(IR_FILE* file) noexcept {
+inline size_t buffer_size(void* file) noexcept {
   UNUSED(file);
   return 1024;
 //  auto block_size = irs::file_utils::block_size(file_no(file));
@@ -224,7 +224,7 @@ class fs_index_output : public buffered_index_output {
   virtual void flush_buffer(const byte_type* b, size_t len) override {
     assert(handle);
 
-    const auto len_written = fwrite_unlocked(b, sizeof(byte_type), len, handle.get());
+    const auto len_written = file_fwrite(b, sizeof(byte_type), len, handle.get());
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
@@ -301,10 +301,8 @@ class fs_index_input : public buffered_index_input {
       return nullptr;
     }
 
-    // convert file descriptor to POSIX
     uint64_t size;
-
-    if (!file_utils::byte_size(size, file_no(*handle))) {
+    if (!file_utils::byte_size(size, *handle)) {
       typedef std::remove_pointer<file_path_t>::type char_t;
       auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string path;
@@ -359,26 +357,22 @@ class fs_index_input : public buffered_index_input {
     assert(b);
     assert(handle_->handle);
 
-    IR_FILE* stream = *handle_;
+    void* fd = *handle_;
 
     if (handle_->pos != pos_) {
-      if (file_fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
+      if (file_fseek(fd, static_cast<long>(pos_), SEEK_SET) != 0) {
         throw io_error(string_utils::to_string(
           "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
-          pos_, file_error(stream)));
+          pos_, file_error(fd)));
       }
       handle_->pos = pos_;
     }
 
-    size_t read = fread_unlocked(b, sizeof(byte_type), len, stream);
+    size_t read = file_fread(b, sizeof(byte_type), len, fd);
     pos_ = handle_->pos += read;
 
     if (read != len) {
-#ifdef _WIN32
       if (0 == read) {
-#else
-      if (feof_unlocked(stream)) {
-#endif
         //eof(true);
         // read past eof
         throw eof_error();
@@ -387,7 +381,7 @@ class fs_index_input : public buffered_index_input {
       // read error
       throw io_error(string_utils::to_string(
         "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, file_error(stream)));
+        read, len, file_error(fd)));
     }
 
     assert(handle_->pos == pos_);
@@ -404,7 +398,7 @@ class fs_index_input : public buffered_index_input {
     DECLARE_SHARED_PTR(file_handle);
     DECLARE_FACTORY();
 
-    operator IR_FILE*() const { return handle.get(); }
+    operator void*() const { return handle.get(); }
 
     file_utils::handle_t handle; /* native file handle */
     size_t size{}; /* file size */

@@ -32,14 +32,12 @@
 #ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
-  #include "windows.h"
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
   #define file_path_t wchar_t*
   #define file_stat _wstat64
  
   #define file_stat_t struct _stat64
-  #define file_no(f) f
 
   #define mode_t unsigned short
   #define posix_create _wcreat
@@ -47,12 +45,6 @@
   #define posix_close _close
   #define feof_unlocked feof
   #define file_fstat _fstat64
-  // write_unlocked returns number of bytes written not just true/false, so need additional wrapper
-  #define fwrite_unlocked(buf, size, len, fd) iresearch::file_utils::write_unlocked((fd), (buf), (len) * (size)) 
-  #define fread_unlocked(buf, size, len, fd) iresearch::file_utils::read((fd), (buf), (len) * (size))
-  #define file_fseek iresearch::file_utils::fseek
-  #define file_error iresearch::file_utils::ferror
-  #define file_ftell iresearch::file_utils::ftell
 
   #define IR_FADVICE_NORMAL 0
   #define IR_FADVICE_SEQUENTIAL FILE_FLAG_SEQUENTIAL_SCAN
@@ -60,8 +52,6 @@
   #define IR_FADVICE_DONTNEED 0
   #define IR_FADVICE_NOREUSE 0
   #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
-
-  #define IR_FILE void
 #else
   #include <unistd.h> // close
   #include <sys/types.h> // for blksize_t
@@ -71,10 +61,6 @@
   #define file_stat stat
   #define file_fstat fstat
   #define file_stat_t struct stat    
-  #define file_no fileno
-  #define file_fseek fseek
-  #define file_error ferror
-  #define file_ftell ::ftell
   #define posix_create creat
   #define posix_open open
   #define posix_close close
@@ -90,11 +76,15 @@
   #define IR_FADVICE_RANDOM POSIX_FADV_RANDOM
   #define IR_FADVICE_DONTNEED POSIX_FADV_DONTNEED
   #define IR_FADVICE_NOREUSE POSIX_FADV_NOREUSE
-  #define IR_FILE FILE
 #endif
 
 #define file_open_read(name, advice) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Read, advice)
 #define file_open_write(name, advice) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Write, advice) 
+#define file_fwrite(buf, size, len, fd) iresearch::file_utils::fwrite((fd), (buf), (len) * (size)) 
+#define file_fread(buf, size, len, fd) iresearch::file_utils::read((fd), (buf), (len) * (size))
+#define file_fseek iresearch::file_utils::fseek
+#define file_error iresearch::file_utils::ferror
+#define file_ftell iresearch::file_utils::ftell
 
 #include "shared.hpp"
 #include "string.hpp"
@@ -107,10 +97,10 @@ NS_BEGIN(file_utils)
 // -----------------------------------------------------------------------------
 
 struct lock_file_deleter {
-  void operator()(IR_FILE* handle) const;
+  void operator()(void* handle) const;
 }; // lock_file_deleter
 
-typedef std::unique_ptr<IR_FILE, lock_file_deleter> lock_handle_t;
+typedef std::unique_ptr<void, lock_file_deleter> lock_handle_t;
 
 lock_handle_t create_lock_file(const file_path_t file);
 bool verify_lock_file(const file_path_t file);
@@ -122,28 +112,17 @@ bool verify_lock_file(const file_path_t file);
 bool absolute(bool& result, const file_path_t path) noexcept;
 
 bool block_size(file_blksize_t& result, const file_path_t file) noexcept;
-
-#ifdef _WIN32
-bool block_size(file_blksize_t& result, HANDLE fd) noexcept;
-#else
-bool block_size(file_blksize_t& result, int fd) noexcept;
-#endif
-
+bool block_size(file_blksize_t& result, void* fd) noexcept;
 bool byte_size(uint64_t& result, const file_path_t file) noexcept;
-
-#ifdef _WIN32
-bool byte_size(uint64_t& result, HANDLE fd) noexcept;
-#endif
-
-bool byte_size(uint64_t& result, int fd) noexcept;
-
+bool byte_size(uint64_t& result, int fd) noexcept; 
+bool byte_size(uint64_t& result, void* fd) noexcept;
 
 bool exists(bool& result, const file_path_t file) noexcept;
 bool exists_directory(bool& result, const file_path_t file) noexcept;
 bool exists_file(bool& result, const file_path_t file) noexcept;
 
 bool mtime(time_t& result, const file_path_t file) noexcept;
-bool mtime(time_t& result, int fd) noexcept;
+bool mtime(time_t& result, void* fd) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
@@ -154,23 +133,13 @@ enum class OpenMode {
 };
 
 struct file_deleter {
-  void operator()(IR_FILE* f) const noexcept {
-#if _WIN32
-    if (f != nullptr && f != INVALID_HANDLE_VALUE) {
-      CloseHandle(f);
-    }
-#else
-    if (f) {
-      ::fclose(f);
-    }
-#endif
-  }
+  void operator()(void* f) const noexcept;
 }; // file_deleter
 
-typedef std::unique_ptr<IR_FILE, file_deleter> handle_t;
+typedef std::unique_ptr<void, file_deleter> handle_t;
 
 handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept;
-handle_t open(IR_FILE* file, OpenMode mode, int advice) noexcept;
+handle_t open(void* file, OpenMode mode, int advice) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        path utils
@@ -180,14 +149,13 @@ bool mkdir(const file_path_t path, bool createNew) noexcept;  // recursive direc
 
 bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
-#ifdef _WIN32 // we do not use CRT files on Win32, so expose native API wrappers
-size_t read(HANDLE fd, byte_type* buf, size_t size);
-size_t write_unlocked(HANDLE fd, const byte_type* buf, size_t size);
-FORCE_INLINE bool write(HANDLE fd, const byte_type* buf, size_t size) { return write_unlocked(fd, buf, size) == size; }
-int fseek(HANDLE fd, long pos, int origin);
-FORCE_INLINE int ferror(HANDLE) { return static_cast<int>(GetLastError()); }
-long ftell(HANDLE fd);
-#endif
+size_t read(void* fd, void* buf, size_t size);
+size_t fwrite(void* fd, const void* buf, size_t size);
+FORCE_INLINE bool write(void* fd, const void* buf, size_t size) { return fwrite(fd, buf, size) == size; }
+int fseek(void* fd, long pos, int origin);
+int ferror(void*);
+long ftell(void* fd);
+
 
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
