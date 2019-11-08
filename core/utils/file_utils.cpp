@@ -183,7 +183,7 @@ size_t read(void* fd, void* buf, size_t size) {
   const int descriptor = handle_cast(fd);
   while (left > 0) {
     size_t to_read = (std::min)(left, readLimit);
-    const ssize_t read = ::read(descriptor, current, to_write);
+    const ssize_t read = ::read(descriptor, current, to_read);
     if (read < 0) {
       if (errno == EINTR) {
         continue;
@@ -245,7 +245,7 @@ long ftell(void* fd) {
     return -1;
   }
 #else
-  retunr lseek(handle_cast(fd), 0, SEEK_CUR);
+  return lseek(handle_cast(fd), 0, SEEK_CUR);
 #endif
 }
 
@@ -459,7 +459,7 @@ bool verify_lock_file(const file_path_t file) {
       }
     }
 
-    size = read(fd, buf, sizeof buf);
+    size = read(handle_cast(fd), buf, sizeof buf);
   }
 
   if (size <= 0 || sizeof buf == size) {
@@ -507,14 +507,14 @@ lock_handle_t create_lock_file(const file_path_t file) {
     return nullptr;
   }
 
-  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), strlen(buf)+1)) { // include terminated 0
+  if (!file_utils::write(reinterpret_cast<void*>(fd), buf, strlen(buf)+1)) { // include terminated 0
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
   // write PID to lock file
   size_t size = sprintf(buf, "%d", get_pid());
-  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), size)) {
+  if (!file_utils::write(reinterpret_cast<void*>(fd), buf, size)) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
@@ -641,7 +641,7 @@ bool byte_size(uint64_t& result, void* fd) noexcept {
   result = static_cast<uint64_t>(li.QuadPart);
   return true;
 #else
-  return byte_size(result, reinterpret_cast<int>(fd));
+  return byte_size(result, handle_cast(fd));
 #endif
 }
 
@@ -818,7 +818,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   } while ((--try_count) > 0);
   return handle_t(nullptr);
   #else
-    auto fd = (::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : O_WRONLY) )));
+    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : O_WRONLY));
     if (fd < 0) {
       IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       IR_LOG_STACK_TRACE();
@@ -875,7 +875,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
     // unfortunatly this results in the original file descriptor being dup()'ed
     // therefore try to get the original file name from the existing descriptor and reopen it
     // FIXME TODO assume that the file has not moved and was not deleted
-    auto fd = reinterpret_cast<int>(file);
+    auto fd = handle_cast(file);
     char path[MAXPATHLEN + 1]; // F_GETPATH requires a buffer of size at least MAXPATHLEN, +1 for \0
 
     if (0 > fd || 0 > fcntl(fd, F_GETPATH, path)) {
@@ -887,7 +887,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
   #else
     // posix approach is to open the original file via the file descriptor link under /proc/self/fd
     // the link is garanteed to point to the original inode even if the original file was removed
-    auto fd = reinterpret_cast<int>(file);
+    auto fd = handle_cast(file);
     char path[strlen("/proc/self/fd/") + sizeof(fd)*3 + 1]; // approximate maximum number of chars, +1 for \0
 
     if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
