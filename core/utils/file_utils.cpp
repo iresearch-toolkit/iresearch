@@ -96,11 +96,11 @@ void file_deleter::operator()(void* f) const noexcept {
   }
 #else
   if (f) {
-    const int fd = reinterpret_cast<int>(f);
+    const int fd = handle_cast(f));
     if (fd < 0) {
       return; // invalid desriptor
     }
-    ::fclose(f);
+    ::close(fd);
   }
 #endif
 }
@@ -108,9 +108,9 @@ void file_deleter::operator()(void* f) const noexcept {
 void lock_file_deleter::operator()(void* handle) const {
   if (handle) {
 #ifdef _WIN32
-    ::CloseHandle(reinterpret_cast<HANDLE>(handle));
+    ::CloseHandle(handle);
 #else
-    const int fd = static_cast<int>(reinterpret_cast<size_t>(handle));
+    const int fd = handle_cast(handle)
     if (fd < 0) {
       return; // invalid desriptor
     }
@@ -146,7 +146,7 @@ size_t fwrite(void* fd, const void* buf, size_t size) {
   }
 #else
   constexpr size_t writeLimit = 1UL << 30;
-  const int descriptor = reinterpret_cast<int>(fd);
+  const int descriptor =handle_cast(fd);
   while (size > 0) {
     size_t to_write = (std::min)(left, writeLimit);
     const ssize_t written = ::write(descriptor, current, to_write);
@@ -180,7 +180,7 @@ size_t read(void* fd, void* buf, size_t size) {
   }
 #else
   constexpr size_t readLimit = 0x7ffff000;
-  const int descriptor = reinterpret_cast<int>(fd);
+  const int descriptor = handle_cast(fd);
   while (left > 0) {
     size_t to_read = (std::min)(left, readLimit);
     const ssize_t read = ::read(descriptor, current, to_write);
@@ -223,7 +223,7 @@ int fseek(void* fd, long pos, int origin) {
   }
   return !SetFilePointerEx(fd, li, nullptr, moveMethod);
 #else
-  return lseek(reinterpret_cast<int>(fd), pos, origin) != -1;
+  return lseek(handle_cast(fd), pos, origin) != -1;
 #endif
 }
 
@@ -245,7 +245,7 @@ long ftell(void* fd) {
     return -1;
   }
 #else
-  retunr lseek(reinterpret_cast<int>(fd), 0, SEEK_CUR);
+  retunr lseek(handle_cast(fd), 0, SEEK_CUR);
 #endif
 }
 

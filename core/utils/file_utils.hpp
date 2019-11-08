@@ -66,8 +66,6 @@
   #define posix_close close
 #ifdef __APPLE__
   // MAX doesn't have nolock functions
-  #define fwrite_unlocked fwrite
-  #define fread_unlocked fread
   #define feof_unlocked feof
 #endif
 
