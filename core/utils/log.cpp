@@ -89,6 +89,13 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return *this;
   }
 
+  logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {	
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {	
+      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);	
+    }	
+    return *this;
+  }
+
   irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
   logger_ctx& stack_trace_level(irs::logger::level_t level) {
     stack_trace_level_ = level;
@@ -673,6 +680,14 @@ NS_BEGIN(logger)
 
 bool enabled(level_t level) {
   return logger_ctx::instance().enabled(level);
+}
+
+void output(level_t level, FILE* out) {	
+  logger_ctx::instance().output(level, out);	
+}	
+
+void output_le(level_t level, FILE* out) {	
+  logger_ctx::instance().output_le(level, out);	
 }
 
 FILE* output(level_t level) {

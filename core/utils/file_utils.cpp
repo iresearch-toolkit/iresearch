@@ -192,8 +192,7 @@ size_t read(void* fd, void* buf, size_t size) {
     } else if (read > 0) {
       left -= read;
       current += read;
-    }
-    else {
+    } else {
       break; // EOF reached
     }
   }
@@ -358,7 +357,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
     return nullptr;
   }
 
-  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), strlen(buf)+1)) { // include terminate 0
+  if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminate 0
     typedef std::remove_pointer<file_path_t>::type char_t;
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string path;
@@ -374,7 +373,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write PID to lock file
   const size_t size = sprintf(buf, "%d", get_pid());
-  if (!file_utils::write(fd, reinterpret_cast<const byte_type*>(buf), size)) {
+  if (!file_utils::write(fd, buf, size)) {
     typedef std::remove_pointer<file_path_t>::type char_t;
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string path;
