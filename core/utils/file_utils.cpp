@@ -819,7 +819,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   } while ((--try_count) > 0);
   return handle_t(nullptr);
   #else
-    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR));
+    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR);
     if (fd < 0) {
       IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       IR_LOG_STACK_TRACE();
