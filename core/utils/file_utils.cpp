@@ -149,7 +149,7 @@ size_t fwrite(void* fd, const void* buf, size_t size) {
 #else
   constexpr size_t writeLimit = 1UL << 30;
   const int descriptor = handle_cast(fd);
-  while (size > 0) {
+  while (left > 0) {
     size_t to_write = (std::min)(left, writeLimit);
     const ssize_t written = ::write(descriptor, current, to_write);
     if (written < 0) {
@@ -224,7 +224,7 @@ int fseek(void* fd, long pos, int origin) {
   }
   return !SetFilePointerEx(fd, li, nullptr, moveMethod);
 #else
-  return lseek(handle_cast(fd), pos, origin) != -1;
+  return lseek(handle_cast(fd), pos, origin) == -1;
 #endif
 }
 
@@ -819,7 +819,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   } while ((--try_count) > 0);
   return handle_t(nullptr);
   #else
-    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : O_WRONLY));
+    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR));
     if (fd < 0) {
       IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       IR_LOG_STACK_TRACE();
