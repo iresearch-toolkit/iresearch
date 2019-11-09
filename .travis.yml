@@ -805,7 +805,7 @@ script:
           exit 1
         fi
       else
-        make iresearch-tests${BUILD_TYPE_SUFFIX}
+        make -j4 iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
       # build utils
       if [[ "${STATIC_LIB}" == "true" ]]; then
@@ -815,7 +815,7 @@ script:
       # execute tests
       ulimit -n 5120 # required for MacOS (max-open-files = 16 threads * (100000/10000) commits * 8 segments-per-commit * 4 open-files-per-segment)
       ulimit -a
-      if ! travis_wait 90 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
+      if ! travis_wait 120 python ../scripts/gtest-parallel/gtest-parallel.py ${TEST_PARAMS} ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ; then
         exit 1
       fi
       # archive artifacts
