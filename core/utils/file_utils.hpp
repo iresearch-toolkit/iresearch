@@ -67,12 +67,19 @@
   #define posix_close close
 
   #define handle_cast(f) static_cast<int>(reinterpret_cast<size_t>(f))
-
+#ifndef __APPLE__
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
   #define IR_FADVICE_SEQUENTIAL POSIX_FADV_SEQUENTIAL
   #define IR_FADVICE_RANDOM POSIX_FADV_RANDOM
   #define IR_FADVICE_DONTNEED POSIX_FADV_DONTNEED
   #define IR_FADVICE_NOREUSE POSIX_FADV_NOREUSE
+#else
+  #define IR_FADVICE_NORMAL 0
+  #define IR_FADVICE_SEQUENTIAL 0
+  #define IR_FADVICE_RANDOM 0
+  #define IR_FADVICE_DONTNEED 0
+  #define IR_FADVICE_NOREUSE 0
+#endif
 #endif
 
 #define file_open_read(name, advice) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Read, advice)

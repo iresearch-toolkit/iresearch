@@ -825,7 +825,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
       IR_LOG_STACK_TRACE();
       return handle_t(nullptr);
     }
-#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+#if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
     posix_fadvise(fd, 0, 0, advice);
 #endif
     return handle_t(reinterpret_cast<void*>(fd));
