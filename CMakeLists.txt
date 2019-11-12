@@ -271,6 +271,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   pvs_studio_add_target(
@@ -279,6 +280,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-html.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   pvs_studio_add_target(
@@ -287,6 +289,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-xml.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 endif()
 
