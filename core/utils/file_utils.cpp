@@ -165,7 +165,7 @@ size_t fwrite(void* fd, const void* buf, size_t size) {
   return size - left;
 }
 
-size_t read(void* fd, void* buf, size_t size) {
+size_t fread(void* fd, void* buf, size_t size) {
   size_t left = size;
   auto current = static_cast<byte_type*>(buf);
 #ifdef _WIN32
@@ -460,7 +460,7 @@ bool verify_lock_file(const file_path_t file) {
       }
     }
 
-    size = read(handle.get(), buf, sizeof buf);
+    size = fread(handle.get(), buf, sizeof buf);
   }
 
   if (size <= 0 || sizeof buf == size) {
@@ -739,39 +739,6 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
   return true;
 }
 
-#ifdef _WIN32
-bool mtime(time_t& result, HANDLE fd) noexcept {
-  FILETIME ft;
-  if (!GetFileTime(fd, NULL, NULL, &ft)) {
-    return false;
-  }
-  SYSTEMTIME st;
-  if (!FileTimeToSystemTime(&ft, &st)) {
-    return false;
-  }
-  struct tm tmtime = { 0 };
-  tmtime.tm_year = st.wYear - 1900;
-  tmtime.tm_mon = st.wMonth - 1;
-  tmtime.tm_mday = st.wDay;
-  tmtime.tm_hour = st.wHour;
-  tmtime.tm_min = st.wMinute;
-  tmtime.tm_sec = st.wSecond;
-  tmtime.tm_wday = 0;
-  tmtime.tm_yday = 0;
-  tmtime.tm_isdst = -1;
-  result = mktime(&tmtime);
-  return true;
-}
-#else
-bool mtime(time_t& result, int fd) noexcept {
-  file_stat_t info;
-  if (0 != fstat(fd, &info)) {
-    return false;
-  }
-  result = info.st_mtime;
-  return true;
-}
-#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------

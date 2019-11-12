@@ -82,14 +82,6 @@
 #endif
 #endif
 
-#define file_open_read(name, advice) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Read, advice)
-#define file_open_write(name, advice) iresearch::file_utils::open(name, iresearch::file_utils::OpenMode::Write, advice) 
-#define file_fwrite(buf, size, len, fd) iresearch::file_utils::fwrite((fd), (buf), (len) * (size)) 
-#define file_fread(buf, size, len, fd) iresearch::file_utils::read((fd), (buf), (len) * (size))
-#define file_fseek iresearch::file_utils::fseek
-#define file_error iresearch::file_utils::ferror
-#define file_ftell iresearch::file_utils::ftell
-
 #include "shared.hpp"
 #include "string.hpp"
 
@@ -126,7 +118,6 @@ bool exists_directory(bool& result, const file_path_t file) noexcept;
 bool exists_file(bool& result, const file_path_t file) noexcept;
 
 bool mtime(time_t& result, const file_path_t file) noexcept;
-bool mtime(time_t& result, void* fd) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
@@ -153,7 +144,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept;  // recursive direc
 
 bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
-size_t read(void* fd, void* buf, size_t size);
+size_t fread(void* fd, void* buf, size_t size);
 size_t fwrite(void* fd, const void* buf, size_t size);
 FORCE_INLINE bool write(void* fd, const void* buf, size_t size) { return fwrite(fd, buf, size) == size; }
 int fseek(void* fd, long pos, int origin);
