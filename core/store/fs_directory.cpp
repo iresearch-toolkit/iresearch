@@ -177,7 +177,7 @@ class fs_index_output : public buffered_index_output {
     assert(name);
 
     file_utils::handle_t handle(irs::file_utils::open(name, 
-                                                      irs::file_utils::OpenMode::Read,
+                                                      irs::file_utils::OpenMode::Write,
                                                       IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
