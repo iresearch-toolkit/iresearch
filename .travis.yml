@@ -198,7 +198,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
+        - BUILD_TYPE="Release"
 
     ############################################################################
     # GCC 7
@@ -278,7 +278,7 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -293,7 +293,7 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -308,7 +308,56 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - CMAKE_VERSION=3.8.2 # supports c++17
+        - CXX_STANDARD=17
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # GCC 9
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc9 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install g++-9 valgrind
+      env:
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - CMAKE_VERSION=3.8.2 # supports c++17
+        - CXX_STANDARD=17
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc9 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install g++-9 valgrind
+      env:
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - CMAKE_VERSION=3.8.2 # supports c++17
+        - CXX_STANDARD=17
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc9 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -317,16 +366,16 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      dist: trusty # gcc8 is not available in `precise`
+      dist: trusty # gcc9 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
+        - BUILD_TYPE="Release"
 
     ############################################################################
     # OSX
@@ -390,7 +439,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
+        - BUILD_TYPE="Release"
 
 before_install:
   - eval "${SET_ENV}"
