@@ -204,7 +204,7 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
+  - cmd: python ..\scripts\gtest-parallel\gtest_parallel.py %TEST_OPTIONS% bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe -- --gtest_output=xml:test_results.xml
 
 on_finish:
   ############################################################################
