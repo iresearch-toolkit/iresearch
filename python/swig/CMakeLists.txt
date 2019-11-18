@@ -15,13 +15,13 @@ swig_add_library(pyresearch LANGUAGE python SOURCES pyresearch.i)
 swig_link_libraries(pyresearch iresearch-python ${PYTHON_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/.. ${IResearch_INCLUDE_DIR})
 
-# Files to install with Python
+set(SETUP_PY_IN ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in)
+set(SETUP_PY_OUT ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 if(MSVC)
-set(MSVC_IRESEARCH_PREFIX "$<CONFIG>")
 set(PYTHON_INSTALL_FILES
   ${CMAKE_CURRENT_BINARY_DIR}/pyresearch.py
-  ${CMAKE_BINARY_DIR}/bin/${MSVC_IRESEARCH_PREFIX}/_pyresearch.pyd
-  ${CMAKE_BINARY_DIR}/bin/${MSVC_IRESEARCH_PREFIX}/iresearch-python.dll
+  ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/_pyresearch.pyd
+  ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/iresearch-python.dll
 )
 else()
 set(PYTHON_INSTALL_FILES
@@ -29,18 +29,38 @@ set(PYTHON_INSTALL_FILES
   ${CMAKE_BINARY_DIR}/bin/_pyresearch.so
 )
 endif()
-
 # Configure setup.py and copy to output directory
-set(SETUP_PY_IN ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in)
-set(SETUP_PY_OUT ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 
+# Files to install with Python (Build-specific for MSVC)
+if(MSVC)
+set(PYTHON_INSTALL_FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/pyresearch.py
+  ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/_pyresearch.pyd
+  ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/iresearch-python.dll
+)
+# on MSVC  we prepare setup file on each build to make use of generator expressions
+file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/setup_$<CONFIG>.py INPUT ${SETUP_PY_OUT})
 add_custom_target(pyresearch
-  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-shared
-  COMMAND python3 ${SETUP_PY_OUT} build_ext --inplace
+  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-static-allinone
+  COMMAND python3 ${CMAKE_BINARY_DIR}/setup_$<CONFIG>.py build_ext --inplace
 )
 
 add_custom_target(pyresearch-install
   DEPENDS pyresearch
+  COMMAND python3 ${CMAKE_BINARY_DIR}/setup_$<CONFIG>.py install
+)
+else()
+add_custom_target(pyresearch
+  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-shared
+  COMMAND python3 ${SETUP_PY_OUT} build_ext --inplace
+)
+add_custom_target(pyresearch-install
+  DEPENDS pyresearch
   COMMAND python3 ${SETUP_PY_OUT} install
 )
+endif()
+
+
+
+

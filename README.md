@@ -16,6 +16,7 @@
 - [Overview](#overview)
 - [High level architecture and main concepts](#high-level-architecture-and-main-concepts)
 - [Build](#build)
+- [Pyresearch](#pyresearch)
 - [Included 3rd party dependencies](#included-3rd-party-dependencies)
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
 - [Query filter building blocks](#query-filter-building-blocks)
@@ -384,6 +385,20 @@ code coverage:
 ```bash
 cmake --build . --target iresearch-coverage
 ```
+
+## Pyresearch
+There is Python wrapper for IResearch. Wrapper gives access to directory reader object.
+For usage example see <src-path>/python/scripts
+### Build
+To build Pyresearch SWIG generator should be available.
+Add -DUSE_PYRESEARCH=ON to cmake command-line to generate Pyresearch targets
+### Install
+Run target pyresearch-install
+#### win32 install notes:
+Some version of ICU installers seems to fail to make available all icu dlls through 
+PATH enviroment variable, manual adjustment may be needed.
+#### (*nix) install notes:
+Shared version of libiresearch is used. Install IResearch before running Pyresearch.
 
 ## Included 3rd party dependencies
 Code for all included 3rd party dependencies is located in the "external" directory.
