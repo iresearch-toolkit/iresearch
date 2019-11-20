@@ -606,6 +606,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\"}");
       ASSERT_EQ(nullptr, stream);
     }
+    {
+      // min > max
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"min\":2, \"max\":1, \"preserveOriginal\":false}");
+      ASSERT_EQ(nullptr, stream);
+    }
   }
 }
 
@@ -962,9 +967,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":4, \"max\":3, \"preserveOriginal\":false}");
-      ASSERT_NE(nullptr, stream);
-      testFunc(data, stream.get());
+      irs::analysis::text_token_stream::options_t options;
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      options.explicit_stopwords.emplace("a");
+      options.min_gram = 4;
+      options.min_gram_set = 4;
+      options.max_gram = 3;
+      options.max_gram_set = 3;
+      options.preserve_original = false;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+
+      testFunc(data, &stream);
     }
   }
 
@@ -987,9 +1000,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":4, \"max\":3, \"preserveOriginal\":true}");
-      ASSERT_NE(nullptr, stream);
-      testFunc(data, stream.get());
+      irs::analysis::text_token_stream::options_t options;
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      options.explicit_stopwords.emplace("a");
+      options.min_gram = 4;
+      options.min_gram_set = 4;
+      options.max_gram = 3;
+      options.max_gram_set = 3;
+      options.preserve_original = true;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+
+      testFunc(data, &stream);
     }
   }
 

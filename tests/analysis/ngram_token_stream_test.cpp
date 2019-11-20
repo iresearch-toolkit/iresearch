@@ -54,6 +54,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // load jSON invalid
   {
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":0, \"preserveOriginal\":false }"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "1"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "[]"));
@@ -1320,6 +1321,7 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_FALSE(stream->next());
   }
+
   {
     std::wstring sDataUCS2 = L"\u00C0\u00C1\u00C2\u00C3\u00C4";
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
