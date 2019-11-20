@@ -52,9 +52,19 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_EQ(false, impl.preserve_original());
   }
 
+  // load jSON object
+  {
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":2, \"max\":1, \"preserveOriginal\":false }");
+    ASSERT_NE(nullptr, stream);
+
+    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>&>(*stream);
+    ASSERT_EQ(2, impl.min_gram());
+    ASSERT_EQ(2, impl.max_gram());
+    ASSERT_EQ(false, impl.preserve_original());
+  }
+
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":0, \"preserveOriginal\":false }"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "1"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "[]"));

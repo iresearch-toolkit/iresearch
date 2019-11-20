@@ -140,6 +140,9 @@ bool parse_json_config(const irs::string_ref& args,
       stream_bytes_type = itr->second;
   }
 
+  min = std::max(min, size_t(1));
+  max = std::max(max, min);
+
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = preserve_original;
@@ -147,7 +150,7 @@ bool parse_json_config(const irs::string_ref& args,
   options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
   options.stream_bytes_type = stream_bytes_type;
 
-  return options.min_gram <= options.max_gram;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
