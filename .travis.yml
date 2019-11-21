@@ -321,7 +321,7 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      dist: trusty # gcc9 is not available in `precise`
+      dist: bionic # gcc9 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
@@ -336,7 +336,7 @@ matrix:
     # Release build, static library
     ############################################################################
     - os: linux
-      dist: trusty # gcc9 is not available in `precise`
+      dist: bionic # gcc9 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
@@ -351,7 +351,7 @@ matrix:
     # Debug build, shared library
     ############################################################################
     - os: linux
-      dist: trusty # gcc9 is not available in `precise`
+      dist: bionic # gcc9 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
@@ -366,7 +366,7 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      dist: trusty # gcc9 is not available in `precise`
+      dist: bionic # gcc9 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
