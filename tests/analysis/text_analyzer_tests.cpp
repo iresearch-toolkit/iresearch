@@ -580,8 +580,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       testFunc(sDataASCII, stream);
     }
     {
-
       auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\"}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(sDataASCII, stream);
+    }
+
+    // empty \"edgeNgram\" object
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"edgeNgram\": {}}");
       ASSERT_NE(nullptr, stream);
       testFunc(sDataASCII, stream);
     }
@@ -608,7 +614,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     }
     {
       // min > max
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"min\":2, \"max\":1, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"edgeNgram\" : {\"min\":2, \"max\":1, \"preserveOriginal\":false}}");
       ASSERT_EQ(nullptr, stream);
     }
   }
@@ -789,18 +795,18 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
   // min, max, preserveOriginal
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"min\":1,\"max\":1,\"preserveOriginal\":true}";
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[], \"edgeNgram\" : { \"min\":1,\"max\":1,\"preserveOriginal\":true }}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"min\":1,\"max\":1,\"preserveOriginal\":true}", actual);
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"min\":1,\"max\":1,\"preserveOriginal\":true}}", actual);
   }
 
   // without min (see above for without min, max, and preserveOriginal)
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"max\":2,\"preserveOriginal\":false}";
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[], \"edgeNgram\" : {\"max\":2,\"preserveOriginal\":false}}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"max\":2,\"preserveOriginal\":false}", actual);
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"max\":2,\"preserveOriginal\":false}}", actual);
   }
 }
 
@@ -853,7 +859,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":2, \"max\":3, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":2, \"max\":3, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -892,7 +898,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":0, \"max\":3, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":0, \"max\":3, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -925,7 +931,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":2, \"max\":3, \"preserveOriginal\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":2, \"max\":3, \"preserveOriginal\":true}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -948,7 +954,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":3, \"max\":3, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":3, \"max\":3, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1027,7 +1033,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":0, \"max\":0}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":0, \"max\":0}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1050,7 +1056,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"max\":1, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"max\":1, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1077,7 +1083,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"max\":1, \"preserveOriginal\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"max\":1, \"preserveOriginal\":true}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1108,7 +1114,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":1, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":1, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1139,7 +1145,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1170,7 +1176,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"preserveOriginal\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"preserveOriginal\":true}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -1204,7 +1210,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[\"\\u043A\"], \"min\":1, \"max\":2, \"preserveOriginal\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[\"\\u043A\"], \"edgeNgram\" : {\"min\":1, \"max\":2, \"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
