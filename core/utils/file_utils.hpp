@@ -18,7 +18,7 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILE_UTILS_H
