@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMAT_BURST_TRIE_H
@@ -68,7 +67,7 @@ NS_BEGIN(detail)
 // -----------------------------------------------------------------------------
 
 class fst_buffer;
-class term_iterator;
+class term_iterator_base;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          typedefs
@@ -254,18 +253,19 @@ class term_reader : public irs::term_reader,
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const field_meta& meta() const override { return field_; }
-  virtual size_t size() const override { return terms_count_; }
-  virtual uint64_t docs_count() const override { return doc_count_; }
-  virtual const bytes_ref& min() const override { return min_term_ref_; }
-  virtual const bytes_ref& max() const override { return max_term_ref_; }
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
+  virtual const field_meta& meta() const noexcept override { return field_; }
+  virtual size_t size() const noexcept override { return terms_count_; }
+  virtual uint64_t docs_count() const noexcept override { return doc_count_; }
+  virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
+  virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_; 
   }
 
  private:
   typedef fst::VectorFst<byte_arc> fst_t;
-  friend class term_iterator;
+  friend class term_iterator_base;
 
   irs::attribute_view attrs_;
   bstring min_term_;
@@ -399,7 +399,7 @@ class field_reader final : public irs::field_reader {
   virtual size_t size() const override;
 
  private:
-  friend class detail::term_iterator;
+  friend class detail::term_iterator_base;
 
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;

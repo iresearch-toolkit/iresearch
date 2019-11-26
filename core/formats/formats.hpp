@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMAT_H
@@ -36,6 +35,7 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/automaton_decl.hpp"
 
 NS_ROOT
 
@@ -149,10 +149,10 @@ struct IRESEARCH_API postings_reader {
     const flags& features
   ) = 0;
 
-  // parses input stream "in" and populate "attrs" collection
-  // with attributes
-  virtual void decode(
-    data_input& in,
+  // parses input block "in" and populate "attrs" collection with attributes
+  // returns number of bytes read from in
+  virtual size_t decode(
+    const byte_type* in,
     const flags& features,
     const attribute_view& attrs,
     term_meta& state
@@ -187,12 +187,16 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
-  DECLARE_UNIQUE_PTR( term_reader);
+  DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
   virtual ~term_reader() = default;
 
+  // returns an iterator over terms for a field
   virtual seek_term_iterator::ptr iterator() const = 0;
+
+  // returns an intersection of a specified automaton and term reader
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;

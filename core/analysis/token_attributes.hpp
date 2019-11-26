@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
@@ -186,8 +185,6 @@ class IRESEARCH_API position
   value_t value() const noexcept {
     return value_;
   }
-
-  virtual void clear() = 0;
 
   virtual bool next() = 0;
 

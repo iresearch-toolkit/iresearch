@@ -18,7 +18,7 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILE_UTILS_H
@@ -45,13 +45,14 @@
   #define file_stat _wstat64
 
   #define handle_cast(f) f
+  #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
+  #define IR_DEVNULL IR_WSTR("NUL:")
 
   #define IR_FADVICE_NORMAL 0
   #define IR_FADVICE_SEQUENTIAL FILE_FLAG_SEQUENTIAL_SCAN
   #define IR_FADVICE_RANDOM FILE_FLAG_RANDOM_ACCESS
   #define IR_FADVICE_DONTNEED 0
   #define IR_FADVICE_NOREUSE 0
-  #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
 #else
   #include <unistd.h> // close
   #include <sys/types.h> // for blksize_t
@@ -67,6 +68,7 @@
   #define posix_close close
 
   #define handle_cast(f) static_cast<int>(reinterpret_cast<size_t>(f))
+  #define IR_DEVNULL "/dev/null"
 #ifndef __APPLE__
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
   #define IR_FADVICE_SEQUENTIAL POSIX_FADV_SEQUENTIAL

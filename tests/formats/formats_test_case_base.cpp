@@ -755,7 +755,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     }
   }
 
-  // read broken meta (live_docs_count > docs_count)
+  // write broken meta (live_docs_count > docs_count)
   {
     irs::segment_meta meta;
     meta.name = "broken_meta_name";
@@ -774,7 +774,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     // write segment meta
     {
       auto writer = codec()->get_segment_meta_writer();
-      writer->write(dir(), filename, meta);
+      ASSERT_THROW(writer->write(dir(), filename, meta), irs::index_error);
     }
 
     // read segment meta
@@ -784,9 +784,45 @@ TEST_P(format_test_case, segment_meta_read_write) {
       read_meta.version = 100;
 
       auto reader = codec()->get_segment_meta_reader();
-      ASSERT_THROW(reader->read(dir(), read_meta), irs::index_error);
+      ASSERT_THROW(reader->read(dir(), read_meta), irs::io_error);
     }
   }
+
+  //FIXME
+  // read broken meta (live_docs_count > docs_count)
+  //{
+  //  irs::segment_meta meta;
+  //  meta.name = "broken_meta_name";
+  //  meta.docs_count = 1453;
+  //  meta.live_docs_count = 1345;
+  //  meta.size = 666;
+  //  meta.version = 100;
+  //
+  //  meta.files.emplace("file1");
+  //  meta.files.emplace("index_file2");
+  //  meta.files.emplace("file3");
+  //  meta.files.emplace("stored_file4");
+  //
+  //  std::string filename;
+  //
+  //  // write segment meta
+  //  {
+  //    auto writer = codec()->get_segment_meta_writer();
+  //    writer->write(dir(), filename, meta), irs::index_error;
+  //  }
+  //
+  //  // FIXME corrupt docs_count
+  //
+  //  // read segment meta
+  //  {
+  //    irs::segment_meta read_meta;
+  //    read_meta.name = meta.name;
+  //    read_meta.version = 100;
+  //
+  //    auto reader = codec()->get_segment_meta_reader();
+  //    ASSERT_THROW(reader->read(dir(), read_meta), irs::io_error);
+  //  }
+  //}
 }
 
 TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {

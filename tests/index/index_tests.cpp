@@ -21,6 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "index_tests.hpp"
+
+#include <thread>
+
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
 #include "store/memory_directory.hpp"
@@ -28,10 +32,8 @@
 #include "utils/lz4compression.hpp"
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
-
-#include "index_tests.hpp"
-
-#include <thread>
+#include "utils/automaton_utils.hpp"
+#include "utils/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
 
@@ -327,14 +329,14 @@ NS_END // tests
 
 class index_test_case : public tests::index_test_base {
  public:
-  void assert_index(size_t skip = 0) const {
-    index_test_base::assert_index(irs::flags(), skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
+  void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
+    index_test_base::assert_index(irs::flags(), skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip, matcher);
   }
 
   void clear_writer() {
@@ -2437,6 +2439,35 @@ TEST_P(index_test_case, europarl_docs) {
     add_segment(gen);
   }
   assert_index();
+}
+
+TEST_P(index_test_case, europarl_docs_automaton) {
+  {
+    tests::templates::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    add_segment(gen);
+  }
+
+  // prefix
+  {
+    auto acceptor = irs::from_wildcard<char>("forb%");
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
+  }
+
+  // part
+  {
+    auto acceptor = irs::from_wildcard<char>("%ende%");
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
+  }
+
+  // suffix
+  {
+    auto acceptor = irs::from_wildcard<char>("%ione");
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
+  }
 }
 
 TEST_P(index_test_case, monarch_eco_onthology) {
@@ -13179,7 +13210,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_2")
+    ::testing::Values("1_2", "1_2simd")
   ),
   tests::to_string
 );
@@ -13920,7 +13951,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_1", "1_2")
+    ::testing::Values("1_1", "1_2", "1_2simd")
   ),
   tests::to_string
 );

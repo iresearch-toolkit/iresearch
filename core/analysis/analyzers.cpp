@@ -176,9 +176,10 @@ NS_BEGIN(analysis)
       "Caught exception while getting an analyzer instance",
       e.what());
   } catch (...) {
+    IR_LOG_EXCEPTION();
+
     return result::make<result::INVALID_ARGUMENT>(
       "Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return {};

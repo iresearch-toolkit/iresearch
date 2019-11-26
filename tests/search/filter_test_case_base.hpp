@@ -515,7 +515,14 @@ class filter_test_case_base : public index_test_base {
 };
 
 struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual irs::seek_term_iterator::ptr iterator() const { return nullptr; }
+  virtual irs::seek_term_iterator::ptr iterator() const {
+    return irs::seek_term_iterator::empty();
+  }
+
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const {
+    return irs::seek_term_iterator::empty();
+  }
+
   virtual const irs::field_meta& meta() const {
     static irs::field_meta EMPTY;
     return EMPTY;

@@ -75,7 +75,7 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    void clear() override {
+    void clear() {
       pay_.clear();
       offs_.clear();
     }

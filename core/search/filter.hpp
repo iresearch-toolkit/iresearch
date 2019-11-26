@@ -18,18 +18,19 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "shared.hpp"
 #include "sort.hpp"
-#include "index/iterators.hpp"
 
 #include <unordered_map>
 #include <functional>
+
+#include "shared.hpp"
+#include "index/iterators.hpp"
+
 
 NS_ROOT
 
@@ -56,12 +57,12 @@ public:
     return it->second;    
   }
 
-  const State* find(const sub_reader& rdr) const {
+  const State* find(const sub_reader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
   }
 
-  bool empty() const { return states_.empty(); }
+  bool empty() const noexcept { return states_.empty(); }
 
 private:
   typedef std::unordered_map<
@@ -93,9 +94,6 @@ class IRESEARCH_API filter {
     explicit prepared(boost_t boost = no_boost()) noexcept
       : boost_(boost) {
     }
-    prepared(bstring&& stats, boost_t boost = no_boost()) noexcept
-      : stats_(std::move(stats)), boost_(boost) {
-    }
     virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
@@ -118,18 +116,16 @@ class IRESEARCH_API filter {
     boost_t boost() const noexcept { return boost_; }
 
    protected:
-    const byte_type* stats() const noexcept { return stats_.c_str(); }
     void boost(boost_t boost) noexcept { boost_ *= boost; }
 
    private:
-    bstring stats_;
     boost_t boost_;
   }; // prepared
 
   DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter)
 
-  filter(const type_id& type) noexcept;
+  explicit filter(const type_id& type) noexcept;
   virtual ~filter() = default;
 
   virtual size_t hash() const noexcept {

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_CONJUNCTION_H
@@ -35,12 +34,15 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 struct score_iterator_adapter {
-  score_iterator_adapter(doc_iterator::ptr&& it) noexcept
+  typedef DocIterator doc_iterator_t;
+
+  score_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)) {
     auto& attrs = this->it->attributes();
     score = &irs::score::extract(attrs);
-    doc = attrs.get<irs::document>().get();
+    doc = attrs.template get<irs::document>().get();
     assert(doc);
   }
 
@@ -62,11 +64,11 @@ struct score_iterator_adapter {
     return *this;
   }
 
-  doc_iterator* operator->() const noexcept {
+  typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
   }
 
-  operator doc_iterator::ptr&() noexcept {
+  operator doc_iterator_t&() noexcept {
     return it;
   }
 
@@ -75,7 +77,7 @@ struct score_iterator_adapter {
     return doc->value;
   }
 
-  doc_iterator::ptr it;
+  doc_iterator_t it;
   const irs::document* doc;
   const irs::score* score;
 }; // score_iterator_adapter
@@ -90,11 +92,12 @@ struct score_iterator_adapter {
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 class conjunction : public doc_iterator_base, score_ctx {
  public:
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
-  typedef doc_iterators_t::const_iterator iterator;
+  typedef typename doc_iterators_t::const_iterator iterator;
 
   conjunction(
       doc_iterators_t&& itrs,
