@@ -2196,7 +2196,7 @@ MSVC2015_ONLY(__pragma(warning(pop)))
 void segment_meta_writer::write(directory& dir, std::string& meta_file, const segment_meta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error(string_utils::to_string(
-      "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count= " IR_SIZE_T_SPECIFIER "",
+      "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
       meta.name.c_str(), meta.docs_count, meta.live_docs_count
     ));
   }
