@@ -475,6 +475,11 @@ int search(
 
       // process a single task
       for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
+        // this sleep circumvents context-switching penalties for CPU
+        // and makes thread planner life easier
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(
+                static_cast<unsigned>(100. * (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)))));
         size_t doc_count = 0;
         const auto start = std::chrono::system_clock::now();
 
