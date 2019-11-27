@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMAT_H
@@ -36,6 +35,7 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/automaton_decl.hpp"
 
 NS_ROOT
 
@@ -149,10 +149,10 @@ struct IRESEARCH_API postings_reader {
     const flags& features
   ) = 0;
 
-  // parses input stream "in" and populate "attrs" collection
-  // with attributes
-  virtual void decode(
-    data_input& in,
+  // parses input block "in" and populate "attrs" collection with attributes
+  // returns number of bytes read from in
+  virtual size_t decode(
+    const byte_type* in,
     const flags& features,
     const attribute_view& attrs,
     term_meta& state
@@ -187,12 +187,16 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
-  DECLARE_UNIQUE_PTR( term_reader);
+  DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
   virtual ~term_reader() = default;
 
+  // returns an iterator over terms for a field
   virtual seek_term_iterator::ptr iterator() const = 0;
+
+  // returns an intersection of a specified automaton and term reader
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;
@@ -581,17 +585,20 @@ class IRESEARCH_API format_registrar {
  public:
   format_registrar(
     const format::type_id& type,
+    const string_ref& module,
     format::ptr(*factory)(),
-    const char* source = nullptr
-  );
+    const char* source = nullptr);
+
   operator bool() const noexcept;
+
  private:
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), &format_name::make, source)
-#define REGISTER_FORMAT_EXPANDER__(format_name, file, line) REGISTER_FORMAT__(format_name, line, file ":" TOSTRING(line))
-#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_EXPANDER__(format_name, __FILE__, __LINE__)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), mudule_name, &format_name::make, source)
+#define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
+#define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
+#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
 
 NS_END
 

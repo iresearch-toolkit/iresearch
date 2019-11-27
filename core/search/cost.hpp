@@ -18,14 +18,14 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COST_H
 #define IRESEARCH_COST_H
 
-#include "utils/attributes.hpp"
 #include <functional>
+
+#include "utils/attributes.hpp"
 
 NS_ROOT
 

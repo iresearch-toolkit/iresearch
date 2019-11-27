@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_INDEX_READER_H
@@ -82,10 +81,7 @@ struct IRESEARCH_API index_reader {
    private:
     friend struct index_reader;
 
-    explicit reader_iterator(
-        const index_reader& reader,
-        size_t i = 0
-    ) noexcept
+    explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
       : reader_(&reader), i_(i) {
     }
 
@@ -141,9 +137,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   }
 
   // returns corresponding term_reader by the specified field
-  virtual const term_reader* field(
-    const string_ref& field
-  ) const = 0;
+  virtual const term_reader* field(const string_ref& field) const = 0;
 
   virtual column_iterator::ptr columns() const = 0;
 

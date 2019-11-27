@@ -176,9 +176,10 @@ NS_BEGIN(analysis)
       "Caught exception while getting an analyzer instance",
       e.what());
   } catch (...) {
+    IR_LOG_EXCEPTION();
+
     return result::make<result::INVALID_ARGUMENT>(
       "Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return {};
@@ -208,7 +209,7 @@ NS_BEGIN(analysis)
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
     irs::analysis::delimited_token_stream::init();
-    irs::analysis::ngram_token_stream::init();
+    irs::analysis::ngram_token_stream_base::init();
     irs::analysis::text_token_normalizing_stream::init();
     irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();

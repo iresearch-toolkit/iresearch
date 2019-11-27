@@ -68,10 +68,12 @@ endif()
 ################################################################################
 
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
+option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
+option(USE_CCACHE "Use CCACHE if present" ON)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -97,14 +99,40 @@ if (MSVC)
 endif()
 
 ################################################################################
+### setup clang-tidy
+################################################################################
+
+unset(CLANG_TIDY_EXE CACHE)
+
+if (USE_CLANG_TIDY)
+  find_program(
+    CLANG_TIDY_EXE
+    NAMES "clang-tidy"
+    DOC "Path to clang-tidy executable"
+  )
+
+  if(CLANG_TIDY_EXE)
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+  else()
+    message(STATUS "clang-tidy not found.")
+  endif()
+endif()
+
+################################################################################
 ### setup ccache
 ################################################################################
 
-find_program(CCACHE_FOUND ccache)
+if (USE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
 
-if(CCACHE_FOUND)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-endif(CCACHE_FOUND)
+  if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+  endif(CCACHE_FOUND)
+endif()
+
+################################################################################
+### setup platform dependent optimizations
+################################################################################
 
 if (USE_OPTIMIZE_FOR_ARCHITECTURE)
   include(OptimizeForArchitecture)
@@ -243,6 +271,7 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   pvs_studio_add_target(
@@ -251,6 +280,16 @@ if (USE_PVS_STUDIO)
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
     LOG ${IResearch_TARGET_NAME}-html.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    FORMAT xml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}-xml.err
+    CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 endif()
 

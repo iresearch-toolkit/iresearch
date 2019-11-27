@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_EMPTY_TERM_READER_H
@@ -34,11 +33,16 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class empty_term_reader: public irs::term_reader {
  public:
-  empty_term_reader(uint64_t docs_count): docs_count_(docs_count) {
+  empty_term_reader(uint64_t docs_count) noexcept
+    : docs_count_(docs_count) {
   }
 
   virtual irs::seek_term_iterator::ptr iterator() const noexcept override {
-    return nullptr; // no terms in reader
+    return irs::seek_term_iterator::empty(); // no terms in reader
+  }
+
+  virtual irs::seek_term_iterator::ptr iterator(automaton_table_matcher&) const noexcept override {
+    return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
   virtual const irs::field_meta& meta() const noexcept override {
