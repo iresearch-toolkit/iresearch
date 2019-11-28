@@ -182,10 +182,21 @@ find_package(Lz4
   REQUIRED
 )
 
-# find ICU
-find_package(ICU
-  REQUIRED
-)
+if (NOT ICU_FOUND)
+  # find ICU
+  find_package(ICU
+    59.0
+    REQUIRED
+    uc
+    )
+  set(ICU_LIBS ${ICU_LIBRARIES})
+#    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+#    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+#    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+#    )
+endif()
+
+
 
 # find Snowball
 find_package(Snowball
