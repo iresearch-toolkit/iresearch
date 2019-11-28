@@ -160,8 +160,8 @@ endif()
 if (MSVC)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
-    # MSVC2015-2017 fail require "/bigobj" to compile debug build
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>>"
+    # MSVC2015-2017 require "/bigobj" to compile debug build
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     # MSVC requires listing each warning code individually
     # /W0 and /w cannot be used because the produce a single warning themselves
     PRIVATE "/wd4018"
@@ -182,8 +182,8 @@ if (MSVC)
 
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst-scrt
-    # MSVC2015-2017 fail require "/bigobj" to compile debug build
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>>"
+    # MSVC2015-2017 require "/bigobj" to compile debug build
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     # MSVC requires listing each warning code individually
     # /W0 and /w cannot be used because the produce a single warning themselves
     PRIVATE "/wd4018"
