@@ -263,31 +263,17 @@ def main():
           luceneRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(4))
 
   registry = CollectorRegistry()
-  time = Gauge('Time', 'Execution time', unit = "us", registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  memory = Gauge('Memory', 'Consumed memory', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  cpu = Gauge('CPU', 'CPU utilization %', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  wallClock = Gauge('Wall_Clock', 'Elapsed wall clock', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  pageMinFaults = Gauge('MinorPageFaults', 'Minor (reclaiming a frame) page faults', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  pageMajFaults = Gauge('MajorPageFaults', 'Major (requiring I/O) page faults', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-
-  volContextSwitches =  Gauge('VolContextSwitches', 'Voluntary context switches', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
-  involContextSwitches =  Gauge('InvolContextSwitches', 'Involuntary context switches', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
-                                                                        "random", "scorer", "scorerarg", "run", "calls",\
-                                                                        "branch", "platform", "stage"])
+  defaultLabelNames = ["engine", "size", "category", "repeat", "threads",\
+                      "random", "scorer", "scorerarg", "run", "calls",\
+                      "branch", "platform", "stage"]
+  time = Gauge('Time', 'Execution time', unit = "us", registry=registry, labelnames=defaultLabelNames)
+  memory = Gauge('Memory', 'Consumed memory', registry=registry, labelnames=defaultLabelNames)
+  cpu = Gauge('CPU', 'CPU utilization %', registry=registry, labelnames=defaultLabelNames)
+  wallClock = Gauge('Wall_Clock', 'Elapsed wall clock', registry=registry, labelnames=defaultLabelNames)
+  pageMinFaults = Gauge('MinorPageFaults', 'Minor (reclaiming a frame) page faults', registry=registry, labelnames=defaultLabelNames)
+  pageMajFaults = Gauge('MajorPageFaults', 'Major (requiring I/O) page faults', registry=registry, labelnames=defaultLabelNames)
+  volContextSwitches =  Gauge('VolContextSwitches', 'Voluntary context switches', registry=registry, labelnames=defaultLabelNames)
+  involContextSwitches =  Gauge('InvolContextSwitches', 'Involuntary context switches', registry=registry, labelnames=defaultLabelNames)
 
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchRunFiles, "IResearch")
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene")
