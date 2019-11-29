@@ -43,6 +43,8 @@ class RunFiles:
     self.wallClockFiles.append(self.parseWallClockStats(file, run))
     self.pageMinorFaultsFiles.append(self.parseMinorPageFaultStats(file, run))
     self.pageMajorFaultsFiles.append(self.parseMajorPageFaultStats(file, run))
+    self.voluntaryContextSwitchesFiles.append(self.parseVoluntaryContextSwitchesStats(file, run))
+    self.involuntaryContextSwitchesFiles.append(self.parseInvoluntaryContextSwitchesStats(file, run))
 
   def parseWallClockStats(self, filename, run):
     metrics = []
@@ -211,41 +213,32 @@ class LuceneRunFiles(RunFiles):
     super().processMemoryFile(file, run)
 
 
-def sendStatsToPrometheus(time, memory, cpu, wallClock, parsedFiles, engine):
+def fillGauge(files, gauge, labelsToSendTemplate):
+  localTemplate = labelsToSendTemplate.copy()
+  for s in files:
+    for l in s:
+      labelsToSend = localTemplate.copy()
+      labelsToSend.update(l.labels)
+      gauge.labels(**labelsToSend).set(l.value)
+
+def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, parsedFiles, engine):
   # Label must be all present! For start all will be placeholders
-  labelsToSendTemplate = {"engine" : "<None>", "size": "<None>", "category": "<None>",\
+  labelsToSendTemplate = {"engine" : engine, "size": "<None>", "category": "<None>",\
                         "repeat": "<None>", "threads": "<None>", "random": "<None>",\
                         "scorer": "<None>", "scorerarg": "<None>", "run": "<None>", "calls": "<None>",\
-                        "branch": "<None>", "platform": "<None>", "stage": "<None>"}
+                        "branch": sys.argv[3], "platform": sys.argv[2], "stage": "<None>"}
   for size, stats in parsedFiles.items():
-    for s in stats.timingFiles:
-      labelsToSendTemplate.update({"engine":engine, "size":size, "platform":sys.argv[2], "branch":sys.argv[3]}) 
-      labelsToSendTemplate.update(stats.labels);
-      for l in s:
-        labelsToSend = labelsToSendTemplate.copy()
-        labelsToSend.update(l.labels)
-        time.labels(**labelsToSend).set(l.value)
-    for s in stats.memoryFiles:
-      labelsToSendTemplate.update({"engine":engine, "size":size, "platform":sys.argv[2], "branch":sys.argv[3]}) 
-      labelsToSendTemplate.update(stats.labels);
-      for l in s:
-        labelsToSend = labelsToSendTemplate.copy()
-        labelsToSend.update(l.labels)
-        memory.labels(**labelsToSend).set(l.value)
-    for s in stats.cpuFiles:
-      labelsToSendTemplate.update({"engine":engine, "size":size, "platform":sys.argv[2], "branch":sys.argv[3]}) 
-      labelsToSendTemplate.update(stats.labels);
-      for l in s:
-        labelsToSend = labelsToSendTemplate.copy()
-        labelsToSend.update(l.labels)
-        cpu.labels(**labelsToSend).set(l.value)
-    for s in stats.wallClockFiles:
-      labelsToSendTemplate.update({"engine":engine, "size":size, "platform":sys.argv[2], "branch":sys.argv[3]}) 
-      labelsToSendTemplate.update(stats.labels);
-      for l in s:
-        labelsToSend = labelsToSendTemplate.copy()
-        labelsToSend.update(l.labels)
-        wallClock.labels(**labelsToSend).set(l.value)
+    labelsToSendTemplate.update({"size":size}) 
+    labelsToSendTemplate.update(stats.labels);
+    fillGauge(stats.timingFiles, time, labelsToSendTemplate)
+    fillGauge(stats.memoryFiles, memory, labelsToSendTemplate)
+    fillGauge(stats.cpuFiles, cpu, labelsToSendTemplate)
+    fillGauge(stats.wallClockFiles, wallClock, labelsToSendTemplate)
+    fillGauge(stats.pageMinorFaultsFiles, pageMinFaults, labelsToSendTemplate)
+    fillGauge(stats.pageMajorFaultsFiles, pageMajFaults, labelsToSendTemplate)
+    fillGauge(stats.voluntaryContextSwitchesFiles, volContextSwitches, labelsToSendTemplate)
+    fillGauge(stats.involuntaryContextSwitchesFiles, involContextSwitches, labelsToSendTemplate)
+    
 
 def main():
   iresearchRunFiles = {}
@@ -282,9 +275,22 @@ def main():
   wallClock = Gauge('Wall_Clock', 'Elapsed wall clock', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
                                                                         "random", "scorer", "scorerarg", "run", "calls",\
                                                                         "branch", "platform", "stage"])
+  pageMinFaults = Gauge('MinorPageFaults', 'Minor (reclaiming a frame) page faults', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
+                                                                        "random", "scorer", "scorerarg", "run", "calls",\
+                                                                        "branch", "platform", "stage"])
+  pageMajFaults = Gauge('MajorPageFaults', 'Major (requiring I/O) page faults', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
+                                                                        "random", "scorer", "scorerarg", "run", "calls",\
+                                                                        "branch", "platform", "stage"])
 
-  sendStatsToPrometheus(time, memory, cpu, wallClock, iresearchRunFiles, "IResearch")
-  sendStatsToPrometheus(time, memory, cpu, wallClock, luceneRunFiles, "Lucene")
+  volContextSwitches =  Gauge('VolContextSwitches', 'Voluntary context switches', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
+                                                                        "random", "scorer", "scorerarg", "run", "calls",\
+                                                                        "branch", "platform", "stage"])
+  involContextSwitches =  Gauge('InvolContextSwitches', 'Involuntary context switches', registry=registry, labelnames=["engine", "size", "category", "repeat", "threads",\
+                                                                        "random", "scorer", "scorerarg", "run", "calls",\
+                                                                        "branch", "platform", "stage"])
+
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchRunFiles, "IResearch")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene")
   push_to_gateway('localhost:9091', job='benchmark', registry=registry)
 
 
