@@ -317,7 +317,6 @@
 #ifdef __SSE4_2__
 #define IRESEARCH_SSE4_2
 #endif
-#endif // _MSC_VER
 
 #ifdef __AVX__
 #define IRESEARCH_AVX
