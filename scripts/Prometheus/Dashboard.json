@@ -64,7 +64,7 @@
           "refId": "A"
         },
         {
-          "expr": "avg(Time{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"})",
+          "expr": "avg(Time{engine=\"Lucene\",category=\"HighPhrase\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"})",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -1716,5 +1716,5 @@
   "timezone": "",
   "title": "IResearch",
   "uid": "cWLkh3xZk",
-  "version": 5
+  "version": 6
 }
