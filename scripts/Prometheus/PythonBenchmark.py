@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 import re
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
@@ -15,12 +14,13 @@ baseLabels = ["repeat", "threads", "random", "scorer", "scorer-arg"]
 
 
 class MetricValue:
+  """Generic class for storing single metric result"""
   def __init__(self, value, labels):
     self.labels = labels
     self.value = value
 
 class RunFiles:
-  """Generic class fo storing benchmark results for all runs on same workset size"""
+  """Generic class for storing benchmark results for all runs on same workset size"""
 
   def __init__(self, mySize):
     self.size = mySize
@@ -162,9 +162,31 @@ class RunFiles:
               metrics.append(MetricValue(float(m.group(3)), result))
     return metrics
 
+class IResearchIndexRunFiles(RunFiles):
+  """ IResearch  indexing specific benchmark resulst parsing """
+  def __init__(self, mySize):
+    super().__init__(mySize)
+    self.baseParametersExtracted = False
+
+  def parseBaseIResearchParameters(self, filename):
+    result = {}
+    with open(filename, newline='') as datafile:
+      for row in datafile:
+        m = re.search("Command being timed: \".*iresearch-benchmarks.* -m put --in .* --index-dir .* --max-lines=[0-9]* --commit-period=[0-9]* --batch-size=[0-9]* --threads=([0-9]*)", row)  
+        if m is not None:
+          result["threads"] = int(m.group(1))
+          break
+    return result
+
+  def processMemoryFile(self, file, run):
+    if not self.baseParametersExtracted:
+      self.labels.update(self.parseBaseIResearchParameters(file))
+      self.baseParametersExtracted = True
+    super().processMemoryFile(file, run)
 
 
 class IResearchRunFiles(RunFiles):
+  """ IResearch  search specific benchmark resulst parsing """
   def __init__(self, mySize):
     super().__init__(mySize)
     self.baseParametersExtracted = False
@@ -190,7 +212,8 @@ class IResearchRunFiles(RunFiles):
             break
     return result
 
-class LuceneRunFiles(RunFiles):
+class LuceneIndexRunFiles(RunFiles):
+  """ Lucene index specific benchmark resulst parsing """
   def __init__(self, mySize):
     super().__init__(mySize)
     self.baseParametersExtracted = False
@@ -199,7 +222,29 @@ class LuceneRunFiles(RunFiles):
     result = {}
     with open(filename, newline='') as datafile:
       for row in datafile:
-        m = re.search("Command being timed: \"java -server -Xms2g -Xmx40g -XX:-TieredCompilation -XX:\+HeapDumpOnOutOfMemoryError -Xbatch -jar .*lucene_search\.jar -dirImpl MMapDirectory -indexPath .*lucene\.data -analyzer StandardAnalyzer -taskSource .*benchmark\.tasks -searchThreadCount ([0-9]*) -taskRepeatCount ([0-9]*) -field body -tasksPerCat 1 -staticSeed -6486775 -seed -6959386 -similarity BM25Similarity -commit multi -hiliteImpl FastVectorHighlighter -log .* -csv -topN 100 -pk\"", row)  
+        m = re.search("Command being timed: \"java -jar *. -dirImpl MMapDirectory -analyzer StandardAnalyzer -lineDocsFile .* -maxConcurrentMerges [0-9]* -ramBufferMB -1 -postingsFormat Lucene50 -waitForMerges -mergePolicy LogDocMergePolicy -idFieldPostingsFormat Lucene50 -grouping -waitForCommit -indexPath .* -docCountLimit [0-9]* -maxBufferedDocs [0-9]* -threadCount ([0-9]*)", row)  
+        if m is not None:
+          result["threads"] = int(m.group(1))
+          break
+    return result
+
+  def processMemoryFile(self, file, run):
+    if not self.baseParametersExtracted:
+      self.labels.update(self.parseBaseLuceneParameters(file))
+      self.baseParametersExtracted = True
+    super().processMemoryFile(file, run)
+
+class LuceneRunFiles(RunFiles):
+  """ Lucene search specific benchmark resulst parsing """
+  def __init__(self, mySize):
+    super().__init__(mySize)
+    self.baseParametersExtracted = False
+
+  def parseBaseLuceneParameters(self, filename):
+    result = {}
+    with open(filename, newline='') as datafile:
+      for row in datafile:
+        m = re.search("Command being timed: \"java -server -Xms2g -Xmx40g -XX:-TieredCompilation -XX:\+HeapDumpOnOutOfMemoryError -Xbatch -jar .* -dirImpl MMapDirectory -indexPath .* -analyzer StandardAnalyzer -taskSource .* -searchThreadCount ([0-9]*) -taskRepeatCount ([0-9]*) -field body", row)  
         if m is not None:
           result["threads"] = int(m.group(1))
           result["repeat"] = int(m.group(2))
@@ -212,6 +257,8 @@ class LuceneRunFiles(RunFiles):
       self.baseParametersExtracted = True
     super().processMemoryFile(file, run)
 
+# Helper methods 
+
 
 def fillGauge(files, gauge, labelsToSendTemplate):
   localTemplate = labelsToSendTemplate.copy()
@@ -221,9 +268,9 @@ def fillGauge(files, gauge, labelsToSendTemplate):
       labelsToSend.update(l.labels)
       gauge.labels(**labelsToSend).set(l.value)
 
-def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, parsedFiles, engine):
+def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, parsedFiles, engine, default_category="<None>"):
   # Label must be all present! For start all will be placeholders
-  labelsToSendTemplate = {"engine" : engine, "size": "<None>", "category": "<None>",\
+  labelsToSendTemplate = {"engine" : engine, "size": "<None>", "category": default_category,\
                         "repeat": "<None>", "threads": "<None>", "random": "<None>",\
                         "scorer": "<None>", "scorerarg": "<None>", "run": "<None>", "calls": "<None>",\
                         "branch": sys.argv[3], "platform": sys.argv[2], "stage": "<None>"}
@@ -241,43 +288,60 @@ def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFa
     
 
 def main():
+  ## Parsing Search results
   iresearchRunFiles = {}
   luceneRunFiles = {}
+  iresearchIndexRunFiles = {}
+  luceneIndexRunFiles = {}
   for f in os.listdir(sys.argv[1]):
-    m = re.match('(lucene|iresearch)\.(stdout|stdlog|stderr)\.([0-9]*)\.search\.log\.([0-9])', f)
+    m = re.match('(lucene|iresearch)\.(stdout|stdlog|stderr)\.([0-9]*)\.(search|index)\.log\.([0-9])', f)
     if m is not None:
       size = int(m.group(3))
       if m.group(1) == "iresearch":
-        if size not in iresearchRunFiles.keys():
-          iresearchRunFiles[size] = IResearchRunFiles(size)
-        if m.group(2) == "stdout":
-          iresearchRunFiles[size].processTimingFile(os.path.join(sys.argv[1],f), m.group(4))
+        if (m.group(4) == "search"):
+          if size not in iresearchRunFiles.keys():
+            iresearchRunFiles[size] = IResearchRunFiles(size)
+          if m.group(2) == "stdout":
+            iresearchRunFiles[size].processTimingFile(os.path.join(sys.argv[1],f), m.group(5))
+          else:
+            iresearchRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(5))
         else:
-          iresearchRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(4))
+          if size not in iresearchIndexRunFiles.keys():
+            iresearchIndexRunFiles[size] = IResearchIndexRunFiles(size)
+          if m.group(2) == "stderr":
+            iresearchIndexRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(5))
       else:
-        if size not in luceneRunFiles.keys():
-          luceneRunFiles[size] = LuceneRunFiles(size)
-        if m.group(2) == "stdlog":
-          luceneRunFiles[size].processTimingFile(os.path.join(sys.argv[1],f), m.group(4))
-        elif m.group(2) == "stderr":
-          luceneRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(4))
+        if (m.group(4) == "search"):
+          if size not in luceneRunFiles.keys():
+            luceneRunFiles[size] = LuceneRunFiles(size)
+          if m.group(2) == "stdlog":
+            luceneRunFiles[size].processTimingFile(os.path.join(sys.argv[1],f), m.group(5))
+          elif m.group(2) == "stderr":
+            luceneRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(5))
+        else:
+          if size not in luceneIndexRunFiles.keys():
+            luceneIndexRunFiles[size] = LuceneIndexRunFiles(size)
+          if m.group(2) == "stderr":
+            luceneIndexRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(5))
 
   registry = CollectorRegistry()
   defaultLabelNames = ["engine", "size", "category", "repeat", "threads",\
                       "random", "scorer", "scorerarg", "run", "calls",\
                       "branch", "platform", "stage"]
-  time = Gauge('Time', 'Execution time', unit = "us", registry=registry, labelnames=defaultLabelNames)
-  memory = Gauge('Memory', 'Consumed memory', registry=registry, labelnames=defaultLabelNames)
+  time = Gauge('Time', 'Execution time (microseconds)', registry=registry, labelnames=defaultLabelNames)
+  memory = Gauge('Memory', 'Consumed memory (kbytes)', registry=registry, labelnames=defaultLabelNames)
   cpu = Gauge('CPU', 'CPU utilization %', registry=registry, labelnames=defaultLabelNames)
-  wallClock = Gauge('Wall_Clock', 'Elapsed wall clock', registry=registry, labelnames=defaultLabelNames)
+  wallClock = Gauge('Wall_Clock', 'Elapsed wall clock (seconds)', registry=registry, labelnames=defaultLabelNames)
   pageMinFaults = Gauge('MinorPageFaults', 'Minor (reclaiming a frame) page faults', registry=registry, labelnames=defaultLabelNames)
   pageMajFaults = Gauge('MajorPageFaults', 'Major (requiring I/O) page faults', registry=registry, labelnames=defaultLabelNames)
   volContextSwitches =  Gauge('VolContextSwitches', 'Voluntary context switches', registry=registry, labelnames=defaultLabelNames)
   involContextSwitches =  Gauge('InvolContextSwitches', 'Involuntary context switches', registry=registry, labelnames=defaultLabelNames)
 
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchRunFiles, "IResearch")
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene")
-  push_to_gateway('localhost:9091', job='benchmark', registry=registry)
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchRunFiles, "IResearch", "Query")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene", "Query")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchIndexRunFiles, "IResearch", "Index")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneIndexRunFiles, "Lucene", "Index")
+  push_to_gateway(sys.argv[4], job=sys.argv[5], registry=registry)
 
 
 if __name__== "__main__":

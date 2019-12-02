@@ -15,7 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "panels": [
     {
@@ -59,12 +59,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\", stage=\"Executing\"}) + avg(Time_us{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\", stage=\"Building\"})",
+          "expr": "avg(Time{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"}) + avg(Time{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Building\"})",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(Time_us{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\", stage=\"Executing\"})",
+          "expr": "avg(Time{engine=\"IResearch\",category=\"HighPhrase\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"})",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -151,14 +151,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{category=\"HighTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\"}) + avg(Time_us{category=\"HighTerm\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\"}) ",
+          "expr": "avg(Time{category=\"HighTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"HighTerm\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
           "format": "time_series",
           "hide": false,
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(Time_us{engine=\"Lucene\",category=\"HighTerm\", size=\"25000000\"})",
+          "expr": "avg(Time{engine=\"Lucene\",category=\"HighTerm\", size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
           "hide": false,
           "legendFormat": "Lucene",
           "refId": "D"
@@ -246,12 +246,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{engine=\"IResearch\",size=\"25000000\",category=\"MedPhrase\",stage=\"Executing\"}) + avg(Time_us{engine=\"IResearch\",size=\"25000000\",category=\"MedPhrase\",stage=\"Building\"})",
+          "expr": "avg(Time{engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"MedPhrase\",stage=\"Executing\"}) + avg(Time{engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"MedPhrase\",stage=\"Building\"})",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(Time_us{engine=\"Lucene\",size=\"25000000\",category=\"MedPhrase\",stage=\"Executing\"})",
+          "expr": "avg(Time{engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"MedPhrase\",stage=\"Executing\"})",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -338,12 +338,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{category=\"MedTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\"})",
+          "expr": "avg(Time{category=\"MedTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
           "legendFormat": "IResearch",
           "refId": "C"
         },
         {
-          "expr": "avg(Time_us{category=\"MedTerm\",engine=\"Lucene\",size=\"25000000\"})",
+          "expr": "avg(Time{category=\"MedTerm\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
           "legendFormat": "Lucene",
           "refId": "A"
         }
@@ -430,12 +430,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{category=\"LowPhrase\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\"}) + avg(Time_us{category=\"LowPhrase\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\"}) ",
+          "expr": "avg(Time{category=\"LowPhrase\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"LowPhrase\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(Time_us{category=\"LowPhrase\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\"}) ",
+          "expr": "avg(Time{category=\"LowPhrase\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -522,12 +522,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Time_us{category=\"LowTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\"})",
+          "expr": "avg(Time{category=\"LowTerm\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(Time_us{category=\"LowTerm\",engine=\"Lucene\",size=\"25000000\"})",
+          "expr": "avg(Time{category=\"LowTerm\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -588,7 +588,7 @@
         "y": 24
       },
       "hiddenSeries": false,
-      "id": 10,
+      "id": 20,
       "legend": {
         "avg": false,
         "current": false,
@@ -614,12 +614,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(MinorPageFaults{engine=\"IResearch\", size=\"25000000\"})",
+          "expr": "avg(Time{engine=\"IResearch\",category=\"AndHighHigh\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"}) + avg(Time{engine=\"IResearch\",category=\"AndHighHigh\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Building\"})",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(MinorPageFaults{engine=\"Lucene\", size=\"25000000\"})",
+          "expr": "avg(Time{engine=\"Lucene\",category=\"AndHighHigh\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"}) ",
           "legendFormat": "Lucene",
           "refId": "B"
         }
@@ -628,7 +628,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Minor (reclaiming a frame) page faults",
+      "title": "AndHighHigh",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -680,6 +680,926 @@
         "y": 24
       },
       "hiddenSeries": false,
+      "id": 26,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{category=\"OrHighHigh\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"OrHighHigh\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{category=\"OrHighHigh\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "OrHighHigh",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "hiddenSeries": false,
+      "id": 30,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{category=\"OrHighLow\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"OrHighLow\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{category=\"OrHighLow\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "OrHighLow",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "hiddenSeries": false,
+      "id": 28,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{category=\"OrHighMed\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"OrHighMed\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{category=\"OrHighMed\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "OrHighMed",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "hiddenSeries": false,
+      "id": 24,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{engine=\"IResearch\",category=\"AndHighLow\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"}) + avg(Time{engine=\"IResearch\",category=\"AndHighLow\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Building\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{engine=\"Lucene\",category=\"AndHighLow\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "AndHighLow",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "hiddenSeries": false,
+      "id": 22,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{engine=\"IResearch\",category=\"AndHighMed\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"}) + avg(Time{engine=\"IResearch\",category=\"AndHighMed\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Building\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{engine=\"Lucene\",category=\"AndHighMed\",size=\"25000000\",platform=\"Linux\",branch=\"master\", stage=\"Executing\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "AndHighMed",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "hiddenSeries": false,
+      "id": 34,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{category=\"Wildcard\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"Wildcard\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{category=\"Wildcard\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) ",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Wildcard",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "hiddenSeries": false,
+      "id": 32,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Time{category=\"Prefix3\",stage=\"Executing\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"}) + avg(Time{category=\"Prefix3\",stage=\"Building\",engine=\"IResearch\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Time{category=\"Prefix3\",stage=\"Executing\",engine=\"Lucene\",size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Prefix3",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "hiddenSeries": false,
+      "id": 10,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(MinorPageFaults{engine=\"IResearch\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Index\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(MinorPageFaults{engine=\"Lucene\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Index\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Minor (reclaiming a frame) page faults (Index)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "hiddenSeries": false,
+      "id": 36,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(MinorPageFaults{engine=\"IResearch\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Query\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(MinorPageFaults{engine=\"Lucene\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Query\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Minor (reclaiming a frame) page faults (Query)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "hiddenSeries": false,
+      "id": 18,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "avg(Wall_Clock{category=\"Index\",engine=\"IResearch\", size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "IResearch",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(Wall_Clock{category=\"Index\",engine=\"Lucene\", size=\"25000000\",platform=\"Linux\",branch=\"master\"})",
+          "legendFormat": "Lucene",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Index creation time (seconds)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
+      "hiddenSeries": false,
       "id": 8,
       "legend": {
         "avg": false,
@@ -706,14 +1626,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(Memory{engine=\"IResearch\", size=\"25000000\"})",
-          "legendFormat": "IResearch",
+          "expr": "avg(Memory{engine=\"IResearch\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Index\"})",
+          "legendFormat": "IResearch-Index",
           "refId": "A"
         },
         {
-          "expr": "avg(Memory{engine=\"Lucene\", size=\"25000000\"})",
-          "legendFormat": "Lucene",
+          "expr": "avg(Memory{engine=\"Lucene\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Index\"})",
+          "legendFormat": "Lucene-Index",
           "refId": "B"
+        },
+        {
+          "expr": "avg(Memory{engine=\"IResearch\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Query\"})",
+          "legendFormat": "IResearch-Query",
+          "refId": "C"
+        },
+        {
+          "expr": "avg(Memory{engine=\"Lucene\", size=\"25000000\",platform=\"Linux\",branch=\"master\",category=\"Query\"})",
+          "legendFormat": "Lucene-Query",
+          "refId": "D"
         }
       ],
       "thresholds": [],
@@ -758,6 +1688,7 @@
       }
     }
   ],
+  "refresh": false,
   "schemaVersion": 21,
   "style": "dark",
   "tags": [],
@@ -785,5 +1716,5 @@
   "timezone": "",
   "title": "IResearch",
   "uid": "cWLkh3xZk",
-  "version": 8
+  "version": 5
 }
