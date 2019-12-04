@@ -295,7 +295,7 @@ if(MSVC)
   add_library(${IResearch_TARGET_NAME}-shared-scrt
     SHARED
     ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
 
   set_ipo(${IResearch_TARGET_NAME}-shared-scrt)
@@ -441,21 +441,25 @@ endif()
 if(MSVC)
   target_compile_options(${IResearch_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 endif()
@@ -518,7 +522,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # only for shared version. static build gets the same through static link to formats_1_0
+  ${IResearch_TARGET_NAME}-ofst
 )
 
 
@@ -563,7 +567,7 @@ if(MSVC)
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
     ${SIMD_LIBRARY_SHARED}
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # only for shared version. static build gets the same through static link to formats_1_0
+    ${IResearch_TARGET_NAME}-ofst-scrt
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
