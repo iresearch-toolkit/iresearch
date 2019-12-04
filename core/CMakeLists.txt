@@ -518,7 +518,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # only for shared version. static build gets the same through static link to formats_1_0
 )
+
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
@@ -560,6 +562,8 @@ if(MSVC)
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_SHARED}
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # only for shared version. static build gets the same through static link to formats_1_0
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
