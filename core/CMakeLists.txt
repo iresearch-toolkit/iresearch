@@ -278,6 +278,7 @@ add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
 set_ipo(${IResearch_TARGET_NAME}-shared)
@@ -296,6 +297,7 @@ if(MSVC)
     SHARED
     ${IResearch_core_sources} ${IResearch_core_headers}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt>
   )
 
   set_ipo(${IResearch_TARGET_NAME}-shared-scrt)
@@ -522,7 +524,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
-  ${IResearch_TARGET_NAME}-ofst
 )
 
 
@@ -567,7 +568,6 @@ if(MSVC)
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
     ${SIMD_LIBRARY_SHARED}
-    ${IResearch_TARGET_NAME}-ofst-scrt
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt

@@ -146,6 +146,7 @@ add_custom_target(${IResearchTests_TARGET_NAME}
 add_executable(${IResearchTests_TARGET_NAME}-shared
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
 set_ipo(${IResearchTests_TARGET_NAME}-shared)
@@ -228,7 +229,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${IResearch_TARGET_NAME}-ofst
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
