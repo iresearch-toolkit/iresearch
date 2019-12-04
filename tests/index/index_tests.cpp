@@ -13204,9 +13204,9 @@ INSTANTIATE_TEST_CASE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #if defined(IRESEARCH_SSE2)
-  const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
+const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
 #else
-  const auto index_test_case_12_values = ::testing::Values("1_2");
+const auto index_test_case_12_values = ::testing::Values("1_2");
 #endif
 NS_END
 

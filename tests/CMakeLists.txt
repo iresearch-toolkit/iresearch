@@ -244,10 +244,12 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()
 
