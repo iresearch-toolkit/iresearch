@@ -1,10 +1,11 @@
 PythonBenchmark.py script is used to upload IResearch benchmark data to Prometheus.
 Upload is done throug pushing data to Prometheus PushGateway. Script requires Python 3.8 or above.
+Pushgateway need to be installed using Pip command: pip install prometheus_client
 
 Script run parameters:
 python PythonBenchmark.py <Path-to-benchmark-logs> <Platform-used-to-run-benchmark> <Branch-user-to-run-benchmark> <Push-gate-url> <Job-name>
 
-Sample call: python PythonBenchmark.py C:\Working\PythonBenchmark\Data Windows10 master localhost:9091 benchmark
+Sample call: python PythonBenchmark.py C:\Data Windows10 master localhost:9091 benchmark
 
 Following metrics are exposed to prometheus:
 Time                 Execution time (microseconds)
@@ -41,16 +42,29 @@ In order to configure uploading IResearch benchmark results to prometheus it is 
   ------ From prometheus.yml -----
   scrape_configs:
   - job_name: pushgateway
-  honor_timestamps: true
   honor_labels: true
-  scrape_interval: 15s
+  scrape_interval: 3600s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - 192.168.172.140:9091
+    - <Pushgate Host>:<Pushgate port>
   -------- End sample ---------------
 
 3. Optionally Graphana could be configured.
-	See Dashboard.json sample for pre-configured dashboard
+	See Dashboard.json sample for pre-configured dashboard.
+  To add annotations:
+  3.1 Following snipped could be used in Jenkins job:
+  cat << EOF > EventAnnotation.txt
+  {
+    "text": "Build: ${BUILD_NUMBER} | Commit: ${COMMIT_ID}",
+    "tags": [ "BUILD" ]
+  }
+  EOF
+  curl -s -X POST http://<Graphana-host>/api/annotations \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+    --data @EventAnnotation.txt
+
+  3.2 Annotation for tag BUILD should be added to dashboard (included in sample pre-configured dashboard).
