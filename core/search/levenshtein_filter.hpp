@@ -20,8 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_WILDCARD_FILTER_H
-#define IRESEARCH_WILDCARD_FILTER_H
+#ifndef IRESEARCH_LEVENSHTEIN_FILTER_H
+#define IRESEARCH_LEVENSHTEIN_FILTER_H
 
 #include "filter.hpp"
 #include "prefix_filter.hpp"
@@ -29,29 +29,20 @@
 
 NS_ROOT
 
-enum class WildcardType {
-  TERM      = 0,  // foo
-  MATCH_ALL,      // *
-  PREFIX,         // foo*
-  WILDCARD        // f_o*
-};
-
-IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
-
 //////////////////////////////////////////////////////////////////////////////
-/// @class by_wildcard
-/// @brief user-side wildcard filter
+/// @class by_edit_distance
+/// @brief user-side levenstein filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_wildcard final : public by_prefix {
+class IRESEARCH_API by_edit_distance final : public by_prefix {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  explicit by_wildcard() noexcept;
+  explicit by_edit_distance() noexcept;
 
   using by_prefix::field;
 
-  by_wildcard& field(std::string fld) {
+  by_edit_distance& field(std::string fld) {
     by_prefix::field(std::move(fld));
     return *this;
   }
@@ -68,14 +59,33 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  by_wildcard& scored_terms_limit(size_t limit) noexcept {
+  by_edit_distance& scored_terms_limit(size_t limit) noexcept {
     by_prefix::scored_terms_limit(limit);
     return *this;
   }
-
   using by_prefix::scored_terms_limit;
-}; // by_wildcard
 
-#endif // IRESEARCH_WILDCARD_FILTER_H
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum allowed edit distance
+  //////////////////////////////////////////////////////////////////////////////
+  by_edit_distance& max_distance(size_t limit) noexcept {
+    max_distance_ = limit;
+    return *this;
+  }
+
+  size_t max_distance() const noexcept {
+    return max_distance_;
+  }
+
+
+ protected:
+  size_t hash() const noexcept;
+  bool equals(const filter& rhs) const noexcept;
+
+ private:
+  size_t max_distance_{0};
+}; // by_edit_distance
+
+#endif // IRESEARCH_LEVENSHTEIN_FILTER_H
 
 NS_END

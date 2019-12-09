@@ -68,6 +68,7 @@ set(IReSearch_tests_sources
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/wildcard_filter_test.cpp
+  ./search/levenshtein_filter_test.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
   ./search/bitset_doc_iterator_test.cpp
