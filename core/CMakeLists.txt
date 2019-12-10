@@ -219,6 +219,7 @@ set(IResearch_core_headers
   ./utils/attributes.hpp
   ./utils/automaton.hpp
   ./utils/automaton_utils.hpp
+  ./utils/wildcard_utils.hpp
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp

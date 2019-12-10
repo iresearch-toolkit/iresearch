@@ -32,7 +32,7 @@
 #include "utils/lz4compression.hpp"
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/automaton_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 #include "utils/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
