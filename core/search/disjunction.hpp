@@ -87,8 +87,7 @@ void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
   assert(score);
   if (&irs::score::no_score() != score) {
     score->evaluate();
-    *pVal = score->c_str();
-    ++pVal;
+    *pVal++ = score->c_str();
   }
 }
 
@@ -371,7 +370,7 @@ class small_disjunction : public doc_iterator_base, score_ctx {
         scored_itrs_.emplace_back(it);
       }
     }
-    scores_vals_.resize(scored_itrs_.size(), nullptr);
+    scores_vals_.resize(scored_itrs_.size());
     // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
 
@@ -391,8 +390,7 @@ class small_disjunction : public doc_iterator_base, score_ctx {
 
           if (doc == self.doc_.value) {
             it.score->evaluate();
-            *pVal = it.score->c_str();
-            pVal++;
+            *pVal++ = it.score->c_str();
           }
         }
         self.ord_->merge(score, self.scores_vals_.data(), std::distance(self.scores_vals_.data(), pVal));
@@ -625,9 +623,9 @@ class disjunction : public doc_iterator_base, score_ctx {
 
   doc_iterators_t itrs_;
   std::vector<size_t> heap_;
+  mutable std::vector<const irs::byte_type*> scores_vals_;
   document doc_;
   const order::prepared* ord_;
-  mutable std::vector<const irs::byte_type*> scores_vals_;
 }; // disjunction
 
 //////////////////////////////////////////////////////////////////////////////
