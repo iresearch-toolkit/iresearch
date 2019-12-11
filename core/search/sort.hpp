@@ -793,10 +793,20 @@ class IRESEARCH_API order final {
     void prepare_stats(byte_type* stats) const;
 
     void merge(byte_type* score, const byte_type** rhs_start, size_t count) const {
-      for_each([score, &rhs_start, count] (const prepared_sort& sort) {
-        assert(sort.bucket);
-        sort.bucket->merge(score, &(*rhs_start), count, sort.score_offset);
-        });
+      switch (order_.size()) {
+        case 1:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          break;
+        case 2:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          order_[1].bucket->merge(score, &(*rhs_start), count, order_[1].score_offset);
+          break;
+        default:
+          for_each([score, &rhs_start, count](const prepared_sort& sort) {
+            assert(sort.bucket);
+            sort.bucket->merge(score, &(*rhs_start), count, sort.score_offset);
+          });
+      }
     }
 
     template<typename T>

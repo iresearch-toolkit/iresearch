@@ -231,7 +231,9 @@ struct custom_sort: public irs::sort {
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const {
       score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
       for (size_t i = 0; i < size; ++i) {
-        score_cast(dst + offset) += score_cast(src_start[i]  + offset);
+        if (sort_.scorer_add) {
+          sort_.scorer_add(score_cast(dst + offset), score_cast(src_start[i]  + offset));
+        }
       }
     }
 
