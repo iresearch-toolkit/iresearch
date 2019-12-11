@@ -23,10 +23,6 @@
 #ifndef IRESEARCH_DISJUNCTION_H
 #define IRESEARCH_DISJUNCTION_H
 
-
-// TODO Remove ME
-#define NEW_IMPL
-
 #include <queue>
 
 #include "conjunction.hpp"
@@ -175,33 +171,13 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
       scores_vals_[1] = rhs.score->c_str();
       prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-#ifndef NEW_IMPL
-        self.ord_->prepare_score(score);
-        self.score_iterator_impl(self.lhs_, score);
-        self.score_iterator_impl(self.rhs_, score);
-#endif
 
-#ifdef NEW_IMPL  // TODO Remove unused score!
         const irs::byte_type** pVal = self.scores_vals_;
-        
-        
-        size_t matched_iterators = (size_t)self.score_iterator_impl(self.lhs_, score);
+        size_t matched_iterators = (size_t)self.score_iterator_impl(self.lhs_);
         pVal += !matched_iterators;
-        matched_iterators += (size_t)self.score_iterator_impl(self.rhs_, score);
-
-        //size_t matched_iterators = 0;
-        //if (self.score_iterator_impl(self.lhs_, score)) {
-        //  ++matched_iterators;
-        //} else {
-        //  ++pVal;
-        //}
-        //if (self.score_iterator_impl(self.rhs_, score)) {
-        //  ++matched_iterators;
-        //}
-
+        matched_iterators += (size_t)self.score_iterator_impl(self.rhs_);
         // always call merge. even if zero matched - we need to reset last accumulated score at least.
         self.ord_->merge(score, pVal, matched_iterators);
-#endif
       });
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
@@ -209,14 +185,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
       scores_vals_[0] = lhs.score->c_str();
       prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-#ifndef NEW_IMPL
-        self.ord_->prepare_score(score);
-        self.score_iterator_impl(self.lhs_, score);
-#endif
-#ifdef NEW_IMPL  // TODO Remove unused score!
-        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_, score));
-        
-#endif
+        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
@@ -224,14 +193,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
       assert(lhs_.score == &irs::score::no_score());
       prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-#ifndef NEW_IMPL
-        self.ord_->prepare_score(score);
-        self.score_iterator_impl(self.rhs_, score);
-#endif
-        
-#ifdef NEW_IMPL // TODO Remove unused score!
-        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_, score));
-#endif
+        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
@@ -255,7 +217,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
     }
   }
 
-  bool score_iterator_impl(doc_iterator_t& it, byte_type* lhs) const {
+  bool score_iterator_impl(doc_iterator_t& it) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -265,9 +227,6 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
     if (doc == doc_.value) {
       const auto* rhs = it.score;
       rhs->evaluate();
-#ifndef NEW_IMPL
-      ord_->add(lhs, rhs->c_str());
-#endif
       return true;
     }
     return false;
@@ -422,11 +381,7 @@ class small_disjunction : public doc_iterator_base, score_ctx {
     } else {
       prepare_score(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const small_disjunction*>(ctx);
-#ifndef NEW_IMPL
-        self.ord_->prepare_score(score);
-#else
-        const irs::byte_type** pVal = &self.scores_vals_[0];
-#endif
+        const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto& it : self.scored_itrs_) {
           auto doc = it.value();
 
@@ -436,17 +391,11 @@ class small_disjunction : public doc_iterator_base, score_ctx {
 
           if (doc == self.doc_.value) {
             it.score->evaluate();
-#ifndef NEW_IMPL
-            self.ord_->add(score, it.score->c_str());
-#else
             *pVal = it.score->c_str();
             pVal++;
-#endif
           }
         }
-#ifdef NEW_IMPL
-        self.ord_->merge(score, &self.scores_vals_[0], std::distance(&self.scores_vals_[0], pVal));
-#endif
+        self.ord_->merge(score, self.scores_vals_.data(), std::distance(self.scores_vals_.data(), pVal));
       });
     }
   }
@@ -579,9 +528,6 @@ class disjunction : public doc_iterator_base, score_ctx {
     // prepare score
     prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
-#ifndef NEW_IMPL
-      self.ord_->prepare_score(score);
-#endif
       self.score_impl(score);
     });
   }
@@ -660,13 +606,8 @@ class disjunction : public doc_iterator_base, score_ctx {
         push(begin,end);
       }
     }
-#ifndef NEW_IMPL
-    detail::score_add(lhs, *ord_, lead());
-#else
-    const irs::byte_type** pVal = &scores_vals_[0];
+    const irs::byte_type** pVal = scores_vals_.data();
     detail::evaluate_score_iter(pVal, lead());
-#endif
-
     if (top().value() == doc_.value) {
       irstd::heap::for_each_if(
         begin, end,
@@ -674,22 +615,12 @@ class disjunction : public doc_iterator_base, score_ctx {
           assert(it < itrs_.size());
           return itrs_[it].value() == doc_.value;
         },
-        [this, lhs
-#ifdef NEW_IMPL
-          ,&pVal
-#endif
-        ](size_t it) {
+        [this, lhs, &pVal](size_t it) {
           assert(it < itrs_.size());
-#ifdef NEW_IMPL
           detail::evaluate_score_iter(pVal, itrs_[it]);
-#else
-          detail::score_add(lhs, *ord_, itrs_[it]);
-#endif
       });
     }
-#ifdef NEW_IMPL
-    ord_->merge(lhs, &scores_vals_[0], std::distance(&scores_vals_[0], pVal));
-#endif
+    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_;
