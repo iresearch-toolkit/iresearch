@@ -165,15 +165,6 @@ class conjunction : public doc_iterator_base, score_ctx {
               });
             break;
         }
-        // TODO: Remove me
-        //prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        //  auto& self = *static_cast<const conjunction*>(ctx);
-        //  self.order_->prepare_score(score);
-        //  for (auto* it_score : self.scores_) {
-        //    it_score->evaluate();
-        //    self.order_->add(score, it_score->c_str());
-        //  }
-        //  });
       }
     }
   }
