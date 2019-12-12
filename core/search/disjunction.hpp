@@ -53,34 +53,6 @@ inline void pop_heap(Iterator first, Iterator last, Pred comp) {
   #endif
 }
 
-
-template<typename DocIterator>
-void score_add(byte_type* dst, const order::prepared& order, DocIterator& src) {
-  typedef void(*add_score_fn_t)(
-    const order::prepared& order,
-    const irs::score& score,
-    byte_type* dst
-  );
-
-  static const add_score_fn_t add_score_fns[] = {
-    // score != iresearch::score::no_score()
-    [](const order::prepared& order, const irs::score& score, byte_type* dst) {
-      score.evaluate();
-      order.add(dst, score.c_str());
-    },
-
-    // score == iresearch::score::no_score()
-    [](const order::prepared&, const irs::score&, byte_type*) {
-      // NOOP
-    }
-  };
-  const auto* score = src.score;
-  assert(score);
-
-  // do not merge scores for irs::score::no_score()
-  add_score_fns[&irs::score::no_score() == score](order, *score, dst);
-}
-
 template<typename DocIterator>
 void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
   const auto* score = src.score;
