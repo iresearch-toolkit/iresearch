@@ -105,6 +105,7 @@ set(IReSearch_tests_sources
   ./utils/block_pool_test.cpp
   ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
+  ./utils/levenshtein_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
