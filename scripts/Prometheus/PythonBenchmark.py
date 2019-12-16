@@ -354,14 +354,14 @@ def main():
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchIndexRunFiles, "IResearch", "Index")
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneIndexRunFiles, "Lucene", "Index")
     
-  indexSize = Gauge('IndexSize', 'Index directory size (kbytes)', registry=registry, labelnames=["engine"])
+  indexSize = Gauge('IndexSize', 'Index directory size (kbytes)', registry=registry, labelnames=["engine", "platform", "branch"])
   for size, stats in iresearchIndexRunFiles.items():
     if stats.indexPath != None:
-      indexSize.labels({"engine":"IResearch"}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
+      indexSize.labels(**{"engine":"IResearch", "branch": sys.argv[3], "platform": sys.argv[2]}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
       break
   for size, stats in luceneIndexRunFiles.items():
     if stats.indexPath != None:
-      indexSize.labels({"engine":"Lucene"}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
+      indexSize.labels(**{"engine":"Lucene", "branch": sys.argv[3], "platform": sys.argv[2]}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
       break
 
   push_to_gateway(sys.argv[4], job=sys.argv[5], registry=registry)
