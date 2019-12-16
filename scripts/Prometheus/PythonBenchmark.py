@@ -12,6 +12,14 @@ import csv
 #Base dictionary labels
 baseLabels = ["repeat", "threads", "random", "scorer", "scorer-arg"]
 
+def getFolderSize(dir):
+  directorySize = 0
+  for (path, dirs, files) in os.walk(dir):
+    for file in files:
+        filename = os.path.join(path, file)
+        directorySize += os.path.getsize(filename)
+  return directorySize / 1024;
+
 
 class MetricValue:
   """Generic class for storing single metric result"""
@@ -167,14 +175,16 @@ class IResearchIndexRunFiles(RunFiles):
   def __init__(self, mySize):
     super().__init__(mySize)
     self.baseParametersExtracted = False
+    self.indexPath = None
 
   def parseBaseIResearchParameters(self, filename):
     result = {}
     with open(filename, newline='') as datafile:
       for row in datafile:
-        m = re.search("Command being timed: \".*iresearch-benchmarks.* -m put --in .* --index-dir .* --max-lines=[0-9]* --commit-period=[0-9]* --batch-size=[0-9]* --threads=([0-9]*)", row)  
+        m = re.search("Command being timed: \".*iresearch-benchmarks.* -m put --in .* --index-dir (.*) --max-lines=[0-9]* --commit-period=[0-9]* --batch-size=[0-9]* --threads=([0-9]*)", row)  
         if m is not None:
-          result["threads"] = int(m.group(1))
+          self.indexPath = m.group(1)
+          result["threads"] = int(m.group(2))
           break
     return result
 
@@ -217,14 +227,16 @@ class LuceneIndexRunFiles(RunFiles):
   def __init__(self, mySize):
     super().__init__(mySize)
     self.baseParametersExtracted = False
+    self.indexPath = None
 
   def parseBaseLuceneParameters(self, filename):
     result = {}
     with open(filename, newline='') as datafile:
       for row in datafile:
-        m = re.search("Command being timed: \"java -jar *. -dirImpl MMapDirectory -analyzer StandardAnalyzer -lineDocsFile .* -maxConcurrentMerges [0-9]* -ramBufferMB -1 -postingsFormat Lucene50 -waitForMerges -mergePolicy LogDocMergePolicy -idFieldPostingsFormat Lucene50 -grouping -waitForCommit -indexPath .* -docCountLimit [0-9]* -maxBufferedDocs [0-9]* -threadCount ([0-9]*)", row)  
+        m = re.search("Command being timed: \"java -jar .* -dirImpl MMapDirectory -analyzer StandardAnalyzer -lineDocsFile .* -maxConcurrentMerges [0-9]* -ramBufferMB -1 -postingsFormat Lucene50 -waitForMerges -mergePolicy LogDocMergePolicy -idFieldPostingsFormat Lucene50 -grouping -waitForCommit -indexPath (.*) -docCountLimit [0-9]* -maxBufferedDocs [0-9]* -threadCount ([0-9]*)\"", row)  
         if m is not None:
-          result["threads"] = int(m.group(1))
+          self.indexPath = m.group(1)
+          result["threads"] = int(m.group(2))
           break
     return result
 
@@ -341,6 +353,17 @@ def main():
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene", "Query")
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchIndexRunFiles, "IResearch", "Index")
   sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneIndexRunFiles, "Lucene", "Index")
+    
+  indexSize = Gauge('IndexSize', 'Index directory size (kbytes)', registry=registry, labelnames=["engine"])
+  for size, stats in iresearchIndexRunFiles.items():
+    if stats.indexPath != None:
+      indexSize.labels({"engine":"IResearch"}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
+      break
+  for size, stats in luceneIndexRunFiles.items():
+    if stats.indexPath != None:
+      indexSize.labels({"engine":"Lucene"}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
+      break
+
   push_to_gateway(sys.argv[4], job=sys.argv[5], registry=registry)
 
 
