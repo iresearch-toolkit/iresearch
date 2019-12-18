@@ -1738,12 +1738,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(IndexSize{engine=\"IResearch\", platform=\"Linux\",branch=\"master\"})",
+          "expr": "avg(IndexSize{engine=\"IResearch\", platform=\"Linux\",branch=\"master\", size=\"$Size\", branch=\"master\"})",
           "legendFormat": "IResearch",
           "refId": "A"
         },
         {
-          "expr": "avg(IndexSize{engine=\"Lucene\", platform=\"Linux\",branch=\"master\"})",
+          "expr": "avg(IndexSize{engine=\"Lucene\", platform=\"Linux\",branch=\"master\", size=\"$Size\", branch=\"master\"})",
           "legendFormat": "Lucene",
           "refId": "B"
         }

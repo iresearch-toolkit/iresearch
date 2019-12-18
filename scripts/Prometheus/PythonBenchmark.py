@@ -12,15 +12,6 @@ import csv
 #Base dictionary labels
 baseLabels = ["repeat", "threads", "random", "scorer", "scorer-arg"]
 
-def getFolderSize(dir):
-  directorySize = 0
-  for (path, dirs, files) in os.walk(dir):
-    for file in files:
-        filename = os.path.join(path, file)
-        directorySize += os.path.getsize(filename)
-  return directorySize / 1024;
-
-
 class MetricValue:
   """Generic class for storing single metric result"""
   def __init__(self, value, labels):
@@ -40,7 +31,11 @@ class RunFiles:
     self.pageMajorFaultsFiles = []
     self.voluntaryContextSwitchesFiles = []
     self.involuntaryContextSwitchesFiles = []
+    self.indexSizeFiles = []
     self.labels = {"size": mySize}
+
+  def processIndexSizeFile(self, file, run):
+    self.indexSizeFiles.append(self.parseIndexSizeStats(file, run))
 
   def processTimingFile(self, file, run):
     self.timingFiles.append(self.parseQueriesStats(file, run))
@@ -54,6 +49,15 @@ class RunFiles:
     self.voluntaryContextSwitchesFiles.append(self.parseVoluntaryContextSwitchesStats(file, run))
     self.involuntaryContextSwitchesFiles.append(self.parseInvoluntaryContextSwitchesStats(file, run))
 
+
+  def parseIndexSizeStats(self, filename, run):
+    metrics = []
+    datafile = open(filename, 'r')
+    sizeString = datafile.read();
+    result = {"run": int(run)}
+    metrics.append(MetricValue(int(sizeString), result))
+    return metrics
+  
   def parseWallClockStats(self, filename, run):
     metrics = []
     with open(filename, newline='') as datafile:
@@ -280,7 +284,7 @@ def fillGauge(files, gauge, labelsToSendTemplate):
       labelsToSend.update(l.labels)
       gauge.labels(**labelsToSend).set(l.value)
 
-def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, parsedFiles, engine, default_category="<None>"):
+def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, indexSize, parsedFiles, engine, default_category="<None>"):
   # Label must be all present! For start all will be placeholders
   labelsToSendTemplate = {"engine" : engine, "size": "<None>", "category": default_category,\
                         "repeat": "<None>", "threads": "<None>", "random": "<None>",\
@@ -297,6 +301,8 @@ def sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFa
     fillGauge(stats.pageMajorFaultsFiles, pageMajFaults, labelsToSendTemplate)
     fillGauge(stats.voluntaryContextSwitchesFiles, volContextSwitches, labelsToSendTemplate)
     fillGauge(stats.involuntaryContextSwitchesFiles, involContextSwitches, labelsToSendTemplate)
+    if indexSize is not None:
+      fillGauge(stats.indexSizeFiles, indexSize, labelsToSendTemplate)
     
 
 def main():
@@ -335,6 +341,18 @@ def main():
             luceneIndexRunFiles[size] = LuceneIndexRunFiles(size)
           if m.group(2) == "stderr":
             luceneIndexRunFiles[size].processMemoryFile(os.path.join(sys.argv[1],f), m.group(5))
+    else:
+      m = re.match('(lucene|iresearch)\.([0-9]*)\.indexSize\.log\.([0-9])', f)
+      if m is not None:
+        size = int(m.group(2))
+        if m.group(1) == "iresearch":
+          if size not in iresearchRunFiles.keys():
+            iresearchRunFiles[size] = IResearchRunFiles(size)
+          iresearchRunFiles[size].processIndexSizeFile(os.path.join(sys.argv[1],f), m.group(3))
+        else:
+          if size not in luceneRunFiles.keys():
+            luceneRunFiles[size] = LuceneRunFiles(size)
+          luceneRunFiles[size].processIndexSizeFile(os.path.join(sys.argv[1],f), m.group(3))
 
   registry = CollectorRegistry()
   defaultLabelNames = ["engine", "size", "category", "repeat", "threads",\
@@ -348,21 +366,12 @@ def main():
   pageMajFaults = Gauge('MajorPageFaults', 'Major (requiring I/O) page faults', registry=registry, labelnames=defaultLabelNames)
   volContextSwitches =  Gauge('VolContextSwitches', 'Voluntary context switches', registry=registry, labelnames=defaultLabelNames)
   involContextSwitches =  Gauge('InvolContextSwitches', 'Involuntary context switches', registry=registry, labelnames=defaultLabelNames)
+  indexSize = Gauge('IndexSize', 'Index directory size (kbytes)', registry=registry, labelnames=defaultLabelNames)
 
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchRunFiles, "IResearch", "Query")
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneRunFiles, "Lucene", "Query")
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, iresearchIndexRunFiles, "IResearch", "Index")
-  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, luceneIndexRunFiles, "Lucene", "Index")
-    
-  indexSize = Gauge('IndexSize', 'Index directory size (kbytes)', registry=registry, labelnames=["engine", "platform", "branch"])
-  for size, stats in iresearchIndexRunFiles.items():
-    if stats.indexPath != None:
-      indexSize.labels(**{"engine":"IResearch", "branch": sys.argv[3], "platform": sys.argv[2]}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
-      break
-  for size, stats in luceneIndexRunFiles.items():
-    if stats.indexPath != None:
-      indexSize.labels(**{"engine":"Lucene", "branch": sys.argv[3], "platform": sys.argv[2]}).set(getFolderSize(os.path.join(sys.argv[6], stats.indexPath)))
-      break
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, indexSize,  iresearchRunFiles, "IResearch", "Query")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, indexSize, luceneRunFiles, "Lucene", "Query")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, None, iresearchIndexRunFiles,  "IResearch", "Index")
+  sendStatsToPrometheus(time, memory, cpu, wallClock, pageMinFaults, pageMajFaults, volContextSwitches, involContextSwitches, None, luceneIndexRunFiles, "Lucene", "Index")
 
   push_to_gateway(sys.argv[4], job=sys.argv[5], registry=registry)
 
