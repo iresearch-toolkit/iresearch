@@ -18,15 +18,15 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BOOLEAN_FILTER_H
 #define IRESEARCH_BOOLEAN_FILTER_H
 
+#include <vector>
+
 #include "filter.hpp"
 #include "utils/iterator.hpp"
-#include <vector>
 
 NS_ROOT
 

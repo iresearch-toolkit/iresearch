@@ -18,16 +18,17 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "all_filter.hpp"
 #include "boolean_filter.hpp"
+
+#include <boost/functional/hash.hpp>
+
+#include "all_filter.hpp"
 #include "conjunction.hpp"
 #include "disjunction.hpp"
 #include "min_match_disjunction.hpp"
 #include "exclusion.hpp"
-#include <boost/functional/hash.hpp>
 
 NS_LOCAL
 
@@ -55,6 +56,8 @@ irs::doc_iterator::ptr make_disjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
+  typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
+
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
 
@@ -64,7 +67,7 @@ irs::doc_iterator::ptr make_disjunction(
     return irs::doc_iterator::empty();
   }
 
-  irs::disjunction::doc_iterators_t itrs;
+  disjunction_t::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -77,7 +80,7 @@ irs::doc_iterator::ptr make_disjunction(
     }
   }
 
-  return irs::make_disjunction<irs::disjunction>(
+  return irs::make_disjunction<disjunction_t>(
     std::move(itrs), ord, std::forward<Args>(args)...
   );
 }
@@ -93,6 +96,8 @@ irs::doc_iterator::ptr make_conjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
+  typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
+
   assert(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
 
@@ -104,7 +109,7 @@ irs::doc_iterator::ptr make_conjunction(
       return begin->execute(rdr, ord, ctx);
   }
 
-  irs::conjunction::doc_iterators_t itrs;
+  conjunction_t::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -118,9 +123,7 @@ irs::doc_iterator::ptr make_conjunction(
     itrs.emplace_back(std::move(docs));
   }
 
-  return irs::make_conjunction<irs::conjunction>(
-    std::move(itrs), ord
-  );
+  return irs::make_conjunction<conjunction_t>(std::move(itrs), ord);
 }
 
 NS_END // LOCAL
@@ -291,7 +294,7 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    min_match_disjunction::doc_iterators_t itrs;
+    min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
     itrs.reserve(size);
 
     for (;begin != end; ++begin) {
@@ -311,7 +314,7 @@ class min_match_query final : public boolean_query {
 
  private:
   static doc_iterator::ptr make_min_match_disjunction(
-      min_match_disjunction::doc_iterators_t&& itrs,
+      min_match_disjunction<doc_iterator::ptr>::doc_iterators_t&& itrs,
       const order::prepared& ord,
       size_t min_match_count) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
@@ -326,9 +329,11 @@ class min_match_query final : public boolean_query {
     }
 
     if (min_match_count == size) {
+      typedef conjunction<doc_iterator::ptr> conjunction_t;
+
       // pure conjunction
-      return doc_iterator::make<conjunction>(
-        conjunction::doc_iterators_t(
+      return memory::make_shared<conjunction_t>(
+        conjunction_t::doc_iterators_t(
           std::make_move_iterator(itrs.begin()),
           std::make_move_iterator(itrs.end())
         ), ord
@@ -337,7 +342,7 @@ class min_match_query final : public boolean_query {
 
     // min match disjunction
     assert(min_match_count < size);
-    return doc_iterator::make<min_match_disjunction>(
+    return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
       std::move(itrs), min_match_count, ord
     );
   }

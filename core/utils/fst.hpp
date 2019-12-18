@@ -18,15 +18,10 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_H
 #define IRESEARCH_FST_H
-
-#include "shared.hpp"
-#include "utils/string.hpp"
-#include "utils/noncopyable.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4018)
@@ -61,6 +56,10 @@
 #endif
 
 #include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
+#include "utils/string.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 //////////////////////////////////////////////////////////////////////////////

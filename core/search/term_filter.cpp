@@ -18,16 +18,16 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "term_filter.hpp"
+
+#include <boost/functional/hash.hpp>
+
 #include "term_query.hpp"
 #include "cost.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
-
-#include <boost/functional/hash.hpp>
 
 NS_ROOT
 
@@ -38,13 +38,7 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_term)
 DEFINE_FACTORY_DEFAULT(by_term)
 
-by_term::by_term() 
-  : filter(by_term::type()) {
-}
-
-by_term::by_term(const type_id& type)
-  : filter( type ) {
-}
+by_term::by_term() noexcept : by_term(by_term::type()) { }
 
 bool by_term::equals(const filter& rhs) const noexcept {
   const by_term& trhs = static_cast<const by_term&>(rhs);

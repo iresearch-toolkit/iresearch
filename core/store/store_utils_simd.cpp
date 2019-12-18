@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -26,16 +25,14 @@
 
 #ifdef IRESEARCH_SSE2
 
-#include "store_utils_optimized.hpp"
+#include "store_utils_simd.hpp"
 
 #include "store_utils.hpp"
 #include "utils/std.hpp"
 
 extern "C" {
 #include <simdcomp/include/simdcomputil.h>
-
-void simdpackwithoutmask(const uint32_t*  in, __m128i*  out, const uint32_t bit);
-void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
+#include <simdcomp/include/simdbitpacking.h>
 }
 
 #ifdef IRESEARCH_SSE4_2
@@ -97,7 +94,7 @@ NS_ROOT
 NS_BEGIN(encode)
 NS_BEGIN(bitpack)
 
-void read_block_optimized(
+void read_block_simd(
     data_input& in,
     uint32_t size,
     uint32_t* RESTRICT encoded,
@@ -137,7 +134,7 @@ void read_block_optimized(
   }
 }
 
-uint32_t write_block_optimized(
+uint32_t write_block_simd(
     data_output& out,
     const uint32_t* RESTRICT decoded,
     uint32_t size,

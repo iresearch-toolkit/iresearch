@@ -24,13 +24,12 @@
 #ifndef IRESEARCH_SORT_H
 #define IRESEARCH_SORT_H
 
-#include "shared.hpp"
+#include <vector>
+
 #include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
-
-#include <vector>
 
 NS_ROOT
 
@@ -232,6 +231,8 @@ class IRESEARCH_API sort {
     /// @brief add the score from 'src' to the score in 'dst', i.e. +=
     ////////////////////////////////////////////////////////////////////////////////
     virtual void add(byte_type* dst, const byte_type* src) const = 0;
+
+    virtual void  merge(byte_type* dst, const byte_type** src_start, const size_t size, size_t offset) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -437,6 +438,15 @@ class IRESEARCH_API sort {
       const byte_type* src
     ) const override final {
       base_t::score_cast(dst) += base_t::score_cast(src);
+    }
+
+    virtual void  merge(byte_type* dst, const byte_type** src_start,
+                        const size_t size, size_t offset) const {
+      auto& casted_dst = base_t::score_cast(dst + offset);
+      casted_dst = ScoreType();
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += base_t::score_cast(src_start[i] + offset);
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -781,6 +791,23 @@ class IRESEARCH_API order final {
     void add(byte_type* lhs, const byte_type* rhs) const;
     void prepare_score(byte_type* score) const;
     void prepare_stats(byte_type* stats) const;
+
+    void merge(byte_type* score, const byte_type** rhs_start, size_t count) const {
+      switch (order_.size()) {
+        case 1:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          break;
+        case 2:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          order_[1].bucket->merge(score, &(*rhs_start), count, order_[1].score_offset);
+          break;
+        default:
+          for_each([score, &rhs_start, count](const prepared_sort& sort) {
+            assert(sort.bucket);
+            sort.bucket->merge(score, &(*rhs_start), count, sort.score_offset);
+          });
+      }
+    }
 
     template<typename T>
     constexpr const T& get(const byte_type* score, size_t i) const noexcept {
