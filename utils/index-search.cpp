@@ -294,6 +294,13 @@ irs::filter::prepared::ptr prepareFilter(
     terms = irs::string_ref(text, text.size());
     query.field("body").term(terms);
 
+    for (auto& b : const_cast<irs::bstring&>(query.term())) {
+      switch (b) {
+        case '*': b = '%'; break; // '*' => '%'
+        case '?': b = '_'; break; // '?' => '_'
+      }
+    }
+
     return query.prepare(reader, order);
    }
    case category_t::MinMatch2High2Med: {
