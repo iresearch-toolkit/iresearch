@@ -65,3 +65,7 @@ TEST(levenshtein_utils_test, test_distance) {
     ASSERT_EQ(0, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
   }
 }
+
+TEST(levenshtein_utils_test, build_parametric_dfa) {
+  irs::parametric_dfa(1, false);
+}

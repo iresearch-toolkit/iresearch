@@ -62,6 +62,51 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
   return current[lhs_size];
 }
 
+struct position {
+  explicit position(size_t offset = 0, byte_type distance = 0, bool transpose = false)
+    : offset(offset), distance(distance), transpose(transpose) {
+  }
+
+  size_t offset{};
+  byte_type distance{};
+  bool transpose{false};
+};
+
+class parametric_state {
+ public:
+  parametric_state() = default;
+  parametric_state(parametric_state&& rhs) = default;
+  parametric_state& operator=(parametric_state&&) = default;
+
+  template<typename... Args>
+  void emplace_back(Args&&... args) {
+    states_.emplace_back(std::forward<Args>(args)...);
+  }
+
+  std::vector<position>::const_iterator begin() const noexcept {
+    return states_.begin();
+  }
+
+  std::vector<position>::const_iterator end() const noexcept {
+    return states_.end();
+  }
+
+  std::vector<position>::iterator begin() noexcept {
+    return states_.begin();
+  }
+
+  std::vector<position>::iterator end() noexcept {
+    return states_.end();
+  }
+
+  void clear() noexcept { return states_.clear(); }
+
+
+  std::vector<position> states_;
+};
+
+void parametric_dfa(byte_type max_distance, bool with_transposition);
+
 NS_END
 
 #endif // IRESEARCH_LEVENSHTEIN_UTILS_H

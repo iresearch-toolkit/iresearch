@@ -150,6 +150,7 @@ set(IResearch_core_sources
   ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
+  ./utils/levenshtein_utils.cpp
   ./utils/memory.cpp
   ./utils/text_format.cpp
   ./utils/timer_utils.cpp
