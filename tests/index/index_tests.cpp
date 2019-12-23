@@ -9225,6 +9225,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     }
 
     // check for dangling old segment versions in writers cache 
+    // first create new segment
     // segment 5
     ASSERT_TRUE(insert(*writer,
         doc5->indexed.begin(), doc5->indexed.end(),
@@ -9236,20 +9237,18 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ));
     writer->commit();
 
+    // remove one doc from new and old segment to make conolidation do something
     auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
     auto query_doc5 = iresearch::iql::query_builder().build("name==E", std::locale::classic());
     writer->documents().remove(*query_doc3.filter);
     writer->documents().remove(*query_doc5.filter);
     writer->commit();
 
-
-    // segment 6 should be created
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     writer->commit();
 
-    // segments 
+    // check all old segments are deleted (no old version of segments is left in cache and blocking )
     ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
-
   }
 
   // consolidate with deletes + inserts
