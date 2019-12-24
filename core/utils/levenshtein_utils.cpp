@@ -28,19 +28,180 @@
 #include <cmath>
 
 #include "shared.hpp"
+#include "automaton.hpp"
 #include "bit_utils.hpp"
+#include "bitset.hpp"
+#include "map_utils.hpp"
 #include "hash_utils.hpp"
+#include "utf8_utils.hpp"
 
 NS_LOCAL
 
 using namespace irs;
 
-struct parametric_dfa_args {
+struct parametric_description_args {
   irs::byte_type max_distance;
   bool with_transpositions;
 };
 
-void add_elementary_transitions(const parametric_dfa_args& args,
+struct position {
+  explicit position(
+      uint32_t offset = 0,
+      byte_type distance = 0,
+      bool transpose = false) noexcept
+    : offset(offset),
+      distance(distance),
+      transpose(transpose) {
+  }
+
+  bool operator<(const position& rhs) const noexcept {
+    if (offset == rhs.offset) {
+      if (distance == rhs.distance) {
+        return transpose < rhs.transpose;
+      }
+
+      return distance < rhs.distance;
+    }
+
+    return offset < rhs.offset;
+  }
+
+  bool operator==(const position& rhs) const noexcept {
+    return offset == rhs.offset &&
+        distance == rhs.distance &&
+        transpose == rhs.transpose;
+  }
+
+  uint32_t offset{};
+  byte_type distance{};
+  bool transpose{false};
+}; // position
+
+/// @returns true if position 'lhs' subsumes 'rhs'
+bool subsumes(const position& lhs, const position& rhs) noexcept {
+  const auto abs_delta_offset = std::abs(int(lhs.offset - rhs.offset));
+  const auto delta_distance = rhs.distance - lhs.distance;
+
+  return lhs.transpose | !rhs.transpose
+      ? abs_delta_offset <= delta_distance
+      : abs_delta_offset <  delta_distance;
+}
+
+class parametric_state {
+ public:
+  parametric_state() = default;
+  parametric_state(std::initializer_list<std::tuple<uint32_t, byte_type, bool>> positions) {
+    for (auto& pos : positions) {
+      emplace(std::get<0>(pos), std::get<1>(pos), std::get<2>(pos));
+    }
+  }
+  parametric_state(parametric_state&& rhs) = default;
+  parametric_state& operator=(parametric_state&&) = default;
+
+  bool emplace(uint32_t offset, byte_type distance, bool transpose) {
+    return emplace(position(offset, distance, transpose));
+  }
+
+  bool emplace(const position& new_pos) {
+    for (auto& pos : positions_) {
+      if (subsumes(pos, new_pos)) {
+        // nothing to do
+        return false;
+      }
+    }
+
+    for (size_t i = 0; i < positions_.size(); ) {
+      if (subsumes(new_pos, positions_[i])) {
+        std::swap(positions_[i], positions_.back());
+        positions_.pop_back(); // removed positions subsumed by new_pos
+      } else {
+        ++i;
+      }
+    }
+
+    positions_.emplace_back(new_pos);
+    return true;
+  }
+
+  std::vector<position>::const_iterator begin() const noexcept {
+    return positions_.begin();
+  }
+
+  std::vector<position>::const_iterator end() const noexcept {
+    return positions_.end();
+  }
+
+  std::vector<position>::iterator begin() noexcept {
+    return positions_.begin();
+  }
+
+  std::vector<position>::iterator end() noexcept {
+    return positions_.end();
+  }
+
+  bool empty() const noexcept { return positions_.empty(); }
+  void clear() noexcept { return positions_.clear(); }
+
+  bool operator==(const parametric_state& rhs) const noexcept {
+    return positions_ == rhs.positions_;
+  }
+  bool operator!=(const parametric_state& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
+ private:
+  std::vector<position> positions_;
+};
+
+class parametric_states {
+ public:
+  explicit parametric_states(size_t capacity = 0) {
+    if (capacity) {
+      states_.reserve(capacity);
+      states_by_id_.reserve(capacity);
+    }
+  }
+
+  size_t emplace(parametric_state&& state) {
+    const auto res = irs::map_utils::try_emplace(
+      states_, std::move(state), states_.size());
+
+    if (res.second) {
+      states_by_id_.emplace_back(&res.first->first);
+    }
+
+    assert(states_.size() == states_by_id_.size());
+
+    return res.first->second;
+  }
+
+  const parametric_state& at(size_t i) const noexcept {
+    assert(i < states_by_id_.size());
+    return *states_by_id_[i];
+  }
+
+  size_t size() const noexcept {
+    return states_.size();
+  }
+
+ private:
+  struct parametric_state_hash {
+    bool operator()(const parametric_state& state) const noexcept {
+      size_t seed = 0;
+      for (auto& pos: state) {
+        seed = irs::hash_combine(seed, pos.offset);
+        seed = irs::hash_combine(seed, pos.distance);
+        seed = irs::hash_combine(seed, pos.transpose);
+      }
+      return seed;
+    }
+  };
+
+  std::unordered_map<parametric_state, size_t, parametric_state_hash> states_;
+  std::vector<const parametric_state*> states_by_id_;
+}; // parametric_states
+
+void add_elementary_transitions(const parametric_description_args& args,
                                 const position& pos,
                                 uint64_t chi,
                                 parametric_state& state) {
@@ -73,7 +234,7 @@ void add_elementary_transitions(const parametric_dfa_args& args,
   }
 }
 
-void add_transition(const parametric_dfa_args& args,
+void add_transition(const parametric_description_args& args,
                     const parametric_state& from,
                     parametric_state& to,
                     uint64_t cv) {
@@ -83,6 +244,7 @@ void add_transition(const parametric_dfa_args& args,
     const auto chi = cv >> pos.offset;
     add_elementary_transitions(args, pos, chi, to);
   }
+
   std::sort(to.begin(), to.end());
 }
 
@@ -90,125 +252,124 @@ inline uint64_t get_chi_size(uint64_t max_distance) noexcept {
   return 2*max_distance + 1;
 }
 
-size_t hash_value(const position& pos) noexcept {
-  size_t seed = hash_combine(0, pos.offset);
-  seed = hash_combine(seed, pos.distance);
-  seed = hash_combine(seed, pos.transpose);
-  return seed;
+uint32_t normalize(parametric_state& state) noexcept {
+  const auto it = std::min_element(
+    state.begin(), state.end(),
+    [](const position& lhs, const position& rhs) noexcept {
+      return lhs.offset < rhs.offset;
+  });
+
+  const auto min_offset = (it == state.end() ? 0 : it->offset);
+
+  for (auto& pos : state) {
+    pos.offset -= min_offset;
+  }
+
+  if (!std::is_sorted(state.begin(), state.end())) {
+    std::sort(state.begin(), state.end());
+  }
+
+  return min_offset;
 }
 
-size_t hash_value(const parametric_state& state) noexcept {
-  size_t seed = 0;
-  for (auto& pos: state) {
-    seed = irs::hash_combine(seed, hash_value(pos));
+uint32_t distance(
+    const parametric_description_args& args,
+    const parametric_state& state,
+    uint32_t offset) {
+  uint32_t min_dist = args.max_distance + 1;
+
+  for (auto& pos : state) {
+    const uint32_t dist = pos.distance + uint32_t(std::abs(int(offset - pos.offset)));
+
+    if (dist < min_dist) {
+      min_dist = dist;
+    }
   }
-  return seed;
+
+  return min_dist;
 }
 
-/// @returns true if position 'lhs' subsumes 'rhs'
-bool subsumes(const position& lhs, const position& rhs) noexcept {
-  const auto abs_delta_offset = std::abs(ptrdiff_t(lhs.offset - rhs.offset));
-  const auto delta_distance = rhs.distance - lhs.distance;
+class alphabet {
+ public:
+  explicit alphabet(const bytes_ref& word) {
+    utf8_utils::to_utf8(word, std::back_inserter(chars_));
+    utf8_size_ = chars_.size();
 
-  return lhs.transpose | !rhs.transpose
-      ? abs_delta_offset <= delta_distance
-      : abs_delta_offset <  delta_distance;
-}
+    std::sort(chars_.begin(), chars_.end());
+    chars_.erase(std::unique(chars_.begin(), chars_.end()), chars_.end());
 
-NS_END
-
-NS_BEGIN(std)
-
-template<>
-struct hash<irs::position> {
-  size_t operator()(const irs::position& v) const noexcept {
-    return hash_value(v);
+    bits_.reset(chars_.size() * utf8_size_);
+    for (size_t i = 0, alphabet_size = chars_.size(); i < alphabet_size; ++i) {
+      const uint32_t cp = chars_[i];
+      auto begin = word.begin();
+      for (size_t j = 0; j < utf8_size_; ++j) {
+        bits_.reset(i*word.size() + j, cp == utf8_utils::next(begin));
+      }
+      IRS_ASSERT(begin == word.end());
+    }
   }
-};
 
-template<>
-struct hash<irs::parametric_state> {
-  size_t operator()(const irs::parametric_state& v) const noexcept {
-    return hash_value(v);
-  }
+ private:
+  std::vector<uint32_t> chars_;
+  irs::bitset bits_;
+  size_t utf8_size_{};
 };
 
 NS_END
 
 NS_ROOT
 
-bool parametric_state::emplace(const position& new_pos) {
-  for (auto& pos : positions_) {
-    if (subsumes(pos, new_pos)) {
-      // nothing to do
-      return false;
+parametric_description make_parametric_description(byte_type max_distance, bool with_transposition) {
+  // predict number of states for known cases
+  size_t num_states = 0;
+  switch (max_distance) {
+    case 1: num_states = 5;    break;
+    case 2: num_states = 30;   break;
+    case 3: num_states = 192;  break;
+    case 4: num_states = 1352; break;
+  }
+
+  const parametric_description_args args{ max_distance, with_transposition };
+  const uint64_t chi_size = get_chi_size(max_distance);
+  const uint64_t chi_max = UINT64_C(1) << chi_size;
+
+  parametric_states states(1 + num_states); // +1 for initial state
+  parametric_description::parametric_transitions_t transitions;
+  if (states.size()) {
+    transitions.reserve(states.size() * chi_max);
+  }
+
+  parametric_state to{{UINT32_C(0), UINT8_C(0), false}};
+  size_t from_id = states.emplace(std::move(to));
+  assert(to.empty());
+
+  for (; from_id != states.size(); ++from_id) {
+    for (uint64_t chi = 0; chi < chi_max; ++chi) {
+      add_transition(args, states.at(from_id), to, chi);
+
+      const auto min_offset = normalize(to);
+      const auto to_id = states.emplace(std::move(to));
+
+      transitions.emplace_back(to_id, min_offset);
     }
   }
 
-  for (size_t i = 0; i < positions_.size(); ) {
-    if (subsumes(new_pos, positions_[i])) {
-      std::swap(positions_[i], positions_.back());
-      positions_.pop_back(); // removed positions subsumed by new_pos
-    } else {
-      ++i;
+  std::vector<byte_type> distance(states.size() * chi_size);
+  for (size_t i = 0, size = states.size(); i < size; ++i) {
+    auto& state = states.at(i);
+    for (uint64_t offset = 0; offset < chi_size; ++offset) {
+      distance[i*size + offset] = byte_type(::distance(args, state, offset)); // FIXME cast
     }
   }
 
-  positions_.emplace_back(new_pos);
-  return true;
+  return { std::move(transitions), std::move(distance),
+           chi_size, chi_max, max_distance };
 }
 
-struct trans {
-  trans(size_t from, size_t to, size_t chi)
-    : from(from), to(to), chi(chi) {
-  }
-
-  bool operator<(const trans& rhs) const noexcept {
-    if (from == rhs.from) {
-      return to < to;
-    }
-    return from <rhs.from;
-  }
-
-  size_t from;
-  size_t to;
-  size_t chi;
-};
-
-void parametric_dfa(byte_type max_distance, bool with_transposition) {
-  const parametric_dfa_args args{ max_distance, with_transposition };
-  const size_t chi_size = get_chi_size(max_distance);
-
-  std::unordered_map<parametric_state, size_t> states;
-  std::vector<const parametric_state*> states_by_id;
-
-//  std::set<trans> transitions;
-  std::vector<trans> transitions;
-
-  {
-    parametric_state state;
-    state.emplace(0,0,false);
-    states.emplace(std::move(state), states.size());
-    states_by_id.emplace_back(&(states.begin()->first));
-  }
-
-  parametric_state to;
-
-  for (size_t from_id = 0; from_id != states.size(); ++from_id) {
-    for (uint64_t chi = 0, chi_max = UINT64_C(1) << chi_size; chi < chi_max; ++chi) {
-      add_transition(args, *states_by_id[from_id], to, chi);
-
-      auto it = states.find(to);
-      if (it == states.end()) {
-        it = states.emplace(std::move(to), states_by_id.size()).first;
-        states_by_id.emplace_back(&(it->first));
-      }
-
-      transitions.emplace_back(from_id, it->second, chi);
-    }
-  }
-
-  int i = 5;
+automaton make_levenshtein_automaton(
+    const parametric_description& description,
+    const bytes_ref& target) {
+  return {};
 }
 
 NS_END

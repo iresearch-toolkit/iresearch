@@ -67,5 +67,8 @@ TEST(levenshtein_utils_test, test_distance) {
 }
 
 TEST(levenshtein_utils_test, build_parametric_dfa) {
-  irs::parametric_dfa(1, false);
+  auto description = irs::make_parametric_description(1, false);
+
+  int i = 5;
+  int j = 5;
 }
