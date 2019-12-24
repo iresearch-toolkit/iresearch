@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_LEVENSHTEIN_UTILS_H
 #define IRESEARCH_LEVENSHTEIN_UTILS_H
 
-#include "string.hpp"
-
 #include <vector>
 #include <numeric>
+
+#include "string.hpp"
 
 NS_ROOT
 
@@ -63,8 +63,31 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
 }
 
 struct position {
-  explicit position(size_t offset = 0, byte_type distance = 0, bool transpose = false)
-    : offset(offset), distance(distance), transpose(transpose) {
+  explicit position(
+      size_t offset = 0,
+      byte_type distance = 0,
+      bool transpose = false) noexcept
+    : offset(offset),
+      distance(distance),
+      transpose(transpose) {
+  }
+
+  bool operator<(const position& rhs) const noexcept {
+    if (offset == rhs.offset) {
+      if (distance == rhs.distance) {
+        return transpose < rhs.transpose;
+      }
+
+      return distance < rhs.distance;
+    }
+
+    return offset < rhs.offset;
+  }
+
+  bool operator==(const position& rhs) const noexcept {
+    return offset == rhs.offset &&
+        distance == rhs.distance &&
+        transpose == rhs.transpose;
   }
 
   size_t offset{};
@@ -78,31 +101,38 @@ class parametric_state {
   parametric_state(parametric_state&& rhs) = default;
   parametric_state& operator=(parametric_state&&) = default;
 
-  template<typename... Args>
-  void emplace_back(Args&&... args) {
-    states_.emplace_back(std::forward<Args>(args)...);
+  bool emplace(size_t offset, byte_type distance, bool transpose) {
+    return emplace(position(offset, distance, transpose));
   }
+  bool emplace(const position& pos);
 
   std::vector<position>::const_iterator begin() const noexcept {
-    return states_.begin();
+    return positions_.begin();
   }
 
   std::vector<position>::const_iterator end() const noexcept {
-    return states_.end();
+    return positions_.end();
   }
 
   std::vector<position>::iterator begin() noexcept {
-    return states_.begin();
+    return positions_.begin();
   }
 
   std::vector<position>::iterator end() noexcept {
-    return states_.end();
+    return positions_.end();
   }
 
-  void clear() noexcept { return states_.clear(); }
+  void clear() noexcept { return positions_.clear(); }
 
+  bool operator==(const parametric_state& rhs) const noexcept {
+    return positions_ == rhs.positions_;
+  }
+  bool operator!=(const parametric_state& rhs) const noexcept {
+    return (*this != rhs);
+  }
 
-  std::vector<position> states_;
+ private:
+  std::vector<position> positions_;
 };
 
 void parametric_dfa(byte_type max_distance, bool with_transposition);
