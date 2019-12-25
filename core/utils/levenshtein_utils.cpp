@@ -77,26 +77,26 @@ struct position {
   bool transpose{false};
 }; // position
 
-/// @returns true if position 'lhs' subsumes 'rhs'
-bool subsumes(const position& lhs, const position& rhs) noexcept {
-  const auto abs_delta_offset = std::abs(int(lhs.offset - rhs.offset));
-  const auto delta_distance = rhs.distance - lhs.distance;
+FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
+  return lhs < rhs ? rhs - lhs : lhs - rhs;
+}
 
+/// @returns true if position 'lhs' subsumes 'rhs',
+///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
+FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
   return lhs.transpose | !rhs.transpose
-      ? abs_delta_offset <= delta_distance
-      : abs_delta_offset <  delta_distance;
+      ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
+      : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
 
 class parametric_state {
  public:
   parametric_state() = default;
-  parametric_state(std::initializer_list<std::tuple<uint32_t, byte_type, bool>> positions) {
-    for (auto& pos : positions) {
-      emplace(std::get<0>(pos), std::get<1>(pos), std::get<2>(pos));
-    }
-  }
   parametric_state(parametric_state&& rhs) = default;
-  parametric_state& operator=(parametric_state&&) = default;
+
+  ~parametric_state() {
+    std::cerr << "~parametric_state " << &positions_ << std::endl;
+  }
 
   bool emplace(uint32_t offset, byte_type distance, bool transpose) {
     return emplace(position(offset, distance, transpose));
@@ -123,19 +123,19 @@ class parametric_state {
     return true;
   }
 
-  std::vector<position>::const_iterator begin() const noexcept {
-    return positions_.begin();
-  }
-
-  std::vector<position>::const_iterator end() const noexcept {
-    return positions_.end();
-  }
-
   std::vector<position>::iterator begin() noexcept {
     return positions_.begin();
   }
 
   std::vector<position>::iterator end() noexcept {
+    return positions_.end();
+  }
+
+  std::vector<position>::const_iterator begin() const noexcept {
+    return positions_.begin();
+  }
+
+  std::vector<position>::const_iterator end() const noexcept {
     return positions_.end();
   }
 
@@ -150,6 +150,10 @@ class parametric_state {
   }
 
  private:
+  parametric_state(const parametric_state& rhs) = delete;
+  parametric_state& operator=(parametric_state&&) = delete;
+  parametric_state& operator=(const parametric_state&) = delete;
+
   std::vector<position> positions_;
 };
 
@@ -165,6 +169,7 @@ class parametric_states {
   size_t emplace(parametric_state&& state) {
     const auto res = irs::map_utils::try_emplace(
       states_, std::move(state), states_.size());
+//    const auto res = states_.emplace(std::move(state), states_.size());
 
     if (res.second) {
       states_by_id_.emplace_back(&res.first->first);
@@ -279,7 +284,7 @@ uint32_t distance(
   uint32_t min_dist = args.max_distance + 1;
 
   for (auto& pos : state) {
-    const uint32_t dist = pos.distance + uint32_t(std::abs(int(offset - pos.offset)));
+    const uint32_t dist = pos.distance + abs_diff(offset, pos.offset);
 
     if (dist < min_dist) {
       min_dist = dist;
@@ -315,6 +320,37 @@ class alphabet {
   size_t utf8_size_{};
 };
 
+std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word) {
+  std::basic_string<uint32_t> chars;
+  utf8_utils::to_utf8(word, std::back_inserter(chars));
+
+  const auto utf8_size = chars.size();
+
+  std::sort(chars.begin(), chars.end());
+  chars.erase(std::unique(chars.begin(), chars.end()), chars.end());
+
+  std::vector<std::pair<uint32_t, irs::bitset>> alphabet(chars.size());
+  auto begin = alphabet.begin();
+
+  for (uint32_t c : chars) {
+    // set char
+    begin->first = c;
+
+    // evaluate characteristic vector
+    auto& bits = begin->second;
+    bits.reset(utf8_size);
+    auto utf8_begin = word.begin();
+    for (size_t i = 0; i < utf8_size; ++i) {
+      bits.reset(i, c == utf8_utils::next(utf8_begin));
+    }
+    IRS_ASSERT(utf8_begin == word.end());
+
+    ++begin;
+  }
+
+  return alphabet;
+}
+
 NS_END
 
 NS_ROOT
@@ -339,7 +375,10 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
     transitions.reserve(states.size() * chi_max);
   }
 
-  parametric_state to{{UINT32_C(0), UINT8_C(0), false}};
+  // initial state
+  parametric_state to;
+  to.emplace(UINT32_C(0), UINT8_C(0), false);
+
   size_t from_id = states.emplace(std::move(to));
   assert(to.empty());
 
@@ -369,6 +408,8 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
     const bytes_ref& target) {
+  const auto alphabet = make_alphabet(target);
+
   return {};
 }
 

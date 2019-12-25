@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 
+#include "utils/automaton.hpp"
 #include "utils/levenshtein_utils.hpp"
 
 TEST(levenshtein_utils_test, test_distance) {
@@ -68,6 +69,8 @@ TEST(levenshtein_utils_test, test_distance) {
 
 TEST(levenshtein_utils_test, build_parametric_dfa) {
   auto description = irs::make_parametric_description(1, false);
+
+  auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("huypuy")));
 
   int i = 5;
   int j = 5;
