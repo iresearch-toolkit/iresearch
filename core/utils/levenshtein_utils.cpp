@@ -34,6 +34,7 @@
 #include "map_utils.hpp"
 #include "hash_utils.hpp"
 #include "utf8_utils.hpp"
+#include "draw-impl.h"
 
 NS_LOCAL
 
@@ -83,7 +84,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 
 /// @returns true if position 'lhs' subsumes 'rhs',
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
-FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
+/*FORCE_INLINE*/ bool subsumes(const position& lhs, const position& rhs) noexcept {
   return lhs.transpose | !rhs.transpose
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
@@ -93,10 +94,6 @@ class parametric_state {
  public:
   parametric_state() = default;
   parametric_state(parametric_state&& rhs) = default;
-
-  ~parametric_state() {
-    std::cerr << "~parametric_state " << &positions_ << std::endl;
-  }
 
   bool emplace(uint32_t offset, byte_type distance, bool transpose) {
     return emplace(position(offset, distance, transpose));
@@ -110,12 +107,12 @@ class parametric_state {
       }
     }
 
-    for (size_t i = 0; i < positions_.size(); ) {
-      if (subsumes(new_pos, positions_[i])) {
-        std::swap(positions_[i], positions_.back());
+    for (auto begin = positions_.begin(); begin != positions_.end(); ) {
+      if (subsumes(new_pos, *begin)) {
+        std::swap(*begin, positions_.back());
         positions_.pop_back(); // removed positions subsumed by new_pos
       } else {
-        ++i;
+        ++begin;
       }
     }
 
@@ -169,7 +166,6 @@ class parametric_states {
   size_t emplace(parametric_state&& state) {
     const auto res = irs::map_utils::try_emplace(
       states_, std::move(state), states_.size());
-//    const auto res = states_.emplace(std::move(state), states_.size());
 
     if (res.second) {
       states_by_id_.emplace_back(&res.first->first);
@@ -180,7 +176,7 @@ class parametric_states {
     return res.first->second;
   }
 
-  const parametric_state& at(size_t i) const noexcept {
+  const parametric_state& operator[](size_t i) const noexcept {
     assert(i < states_by_id_.size());
     return *states_by_id_[i];
   }
@@ -229,7 +225,7 @@ void add_elementary_transitions(const parametric_description_args& args,
     // Situation 2, [i+j,e+j-1] - elements X[i+1:i+j-1] are deleted
     for (size_t j = 1, max = args.max_distance + 1 - pos.distance; j < max; ++j) {
       if (irs::check_bit(chi, j)) {
-        state.emplace(pos.offset + 1 + j, pos.distance + j, false); // FIXME why pos+1+j, but not pos+j???
+        state.emplace(pos.offset + 1 + j, pos.distance + j, false);
       }
     }
 
@@ -294,37 +290,10 @@ uint32_t distance(
   return min_dist;
 }
 
-class alphabet {
- public:
-  explicit alphabet(const bytes_ref& word) {
-    utf8_utils::to_utf8(word, std::back_inserter(chars_));
-    utf8_size_ = chars_.size();
-
-    std::sort(chars_.begin(), chars_.end());
-    chars_.erase(std::unique(chars_.begin(), chars_.end()), chars_.end());
-
-    bits_.reset(chars_.size() * utf8_size_);
-    for (size_t i = 0, alphabet_size = chars_.size(); i < alphabet_size; ++i) {
-      const uint32_t cp = chars_[i];
-      auto begin = word.begin();
-      for (size_t j = 0; j < utf8_size_; ++j) {
-        bits_.reset(i*word.size() + j, cp == utf8_utils::next(begin));
-      }
-      IRS_ASSERT(begin == word.end());
-    }
-  }
-
- private:
-  std::vector<uint32_t> chars_;
-  irs::bitset bits_;
-  size_t utf8_size_{};
-};
-
-std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word) {
+std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word, size_t& utf8_size) {
   std::basic_string<uint32_t> chars;
   utf8_utils::to_utf8(word, std::back_inserter(chars));
-
-  const auto utf8_size = chars.size();
+  utf8_size = chars.size();
 
   std::sort(chars.begin(), chars.end());
   chars.erase(std::unique(chars.begin(), chars.end()), chars.end());
@@ -369,22 +338,25 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
   const uint64_t chi_size = get_chi_size(max_distance);
   const uint64_t chi_max = UINT64_C(1) << chi_size;
 
-  parametric_states states(1 + num_states); // +1 for initial state
+  parametric_states states(2 + num_states); // +1 for initial state, +1 for empty state
   parametric_description::parametric_transitions_t transitions;
   if (states.size()) {
     transitions.reserve(states.size() * chi_max);
   }
 
-  // initial state
+  // empty state
   parametric_state to;
-  to.emplace(UINT32_C(0), UINT8_C(0), false);
-
   size_t from_id = states.emplace(std::move(to));
+  assert(to.empty());
+
+  // initial state
+  to.emplace(UINT32_C(0), UINT8_C(0), false);
+  states.emplace(std::move(to));
   assert(to.empty());
 
   for (; from_id != states.size(); ++from_id) {
     for (uint64_t chi = 0; chi < chi_max; ++chi) {
-      add_transition(args, states.at(from_id), to, chi);
+      add_transition(args, states[from_id], to, chi);
 
       const auto min_offset = normalize(to);
       const auto to_id = states.emplace(std::move(to));
@@ -395,9 +367,11 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
 
   std::vector<byte_type> distance(states.size() * chi_size);
   for (size_t i = 0, size = states.size(); i < size; ++i) {
-    auto& state = states.at(i);
+    auto& state = states[i];
     for (uint64_t offset = 0; offset < chi_size; ++offset) {
-      distance[i*size + offset] = byte_type(::distance(args, state, offset)); // FIXME cast
+      const auto idx = i*chi_size + offset;
+      assert(idx < distance.size());
+      distance[idx] = byte_type(::distance(args, state, offset)); // FIXME cast
     }
   }
 
@@ -405,12 +379,86 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
            chi_size, chi_max, max_distance };
 }
 
+uint64_t get_chi(const bitset& bs, size_t offset, size_t size) {
+  // FIXME optimize with mask (2n+1)
+  uint64_t value = 0;
+  size_t i = 0;
+  for (const size_t end = std::min(bs.size(), offset + size); offset < end; ++offset, ++i) {
+    value |= (uint64_t(bs.test(offset)) << i);
+  }
+  return value;
+}
+
+void print(const automaton& a) {
+  fst::SymbolTable st;
+  for (int i = 97; i < 97 + 28; ++i) {
+  st.AddSymbol(std::string(1, char(i)), i);
+  }
+
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  fst::drawFst(a, f, "", &st, &st);
+}
+
+const parametric_transition& transition(const parametric_description& description,
+                                        const bitset& cv,
+                                        const size_t offset,
+                                        const size_t state) noexcept {
+  const auto chi = get_chi(cv, offset, description.chi_size);
+  return description.transitions[state*description.chi_max + chi];
+}
+
 automaton make_levenshtein_automaton(
     const parametric_description& description,
     const bytes_ref& target) {
-  const auto alphabet = make_alphabet(target);
+  size_t utf8_size;
+  const auto alphabet = make_alphabet(target, utf8_size);
+  const auto num_states = 1 + description.transitions.size() / description.chi_max; // FIXME +1???
 
-  return {};
+  struct state_info {
+    state_info(size_t offset, size_t state, automaton::StateId from)
+      : offset(offset), state(state), from(from) {
+    }
+
+    size_t offset;
+    size_t state;
+    automaton::StateId from;
+  };
+
+  std::vector<automaton::StateId> automaton_states(num_states*(utf8_size+1), -1);
+
+  std::deque<state_info> queue;
+  queue.emplace_back(0, 1, 0);
+
+  automaton a;
+  a.ReserveStates(num_states * utf8_size);
+  a.SetStart(a.AddState()); // set initial state
+
+  while (!queue.empty()) {
+    auto& state = queue.front();
+
+    for (auto& entry : alphabet) {
+      auto& transition = ::transition(description, entry.second, state.offset, state.state);
+
+      auto offset = !transition.to ? 0 : transition.offset + state.offset;
+
+      auto& to_id = automaton_states[transition.to*(utf8_size+1) + offset];
+      if (-1 == to_id) {
+        to_id = a.AddState();
+
+        if (transition.to) {
+          queue.emplace_back(offset, transition.to, to_id);
+        }
+      }
+
+      a.EmplaceArc(state.from, entry.first, to_id);
+      print(a);
+    }
+
+    queue.pop_front();
+  }
+
+  return a;
 }
 
 NS_END
