@@ -40,11 +40,24 @@ NS_LOCAL
 
 using namespace irs;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                    Helpers for parametric description computation
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct parametric_description_args
+/// @brief input arguments for building parametric description
+////////////////////////////////////////////////////////////////////////////////
 struct parametric_description_args {
-  irs::byte_type max_distance;
-  bool with_transpositions;
+  irs::byte_type max_distance; // max allowed distance
+  bool with_transpositions;    // count transpositions
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct position
+/// @brief describes parametric transition related to a certain
+///        parametric state
+////////////////////////////////////////////////////////////////////////////////
 struct position {
   explicit position(
       uint32_t offset = 0,
@@ -73,23 +86,30 @@ struct position {
         transpose == rhs.transpose;
   }
 
-  uint32_t offset{};
-  byte_type distance{};
-  bool transpose{false};
-}; // position
+  uint32_t offset{};     // parametric position offset
+  byte_type distance{};  // parametric position distance
+  bool transpose{false}; // position is introduced by transposition
+};
 
 FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
   return lhs < rhs ? rhs - lhs : lhs - rhs;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @returns true if position 'lhs' subsumes 'rhs',
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
-/*FORCE_INLINE*/ bool subsumes(const position& lhs, const position& rhs) noexcept {
+////////////////////////////////////////////////////////////////////////////////
+FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
   return lhs.transpose | !rhs.transpose
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class parametric_state
+/// @brief describes parametric state of levenshtein automaton, basically a
+///        set of positions.
+////////////////////////////////////////////////////////////////////////////////
 class parametric_state {
  public:
   parametric_state() = default;
@@ -152,8 +172,12 @@ class parametric_state {
   parametric_state& operator=(const parametric_state&) = delete;
 
   std::vector<position> positions_;
-};
+}; // parametric_state
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class parametric_states
+/// @brief container ensures uniquiness of 'parametric_state's
+////////////////////////////////////////////////////////////////////////////////
 class parametric_states {
  public:
   explicit parametric_states(size_t capacity = 0) {
@@ -290,7 +314,12 @@ uint32_t distance(
   return min_dist;
 }
 
-std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word, size_t& utf8_size) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                     Helpers for DFA instantiation
+// -----------------------------------------------------------------------------
+
+std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word,
+                                                            size_t& utf8_size) {
   std::basic_string<uint32_t> chars;
   utf8_utils::to_utf8(word, std::back_inserter(chars));
   utf8_size = chars.size();
@@ -320,11 +349,42 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
   return alphabet;
 }
 
+uint64_t get_chi(const bitset& bs, size_t offset, size_t size) {
+  // FIXME optimize with mask (2n+1)
+  uint64_t value = 0;
+  size_t i = 0;
+  for (const size_t end = std::min(bs.size(), offset + size); offset < end; ++offset, ++i) {
+    value |= (uint64_t(bs.test(offset)) << i);
+  }
+  return value;
+}
+
+const parametric_transition& transition(const parametric_description& description,
+                                        const bitset& cv,
+                                        const size_t offset,
+                                        const size_t state) noexcept {
+  const auto chi = get_chi(cv, offset, description.chi_size);
+  return description.transitions[state*description.chi_max + chi];
+}
+
+void print(const automaton& a) {
+  fst::SymbolTable st;
+  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
+  for (int i = 97; i < 97 + 28; ++i) {
+    st.AddSymbol(std::string(1, char(i)), i);
+  }
+
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  fst::drawFst(a, f, "", &st, &st);
+}
+
 NS_END
 
 NS_ROOT
 
-parametric_description make_parametric_description(byte_type max_distance, bool with_transposition) {
+parametric_description make_parametric_description(byte_type max_distance,
+                                                   bool with_transposition) {
   // predict number of states for known cases
   size_t num_states = 0;
   switch (max_distance) {
@@ -375,89 +435,99 @@ parametric_description make_parametric_description(byte_type max_distance, bool 
     }
   }
 
-  return { std::move(transitions), std::move(distance),
-           chi_size, chi_max, max_distance };
-}
-
-uint64_t get_chi(const bitset& bs, size_t offset, size_t size) {
-  // FIXME optimize with mask (2n+1)
-  uint64_t value = 0;
-  size_t i = 0;
-  for (const size_t end = std::min(bs.size(), offset + size); offset < end; ++offset, ++i) {
-    value |= (uint64_t(bs.test(offset)) << i);
-  }
-  return value;
-}
-
-void print(const automaton& a) {
-  fst::SymbolTable st;
-  for (int i = 97; i < 97 + 28; ++i) {
-  st.AddSymbol(std::string(1, char(i)), i);
-  }
-
-  std::fstream f;
-  f.open("111", std::fstream::binary | std::fstream::out);
-  fst::drawFst(a, f, "", &st, &st);
-}
-
-const parametric_transition& transition(const parametric_description& description,
-                                        const bitset& cv,
-                                        const size_t offset,
-                                        const size_t state) noexcept {
-  const auto chi = get_chi(cv, offset, description.chi_size);
-  return description.transitions[state*description.chi_max + chi];
+  return {
+    std::move(transitions),
+    std::move(distance),
+    states.size(),
+    chi_size,
+    chi_max,
+    max_distance
+  };
 }
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
     const bytes_ref& target) {
-  size_t utf8_size;
-  const auto alphabet = make_alphabet(target, utf8_size);
-  const auto num_states = 1 + description.transitions.size() / description.chi_max; // FIXME +1???
-
-  struct state_info {
-    state_info(size_t offset, size_t state, automaton::StateId from)
-      : offset(offset), state(state), from(from) {
+  struct state {
+    state(size_t offset, size_t state, automaton::StateId from)
+      : offset(offset), id(state), from(from) {
     }
 
     size_t offset;
-    size_t state;
+    size_t id;
     automaton::StateId from;
   };
 
-  std::vector<automaton::StateId> automaton_states(num_states*(utf8_size+1), -1);
+  size_t utf8_size;
+  const auto alphabet = make_alphabet(target, utf8_size);
+  const auto num_offsets = 1 + utf8_size;
 
-  std::deque<state_info> queue;
+  // transitions table of resulting automaton
+  std::vector<automaton::StateId> transitions(description.num_states*num_offsets, fst::kNoStateId);
+
+  // state queue
+  std::deque<state> queue;
   queue.emplace_back(0, 1, 0);
 
   automaton a;
-  a.ReserveStates(num_states * utf8_size);
+  a.ReserveStates(transitions.size()); // FIXME???
   a.SetStart(a.AddState()); // set initial state
 
   while (!queue.empty()) {
     auto& state = queue.front();
+    automaton::StateId defaultState = fst::kNoStateId;
 
     for (auto& entry : alphabet) {
-      auto& transition = ::transition(description, entry.second, state.offset, state.state);
+      const auto chi = get_chi(entry.second, state.offset, description.chi_size);
+      auto& transition = description.transitions[state.id*description.chi_max + chi];
 
-      auto offset = !transition.to ? 0 : transition.offset + state.offset;
-
-      auto& to_id = automaton_states[transition.to*(utf8_size+1) + offset];
-      if (-1 == to_id) {
-        to_id = a.AddState();
-
-        if (transition.to) {
-          queue.emplace_back(offset, transition.to, to_id);
-        }
+      if (!transition.to) {
+        continue;
       }
 
-      a.EmplaceArc(state.from, entry.first, to_id);
-      print(a);
+      auto offset = transition.offset + state.offset;
+
+      auto& to_id = transitions[transition.to*num_offsets + offset];
+
+      if (fst::kNoStateId == to_id) {
+        to_id = a.AddState();
+
+        int dist;
+        size_t pos = utf8_size - offset;
+        if (pos >= description.chi_size) {
+          dist = description.max_distance + 1;
+        } else {
+          dist = description.distance[transition.to*description.chi_size + pos];
+        }
+
+        if (dist <= description.max_distance) {
+          a.SetFinal(to_id);
+        }
+
+        queue.emplace_back(offset, transition.to, to_id);
+      }
+
+      if (chi) {
+        a.EmplaceArc(state.from, entry.first, to_id);
+      } else if (fst::kNoStateId == defaultState) {
+        defaultState = to_id;
+      }
+    }
+
+    if (fst::kNoStateId != defaultState) {
+      a.EmplaceArc(state.from, fst::fsa::kRho, defaultState);
     }
 
     queue.pop_front();
   }
 
+  // ensure resulting automaton is sorted and deterministic
+  constexpr auto EXPECTED_PROPERTIES =
+    fst::kIDeterministic | fst::kODeterministic |
+    fst::kILabelSorted | fst::kOLabelSorted;
+  assert(a.Properties(EXPECTED_PROPERTIES, true));
+
+  print(a);
   return a;
 }
 
