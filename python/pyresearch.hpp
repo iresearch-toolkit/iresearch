@@ -104,7 +104,7 @@ class PYRESEARCH_API  term_iterator {
   friend class field_reader;
 
   term_iterator(irs::seek_term_iterator::ptr&& it) SWIG_noexcept 
-    : it_(std::move(it)) {
+    :it_(irs::memory::make_shared(std::move(it))) {
   }
 
   std::shared_ptr<irs::seek_term_iterator> it_;
