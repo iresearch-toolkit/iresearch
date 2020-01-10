@@ -55,14 +55,9 @@ void assert_index(const irs::index_reader& reader,
         if (edit_distance > description.max_distance) {
           continue;
         }
+
         ASSERT_TRUE(actual_terms->next());
         auto& actual_term = actual_terms->value();
-
-//        if (expected_term != actual_term) {
-//          std::cerr << fields->value().meta().name << " " << irs::ref_cast<char>(expected_term) << " " << irs::ref_cast<char>(actual_term) << std::endl;
-//          break;
-//        }
-
         ASSERT_EQ(expected_term, actual_term);
       }
     }
@@ -123,9 +118,11 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton_distance_1) {
   };
 
   const irs::string_ref TARGETS[] {
-    "bloom", "burden", "del",
+//    "del"
+    "atlas", "bloom", "burden", "del",
     "survenius", "surbenus", ""
   };
+
   // add data
   {
     tests::templates::europarl_doc_template doc;

@@ -325,18 +325,24 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
   utf8_size = chars.size();
 
   std::sort(chars.begin(), chars.end());
-  chars.erase(std::unique(chars.begin(), chars.end()), chars.end());
+  auto cbegin = chars.begin();
+  auto cend = std::unique(cbegin, chars.end());
 
-  std::vector<std::pair<uint32_t, irs::bitset>> alphabet(chars.size());
+  std::vector<std::pair<uint32_t, irs::bitset>> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
   auto begin = alphabet.begin();
 
-  for (uint32_t c : chars) {
+  // ensure we have enough capacity
+  const auto capacity = utf8_size + bits_required<bitset::word_t>();
+
+  for (; cbegin != cend; ++cbegin) {
+    const auto c = *cbegin;
+
     // set char
     begin->first = c;
 
     // evaluate characteristic vector
     auto& bits = begin->second;
-    bits.reset(utf8_size);
+    bits.reset(capacity);
     auto utf8_begin = word.begin();
     for (size_t i = 0; i < utf8_size; ++i) {
       bits.reset(i, c == utf8_utils::next(utf8_begin));
@@ -346,25 +352,23 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
     ++begin;
   }
 
+  begin->first = fst::fsa::kRho;
+  begin->second.reset(capacity);
+
   return alphabet;
 }
 
-uint64_t get_chi(const bitset& bs, size_t offset, size_t size) {
-  // FIXME optimize with mask (2n+1)
-  uint64_t value = 0;
-  size_t i = 0;
-  for (const size_t end = std::min(bs.size(), offset + size); offset < end; ++offset, ++i) {
-    value |= (uint64_t(bs.test(offset)) << i);
-  }
-  return value;
-}
+uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
+  auto word = bitset::word(offset);
 
-const parametric_transition& transition(const parametric_description& description,
-                                        const bitset& cv,
-                                        const size_t offset,
-                                        const size_t state) noexcept {
-  const auto chi = get_chi(cv, offset, description.chi_size);
-  return description.transitions[state*description.chi_max + chi];
+  auto align = offset - bitset::bit_offset(word);
+  if (!align) {
+    return bs[word] & mask;
+  }
+
+  const auto lhs = bs[word] >> align;
+  const auto rhs = bs[word+1] << (bits_required<bitset::word_t>() - align);
+  return (lhs | rhs) & mask;
 }
 
 void print(const automaton& a) {
@@ -461,6 +465,7 @@ automaton make_levenshtein_automaton(
   size_t utf8_size;
   const auto alphabet = make_alphabet(target, utf8_size);
   const auto num_offsets = 1 + utf8_size;
+  const uint64_t mask = (UINT64_C(1) << description.chi_size) - 1;
 
   // transitions table of resulting automaton
   std::vector<automaton::StateId> transitions(description.num_states*num_offsets, fst::kNoStateId);
@@ -472,14 +477,14 @@ automaton make_levenshtein_automaton(
 
   // state queue
   std::deque<state> queue;
-  queue.emplace_back(0, 1, a.Start()); // 0 offset, 1st valid parametric state, initial automaton state
+  queue.emplace_back(0, 1, a.Start()); // 0 offset, 1st parametric state, initial automaton state
 
   while (!queue.empty()) {
     auto& state = queue.front();
     automaton::StateId defaultState = fst::kNoStateId;
 
     for (auto& entry : alphabet) {
-      const auto chi = get_chi(entry.second, state.offset, description.chi_size);
+      const auto chi = ::chi(entry.second, state.offset, mask);
       auto& transition = description.transitions[state.id*description.chi_max + chi];
 
       auto offset = transition.to ? transition.offset + state.offset : 0;
