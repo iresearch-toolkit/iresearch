@@ -31,6 +31,46 @@
 
 using namespace irs::literals;
 
+namespace {
+
+void assert_index(const irs::index_reader& reader,
+                  const irs::parametric_description& description,
+                  const irs::bytes_ref& target) {
+  auto acceptor = irs::make_levenshtein_automaton(description, target);
+  irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+  for (auto& segment : reader) {
+    auto fields = segment.fields();
+    ASSERT_NE(nullptr, fields);
+
+    while (fields->next()) {
+      auto expected_terms = fields->value().iterator();
+      ASSERT_NE(nullptr, expected_terms);
+      auto actual_terms = fields->value().iterator(matcher);
+      ASSERT_NE(nullptr, actual_terms);
+
+      while (expected_terms->next()) {
+        auto& expected_term = expected_terms->value();
+        auto edit_distance = irs::edit_distance(expected_term, target);
+        if (edit_distance > description.max_distance) {
+          continue;
+        }
+        ASSERT_TRUE(actual_terms->next());
+        auto& actual_term = actual_terms->value();
+
+//        if (expected_term != actual_term) {
+//          std::cerr << fields->value().meta().name << " " << irs::ref_cast<char>(expected_term) << " " << irs::ref_cast<char>(actual_term) << std::endl;
+//          break;
+//        }
+
+        ASSERT_EQ(expected_term, actual_term);
+      }
+    }
+  }
+}
+
+}
+
 TEST(levenshtein_utils_test, test_distance) {
   {
     const irs::string_ref lhs = "aec";
@@ -76,10 +116,16 @@ TEST(levenshtein_utils_test, test_distance) {
 class levenshtein_automaton_index_test_case : public tests::index_test_base { };
 
 TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton_distance_1) {
-  // create description for distance 1
-  const size_t max_distance = 2;
-  auto description = irs::make_parametric_description(max_distance, false);
+  const irs::parametric_description DESCRIPTIONS[] {
+    irs::make_parametric_description(1, false),
+    irs::make_parametric_description(2, false),
+    irs::make_parametric_description(3, false)
+  };
 
+  const irs::string_ref TARGETS[] {
+    "bloom", "burden", "del",
+    "survenius", "surbenus", ""
+  };
   // add data
   {
     tests::templates::europarl_doc_template doc;
@@ -89,33 +135,10 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton_distance_1) {
 
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);
-  ASSERT_NE(reader->begin(), reader->end());
 
-  auto& segment = *reader->begin();
-  auto fields = segment.fields();
-  ASSERT_NE(nullptr, fields);
-
-  auto target = irs::ref_cast<irs::byte_type>("bloom"_sr);
-  auto acceptor = irs::make_levenshtein_automaton(description, target);
-  irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-  while (fields->next()) {
-    auto expected_terms = fields->value().iterator();
-    ASSERT_NE(nullptr, expected_terms);
-    auto actual_terms = fields->value().iterator(matcher);
-    ASSERT_NE(nullptr, actual_terms);
-
-    while (expected_terms->next()) {
-      auto& expected_term = expected_terms->value();
-      auto edit_distance = irs::edit_distance(expected_term, target);
-      if (edit_distance > max_distance) {
-        continue;
-      }
-      ASSERT_TRUE(actual_terms->next());
-      auto& actual_term = actual_terms->value();
-
-      ASSERT_EQ(expected_term, actual_term);
-//      std::cerr << fields->value().meta().name << " " << irs::ref_cast<char>(expected_term) << " " << irs::ref_cast<char>(actual_term) << std::endl;
+  for (auto& description : DESCRIPTIONS) {
+    for (auto& target : TARGETS) {
+      ::assert_index(reader, description, irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

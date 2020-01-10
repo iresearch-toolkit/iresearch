@@ -488,7 +488,7 @@ automaton make_levenshtein_automaton(
       if (fst::kNoStateId == to_id) {
         to_id = a.AddState();
 
-        int dist;
+        byte_type dist;
         size_t pos = utf8_size - offset;
         if (pos >= description.chi_size) {
           dist = description.max_distance + 1;
