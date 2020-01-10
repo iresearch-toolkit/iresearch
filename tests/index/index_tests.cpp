@@ -2673,10 +2673,9 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
       auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
 
-      // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-      MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
-      MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
-      MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+      while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+     
 
       // FIXME TODO add once segment_context will not block flush_all()
       //ASSERT_TRUE(stop);
@@ -2799,10 +2798,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
@@ -2841,10 +2838,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -2889,10 +2884,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // override spurious wakeup
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -2967,10 +2960,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
-    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -3025,10 +3016,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
-    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // override spurious wakeup
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -3086,10 +3075,8 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
-    MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
-    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -9187,55 +9174,81 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
-
-    auto reader = iresearch::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader);
-    ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(2, reader.live_docs_count());
-
-    // assume 0 is merged segment
     {
-      auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
-      ASSERT_EQ(4, segment.docs_count()); // total count of documents
-      ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
-      auto terms = segment.field("same");
-      ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
-      ASSERT_TRUE(termItr->next());
-
-      // with deleted docs
+      auto reader = iresearch::directory_reader::open(dir(), codec());
+      ASSERT_TRUE(reader);
+      ASSERT_EQ(1, reader.size());
+      ASSERT_EQ(2, reader.live_docs_count());
+      // assume 0 is merged segment
       {
-        auto docsItr = termItr->postings(iresearch::flags());
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_FALSE(docsItr->next());
-      }
+        auto& segment = reader[0];
+        const auto* column = segment.column_reader("name");
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+        ASSERT_EQ(4, segment.docs_count()); // total count of documents
+        ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
+        auto terms = segment.field("same");
+        ASSERT_NE(nullptr, terms);
+        auto termItr = terms->iterator();
+        ASSERT_TRUE(termItr->next());
 
-      // without deleted docs
-      {
-        auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_TRUE(values(docsItr->value(), actual_value));
-        ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-        ASSERT_FALSE(docsItr->next());
+        // with deleted docs
+        {
+          auto docsItr = termItr->postings(iresearch::flags());
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_FALSE(docsItr->next());
+        }
+
+        // without deleted docs
+        {
+          auto docsItr = segment.mask(termItr->postings(iresearch::flags()));
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+          ASSERT_TRUE(docsItr->next());
+          ASSERT_TRUE(values(docsItr->value(), actual_value));
+          ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
+          ASSERT_FALSE(docsItr->next());
+        }
       }
     }
+
+    // check for dangling old segment versions in writers cache 
+    // first create new segment
+    // segment 5
+    ASSERT_TRUE(insert(*writer,
+        doc5->indexed.begin(), doc5->indexed.end(),
+        doc5->stored.begin(), doc5->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+        doc6->indexed.begin(), doc6->indexed.end(),
+        doc6->stored.begin(), doc6->stored.end()
+    ));
+    writer->commit();
+
+    // remove one doc from new and old segment to make conolidation do something
+    auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+    auto query_doc5 = iresearch::iql::query_builder().build("name==E", std::locale::classic());
+    writer->documents().remove(*query_doc3.filter);
+    writer->documents().remove(*query_doc5.filter);
+    writer->commit();
+
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    writer->commit();
+
+    // check all old segments are deleted (no old version of segments is left in cache and blocking )
+    ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
   }
 
   // consolidate with deletes + inserts
@@ -12958,10 +12971,8 @@ TEST_P(index_test_case, segment_options) {
 
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
-    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
+    while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
@@ -13201,6 +13212,15 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
+#else
+const auto index_test_case_12_values = ::testing::Values("1_2");
+#endif
+NS_END
+
 INSTANTIATE_TEST_CASE_P(
   index_test_12,
   index_test_case,
@@ -13210,7 +13230,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_2", "1_2simd")
+    index_test_case_12_values
   ),
   tests::to_string
 );
@@ -13942,6 +13962,15 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#ifdef IRESEARCH_SSE2
+const auto index_test_case_11_values = ::testing::Values("1_1", "1_2", "1_2simd");
+#else
+const auto index_test_case_11_values = ::testing::Values("1_1", "1_2");
+#endif
+NS_END
+
 INSTANTIATE_TEST_CASE_P(
   index_test_11,
   index_test_case_11,
@@ -13951,7 +13980,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_1", "1_2", "1_2simd")
+    index_test_case_11_values
   ),
   tests::to_string
 );

@@ -134,7 +134,7 @@ endif()
 ### setup platform dependent optimizations
 ################################################################################
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   include(OptimizeForArchitecture)
   OptimizeForArchitecture()
 

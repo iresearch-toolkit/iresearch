@@ -278,7 +278,7 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -293,7 +293,7 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true"
@@ -308,10 +308,25 @@ matrix:
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install g++-8 valgrind
       env:
-        - SET_ENV="CC=gcc-9 && CXX=g++-9"
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
+        - CXX_STANDARD=17
+        - BUILD_TYPE="Release"
 
     ############################################################################
     # GCC 9
