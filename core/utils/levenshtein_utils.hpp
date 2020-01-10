@@ -63,6 +63,10 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
   return current[lhs_size];
 }
 
+inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
+  return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--
 //

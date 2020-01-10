@@ -22,8 +22,14 @@
 
 #include "tests_shared.hpp"
 
+#include "store/memory_directory.hpp"
 #include "utils/automaton.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/fst_table_matcher.hpp"
+
+#include "index/index_tests.hpp"
+
+using namespace irs::literals;
 
 TEST(levenshtein_utils_test, test_distance) {
   {
@@ -67,11 +73,61 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 }
 
-TEST(levenshtein_utils_test, build_parametric_dfa) {
-  auto description = irs::make_parametric_description(1, false);
+class levenshtein_automaton_index_test_case : public tests::index_test_base { };
 
-  auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("huypuy")));
+TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton_distance_1) {
+  // create description for distance 1
+  const size_t max_distance = 2;
+  auto description = irs::make_parametric_description(max_distance, false);
 
-  int i = 5;
-  int j = 5;
+  // add data
+  {
+    tests::templates::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    add_segment(gen);
+  }
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_NE(reader->begin(), reader->end());
+
+  auto& segment = *reader->begin();
+  auto fields = segment.fields();
+  ASSERT_NE(nullptr, fields);
+
+  auto target = irs::ref_cast<irs::byte_type>("bloom"_sr);
+  auto acceptor = irs::make_levenshtein_automaton(description, target);
+  irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+  while (fields->next()) {
+    auto expected_terms = fields->value().iterator();
+    ASSERT_NE(nullptr, expected_terms);
+    auto actual_terms = fields->value().iterator(matcher);
+    ASSERT_NE(nullptr, actual_terms);
+
+    while (expected_terms->next()) {
+      auto& expected_term = expected_terms->value();
+      auto edit_distance = irs::edit_distance(expected_term, target);
+      if (edit_distance > max_distance) {
+        continue;
+      }
+      ASSERT_TRUE(actual_terms->next());
+      auto& actual_term = actual_terms->value();
+
+      ASSERT_EQ(expected_term, actual_term);
+//      std::cerr << fields->value().meta().name << " " << irs::ref_cast<char>(expected_term) << " " << irs::ref_cast<char>(actual_term) << std::endl;
+    }
+  }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  levenshtein_automaton_index_test,
+  levenshtein_automaton_index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory
+    ),
+    ::testing::Values("1_2")
+  ),
+  tests::to_string
+);

@@ -481,11 +481,7 @@ automaton make_levenshtein_automaton(
       const auto chi = get_chi(entry.second, state.offset, description.chi_size);
       auto& transition = description.transitions[state.id*description.chi_max + chi];
 
-      if (!transition.to) {
-        continue;
-      }
-
-      auto offset = transition.offset + state.offset;
+      auto offset = transition.to ? transition.offset + state.offset : 0;
 
       auto& to_id = transitions[transition.to*num_offsets + offset];
 
