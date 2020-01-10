@@ -326,7 +326,7 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
 
   std::sort(chars.begin(), chars.end());
   auto cbegin = chars.begin();
-  auto cend = std::unique(cbegin, chars.end());
+  auto cend = std::unique(cbegin, chars.end()); // no need to erase here
 
   std::vector<std::pair<uint32_t, irs::bitset>> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
   auto begin = alphabet.begin();
@@ -485,9 +485,11 @@ automaton make_levenshtein_automaton(
 
     for (auto& entry : alphabet) {
       const auto chi = ::chi(entry.second, state.offset, mask);
+      assert(state.id*description.chi_max + chi < description.transitions.size());
       auto& transition = description.transitions[state.id*description.chi_max + chi];
 
       auto offset = transition.to ? transition.offset + state.offset : 0;
+      assert(transition.to*num_offsets + offset < transitions.size());
       auto& to_id = transitions[transition.to*num_offsets + offset];
 
       if (!transition.to) {
@@ -500,6 +502,7 @@ automaton make_levenshtein_automaton(
         if (pos >= description.chi_size) {
           dist = description.max_distance + 1;
         } else {
+          assert(transition.to*description.chi_size + pos < description.distance.size());
           dist = description.distance[transition.to*description.chi_size + pos];
         }
 
@@ -530,7 +533,6 @@ automaton make_levenshtein_automaton(
     fst::kILabelSorted | fst::kOLabelSorted;
   assert(a.Properties(EXPECTED_PROPERTIES, true));
 
-  print(a);
   return a;
 }
 
