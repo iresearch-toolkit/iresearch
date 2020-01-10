@@ -465,13 +465,14 @@ automaton make_levenshtein_automaton(
   // transitions table of resulting automaton
   std::vector<automaton::StateId> transitions(description.num_states*num_offsets, fst::kNoStateId);
 
-  // state queue
-  std::deque<state> queue;
-  queue.emplace_back(0, 1, 0);
-
   automaton a;
   a.ReserveStates(transitions.size()); // FIXME???
+  const auto failure_state = a.AddState();
   a.SetStart(a.AddState()); // set initial state
+
+  // state queue
+  std::deque<state> queue;
+  queue.emplace_back(0, 1, a.Start()); // 0 offset, 1st valid parametric state, initial automaton state
 
   while (!queue.empty()) {
     auto& state = queue.front();
@@ -482,10 +483,11 @@ automaton make_levenshtein_automaton(
       auto& transition = description.transitions[state.id*description.chi_max + chi];
 
       auto offset = transition.to ? transition.offset + state.offset : 0;
-
       auto& to_id = transitions[transition.to*num_offsets + offset];
 
-      if (fst::kNoStateId == to_id) {
+      if (!transition.to) {
+        to_id = failure_state;
+      } else if (fst::kNoStateId == to_id) {
         to_id = a.AddState();
 
         byte_type dist;
