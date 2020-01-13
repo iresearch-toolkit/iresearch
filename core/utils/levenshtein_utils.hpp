@@ -81,22 +81,19 @@ inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
 //   http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.16.652
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief theoretically max possible distance we can evaluate, not really
-///        feasible due to exponential growth of parametric description size
-////////////////////////////////////////////////////////////////////////////////
-constexpr byte_type MAX_DISTANCE = 31;
-
-struct parametric_transition {
-  parametric_transition(size_t to, uint32_t offset) noexcept
-    : to(to), offset(offset) {
-  }
-
-  size_t to;
-  uint32_t offset;
-}; // parametric_transition
-
 struct IRESEARCH_API parametric_description {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief describes trasition among parametric states
+  ///        first - desination state
+  ///        second - offset
+  typedef std::pair<size_t, uint32_t> parametric_transition; // FIXME uint32_t+uint32_t ???
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief theoretically max possible distance we can evaluate, not really
+  ///        feasible due to exponential growth of parametric description size
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr byte_type MAX_DISTANCE = 31;
+
   std::vector<parametric_transition> transitions;
   std::vector<byte_type> distance;
   size_t num_states;                     // number of parametric states (transitions.size()/chi_max)
@@ -138,7 +135,7 @@ IRESEARCH_API automaton make_levenshtein_automaton(
 IRESEARCH_API size_t edit_distance(
   const parametric_description& description,
   const byte_type* lhs, size_t lhs_size,
-  const byte_type* rhs, size_t rhs_size) noexcept;
+  const byte_type* rhs, size_t rhs_size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -151,7 +148,7 @@ IRESEARCH_API size_t edit_distance(
 inline size_t edit_distance(
     const parametric_description& description,
     const bytes_ref& lhs,
-    const bytes_ref& rhs) noexcept {
+    const bytes_ref& rhs) {
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 

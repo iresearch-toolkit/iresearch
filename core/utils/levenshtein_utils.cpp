@@ -399,7 +399,7 @@ NS_ROOT
 
 parametric_description make_parametric_description(byte_type max_distance,
                                                    bool with_transposition) {
-  if (max_distance > MAX_DISTANCE) {
+  if (max_distance > parametric_description::MAX_DISTANCE) {
     // invalid parametric description
     return {};
   }
@@ -418,7 +418,7 @@ parametric_description make_parametric_description(byte_type max_distance,
   const uint64_t chi_max = UINT64_C(1) << chi_size;
 
   parametric_states states(num_states);
-  std::vector<parametric_transition> transitions;
+  std::vector<parametric_description::parametric_transition> transitions;
   if (num_states) {
     transitions.reserve(states.size() * chi_max);
   }
@@ -503,11 +503,11 @@ automaton make_levenshtein_automaton(
       assert(state.id*description.chi_max + chi < description.transitions.size());
       auto& transition = description.transitions[state.id*description.chi_max + chi];
 
-      auto offset = transition.to ? transition.offset + state.offset : 0;
-      assert(transition.to*num_offsets + offset < transitions.size());
-      auto& to_id = transitions[transition.to*num_offsets + offset];
+      auto offset = transition.first ? transition.second + state.offset : 0;
+      assert(transition.first*num_offsets + offset < transitions.size());
+      auto& to_id = transitions[transition.first*num_offsets + offset];
 
-      if (!transition.to) {
+      if (!transition.first) {
         to_id = failure_state;
       } else if (fst::kNoStateId == to_id) {
         to_id = a.AddState();
@@ -517,15 +517,15 @@ automaton make_levenshtein_automaton(
         if (pos >= description.chi_size) {
           dist = description.max_distance + 1;
         } else {
-          assert(transition.to*description.chi_size + pos < description.distance.size());
-          dist = description.distance[transition.to*description.chi_size + pos];
+          assert(transition.first*description.chi_size + pos < description.distance.size());
+          dist = description.distance[transition.first*description.chi_size + pos];
         }
 
         if (dist <= description.max_distance) {
           a.SetFinal(to_id);
         }
 
-        queue.emplace_back(offset, transition.to, to_id);
+        queue.emplace_back(offset, transition.first, to_id);
       }
 
       if (chi && to_id != default_state) {
@@ -553,7 +553,7 @@ automaton make_levenshtein_automaton(
 
 size_t edit_distance(const parametric_description& description,
                      const byte_type* lhs, size_t lhs_size,
-                     const byte_type* rhs, size_t rhs_size) noexcept {
+                     const byte_type* rhs, size_t rhs_size) {
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
   utf8_utils::to_utf8(lhs, lhs_size, std::back_inserter(lhs_chars));
@@ -569,12 +569,12 @@ size_t edit_distance(const parametric_description& description,
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transitions[state*description.chi_max + chi];
 
-    if (!transition.to) {
+    if (!transition.first) {
       return description.max_distance + 1;
     }
 
-    state = transition.to;
-    offset += transition.offset;
+    state = transition.first;
+    offset += transition.second;
   }
 
   size_t pos = lhs_chars.size() - offset;
