@@ -63,6 +63,12 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
   return current[lhs_size];
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words
+/// @param lhs string to compare
+/// @param rhs string to compare
+/// @returns edit distance
+////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
   return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
@@ -75,6 +81,12 @@ inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
 //   http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.16.652
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief theoretically max possible distance we can evaluate, not really
+///        feasible due to exponential growth of parametric description size
+////////////////////////////////////////////////////////////////////////////////
+constexpr byte_type MAX_DISTANCE = 31;
+
 struct parametric_transition {
   parametric_transition(size_t to, uint32_t offset) noexcept
     : to(to), offset(offset) {
@@ -85,11 +97,8 @@ struct parametric_transition {
 }; // parametric_transition
 
 struct IRESEARCH_API parametric_description {
-  typedef std::vector<parametric_transition> parametric_transitions_t;
-  typedef std::vector<byte_type> distance_t;
-
-  parametric_transitions_t transitions;
-  distance_t distance;
+  std::vector<parametric_transition> transitions;
+  std::vector<byte_type> distance;
   size_t num_states;                     // number of parametric states (transitions.size()/chi_max)
   uint64_t chi_size;                     // 2*max_distance+1
   uint64_t chi_max;                      // 1 << chi_size
@@ -121,13 +130,30 @@ IRESEARCH_API automaton make_levenshtein_automaton(
 ///        specified in description.max_distance
 /// @param description parametric description
 /// @param lhs string to compare (utf8 encoded)
+/// @param lhs_size size of the string to comprare
 /// @param rhs string to compare (utf8 encoded)
+/// @param rhs_size size of the string to comprare
 /// @returns edit_distance up to specified in description.max_distance
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API size_t edit_distance(
   const parametric_description& description,
-  const bytes_ref& lhs,
-  const bytes_ref& rhs) noexcept;
+  const byte_type* lhs, size_t lhs_size,
+  const byte_type* rhs, size_t rhs_size) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words up to
+///        specified in description.max_distance
+/// @param description parametric description
+/// @param lhs string to compare (utf8 encoded)
+/// @param rhs string to compare (utf8 encoded)
+/// @returns edit_distance up to specified in description.max_distance
+////////////////////////////////////////////////////////////////////////////////
+inline size_t edit_distance(
+    const parametric_description& description,
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) noexcept {
+  return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
+}
 
 NS_END
 

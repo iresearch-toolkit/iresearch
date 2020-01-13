@@ -76,10 +76,15 @@ FORCE_INLINE uint32_t next(const byte_type*& it) noexcept {
 }
 
 template<typename OutputIterator>
-inline void to_utf8(const bytes_ref& in, OutputIterator out) {
-  for (auto begin = in.begin(), end = in.end(); begin != end; ++out) {
+inline void to_utf8(const byte_type* begin, size_t size, OutputIterator out) {
+  for (auto end = begin + size; begin < end; ++out) {
     *out = next(begin);
   }
+}
+
+template<typename OutputIterator>
+inline void to_utf8(const bytes_ref& in, OutputIterator out) {
+  to_utf8(in.begin(), in.size(), out);
 }
 
 NS_END

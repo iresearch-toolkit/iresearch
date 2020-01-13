@@ -29,6 +29,7 @@
 
 #include "shared.hpp"
 #include "automaton.hpp"
+#include "arena_allocator.hpp"
 #include "bit_utils.hpp"
 #include "bitset.hpp"
 #include "map_utils.hpp"
@@ -273,7 +274,7 @@ void add_transition(const parametric_description_args& args,
   std::sort(to.begin(), to.end());
 }
 
-inline uint64_t get_chi_size(uint64_t max_distance) noexcept {
+inline uint64_t chi_size(uint64_t max_distance) noexcept {
   return 2*max_distance + 1;
 }
 
@@ -320,7 +321,8 @@ uint32_t distance(
 
 std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& word,
                                                             size_t& utf8_size) {
-  std::basic_string<uint32_t> chars;
+  memory::arena<uint32_t, 16> arena;
+  memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
   utf8_utils::to_utf8(word, std::back_inserter(chars));
   utf8_size = chars.size();
 
@@ -334,7 +336,11 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  for (; cbegin != cend; ++cbegin) {
+  begin->first = fst::fsa::kRho;
+  begin->second.reset(capacity);
+  ++begin;
+
+  for (; cbegin != cend; ++cbegin, ++begin) {
     const auto c = *cbegin;
 
     // set char
@@ -348,14 +354,18 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(const bytes_ref& wor
       bits.reset(i, c == utf8_utils::next(utf8_begin));
     }
     IRS_ASSERT(utf8_begin == word.end());
-
-    ++begin;
   }
 
-  begin->first = fst::fsa::kRho;
-  begin->second.reset(capacity);
-
   return alphabet;
+}
+
+template<typename Iterator>
+uint64_t chi(Iterator begin, Iterator end, uint32_t c) noexcept {
+  uint64_t chi = 0;
+  for (size_t i = 0; begin < end; ++begin, ++i) {
+    chi |= uint64_t(c == *begin) << i;
+  }
+  return chi;
 }
 
 uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
@@ -389,22 +399,27 @@ NS_ROOT
 
 parametric_description make_parametric_description(byte_type max_distance,
                                                    bool with_transposition) {
+  if (max_distance > MAX_DISTANCE) {
+    // invalid parametric description
+    return {};
+  }
+
   // predict number of states for known cases
   size_t num_states = 0;
   switch (max_distance) {
-    case 1: num_states = 5;    break;
-    case 2: num_states = 30;   break;
-    case 3: num_states = 192;  break;
-    case 4: num_states = 1352; break;
+    case 1: num_states = 6;    break;
+    case 2: num_states = 31;   break;
+    case 3: num_states = 197;  break;
+    case 4: num_states = 1354; break;
   }
 
   const parametric_description_args args{ max_distance, with_transposition };
-  const uint64_t chi_size = get_chi_size(max_distance);
+  const uint64_t chi_size = ::chi_size(max_distance);
   const uint64_t chi_max = UINT64_C(1) << chi_size;
 
-  parametric_states states(2 + num_states); // +1 for initial state, +1 for empty state
-  parametric_description::parametric_transitions_t transitions;
-  if (states.size()) {
+  parametric_states states(num_states);
+  std::vector<parametric_transition> transitions;
+  if (num_states) {
     transitions.reserve(states.size() * chi_max);
   }
 
@@ -481,7 +496,7 @@ automaton make_levenshtein_automaton(
 
   while (!queue.empty()) {
     auto& state = queue.front();
-    automaton::StateId defaultState = fst::kNoStateId;
+    automaton::StateId default_state = fst::kNoStateId; // destination of rho transition if exist
 
     for (auto& entry : alphabet) {
       const auto chi = ::chi(entry.second, state.offset, mask);
@@ -513,15 +528,15 @@ automaton make_levenshtein_automaton(
         queue.emplace_back(offset, transition.to, to_id);
       }
 
-      if (chi) {
+      if (chi && to_id != default_state) {
         a.EmplaceArc(state.from, entry.first, to_id);
-      } else if (fst::kNoStateId == defaultState) {
-        defaultState = to_id;
+      } else if (fst::kNoStateId == default_state) {
+        default_state = to_id;
       }
     }
 
-    if (fst::kNoStateId != defaultState) {
-      a.EmplaceArc(state.from, fst::fsa::kRho, defaultState);
+    if (fst::kNoStateId != default_state) {
+      a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
     }
 
     queue.pop_front();
@@ -534,6 +549,41 @@ automaton make_levenshtein_automaton(
   assert(a.Properties(EXPECTED_PROPERTIES, true));
 
   return a;
+}
+
+size_t edit_distance(const parametric_description& description,
+                     const byte_type* lhs, size_t lhs_size,
+                     const byte_type* rhs, size_t rhs_size) noexcept {
+  memory::arena<uint32_t, 16> arena;
+  memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
+  utf8_utils::to_utf8(lhs, lhs_size, std::back_inserter(lhs_chars));
+
+  size_t state = 1; // current paramteric state
+  size_t offset = 0; // current offset
+
+  for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end; ) {
+    const auto c = utf8_utils::next(rhs);
+
+    const auto begin = lhs_chars.begin() + offset;
+    const auto end = std::min(begin + description.chi_size, lhs_chars.end());
+    const auto chi = ::chi(begin, end, c);
+    const auto& transition = description.transitions[state*description.chi_max + chi];
+
+    if (!transition.to) {
+      return description.max_distance + 1;
+    }
+
+    state = transition.to;
+    offset += transition.offset;
+  }
+
+  size_t pos = lhs_chars.size() - offset;
+  if (pos >= description.chi_size) {
+    return description.max_distance + 1;
+  }
+
+  assert(state*description.chi_size + pos < description.distance.size());
+  return description.distance[state*description.chi_size + pos];
 }
 
 NS_END

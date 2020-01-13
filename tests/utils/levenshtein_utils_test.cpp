@@ -108,13 +108,67 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 }
 
+TEST(levenshtein_utils_test, test_distance_fast) {
+  auto descr = irs::make_parametric_description(3, false);
+
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "abc";
+
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "ac";
+
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "zaec";
+
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "abcd";
+
+    ASSERT_EQ(2, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(2, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "abcdz";
+
+    ASSERT_EQ(3, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(3, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+
+  // can differentiate distances up to 'desc.max_distance'
+  {
+    const irs::string_ref lhs = "aec";
+    const irs::string_ref rhs = "abcdefasdfasdf";
+
+    ASSERT_EQ(descr.max_distance+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(descr.max_distance+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+  }
+}
+
 class levenshtein_automaton_index_test_case : public tests::index_test_base { };
 
-TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton_distance_1) {
+TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   const irs::parametric_description DESCRIPTIONS[] {
     irs::make_parametric_description(1, false),
     irs::make_parametric_description(2, false),
-    irs::make_parametric_description(3, false)
+    irs::make_parametric_description(3, false),
+  //  irs::make_parametric_description(4, false)
   };
 
   const irs::string_ref TARGETS[] {
