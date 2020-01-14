@@ -92,9 +92,9 @@ class IRESEARCH_API parametric_description {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief describes trasition among parametric states
-  ///        first - desination state
+  ///        first - desination parametric state id
   ///        second - offset
-  typedef std::pair<size_t, uint32_t> transition_t; // FIXME uint32_t+uint32_t ???
+  typedef std::pair<uint32_t, uint32_t> transition_t;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief theoretically max possible distance we can evaluate, not really
@@ -121,6 +121,13 @@ class IRESEARCH_API parametric_description {
 
      assert(state*chi_size_ + offset < distance_.size());
      return distance_[state*chi_size_ + offset];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if a specified state at a given offset is accepting
+  //////////////////////////////////////////////////////////////////////////////
+  bool is_accepting(size_t state, size_t offset) const noexcept {
+    return distance(state, offset) <= max_distance_;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -177,7 +184,7 @@ class IRESEARCH_API parametric_description {
   uint64_t chi_size_{};                   // 2*max_distance_+1
   uint64_t chi_max_{};                    // 1 << chi_size
   byte_type max_distance_{};              // max allowed distance
-};
+}; // parametric_description
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds parametric description of Levenshtein automaton
@@ -208,6 +215,8 @@ IRESEARCH_API automaton make_levenshtein_automaton(
 /// @param rhs string to compare (utf8 encoded)
 /// @param rhs_size size of the string to comprare
 /// @returns edit_distance up to specified in description.max_distance
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API size_t edit_distance(
   const parametric_description& description,
@@ -221,6 +230,8 @@ IRESEARCH_API size_t edit_distance(
 /// @param lhs string to compare (utf8 encoded)
 /// @param rhs string to compare (utf8 encoded)
 /// @returns edit_distance up to specified in description.max_distance
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(
     const parametric_description& description,
