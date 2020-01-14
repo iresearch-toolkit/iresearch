@@ -81,12 +81,20 @@ inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
 //   http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.16.652
 // -----------------------------------------------------------------------------
 
-struct IRESEARCH_API parametric_description {
+////////////////////////////////////////////////////////////////////////////////
+/// @class parametric_description
+/// @brief Parametric description of automaton for a particular edit distance.
+///        Once created the description can be used for generating DFAs
+///        accepting strings at edit distance less or equal than distance
+///        specified in description.
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API parametric_description {
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief describes trasition among parametric states
   ///        first - desination state
   ///        second - offset
-  typedef std::pair<size_t, uint32_t> parametric_transition; // FIXME uint32_t+uint32_t ???
+  typedef std::pair<size_t, uint32_t> transition_t; // FIXME uint32_t+uint32_t ???
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief theoretically max possible distance we can evaluate, not really
@@ -94,12 +102,81 @@ struct IRESEARCH_API parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   static constexpr byte_type MAX_DISTANCE = 31;
 
-  std::vector<parametric_transition> transitions;
-  std::vector<byte_type> distance;
-  size_t num_states;                     // number of parametric states (transitions.size()/chi_max)
-  uint64_t chi_size;                     // 2*max_distance+1
-  uint64_t chi_max;                      // 1 << chi_size
-  byte_type max_distance;                // max allowed distance
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return transition from 'from' state matching a provided
+  ///         characteristic vector
+  //////////////////////////////////////////////////////////////////////////////
+  const transition_t& transition(size_t from, uint64_t chi) const noexcept {
+    assert(from*chi_max_ + chi < transitions_.size());
+    return transitions_[from*chi_max_ + chi];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return edit distance of parametric state at a specified offset
+  //////////////////////////////////////////////////////////////////////////////
+  byte_type distance(size_t state, size_t offset) const noexcept {
+     if (offset >= chi_size_) {
+       return max_distance_ + 1;
+     }
+
+     assert(state*chi_size_ + offset < distance_.size());
+     return distance_[state*chi_size_ + offset];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return number of states in parametric description
+  //////////////////////////////////////////////////////////////////////////////
+  size_t size() const noexcept { return num_states_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return length of characteristic vector
+  /// @note 2*max_distance_ + 1
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t chi_size() const noexcept { return chi_size_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return max value of characteristic vector
+  /// @note 1 << chi_size_
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t chi_max() const noexcept { return chi_max_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return the edit distance for which this description was built
+  //////////////////////////////////////////////////////////////////////////////
+  byte_type max_distance() const noexcept { return max_distance_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if description is valid, false otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  explicit operator bool() const noexcept { return chi_size_ > 0; }
+
+ private:
+  friend parametric_description make_parametric_description(
+      byte_type max_distance, bool with_transposition);
+
+  parametric_description() = default;
+
+  parametric_description(
+      std::vector<transition_t>&& transitions,
+      std::vector<byte_type>&& distance,
+      size_t num_states,
+      uint64_t chi_size,
+      uint64_t chi_max,
+      byte_type max_distance) noexcept
+    : transitions_(std::move(transitions)),
+      distance_(std::move(distance)),
+      num_states_(num_states),
+      chi_size_(chi_size),
+      chi_max_(chi_max),
+      max_distance_(max_distance) {
+  }
+
+  std::vector<transition_t> transitions_; // transition table
+  std::vector<byte_type> distance_;       // distances per state and offset
+  size_t num_states_{};                   // number of parametric states
+  uint64_t chi_size_{};                   // 2*max_distance_+1
+  uint64_t chi_max_{};                    // 1 << chi_size
+  byte_type max_distance_{};              // max allowed distance
 };
 
 ////////////////////////////////////////////////////////////////////////////////

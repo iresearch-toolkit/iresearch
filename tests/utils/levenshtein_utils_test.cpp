@@ -52,7 +52,7 @@ void assert_index(const irs::index_reader& reader,
       while (expected_terms->next()) {
         auto& expected_term = expected_terms->value();
         auto edit_distance = irs::edit_distance(expected_term, target);
-        if (edit_distance > description.max_distance) {
+        if (edit_distance > description.max_distance()) {
           continue;
         }
 
@@ -156,8 +156,8 @@ TEST(levenshtein_utils_test, test_distance_fast) {
     const irs::string_ref lhs = "aec";
     const irs::string_ref rhs = "abcdefasdfasdf";
 
-    ASSERT_EQ(descr.max_distance+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(descr.max_distance+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    ASSERT_EQ(descr.max_distance()+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+    ASSERT_EQ(descr.max_distance()+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
   }
 }
 
@@ -172,7 +172,6 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   };
 
   const irs::string_ref TARGETS[] {
-//    "del"
     "atlas", "bloom", "burden", "del",
     "survenius", "surbenus", ""
   };
