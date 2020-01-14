@@ -23,11 +23,9 @@
 #include "tests_shared.hpp"
 
 #include "store/memory_directory.hpp"
-#include "utils/automaton.hpp"
+#include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/fst_table_matcher.hpp"
-
-#include "index/index_tests.hpp"
 
 using namespace irs::literals;
 
@@ -73,59 +71,6 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 }
 
-TEST(levenshtein_utils_test, test_distance_fast) {
-  auto descr = irs::make_parametric_description(3, false);
-
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "abc";
-
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "ac";
-
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "zaec";
-
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "abcd";
-
-    ASSERT_EQ(2, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(2, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "abcdz";
-
-    ASSERT_EQ(3, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(3, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-
-  // can differentiate distances up to 'desc.max_distance'
-  {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "abcdefasdfasdf";
-
-    ASSERT_EQ(descr.max_distance()+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-    ASSERT_EQ(descr.max_distance()+1, irs::edit_distance(descr, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-  }
-}
-
 TEST(levenshtein_utils_test, test_static_const) {
   ASSERT_EQ(31, decltype(irs::parametric_description::MAX_DISTANCE)(irs::parametric_description::MAX_DISTANCE));
 }
@@ -157,6 +102,12 @@ TEST(levenshtein_utils_test, test_description_0) {
     ASSERT_EQ(0, description.max_distance());
     assert_distance(description);
     assert_transitions(description);
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabet"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphabez"));
+    }
   }
 
   // transpositions
@@ -169,6 +120,12 @@ TEST(levenshtein_utils_test, test_description_0) {
     ASSERT_EQ(0, description.max_distance());
     assert_distance(description);
     assert_transitions(description);
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabet"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphabez"));
+    }
   }
 }
 
@@ -267,6 +224,15 @@ TEST(levenshtein_utils_test, test_description_1) {
     ASSERT_EQ(1, description.max_distance());
     assert_distance(description);
     assert_transitions(description);
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphazez"));
+    }
   }
 
   // transpositions
@@ -277,6 +243,15 @@ TEST(levenshtein_utils_test, test_description_1) {
     ASSERT_EQ(3, description.chi_size());
     ASSERT_EQ(8, description.chi_max());
     ASSERT_EQ(1, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_FALSE(irs::accept<char>(a, "alphazez"));
+    }
   }
 }
 
@@ -289,6 +264,17 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(5, description.chi_size());
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_FALSE(irs::accept<char>(a, "alhpaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
+      ASSERT_FALSE(irs::accept<char>(a, "lphazez"));
+    }
   }
 
   // transpositions
@@ -299,6 +285,17 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(5, description.chi_size());
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alhpaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
+      ASSERT_FALSE(irs::accept<char>(a, "lphazez"));
+    }
   }
 }
 
@@ -311,6 +308,67 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(7, description.chi_size());
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alhpeabt"));
+      ASSERT_FALSE(irs::accept<char>(a, "laphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
+      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
+    }
+
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "abc";
+
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
+
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "ac";
+
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
+
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "zaec";
+
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
+
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "abcd";
+
+      ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
+
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "abcdz";
+
+      ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
+
+    // can differentiate distances up to 'desc.max_distance'
+    {
+      const irs::string_ref lhs = "aec";
+      const irs::string_ref rhs = "abcdefasdfasdf";
+
+      ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
+      ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
+    }
   }
 
   // transpositions
@@ -321,6 +379,19 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(7, description.chi_size());
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alhpeabt"));
+      ASSERT_TRUE(irs::accept<char>(a, "laphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
+      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
+      ASSERT_FALSE(irs::accept<char>(a, "lpzazez"));
+    }
   }
 }
 
@@ -333,6 +404,19 @@ TEST(levenshtein_utils_test, test_description_4) {
     ASSERT_EQ(9, description.chi_size());
     ASSERT_EQ(512, description.chi_max());
     ASSERT_EQ(4, description.max_distance());
+
+    {
+      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alhpaebt"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
+      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
+      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
+      ASSERT_TRUE(irs::accept<char>(a, "phazez"));
+      ASSERT_FALSE(irs::accept<char>(a, "phzez"));
+    }
   }
 }
 
@@ -357,80 +441,3 @@ TEST(levenshtein_utils_test, test_description_invalid) {
     ASSERT_EQ(0, description.max_distance());
   }
 }
-
-class levenshtein_automaton_index_test_case : public tests::index_test_base {
- protected:
-  void assert_index(const irs::index_reader& reader,
-                    const irs::parametric_description& description,
-                    const irs::bytes_ref& target) {
-    auto acceptor = irs::make_levenshtein_automaton(description, target);
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-    for (auto& segment : reader) {
-      auto fields = segment.fields();
-      ASSERT_NE(nullptr, fields);
-
-      while (fields->next()) {
-        auto expected_terms = fields->value().iterator();
-        ASSERT_NE(nullptr, expected_terms);
-        auto actual_terms = fields->value().iterator(matcher);
-        ASSERT_NE(nullptr, actual_terms);
-
-        while (expected_terms->next()) {
-          auto& expected_term = expected_terms->value();
-          auto edit_distance = irs::edit_distance(expected_term, target);
-          if (edit_distance > description.max_distance()) {
-            continue;
-          }
-
-          ASSERT_TRUE(actual_terms->next());
-          auto& actual_term = actual_terms->value();
-          ASSERT_EQ(expected_term, actual_term);
-        }
-      }
-    }
-  }
-};
-
-TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
-  const irs::parametric_description DESCRIPTIONS[] {
-    irs::make_parametric_description(1, false),
-    irs::make_parametric_description(2, false),
-    irs::make_parametric_description(3, false),
-  };
-
-  const irs::string_ref TARGETS[] {
-    "atlas", "bloom", "burden", "del",
-    "survenius", "surbenus", ""
-  };
-
-  // add data
-  {
-    tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
-    add_segment(gen);
-  }
-
-  auto reader = open_reader();
-  ASSERT_NE(nullptr, reader);
-
-  for (auto& description : DESCRIPTIONS) {
-    for (auto& target : TARGETS) {
-      SCOPED_TRACE(testing::Message("Target: '") << target <<
-                   testing::Message("', Edit distance: ") << size_t(description.max_distance()));
-      assert_index(reader, description, irs::ref_cast<irs::byte_type>(target));
-    }
-  }
-}
-
-INSTANTIATE_TEST_CASE_P(
-  levenshtein_automaton_index_test,
-  levenshtein_automaton_index_test_case,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::memory_directory
-    ),
-    ::testing::Values("1_2")
-  ),
-  tests::to_string
-);
