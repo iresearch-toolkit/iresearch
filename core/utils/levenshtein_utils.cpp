@@ -304,13 +304,17 @@ FORCE_INLINE uint64_t chi_max(uint64_t chi_size) noexcept {
   return UINT64_C(1) << chi_size;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns number of states in parametric description according to
+///          specified options
+////////////////////////////////////////////////////////////////////////////////
 size_t predict_num_states(byte_type max_distance, bool with_transpositions) noexcept {
   static constexpr size_t NUM_STATES[] {
     2, 2,        // distance 0
     6, 8,        // distance 1
     31, 68,      // distance 2
     197, 769,    // distance 3
-    1354, /*1354*/   // distance 4
+    1354, 0      // distance 4
   };
 
   const size_t idx = size_t(2)*max_distance + size_t(with_transpositions);
@@ -465,14 +469,9 @@ parametric_description make_parametric_description(
   states.emplace(std::move(to));
   assert(to.empty());
 
-  std::vector<uint64_t> chi_values(chi_max);
-  std::iota(chi_values.begin(), chi_values.end(), uint64_t(0));
-  auto end = chi_values.end();
-
   for (; from_id != states.size(); ++from_id) {
-//    for (uint64_t chi = 0; chi < chi_max; ++chi) {
-    for (auto chi = chi_values.begin(); chi != end; ++chi) {
-      add_transition(to, states[from_id], *chi, max_distance, with_transpositions);
+    for (uint64_t chi = 0; chi < chi_max; ++chi) {
+      add_transition(to, states[from_id], chi, max_distance, with_transpositions);
 
       const auto min_offset = normalize(to);
       const auto to_id = states.emplace(std::move(to));
