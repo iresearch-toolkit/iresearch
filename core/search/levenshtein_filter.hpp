@@ -66,24 +66,39 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   using by_prefix::scored_terms_limit;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum allowed edit distance
+  /// @brief sets maximum allowed edit distance
   //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& max_distance(size_t limit) noexcept {
+  by_edit_distance& max_distance(byte_type limit) noexcept {
     max_distance_ = limit;
     return *this;
   }
 
-  size_t max_distance() const noexcept {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns maximum allowed edit distance
+  //////////////////////////////////////////////////////////////////////////////
+  byte_type max_distance() const noexcept {
     return max_distance_;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief consider transpositions as atomic change
+  //////////////////////////////////////////////////////////////////////////////
+  by_edit_distance& with_transpositions(bool with_transpositions) noexcept {
+    with_transpositions_ = with_transpositions;
+    return *this;
+  }
+
+  bool with_transpositions() const noexcept {
+    return with_transpositions_;
+  }
 
  protected:
   size_t hash() const noexcept;
   bool equals(const filter& rhs) const noexcept;
 
  private:
-  size_t max_distance_{0};
+  byte_type max_distance_{0};
+  bool with_transpositions_{false};
 }; // by_edit_distance
 
 #endif // IRESEARCH_LEVENSHTEIN_FILTER_H

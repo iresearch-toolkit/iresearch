@@ -26,6 +26,7 @@
 #include "limited_sample_scorer.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
+#include "utils/levenshtein_utils.hpp"
 #include "utils/hash_utils.hpp"
 
 NS_ROOT
@@ -45,11 +46,15 @@ filter::prepared::ptr by_edit_distance::prepare(
   boost *= this->boost();
   const string_ref field = this->field();
 
-  //return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
-  //                                scored_terms_limit(), index, order, boost);
+  const auto d = make_parametric_description(max_distance_, with_transpositions_);
 
-  assert(false);
-  return prepared::empty();
+  if (!d) {
+    assert(false);
+    return prepared::empty();
+  }
+
+  return prepare_automaton_filter(field, make_levenshtein_automaton(d, term()),
+                                  scored_terms_limit(), index, order, boost);
 }
 
 by_edit_distance::by_edit_distance() noexcept
@@ -60,12 +65,16 @@ size_t by_edit_distance::hash() const noexcept {
   size_t seed = 0;
   seed = hash_combine(0, by_prefix::hash());
   seed = hash_combine(seed, max_distance_);
+  seed = hash_combine(seed, with_transpositions_);
   return seed;
 }
 
 bool by_edit_distance::equals(const filter& rhs) const noexcept {
   const auto& impl = static_cast<const by_edit_distance&>(rhs);
-  return by_prefix::equals(rhs) && max_distance_ == impl.max_distance_;
+
+  return by_prefix::equals(rhs) &&
+    max_distance_ == impl.max_distance_ &&
+    with_transpositions_ == impl.with_transpositions_;
 }
 
 NS_END
