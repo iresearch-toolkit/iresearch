@@ -35,6 +35,7 @@
 #include "map_utils.hpp"
 #include "hash_utils.hpp"
 #include "utf8_utils.hpp"
+#include "misc.hpp"
 #include "draw-impl.h"
 
 NS_LOCAL
@@ -83,10 +84,14 @@ struct position {
         transpose == rhs.transpose;
   }
 
+  bool operator!=(const position& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
   uint32_t offset{};     // parametric position offset
   byte_type distance{};  // parametric position distance
   bool transpose{false}; // position is introduced by transposition
-};
+}; // position
 
 FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
   return lhs < rhs ? rhs - lhs : lhs - rhs;
@@ -154,11 +159,13 @@ class parametric_state {
   }
 
   bool empty() const noexcept { return positions_.empty(); }
+
   void clear() noexcept { return positions_.clear(); }
 
   bool operator==(const parametric_state& rhs) const noexcept {
     return positions_ == rhs.positions_;
   }
+
   bool operator!=(const parametric_state& rhs) const noexcept {
     return !(*this == rhs);
   }
@@ -223,6 +230,10 @@ class parametric_states {
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds elementary transition denoted by 'pos' to parametric state
+///        'state' according to a specified characteristic vector 'chi'
+////////////////////////////////////////////////////////////////////////////////
 void add_elementary_transitions(
     parametric_state& state,
     const position& pos,
@@ -258,28 +269,52 @@ void add_elementary_transitions(
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds elementary transitions for corresponding transition from
+///        parametric state denoted by 'from' to parametric state 'to'
+///        according to a specified characteristic vector 'cv'
+////////////////////////////////////////////////////////////////////////////////
 void add_transition(
     parametric_state& to,
     const parametric_state& from,
     const uint64_t cv,
-    const byte_type max_ditance,
+    const byte_type max_distance,
     const bool with_transpositions) {
   to.clear();
   for (const auto& pos : from) {
     assert(pos.offset < irs::bits_required<decltype(cv)>());
     const auto chi = cv >> pos.offset;
-    add_elementary_transitions(to, pos, chi, max_ditance, with_transpositions);
+    add_elementary_transitions(to, pos, chi, max_distance, with_transpositions);
   }
 
   std::sort(to.begin(), to.end());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns size of characteristic vector
+////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE uint64_t chi_size(uint64_t max_distance) noexcept {
   return 2*max_distance + 1;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns max value of characteristic vector
+////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE uint64_t chi_max(uint64_t chi_size) noexcept {
   return UINT64_C(1) << chi_size;
+}
+
+size_t predict_num_states(byte_type max_distance, bool with_transpositions) noexcept {
+  static constexpr size_t NUM_STATES[] {
+    2, 2,        // distance 0
+    6, 8,        // distance 1
+    31, 68,      // distance 2
+    197, 769,    // distance 3
+    1354, /*1354*/   // distance 4
+  };
+
+  const size_t idx = size_t(2)*max_distance + size_t(with_transpositions);
+  return idx < IRESEARCH_COUNTOF(NUM_STATES) ? NUM_STATES[idx] : 0;
 }
 
 uint32_t normalize(parametric_state& state) noexcept {
@@ -295,16 +330,15 @@ uint32_t normalize(parametric_state& state) noexcept {
     pos.offset -= min_offset;
   }
 
-  if (!std::is_sorted(state.begin(), state.end())) {
-    std::sort(state.begin(), state.end());
-  }
+  std::sort(state.begin(), state.end());
 
   return min_offset;
 }
 
-uint32_t distance(size_t max_distance,
-                  const parametric_state& state,
-                  uint32_t offset) noexcept {
+uint32_t distance(
+    const uint32_t max_distance,
+    const parametric_state& state,
+    const uint32_t offset) noexcept {
   uint32_t min_dist = max_distance + 1;
 
   for (auto& pos : state) {
@@ -402,28 +436,23 @@ NS_ROOT
 
 parametric_description make_parametric_description(
     byte_type max_distance,
-    bool with_transposition) {
+    bool with_transpositions) {
   if (max_distance > parametric_description::MAX_DISTANCE) {
     // invalid parametric description
     return {};
   }
 
   // predict number of states for known cases
-  size_t num_states = 0;
-  switch (max_distance) {
-    case 1: num_states = 6;    break;
-    case 2: num_states = 31;   break;
-    case 3: num_states = 197;  break;
-    case 4: num_states = 1354; break;
-  }
+  const size_t num_states = predict_num_states(max_distance, with_transpositions);
 
+  // evaluate shape of characteristic vector
   const uint64_t chi_size = ::chi_size(max_distance);
   const uint64_t chi_max = ::chi_max(chi_size);
 
   parametric_states states(num_states);
   std::vector<parametric_description::transition_t> transitions;
   if (num_states) {
-    transitions.reserve(states.size() * chi_max);
+    transitions.reserve(num_states * chi_max);
   }
 
   // empty state
@@ -436,14 +465,23 @@ parametric_description make_parametric_description(
   states.emplace(std::move(to));
   assert(to.empty());
 
+  std::vector<uint64_t> chi_values(chi_max);
+  std::iota(chi_values.begin(), chi_values.end(), uint64_t(0));
+  auto end = chi_values.end();
+
   for (; from_id != states.size(); ++from_id) {
-    for (uint64_t chi = 0; chi < chi_max; ++chi) {
-      add_transition(to, states[from_id], chi, max_distance, with_transposition);
+//    for (uint64_t chi = 0; chi < chi_max; ++chi) {
+    for (auto chi = chi_values.begin(); chi != end; ++chi) {
+      add_transition(to, states[from_id], *chi, max_distance, with_transpositions);
 
       const auto min_offset = normalize(to);
       const auto to_id = states.emplace(std::move(to));
 
       transitions.emplace_back(to_id, min_offset);
+    }
+
+    if (num_states && transitions.size() == transitions.capacity()) {
+      break;
     }
   }
 
@@ -537,6 +575,7 @@ automaton make_levenshtein_automaton(
     queue.pop_front();
   }
 
+#ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kODeterministic |
@@ -545,6 +584,7 @@ automaton make_levenshtein_automaton(
 
   // ensure invalid state has no outbound transitions
   assert(0 == a.NumArcs(invalid_state));
+#endif
 
   return a;
 }
@@ -558,14 +598,14 @@ size_t edit_distance(const parametric_description& description,
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
   utf8_utils::to_utf8(lhs, lhs_size, std::back_inserter(lhs_chars));
 
-  size_t state = 1; // current paramteric state
+  size_t state = 1;  // current paramteric state
   size_t offset = 0; // current offset
 
   for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end; ) {
     const auto c = utf8_utils::next(rhs);
 
-    const auto begin = lhs_chars.begin() + offset;
-    const auto end = std::min(begin + description.chi_size(), lhs_chars.end());
+    const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
+    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
