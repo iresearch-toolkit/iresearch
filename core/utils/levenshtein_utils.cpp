@@ -51,15 +51,6 @@ using namespace irs;
 constexpr size_t INVALID_STATE = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @struct parametric_description_args
-/// @brief input arguments for building parametric description
-////////////////////////////////////////////////////////////////////////////////
-struct parametric_description_args {
-  irs::byte_type max_distance; // max allowed distance
-  bool with_transpositions;    // count transpositions
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @struct position
 /// @brief describes parametric transition related to a certain
 ///        parametric state
@@ -232,10 +223,12 @@ class parametric_states {
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 
-void add_elementary_transitions(const parametric_description_args& args,
-                                const position& pos,
-                                uint64_t chi,
-                                parametric_state& state) {
+void add_elementary_transitions(
+    parametric_state& state,
+    const position& pos,
+    const uint64_t chi,
+    const byte_type max_distance,
+    const bool with_transpositions) {
   if (irs::check_bit<0>(chi)) {
     // Situation 1: [i+1,e] subsumes { [i,e+1], [i+1,e+1], [i+1,e] }
     state.emplace(pos.offset + 1, pos.distance, false);
@@ -245,7 +238,7 @@ void add_elementary_transitions(const parametric_description_args& args,
     }
   }
 
-  if (pos.distance < args.max_distance) {
+  if (pos.distance < max_distance) {
     // Situation 2, 3 [i,e+1] - X is inserted before X[i+1]
     state.emplace(pos.offset, pos.distance + 1, false);
 
@@ -253,34 +246,40 @@ void add_elementary_transitions(const parametric_description_args& args,
     state.emplace(pos.offset + 1, pos.distance + 1, false);
 
     // Situation 2, [i+j,e+j-1] - elements X[i+1:i+j-1] are deleted
-    for (size_t j = 1, max = args.max_distance + 1 - pos.distance; j < max; ++j) {
+    for (size_t j = 1, max = max_distance + 1 - pos.distance; j < max; ++j) {
       if (irs::check_bit(chi, j)) {
         state.emplace(pos.offset + 1 + j, pos.distance + j, false);
       }
     }
 
-    if (args.with_transpositions && irs::check_bit<1>(chi)) {
+    if (with_transpositions && irs::check_bit<1>(chi)) {
       state.emplace(pos.offset, pos.distance + 1, true);
     }
   }
 }
 
-void add_transition(const parametric_description_args& args,
-                    const parametric_state& from,
-                    parametric_state& to,
-                    uint64_t cv) {
+void add_transition(
+    parametric_state& to,
+    const parametric_state& from,
+    const uint64_t cv,
+    const byte_type max_ditance,
+    const bool with_transpositions) {
   to.clear();
   for (const auto& pos : from) {
     assert(pos.offset < irs::bits_required<decltype(cv)>());
     const auto chi = cv >> pos.offset;
-    add_elementary_transitions(args, pos, chi, to);
+    add_elementary_transitions(to, pos, chi, max_ditance, with_transpositions);
   }
 
   std::sort(to.begin(), to.end());
 }
 
-inline uint64_t chi_size(uint64_t max_distance) noexcept {
+FORCE_INLINE uint64_t chi_size(uint64_t max_distance) noexcept {
   return 2*max_distance + 1;
+}
+
+FORCE_INLINE uint64_t chi_max(uint64_t chi_size) noexcept {
+  return UINT64_C(1) << chi_size;
 }
 
 uint32_t normalize(parametric_state& state) noexcept {
@@ -303,11 +302,10 @@ uint32_t normalize(parametric_state& state) noexcept {
   return min_offset;
 }
 
-uint32_t distance(
-    const parametric_description_args& args,
-    const parametric_state& state,
-    uint32_t offset) {
-  uint32_t min_dist = args.max_distance + 1;
+uint32_t distance(size_t max_distance,
+                  const parametric_state& state,
+                  uint32_t offset) noexcept {
+  uint32_t min_dist = max_distance + 1;
 
   for (auto& pos : state) {
     const uint32_t dist = pos.distance + abs_diff(offset, pos.offset);
@@ -402,8 +400,9 @@ NS_END
 
 NS_ROOT
 
-parametric_description make_parametric_description(byte_type max_distance,
-                                                   bool with_transposition) {
+parametric_description make_parametric_description(
+    byte_type max_distance,
+    bool with_transposition) {
   if (max_distance > parametric_description::MAX_DISTANCE) {
     // invalid parametric description
     return {};
@@ -418,9 +417,8 @@ parametric_description make_parametric_description(byte_type max_distance,
     case 4: num_states = 1354; break;
   }
 
-  const parametric_description_args args{ max_distance, with_transposition };
   const uint64_t chi_size = ::chi_size(max_distance);
-  const uint64_t chi_max = UINT64_C(1) << chi_size;
+  const uint64_t chi_max = ::chi_max(chi_size);
 
   parametric_states states(num_states);
   std::vector<parametric_description::transition_t> transitions;
@@ -440,7 +438,7 @@ parametric_description make_parametric_description(byte_type max_distance,
 
   for (; from_id != states.size(); ++from_id) {
     for (uint64_t chi = 0; chi < chi_max; ++chi) {
-      add_transition(args, states[from_id], to, chi);
+      add_transition(to, states[from_id], chi, max_distance, with_transposition);
 
       const auto min_offset = normalize(to);
       const auto to_id = states.emplace(std::move(to));
@@ -455,7 +453,7 @@ parametric_description make_parametric_description(byte_type max_distance,
     for (uint64_t offset = 0; offset < chi_size; ++offset) {
       const auto idx = i*chi_size + offset;
       assert(idx < distance.size());
-      distance[idx] = byte_type(::distance(args, state, offset)); // FIXME cast
+      distance[idx] = byte_type(::distance(max_distance, state, offset)); // FIXME cast
     }
   }
 
