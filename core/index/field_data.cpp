@@ -778,7 +778,7 @@ void field_data::reset(doc_id_t doc_id) {
     return; // nothing to do
   }
 
-  pos_ = integer_traits<uint32_t>::const_max;
+  pos_ = pos_limits::eof();
   last_pos_ = 0;
   len_ = 0;
   num_overlap_ = 0;

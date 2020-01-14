@@ -1445,7 +1445,6 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
-
     value_ += this->pos_deltas_[this->buf_pos_];
 
     this->read_attributes();
@@ -1462,6 +1461,7 @@ class position final : public irs::position,
   // notify iterator that corresponding doc_iterator has moved forward
   void notify(uint32_t n) {
     this->pend_pos_ += n;
+    this->value_ = pos_limits::invalid();
   }
 
   void clear() noexcept {
@@ -1476,6 +1476,9 @@ class position final : public irs::position,
       this->read_tail_block();
     } else {
       this->read_block();
+    }
+    if (pos_limits::valid(!value_)) {
+      value_ = pos_limits::min();
     }
   }
 
@@ -1497,7 +1500,6 @@ class position final : public irs::position,
     }
 
     clear();
-    value_ = 0;
   }
 }; // position
 
