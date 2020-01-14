@@ -36,7 +36,6 @@
 #include "hash_utils.hpp"
 #include "utf8_utils.hpp"
 #include "misc.hpp"
-#include "draw-impl.h"
 
 NS_LOCAL
 
