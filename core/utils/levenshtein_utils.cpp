@@ -313,7 +313,8 @@ size_t predict_num_states(byte_type max_distance, bool with_transpositions) noex
     6, 8,        // distance 1
     31, 68,      // distance 2
     197, 769,    // distance 3
-    1354, 0      // distance 4
+    1354, 9628,  // distance 4
+    9714, 0      // distance 5
   };
 
   const size_t idx = size_t(2)*max_distance + size_t(with_transpositions);

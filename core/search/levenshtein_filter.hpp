@@ -63,6 +63,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     by_prefix::scored_terms_limit(limit);
     return *this;
   }
+
   using by_prefix::scored_terms_limit;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -81,13 +82,18 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief consider transpositions as atomic change
+  /// @brief sets option contollling if we need to consider transpositions
+  ///        as an atomic change
   //////////////////////////////////////////////////////////////////////////////
   by_edit_distance& with_transpositions(bool with_transpositions) noexcept {
     with_transpositions_ = with_transpositions;
     return *this;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns option controlling if we need to consider transpositions
+  ///        as an atomic change
+  //////////////////////////////////////////////////////////////////////////////
   bool with_transpositions() const noexcept {
     return with_transpositions_;
   }

@@ -30,6 +30,7 @@ TEST(by_edit_distance_test, ctor) {
   irs::by_edit_distance q;
   ASSERT_EQ(irs::by_edit_distance::type(), q.type());
   ASSERT_EQ(0, q.max_distance());
+  ASSERT_FALSE(q.with_transpositions());
   ASSERT_TRUE(q.term().empty());
   ASSERT_TRUE(q.field().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());
@@ -37,12 +38,13 @@ TEST(by_edit_distance_test, ctor) {
 
 TEST(by_edit_distance_test, equal) {
   irs::by_edit_distance q;
-  q.field("field").max_distance(1).term("bar");
+  q.field("field").max_distance(1).with_transpositions(true).term("bar");
 
-  ASSERT_EQ(q, irs::by_edit_distance().field("field").max_distance(1).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field1").max_distance(1).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).term("bar1"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").term("bar"));
+  ASSERT_EQ(q, irs::by_edit_distance().field("field").max_distance(1).with_transpositions(true).term("bar"));
+  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).term("bar"));
+  ASSERT_NE(q, irs::by_edit_distance().field("field1").max_distance(1).with_transpositions(true).term("bar"));
+  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).with_transpositions(true).term("bar1"));
+  ASSERT_NE(q, irs::by_edit_distance().field("field").with_transpositions(true).term("bar"));
   ASSERT_NE(q, irs::by_prefix().field("field").term("bar"));
 }
 

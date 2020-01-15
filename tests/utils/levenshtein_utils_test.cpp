@@ -29,6 +29,32 @@
 
 using namespace irs::literals;
 
+namespace {
+
+void assert_description(
+    const irs::parametric_description& description,
+    const irs::bytes_ref& target,
+    const std::vector<std::tuple<irs::bytes_ref, size_t, size_t>>& candidates) {
+  auto a = irs::make_levenshtein_automaton(description, target);
+
+  for (auto& entry : candidates) {
+    const auto candidate = std::get<0>(entry);
+    const size_t expected_distance = std::get<1>(entry);
+    const size_t expected_distance_precise = std::get<2>(entry);
+    SCOPED_TRACE(testing::Message("Target: '") << irs::ref_cast<char>(target) <<
+                 "', Candidate: '" << irs::ref_cast<char>(candidate) <<
+                 "' , Distance: " << expected_distance <<
+                 " , Precise distance: " << expected_distance_precise);
+    ASSERT_EQ(expected_distance_precise, irs::edit_distance(candidate, target));
+    ASSERT_EQ(expected_distance_precise, irs::edit_distance(target, candidate));
+    ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
+    ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
+    ASSERT_EQ(expected_distance <= description.max_distance(), irs::accept(a, candidate));
+  }
+}
+
+}
+
 TEST(levenshtein_utils_test, test_distance) {
   {
     const irs::string_ref lhs = "aec";
@@ -103,11 +129,20 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_distance(description);
     assert_transitions(description);
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabet"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphabez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  1, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   1, 3 },
+      }
+    );
   }
 
   // transpositions
@@ -121,11 +156,20 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_distance(description);
     assert_transitions(description);
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabet"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphabez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  1, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   1, 3 },
+      }
+    );
   }
 }
 
@@ -225,14 +269,17 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_distance(description);
     assert_transitions(description);
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+      }
+    );
   }
 
   // transpositions
@@ -244,14 +291,18 @@ TEST(levenshtein_utils_test, test_description_1) {
     ASSERT_EQ(8, description.chi_max());
     ASSERT_EQ(1, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_FALSE(irs::accept<char>(a, "alphazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+      }
+    );
   }
 }
 
@@ -265,16 +316,20 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_FALSE(irs::accept<char>(a, "alhpaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
-      ASSERT_FALSE(irs::accept<char>(a, "lphazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  3, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+      }
+    );
   }
 
   // transpositions
@@ -286,16 +341,20 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alhpaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
-      ASSERT_FALSE(irs::accept<char>(a, "lphazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  2, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+      }
+    );
   }
 }
 
@@ -309,66 +368,41 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alhpeabt"));
-      ASSERT_FALSE(irs::accept<char>(a, "laphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
-      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  4, 4 },
+        { irs::ref_cast<irs::byte_type>("alhpeabt"_sr),  3, 3 },
+        { irs::ref_cast<irs::byte_type>("laphaebt"_sr),  4, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+      }
+    );
 
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "abc";
-
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
-
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "ac";
-
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
-
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "zaec";
-
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
-
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "abcd";
-
-      ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
-
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "abcdz";
-
-      ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
-
-    // can differentiate distances up to 'desc.max_distance'
-    {
-      const irs::string_ref lhs = "aec";
-      const irs::string_ref rhs = "abcdefasdfasdf";
-
-      ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(lhs), irs::ref_cast<irs::byte_type>(rhs)));
-      ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>(rhs), irs::ref_cast<irs::byte_type>(lhs)));
-    }
+    // "aec" vs "abc"
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("abc"_sr)));
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("abc"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
+    // "aec" vs "ac"
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("ac"_sr)));
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("ac"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
+    // "aec" vs "zaec"
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("zaec"_sr)));
+    ASSERT_EQ(1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("zaec"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
+    // "aec" vs "abcd"
+    ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("abcd"_sr)));
+    ASSERT_EQ(2, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("abcd"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
+    // "aec" vs "abcdz"
+    ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("abcdz"_sr)));
+    ASSERT_EQ(3, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("abcdz"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
+    // "aec" vs "abcdefasdfasdf", can differentiate distances up to 'desc.max_distance'
+    ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("aec"_sr), irs::ref_cast<irs::byte_type>("abcdefasdfasdf"_sr)));
+    ASSERT_EQ(description.max_distance()+1, irs::edit_distance(description, irs::ref_cast<irs::byte_type>("abcdefasdfasdf"_sr), irs::ref_cast<irs::byte_type>("aec"_sr)));
   }
 
   // transpositions
@@ -380,18 +414,23 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alhpeabt"));
-      ASSERT_TRUE(irs::accept<char>(a, "laphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
-      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
-      ASSERT_FALSE(irs::accept<char>(a, "lpzazez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  2, 4 },
+        { irs::ref_cast<irs::byte_type>("alhpeabt"_sr),  3, 3 },
+        { irs::ref_cast<irs::byte_type>("laphaebt"_sr),  2, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+        { irs::ref_cast<irs::byte_type>("lpzazez"_sr),   4, 4 },
+      }
+    );
   }
 }
 
@@ -405,19 +444,57 @@ TEST(levenshtein_utils_test, test_description_4) {
     ASSERT_EQ(512, description.chi_max());
     ASSERT_EQ(4, description.max_distance());
 
-    {
-      auto a = irs::make_levenshtein_automaton(description, irs::ref_cast<irs::byte_type>(irs::string_ref("alphabet")));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabez"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaet"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alhpaebt"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphabezz"));
-      ASSERT_TRUE(irs::accept<char>(a, "alphazez"));
-      ASSERT_TRUE(irs::accept<char>(a, "lphazez"));
-      ASSERT_TRUE(irs::accept<char>(a, "phazez"));
-      ASSERT_FALSE(irs::accept<char>(a, "phzez"));
-    }
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  4, 4 },
+        { irs::ref_cast<irs::byte_type>("alhpeabt"_sr),  3, 3 },
+        { irs::ref_cast<irs::byte_type>("laphaebt"_sr),  4, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+        { irs::ref_cast<irs::byte_type>("phazez"_sr),    4, 4 },
+        { irs::ref_cast<irs::byte_type>("phzez"_sr),     5, 5 },
+        { irs::ref_cast<irs::byte_type>("hzez"_sr),      5, 6 },
+      }
+    );
   }
+
+// Commented out since it takes ~10 min to pass
+//  // with transpositions
+//  {
+//    auto description = irs::make_parametric_description(4, true);
+//    ASSERT_TRUE(bool(description));
+//    ASSERT_EQ(9628, description.size());
+//    ASSERT_EQ(9, description.chi_size());
+//    ASSERT_EQ(512, description.chi_max());
+//    ASSERT_EQ(4, description.max_distance());
+//
+//    assert_description(
+//      description,
+//      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+//      {
+//        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },
+//        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1 },
+//        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1 },
+//        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  2, 4 },
+//        { irs::ref_cast<irs::byte_type>("alhpeabt"_sr),  3, 3 },
+//        { irs::ref_cast<irs::byte_type>("laphaebt"_sr),  2, 4 },
+//        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 2 },
+//        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
+//        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
+//        { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+//        { irs::ref_cast<irs::byte_type>("phazez"_sr),    4, 4 },
+//        { irs::ref_cast<irs::byte_type>("phzez"_sr),     5, 5 },
+//        { irs::ref_cast<irs::byte_type>("hzez"_sr),      5, 6 },
+//      }
+//    );
+//  }
 }
 
 TEST(levenshtein_utils_test, test_description_invalid) {
