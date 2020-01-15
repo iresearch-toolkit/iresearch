@@ -248,7 +248,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
+        constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
         constexpr const char PROC_EXE[] = { "/proc//exe" };
         constexpr const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];

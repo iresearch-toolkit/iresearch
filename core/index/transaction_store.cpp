@@ -189,7 +189,7 @@ class store_reader_impl final: public irs::sub_reader {
   };
 
   struct named_column_reader_t: public column_reader_t {
-    const irs::transaction_store::column_meta_builder::ptr meta_; // copy from 'store' because column in store may disapear
+    const irs::transaction_store::column_meta_builder::ptr meta_; // copy from 'store' because column in store may disappear
     named_column_reader_t(
         const irs::transaction_store::column_meta_builder::ptr& meta,
         document_entries_t&& entries
@@ -201,8 +201,8 @@ class store_reader_impl final: public irs::sub_reader {
 
   struct term_entry_t {
     document_entries_t entries_;
-    irs::term_meta meta_; // copy from 'store' because term in store may disapear
-    const irs::transaction_store::bstring_builder::ptr name_; // copy from 'store' because term in store may disapear
+    irs::term_meta meta_; // copy from 'store' because term in store may disappear
+    const irs::transaction_store::bstring_builder::ptr name_; // copy from 'store' because term in store may disappear
     term_entry_t(
         const irs::transaction_store::bstring_builder::ptr& name,
         const irs::term_meta& meta,
@@ -216,7 +216,7 @@ class store_reader_impl final: public irs::sub_reader {
     irs::attribute_view attrs_;
     uint64_t doc_count_;
     irs::bytes_ref max_term_{ irs::bytes_ref::NIL };
-    const irs::transaction_store::field_meta_builder::ptr meta_; // copy from 'store' because field in store may disapear
+    const irs::transaction_store::field_meta_builder::ptr meta_; // copy from 'store' because field in store may disappear
     irs::bytes_ref min_term_{ irs::bytes_ref::NIL };
     term_entries_t terms_;
 

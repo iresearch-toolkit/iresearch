@@ -67,7 +67,7 @@ class IRESEARCH_API scorer_registrar {
 #define REGISTER_SCORER_TYPED(scorer_name, args_format) REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               convinience methods
+// --SECTION--                                               convenience methods
 // -----------------------------------------------------------------------------
 
 class IRESEARCH_API scorers {
@@ -85,7 +85,7 @@ class IRESEARCH_API scorers {
   /// @brief find a scorer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
   ///        requires use of DECLARE_FACTORY() in class definition
-  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+  ///        NOTE: make(...) MUST be defined in CPP to ensure proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static sort::ptr get(
     const string_ref& name,

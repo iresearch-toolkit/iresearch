@@ -562,7 +562,7 @@ IRESEARCH_API void skip_block64(index_input& in, uint64_t size);
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
-// 'write_block' funcion
+// 'write_block' function
 IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,
@@ -572,7 +572,7 @@ IRESEARCH_API void read_block(
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
-// 'write_block' funcion
+// 'write_block' function
 IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,

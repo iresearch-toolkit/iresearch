@@ -30,10 +30,10 @@ NS_LOCAL
 
 struct state {
   explicit state(const irs::index_reader& index,
-                   const irs::term_reader& field,
-                   const irs::order::prepared& order,
-                   size_t& state_offset)
-    : collectors(order.prepare_collectors(1)) { // 1 term per bstring because a range is treated as a disjunction
+                 const irs::term_reader& field,
+                 const irs::order::prepared& order,
+                 size_t& state_offset)
+    : collectors(order.fixed_prepare_collectors(1)) { // 1 term per bstring because a range is treated as a disjunction
 
     // once per every 'state' collect field statistics over the entire index
     for (auto& segment: index) {
@@ -43,7 +43,7 @@ struct state {
     stats_offset = state_offset++;
   }
 
-  irs::order::prepared::collectors collectors;
+  irs::order::prepared::fixed_terms_collectors collectors;
   size_t stats_offset;
 };
 

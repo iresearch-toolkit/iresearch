@@ -61,10 +61,10 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    auto& value = terms->value();
+    const auto& value = terms->value();
 
     // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
+    const auto& meta = terms->attributes().get<term_meta>();
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
 
     // NOTE: we can't use reference to 'docs_count' here, like

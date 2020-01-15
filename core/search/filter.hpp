@@ -54,7 +54,7 @@ public:
 
   State& insert(const sub_reader& rdr) {
     auto it = states_.emplace(&rdr, State()).first;
-    return it->second;    
+    return it->second;
   }
 
   const State* find(const sub_reader& rdr) const noexcept {

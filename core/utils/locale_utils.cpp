@@ -2530,7 +2530,7 @@ class num_put_facet: public std::num_put<CharType> {
         return nullptr;
       }
 
-      return std::move(ctx);
+      return ctx;
     }
 
     void reset(const std::ios_base& str) {

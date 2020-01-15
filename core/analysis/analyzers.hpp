@@ -78,7 +78,7 @@ class IRESEARCH_API analyzer_registrar {
 #define REGISTER_ANALYZER_TYPED(analyzer_name, args_format) REGISTER_ANALYZER(analyzer_name, args_format, analyzer_name::make)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               convinience methods
+// --SECTION--                                               convenience methods
 // -----------------------------------------------------------------------------
 
 class IRESEARCH_API analyzers {
@@ -109,7 +109,7 @@ class IRESEARCH_API analyzers {
   /// @brief find an analyzer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
   ///        requires use of DECLARE_FACTORY() in class definition
-  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+  ///        NOTE: make(...) MUST be defined in CPP to ensure proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static result get(
     analyzer::ptr& analyzer,
@@ -123,7 +123,7 @@ class IRESEARCH_API analyzers {
   /// @brief find an analyzer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
   ///        requires use of DECLARE_FACTORY() in class definition
-  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+  ///        NOTE: make(...) MUST be defined in CPP to ensure proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static analyzer::ptr get(
     const string_ref& name,

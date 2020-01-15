@@ -630,7 +630,7 @@ static ptr make(Args&&... args) { \
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation of a factory method, instantiation on heap
-///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+///        NOTE: make(...) MUST be defined in CPP to ensure proper code scope
 //////////////////////////////////////////////////////////////////////////////
 #define DEFINE_FACTORY_DEFAULT(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
