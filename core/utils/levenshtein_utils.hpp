@@ -103,6 +103,11 @@ class IRESEARCH_API parametric_description {
   static constexpr byte_type MAX_DISTANCE = 31;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief create default "invalid" description
+  //////////////////////////////////////////////////////////////////////////////
+  parametric_description() = default;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @return transition from 'from' state matching a provided
   ///         characteristic vector
   //////////////////////////////////////////////////////////////////////////////
@@ -153,8 +158,6 @@ class IRESEARCH_API parametric_description {
  private:
   friend parametric_description make_parametric_description(
       byte_type max_distance, bool with_transposition);
-
-  parametric_description() = default;
 
   parametric_description(
       std::vector<transition_t>&& transitions,

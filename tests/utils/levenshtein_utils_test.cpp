@@ -466,6 +466,7 @@ TEST(levenshtein_utils_test, test_description_4) {
   }
 
 // Commented out since it takes ~10 min to pass
+//#ifndef IRESEARCH_DEBUG
 //  // with transpositions
 //  {
 //    auto description = irs::make_parametric_description(4, true);
@@ -495,9 +496,12 @@ TEST(levenshtein_utils_test, test_description_4) {
 //      }
 //    );
 //  }
+//#endif
 }
 
 TEST(levenshtein_utils_test, test_description_invalid) {
+  ASSERT_FALSE(irs::parametric_description());
+
   // no transpositions
   {
     auto description = irs::make_parametric_description(irs::parametric_description::MAX_DISTANCE+1, false);

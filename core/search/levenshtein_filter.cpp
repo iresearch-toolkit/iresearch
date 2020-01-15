@@ -28,6 +28,51 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/noncopyable.hpp"
+
+NS_LOCAL
+
+const irs::parametric_description INVALID;
+
+template<irs::byte_type Size>
+class parametric_descriptions : private irs::util::noncopyable {
+ public:
+  parametric_descriptions() {
+    for (irs::byte_type i = 0; i < Size; ++i) {
+      const auto args = index_to_args(i);
+      cache_[i] = irs::make_parametric_description(args.first, args.second);
+    }
+  }
+
+  const irs::parametric_description& get(irs::byte_type distance,
+                                         bool with_transpositions) const noexcept {
+    const auto index = args_to_index(distance, with_transpositions);
+
+    if (index >= cache_.size()) {
+      return INVALID;
+    }
+
+    return cache_[index];
+  }
+
+ private:
+  static size_t args_to_index(irs::byte_type distance, bool with_transpositions) noexcept {
+    return 2*size_t(distance) + size_t(with_transpositions);
+  }
+
+  static std::pair<irs::byte_type, bool> index_to_args(size_t index) noexcept {
+    return std::make_pair(irs::byte_type(index >> 1), 0 != (index % 2));
+  }
+
+  std::array<irs::parametric_description, Size> cache_;
+};
+
+const irs::parametric_description& description(irs::byte_type distance, bool with_transpositions) {
+  static const parametric_descriptions<9> INSTANCE;
+  return INSTANCE.get(distance, with_transpositions);
+}
+
+NS_END
 
 NS_ROOT
 
@@ -43,15 +88,15 @@ filter::prepared::ptr by_edit_distance::prepare(
     return by_term::prepare(index, order, boost, ctx);
   }
 
-  boost *= this->boost();
-  const string_ref field = this->field();
-
-  const auto d = make_parametric_description(max_distance_, with_transpositions_);
+  const auto& d = ::description(max_distance_, with_transpositions_);
 
   if (!d) {
     assert(false);
     return prepared::empty();
   }
+
+  boost *= this->boost();
+  const string_ref field = this->field();
 
   return prepare_automaton_filter(field, make_levenshtein_automaton(d, term()),
                                   scored_terms_limit(), index, order, boost);

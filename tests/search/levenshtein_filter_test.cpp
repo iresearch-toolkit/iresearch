@@ -84,16 +84,40 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
 
 #endif
 
-//INSTANTIATE_TEST_CASE_P(
-//  wildcard_filter_test,
-//  wildcard_filter_test_case,
-//  ::testing::Combine(
-//    ::testing::Values(
-//      &tests::memory_directory,
-//      &tests::fs_directory,
-//      &tests::mmap_directory
-//    ),
-//    ::testing::Values("1_0", "1_1", "1_2")
-//  ),
-//  tests::to_string
-//);
+class by_edit_distance_test_case : public tests::filter_test_case_base { };
+
+TEST_P(by_edit_distance_test_case, test_filter) {
+  // add data
+  {
+    tests::json_doc_generator gen(
+      resource("levenshtein_sequential.json"),
+      &tests::generic_json_field_factory
+    );
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().field("title"), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().field("title").max_distance(3), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().field("title").max_distance(3).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
+
+  // term query
+  check_query(irs::by_edit_distance().field("title").term("alphabet"), docs_t{1}, costs_t{1}, rdr);
+}
+
+INSTANTIATE_TEST_CASE_P(
+  by_edit_distance_test,
+  by_edit_distance_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0", "1_1", "1_2")
+  ),
+  tests::to_string
+);
