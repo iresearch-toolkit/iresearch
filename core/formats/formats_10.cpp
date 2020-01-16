@@ -1449,9 +1449,7 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
-    if (!irs::pos_limits::valid(value_)) {//!!!!! BAD
-        value_ = irs::pos_limits::min();
-    }
+
     value_ += this->pos_deltas_[this->buf_pos_];
     assert(irs::pos_limits::valid(value_));
     this->read_attributes();
@@ -1475,13 +1473,13 @@ class position final : public irs::position,
     // we could check value_ == 0 on each next but this is slowdown
     // so we just increase first delta of document  in buffer by 1 to maintain backward compatibility
     // New format will store first delta already increased and this hack will be unnecessary
-    //const uint32_t freq = *this->freq_;
-    //assert(freq <= this->pend_pos_);
-    //const uint32_t new_doc_pos_offset = this->pend_pos_ - freq + this->buf_pos_;
-    //if (new_doc_pos_offset < postings_writer_base::BLOCK_SIZE) {
-    //    ++(this->pos_deltas_[new_doc_pos_offset]);
-    //}
-    //
+    const uint32_t freq = *this->freq_;
+    assert(freq <= this->pend_pos_);
+    const uint32_t new_doc_pos_offset = this->pend_pos_ - freq + this->buf_pos_;
+    if (new_doc_pos_offset < postings_writer_base::BLOCK_SIZE) {
+        ++(this->pos_deltas_[new_doc_pos_offset]);
+    }
+    
   }
 
   void clear() noexcept {
@@ -1499,12 +1497,13 @@ class position final : public irs::position,
     }
     // we have refilled buffer. Our hack from position::notify 
     // is discarded and we should set value_ accordingly
-//    if (!irs::pos_limits::valid(value_)) {
-//        value_ = irs::pos_limits::min();
-//    }
+    if (!irs::pos_limits::valid(value_)) {
+        value_ = irs::pos_limits::min();
+    }
   }
 
   void skip(uint32_t count) {
+    bool was_refill = false; // need to track refill and abort our position::notify update of deltas buffer
     auto left = postings_writer_base::BLOCK_SIZE - this->buf_pos_;
     if (count >= left) {
       count -= left;
@@ -1512,6 +1511,7 @@ class position final : public irs::position,
         this->skip_block();
         count -= postings_writer_base::BLOCK_SIZE;
       }
+      was_refill = true;
       refill();
       this->buf_pos_ = 0;
       left = postings_writer_base::BLOCK_SIZE;
@@ -1520,9 +1520,10 @@ class position final : public irs::position,
     if (count < left) {
       impl::skip(count);
     }
-
     clear();
-   // value_ = irs::pos_limits::min();
+    // we need to set value to begining of document (as this skip call definitely means new document)
+    // however actual value depends on our hack from position::notify
+    value_ = was_refill ? irs::pos_limits::min() : irs::pos_limits::invalid();
   }
 }; // position
 
