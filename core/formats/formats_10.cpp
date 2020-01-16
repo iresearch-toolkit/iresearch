@@ -368,17 +368,20 @@ class postings_writer_base : public irs::postings_writer {
 
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
-    void pos(uint32_t pos) { buf[size] = pos; }
+    void pos(uint32_t pos) { 
+        assert(pos <= UINT32_C(0x7FFFFFFF));
+        buf[size] = pos; 
+    }
 
     void reset() noexcept {
       stream::reset();
-      last = 0;
+      last = irs::pos_limits::min();
       block_last = 0;
       size = 0;
     }
 
     uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
-    uint32_t last{};            // last buffered position
+    uint32_t last{irs::pos_limits::min()};            // last buffered position
     uint32_t block_last{};      // last position in a block
     uint32_t size{};            // number of buffered elements
   }; // pos_stream
@@ -784,7 +787,7 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
   }
 
   if (pos_) {
-    pos_->last = 0;
+    pos_->last = irs::pos_limits::min();
   }
 
   if (pay_) {
@@ -898,6 +901,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
       }
 
       while (pos->next()) {
+        assert(irs::pos_limits::valid(pos->value()));
         add_position<FormatTraits>(pos->value(), offs, pay);
       }
     }
@@ -1445,8 +1449,11 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
+    if (!irs::pos_limits::valid(value_)) {//!!!!! BAD
+        value_ = irs::pos_limits::min();
+    }
     value_ += this->pos_deltas_[this->buf_pos_];
-
+    assert(irs::pos_limits::valid(value_));
     this->read_attributes();
 
     ++this->buf_pos_;
@@ -1476,9 +1483,6 @@ class position final : public irs::position,
       this->read_tail_block();
     } else {
       this->read_block();
-    }
-    if (pos_limits::valid(!value_)) {
-      value_ = pos_limits::min();
     }
   }
 
