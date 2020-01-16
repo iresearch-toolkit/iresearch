@@ -1468,6 +1468,20 @@ class position final : public irs::position,
   // notify iterator that corresponding doc_iterator has moved forward
   void notify(uint32_t n) {
     this->pend_pos_ += n;
+    // workaround for reading first position of document
+    // as first position in coument is 1 not zero and we have only
+    // deltas - > we should start reading document with  value_ = 1 (pos_limits::min())
+    // but before first next we should stay on value_ = 0 (pos::limits::invalid())
+    // we could check value_ == 0 on each next but this is slowdown
+    // so we just increase first delta of document  in buffer by 1 to maintain backward compatibility
+    // New format will store first delta already increased and this hack will be unnecessary
+    //const uint32_t freq = *this->freq_;
+    //assert(freq <= this->pend_pos_);
+    //const uint32_t new_doc_pos_offset = this->pend_pos_ - freq + this->buf_pos_;
+    //if (new_doc_pos_offset < postings_writer_base::BLOCK_SIZE) {
+    //    ++(this->pos_deltas_[new_doc_pos_offset]);
+    //}
+    //
   }
 
   void clear() noexcept {
@@ -1483,6 +1497,11 @@ class position final : public irs::position,
     } else {
       this->read_block();
     }
+    // we have refilled buffer. Our hack from position::notify 
+    // is discarded and we should set value_ accordingly
+//    if (!irs::pos_limits::valid(value_)) {
+//        value_ = irs::pos_limits::min();
+//    }
   }
 
   void skip(uint32_t count) {
@@ -1503,6 +1522,7 @@ class position final : public irs::position,
     }
 
     clear();
+   // value_ = irs::pos_limits::min();
   }
 }; // position
 
