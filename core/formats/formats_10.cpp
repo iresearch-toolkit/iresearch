@@ -1468,7 +1468,6 @@ class position final : public irs::position,
   // notify iterator that corresponding doc_iterator has moved forward
   void notify(uint32_t n) {
     this->pend_pos_ += n;
-    this->value_ = pos_limits::invalid();
   }
 
   void clear() noexcept {
