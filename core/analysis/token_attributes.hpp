@@ -188,12 +188,6 @@ class IRESEARCH_API position
 
   virtual bool next() = 0;
 
-  ///@brief base value for computing first delta value 
-  ///while writing data from this iterator
-  virtual value_t delta_base() const noexcept {
-    return pos_limits::invalid();
-  }
-
  protected:
   position(size_t reserve_attrs) noexcept;
 

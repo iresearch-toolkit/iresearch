@@ -253,8 +253,12 @@ class postings_writer_base : public irs::postings_writer {
   static const int32_t TERMS_FORMAT_MIN = 0;
   static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
 
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1; // sse
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_ONEBASED = FORMAT_MIN;
+  static constexpr int32_t FORMAT_SSE_ONEBASED = FORMAT_ONEBASED + 1;
+  static constexpr int32_t FORMAT_ZEROBASED = FORMAT_SSE_ONEBASED + 1;
+  static constexpr int32_t FORMAT_SSE_ZEROBASED = FORMAT_ZEROBASED + 1;
+  static constexpr int32_t FORMAT_MAX = FORMAT_SSE_ZEROBASED; 
 
   static const uint32_t MAX_SKIP_LEVELS = 10;
   static const uint32_t BLOCK_SIZE = 128;
@@ -785,6 +789,10 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
       FormatTraits::write_block(*doc_out_, doc_.freqs, BLOCK_SIZE, buf_);
     }
   }
+  if (pos_) {
+    pos_->last = (uint32_t)(FORMAT_ONEBASED == postings_format_version_ ||
+                            FORMAT_SSE_ONEBASED == postings_format_version_);
+  }
 
   if (pay_) {
     pay_->last = 0;
@@ -880,10 +888,6 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     tfreq = &meta->freq;
   }
 
-  auto pos_min_val = pos_limits::invalid();
-  if (pos) {
-    pos_min_val = pos->delta_base();
-  }
   begin_term();
 
   while (docs.next()) {
@@ -892,16 +896,14 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     assert(doc_limits::valid(did));
     begin_doc<FormatTraits>(did, freq.get());
     docs_.value.set(did - doc_limits::min());
-
     if (pos) {
       if (VolatileAttributes) {
         auto& attrs = pos->attributes();
         offs = attrs.get<offset>().get();
         pay = attrs.get<payload>().get();
       }
-      pos_->last = pos_min_val;
       while (pos->next()) {
-        assert(pos->value() >= pos_min_val);
+        assert(pos_limits::valid(pos->value()));
         add_position<FormatTraits>(pos->value(), offs, pay);
       }
     }
@@ -1450,6 +1452,7 @@ class position final : public irs::position,
       this->buf_pos_ = 0;
     }
 
+    value_ += (uint32_t)(!pos_limits::valid(value_));
     value_ += this->pos_deltas_[this->buf_pos_];
     assert(irs::pos_limits::valid(value_));
     this->read_attributes();
@@ -1459,10 +1462,6 @@ class position final : public irs::position,
     return true;
   }
 
-  virtual value_t delta_base() const noexcept override {
-    return pos_limits::min();
-  }
-
   // prepares iterator to work
   // or notifies iterator that doc iterator has skipped to a new block
   using impl::prepare;
@@ -1470,20 +1469,6 @@ class position final : public irs::position,
   // notify iterator that corresponding doc_iterator has moved forward
   void notify(uint32_t n) {
     this->pend_pos_ += n;
-    // workaround for reading first position of document
-    // as first position in coument is 1 not zero and we have only
-    // deltas - > we should start reading document with  value_ = 1 (pos_limits::min())
-    // but before first next we should stay on value_ = 0 (pos::limits::invalid())
-    // we could check value_ == 0 on each next but this is slowdown
-    // so we just increase first delta of document  in buffer by 1 to maintain backward compatibility
-    // New format will store first delta already increased and this hack will be unnecessary
-    const uint32_t freq = *this->freq_;
-    assert(freq <= this->pend_pos_);
-    const uint32_t new_doc_pos_offset = this->pend_pos_ - freq + this->buf_pos_;
-    if (new_doc_pos_offset < postings_writer_base::BLOCK_SIZE) {
-        ++(this->pos_deltas_[new_doc_pos_offset]);
-    }
-    
   }
 
   void clear() noexcept {
@@ -1499,15 +1484,9 @@ class position final : public irs::position,
     } else {
       this->read_block();
     }
-    // we have refilled buffer. Our hack from position::notify 
-    // is discarded and we should set value_ accordingly
-    if (!irs::pos_limits::valid(value_)) {
-        value_ = irs::pos_limits::min();
-    }
   }
 
   void skip(uint32_t count) {
-    bool was_refill = false; // need to track refill and abort our position::notify update of deltas buffer
     auto left = postings_writer_base::BLOCK_SIZE - this->buf_pos_;
     if (count >= left) {
       count -= left;
@@ -1515,7 +1494,6 @@ class position final : public irs::position,
         this->skip_block();
         count -= postings_writer_base::BLOCK_SIZE;
       }
-      was_refill = true;
       refill();
       this->buf_pos_ = 0;
       left = postings_writer_base::BLOCK_SIZE;
@@ -1525,9 +1503,6 @@ class position final : public irs::position,
       impl::skip(count);
     }
     clear();
-    // we need to set value to begining of document (as this skip call definitely means new document)
-    // however actual value depends on our hack from position::notify
-    value_ = was_refill ? irs::pos_limits::min() : irs::pos_limits::invalid();
   }
 }; // position
 
@@ -5648,7 +5623,7 @@ class format12simd final : public format12 {
 }; // format12simd
 
 irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_MAX;
+  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_ONEBASED;
 
   if (volatile_state) {
     return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
