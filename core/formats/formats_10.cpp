@@ -1451,8 +1451,9 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
-
-    value_ += (uint32_t)(!pos_limits::valid(value_));
+    if /*constexpr*/ (IteratorTraits::adjust_first_position()) {
+      value_ += (uint32_t)(!pos_limits::valid(value_));
+    }
     value_ += this->pos_deltas_[this->buf_pos_];
     assert(irs::pos_limits::valid(value_));
     this->read_attributes();
@@ -5271,7 +5272,7 @@ size_t postings_reader_base::decode(
   return size_t(std::distance(in, p));
 }
 
-template<typename FormatTraits>
+template<typename FormatTraits, bool AdjustFirstPosition = true>
 class postings_reader final: public postings_reader_base {
  public:
   template<bool Freq, bool Pos, bool Offset, bool Payload>
@@ -5280,6 +5281,7 @@ class postings_reader final: public postings_reader_base {
     static constexpr bool position() { return Freq && Pos; }
     static constexpr bool offset() { return position() && Offset; }
     static constexpr bool payload() { return position() && Payload; }
+    static constexpr bool adjust_first_position() { return AdjustFirstPosition; }
   };
 
   virtual irs::doc_iterator::ptr iterator(
@@ -5295,8 +5297,8 @@ class postings_reader final: public postings_reader_base {
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
-template<typename FormatTraits>
-irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
+template<typename FormatTraits, bool AdjustFirstPosition>
+irs::doc_iterator::ptr postings_reader<FormatTraits, AdjustFirstPosition>::iterator(
     const flags& field,
     const attribute_view& attrs,
     const flags& req) {
@@ -5584,6 +5586,52 @@ DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
 REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                         format13
+// ----------------------------------------------------------------------------
+
+class format13 : public format12 {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format13() noexcept : format12(format13::type()) { }
+
+  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  
+ protected:
+  explicit format13(const irs::format::type_id& type) noexcept
+    : format12(type) {
+  }
+};
+
+irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) const {
+  constexpr const auto VERSION = postings_writer_base::FORMAT_ZEROBASED;
+
+  if (volatile_state) {
+    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
+  }
+
+  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+
+}
+
+irs::postings_reader::ptr format13::get_postings_reader() const {
+  return irs::postings_reader::make<::postings_reader<format_traits, false>>();
+}
+
+/*static*/ irs::format::ptr format13::make() {
+  static const ::format13 INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+
+DEFINE_FORMAT_TYPE_NAMED(::format13, "1_3");
+REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                      format12sse
 // ----------------------------------------------------------------------------
 
@@ -5645,6 +5693,46 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
 
 DEFINE_FORMAT_TYPE_NAMED(::format12simd, "1_2simd");
 REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
+
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                      format13sse
+// ----------------------------------------------------------------------------
+
+class format13simd final : public format13 {
+public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format13simd() noexcept : format13(format13simd::type()) { }
+
+  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
+}; // format13simd
+
+irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state) const {
+  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_ZEROBASED;
+
+  if (volatile_state) {
+    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
+  }
+
+  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
+}
+
+irs::postings_reader::ptr format13simd::get_postings_reader() const {
+  return irs::postings_reader::make<::postings_reader<format_traits_simd, false>>();
+}
+
+/*static*/ irs::format::ptr format13simd::make() {
+  static const ::format13simd INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+DEFINE_FORMAT_TYPE_NAMED(::format13simd, "1_3simd");
+REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
 
