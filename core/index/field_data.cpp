@@ -224,9 +224,6 @@ class pos_iterator final: public irs::position {
       pay_.resize(size);
       prox_in_.read(pay_.data(), size);
     }
-    if (!irs::pos_limits::valid(value_)) {
-        value_ = irs::pos_limits::min();
-    }
     value_ += pos;
 
     if (has_offs_) {

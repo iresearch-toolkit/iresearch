@@ -375,13 +375,13 @@ class postings_writer_base : public irs::postings_writer {
 
     void reset() noexcept {
       stream::reset();
-      last = irs::pos_limits::min();
+      last = 0;
       block_last = 0;
       size = 0;
     }
 
     uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
-    uint32_t last{irs::pos_limits::min()};            // last buffered position
+    uint32_t last{};            // last buffered position
     uint32_t block_last{};      // last position in a block
     uint32_t size{};            // number of buffered elements
   }; // pos_stream
@@ -786,10 +786,6 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
     }
   }
 
-  if (pos_) {
-    pos_->last = irs::pos_limits::min();
-  }
-
   if (pay_) {
     pay_->last = 0;
   }
@@ -884,6 +880,10 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     tfreq = &meta->freq;
   }
 
+  auto pos_min_val = pos_limits::invalid();
+  if (pos) {
+    pos_min_val = pos->delta_base();
+  }
   begin_term();
 
   while (docs.next()) {
@@ -899,9 +899,9 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
         offs = attrs.get<offset>().get();
         pay = attrs.get<payload>().get();
       }
-
+      pos_->last = pos_min_val;
       while (pos->next()) {
-        assert(irs::pos_limits::valid(pos->value()));
+        assert(pos->value() >= pos_min_val);
         add_position<FormatTraits>(pos->value(), offs, pay);
       }
     }
@@ -1457,6 +1457,10 @@ class position final : public irs::position,
     ++this->buf_pos_;
     --this->pend_pos_;
     return true;
+  }
+
+  virtual value_t delta_base() const noexcept override {
+    return pos_limits::min();
   }
 
   // prepares iterator to work
