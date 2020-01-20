@@ -85,6 +85,7 @@ set(IReSearch_tests_sources
   ./search/phrase_filter_tests.cpp
   ./search/column_existence_filter_test.cpp
   ./search/same_position_filter_tests.cpp
+  ./search/ngram_similarity_filter_tests.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
