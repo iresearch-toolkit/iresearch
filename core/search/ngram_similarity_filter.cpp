@@ -36,25 +36,6 @@
 
 NS_ROOT
 
-template<typename DocIterator>
-struct flagged_doc_iterator_adapter : score_iterator_adapter<DocIterator> {
-  flagged_doc_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(it)) {}
-
-  flagged_doc_iterator_adapter( flagged_doc_iterator_adapter&& rhs) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(rhs)), flag(rhs.flag) {}
-
-  flagged_doc_iterator_adapter& operator=( flagged_doc_iterator_adapter&& rhs) noexcept {
-    if (this != &rhs) {
-      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
-      flag = rhs.flag;
-    }
-    return *this;
-  }
-
-  bool flag{ false };
-};
-
 //////////////////////////////////////////////////////////////////////////////
 ///@class serial_min_match_disjunction
 ///@brief min_match_disjunction with strict serail order of matched terms
@@ -62,9 +43,9 @@ struct flagged_doc_iterator_adapter : score_iterator_adapter<DocIterator> {
 template<typename DocIterator>
 class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
  public:
-  typedef std::vector<position::ref> positions_t;
+  typedef std::vector<pointer_wrapper<position>> positions_t;
   using base = min_match_disjunction<DocIterator>;
-
+  
   serial_min_match_disjunction(doc_iterators_t&& itrs,
     size_t min_match_count = 1,
     const order::prepared& ord = order::prepared::unordered())
@@ -75,7 +56,9 @@ class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
       // get needed positions for iterators
       auto& pos = attrs.get<position>();
       if (pos) {
-        pos_.emplace_back(std::ref(*pos));
+        pos_.emplace_back(pos);
+      } else {
+        pos_.emplace_back(nullptr);
       }
     }
   }
@@ -112,8 +95,8 @@ class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
     assert(pos_.size() == itrs_.size());
     positions_t::const_iterator pos_it = pos_.begin();
     for (const auto& doc : itrs_) {
-      if (doc->value() == doc_.value) {
-        position& pos = *pos_it;
+      if (doc->value() == doc_.value && (*pos_it).get() != nullptr) {
+        position& pos = *(*pos_it).get();
         auto found = search_buf.begin();
         while (pos.next()) {
           auto new_pos = pos.value();
@@ -187,6 +170,7 @@ class ngram_similarity_query : public filter::prepared {
     itrs.reserve(query_state->size());
     for (auto& term_state : *query_state) {
       if (term_state.reader == nullptr) {
+        itrs.emplace_back(doc_iterator::empty());
         continue;
       }
 
