@@ -36,13 +36,32 @@
 
 NS_ROOT
 
+template<typename DocIterator>
+struct flagged_doc_iterator_adapter : score_iterator_adapter<DocIterator> {
+  flagged_doc_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
+    : score_iterator_adapter<DocIterator>(std::move(it)) {}
+
+  flagged_doc_iterator_adapter( flagged_doc_iterator_adapter&& rhs) noexcept
+    : score_iterator_adapter<DocIterator>(std::move(rhs)), flag(rhs.flag) {}
+
+  flagged_doc_iterator_adapter& operator=( flagged_doc_iterator_adapter&& rhs) noexcept {
+    if (this != &rhs) {
+      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
+      flag = rhs.flag;
+    }
+    return *this;
+  }
+
+  bool flag{ false };
+};
+
 //////////////////////////////////////////////////////////////////////////////
 ///@class serial_min_match_disjunction
 ///@brief min_match_disjunction with strict serail order of matched terms
 //////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
-public:
+ public:
   typedef std::vector<position::ref> positions_t;
   using base = min_match_disjunction<DocIterator>;
 
@@ -71,36 +90,57 @@ public:
     const auto doc = base::seek(target);
 
     if (doc_limits::eof(doc) || check_serial_positions()) {
-      return doc; 
+      return doc;
     }
 
     next();
     return this->value();
   }
 
-private:
-  bool check_serial_positions() const {
+ private:
+  struct search_state {
+    explicit search_state(uint32_t n): len(1), next_pos(n) {}
+    size_t len;
+    uint32_t next_pos;
+  };
+  using search_states_t = std::vector<search_state>;
+
+
+  bool check_serial_positions() {
+    search_states_t search_buf;
     size_t matched = 0;
-    auto target = pos_limits::min();
     assert(pos_.size() == itrs_.size());
     positions_t::const_iterator pos_it = pos_.begin();
-    // lead(), heap_.end()
     for (const auto& doc : itrs_) {
-      position& pos = *pos_it;
       if (doc->value() == doc_.value) {
-        auto seeked = pos.seek(target);
-        if (target != seeked) {
-          target = pos_limits::eof(seeked)? pos_limits::min(): seeked;
-          matched = 0;
-          //if (0 == matched) {// first match, beginning of sequence
-          //  target = seeked;
-          //} else {
-          //  return false;
-          //}
+        position& pos = *pos_it;
+        auto found = search_buf.begin();
+        while (pos.next()) {
+          auto new_pos = pos.value();
+          if (found != search_buf.end()) {
+            found = std::find_if(found, search_buf.end(), [new_pos](const search_state& p) {
+              return p.next_pos == new_pos;
+              });
+          }
+          if (found != search_buf.end()) {
+            ++(found->len);
+            ++(found->next_pos);
+            if (found->len > matched) {
+              matched = found->len;
+            }
+          } else  {
+            search_buf.emplace_back(new_pos + 1);
+            found = search_buf.end();
+            if (!matched) {
+              matched = 1;
+            }
+          }
         }
-        ++matched;
-        ++target;
-        assert(!pos_limits::eof(target)); // check position overflow
+      } else {
+        // seal all current matches. As the doc iterator is missing term - this series are done
+        std::for_each(search_buf.begin(), search_buf.end(), [](search_state& p) {
+          p.next_pos = pos_limits::invalid(); 
+        });
       }
       ++pos_it;
     }
@@ -117,58 +157,63 @@ private:
 //////////////////////////////////////////////////////////////////////////////
 class ngram_similarity_query : public filter::prepared {
  public:
-   typedef std::vector<reader_term_state> terms_states_t;
-   typedef states_cache<terms_states_t> states_t;
-   typedef std::vector<bstring> stats_t;
+  typedef std::vector<reader_term_state> terms_states_t;
+  typedef states_cache<terms_states_t> states_t;
+  typedef std::vector<bstring> stats_t;
 
-   DECLARE_SHARED_PTR(ngram_similarity_query);
+  DECLARE_SHARED_PTR(ngram_similarity_query);
 
-   ngram_similarity_query(size_t min_match_count, states_t&& states, boost_t boost = no_boost())
-       :prepared(boost), min_match_count_(min_match_count), states_(std::move(states)) {}
+  ngram_similarity_query(size_t min_match_count, states_t&& states, boost_t boost = no_boost())
+      :prepared(boost), min_match_count_(min_match_count), states_(std::move(states)) {}
 
-   using filter::prepared::execute;
+  using filter::prepared::execute;
 
-   virtual doc_iterator::ptr execute(
-       const sub_reader& rdr,
-       const order::prepared& ord,
-       const attribute_view& /*ctx*/) const override {
+  virtual doc_iterator::ptr execute(
+      const sub_reader& rdr,
+      const order::prepared& ord,
+      const attribute_view& /*ctx*/) const override {
+    auto query_state = states_.find(rdr);
+    if (!query_state) {
+      // invalid state
+      return doc_iterator::empty();
+    }
 
-     auto query_state = states_.find(rdr);
-     if (!query_state) {
-       // invalid state 
-       return doc_iterator::empty();
-     }
+    auto features = ord.features() | by_ngram_similarity::features();
 
-     auto features = ord.features() | by_ngram_similarity::features();
+    // make iterator decorator with marker of "sequence start"
+    // if no term found  reset marker to true, reset marker to false after every found term
 
-     min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
-     itrs.reserve(query_state->size());
-     for (auto& term_state : *query_state) {
-       auto term = term_state.reader->iterator();
+    min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
+    itrs.reserve(query_state->size());
+    for (auto& term_state : *query_state) {
+      if (term_state.reader == nullptr) {
+        continue;
+      }
 
-       // use bytes_ref::blank here since we do not need just to "jump"
-       // to cached state, and we are not interested in term value itself */
-       if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
-         continue;
-       }
+      auto term = term_state.reader->iterator();
 
-       // get postings
-       auto docs = term->postings(features);
+      // use bytes_ref::blank here since we do not need just to "jump"
+      // to cached state, and we are not interested in term value itself */
+      if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
+        continue;
+      }
+      // get postings
+      auto docs = term->postings(features);
+      // add iterator
+      itrs.emplace_back(std::move(docs));
+    }
 
-       // add iterator
-       itrs.emplace_back(std::move(docs));
-     }
-     if (itrs.size() < min_match_count_) {
-       return doc_iterator::empty();
-     }
+    if (itrs.size() < min_match_count_) {
+      return doc_iterator::empty();
+    }
 
-     return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
-       std::move(itrs), min_match_count_, ord );
-   }
+    return memory::make_shared<serial_min_match_disjunction<doc_iterator::ptr>>(
+      std::move(itrs), min_match_count_, ord);
+  }
 
  private:
-   size_t min_match_count_;
-   states_t states_;
+  size_t min_match_count_;
+  states_t states_;
 };
 
 // -----------------------------------------------------------------------------
@@ -205,17 +250,16 @@ size_t by_ngram_similarity::hash() const noexcept {
 }
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-  const index_reader& rdr,
-  const order::prepared& ord,
-  boost_t boost,
-  const attribute_view& /*ctx*/) const {
-
-  if (ngrams_.empty() || fld_.empty() || threshold_ < 0 || threshold_ > 1) {
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
+  if (ngrams_.empty() || fld_.empty() || threshold_ < 0. || threshold_ > 1.) {
     // empty field or terms
     return filter::prepared::empty();
   }
 
-  size_t min_match_count = (size_t)std::floor((double)ngrams_.size() * threshold_);
+  size_t min_match_count = static_cast<size_t>(std::ceil(static_cast<double>(ngrams_.size()) * threshold_));
 
 
   ngram_similarity_query::states_t query_states(rdr.size());
@@ -224,7 +268,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   ngram_similarity_query::terms_states_t term_states;
   term_states.reserve(ngrams_.size());
 
-  // TODO: implement statistic collection 
+  // TODO: implement statistic collection
   //std::vector<order::prepared::collectors> term_stats;
   //term_stats.reserve(terms_.size());
 
@@ -245,7 +289,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     if (!features().is_subset_of(field->meta().features)) {
       continue;
     }
-
+    size_t count_terms = 0;
     for (const auto& ngram : ngrams_) {
       //auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
       //term_itr->collect(segment, *field); // collect field statistics once per segment
@@ -257,26 +301,23 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       //  if (ord.empty()) {
       //    break;
       //  } else {
-      //    // continue here because we should collect 
+      //    // continue here because we should collect
       //    // stats for other terms in phrase
       //    continue;
       //  }
       //}
-      if (!term->seek(ngram)) {
-        break;
-      }
-
-      term->read(); // read term attributes
-      //term_itr->collect(segment, *field, 0, term->attributes()); // collect statistics, 0 because only 1 term
       term_states.emplace_back();
-
       auto& state = term_states.back();
-
-      state.cookie = term->cookie();
-      state.reader = field;
+      if (term->seek(ngram)) {
+        term->read(); // read term attributes
+        //term_itr->collect(segment, *field, 0, term->attributes()); // collect statistics, 0 because only 1 term
+        state.cookie = term->cookie();
+        state.reader = field;
+        ++count_terms;
+      }
     }
 
-    if (term_states.size() < min_match_count) {
+    if (count_terms < min_match_count) {
       // we have not found enough terms
       term_states.clear();
       continue;
