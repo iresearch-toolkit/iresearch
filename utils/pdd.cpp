@@ -97,7 +97,7 @@ int dump(
     compressed = raw;
   }
 
-  out << "{\n";
+  out << "{{\n";
   for (auto begin = compressed.begin(), end = compressed.end(); begin != end;) {
     out << "  ";
     auto slice_begin = begin;
@@ -108,7 +108,7 @@ int dump(
     out << "\n";
     begin = slice_end;
   }
-  out << "}\n" << raw.size();
+  out << "}," << raw.size() << "}\n";
 
   return 0;
 }
