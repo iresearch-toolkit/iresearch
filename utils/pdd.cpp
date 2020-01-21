@@ -108,7 +108,7 @@ int dump(
     out << "\n";
     begin = slice_end;
   }
-  out << "}\n";
+  out << "}\n" << raw.size();
 
   return 0;
 }
