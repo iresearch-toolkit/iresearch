@@ -101,11 +101,17 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   // empty query
   check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_edit_distance().field("title"), docs_t{}, costs_t{0}, rdr);
-  check_query(irs::by_edit_distance().field("title").max_distance(3), docs_t{}, costs_t{0}, rdr);
-  check_query(irs::by_edit_distance().field("title").max_distance(3).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
 
   // term query
-  check_query(irs::by_edit_distance().field("title").term("alphabet"), docs_t{1}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
+
+  // distance 1
+  check_query(irs::by_edit_distance().max_distance(1).field("title").term("aa"), docs_t{27, 28}, costs_t{2}, rdr);
+
+  // distance 3
+//  check_query(irs::by_edit_distance().field("title").max_distance(3), docs_t{}, costs_t{0}, rdr);
+//  check_query(irs::by_edit_distance().field("title").max_distance(3).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
 }
 
 INSTANTIATE_TEST_CASE_P(
