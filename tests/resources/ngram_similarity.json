@@ -9,5 +9,6 @@
   { "seq" : 7, "field": [ "at", "ss", "at", "tl", "la", "ss",  "at", "tl", "la", "as"] },
   { "seq" : 8, "field": [ "at", "ss", "at", "tl"] },
   { "seq" : 9, "field": [ "at", "at", "ss", "at", "at", "tl"] },
-  { "seq" : 10, "field": ["at", "la", "ll", "ll", "ll", "ll"] }
+  { "seq" : 10, "field": ["at", "la", "ll", "ll", "ll", "ll"] },
+  { "seq" : 11, "field": ["at", "la", "ll", "ll", "ss", "ll"] }
 ]

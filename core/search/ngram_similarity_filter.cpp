@@ -122,7 +122,7 @@ class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
       } else {
         // seal all current matches. As the doc iterator is missing term - this series are done
         std::for_each(search_buf.begin(), search_buf.end(), [](search_state& p) {
-          p.next_pos = pos_limits::invalid(); 
+          ++(p.next_pos); 
         });
       }
       ++pos_it;
@@ -179,6 +179,7 @@ class ngram_similarity_query : public filter::prepared {
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
+        itrs.emplace_back(doc_iterator::empty());
         continue;
       }
       // get postings
