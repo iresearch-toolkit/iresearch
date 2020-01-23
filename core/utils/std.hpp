@@ -261,7 +261,7 @@ struct initializer {
   constexpr
 #endif
   initializer(Array& cache) : init_(cache) {
-    constexpr const auto Idx = Size - 1;
+    constexpr auto Idx = Size - 1;
 
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
@@ -282,7 +282,7 @@ struct initializer<Builder, 1> {
   constexpr
 #endif
   initializer(Array& cache) {
-    constexpr const auto Idx = 0;
+    constexpr auto Idx = 0;
 
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
