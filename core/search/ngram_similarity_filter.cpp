@@ -43,6 +43,7 @@ NS_ROOT
 template<typename DocIterator>
 class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
  public:
+ // typedef std::pair <pointer_wrapper<position>, const min_match_disjunction::doc_iterator_t&> position_t;
   typedef std::vector<pointer_wrapper<position>> positions_t;
   using base = min_match_disjunction<DocIterator>;
   
@@ -81,15 +82,18 @@ class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
   }
 
  private:
+
   struct search_state {
     explicit search_state(uint32_t n): len(1), next_pos(n) {}
     size_t len;
     uint32_t next_pos;
   };
+   
   using search_states_t = std::vector<search_state>;
 
-
   bool check_serial_positions() {
+    push_valid_to_lead();
+    size_t matched_iters = lead_;
     search_states_t search_buf;
     size_t matched = 0;
     assert(pos_.size() == itrs_.size());
@@ -97,40 +101,37 @@ class serial_min_match_disjunction : public min_match_disjunction<DocIterator> {
     for (const auto& doc : itrs_) {
       if (doc->value() == doc_.value && (*pos_it).get() != nullptr) {
         position& pos = *(*pos_it).get();
-        auto found = search_buf.begin();
+        size_t current_inserted = 0; // here we store search end so iterator is not affected by it`s own positions inserted before
         while (pos.next()) {
           auto new_pos = pos.value();
-          if (found != search_buf.end()) {
-            found = std::find_if(found, search_buf.end(), [new_pos](const search_state& p) {
+          auto found = std::find_if(search_buf.begin(), search_buf.end() - current_inserted, [new_pos](const search_state& p) {
               return p.next_pos == new_pos;
               });
-          }
-          if (found != search_buf.end()) {
+          if (found != (search_buf.end() - current_inserted)) {
             ++(found->len);
-            ++(found->next_pos);
+            //++(found->next_pos);
             if (found->len > matched) {
               matched = found->len;
             }
-          } else  {
-            search_buf.emplace_back(new_pos + 1);
-            found = search_buf.end();
+          }
+          else {
+            search_buf.emplace_back(new_pos);
+            current_inserted++;
             if (!matched) {
               matched = 1;
             }
           }
         }
-      } else {
-        // seal all current matches. As the doc iterator is missing term - this series are done
-        std::for_each(search_buf.begin(), search_buf.end(), [](search_state& p) {
-          ++(p.next_pos); 
-        });
       }
+      // seal all current matches. As the doc iterator is missing term - this series are done
+      std::for_each(search_buf.begin(), search_buf.end(), [](search_state& p) {
+        ++(p.next_pos);
+      });
       ++pos_it;
     }
     // !! full matched will be needed for counting score addition!
     return matched >= min_match_count_;
   }
-
   positions_t pos_;
 };
 

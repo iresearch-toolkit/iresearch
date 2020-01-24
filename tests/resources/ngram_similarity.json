@@ -10,5 +10,8 @@
   { "seq" : 8, "field": [ "at", "ss", "at", "tl"] },
   { "seq" : 9, "field": [ "at", "at", "ss", "at", "at", "tl"] },
   { "seq" : 10, "field": ["at", "la", "ll", "ll", "ll", "ll"] },
-  { "seq" : 11, "field": ["at", "la", "ll", "ll", "ss", "ll"] }
+  { "seq" : 11, "field": ["at", "la", "ll", "ll", "ss", "ll"] },
+  { "seq" : 12, "field": ["at", "la", "as", "tl", "as"] },
+  { "seq" : 13, "field": ["at", "ll", "as", "at", "at"] },
+  { "seq" : 14, "field": ["ll", "at", "at", "at", "at"] }
 ]

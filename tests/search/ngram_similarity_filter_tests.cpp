@@ -69,6 +69,42 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
   ASSERT_EQ(0, expected.size());
 }
 
+TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.33).field("field").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll").push_back("never_match");
+
+  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13};
+  const size_t expected_size = expected.size();
+  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  size_t count = 0;
+  for (const auto& sub : rdr) {
+    auto docs = prepared->execute(sub);
+
+    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+    while (docs->next()) {
+      ASSERT_EQ(docs->value(), doc->value);
+      expected.erase(std::remove(expected.begin(), expected.end(), docs->value()), expected.end());
+      ++count;
+    }
+  }
+  ASSERT_EQ(expected_size, count);
+  ASSERT_EQ(0, expected.size());
+}
+
+
 TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   // add segment
   {
@@ -85,7 +121,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
     .push_back("never_match").push_back("la").push_back("as")
     .push_back("ll");
 
-  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 7, 8, 11};
+  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 7, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
@@ -121,7 +157,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
     .push_back("never_match").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
-  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 8, 11, 12};
+  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 7, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
@@ -157,7 +193,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
     .push_back("never_match").push_back("tl").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
-  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 8};
+  std::vector<irs::doc_id_t> expected{ 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
