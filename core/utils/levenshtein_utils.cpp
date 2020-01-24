@@ -614,8 +614,11 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        if (is_accepting(description, transition.first, utf8_size - offset)) {
-          a.SetFinal(to);
+        const auto distance = description.distance(transition.first, utf8_size - offset);
+
+        if (distance <= description.max_distance()) {
+          assert(distance < fst::fsa::BooleanWeight::MaxPayload);
+          a.SetFinal(to, {true, distance});
         }
 
         stack.emplace_back(offset, transition.first, to);

@@ -277,7 +277,7 @@ template<typename Builder>
 struct initializer<Builder, 1> {
   using type = typename Builder::type;
 
-  constexpr auto Idx = 0;
+  static constexpr auto Idx = 0;
 
   template<typename Array>
 #ifndef IRESEARCH_CXX_11

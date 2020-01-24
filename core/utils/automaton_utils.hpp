@@ -61,7 +61,7 @@ inline automaton match_char(automaton::Arc::Label c) {
 }
 
 template<typename Char, typename Matcher>
-bool accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Char>& target) {
   auto state = a.Start();
   matcher.SetState(state);
 
@@ -73,11 +73,12 @@ bool accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Ch
     matcher.SetState(state);
   }
 
-  return begin == end && a.Final(state);
+  return begin == end ? a.Final(state)
+                      : automaton::Weight::Zero();
 }
 
 template<typename Char>
-bool accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
   // FIXME optimize rho label lookup (just check last arc)
