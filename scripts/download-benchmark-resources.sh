@@ -19,5 +19,5 @@ BENCHMARK_TASKS_URL="https://raw.githubusercontent.com/iresearch-toolkit/iresear
     wget --quiet -O - "${BENCHMARK_DATA_URL}" | lzma -d > benchmark.data
     wget --quiet -O lucene_index.jar "${BENCHMARK_INDEX_JAR_URL}"
     wget --quiet -O lucene_search.jar "${BENCHMARK_SEARCH_JAR_URL}"
-    wget --quiet -O - "${BENCHMARK_TASKS_URL}" | grep -E 'HighTerm:|MedTerm:|LowTerm:|HighPhrase:|MedPhrase:|LowPhrase:|AndHighHigh:|AndHighMed:|AndHighLow:|OrHighHigh:|OrHighMed:|OrHighLow:|Prefix3:|Wildcard:' > benchmark.tasks
+    wget --quiet -O - "${BENCHMARK_TASKS_URL}" | grep -E 'HighTerm:|MedTerm:|LowTerm:|HighPhrase:|MedPhrase:|LowPhrase:|AndHighHigh:|AndHighMed:|AndHighLow:|OrHighHigh:|OrHighMed:|OrHighLow:|Prefix3:|Wildcard:|Fuzzy1:|Fuzzy2:' > benchmark.tasks
 }
