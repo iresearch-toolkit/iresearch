@@ -53,12 +53,12 @@
 #include "index/directory_reader.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/filter.hpp"
+#include "search/levenshtein_filter.hpp"
 #include "search/phrase_filter.hpp"
-#include "search/wildcard_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
 
@@ -115,6 +115,8 @@ enum class category_t {
   OrHighLow,
   Prefix3,
   Wildcard,
+  Fuzzy1,
+  Fuzzy2,
   Or4High,
   Or6High4Med2Low,
   MinMatch2High2Med,
@@ -136,6 +138,8 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "OrHighLow") return category_t::OrHighLow;
   if (value == "Prefix3") return category_t::Prefix3;
   if (value == "Wildcard") return category_t::Wildcard;
+  if (value == "Fuzzy1") return category_t::Fuzzy1;
+  if (value == "Fuzzy2") return category_t::Fuzzy2;
   if (value == "Or4High") return category_t::Or4High;
   if (value == "Or6High4Med2Low") return category_t::Or6High4Med2Low;
   if (value == "MinMatch2High2Med") return category_t::MinMatch2High2Med;
@@ -158,6 +162,8 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::OrHighLow: return "OrHighLow";
    case category_t::Prefix3: return "Prefix3";
    case category_t::Wildcard: return "Wildcard";
+   case category_t::Fuzzy1: return "Fuzzy1";
+   case category_t::Fuzzy2: return "Fuzzy2";
    case category_t::Or4High: return "Or4High";
    case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
    case category_t::MinMatch2High2Med: return "MinMatch2High2Med";
@@ -302,6 +308,20 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     return query.prepare(reader, order);
+   }
+   case category_t::Fuzzy1:
+   case category_t::Fuzzy2: {
+     const auto pos = text.find('~');
+     const auto term = irs::string_ref(
+       text.c_str(), 
+       pos == std::string::npos ? text.size() : pos);
+
+     irs::by_edit_distance query;
+     query.scored_terms_limit(scored_terms_limit);
+     query.max_distance(category == category_t::Fuzzy1 ? 1 : 2);
+     query.field("body").term(term);
+
+     return query.prepare(reader, order);
    }
    case category_t::MinMatch2High2Med: {
      if ((terms = splitFreq(text)).null()) {
