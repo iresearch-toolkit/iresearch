@@ -136,9 +136,9 @@ class BooleanWeight {
   static constexpr PayloadType True = 1;    // "is true" mask
   static constexpr PayloadType Invalid = 2; // "not a member" mask
 
-  // [0] - true/false bit
-  // [1] - "not a member" bit
   // [2..7] - payload
+  // [1] - "not a member" bit
+  // [0] - true/false bit
   PayloadType v_;
 };
 

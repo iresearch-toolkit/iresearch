@@ -900,7 +900,7 @@ class automaton_term_iterator final : public term_iterator_base {
     }
 
     automaton::Weight::PayloadType value;
-  };
+  }; // payload
 
   typedef std::deque<block_iterator> block_stack_t;
 

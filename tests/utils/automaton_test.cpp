@@ -45,6 +45,8 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
+    ASSERT_TRUE(ApproxEqual(weight, weight.Quantize()));
+    ASSERT_TRUE(ApproxEqual(weight, weight.Reverse()));
     ASSERT_FALSE(bool(weight));
     ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
@@ -81,6 +83,8 @@ TEST(boolean_weight_test, create) {
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
+    ASSERT_FALSE(ApproxEqual(weight, weight.Quantize()));
+    ASSERT_TRUE(ApproxEqual(weight, weight.Reverse()));
     ASSERT_FALSE(bool(weight));
     ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::Zero(), weight);
@@ -120,6 +124,8 @@ TEST(boolean_weight_test, create) {
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
+    ASSERT_FALSE(ApproxEqual(weight, weight.Quantize()));
+    ASSERT_TRUE(ApproxEqual(weight, weight.Reverse()));
     ASSERT_FALSE(bool(weight));
     ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
