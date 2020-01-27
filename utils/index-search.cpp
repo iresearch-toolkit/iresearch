@@ -61,6 +61,7 @@
 #include "search/wildcard_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 
 #include "index-search.hpp"
 
@@ -383,6 +384,10 @@ int search(
     const std::string& scorer,
     const std::string& scorer_arg_format,
     const irs::string_ref& scorer_arg) {
+  // build parametric descriptions for distances 1 and 2
+  irs::default_pdp(1, false); irs::default_pdp(1, true);
+  irs::default_pdp(2, false); irs::default_pdp(2, true);
+
   static const std::map<std::string, const irs::text_format::type_id&> text_formats = {
     { "csv", irs::text_format::csv },
     { "json", irs::text_format::json },
