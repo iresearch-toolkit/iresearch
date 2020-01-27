@@ -73,7 +73,9 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size,
 /// @param rhs string to compare
 /// @returns edit distance
 ////////////////////////////////////////////////////////////////////////////////
-inline size_t edit_distance(const bytes_ref& lhs, const bytes_ref& rhs) {
+template<typename Char>
+inline size_t edit_distance(const basic_string_ref<Char>& lhs,
+                            const basic_string_ref<Char>& rhs) {
   return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 

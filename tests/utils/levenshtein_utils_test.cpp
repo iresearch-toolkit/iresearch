@@ -27,6 +27,7 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/fst_table_matcher.hpp"
+#include "utils/utf8_utils.hpp"
 
 using namespace irs::literals;
 
@@ -46,8 +47,15 @@ void assert_description(
                  "', Candidate: '" << irs::ref_cast<char>(candidate) <<
                  "' , Distance: " << expected_distance <<
                  " , Precise distance: " << expected_distance_precise);
-    ASSERT_EQ(expected_distance_precise, irs::edit_distance(candidate, target));
-    ASSERT_EQ(expected_distance_precise, irs::edit_distance(target, candidate));
+
+    std::vector<uint32_t> utf8_target, utf8_candidate;
+    irs::utf8_utils::to_utf8(target, std::back_inserter(utf8_target));
+    irs::utf8_utils::to_utf8(candidate, std::back_inserter(utf8_candidate));
+    const irs::basic_string_ref<uint32_t> utf8_target_ref(utf8_target.data(), utf8_target.size());
+    const irs::basic_string_ref<uint32_t> utf8_candidate_ref(utf8_candidate.data(), utf8_candidate.size());
+
+    ASSERT_EQ(expected_distance_precise, irs::edit_distance(utf8_candidate_ref, utf8_target_ref));
+    ASSERT_EQ(expected_distance_precise, irs::edit_distance(utf8_target_ref, utf8_candidate_ref));
     ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
     ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
     ASSERT_EQ(expected_distance <= description.max_distance(), irs::accept(a, candidate));
@@ -84,6 +92,18 @@ TEST(levenshtein_utils_test, test_distance) {
 
     ASSERT_EQ(3, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
     ASSERT_EQ(3, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+  }
+
+  {
+    const irs::string_ref lhs = "\xD0\xBF\xD1\x83\xD1\x82\xD0\xB8\xD0\xBD";
+    const irs::string_ref rhs = "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBB\xD0\xBE";
+
+    std::vector<uint32_t> lhs_utf8, rhs_utf8;
+    irs::utf8_utils::to_utf8(irs::ref_cast<irs::byte_type>(lhs), std::back_inserter(lhs_utf8));
+    irs::utf8_utils::to_utf8(irs::ref_cast<irs::byte_type>(rhs), std::back_inserter(rhs_utf8));
+
+    ASSERT_EQ(4, irs::edit_distance(lhs_utf8.data(), lhs_utf8.size(), rhs_utf8.data(), rhs_utf8.size()));
+    ASSERT_EQ(4, irs::edit_distance(rhs_utf8.data(), rhs_utf8.size(), lhs_utf8.data(), lhs_utf8.size()));
   }
 
   {
@@ -329,6 +349,17 @@ TEST(levenshtein_utils_test, test_description_1) {
         { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
       }
     );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 3 },
+      }
+    );
   }
 }
 
@@ -358,6 +389,17 @@ TEST(levenshtein_utils_test, test_description_2) {
         { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
       }
     );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+      }
+    );
   }
 
   // transpositions
@@ -383,6 +425,17 @@ TEST(levenshtein_utils_test, test_description_2) {
         { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
         { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
         { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+      }
+    );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
       }
     );
   }
@@ -413,6 +466,17 @@ TEST(levenshtein_utils_test, test_description_3) {
         { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2 },
         { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
         { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
+      }
+    );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
       }
     );
 
@@ -463,6 +527,17 @@ TEST(levenshtein_utils_test, test_description_3) {
         { irs::ref_cast<irs::byte_type>("lpzazez"_sr),   4, 4 },
       }
     );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+      }
+    );
   }
 }
 
@@ -495,6 +570,17 @@ TEST(levenshtein_utils_test, test_description_4) {
         { irs::ref_cast<irs::byte_type>("phazez"_sr),    4, 4 },
         { irs::ref_cast<irs::byte_type>("phzez"_sr),     5, 5 },
         { irs::ref_cast<irs::byte_type>("hzez"_sr),      5, 6 },
+      }
+    );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
       }
     );
   }
