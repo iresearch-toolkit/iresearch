@@ -246,6 +246,11 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
+  size_t count_matched() {
+    push_valid_to_lead();
+    return lead_;
+  }
+
  protected:
   doc_iterators_t itrs_; // sub iterators
   size_t min_match_count_; // minimum number of hits
