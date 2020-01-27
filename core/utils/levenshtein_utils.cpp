@@ -432,16 +432,6 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @return true if a specified state at a given offset is accepting,
-///         false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool is_accepting(
-    const parametric_description& description,
-    size_t state, size_t offset) noexcept {
-  return description.distance(state, offset) <= description.max_distance();
-}
-
 NS_END
 
 NS_ROOT
