@@ -97,29 +97,25 @@ class BooleanWeight {
     strm.put(v_);
     return strm;
   }
-  constexpr size_t Hash() const noexcept { return size_t(v_); }
+  constexpr size_t Hash() const noexcept { return size_t(v_ & WeightMask); }
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr operator bool() const noexcept { return 0 != (v_ & True); }
   constexpr PayloadType Payload() const noexcept { return v_ >> 2; }
+  constexpr operator bool() const noexcept { return 0 != (v_ & True); }
 
   friend constexpr bool operator==(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return lhs.v_ == rhs.v_;
+    return lhs.Hash() == rhs.Hash();
   }
   friend constexpr bool operator!=(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
     return !(lhs == rhs);
   }
   friend constexpr BooleanWeight Plus(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return (!lhs.Member() || !rhs.Member())
-        ? NoWeight()
-        : BooleanWeight(bool(lhs) || bool(rhs), lhs.Payload() | rhs.Payload());
+    return BooleanWeight(bool(lhs.Hash()) || bool(rhs.Hash()), lhs.Payload() | rhs.Payload());
   }
   friend constexpr BooleanWeight Times(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return (!lhs.Member() || !rhs.Member())
-        ? NoWeight()
-        : BooleanWeight(bool(lhs) && bool(rhs), lhs.Payload() & rhs.Payload());
+    return BooleanWeight(bool(lhs.Hash()) && bool(rhs.Hash()), lhs.Payload() & rhs.Payload());
   }
   friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
-    return { };
+    return NoWeight();
   }
   friend std::ostream& operator<<(std::ostream& strm, const BooleanWeight& w) {
     if (w.Member()) {
@@ -133,6 +129,7 @@ class BooleanWeight {
   }
 
  private:
+  static constexpr PayloadType WeightMask = 0x03;
   static constexpr PayloadType True = 1;    // "is true" mask
   static constexpr PayloadType Invalid = 2; // "not a member" mask
 
