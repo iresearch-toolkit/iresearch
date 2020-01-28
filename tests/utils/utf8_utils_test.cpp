@@ -55,7 +55,7 @@ TEST(utf8_utils_test, next) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::to_utf8(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -89,7 +89,7 @@ TEST(utf8_utils_test, next) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::to_utf8(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -126,7 +126,7 @@ TEST(utf8_utils_test, next) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::to_utf8(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -163,7 +163,7 @@ TEST(utf8_utils_test, next) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::to_utf8(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
   }

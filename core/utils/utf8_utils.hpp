@@ -75,16 +75,45 @@ FORCE_INLINE uint32_t next(const byte_type*& it) noexcept {
   return cp;
 }
 
+#ifdef IRESEARCH_CXX14
+constexpr
+#endif
+FORCE_INLINE size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
+  if (cp < 0x80) {
+    begin[0] = static_cast<byte_type>(cp);
+    return 1;
+  }
+
+  if (cp < 0x800) {
+    begin[0] = static_cast<byte_type>((cp >> 6) | 0xC0);
+    begin[1] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+    return 2;
+  }
+
+  if (cp < 0x10000) {
+    begin[0] = static_cast<byte_type>((cp >> 12) | 0xE0);
+    begin[1] = static_cast<byte_type>(((cp >> 6) & 0x3F) | 0x80);
+    begin[2] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+    return 3;
+  }
+
+  begin[0] = static_cast<byte_type>((cp >> 18) | 0xF0);
+  begin[1] = static_cast<byte_type>(((cp >> 12) & 0x3F) | 0x80);
+  begin[2] = static_cast<byte_type>(((cp >> 6) & 0x3F) | 0x80);
+  begin[3] = static_cast<byte_type>((cp & 0x3F) | 0x80);
+  return 4;
+}
+
 template<typename OutputIterator>
-inline void to_utf8(const byte_type* begin, size_t size, OutputIterator out) {
+inline void utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator out) {
   for (auto end = begin + size; begin < end; ++out) {
     *out = next(begin);
   }
 }
 
 template<typename OutputIterator>
-inline void to_utf8(const bytes_ref& in, OutputIterator out) {
-  to_utf8(in.begin(), in.size(), out);
+inline void utf8_to_utf32(const bytes_ref& in, OutputIterator out) {
+  utf8_to_utf32(in.begin(), in.size(), out);
 }
 
 NS_END

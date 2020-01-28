@@ -14,7 +14,6 @@
 #include <fst/fst.h>
 #include <fst/symbol-table.h>
 #include <fst/util.h>
-#include <fst/script/fst-class.h>
 
 namespace fst {
 
