@@ -25,7 +25,13 @@
 #include "utils/std.hpp"
 #include "utils/utf8_utils.hpp"
 
-TEST(utf8_utils_test, next) {
+TEST(utf8_utils_test, static_const) {
+  ASSERT_EQ(4, size_t(irs::utf8_utils::MAX_CODE_POINT_SIZE));
+  ASSERT_EQ(0, size_t(irs::utf8_utils::MIN_CODE_POINT));
+  ASSERT_EQ(0x10FFFF, size_t(irs::utf8_utils::MAX_CODE_POINT));
+}
+
+TEST(utf8_utils_test, test) {
   // ascii sequence
   {
     const irs::byte_type invalid = 0;
@@ -167,4 +173,30 @@ TEST(utf8_utils_test, next) {
       ASSERT_EQ(expected, actual);
     }
   }
+}
+
+TEST(utf8_utils_test, utf32_to_utf8) {
+  irs::byte_type buf[irs::utf8_utils::MAX_CODE_POINT_SIZE];
+
+  // 1 byte
+  ASSERT_EQ(1, irs::utf8_utils::utf32_to_utf8(0x46, buf));
+  ASSERT_EQ(buf[0], 0x46);
+
+  // 2 bytes
+  ASSERT_EQ(2, irs::utf8_utils::utf32_to_utf8(0xA9, buf));
+  ASSERT_EQ(buf[0], 0xC2);
+  ASSERT_EQ(buf[1], 0xA9);
+
+  // 3 bytes
+  ASSERT_EQ(3, irs::utf8_utils::utf32_to_utf8(0x08F1, buf));
+  ASSERT_EQ(buf[0], 0xE0);
+  ASSERT_EQ(buf[1], 0xA3);
+  ASSERT_EQ(buf[2], 0xB1);
+
+  // 4 bytes
+  ASSERT_EQ(4, irs::utf8_utils::utf32_to_utf8(0x1F996, buf));
+  ASSERT_EQ(buf[0], 0xF0);
+  ASSERT_EQ(buf[1], 0x9F);
+  ASSERT_EQ(buf[2], 0xA6);
+  ASSERT_EQ(buf[3], 0x96);
 }

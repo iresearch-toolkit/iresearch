@@ -32,6 +32,11 @@
 NS_ROOT
 NS_BEGIN(utf8_utils)
 
+// max number of bytes to represent single UTF8 code point
+constexpr size_t MAX_CODE_POINT_SIZE = 4;
+constexpr uint32_t MIN_CODE_POINT = 0;
+constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
+
 FORCE_INLINE const byte_type* next(const byte_type* it, const byte_type* end) noexcept {
   IRS_ASSERT(it);
   IRS_ASSERT(end);
