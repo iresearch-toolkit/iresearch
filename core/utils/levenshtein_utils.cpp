@@ -368,7 +368,7 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(
     size_t& utf8_size) {
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
-  utf8_utils::to_utf8(word, std::back_inserter(chars));
+  utf8_utils::utf8_to_utf32(word, std::back_inserter(chars));
   utf8_size = chars.size();
 
   std::sort(chars.begin(), chars.end());
@@ -647,7 +647,7 @@ size_t edit_distance(const parametric_description& description,
 
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
-  utf8_utils::to_utf8(lhs, lhs_size, std::back_inserter(lhs_chars));
+  utf8_utils::utf8_to_utf32(lhs, lhs_size, std::back_inserter(lhs_chars));
 
   size_t state = 1;  // current parametric state
   size_t offset = 0; // current offset
