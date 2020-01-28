@@ -92,6 +92,7 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
     scores_vals_.resize(pos_.size());
     attrs_.emplace(seq_freq_); // expose frequency to scorers
     attrs_.emplace<document>() = disjunction_.attributes().get<document>();
+    attrs_.emplace<filter_boost>(filter_boost_);
 
     if (scr_.prepare(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost))) {
       attrs_.emplace(scr_);
@@ -210,11 +211,14 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
           }),
         search_buf_.end());
       seq_freq_.value = search_buf_.size();
+      assert(!pos_.empty());
+      filter_boost_.value = (boost_t)matched / (boost_t)pos_.size();
     }
     return matched >= min_match_count_;
   }
   positions_t pos_;
   frequency seq_freq_; // longest sequence frequency
+  filter_boost filter_boost_;
   size_t min_match_count_;
   min_match_disjunction<DocIterator> disjunction_;
   const order::prepared* ord_;
@@ -284,9 +288,18 @@ class ngram_similarity_query : public filter::prepared {
       return doc_iterator::empty();
     }
 
+    //!!!HACK
+    const term_reader* field = query_state->front().reader;
+    for (const auto& qs : *query_state)  {
+      field = qs.reader;
+      if (field) {
+        break;
+      }
+    }
+
     return memory::make_shared<serial_min_match_disjunction<doc_iterator::ptr>>(
       //!!! reader should be only one!!!
-      std::move(itrs), states_, rdr, *query_state->front().reader, boost(), stats_.c_str(),  min_match_count_, ord);
+      std::move(itrs), states_, rdr, *field, boost(), stats_.c_str(),  min_match_count_, ord);
   }
 
  private:

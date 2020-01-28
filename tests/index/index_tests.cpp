@@ -315,6 +315,22 @@ void payloaded_json_field_factory(
   }
 }
 
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data) {
+  static irs::flags norm{ irs::norm::type() };
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(std::make_shared<templates::string_field>(
+      irs::string_ref(name),
+      data.str,
+      norm
+      ));
+  } else {
+    generic_json_field_factory(doc, name, data);
+  }
+}
+
 std::string to_string(
     const testing::TestParamInfo<index_test_context>& info
 ) {

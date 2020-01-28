@@ -910,6 +910,19 @@ class IRESEARCH_API order final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class filter_boost
+/// @brief represents addition to score from filter specific to particular 
+///        document. May vary from document to document.
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
+  DECLARE_ATTRIBUTE_TYPE();
+  filter_boost() noexcept;
+
+  void clear() { value = 1.f; }
+};
+
+
 NS_END
 
 #endif

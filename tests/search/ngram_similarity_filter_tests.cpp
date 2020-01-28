@@ -24,7 +24,7 @@
 #include "filter_test_case_base.hpp"
 
 #include "search/ngram_similarity_filter.hpp"
-
+#include "search/tfidf.hpp"
 
 #include <functional>
 
@@ -316,6 +316,91 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   ASSERT_EQ(1, collect_field_count); 
   ASSERT_EQ(5, collect_term_count); 
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
+}
+
+TEST_P(ngram_similarity_filter_test_case, missed_first_scored_test) {
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll");
+
+  docs_t expected{ 1, 2, 5, 8};
+  irs::order order;
+  size_t collect_field_count = 0;
+  size_t collect_term_count = 0;
+  size_t finish_count = 0;
+  std::vector<size_t> frequency;
+  auto& scorer = order.add<tests::sort::custom_sort>(false);
+  scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+    ++collect_field_count;
+  };
+  scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+    ++collect_term_count;
+  };
+  scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+    ++finish_count;
+  };
+  scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+  };
+  scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+  };
+
+
+  scorer.prepare_scorer = [&frequency](const irs::sub_reader& segment,
+    const irs::term_reader& term,
+    const irs::byte_type* data,
+    const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
+      auto& freq = attr.get<irs::frequency>();
+      return {  
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get()),
+        [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
+        auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
+        freq.freq->push_back(freq.freq_from_filter->value);
+      }
+      };
+  };
+  std::vector<size_t> expectedFrequency{1, 1, 2, 1};
+  check_query(filter, order, expected, rdr);
+  ASSERT_EQ(expectedFrequency, frequency);
+  ASSERT_EQ(1, collect_field_count); 
+  ASSERT_EQ(5, collect_term_count); 
+  ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
+}
+
+TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::normalized_string_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll");
+  docs_t expected{ 1, 2, 5, 8};
+  irs::order order;
+  order.add<irs::tfidf_sort>(false).normalize(true);
+
+  check_query(filter, order, expected, rdr);
 }
 
 
