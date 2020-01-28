@@ -50,7 +50,12 @@ void assert_description(
     ASSERT_EQ(expected_distance_precise, irs::edit_distance(target, candidate));
     ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
     ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
-    ASSERT_EQ(expected_distance <= description.max_distance(), irs::accept(a, candidate));
+    const auto state = irs::accept(a, candidate);
+    ASSERT_EQ(expected_distance <= description.max_distance(), bool(state));
+    if (state) {
+      // every final state contains valid edit distance
+      ASSERT_EQ(expected_distance, state.Payload());
+    }
   }
 }
 

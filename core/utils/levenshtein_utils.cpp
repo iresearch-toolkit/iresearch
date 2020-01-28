@@ -432,16 +432,6 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @return true if a specified state at a given offset is accepting,
-///         false - otherwise
-//////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool is_accepting(
-    const parametric_description& description,
-    size_t state, size_t offset) noexcept {
-  return description.distance(state, offset) <= description.max_distance();
-}
-
 NS_END
 
 NS_ROOT
@@ -614,8 +604,11 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        if (is_accepting(description, transition.first, utf8_size - offset)) {
-          a.SetFinal(to);
+        const auto distance = description.distance(transition.first, utf8_size - offset);
+
+        if (distance <= description.max_distance()) {
+          assert(distance < fst::fsa::BooleanWeight::MaxPayload);
+          a.SetFinal(to, {true, distance});
         }
 
         stack.emplace_back(offset, transition.first, to);
