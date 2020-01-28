@@ -77,7 +77,7 @@ TEST(boolean_weight_test, create) {
     ASSERT_TRUE(weight.Member());
     ASSERT_NE(fst::fsa::BooleanWeight(), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(false), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(true), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
@@ -115,8 +115,8 @@ TEST(boolean_weight_test, create) {
     const fst::fsa::BooleanWeight weight(false, 25);
     ASSERT_TRUE(weight.Member());
     ASSERT_NE(fst::fsa::BooleanWeight(), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(false), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(false, 25), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(true), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
@@ -128,11 +128,11 @@ TEST(boolean_weight_test, create) {
     ASSERT_TRUE(ApproxEqual(weight, weight.Reverse()));
     ASSERT_FALSE(bool(weight));
     ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight::Zero(), weight);
     ASSERT_NE(true, bool(weight));
     ASSERT_EQ(false, bool(weight));
     ASSERT_EQ(25, weight.Payload());
-    ASSERT_EQ(100, weight.Hash());
+    ASSERT_EQ(0, weight.Hash());
 
     {
       std::stringstream ss;
@@ -159,7 +159,7 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
@@ -196,19 +196,19 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 32), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(true), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true, 32), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
     ASSERT_TRUE(bool(weight));
-    ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight::One(), weight);
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
     ASSERT_EQ(true, bool(weight));
     ASSERT_NE(false, bool(weight));
     ASSERT_EQ(32, weight.Payload());
-    ASSERT_EQ(129, weight.Hash());
+    ASSERT_EQ(1, weight.Hash());
 
     {
       std::stringstream ss;
@@ -235,20 +235,20 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, fst::fsa::BooleanWeight::MaxPayload), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(true), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(true, 1), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true, fst::fsa::BooleanWeight::MaxPayload), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
     ASSERT_TRUE(bool(weight));
-    ASSERT_NE(fst::fsa::BooleanWeight::One(), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight::One(), weight);
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
     ASSERT_EQ(true, bool(weight));
     ASSERT_NE(false, bool(weight));
     ASSERT_EQ(fst::fsa::BooleanWeight::PayloadType(fst::fsa::BooleanWeight::MaxPayload),
               weight.Payload());
-    ASSERT_EQ(253, weight.Hash());
+    ASSERT_EQ(1, weight.Hash());
 
     {
       std::stringstream ss;
@@ -310,9 +310,9 @@ TEST(boolean_weight_test, times) {
   ASSERT_EQ(BooleanWeight(false, 11), Times(BooleanWeight(false, 31), BooleanWeight(false, 11)));
   ASSERT_EQ(BooleanWeight::One(), Times(BooleanWeight::One(), BooleanWeight::One()));
   ASSERT_EQ(BooleanWeight::Zero(), Times(BooleanWeight::One(), BooleanWeight::Zero()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Times(BooleanWeight::One(), BooleanWeight::NoWeight()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Times(BooleanWeight::NoWeight(), BooleanWeight::NoWeight()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Times(BooleanWeight::NoWeight(), BooleanWeight::One()));
+  ASSERT_EQ(BooleanWeight::One(), Times(BooleanWeight::One(), BooleanWeight::NoWeight()));
+  ASSERT_EQ(BooleanWeight::One(), Times(BooleanWeight::NoWeight(), BooleanWeight::NoWeight()));
+  ASSERT_EQ(BooleanWeight::One(), Times(BooleanWeight::NoWeight(), BooleanWeight::One()));
 }
 
 TEST(boolean_weight_test, plus) {
@@ -324,9 +324,9 @@ TEST(boolean_weight_test, plus) {
   ASSERT_EQ(BooleanWeight(false, 31), Plus(BooleanWeight(false, 31), BooleanWeight(false, 11)));
   ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::One(), BooleanWeight::One()));
   ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::One(), BooleanWeight::Zero()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Plus(BooleanWeight::One(), BooleanWeight::NoWeight()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Plus(BooleanWeight::NoWeight(), BooleanWeight::NoWeight()));
-  ASSERT_EQ(BooleanWeight::NoWeight(), Plus(BooleanWeight::NoWeight(), BooleanWeight::One()));
+  ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::One(), BooleanWeight::NoWeight()));
+  ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::NoWeight(), BooleanWeight::NoWeight()));
+  ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::NoWeight(), BooleanWeight::One()));
 }
 
 TEST(automaton_test, match_wildcard) {
