@@ -50,7 +50,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll").push_back("never_match");
 
-  docs_t expected{ 1, 2, 5, 8};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
   size_t count = 0;
@@ -85,7 +85,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
 
-  docs_t expected{ 1, 2, 5, 8};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
   size_t count = 0;
@@ -120,7 +120,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll").push_back("never_match");
 
-  docs_t expected{ 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13};
+  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
   size_t count = 0;
@@ -156,7 +156,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
     .push_back("never_match").push_back("la").push_back("as")
     .push_back("ll");
 
-  docs_t expected{ 1, 2, 3, 4, 5, 7, 8, 11, 12, 13};
+  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
@@ -188,11 +188,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.333).field("field").push_back("at")
+  filter.threshold(0.5).field("field").push_back("at")
     .push_back("never_match").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
-  docs_t expected{ 1, 2, 3, 4, 5, 7, 8, 11, 12, 13};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
@@ -228,7 +228,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
     .push_back("never_match").push_back("tl").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
-  docs_t expected{ 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13};
+  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
@@ -273,7 +273,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll").push_back("never_match");
 
-  docs_t expected{ 1, 2, 5, 8};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   irs::order order;
   size_t collect_field_count = 0;
   size_t collect_term_count = 0;
@@ -310,7 +310,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       }
       };
   };
-  std::vector<size_t> expectedFrequency{1, 1, 2, 1};
+  std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   check_query(filter, order, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
   ASSERT_EQ(1, collect_field_count); 
@@ -318,7 +318,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
 }
 
-TEST_P(ngram_similarity_filter_test_case, missed_first_scored_test) {
+TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
   // add segment
   {
@@ -335,7 +335,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_scored_test) {
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
 
-  docs_t expected{ 1, 2, 5, 8};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   irs::order order;
   size_t collect_field_count = 0;
   size_t collect_term_count = 0;
@@ -372,7 +372,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_scored_test) {
       }
       };
   };
-  std::vector<size_t> expectedFrequency{1, 1, 2, 1};
+  std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   check_query(filter, order, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
   ASSERT_EQ(1, collect_field_count); 
@@ -396,7 +396,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
-  docs_t expected{ 1, 2, 5, 8};
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   irs::order order;
   order.add<irs::tfidf_sort>(false).normalize(true);
 
@@ -413,7 +413,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0", "1_1", "1_2", "1_3")
+    ::testing::Values("1_0", "1_3")
   ),
   tests::to_string
 );
