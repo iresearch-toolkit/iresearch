@@ -23,6 +23,7 @@
 #include "levenshtein_utils.hpp"
 
 #include <unordered_map>
+#include <queue>
 #include <cmath>
 
 #include "shared.hpp"
@@ -35,6 +36,7 @@
 #include "hash_utils.hpp"
 #include "utf8_utils.hpp"
 #include "misc.hpp"
+#include "draw-impl.h"
 
 NS_LOCAL
 
@@ -190,7 +192,7 @@ class parametric_states {
   }
 
   uint32_t emplace(parametric_state&& state) {
-    const auto res = irs::map_utils::try_emplace(
+    const auto res = map_utils::try_emplace(
       states_, std::move(state), states_.size());
 
     if (res.second) {
@@ -360,10 +362,20 @@ uint32_t distance(
 // --SECTION--                                     Helpers for DFA instantiation
 // -----------------------------------------------------------------------------
 
+struct character {
+  bitset chi; // characteristic vector
+  byte_type utf8[utf8_utils::MAX_CODE_POINT_SIZE]{};
+  size_t size{};
+  uint32_t cp{}; // utf8 code point
+
+  const byte_type* begin() const noexcept { return utf8; }
+  const byte_type* end() const noexcept { return utf8 + size; }
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @return characteristic vectors for a specified word
 //////////////////////////////////////////////////////////////////////////////
-std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(
+std::vector<character> make_alphabet(
     const bytes_ref& word,
     size_t& utf8_size) {
   memory::arena<uint32_t, 16> arena;
@@ -375,28 +387,31 @@ std::vector<std::pair<uint32_t, irs::bitset>> make_alphabet(
   auto cbegin = chars.begin();
   auto cend = std::unique(cbegin, chars.end()); // no need to erase here
 
-  std::vector<std::pair<uint32_t, irs::bitset>> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
+  std::vector<character> alphabet(1 + size_t(std::distance(cbegin, cend))); // +1 for rho
   auto begin = alphabet.begin();
 
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  begin->first = fst::fsa::kRho;
-  begin->second.reset(capacity);
+  begin->cp = fst::fsa::kRho;
+  begin->chi.reset(capacity);
   ++begin;
 
   for (; cbegin != cend; ++cbegin, ++begin) {
     const auto c = *cbegin;
 
-    // set char
-    begin->first = c;
+    // set code point
+    begin->cp = c;
+
+    // set utf8 representation
+    begin->size = utf8_utils::utf32_to_utf8(c, begin->utf8);
 
     // evaluate characteristic vector
-    auto& bits = begin->second;
-    bits.reset(capacity);
+    auto& chi = begin->chi;
+    chi.reset(capacity);
     auto utf8_begin = word.begin();
     for (size_t i = 0; i < utf8_size; ++i) {
-      bits.reset(i, c == utf8_utils::next(utf8_begin));
+      chi.reset(i, c == utf8_utils::next(utf8_begin));
     }
     IRS_ASSERT(utf8_begin == word.end());
   }
@@ -430,6 +445,20 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   const auto lhs = bs[word] >> align;
   const auto rhs = bs[word+1] << (bits_required<bitset::word_t>() - align);
   return (lhs | rhs) & mask;
+}
+
+void print(const automaton& a) {
+  fst::SymbolTable st;
+  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
+  for (int i = 97; i < 97 + 28; ++i) {
+    st.AddSymbol(std::string(1, char(i)), i);
+  }
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  if (f) {
+    int i = 5;
+  }
+  fst::drawFst(a, f, "", &st, &st);
 }
 
 NS_END
@@ -551,6 +580,74 @@ parametric_description read(data_input& in) {
   return { std::move(transitions), std::move(distances), max_distance };
 }
 
+using arcs_t = std::vector<std::pair<const character*, automaton::StateId>>;
+
+void build_arcs(automaton& a, automaton::StateId from, const arcs_t& arcs) {
+  if (1 == arcs.size()) {
+    auto& arc = arcs[0];
+
+    if (arc.first->cp == fst::fsa::kRho &&
+        arc.second == INVALID_STATE) {
+      // optimization for invalid terminal state
+      a.EmplaceArc(from, fst::fsa::kRho, INVALID_STATE);
+      return;
+    }
+  }
+
+  const auto default_state = arcs.back().first->cp == fst::fsa::kRho
+    ? arcs.back().second
+    : fst::kNoStateId;
+
+  automaton::StateId utf8states[] = {
+    default_state,
+    a.AddState(),
+    a.AddState(),
+    a.AddState(),
+    fst::kNoStateId
+  };
+
+  automaton::StateId transitions[256];
+  if (default_state != fst::kNoStateId) {
+    std::fill(transitions, transitions + 128, utf8states[0]);
+    std::fill(transitions + 128, transitions + 192, fst::kNoStateId);
+    std::fill(transitions + 192, transitions + 224, utf8states[1]);
+    std::fill(transitions + 224, transitions + 240, utf8states[2]);
+    std::fill(transitions + 240, transitions + 256, utf8states[3]);
+  } else {
+    std::fill(transitions, transitions + 256, fst::kNoStateId);
+  }
+
+  for (size_t i = 0; i < 4; from = utf8states[++i]) {
+    for (auto& arc : arcs) {
+      auto& ch = *arc.first;
+
+      if (i + 1 == ch.size) {
+        transitions[ch.utf8[i]] = arc.second;
+      }
+    }
+
+    for (automaton::Arc::Label i = 0; i < 256; ++i) {
+      auto to = transitions[i];
+
+      if (fst::kNoStateId == to) {
+        continue;
+      }
+
+      a.EmplaceArc(from, i, to);
+    }
+
+    if (default_state != fst::kNoStateId) {
+      std::fill(transitions, transitions + 128, fst::kNoStateId);
+      std::fill(transitions + 128, transitions + 192, utf8states[i]);
+      std::fill(transitions + 192, transitions + 224, fst::kNoStateId);
+      std::fill(transitions + 224, transitions + 240, fst::kNoStateId);
+      std::fill(transitions + 240, transitions + 256, fst::kNoStateId);
+    } else {
+      std::fill(transitions, transitions + 256, fst::kNoStateId);
+    }
+  }
+}
+
 automaton make_levenshtein_automaton(
     const parametric_description& description,
     const bytes_ref& target) {
@@ -585,14 +682,17 @@ automaton make_levenshtein_automaton(
   std::vector<state> stack;
   stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
 
+  arcs_t arcs;
+
   while (!stack.empty()) {
     const auto state = stack.back();
     stack.pop_back();
+    arcs.clear();
 
     automaton::StateId default_state = fst::kNoStateId; // destination of rho transition if exist
 
     for (auto& entry : alphabet) {
-      const auto chi = ::chi(entry.second, state.offset, mask);
+      const auto chi = ::chi(entry.chi, state.offset, mask);
       auto& transition = description.transition(state.state_id, chi);
 
       const size_t offset = transition.first ? transition.second + state.offset : 0;
@@ -615,15 +715,19 @@ automaton make_levenshtein_automaton(
       }
 
       if (chi && to != default_state) {
-        a.EmplaceArc(state.from, entry.first, to);
+        arcs.emplace_back(&entry, to);
+      //  a.EmplaceArc(state.from, entry.cp, to);
       } else if (fst::kNoStateId == default_state) {
         default_state = to;
       }
     }
 
     if (fst::kNoStateId != default_state) {
-      a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
+      arcs.emplace_back(&alphabet.front(), default_state);
+     // a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
     }
+
+    build_arcs(a, state.from, arcs);
   }
 
 #ifdef IRESEARCH_DEBUG
