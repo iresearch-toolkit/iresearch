@@ -580,42 +580,45 @@ parametric_description read(data_input& in) {
   return { std::move(transitions), std::move(distances), max_distance };
 }
 
+struct utf8_automaton_builder {
+  automaton::StateId transitions[256];
+  automaton& a;
+};
+
 using arcs_t = std::vector<std::pair<const character*, automaton::StateId>>;
 
 void build_arcs(automaton& a, automaton::StateId from, const arcs_t& arcs) {
-  if (1 == arcs.size()) {
-    auto& arc = arcs[0];
+  assert(!arcs.empty());
 
-    if (arc.first->cp == fst::fsa::kRho &&
-        arc.second == INVALID_STATE) {
+  automaton::StateId utf8states[5] = {
+    fst::kNoStateId,
+    fst::kNoStateId,
+    fst::kNoStateId,
+    fst::kNoStateId,
+    fst::kNoStateId
+  };
+
+  auto& arc = arcs.back();
+
+  if (arc.first->cp == fst::fsa::kRho) {
+    if (1 == arcs.size()) {
       // optimization for invalid terminal state
       a.EmplaceArc(from, fst::fsa::kRho, INVALID_STATE);
       return;
     }
+
+    utf8states[0] = arc.second;
+    utf8states[1] = a.AddState();
+    utf8states[2] = a.AddState();
+    utf8states[3] = a.AddState();
   }
-
-  const auto default_state = arcs.back().first->cp == fst::fsa::kRho
-    ? arcs.back().second
-    : fst::kNoStateId;
-
-  automaton::StateId utf8states[] = {
-    default_state,
-    a.AddState(),
-    a.AddState(),
-    a.AddState(),
-    fst::kNoStateId
-  };
 
   automaton::StateId transitions[256];
-  if (default_state != fst::kNoStateId) {
-    std::fill(transitions, transitions + 128, utf8states[0]);
-    std::fill(transitions + 128, transitions + 192, fst::kNoStateId);
-    std::fill(transitions + 192, transitions + 224, utf8states[1]);
-    std::fill(transitions + 224, transitions + 240, utf8states[2]);
-    std::fill(transitions + 240, transitions + 256, utf8states[3]);
-  } else {
-    std::fill(transitions, transitions + 256, fst::kNoStateId);
-  }
+  std::fill(transitions, transitions + 128, utf8states[0]);
+  std::fill(transitions + 128, transitions + 192, fst::kNoStateId);
+  std::fill(transitions + 192, transitions + 224, utf8states[1]);
+  std::fill(transitions + 224, transitions + 240, utf8states[2]);
+  std::fill(transitions + 240, transitions + 256, utf8states[3]);
 
   for (size_t i = 0; i < 4; from = utf8states[++i]) {
     for (auto& arc : arcs) {
@@ -636,15 +639,11 @@ void build_arcs(automaton& a, automaton::StateId from, const arcs_t& arcs) {
       a.EmplaceArc(from, i, to);
     }
 
-    if (default_state != fst::kNoStateId) {
-      std::fill(transitions, transitions + 128, fst::kNoStateId);
-      std::fill(transitions + 128, transitions + 192, utf8states[i]);
-      std::fill(transitions + 192, transitions + 224, fst::kNoStateId);
-      std::fill(transitions + 224, transitions + 240, fst::kNoStateId);
-      std::fill(transitions + 240, transitions + 256, fst::kNoStateId);
-    } else {
-      std::fill(transitions, transitions + 256, fst::kNoStateId);
-    }
+    std::fill(transitions, transitions + 128, fst::kNoStateId);
+    std::fill(transitions + 128, transitions + 192, utf8states[i]);
+    std::fill(transitions + 192, transitions + 224, fst::kNoStateId);
+    std::fill(transitions + 224, transitions + 240, fst::kNoStateId);
+    std::fill(transitions + 240, transitions + 256, fst::kNoStateId);
   }
 }
 
@@ -716,7 +715,6 @@ automaton make_levenshtein_automaton(
 
       if (chi && to != default_state) {
         arcs.emplace_back(&entry, to);
-      //  a.EmplaceArc(state.from, entry.cp, to);
       } else if (fst::kNoStateId == default_state) {
         default_state = to;
       }
@@ -724,7 +722,6 @@ automaton make_levenshtein_automaton(
 
     if (fst::kNoStateId != default_state) {
       arcs.emplace_back(&alphabet.front(), default_state);
-     // a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
     }
 
     build_arcs(a, state.from, arcs);
