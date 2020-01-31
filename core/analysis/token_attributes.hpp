@@ -173,6 +173,10 @@ class IRESEARCH_API position
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
+  static irs::position* extract(const attribute_view& attrs) noexcept { // TODO: remove
+    return attrs.get<irs::position>().get();
+  }
+
   const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
