@@ -29,6 +29,7 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 #include "index/iterators.hpp"
+#include "utils/attribute_range.hpp"
 
 NS_ROOT
 NS_BEGIN(detail)
@@ -67,12 +68,60 @@ void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
 NS_END // detail
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class basic_disjunction
+/// @class position_score_iterator_adapter
+/// @brief adapter to use doc_iterator with positions for disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
+struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
+
+  typename attribute_view::ref<irs::position> attribute;
+
+  position_score_iterator_adapter(typename position_score_iterator_adapter<DocIterator>::doc_iterator_t&& it) noexcept
+    : score_iterator_adapter<DocIterator>(std::move(it)) {
+    auto& attrs = this->it->attributes();
+    position = irs::position::extract(attrs);
+  }
+
+  position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
+  position_score_iterator_adapter& operator=(const position_score_iterator_adapter&) = default;
+
+  position_score_iterator_adapter(position_score_iterator_adapter&& rhs) noexcept
+    : score_iterator_adapter<DocIterator>(std::move(rhs)),
+      position(std::move(rhs.position)) {
+  }
+
+  position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) noexcept {
+    if (this != &rhs) {
+      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
+      position = rhs.position;
+    }
+    return *this;
+  }
+
+  irs::position* position;
+}; // position_score_iterator_adapter
+
+template<typename Adapter>
+struct attribute_range_adapter {
+  attribute_range_adapter(typename attribute_view::ref<attribute_range<Adapter>>::type& map_attribute_range) {
+    map_attribute_range = &attribute_range_;
+  }
+
+  attribute_range<Adapter> attribute_range_;
+
+  template<typename IndexesContainer, typename IteratorsContainer>
+  void update_attribute_range(const IndexesContainer& /*indexes_container*/, IteratorsContainer& /*iterators_container*/) {
+    // see specializations
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class basic_disjunction
+////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class basic_disjunction final : public doc_iterator_base, score_ctx {
  public:
-  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
+  typedef Adapter doc_iterator_t;
 
   basic_disjunction(
       doc_iterator_t&& lhs,
@@ -105,10 +154,13 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
   virtual bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
+    if /*constexpr*/ (std::is_same<Adapter, position_score_iterator_adapter<DocIterator>>::value) {
+      //update_attribute_range();
+    }
     return !doc_limits::eof(doc_.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  virtual doc_id_t seek(doc_id_t target) override { // TODO
     if (target <= doc_.value) {
       return doc_.value;
     }
@@ -210,14 +262,19 @@ class basic_disjunction final : public doc_iterator_base, score_ctx {
   const order::prepared* ord_;
 }; // basic_disjunction
 
+/*template<>
+inline void basic_disjunction<doc_iterator::ptr, position_score_iterator_adapter<doc_iterator::ptr>>::rememberPosition() {
+    *attr_ = lhs_.value() <= rhs_.value() ? lhs_.position : rhs_.position;
+}*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class small_disjunction
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
+template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class small_disjunction : public doc_iterator_base, score_ctx {
  public:
-  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
+  typedef Adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   small_disjunction(
@@ -395,13 +452,16 @@ class small_disjunction : public doc_iterator_base, score_ctx {
 ///   [n]   <-- lead (accepted iterator)
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
-class disjunction : public doc_iterator_base, score_ctx {
+template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
+class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter<Adapter> {
  public:
-  typedef small_disjunction<DocIterator> small_disjunction_t;
-  typedef basic_disjunction<DocIterator> basic_disjunction_t;
-  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
+  typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
+  typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
+  typedef Adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
+
+  typedef std::vector<size_t> heap_container;
+  typedef heap_container::iterator heap_iterator;
 
   disjunction(
       doc_iterators_t&& itrs,
@@ -449,6 +509,11 @@ class disjunction : public doc_iterator_base, score_ctx {
     }
 
     doc_.value = lead().value();
+
+    if /*constexpr*/ (std::is_same<Adapter, position_score_iterator_adapter<DocIterator>>::value) {
+      hitch_all_iterators();
+      this->update_attribute_range(heap_, itrs_);
+    }
     return true;
   }
 
@@ -467,7 +532,14 @@ class disjunction : public doc_iterator_base, score_ctx {
       }
     }
 
-    return doc_.value = lead().value();
+    doc_.value = lead().value();
+
+    if /*constexpr*/ (std::is_same<Adapter, position_score_iterator_adapter<DocIterator>>::value) {
+      hitch_all_iterators();
+      this->update_attribute_range(heap_, itrs_);
+    }
+
+    return doc_.value;
   }
 
  private:
@@ -477,7 +549,8 @@ class disjunction : public doc_iterator_base, score_ctx {
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : itrs_(std::move(itrs)),
+    : attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
+      itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
@@ -556,9 +629,7 @@ class disjunction : public doc_iterator_base, score_ctx {
     return itrs_[heap_.front()];
   }
 
-  void score_impl(byte_type* lhs) {
-    assert(!heap_.empty());
-
+  std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
     // hitch all iterators in head to the lead (current doc_)
     auto begin = heap_.begin(), end = heap_.end()-1;
 
@@ -576,11 +647,18 @@ class disjunction : public doc_iterator_base, score_ctx {
         push(begin,end);
       }
     }
+    return {begin, end};
+  }
+
+  void score_impl(byte_type* lhs) {
+    assert(!heap_.empty());
+
+    auto its = hitch_all_iterators();
     const irs::byte_type** pVal = scores_vals_.data();
     detail::evaluate_score_iter(pVal, lead());
     if (top().value() == doc_.value) {
       irstd::heap::for_each_if(
-        begin, end,
+        its.first, its.second,
         [this](const size_t it) {
           assert(it < itrs_.size());
           return itrs_[it].value() == doc_.value;
@@ -594,11 +672,24 @@ class disjunction : public doc_iterator_base, score_ctx {
   }
 
   doc_iterators_t itrs_;
-  std::vector<size_t> heap_;
+  heap_container heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   document doc_;
   const order::prepared* ord_;
 }; // disjunction
+
+template<>
+template<>
+inline void attribute_range_adapter<position_score_iterator_adapter<doc_iterator::ptr>>::update_attribute_range(
+    const disjunction<doc_iterator::ptr, position_score_iterator_adapter<doc_iterator::ptr>>::heap_container& heap,
+    disjunction<doc_iterator::ptr, position_score_iterator_adapter<doc_iterator::ptr>>::doc_iterators_t& itrs) {
+  attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::iterators_t iters;
+  iters.reserve(heap.size());
+  for (auto i : heap) {
+    iters.emplace_back(&itrs[i]);
+  }
+  attribute_range_.set(std::move(iters));
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified sub iterators
@@ -607,7 +698,7 @@ template<typename Disjunction, typename... Args>
 doc_iterator::ptr make_disjunction(
     typename Disjunction::doc_iterators_t&& itrs,
     Args&&... args) {
-  const auto size = itrs.size();
+  /*const auto size = itrs.size();
 
   switch (size) {
     case 0:
@@ -640,7 +731,7 @@ doc_iterator::ptr make_disjunction(
     return doc_iterator::make<small_disjunction_t>(
       std::move(itrs), std::forward<Args>(args)...
     );
-  }
+  }*/
 
   // disjunction
   return doc_iterator::make<Disjunction>(

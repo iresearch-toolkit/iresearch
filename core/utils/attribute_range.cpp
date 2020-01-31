@@ -1,0 +1,53 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Yuriy Popov
+////////////////////////////////////////////////////////////////////////////////
+
+
+#include "search/disjunction.hpp"
+
+NS_ROOT
+
+typedef attribute_range<irs::position_score_iterator_adapter<irs::doc_iterator::ptr>> pos_attribute_range; // TODO: remove
+
+REGISTER_ATTRIBUTE(pos_attribute_range);
+
+template class attribute_range<score_iterator_adapter<doc_iterator::ptr>>;
+
+template<>
+bool attribute_range<irs::position_score_iterator_adapter<irs::doc_iterator::ptr>>::next() {
+  if (current_index_ < iterators_.size()) {
+    value_ = iterators_[current_index_++];
+    return true;
+  }
+  return false;
+}
+
+template<typename Adapter>
+const attribute::type_id& attribute_range<Adapter>::type() {
+  static attribute::type_id type("attribute_range<Adaptor>"); // TODO
+  return type;
+}
+
+NS_END // ROOT
+
+
+
+

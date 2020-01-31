@@ -542,7 +542,7 @@ class IRESEARCH_API attribute_store
 /// @brief Contains a pointer to an object of type `T`.
 /// An adaptor for `attribute_map` container.
 ///
-/// Can't use `std::unique_ptr<T, memory::noop_deleter>` becuase of
+/// Can't use `std::unique_ptr<T, memory::noop_deleter>` because of
 /// the bugs in MSVC2013-2015 related to move semantic in std::map
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>

@@ -25,6 +25,9 @@
 
 #include "shared.hpp"
 #include "score_doc_iterators.hpp" // TMP
+#include "disjunction.hpp" // TMP
+#include "analysis/token_attributes.hpp"
+#include "utils/attribute_range.hpp"
 
 NS_ROOT
 
@@ -168,11 +171,11 @@ class fixed_phrase_iterator final : public phrase_iterator<Conjunction> {
 template<typename Conjunction>
 class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
  public:
-  struct position_refs {
-    position::value_t pos; // desired offset in the phrase
-    std::vector<position::ref> refs; // position attributes
-  };
-  typedef std::vector<position_refs> positions_t;
+  typedef std::pair<
+    const attribute_view::ref<attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>>::type*, // position attribute
+    position::value_t // desired offset in the phrase
+  > position_t;
+  typedef std::vector<position_t> positions_t;
 
   variadic_phrase_iterator(
       typename Conjunction::doc_iterators_t&& itrs,
@@ -184,8 +187,7 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
       boost_t boost
   ) : phrase_iterator<Conjunction>(std::move(itrs), segment, field, stats, ord, boost),
     pos_(std::move(pos)) {
-    assert(!(pos_.empty() || pos_.front().refs.empty())); // must not be empty
-    assert(0 == pos_.front().pos); // lead offset is always 0
+    assert(!pos_.empty()); // must not be empty
   }
 
  private:
@@ -193,7 +195,10 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
   virtual frequency::value_t phrase_freq() override {
     frequency::value_t freq = 0;
     auto end = pos_.end();
-    for (position& lead : pos_.front().refs) {
+    auto* posa = pos_.front().first->get();
+    while (posa->next()) { // TODO
+      auto* lead_adapter = posa->value();
+      auto& lead = *lead_adapter->position;
       bool global_match = true;
       lead.next();
 
@@ -201,11 +206,15 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
       while (!pos_limits::eof(base_offset = lead.value())) {
         bool match = false;
         for (auto it = pos_.begin() + 1; it != end; ++it) {
-          const auto term_offset = base_offset + it->pos;
+          const auto term_offset = base_offset + it->second;
           match = false;
           position::value_t min_seeked = std::numeric_limits<position::value_t>::max();
-          for (position& ref : it->refs) {
-            const auto seeked = ref.seek(term_offset);
+          auto* ita = it->first->get();
+          ita->reset();
+          while (ita->next()) {
+            auto* it_adapter = ita->value();
+            auto* p = it_adapter->position;
+            const auto seeked = p->seek(term_offset);
 
             if (pos_limits::eof(seeked)) {
               continue;
@@ -220,7 +229,7 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
           }
           if (!match) {
             if (min_seeked < std::numeric_limits<position::value_t>::max()) {
-              lead.seek(min_seeked - it->pos);
+              lead.seek(min_seeked - it->second);
               break;
             }
             global_match = false; // eof for all

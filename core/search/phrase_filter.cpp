@@ -220,7 +220,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
-    typedef disjunction<doc_iterator::ptr> disjunction_t;
+    typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>> disjunction_t;
 
     variadic_phrase_iterator<conjunction_t>::positions_t positions;
     positions.resize(phrase_state->terms.size());
@@ -233,7 +233,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     for (const auto& term_states : phrase_state->terms) {
       auto is_found = false;
       auto& ps = positions[i++];
-      ps.pos = *position;
+      ps.second = *position;
 
       disjunction_t::doc_iterators_t disj_itrs;
       disj_itrs.reserve(term_states.size());
@@ -252,8 +252,6 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
           continue;
         }
 
-        ps.refs.emplace_back(std::ref(*pos));
-
         // add base iterator
         disj_itrs.emplace_back(std::move(docs));
 
@@ -263,6 +261,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
         return doc_iterator::empty();
       }
       conj_itrs.emplace_back(make_disjunction<disjunction_t>(std::move(disj_itrs)));
+      ps.first = &conj_itrs.back()->attributes().get<attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>>();
       ++position;
     }
 
