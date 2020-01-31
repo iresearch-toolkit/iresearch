@@ -580,70 +580,74 @@ parametric_description read(data_input& in) {
   return { std::move(transitions), std::move(distances), max_distance };
 }
 
-struct utf8_automaton_builder {
-  automaton::StateId transitions[256];
-  automaton& a;
-};
+class utf8_automaton_builder {
+ public:
+  using arcs_t = std::vector<std::pair<const character*, automaton::StateId>>;
 
-using arcs_t = std::vector<std::pair<const character*, automaton::StateId>>;
+  explicit utf8_automaton_builder(automaton& a) noexcept
+    : a_(&a) {
+  }
 
-void build_arcs(automaton& a, automaton::StateId from, const arcs_t& arcs) {
+  void build(automaton::StateId from, const arcs_t& arcs);
+
+ private:
+  automaton::StateId utf8states_[5];
+  automaton::StateId transitions_[256];
+  automaton* a_;
+}; // utf8_automaton_builder
+
+void utf8_automaton_builder::build(
+    automaton::StateId from,
+    const arcs_t& arcs) {
   assert(!arcs.empty());
 
-  automaton::StateId utf8states[5] = {
-    fst::kNoStateId,
-    fst::kNoStateId,
-    fst::kNoStateId,
-    fst::kNoStateId,
-    fst::kNoStateId
-  };
+  std::fill_n(utf8states_, IRESEARCH_COUNTOF(utf8states_), fst::kNoStateId);
 
   auto& arc = arcs.back();
 
   if (arc.first->cp == fst::fsa::kRho) {
     if (1 == arcs.size()) {
       // optimization for invalid terminal state
-      a.EmplaceArc(from, fst::fsa::kRho, INVALID_STATE);
+      a_->EmplaceArc(from, fst::fsa::kRho, INVALID_STATE);
       return;
     }
 
-    utf8states[0] = arc.second;
-    utf8states[1] = a.AddState();
-    utf8states[2] = a.AddState();
-    utf8states[3] = a.AddState();
+    utf8states_[0] = arc.second;
+    utf8states_[1] = a_->AddState();
+    utf8states_[2] = a_->AddState();
+    utf8states_[3] = a_->AddState();
   }
 
-  automaton::StateId transitions[256];
-  std::fill(transitions, transitions + 128, utf8states[0]);
-  std::fill(transitions + 128, transitions + 192, fst::kNoStateId);
-  std::fill(transitions + 192, transitions + 224, utf8states[1]);
-  std::fill(transitions + 224, transitions + 240, utf8states[2]);
-  std::fill(transitions + 240, transitions + 256, utf8states[3]);
+  std::fill(transitions_, transitions_ + 128, utf8states_[0]);
+  std::fill(transitions_ + 128, transitions_ + 192, fst::kNoStateId);
+  std::fill(transitions_ + 192, transitions_ + 224, utf8states_[1]);
+  std::fill(transitions_ + 224, transitions_ + 240, utf8states_[2]);
+  std::fill(transitions_ + 240, transitions_ + 256, utf8states_[3]);
 
-  for (size_t i = 0; i < 4; from = utf8states[++i]) {
+  for (size_t i = 0; i < 4; from = utf8states_[++i]) {
     for (auto& arc : arcs) {
       auto& ch = *arc.first;
 
       if (i + 1 == ch.size) {
-        transitions[ch.utf8[i]] = arc.second;
+        transitions_[ch.utf8[i]] = arc.second;
       }
     }
 
     for (automaton::Arc::Label i = 0; i < 256; ++i) {
-      auto to = transitions[i];
+      auto to = transitions_[i];
 
       if (fst::kNoStateId == to) {
         continue;
       }
 
-      a.EmplaceArc(from, i, to);
+      a_->EmplaceArc(from, i, to);
     }
 
-    std::fill(transitions, transitions + 128, fst::kNoStateId);
-    std::fill(transitions + 128, transitions + 192, utf8states[i]);
-    std::fill(transitions + 192, transitions + 224, fst::kNoStateId);
-    std::fill(transitions + 224, transitions + 240, fst::kNoStateId);
-    std::fill(transitions + 240, transitions + 256, fst::kNoStateId);
+    std::fill(transitions_, transitions_ + 128, fst::kNoStateId);
+    std::fill(transitions_ + 128, transitions_ + 192, utf8states_[i]);
+    std::fill(transitions_ + 192, transitions_ + 224, fst::kNoStateId);
+    std::fill(transitions_ + 224, transitions_ + 240, fst::kNoStateId);
+    std::fill(transitions_ + 240, transitions_ + 256, fst::kNoStateId);
   }
 }
 
@@ -681,7 +685,8 @@ automaton make_levenshtein_automaton(
   std::vector<state> stack;
   stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
 
-  arcs_t arcs;
+  utf8_automaton_builder::arcs_t arcs;
+  utf8_automaton_builder builder(a);
 
   while (!stack.empty()) {
     const auto state = stack.back();
@@ -724,7 +729,7 @@ automaton make_levenshtein_automaton(
       arcs.emplace_back(&alphabet.front(), default_state);
     }
 
-    build_arcs(a, state.from, arcs);
+    builder.build(state.from, arcs);
   }
 
 #ifdef IRESEARCH_DEBUG
