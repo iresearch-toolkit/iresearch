@@ -192,8 +192,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 matched = new_found.len;
             }
             search_buf_.emplace(new_pos, std::move(new_found));
-          } else  if ( potential > matched && potential >= min_match_count_) {
-            //assert(found->second.sequence.back() != &post); // should be ensured by non decreasing length of candidates
+          } else  if (/*found == (search_buf_.end()) &&*/  potential > matched && potential >= min_match_count_) {
             // this ngram at this position  could potentially start a long enough sequence
             // so add it to candidate list
             search_buf_.emplace(std::piecewise_construct, 
