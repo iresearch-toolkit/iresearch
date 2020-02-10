@@ -248,7 +248,7 @@ irs::filter::prepared::ptr prepareFilter(
     analyzer->reset(terms);
 
     for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
-      query.push_back(term->value());
+      query.push_back(irs::by_phrase::info_t::simple_term{}, term->value());
     }
 
     return query.prepare(reader, order);

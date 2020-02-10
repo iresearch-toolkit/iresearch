@@ -47,6 +47,14 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    const bstring& term,
+    size_t scored_terms_limit);
+
   explicit by_wildcard() noexcept;
 
   using by_prefix::field;
@@ -59,11 +67,13 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+      const index_reader& index,
+      const order::prepared& order,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, order, this->boost()*boost,
+                   field(), term(), scored_terms_limit());
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring

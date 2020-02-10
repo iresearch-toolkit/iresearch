@@ -84,34 +84,33 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
-filter::prepared::ptr by_wildcard::prepare(
+/*static*/ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
-  boost *= this->boost();
-  const string_ref field = this->field();
-
-  switch (wildcard_type(term())) {
+    const string_ref& field,
+    const bstring& term,
+    size_t scored_terms_limit) {
+  switch (wildcard_type(term)) {
     case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, term());
+      return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
-                                scored_terms_limit());
+                                scored_terms_limit);
     case WildcardType::PREFIX: {
-      assert(!term().empty());
-      const auto pos = term().find(wildcard_traits_t::MATCH_ANY_STRING);
+      assert(!term.empty());
+      const auto pos = term.find(wildcard_traits_t::MATCH_ANY_STRING);
       assert(pos != irs::bstring::npos);
 
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(term().c_str(), pos), // remove trailing '%'
-                                scored_terms_limit());
+                                bytes_ref(term.c_str(), pos), // remove trailing '%'
+                                scored_terms_limit);
     }
 
     case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
-                                      scored_terms_limit(), index, order, boost);
+      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term),
+                                      scored_terms_limit, index, order, boost);
   }
 
   assert(false);
