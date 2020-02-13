@@ -97,7 +97,7 @@ class fst_builder : util::noncopyable {
     }
 
     // determine common prefix
-    const size_t pref = 1 + prefix(last_, in);
+    const size_t pref = 1 + common_prefix_length(last_, in);
 
     // add states for current input
     add_states(in.size());
@@ -360,15 +360,6 @@ class fst_builder : util::noncopyable {
     std::vector<stateid_t> states_;
     size_t count_{};
   }; // state_map
-
-  static size_t prefix(const key_t& lhs, const key_t& rhs) {
-    size_t pref = 0;
-    const size_t max = std::min( lhs.size(), rhs.size() );
-    while ( pref < max && lhs[pref] == rhs[pref] ) {
-      ++pref;
-    }
-    return pref;
-  }
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
