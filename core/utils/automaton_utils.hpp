@@ -26,6 +26,7 @@
 #include "automaton.hpp"
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
+#include "utils/hash_utils.hpp"
 
 NS_ROOT
 
@@ -61,7 +62,7 @@ inline automaton match_char(automaton::Arc::Label c) {
 }
 
 template<typename Char, typename Matcher>
-automaton::Weight accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, Matcher& matcher, const basic_string_ref<Char>& target) {
   auto state = a.Start();
   matcher.SetState(state);
 
@@ -78,7 +79,7 @@ automaton::Weight accept(const automaton& a, Matcher& matcher, const irs::basic_
 }
 
 template<typename Char>
-automaton::Weight accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
   // FIXME optimize rho label lookup (just check last arc)
@@ -98,7 +99,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return *value_;
   }
 
-  virtual doc_iterator::ptr postings(const irs::flags& features) const override {
+  virtual doc_iterator::ptr postings(const flags& features) const override {
     return it_->postings(features);
   }
 
@@ -152,6 +153,230 @@ class automaton_term_iterator final : public seek_term_iterator {
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
 }; // automaton_term_iterator
+
+class utf8_transitions_builder {
+ public:
+  explicit utf8_transitions_builder(automaton& a) noexcept
+    : a_(&a) {
+  }
+
+  template<typename Iterator>
+  void insert(automaton::StateId from, Iterator begin, Iterator end) {
+    last_ = bytes_ref::NIL;
+    states_map_.reset();
+
+    for (; begin != end; ++begin) {
+      // we expect sorted input
+      assert(last_.empty() || last_ <= begin->first);
+
+      const auto& label = std::get<0>(*begin);
+      insert(label, std::get<1>(*begin));
+      last_ = label;
+    }
+
+    minimize(1);
+
+    auto& front  = states_.front();
+    front.id = from;
+    states_map_.insert(front, *a_);
+  }
+
+ private:
+  struct state;
+
+  struct arc : private util::noncopyable {
+    arc(automaton::Arc::Label label, state* target)
+      : target(target),
+        label(label) {
+    }
+
+    arc(automaton::Arc::Label label, automaton::StateId target)
+      : id(target),
+        label(label) {
+    }
+
+    arc(arc&& rhs) noexcept
+      : target(rhs.target),
+        label(rhs.label) {
+    }
+
+    bool operator==(const automaton::Arc& rhs) const {
+      return label == rhs.ilabel
+        && id == rhs.nextstate;
+    }
+
+    bool operator!=(const automaton::Arc& rhs) const {
+      return !(*this == rhs);
+    }
+
+    friend size_t hash_value(const arc& a) {
+      size_t hash = 0;
+      hash = hash_combine(hash, a.label);
+      hash = hash_combine(hash, a.id);
+      return hash;
+    }
+
+    union {
+      state* target;
+      automaton::StateId id;
+    };
+    automaton::Arc::Label label;
+  }; // arc
+
+  struct state : private util::noncopyable {
+    state() = default;
+
+    state(state&& rhs) noexcept
+      : id(rhs.id),
+        arcs(std::move(rhs.arcs)) {
+      rhs.id = fst::kNoStateId;
+    }
+
+    void clear() {
+      id = fst::kNoStateId;
+      arcs.clear();
+    }
+
+    friend size_t hash_value(const state& s) {
+      size_t seed = 0;
+
+      seed = hash_combine(seed, s.id);
+      for (auto& arc: s.arcs) {
+        seed = hash_combine(seed, hash_value(arc));
+      }
+
+      return seed;
+    }
+
+    automaton::StateId id{fst::kNoStateId};
+    std::vector<arc> arcs;
+  }; // state
+
+  class state_map : private util::noncopyable {
+   public:
+    static const size_t InitialSize = 16;
+
+    state_map(): states_(InitialSize, fst::kNoStateId) {}
+
+    automaton::StateId insert(const state& s, automaton& fst) {
+
+      automaton::StateId id;
+      const size_t mask = states_.size() - 1;
+      size_t pos = hash_value(s) % mask;
+      for ( ;; ++pos, pos %= mask ) { // TODO: maybe use quadratic probing here
+        if (fst::kNoStateId == states_[pos]) {
+          states_[pos] = id = add_state(s, fst);
+          ++count_;
+
+          if (count_ > 2 * states_.size() / 3) {
+            rehash(fst);
+          }
+          break;
+        } else if (equals(s, states_[pos], fst)) {
+          id = states_[pos];
+          break;
+        }
+      }
+
+      return id;
+    }
+
+    void reset() {
+      count_ = 0;
+      std::fill(states_.begin(), states_.end(), fst::kNoStateId);
+    }
+
+   private:
+    static bool equals(const state& lhs, automaton::StateId rhs, const automaton& fst) {
+      if (fst.NumArcs(rhs) != lhs.arcs.size()) {
+        return false;
+      }
+
+      for (fst::ArcIterator<automaton>it(fst, rhs); !it.Done(); it.Next()) {
+        if (lhs.arcs[it.Position()] != it.Value()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    static size_t hash(automaton::StateId id, const automaton& fst) {
+      size_t hash = 0;
+      for (fst::ArcIterator<automaton> it(fst, id); !it.Done(); it.Next()) {
+        const auto& a = it.Value();
+        hash = hash_combine(hash, a.ilabel);
+        hash = hash_combine(hash, a.nextstate);
+        hash = hash_combine(hash, a.weight.Hash());
+      }
+      return hash;
+    }
+
+    void rehash(const automaton& fst) {
+      std::vector<automaton::StateId> states(states_.size() * 2, fst::kNoStateId);
+      const size_t mask = states.size() - 1;
+      for (auto id : states_) {
+
+        if (fst::kNoStateId == id) {
+          continue;
+        }
+
+        size_t pos = hash(id, fst) % mask;
+        for (;;++pos, pos %= mask) { // TODO: maybe use quadratic probing here
+          if (fst::kNoStateId == states[pos] ) {
+            states[pos] = id;
+            break;
+          }
+        }
+      }
+
+      states_ = std::move(states);
+    }
+
+    automaton::StateId add_state(const state& s, automaton& fst) {
+      automaton::StateId id = s.id;
+
+      if (id == fst::kNoStateId) {
+        id = fst.AddState();
+      }
+
+      for (const arc& a : s.arcs) {
+        fst.EmplaceArc(id, a.label, a.id);
+      }
+
+      return id;
+    }
+
+    std::vector<automaton::StateId> states_;
+    size_t count_{};
+  }; // state_map
+
+  void add_states(size_t size) {
+    // reserve size + 1 for root state
+    if (states_.size() < ++size ) {
+      states_.resize(size);
+    }
+  }
+
+  void minimize(size_t prefix) {
+    assert(prefix > 0);
+
+    for (size_t i = last_.size(); i >= prefix; --i) {
+      state& s = states_[i];
+      state& p = states_[i - 1];
+      assert(!p.arcs.empty());
+
+      p.arcs.back().id = states_map_.insert(s, *a_);
+      s.clear();
+    }
+  }
+
+  void insert(const bytes_ref& label, automaton::StateId target);
+
+  std::vector<state> states_;
+  state_map states_map_;
+  bytes_ref last_;
+  automaton* a_;
+}; // utf8_automaton_builder
 
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const string_ref& field,

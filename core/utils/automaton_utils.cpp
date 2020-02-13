@@ -26,8 +26,51 @@
 #include "search/limited_sample_scorer.hpp"
 #include "search/multiterm_query.hpp"
 #include "utils/fst_table_matcher.hpp"
+#include "draw-impl.h"
+
+
+namespace  {
+
+void print(const irs::automaton& a) {
+  fst::SymbolTable st;
+  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
+  for (int i = 97; i < 97 + 28; ++i) {
+    st.AddSymbol(std::string(1, char(i)), i);
+  }
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  if (f) {
+    int i = 5;
+  }
+  fst::drawFst(a, f, "", &st, &st);
+}
+
+}
 
 NS_ROOT
+
+void utf8_transitions_builder::insert(
+    const bytes_ref& label,
+    const automaton::StateId to) {
+  const auto size = label.size();
+
+  add_states(size); // ensure we have enough states
+  const size_t prefix = 1 + common_prefix_length(last_, label);
+  minimize(prefix); // minimize suffix
+
+  // add current word suffix
+  for (size_t i = prefix; i <= size; ++i) {
+    states_[i - 1].arcs.emplace_back(label[i - 1], &states_[i]);
+  }
+
+  const bool is_final = last_.size() != size || prefix != (size + 1);
+
+  if (is_final) {
+    states_[size].id = to;
+  }
+
+  print(*a_);
+}
 
 filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
                                                const automaton& acceptor,

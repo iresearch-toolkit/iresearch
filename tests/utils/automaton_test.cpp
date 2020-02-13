@@ -24,6 +24,7 @@
 
 #include "utils/automaton_utils.hpp"
 #include "utils/wildcard_utils.hpp"
+#include "draw-impl.h"
 
 TEST(boolean_weight_test, static_const) {
   ASSERT_EQ(fst::kLeftSemiring | fst::kRightSemiring |
@@ -605,3 +606,49 @@ TEST(automaton_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
   }
 }
+
+void print(const irs::automaton& a) {
+  fst::SymbolTable st;
+  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
+  for (int i = 97; i < 97 + 28; ++i) {
+    st.AddSymbol(std::string(1, char(i)), i);
+  }
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  if (f) {
+    int i = 5;
+  }
+  fst::drawFst(a, f, "", &st, &st);
+}
+
+TEST(automaton_test, utf8_transitions) {
+  irs::automaton a;
+  auto start = a.AddState();
+  auto finish = a.AddState();
+  auto invalid = a.AddState();
+  auto def = a.AddState();
+  a.SetStart(start);
+  a.SetFinal(finish);
+
+  std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF5\x85\x97\x86")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x85")), finish);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x86")), def);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x85\x96")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x97")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x9E\x97")), invalid);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x85\x97")), invalid);
+//  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81")), invalid);
+//  arcs.emplace_back(irs::bytes_ref::NIL, def);
+
+  std::sort(arcs.begin(), arcs.end());
+
+  irs::utf8_transitions_builder builder(a);
+  builder.insert(start, arcs.begin(), arcs.end());
+
+  print(a);
+}
+
