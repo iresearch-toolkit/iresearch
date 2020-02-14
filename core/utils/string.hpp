@@ -324,9 +324,8 @@ inline size_t common_prefix_length(
   const size_t* rhs_block = reinterpret_cast<const size_t*>(rhs);
 
   size_t size = std::min(lhs_size, rhs_size);
-  size_t num_blocks = size / sizeof(size_t);
 
-  while (num_blocks && *lhs_block == *rhs_block) {
+  while (size >= sizeof(size_t) && *lhs_block == *rhs_block) {
     ++lhs_block;
     ++rhs_block;
     size -= sizeof(size_t);
