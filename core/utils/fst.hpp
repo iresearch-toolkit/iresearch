@@ -96,21 +96,23 @@ class fst_builder : util::noncopyable {
       return;
     }
 
+    const auto size = in.size();
+
     // determine common prefix
     const size_t pref = 1 + common_prefix_length(last_, in);
 
     // add states for current input
-    add_states(in.size());
+    add_states(size);
 
     // minimize last word suffix
     minimize(pref);
 
     // add current word suffix
-    for (size_t i = pref; i <= in.size(); ++i) {
+    for (size_t i = pref; i <= size; ++i) {
       states_[i - 1].arcs.emplace_back(in[i - 1], &states_[i]);
     }
 
-    const bool is_final = last_.size() != in.size() || pref != (in.size() + 1);
+    const bool is_final = last_.size() != size || pref != (size + 1);
 
     decltype(fst::DivideLeft(out, out)) output = out;
 
@@ -142,7 +144,7 @@ class fst_builder : util::noncopyable {
     if (is_final) {
       // set final state
       {
-        state& s = states_[in.size()];
+        state& s = states_[size];
         s.final = true;
       }
 
@@ -153,7 +155,7 @@ class fst_builder : util::noncopyable {
         s.arcs.back().out = std::move(output);
       }
     } else {
-      state& s = states_[in.size()];
+      state& s = states_[size];
       assert(s.arcs.size());
       assert(s.arcs.back().label == in[pref - 1]);
       s.arcs.back().out = fst::Times(s.arcs.back().out, output);
@@ -274,7 +276,7 @@ class fst_builder : util::noncopyable {
       stateid_t id;
       const size_t mask = states_.size() - 1;
       size_t pos = hash_value(s) % mask;
-      for ( ;; ++pos, pos %= mask ) { // TODO: maybe use quadratic probing here
+      for ( ;; ++pos, pos %= mask ) {
         if (fst::kNoStateId == states_[pos]) {
           states_[pos] = id = add_state(s, fst);
           ++count_;
@@ -292,14 +294,14 @@ class fst_builder : util::noncopyable {
       return id;
     }
 
-    void reset() {
+    void reset() noexcept {
       count_ = 0;
       std::fill(states_.begin(), states_.end(), fst::kNoStateId);
     }
 
    private:
     static bool equals(const state& lhs, stateid_t rhs, const fst_t& fst) {
-      if (fst.NumArcs( rhs ) != lhs.arcs.size() ) {
+      if (fst.NumArcs(rhs) != lhs.arcs.size()) {
         return false;
       }
 
@@ -332,7 +334,7 @@ class fst_builder : util::noncopyable {
         }
 
         size_t pos = hash(id, fst) % mask;
-        for (;;++pos, pos %= mask) { // TODO: maybe use quadratic probing here
+        for (;;++pos, pos %= mask) {
           if (fst::kNoStateId == states[pos] ) {
             states[pos] = id;
             break;
@@ -345,6 +347,7 @@ class fst_builder : util::noncopyable {
 
     stateid_t add_state(const state& s, fst_t& fst) {
       const stateid_t id = fst.AddState();
+
       if (s.final) {
         fst.SetFinal(id, s.out);
       }
@@ -356,14 +359,13 @@ class fst_builder : util::noncopyable {
       return id;
     }
 
-    // TODO: maybe use "buckets" here
     std::vector<stateid_t> states_;
     size_t count_{};
   }; // state_map
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
-    if ( states_.size() < ++size ) {
+    if (states_.size() < ++size) {
       states_.resize(size);
     }
   }
