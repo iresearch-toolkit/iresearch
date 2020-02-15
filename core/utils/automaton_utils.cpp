@@ -26,26 +26,35 @@
 #include "search/limited_sample_scorer.hpp"
 #include "search/multiterm_query.hpp"
 #include "utils/fst_table_matcher.hpp"
-#include "draw-impl.h"
 
+NS_LOCAL
 
-namespace  {
+// table contains indexes of states in
+// utf8_transitions_builder::rho_states_ table
+const irs::automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
+  // 1 byte sequence (0-191)
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  // 2 bytes sequence (192-223)
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  // 3 bytes sequence (224-239)
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  // 4 bytes sequence (240-255)
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+};
 
-void print(const irs::automaton& a) {
-  fst::SymbolTable st;
-  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
-  for (int i = 97; i < 97 + 28; ++i) {
-    st.AddSymbol(std::string(1, char(i)), i);
-  }
-  std::fstream f;
-  f.open("111", std::fstream::binary | std::fstream::out);
-  if (f) {
-    int i = 5;
-  }
-  fst::drawFst(a, f, "", &st, &st);
-}
-
-}
+NS_END
 
 NS_ROOT
 
@@ -60,7 +69,9 @@ void utf8_transitions_builder::insert(
 
   // add current word suffix
   for (size_t i = prefix; i <= size; ++i) {
-    states_[i - 1].arcs.emplace_back(label[i - 1], &states_[i]);
+    auto& p = states_[i - 1];
+    p.arcs.emplace_back(label[i - 1], &states_[i]);
+    p.rho_id = rho_states_[size - i];
   }
 
   const bool is_final = last_.size() != size || prefix != (size + 1);
@@ -68,8 +79,47 @@ void utf8_transitions_builder::insert(
   if (is_final) {
     states_[size].id = to;
   }
+}
 
-  print(*a_);
+void utf8_transitions_builder::finish(automaton::StateId from) {
+  assert(!states_.empty());
+  minimize(1);
+
+  if (fst::kNoStateId == rho_states_[0]) {
+    // no default state: just add transitions from the
+    // root node to its successors
+    for (const arc& a : states_.front().arcs) {
+      a_->EmplaceArc(from, a.label, a.id);
+    }
+
+    return;
+  }
+
+  // in presence of default state we have to add some extra
+  // transitions from root to properly handle multi-byte sequences
+  // and preserve correctness of arcs order
+
+  automaton::Arc::Label min = 0;
+
+  for (const arc& a : states_.front().arcs) {
+    assert(a.label < 256);
+
+    for (; min < a.label; ++min) {
+      a_->EmplaceArc(from, min, rho_states_[UTF8_RHO_STATE_TABLE[min]]);
+    }
+
+    assert(min == a.label);
+    a_->EmplaceArc(from, min++, a.id);
+  }
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+
+  for (size_t i = 1; i < 4; ++i) {
+    const auto to = rho_states_[i - 1];
+    const auto from = rho_states_[i];
+
+    a_->EmplaceArc(from, fst::fsa::kRho, to);
+  }
 }
 
 filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
@@ -103,7 +153,12 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
 
     auto& meta = it->attributes().get<term_meta>(); // get term metadata
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    // NOTE: we can't use reference to 'docs_count' here, like
+    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+    // probably due to broken optimization
+    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     if (it->next()) {
       auto& state = states.insert(segment);
@@ -112,8 +167,8 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
       do {
         it->read(); // read term attributes
 
-        state.estimation += docs_count;
-        scorer.collect(docs_count, state.count++, state, segment, *it);
+        state.estimation += *docs_count;
+        scorer.collect(*docs_count, state.count++, state, segment, *it);
       } while (it->next());
     }
   }

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2019 ArangoDB GmbH, Cologne, Germany
@@ -27,6 +27,7 @@
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
 #include "utils/hash_utils.hpp"
+#include "draw-impl.h"
 
 NS_ROOT
 
@@ -154,6 +155,25 @@ class automaton_term_iterator final : public seek_term_iterator {
   const bytes_ref* value_;
 }; // automaton_term_iterator
 
+
+namespace  {
+
+void print(const irs::automaton& a) {
+  fst::SymbolTable st;
+  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
+  for (int i = 97; i < 97 + 28; ++i) {
+    st.AddSymbol(std::string(1, char(i)), i);
+  }
+  std::fstream f;
+  f.open("111", std::fstream::binary | std::fstream::out);
+  if (f) {
+    int i = 5;
+  }
+  fst::drawFst(a, f, "", &st, &st);
+}
+
+}
+
 class utf8_transitions_builder {
  public:
   explicit utf8_transitions_builder(automaton& a) noexcept
@@ -161,9 +181,17 @@ class utf8_transitions_builder {
   }
 
   template<typename Iterator>
-  void insert(automaton::StateId from, Iterator begin, Iterator end) {
+  void insert(automaton::StateId from, automaton::StateId rho_state, Iterator begin, Iterator end) {
     last_ = bytes_ref::NIL;
     states_map_.reset();
+
+    std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
+
+    if (fst::kNoStateId != rho_state) {
+      rho_states_[1] = a_->AddState();
+      rho_states_[2] = a_->AddState();
+      rho_states_[3] = a_->AddState();
+    }
 
     for (; begin != end; ++begin) {
       // we expect sorted input
@@ -174,11 +202,7 @@ class utf8_transitions_builder {
       last_ = label;
     }
 
-    minimize(1);
-
-    auto& front  = states_.front();
-    front.id = from;
-    states_map_.insert(front, *a_);
+    finish(from);
   }
 
  private:
@@ -187,11 +211,6 @@ class utf8_transitions_builder {
   struct arc : private util::noncopyable {
     arc(automaton::Arc::Label label, state* target)
       : target(target),
-        label(label) {
-    }
-
-    arc(automaton::Arc::Label label, automaton::StateId target)
-      : id(target),
         label(label) {
     }
 
@@ -227,12 +246,15 @@ class utf8_transitions_builder {
     state() = default;
 
     state(state&& rhs) noexcept
-      : id(rhs.id),
+      : rho_id(rhs.rho_id),
+        id(rhs.id),
         arcs(std::move(rhs.arcs)) {
       rhs.id = fst::kNoStateId;
+      rhs.rho_id = fst::kNoStateId;
     }
 
     void clear() {
+      rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
       arcs.clear();
     }
@@ -240,6 +262,7 @@ class utf8_transitions_builder {
     friend size_t hash_value(const state& s) {
       size_t seed = 0;
 
+      seed = hash_combine(seed, s.rho_id);
       seed = hash_combine(seed, s.id);
       for (auto& arc: s.arcs) {
         seed = hash_combine(seed, hash_value(arc));
@@ -248,6 +271,7 @@ class utf8_transitions_builder {
       return seed;
     }
 
+    automaton::StateId rho_id{fst::kNoStateId};
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
@@ -263,7 +287,7 @@ class utf8_transitions_builder {
       automaton::StateId id;
       const size_t mask = states_.size() - 1;
       size_t pos = hash_value(s) % mask;
-      for ( ;; ++pos, pos %= mask ) { // TODO: maybe use quadratic probing here
+      for ( ;; ++pos, pos %= mask ) {
         if (fst::kNoStateId == states_[pos]) {
           states_[pos] = id = add_state(s, fst);
           ++count_;
@@ -281,7 +305,7 @@ class utf8_transitions_builder {
       return id;
     }
 
-    void reset() {
+    void reset() noexcept {
       count_ = 0;
       std::fill(states_.begin(), states_.end(), fst::kNoStateId);
     }
@@ -321,7 +345,7 @@ class utf8_transitions_builder {
         }
 
         size_t pos = hash(id, fst) % mask;
-        for (;;++pos, pos %= mask) { // TODO: maybe use quadratic probing here
+        for (;;++pos, pos %= mask) {
           if (fst::kNoStateId == states[pos] ) {
             states[pos] = id;
             break;
@@ -341,6 +365,10 @@ class utf8_transitions_builder {
 
       for (const arc& a : s.arcs) {
         fst.EmplaceArc(id, a.label, a.id);
+      }
+
+      if (s.rho_id != fst::kNoStateId) {
+        fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
       }
 
       return id;
@@ -372,6 +400,9 @@ class utf8_transitions_builder {
 
   void insert(const bytes_ref& label, automaton::StateId target);
 
+  void finish(automaton::StateId from);
+
+  automaton::StateId rho_states_[4];
   std::vector<state> states_;
   state_map states_map_;
   bytes_ref last_;

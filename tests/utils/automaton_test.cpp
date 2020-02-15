@@ -633,7 +633,7 @@ TEST(automaton_test, utf8_transitions) {
   std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
   arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF5\x85\x97\x86")), invalid);
   arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x85")), finish);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x86")), def);
+  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x86")), finish);
   arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), invalid);
   arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x85\x96")), invalid);
   arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
@@ -647,7 +647,7 @@ TEST(automaton_test, utf8_transitions) {
   std::sort(arcs.begin(), arcs.end());
 
   irs::utf8_transitions_builder builder(a);
-  builder.insert(start, arcs.begin(), arcs.end());
+  builder.insert(start, def, arcs.begin(), arcs.end());
 
   print(a);
 }
