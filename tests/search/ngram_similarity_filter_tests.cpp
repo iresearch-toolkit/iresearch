@@ -602,14 +602,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  docs_t expected{ 11, 12, 8, 13, 5, 1, 2};
   irs::order order;
   order.add<irs::tfidf_sort>(false).normalize(true);
 
   check_query(filter, order, expected, rdr);
 }
 
-TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_norm_test) {
+TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   // add segment
   {
@@ -625,9 +625,55 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_norm_test) {
   filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
+  irs::order order;
+  order.add<irs::tfidf_sort>(false).normalize(false);
+
+  check_query(filter, order, expected, rdr);
+}
+
+TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::normalized_string_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll");
+  docs_t expected{13, 11, 12, 2, 1, 8, 5};
   irs::order order;
   order.add<irs::bm25_sort>(false);
+
+  check_query(filter, order, expected, rdr);
+}
+
+TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::normalized_string_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll");
+  docs_t expected{ 13, 11, 12, 2, 1, 8, 5};
+  irs::order order;
+  order.add<irs::bm25_sort>(false).b(1); // set to BM15 mode
 
   check_query(filter, order, expected, rdr);
 }
