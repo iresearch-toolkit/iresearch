@@ -24,6 +24,7 @@
 #include "filter_test_case_base.hpp"
 #include "search/ngram_similarity_filter.hpp"
 #include "search/tfidf.hpp"
+#include "search/bm25.hpp"
 
 #include <functional>
 
@@ -64,15 +65,16 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(0.75, boost->value); // best match is 3 of 4
+    ASSERT_DOUBLE_EQ(0.75, boost->value);
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
-  // sequence 1 1 2 2 3 3 4 4 -> longest is 1234  and freq should be 1 not 2!
-  // add segment
+  // sequence 1 1 2 2 3 3 4 4 -> longest is 1234  and freq should be 1 not 2 as 
+  // this sequence could not be built twice one after another but only
+  // intereaved
   {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"1\", \"2\", \"2\", \"3\", \"3\", \"4\", \"4\"] }]",
@@ -584,7 +586,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
 }
 
-TEST_P(ngram_similarity_filter_test_case, DISABLED_missed_first_tfidf_norm_test) {
+TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   // add segment
   {
@@ -606,6 +608,30 @@ TEST_P(ngram_similarity_filter_test_case, DISABLED_missed_first_tfidf_norm_test)
 
   check_query(filter, order, expected, rdr);
 }
+
+TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_norm_test) {
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::normalized_string_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+    .push_back("tl").push_back("la").push_back("as")
+    .push_back("ll");
+  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  irs::order order;
+  order.add<irs::bm25_sort>(false);
+
+  check_query(filter, order, expected, rdr);
+}
+
 
 
 INSTANTIATE_TEST_CASE_P(
