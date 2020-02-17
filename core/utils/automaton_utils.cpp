@@ -60,7 +60,12 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
 
     auto& meta = it->attributes().get<term_meta>(); // get term metadata
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    // NOTE: we can't use reference to 'docs_count' here, like
+    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+    // probably due to broken optimization
+    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     if (it->next()) {
       auto& state = states.insert(segment);
@@ -69,8 +74,8 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
       do {
         it->read(); // read term attributes
 
-        state.estimation += docs_count;
-        scorer.collect(docs_count, state.count++, state, segment, *it);
+        state.estimation += *docs_count;
+        scorer.collect(*docs_count, state.count++, state, segment, *it);
       } while (it->next());
     }
   }

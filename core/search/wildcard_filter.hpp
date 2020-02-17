@@ -26,6 +26,7 @@
 #include "filter.hpp"
 #include "prefix_filter.hpp"
 #include "utils/string.hpp"
+#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
 
@@ -35,6 +36,8 @@ enum class WildcardType {
   PREFIX,         // foo*
   WILDCARD        // f_o*
 };
+
+using wildcard_traits_t = irs::wildcard_traits<irs::byte_type>;
 
 IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
 

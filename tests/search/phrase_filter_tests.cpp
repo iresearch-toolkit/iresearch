@@ -358,6 +358,154 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
+    // equals to wildcard_filter "fo%"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    }
+
     // search "fox" on field without positions
     // which is ok for single word phrases
     {
@@ -397,10 +545,64 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     }
 
     // search "fo*" on field without positions
-    // which is ok for single word phrases
+    // which is ok for the first word in phrase
     {
       irs::by_phrase q;
       q.field("phrase").push_back(irs::by_phrase::info_t::prefix_term{}, "fo");
+
+      auto prepared = q.prepare(rdr);
+#ifndef IRESEARCH_DLL
+      // check single word phrase optimization
+      ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+#endif
+      irs::bytes_ref actual_value;
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    }
+
+    // search "fo%" on field without positions
+    // which is ok for first word in phrase
+    {
+      irs::by_phrase q;
+      q.field("phrase").push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -690,6 +892,149 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
+    // equals to prefix_filter "fo%" with phrase offset
+    // which does not matter
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%", irs::integer_traits<size_t>::const_max);
+
+      auto prepared = q.prepare(rdr);
+#ifndef IRESEARCH_DLL
+      // check single word phrase optimization
+      ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+#endif
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    }
+
     // "quick brown fox"
     {
       irs::bytes_ref actual_value;
@@ -797,6 +1142,63 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "qui% brown fox"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "brown")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "fox");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "quick bro* fox"
     {
       irs::bytes_ref actual_value;
@@ -805,6 +1207,63 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       q.field("phrase_anl")
        .push_back(irs::by_phrase::info_t::simple_term{}, "quick")
        .push_back(irs::by_phrase::info_t::prefix_term{}, "bro")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "fox");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
+    // "quick bro% fox"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "quick")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "bro%")
        .push_back(irs::by_phrase::info_t::simple_term{}, "fox");
 
       auto prepared = q.prepare(rdr);
@@ -911,6 +1370,63 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "quick brown fo%"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "quick")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "brown")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "qui* bro* fox"
     {
       irs::bytes_ref actual_value;
@@ -919,6 +1435,77 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       q.field("phrase_anl")
        .push_back(irs::by_phrase::info_t::prefix_term{}, "qui")
        .push_back(irs::by_phrase::info_t::prefix_term{}, "bro")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "fox");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
+    // "qui% bro% fox"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "bro%")
        .push_back(irs::by_phrase::info_t::simple_term{}, "fox");
 
       auto prepared = q.prepare(rdr);
@@ -1053,6 +1640,77 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "qui% brown fo%"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "brown")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "quick bro* fo*"
     {
       irs::bytes_ref actual_value;
@@ -1124,6 +1782,77 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "quick bro% fo%"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "quick")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "bro%")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "qui* bro* fo*"
     {
       irs::bytes_ref actual_value;
@@ -1133,6 +1862,105 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
        .push_back(irs::by_phrase::info_t::prefix_term{}, "qui")
        .push_back(irs::by_phrase::info_t::prefix_term{}, "bro")
        .push_back(irs::by_phrase::info_t::prefix_term{}, "fo");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
+    // "qui% bro% fo%"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "bro%")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%");
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();

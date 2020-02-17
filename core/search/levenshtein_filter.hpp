@@ -143,6 +143,6 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   bool with_transpositions_{false};
 }; // by_edit_distance
 
-#endif // IRESEARCH_LEVENSHTEIN_FILTER_H
-
 NS_END
+
+#endif // IRESEARCH_LEVENSHTEIN_FILTER_H

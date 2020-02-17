@@ -29,6 +29,7 @@
 #include "term_query.hpp"
 #include "conjunction.hpp"
 #include "disjunction.hpp"
+#include "levenshtein_filter.hpp"
 #include "prefix_filter.hpp"
 #include "wildcard_filter.hpp"
 
@@ -51,6 +52,8 @@
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/fst_table_matcher.hpp"
+#include "utils/levenshtein_utils.hpp"
 #include "utils/misc.hpp"
 
 NS_ROOT
@@ -499,10 +502,10 @@ filter::prepared::ptr by_phrase::prepare(
   }
 
   // prepare phrase stats (collector for each term)
-  if (is_not_term_only) {
-    return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
+  if (is_simple_term_only) {
+    return fixed_prepare_collect(rdr, ord, boost, ord.fixed_prepare_collectors(phrase_size));
   }
-  return fixed_prepare_collect(rdr, ord, boost, ord.fixed_prepare_collectors(phrase_size));
+  return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
@@ -639,59 +642,141 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     for (const auto& word : phrase_) {
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
       auto& pt = phrase_terms[i++];
+      auto type = word.second.first.type;
+      bytes_ref pattern = word.second.second;
 
       switch (word.second.first.type) {
-      case info_t::Type::TERM: {
-        if (!term->seek(word.second.second)) {
-          if (ord.empty()) {
-            break;
-          } else {
-            // continue here because we should collect
-            // stats for other terms in phrase
-            continue;
+        case info_t::Type::WILDCARD:
+          switch (irs::wildcard_type(pattern)) {
+            case WildcardType::TERM:
+              type = info_t::Type::TERM;
+              break;
+            case WildcardType::MATCH_ALL:
+              pattern = bytes_ref::EMPTY; // empty prefix == match all
+              type = info_t::Type::PREFIX;
+              break;
+            case WildcardType::PREFIX: {
+              assert(!pattern.empty());
+              const auto pos = word.second.second.find(irs::wildcard_traits_t::MATCH_ANY_STRING);
+              assert(pos != irs::bstring::npos);
+              pattern = bytes_ref(pattern.c_str(), pos); // remove trailing '%'
+              type = info_t::Type::PREFIX;
+              break;
+            }
+            case WildcardType::WILDCARD:
+              // do nothing
+              break;
           }
-        }
-
-        term->read(); // read term attributes
-        collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-        // estimate phrase & term
-        pt.emplace_back(term->cookie());
-        ++found_words_count;
         break;
-      }
-      case info_t::Type::PREFIX: {
-        const auto& prefix = word.second.second;
-        // seek to prefix
-        if (SeekResult::END == term->seek_ge(prefix)) {
-          if (ord.empty()) {
-            break;
-          } else {
-            // continue here because we should collect
-            // stats for other terms in phrase
-            continue;
+        case info_t::Type::LEVENSHTEIN:
+          if (0 == word.second.first.lt.max_distance) {
+            type = info_t::Type::TERM;
           }
-        }
+          break;
+        default:
+          break;
+      }
 
-        const auto& value = term->value();
+      switch (type) {
+        case info_t::Type::TERM: {
+          if (!term->seek(pattern)) {
+            if (ord.empty()) {
+              break;
+            } else {
+              // continue here because we should collect
+              // stats for other terms in phrase
+              continue;
+            }
+          }
 
-        while (starts_with(value, prefix)) {
-          term->read();
+          term->read(); // read term attributes
           collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
 
           // estimate phrase & term
           pt.emplace_back(term->cookie());
-          if (!term->next()) {
-            break;
-          }
+          ++found_words_count;
+          break;
         }
-        ++found_words_count;
-        break;
-      }
-      case info_t::Type::WILDCARD:
-        assert(false);
-      case info_t::Type::LEVENSHTEIN:
-        assert(false);
+        case info_t::Type::PREFIX: {
+          // seek to prefix
+          if (SeekResult::END == term->seek_ge(pattern)) {
+            if (ord.empty()) {
+              break;
+            } else {
+              // continue here because we should collect
+              // stats for other terms in phrase
+              continue;
+            }
+          }
+
+          const auto& value = term->value();
+
+          while (starts_with(value, pattern)) {
+            term->read();
+            collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
+
+            // estimate phrase & term
+            pt.emplace_back(term->cookie());
+            if (!term->next()) {
+              break;
+            }
+          }
+          ++found_words_count;
+          break;
+        }
+        case info_t::Type::WILDCARD: {
+          const auto& acceptor = from_wildcard<byte_type, wildcard_traits_t>(pattern);
+          automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+          if (fst::kError == matcher.Properties(0)) {
+            IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                          "got the following properties " IR_UINT64_T_SPECIFIER "",
+                          acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+
+            return filter::prepared::empty();
+          }
+
+          auto term_wildcard = tr->iterator(matcher);
+
+          while (term_wildcard->next()) {
+            term_wildcard->read();
+            collectors.collect(sr, *tr, term_itr, term_wildcard->attributes()); // collect statistics
+
+            // estimate phrase & term
+            pt.emplace_back(term_wildcard->cookie());
+          }
+          ++found_words_count;
+          break;
+        }
+        case info_t::Type::LEVENSHTEIN: {
+          assert(word.second.first.lt.provider);
+          const auto& d = (*word.second.first.lt.provider)(word.second.first.lt.max_distance,
+                                                           word.second.first.lt.with_transpositions);
+          if (!d) {
+            return prepared::empty();
+          }
+          const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.second);
+          automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+          if (fst::kError == matcher.Properties(0)) {
+            IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                          "got the following properties " IR_UINT64_T_SPECIFIER "",
+                          acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+
+            return filter::prepared::empty();
+          }
+          auto term_levenshtein = tr->iterator(matcher);
+
+          while (term_levenshtein->next()) {
+            term_levenshtein->read();
+            collectors.collect(sr, *tr, term_itr, term_levenshtein->attributes()); // collect statistics
+
+            // estimate phrase & term
+            pt.emplace_back(term_levenshtein->cookie());
+          }
+          ++found_words_count;
+          break;
+        }
       }
     }
 

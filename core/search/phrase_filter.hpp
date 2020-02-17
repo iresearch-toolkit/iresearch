@@ -118,7 +118,7 @@ class IRESEARCH_API by_phrase : public filter {
   // inserts term to the specified position
   template<typename T>
   by_phrase& insert(const T& t, size_t pos, const bytes_ref& term) {
-    is_not_term_only |= !std::is_same<T, info_t::simple_term>::value; // constexpr
+    is_simple_term_only &= std::is_same<T, info_t::simple_term>::value; // constexpr
     phrase_[pos] = {info_t(t), term};
     return *this;
   }
@@ -130,7 +130,7 @@ class IRESEARCH_API by_phrase : public filter {
 
   template<typename T>
   by_phrase& insert(T&& t, size_t pos, bstring&& term) {
-    is_not_term_only |= !std::is_same<T, info_t::simple_term>::value; // constexpr
+    is_simple_term_only &= std::is_same<T, info_t::simple_term>::value; // constexpr
     phrase_[pos] = {std::forward<T>(t), std::move(term)};
     return *this;
   }
@@ -204,7 +204,7 @@ class IRESEARCH_API by_phrase : public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;
   terms_t phrase_;
-  bool is_not_term_only = false;
+  bool is_simple_term_only = true;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // by_phrase
 
