@@ -454,6 +454,9 @@ size_t hash_value(const by_phrase::info_t& info) {
     break;
   case by_phrase::info_t::Type::LEVENSHTEIN:
     ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
+    ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
+    ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
+    ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
     break;
   }
   return seed;
@@ -667,7 +670,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               // do nothing
               break;
           }
-        break;
+          break;
         case info_t::Type::LEVENSHTEIN:
           if (0 == word.second.first.lt.max_distance) {
             type = info_t::Type::TERM;
