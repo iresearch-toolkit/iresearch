@@ -31,7 +31,7 @@
 NS_ROOT
 
 template<typename Adapter>
-class attribute_range final
+class IRESEARCH_API_TEMPLATE attribute_range final
   : public attribute,
     public util::const_attribute_view_provider {
  public:
@@ -66,10 +66,12 @@ class attribute_range final
   }
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   Adapter* value_{nullptr};
   iterators_t iterators_;
   attribute_view attrs_;
   size_t current_index_{0};
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // attribute_range
 
 NS_END // ROOT

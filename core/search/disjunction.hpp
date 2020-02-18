@@ -72,7 +72,7 @@ NS_END // detail
 /// @brief adapter to use doc_iterator with positions for disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
+struct IRESEARCH_API_TEMPLATE position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
 
   typename attribute_view::ref<irs::position> attribute;
 

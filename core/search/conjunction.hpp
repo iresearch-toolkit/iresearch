@@ -35,7 +35,7 @@ NS_ROOT
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-struct score_iterator_adapter {
+struct IRESEARCH_API_TEMPLATE score_iterator_adapter {
   typedef DocIterator doc_iterator_t;
 
   score_iterator_adapter(doc_iterator_t&& it) noexcept
