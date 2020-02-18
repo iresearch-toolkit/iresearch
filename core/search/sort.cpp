@@ -338,9 +338,8 @@ void order::prepared::variadic_terms_collectors::finish(
   if (term_collectors_.empty()) {
     empty_finish(stats_buf, index);
   } else {
-    auto bucket_count = buckets_.size();
     auto count = term_collectors_.size();
-    assert(count == bucket_count);
+    assert(count == buckets_.size());
 
     for (size_t i = 0; i < count; ++i) {
       const auto& sort = buckets_[i];

@@ -442,7 +442,7 @@ bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
 }
 
 size_t hash_value(const by_phrase::info_t& info) {
-  auto seed = std::hash<by_phrase::info_t::Type>()(info.type);
+  auto seed = std::hash<int>()(static_cast<int>(info.type));
   switch (info.type) {
   case by_phrase::info_t::Type::TERM:
     break;
