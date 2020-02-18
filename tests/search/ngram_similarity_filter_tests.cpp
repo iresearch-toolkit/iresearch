@@ -148,6 +148,83 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
   }
 }
 
+TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
+  // sequence 1 2 1 1 1 1 pattern 1 1 -> longest is 1 1 and frequency is 2
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"1\", \"1\", \"1\", \"1\"] }]",
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+  irs::order order;
+  auto& scorer = order.add<tests::sort::custom_sort>(false);
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("1")
+    .push_back("1");
+
+  auto prepared_order = order.prepare();
+  auto prepared = filter.prepare(rdr, prepared_order);
+  size_t count = 0;
+  for (const auto& sub : rdr) {
+    auto docs = prepared->execute(sub, prepared_order);
+    auto& doc = docs->attributes().get<irs::document>();
+    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto& frequency = docs->attributes().get<irs::frequency>();
+    // ensure all iterators contain  attributes 
+    ASSERT_TRUE(bool(doc)); 
+    ASSERT_TRUE(bool(boost));
+    ASSERT_TRUE(bool(frequency));
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), doc->value);
+    ASSERT_FALSE(irs::doc_limits::eof(doc->value));
+    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_EQ(2, frequency->value);
+    ASSERT_FALSE(docs->next());
+  }
+}
+
+TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
+  // sequence 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 pattern 1 2 1 -> longest is 1 2 1 and frequency is 4
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"1\", \"2\", \"1\", "
+      " \"2\", \"1\", \"2\", \"1\", \"2\", \"1\", \"2\", \"1\", \"2\", \"1\"] }]",
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+  irs::order order;
+  auto& scorer = order.add<tests::sort::custom_sort>(false);
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("1")
+    .push_back("2").push_back("1");
+
+  auto prepared_order = order.prepare();
+  auto prepared = filter.prepare(rdr, prepared_order);
+  size_t count = 0;
+  for (const auto& sub : rdr) {
+    auto docs = prepared->execute(sub, prepared_order);
+    auto& doc = docs->attributes().get<irs::document>();
+    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto& frequency = docs->attributes().get<irs::frequency>();
+    // ensure all iterators contain  attributes 
+    ASSERT_TRUE(bool(doc)); 
+    ASSERT_TRUE(bool(boost));
+    ASSERT_TRUE(bool(frequency));
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), doc->value);
+    ASSERT_FALSE(irs::doc_limits::eof(doc->value));
+    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_EQ(4, frequency->value);
+    ASSERT_FALSE(docs->next());
+  }
+}
+
 
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   // add segment
@@ -455,11 +532,13 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 }
 
 struct test_score_ctx : public irs::score_ctx {
-  test_score_ctx(std::vector<size_t>* f, const irs::frequency* p)
-    : freq(f), freq_from_filter(p) {}
+  test_score_ctx(std::vector<size_t>* f, const irs::frequency* p, std::vector<irs::boost_t>* b, const irs::filter_boost* fb)
+    : freq(f), freq_from_filter(p), filter_boost(b), boost_from_filter(fb)  {}
 
   std::vector<size_t>* freq;
+  std::vector<irs::boost_t>* filter_boost;
   const irs::frequency* freq_from_filter;
+  const irs::filter_boost* boost_from_filter;
 };
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
@@ -485,6 +564,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   size_t collect_term_count = 0;
   size_t finish_count = 0;
   std::vector<size_t> frequency;
+  std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
   scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
@@ -503,22 +583,30 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
 
 
-  scorer.prepare_scorer = [&frequency](const irs::sub_reader& segment,
+  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
     const irs::term_reader& term,
     const irs::byte_type* data,
     const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
       auto& freq = attr.get<irs::frequency>();
+      auto& boost = attr.get<irs::filter_boost>();
       return {  
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get()),
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
         [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
         auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
         freq.freq->push_back(freq.freq_from_filter->value);
+        freq.filter_boost->push_back(freq.boost_from_filter->value);
       }
       };
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
+  std::vector<irs::boost_t> expected_filter_boost{4./6., 4./6., 4./6., 4./6., 0.5, 0.5, 0.5};
   check_query(filter, order, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
+  ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
+  for (size_t i = 0; i < expected_filter_boost.size(); ++i) {
+    SCOPED_TRACE(testing::Message("i=") << i);
+    ASSERT_DOUBLE_EQ(expected_filter_boost[i], filter_boost[i]);
+  }
   ASSERT_EQ(1, collect_field_count); 
   ASSERT_EQ(5, collect_term_count); 
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
@@ -547,6 +635,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   size_t collect_term_count = 0;
   size_t finish_count = 0;
   std::vector<size_t> frequency;
+  std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
   scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
@@ -565,22 +654,30 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
 
 
-  scorer.prepare_scorer = [&frequency](const irs::sub_reader& segment,
+  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
     const irs::term_reader& term,
     const irs::byte_type* data,
     const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
       auto& freq = attr.get<irs::frequency>();
+      auto& boost = attr.get<irs::filter_boost>();
       return {  
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get()),
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
         [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
         auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
         freq.freq->push_back(freq.freq_from_filter->value);
+        freq.filter_boost->push_back(freq.boost_from_filter->value);
       }
       };
   };
-  std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
+  std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
+  std::vector<irs::boost_t> expected_filter_boost{4./6., 4./6., 4./6., 4./6., 0.5, 0.5, 0.5};
   check_query(filter, order, expected, rdr);
-  ASSERT_EQ(expectedFrequency, frequency);
+  ASSERT_EQ(expected_frequency, frequency);
+  ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
+  for (size_t i = 0; i < expected_filter_boost.size(); ++i) {
+    SCOPED_TRACE(testing::Message("i=") << i);
+    ASSERT_DOUBLE_EQ(expected_filter_boost[i], filter_boost[i]);
+  }
   ASSERT_EQ(1, collect_field_count); 
   ASSERT_EQ(5, collect_term_count); 
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
@@ -685,11 +782,11 @@ INSTANTIATE_TEST_CASE_P(
   ngram_similarity_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
+      &tests::memory_directory/*!!!!!,
       &tests::fs_directory,
-      &tests::mmap_directory
+      &tests::mmap_directory*/
     ),
-    ::testing::Values("1_0", "1_3")
+    ::testing::Values(/*!!!!!!!"1_0",*/ "1_3")
   ),
   tests::to_string
 );
