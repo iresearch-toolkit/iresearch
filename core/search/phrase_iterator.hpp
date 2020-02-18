@@ -23,7 +23,10 @@
 #ifndef IRESEARCH_PHRASE_ITERATOR_H
 #define IRESEARCH_PHRASE_ITERATOR_H
 
+#include "disjunction.hpp"
+#include "score_doc_iterators.hpp"
 #include "shared.hpp"
+#include "utils/attribute_range.hpp"
 
 NS_ROOT
 

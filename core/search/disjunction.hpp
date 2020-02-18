@@ -176,7 +176,7 @@ class unary_disjunction final : public doc_iterator_base, unary_disjunction_attr
     : unary_disjunction_attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
       doc_(doc_limits::invalid()),
       it_(std::move(it)) {
-    attrs_.emplace<irs::document>(*(it_->attributes().template get<irs::document>()));
+    attrs_.emplace<irs::document>(*it_->attributes().template get<irs::document>());
     if /*constexpr*/ (std::is_same<Adapter, position_score_iterator_adapter<DocIterator>>::value) {
       this->update_attribute_range(it_);
     }

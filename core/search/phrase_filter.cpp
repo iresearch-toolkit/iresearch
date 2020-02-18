@@ -370,12 +370,12 @@ by_phrase::info_t::info_t(wildcard_term&& wt) noexcept {
   this->wt = std::move(wt);
 }
 
-by_phrase::info_t::info_t(const levenstein_term& lt) {
+by_phrase::info_t::info_t(const levenshtein_term& lt) {
   type = Type::LEVENSHTEIN;
   this->lt = lt;
 }
 
-by_phrase::info_t::info_t(levenstein_term&& lt) noexcept {
+by_phrase::info_t::info_t(levenshtein_term&& lt) noexcept {
   type = Type::LEVENSHTEIN;
   this->lt = std::move(lt);
 }

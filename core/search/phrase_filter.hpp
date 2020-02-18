@@ -27,6 +27,7 @@
 
 #include "filter.hpp"
 #include "levenshtein_filter.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
@@ -62,17 +63,17 @@ class IRESEARCH_API by_phrase : public filter {
     struct wildcard_term : general_term {
     };
 
-    struct levenstein_term : general_term {
-      byte_type max_distance;
-      by_edit_distance::pdp_f provider;
-      bool with_transpositions;
+    struct levenshtein_term : general_term {
+      byte_type max_distance{0};
+      by_edit_distance::pdp_f provider{irs::default_pdp};
+      bool with_transpositions{false};
     };
 
     union {
       simple_term st;
       prefix_term pt;
       wildcard_term wt;
-      levenstein_term lt;
+      levenshtein_term lt;
     };
 
     info_t();
@@ -84,8 +85,8 @@ class IRESEARCH_API by_phrase : public filter {
     info_t(prefix_term&& pt) noexcept;
     info_t(const wildcard_term& wt);
     info_t(wildcard_term&& wt) noexcept;
-    info_t(const levenstein_term& lt);
-    info_t(levenstein_term&& lt) noexcept;
+    info_t(const levenshtein_term& lt);
+    info_t(levenshtein_term&& lt) noexcept;
 
     info_t& operator=(const info_t& other) noexcept;
     info_t& operator=(info_t&& other) noexcept;
