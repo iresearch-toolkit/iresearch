@@ -3407,9 +3407,6 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-
-
-
     // "quick brown fox" with order
     {
       irs::bytes_ref actual_value;
@@ -3578,13 +3575,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // "fo% ... quick"
+    // "f_x ... quick"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "f_x")
        .push_back(irs::by_phrase::info_t::simple_term{}, "quick", 1);
 
       auto prepared = q.prepare(rdr);
@@ -3662,14 +3659,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // "fox ... qui%"
+    // "fox ... qui%ck"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       q.field("phrase_anl")
        .push_back(irs::by_phrase::info_t::simple_term{}, "fox")
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%", 1);
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%ck", 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -3746,14 +3743,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // "fo% ... qui%"
+    // "f%x ... qui%ck"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%")
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%", 1);
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "f%x")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%ck", 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -3922,14 +3919,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // "fo% ... quick" with phrase offset
+    // "f_x ... quick" with phrase offset
     // which is does not matter
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "fo%", irs::integer_traits<size_t>::const_max)
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "f_x", irs::integer_traits<size_t>::const_max)
        .push_back(irs::by_phrase::info_t::simple_term{}, "quick", 1);
 
       auto prepared = q.prepare(rdr);
@@ -4008,7 +4005,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // "fox ... qui%" with phrase offset
+    // "fox ... qui%k" with phrase offset
     // which is does not matter
     {
       irs::bytes_ref actual_value;
@@ -4016,7 +4013,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::by_phrase q;
       q.field("phrase_anl")
        .push_back(irs::by_phrase::info_t::simple_term{}, "fox", irs::integer_traits<size_t>::const_max)
-       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%", 1);
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qui%k", 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -4161,6 +4158,44 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
+    // "fox ... ... ... ... ... ... ... ... ... ... qui*"
+    {
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "fox")
+       .push_back(irs::by_phrase::info_t::prefix_term{}, "qui", 10);
+
+      auto prepared = q.prepare(rdr);
+
+      auto sub = rdr.begin();
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    }
+
+    // "fox ... ... ... ... ... ... ... ... ... ... qu_ck"
+    {
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "fox")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "qu_ck", 10);
+
+      auto prepared = q.prepare(rdr);
+
+      auto sub = rdr.begin();
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+    }
+
     // "eye ... eye"
     {
       irs::bytes_ref actual_value;
@@ -4236,6 +4271,46 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "as in % past we ___ looking forward"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "as")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "in")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "%")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "past")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "we")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "___")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "looking")
+       .push_back(irs::by_phrase::info_t::prefix_term{}, "fo");
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "as in the past we are looking forward" with order
     {
       irs::bytes_ref actual_value;
@@ -4249,6 +4324,61 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
        .push_back(irs::by_phrase::info_t::simple_term{}, "we")
        .push_back(irs::by_phrase::info_t::simple_term{}, "are")
        .push_back(irs::by_phrase::info_t::simple_term{}, "looking")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "forward");
+
+      irs::order ord;
+      auto& sort = ord.add<tests::sort::custom_sort>(false);
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
+        ASSERT_TRUE(
+          irs::type_limits<irs::type_t::doc_id_t>::invalid() == dst
+          || dst == src
+        );
+        dst = src;
+      };
+
+      auto pord = ord.prepare();
+      auto prepared = q.prepare(rdr, pord);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared->execute(*sub, pord);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+      auto& score = docs->attributes().get<irs::score>();
+      ASSERT_FALSE(!score);
+
+      ASSERT_TRUE(docs->next());
+      score->evaluate();
+      ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
+    // "as in the p_st we are look* forward" with order
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "as")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "in")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "the")
+       .push_back(irs::by_phrase::info_t::wildcard_term{}, "p_st")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "we")
+       .push_back(irs::by_phrase::info_t::simple_term{}, "are")
+       .push_back(irs::by_phrase::info_t::prefix_term{}, "look")
        .push_back(irs::by_phrase::info_t::simple_term{}, "forward");
 
       irs::order ord;
