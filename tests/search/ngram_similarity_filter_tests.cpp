@@ -263,8 +263,6 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
   }
 }
 
-
-
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   // add segment
   {

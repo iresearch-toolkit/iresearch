@@ -264,8 +264,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     // only most frequent one is counted
     if (longest_sequence_len >= min_match_count_  && !ord_->empty() ) { 
       std::set<size_t> used_pos;
-      using sequence_counter_t = std::map<std::vector<const position_t*>, uint32_t>;
-      sequence_counter_t sequence_counter;
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
         assert(i->second.len <= longest_sequence_len);
         if (i->second.len < longest_sequence_len) {
@@ -285,18 +283,11 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             for (auto p : i->second.pos_sequence) {
               used_pos.insert(p);
             }
-            sequence_counter[i->second.sequence]++;
             ++i;
           }
         }
       }
-      uint32_t max_freq = 0;
-      std::for_each(sequence_counter.begin(), sequence_counter.end(), [&max_freq](const sequence_counter_t::value_type& v) {
-        if (v.second > max_freq) {
-          max_freq = v.second;
-        }
-      });
-      seq_freq_.value = max_freq;
+      seq_freq_.value = search_buf_.size();
       assert(!pos_.empty());
     }
     filter_boost_.value = (boost_t)longest_sequence_len / (boost_t)pos_.size();
