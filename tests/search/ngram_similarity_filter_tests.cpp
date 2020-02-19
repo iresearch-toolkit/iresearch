@@ -36,7 +36,7 @@ protected:
 
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
-  // sequence 1 3 4 ______ 2 -> longest is 134 not 12!!!
+  // sequence 1 3 4 ______ 2 -> longest is 134 not 12
   // add segment
   {
     tests::json_doc_generator gen(
