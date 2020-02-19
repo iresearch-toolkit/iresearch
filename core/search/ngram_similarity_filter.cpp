@@ -135,6 +135,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
 
   inline void score_impl(byte_type* lhs) {
     const irs::byte_type** pVal = scores_vals_.data();
+    assert(!search_buf_.empty());
     const auto& winner = search_buf_.begin()->second.sequence;
     std::for_each(
       winner.begin(), winner.end(),
@@ -153,6 +154,12 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     search_state(const search_state&) = default;
     search_state& operator=(const search_state&) = default;
 
+    void append(size_t pos, const position_t* s) {
+      ++len;
+      sequence.emplace_back(s);
+      pos_sequence.emplace_back(pos);
+    }
+
     size_t len;
     std::vector<const position_t*> sequence;
     std::vector<size_t> pos_sequence;
@@ -162,18 +169,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   using pos_temp_t = std::vector<std::pair<uint32_t, search_state>>;
 
   bool check_serial_positions() {
-    size_t matched_iters = disjunction_.count_matched();
+    size_t potential = disjunction_.count_matched();
     search_buf_.clear();
     size_t matched = 0;
-    auto best_match = search_buf_.end();
-    size_t skipped_matched = 0;
     seq_freq_.value = 0;
-    for (const auto& post : pos_) {
-      if (post.doc->value == disjunction_.value()) {
-        position& pos = *(post.pos);
-        const size_t potential = matched_iters - skipped_matched;
-        skipped_matched++;
-        if (potential <= matched) {
+    for (const auto& pos_iterator : pos_) {
+      if (pos_iterator.doc->value == disjunction_.value()) {
+        position& pos = *(pos_iterator.pos);
+        if (potential <= matched || potential < min_match_count_) {
           // this term could not start largest sequence. 
           // skip it to first position to append to any existing candidates  
           assert(!search_buf_.empty());
@@ -194,10 +197,10 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
               last_found_pos = found->first;
               auto new_found = found->second;
               if (found->first != new_pos) {
-                ++(new_found.len);
-                new_found.sequence.emplace_back(&post);
-                new_found.pos_sequence.push_back(new_pos);
+                new_found.append(new_pos, &pos_iterator);
               } else {
+                // we may hit same term from previous iterator (if searching smth like ['aa', 'aa'])
+                // so we need to force check of other terms before this!
                 new_found.len = 0;
               }
               if (new_found.len > matched) {
@@ -208,9 +211,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 // if we stick this ngram to them rather than the closest one found
                 for (++found; found != search_buf_.end(); ++found) {
                   auto down_found = found->second;
-                  ++(down_found.len);
-                  down_found.sequence.emplace_back(&post);
-                  down_found.pos_sequence.push_back(new_pos);
+                  down_found.append(new_pos, &pos_iterator);
                   if (down_found.len > new_found.len) {
                     // we have better option. Replace this match!
                     new_found = down_found;
@@ -230,7 +231,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             // so add it to candidate list
             temp_cache.emplace_back(std::piecewise_construct, 
                 std::forward_as_tuple(new_pos), 
-                std::forward_as_tuple(new_pos, &post));
+                std::forward_as_tuple(new_pos, &pos_iterator));
             if (!matched) {
               matched = 1;
             }
@@ -243,11 +244,17 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             res.first->second = p.second;
           }
         }
+        --potential; // we are done with this term. Next will have potential one less
       }
-      const size_t potential = matched_iters - skipped_matched;
+      
       if (!potential) {
         break; // all further terms will not add anything
       }
+
+      if (matched + potential < min_match_count_) {
+        break; // all further terms will not let us build long enough sequence
+      }
+      
       // if we have no scoring - we could stop searh once we got enough matches
       if (matched >= min_match_count_ && ord_->empty()) {
         break;
@@ -262,7 +269,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
         if (i->second.len < matched) {
           i = search_buf_.erase(i);
         } else {
-          //++i;
           // check if this positions are used in some other
           bool delete_candidate = false;
           for (auto p : i->second.pos_sequence) {
@@ -298,6 +304,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     }
     return matched >= min_match_count_;
   }
+
   positions_t pos_;
   frequency seq_freq_; // longest sequence frequency
   filter_boost filter_boost_;
