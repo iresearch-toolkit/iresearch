@@ -200,13 +200,13 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
     while (posa->next()) {
       auto* lead_adapter = posa->value();
       auto* lead = lead_adapter->position;
-      bool global_match = true;
+      auto global_match = true;
       // lead->reset(); // Do not need here. There is the first time always.
       lead->next();
 
       position::value_t base_offset = 0;
       while (!pos_limits::eof(base_offset = lead->value())) {
-        bool match = false;
+        auto match = true;
         for (auto it = pos_.begin() + 1; it != end; ++it) {
           const auto term_offset = base_offset + it->second;
           match = false;

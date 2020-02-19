@@ -319,6 +319,11 @@ by_phrase::info_t::info_t(const info_t& other) {
   case Type::LEVENSHTEIN:
     this->lt = other.lt;
     break;
+  case Type::SELECT:
+    this->ct = other.ct;
+    break;
+  default:
+    assert(false);
   }
 }
 
@@ -337,6 +342,11 @@ by_phrase::info_t::info_t(info_t&& other) noexcept {
   case Type::LEVENSHTEIN:
     this->lt = std::move(other.lt);
     break;
+  case Type::SELECT:
+    this->ct = std::move(other.ct);
+    break;
+  default:
+    assert(false);
   }
 }
 
@@ -380,6 +390,16 @@ by_phrase::info_t::info_t(levenshtein_term&& lt) noexcept {
   this->lt = std::move(lt);
 }
 
+by_phrase::info_t::info_t(const select_term& ct) {
+  type = Type::SELECT;
+  this->ct = ct;
+}
+
+by_phrase::info_t::info_t(select_term&& ct) noexcept {
+  type = Type::SELECT;
+  this->ct = std::move(ct);
+}
+
 by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
   if (&other == this) {
     return *this;
@@ -398,6 +418,11 @@ by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
   case Type::LEVENSHTEIN:
     lt = other.lt;
     break;
+  case Type::SELECT:
+    ct = other.ct;
+    break;
+  default:
+    assert(false);
   }
   return *this;
 }
@@ -420,6 +445,11 @@ by_phrase::info_t& by_phrase::info_t::operator=(info_t&& other) noexcept {
   case Type::LEVENSHTEIN:
     lt = std::move(other.lt);
     break;
+  case Type::SELECT:
+    ct = std::move(other.ct);
+    break;
+  default:
+    assert(false);
   }
   return *this;
 }
@@ -437,6 +467,10 @@ bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
     return wt == other.wt;
   case Type::LEVENSHTEIN:
     return lt == other.lt;
+  case Type::SELECT:
+    return ct == other.ct;
+  default:
+    assert(false);
   }
   return false;
 }
@@ -458,6 +492,10 @@ size_t hash_value(const by_phrase::info_t& info) {
     ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
     ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
     break;
+  case by_phrase::info_t::Type::SELECT:
+    break;
+  default:
+    assert(false);
   }
   return seed;
 }
@@ -501,6 +539,11 @@ filter::prepared::ptr by_phrase::prepare(
                                        term_info.second, term_info.first.lt.scored_terms_limit,
                                        term_info.first.lt.max_distance, term_info.first.lt.provider,
                                        term_info.first.lt.with_transpositions);
+    case info_t::Type::SELECT:
+      // do nothing
+      break;
+    default:
+      assert(false);
     }
   }
 
@@ -647,6 +690,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       auto& pt = phrase_terms[i++];
       auto type = word.second.first.type;
       bytes_ref pattern = word.second.second;
+      auto stop = false;
 
       switch (word.second.first.type) {
         case info_t::Type::WILDCARD:
@@ -669,6 +713,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             case WildcardType::WILDCARD:
               // do nothing
               break;
+            default:
+              assert(false);
           }
           break;
         case info_t::Type::LEVENSHTEIN:
@@ -682,14 +728,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
       switch (type) {
         case info_t::Type::TERM: {
-          if (!term->seek(pattern)) {
-            if (ord.empty()) {
-              break;
-            } else {
-              // continue here because we should collect
-              // stats for other terms in phrase
-              continue;
-            }
+          if (!term->seek(pattern) && ord.empty()) {
+            stop = true;
+            break;
           }
 
           term->read(); // read term attributes
@@ -702,14 +743,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
         }
         case info_t::Type::PREFIX: {
           // seek to prefix
-          if (SeekResult::END == term->seek_ge(pattern)) {
-            if (ord.empty()) {
-              break;
-            } else {
-              // continue here because we should collect
-              // stats for other terms in phrase
-              continue;
-            }
+          if (SeekResult::END == term->seek_ge(pattern) && ord.empty()) {
+            stop = true;
+            break;
           }
 
           const auto& value = term->value();
@@ -735,8 +771,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                           "got the following properties " IR_UINT64_T_SPECIFIER "",
                           acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-
-            return filter::prepared::empty();
+            stop = true;
+            break;
           }
 
           auto term_wildcard = tr->iterator(matcher);
@@ -756,7 +792,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           const auto& d = (*word.second.first.lt.provider)(word.second.first.lt.max_distance,
                                                            word.second.first.lt.with_transpositions);
           if (!d) {
-            return prepared::empty();
+            stop = true;
+            break;
           }
           const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.second);
           automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
@@ -765,8 +802,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                           "got the following properties " IR_UINT64_T_SPECIFIER "",
                           acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-
-            return filter::prepared::empty();
+            stop = true;
+            break;
           }
           auto term_levenshtein = tr->iterator(matcher);
 
@@ -780,6 +817,33 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           ++found_words_count;
           break;
         }
+        case info_t::Type::SELECT: {
+          const auto& sel_terms = select_phrase_.at(word.first);
+          auto found = false;
+          for (const auto& pat : sel_terms) {
+            if (!term->seek(pat)) {
+              continue;
+            }
+            found = true;
+
+            term->read(); // read term attributes
+            collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
+
+            // estimate phrase & term
+            pt.emplace_back(term->cookie());
+          }
+          if (found) {
+            ++found_words_count;
+          } else if (ord.empty()) {
+            stop = true;
+          }
+          break;
+        }
+        default:
+          assert(false);
+      }
+      if (stop) {
+        break;
       }
     }
 
