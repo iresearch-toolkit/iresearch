@@ -5453,7 +5453,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
        .push_back(irs::by_phrase::info_t::simple_term{}, "past")
        .push_back(irs::by_phrase::info_t::simple_term{}, "we")
        .push_back(irs::by_phrase::info_t::wildcard_term{}, "___")
-       .push_back(irs::by_phrase::info_t::simple_term{}, "looking")
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::bstring>{irs::ref_cast<irs::byte_type>(irs::string_ref("looking")), irs::ref_cast<irs::byte_type>(irs::string_ref("searching"))})
        .push_back(irs::by_phrase::info_t::prefix_term{}, "fo");
 
       auto prepared = q.prepare(rdr);
