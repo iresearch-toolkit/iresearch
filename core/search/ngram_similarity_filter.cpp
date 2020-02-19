@@ -184,67 +184,69 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
         } else {
           pos.next();
         }
-        if (pos_limits::eof(pos.value())) {
-          continue;
-        }
-        pos_temp_t temp_cache;
-        auto last_found_pos = pos_limits::invalid();
-        do {
-          auto new_pos = pos.value();
-          auto found = search_buf_.lower_bound(new_pos);
-          if (found != search_buf_.end()) {
-            if (last_found_pos != found->first) {
-              last_found_pos = found->first;
-              auto new_found = found->second;
-              if (found->first != new_pos) {
-                new_found.append(new_pos, &pos_iterator);
-              } else {
-                // we may hit same term from previous iterator (if searching smth like ['aa', 'aa'])
-                // so we need to force check of other terms before this!
-                new_found.len = 0;
-              }
-              if (new_found.len > matched) {
-                matched = new_found.len;
-              } else {
-                // maybe some previous candidates could produce better results.
-                // lets go downward and check if there are any candidates which could became longer
-                // if we stick this ngram to them rather than the closest one found
-                for (++found; found != search_buf_.end(); ++found) {
-                  auto down_found = found->second;
-                  down_found.append(new_pos, &pos_iterator);
-                  if (down_found.len > new_found.len) {
-                    // we have better option. Replace this match!
-                    new_found = down_found;
-                    if (down_found.len > matched) {
-                      matched = down_found.len;
-                      break; // this match is the best - nothing to search further
+        if (!pos_limits::eof(pos.value())) {
+          pos_temp_t temp_cache;
+          auto last_found_pos = pos_limits::invalid();
+          do {
+            auto new_pos = pos.value();
+            auto found = search_buf_.lower_bound(new_pos);
+            if (found != search_buf_.end()) {
+              if (last_found_pos != found->first) {
+                last_found_pos = found->first;
+                auto new_found = found->second;
+                if (found->first != new_pos) {
+                  new_found.append(new_pos, &pos_iterator);
+                }
+                else {
+                  // we may hit same term from previous iterator (if searching smth like ['aa', 'aa'])
+                  // so we need to force check of other terms before this!
+                  new_found.len = 0;
+                }
+                if (new_found.len > matched) {
+                  matched = new_found.len;
+                }
+                else {
+                  // maybe some previous candidates could produce better results.
+                  // lets go downward and check if there are any candidates which could became longer
+                  // if we stick this ngram to them rather than the closest one found
+                  for (++found; found != search_buf_.end(); ++found) {
+                    auto down_found = found->second;
+                    down_found.append(new_pos, &pos_iterator);
+                    if (down_found.len > new_found.len) {
+                      // we have better option. Replace this match!
+                      new_found = down_found;
+                      if (down_found.len > matched) {
+                        matched = down_found.len;
+                        break; // this match is the best - nothing to search further
+                      }
                     }
                   }
                 }
-              }
-              if (new_found.len) {
-                temp_cache.emplace_back(new_pos, std::move(new_found));
+                if (new_found.len) {
+                  temp_cache.emplace_back(new_pos, std::move(new_found));
+                }
               }
             }
-          } else  if (potential > matched && potential >= min_match_count_) {
-            // this ngram at this position  could potentially start a long enough sequence
-            // so add it to candidate list
-            temp_cache.emplace_back(std::piecewise_construct, 
-                std::forward_as_tuple(new_pos), 
+            else  if (potential > matched&& potential >= min_match_count_) {
+              // this ngram at this position  could potentially start a long enough sequence
+              // so add it to candidate list
+              temp_cache.emplace_back(std::piecewise_construct,
+                std::forward_as_tuple(new_pos),
                 std::forward_as_tuple(new_pos, &pos_iterator));
-            if (!matched) {
-              matched = 1;
+              if (!matched) {
+                matched = 1;
+              }
             }
-          }
-        } while (pos.next());
-        for (const auto& p : temp_cache) {
-          auto res = search_buf_.insert(p);
-          if (!res.second) {
-            // pos already used. This could be if same ngram used several times. Replace
-            res.first->second = p.second;
+          } while (pos.next());
+          for (const auto& p : temp_cache) {
+            auto res = search_buf_.insert(p);
+            if (!res.second) {
+              // pos already used. This could be if same ngram used several times. Replace
+              res.first->second = p.second;
+            }
           }
         }
-        --potential; // we are done with this term. Next will have potential one less
+        --potential; // we are done with this term. Next will have potential one less as less matches left
       }
       
       if (!potential) {
