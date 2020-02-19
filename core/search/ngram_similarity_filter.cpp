@@ -259,9 +259,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
         break;
       }
     }
-    // deduplicate best match and count frequency for scoring
-    // For now if several different sequences are longest - 
-    // only most frequent one is counted
+
+    // Now cleanup all shorter candidate and let the longest form the frequency
     if (longest_sequence_len >= min_match_count_  && !ord_->empty() ) { 
       std::set<size_t> used_pos;
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
