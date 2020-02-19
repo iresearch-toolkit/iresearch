@@ -210,7 +210,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to prefix_filter "fo*"
+    // prefix_filter "fo*"
     {
       irs::bytes_ref actual_value;
 
@@ -358,7 +358,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "fo%"
+    // wildcard_filter "fo%"
     {
       irs::bytes_ref actual_value;
 
@@ -506,7 +506,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "%ox"
+    // wildcard_filter "%ox"
     {
       irs::bytes_ref actual_value;
 
@@ -606,7 +606,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "f%x"
+    // wildcard_filter "f%x"
     {
       irs::bytes_ref actual_value;
 
@@ -706,7 +706,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "_ox"
+    // wildcard_filter "_ox"
     {
       irs::bytes_ref actual_value;
 
@@ -806,7 +806,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "f_x"
+    // wildcard_filter "f_x"
     {
       irs::bytes_ref actual_value;
 
@@ -906,7 +906,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "fo_"
+    // wildcard_filter "fo_"
     {
       irs::bytes_ref actual_value;
 
@@ -1006,7 +1006,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "fox"
+    // wildcard_filter "fox"
     {
       irs::bytes_ref actual_value;
 
@@ -1106,7 +1106,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to select_term "fox"
+    // select_term "fox"
     {
       irs::bytes_ref actual_value;
 
@@ -1206,7 +1206,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to select_term "fox|that"
+    // select_term "fox|that"
     {
       irs::bytes_ref actual_value;
 
@@ -1322,7 +1322,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "%"
+    // wildcard_filter "%"
     {
       irs::bytes_ref actual_value;
 
@@ -1542,7 +1542,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to levenshtein_filter "fox"
+    // levenshtein_filter "fox"
     {
       irs::bytes_ref actual_value;
 
@@ -1643,7 +1643,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to levenshtein_filter "fol"
+    // levenshtein_filter "fol"
     {
       irs::bytes_ref actual_value;
 
@@ -1985,7 +1985,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to term_filter "fox" with phrase offset
+    // term_filter "fox" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
@@ -2082,7 +2082,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to prefix_filter "fo*" with phrase offset
+    // prefix_filter "fo*" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
@@ -2225,7 +2225,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "fo%" with phrase offset
+    // wildcard_filter "fo%" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
@@ -2368,7 +2368,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "f%x" with phrase offset
+    // wildcard_filter "f%x" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
@@ -2465,7 +2465,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to wildcard_filter "f%x" with phrase offset
+    // wildcard_filter "f%x" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
@@ -4234,6 +4234,77 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
+    // "quick|quilt|hhh brown|brother fox"
+    {
+      irs::bytes_ref actual_value;
+
+      irs::by_phrase q;
+      q.field("phrase_anl")
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"quick", "quilt", "hhh"})
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"brown", "brother"})
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"fox"});
+
+      auto prepared = q.prepare(rdr);
+      auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
+      auto docs = prepared->execute(*sub);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_FALSE(docs->next());
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+    }
+
     // "quick brown fox" with order
     {
       irs::bytes_ref actual_value;
@@ -4747,7 +4818,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs_seek->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
     }
 
-    // equals to select_term "fox|that" with scorer
+    // select_term "fox|that" with scorer
     {
       irs::bytes_ref actual_value;
 
@@ -5796,12 +5867,14 @@ TEST(by_phrase_test, equal) {
     lt.max_distance = 2;
     q0.field("name");
     q0.push_back(irs::by_phrase::info_t::prefix_term{}, "qui");
+    q0.push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"light", "dark"});
     q0.push_back(irs::by_phrase::info_t::wildcard_term{}, "br_wn");
     q0.push_back(lt, "fo");
 
     irs::by_phrase q1;
     q1.field("name");
     q1.push_back(irs::by_phrase::info_t::prefix_term{}, "qui");
+    q1.push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"light", "dark"});
     q1.push_back(irs::by_phrase::info_t::wildcard_term{}, "br_wn");
     q1.push_back(lt, "fo");
     ASSERT_EQ(q0, q1);
@@ -5852,12 +5925,14 @@ TEST(by_phrase_test, equal) {
     lt.max_distance = 2;
     q0.field("name");
     q0.push_back(irs::by_phrase::info_t::prefix_term{}, "quil");
+    q0.push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"light", "dark"});
     q0.push_back(irs::by_phrase::info_t::wildcard_term{}, "br_wn");
     q0.push_back(lt, "fo");
 
     irs::by_phrase q1;
     q1.field("name");
     q1.push_back(irs::by_phrase::info_t::prefix_term{}, "qui");
+    q1.push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"light", "dark"});
     q1.push_back(irs::by_phrase::info_t::wildcard_term{}, "br_wn");
     q1.push_back(lt, "fo");
     ASSERT_NE(q0, q1);

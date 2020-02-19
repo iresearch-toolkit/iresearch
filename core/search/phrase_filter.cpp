@@ -509,6 +509,16 @@ size_t by_phrase::hash() const noexcept {
     [&seed](const by_phrase::term_t& term) {
       ::boost::hash_combine(seed, term);
   });
+  std::for_each(
+    select_phrase_.begin(), select_phrase_.end(),
+    [&seed](const by_phrase::select_term_t& terms) {
+    ::boost::hash_combine(seed, terms.first);
+    std::for_each(
+      terms.second.begin(), terms.second.end(),
+      [&seed](const bstring& term) {
+        ::boost::hash_combine(seed, term);
+    });
+  });
   return seed;
 }
 

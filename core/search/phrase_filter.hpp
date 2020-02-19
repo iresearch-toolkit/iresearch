@@ -112,6 +112,7 @@ class IRESEARCH_API by_phrase : public filter {
   typedef terms_t::const_iterator const_iterator;
   typedef terms_t::iterator iterator;
   typedef terms_t::value_type term_t;
+  typedef select_terms_t::value_type select_term_t;
 
   // returns set of features required for filter
   static const flags& required();
@@ -187,7 +188,7 @@ class IRESEARCH_API by_phrase : public filter {
   }
 
   by_phrase& push_back(const info_t::select_term& t, const std::vector<string_ref>& terms, size_t offs = 0) {
-    return insert(t, offs, terms);
+    return insert(t, next_pos() + offs, terms);
   }
 
   template<typename T, typename = typename std::enable_if<!std::is_same<T, info_t::select_term>::value>::type>
