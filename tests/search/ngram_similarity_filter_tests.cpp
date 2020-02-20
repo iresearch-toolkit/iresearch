@@ -31,7 +31,6 @@
 NS_BEGIN(tests)
 
 class ngram_similarity_filter_test_case : public tests::filter_test_case_base {
-protected:
 };
 
 
@@ -42,7 +41,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"3\", \"4\", \"5\", \"6\", \"7\", \"2\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -72,14 +71,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
-  // sequence 1 1 2 2 3 3 4 4 -> longest is 1234  and freq should be 1 not 2 as 
+  // sequence 1 1 2 2 3 3 4 4 -> longest is 1234  and freq should be 1 not 2 as
   // this sequence could not be built twice one after another but only
   // intereaved
   {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"1\", \"2\", \"2\", \"3\", \"3\", \"4\", \"4\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -97,14 +96,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     auto& doc = docs->attributes().get<irs::document>();
     auto& boost = docs->attributes().get<irs::filter_boost>();
     auto& frequency = docs->attributes().get<irs::frequency>();
-    // ensure all iterators contain  attributes 
-    ASSERT_TRUE(bool(doc)); 
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_DOUBLE_EQ(1, boost->value);
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -112,12 +111,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
   // sequence 1 2 1 1 3 4 -> longest is 1234  not 134!
-  // add segment
   {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"1\", \"1\", \"3\", \"4\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -135,14 +133,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     auto& doc = docs->attributes().get<irs::document>();
     auto& boost = docs->attributes().get<irs::filter_boost>();
     auto& frequency = docs->attributes().get<irs::frequency>();
-    // ensure all iterators contain  attributes 
-    ASSERT_TRUE(bool(doc)); 
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_DOUBLE_EQ(1, boost->value);
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -150,12 +148,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
   // sequence 1 2 1 1 1 1 pattern 1 1 -> longest is 1 1 and frequency is 2
-  // add segment
   {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"1\", \"1\", \"1\", \"1\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -173,14 +170,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
     auto& doc = docs->attributes().get<irs::document>();
     auto& boost = docs->attributes().get<irs::filter_boost>();
     auto& frequency = docs->attributes().get<irs::frequency>();
-    // ensure all iterators contain  attributes 
-    ASSERT_TRUE(bool(doc)); 
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_DOUBLE_EQ(1, boost->value);
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -193,7 +190,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"1\", \"2\", \"1\", "
       " \"2\", \"1\", \"2\", \"1\", \"2\", \"1\", \"2\", \"1\", \"2\", \"1\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -211,14 +208,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
     auto& doc = docs->attributes().get<irs::document>();
     auto& boost = docs->attributes().get<irs::filter_boost>();
     auto& frequency = docs->attributes().get<irs::frequency>();
-    // ensure all iterators contain  attributes 
-    ASSERT_TRUE(bool(doc)); 
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_DOUBLE_EQ(1, boost->value);
     ASSERT_EQ(4, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -227,12 +224,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
   // sequence 1 1 pattern 1 1 -> longest is 1 1 and frequency is 1
   // checks seek for second term does not  skips it at all
-  // add segment
   {
     tests::json_doc_generator gen(
       "[{ \"seq\" : 1, \"field\": [ \"1\", \"1\"] }]",
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -249,14 +245,14 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
     auto& doc = docs->attributes().get<irs::document>();
     auto& boost = docs->attributes().get<irs::filter_boost>();
     auto& frequency = docs->attributes().get<irs::frequency>();
-    // ensure all iterators contain  attributes 
-    ASSERT_TRUE(bool(doc)); 
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(bool(frequency));
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-    ASSERT_DOUBLE_EQ(1, boost->value); 
+    ASSERT_DOUBLE_EQ(1, boost->value);
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -269,7 +265,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
         tests::json_doc_generator gen(
             "[{ \"seq\" : 1, \"field\": [ \"2\", \"4\", \"2\", \"4\", \"1\", \"3\", \"1\", \"3\"] }]",
             &tests::generic_json_field_factory);
-        add_segment( gen );
+        add_segment(gen);
     }
 
     auto rdr = open_reader();
@@ -286,26 +282,25 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
         auto& doc = docs->attributes().get<irs::document>();
         auto& boost = docs->attributes().get<irs::filter_boost>();
         auto& frequency = docs->attributes().get<irs::frequency>();
-        // ensure all iterators contain  attributes 
-        ASSERT_TRUE(bool(doc)); 
+        // ensure all iterators contain  attributes
+        ASSERT_TRUE(bool(doc));
         ASSERT_TRUE(bool(boost));
         ASSERT_TRUE(bool(frequency));
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_FALSE(irs::doc_limits::eof(doc->value));
-        ASSERT_DOUBLE_EQ(0.5, boost->value); 
+        ASSERT_DOUBLE_EQ(0.5, boost->value);
         ASSERT_EQ(2, frequency->value);
         ASSERT_FALSE(docs->next());
     }
 }
 
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -329,12 +324,11 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -356,12 +350,11 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, one_match_case) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -391,12 +384,11 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -426,12 +418,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -461,12 +452,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -497,12 +487,11 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -533,12 +522,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -569,12 +557,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -615,13 +602,11 @@ struct test_score_ctx : public irs::score_ctx {
 };
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -662,7 +647,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
       auto& freq = attr.get<irs::frequency>();
       auto& boost = attr.get<irs::filter_boost>();
-      return {  
+      return {
         irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
         [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
         auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
@@ -680,19 +665,17 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     SCOPED_TRACE(testing::Message("i=") << i);
     ASSERT_DOUBLE_EQ(expected_filter_boost[i], filter_boost[i]);
   }
-  ASSERT_EQ(1, collect_field_count); 
-  ASSERT_EQ(5, collect_term_count); 
-  ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
+  ASSERT_EQ(1, collect_field_count);
+  ASSERT_EQ(5, collect_term_count);
+  ASSERT_EQ(collect_field_count + collect_term_count, finish_count);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -733,7 +716,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
       auto& freq = attr.get<irs::frequency>();
       auto& boost = attr.get<irs::filter_boost>();
-      return {  
+      return {
         irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
         [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
         auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
@@ -751,23 +734,20 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     SCOPED_TRACE(testing::Message("i=") << i);
     ASSERT_DOUBLE_EQ(expected_filter_boost[i], filter_boost[i]);
   }
-  ASSERT_EQ(1, collect_field_count); 
-  ASSERT_EQ(5, collect_term_count); 
-  ASSERT_EQ(collect_field_count + collect_term_count, finish_count); 
+  ASSERT_EQ(1, collect_field_count);
+  ASSERT_EQ(5, collect_term_count);
+  ASSERT_EQ(collect_field_count + collect_term_count, finish_count);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
-
   irs::by_ngram_similarity filter;
   filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
@@ -775,18 +755,15 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   docs_t expected{ 11, 12, 8, 13, 5, 1, 2};
   irs::order order;
   order.add<irs::tfidf_sort>(false).normalize(true);
-
   check_query(filter, order, expected, rdr);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -803,13 +780,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -826,13 +801,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
-
-  // add segment
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
@@ -855,13 +828,10 @@ INSTANTIATE_TEST_CASE_P(
   ngram_similarity_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory/*!!!!!,
+      &tests::memory_directory,
       &tests::fs_directory,
-      &tests::mmap_directory*/
-    ),
-    ::testing::Values(/*!!!!!!!"1_0",*/ "1_3")
-  ),
-  tests::to_string
-);
+      &tests::mmap_directory),
+    ::testing::Values("1_0", "1_3")),
+    tests::to_string);
 
 NS_END // tests
