@@ -54,6 +54,7 @@
 #include "index/field_meta.hpp"
 #include "utils/fst_table_matcher.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 #include "utils/misc.hpp"
 
 NS_ROOT

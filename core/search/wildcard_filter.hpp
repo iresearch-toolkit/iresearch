@@ -26,9 +26,12 @@
 #include "filter.hpp"
 #include "prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
+
+template<typename Char> struct wildcard_traits;
+
+using wildcard_traits_t = wildcard_traits<irs::byte_type>;
 
 enum class WildcardType {
   TERM      = 0,  // foo
