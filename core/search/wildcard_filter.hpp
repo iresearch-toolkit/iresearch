@@ -40,8 +40,6 @@ enum class WildcardType {
   WILDCARD        // f_o*
 };
 
-using wildcard_traits_t = irs::wildcard_traits<irs::byte_type>;
-
 IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
 
 //////////////////////////////////////////////////////////////////////////////
