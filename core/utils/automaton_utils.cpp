@@ -85,10 +85,12 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
   assert(!states_.empty());
   minimize(1);
 
+  auto& root = states_.front();
+
   if (fst::kNoStateId == rho_states_[0]) {
     // no default state: just add transitions from the
     // root node to its successors
-    for (const arc& a : states_.front().arcs) {
+    for (const arc& a : root.arcs) {
       a_->EmplaceArc(from, a.label, a.id);
     }
 
@@ -101,8 +103,9 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
 
   automaton::Arc::Label min = 0;
 
-  for (const arc& a : states_.front().arcs) {
+  for (const arc& a : root.arcs) {
     assert(a.label < 256);
+    assert(min <= a.label); // ensure arcs are sorted
 
     for (; min < a.label; ++min) {
       a_->EmplaceArc(from, min, rho_states_[UTF8_RHO_STATE_TABLE[min]]);
@@ -110,6 +113,10 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
 
     assert(min == a.label);
     a_->EmplaceArc(from, min++, a.id);
+  }
+
+  for (; min < 256; ++min) {
+    a_->EmplaceArc(from, min, rho_states_[UTF8_RHO_STATE_TABLE[min]]);
   }
 
   // connect intermediate states of default multi-byte UTF8 sequence
@@ -120,6 +127,16 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
 
     a_->EmplaceArc(from, fst::fsa::kRho, to);
   }
+
+  root.clear();
+
+  // ensure everything is cleaned up
+  assert(std::all_of(
+    states_.begin(), states_.end(), [](const state& s) noexcept {
+      return s.arcs.empty() &&
+        s.id == fst::kNoStateId &&
+        s.rho_id == fst::kNoStateId;
+  }));
 }
 
 filter::prepared::ptr prepare_automaton_filter(const string_ref& field,

@@ -650,25 +650,25 @@ automaton make_levenshtein_automaton(
 
       if (chi && to != default_state) {
         arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
-        ascii |= (entry.size == 1);
+        ascii &= (entry.size == 1);
       } else if (fst::kNoStateId == default_state) {
         default_state = to;
+        ascii = false;
       }
     }
 
-    if (fst::kNoStateId != default_state) {
-      arcs.emplace_back(bytes_ref::NIL, default_state);
-      ascii = false; // can't use optimization in presence of default transition
-    }
-
-    if (1 == arcs.size() && arcs.back().first.null()) {
+    if (arcs.empty() && default_state != fst::kNoStateId) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
+      a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
     } else if (ascii) {
       // optimization for ascii only input without default state
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
         a.EmplaceArc(state.from, arc.first.front(), arc.second);
+      }
+
+      if (default_state != fst::kNoStateId) {
+        a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
       }
     } else {
       builder.insert(state.from, default_state, arcs.begin(), arcs.end());
