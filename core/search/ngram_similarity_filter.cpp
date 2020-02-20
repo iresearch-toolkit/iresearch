@@ -188,48 +188,44 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           pos_temp_t temp_cache;
           auto last_found_pos = pos_limits::invalid();
           do {
-            auto new_pos = pos.value();
-            auto found = search_buf_.lower_bound(new_pos);
+            auto current_pos = pos.value();
+            auto found = search_buf_.lower_bound(current_pos);
             if (found != search_buf_.end()) {
               if (last_found_pos != found->first) {
                 last_found_pos = found->first;
-                auto new_found = found->second;
-                if (found->first != new_pos) {
-                  new_found.append(new_pos, &pos_iterator);
-                } else {
-                  // we may hit same term from previous iterator (if searching smth like ['aa', 'aa'])
-                  // so we need to force check of other terms before this!
-                  new_found.len = 0;
-                }
-                if (new_found.len > longest_sequence_len) {
-                  longest_sequence_len = new_found.len;
+                auto current_sequence = found;
+                // if we hit same position - set length to 0 to force checking candidates to the left
+                size_t current_found_len = (found->first == current_pos) ? 0 : found->second.len + 1;
+                if (current_found_len > longest_sequence_len) {
+                  longest_sequence_len = current_found_len;
                 } else {
                   // maybe some previous candidates could produce better results.
                   // lets go downward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
-                    auto down_found = found->second;
-                    down_found.append(new_pos, &pos_iterator);
-                    if (down_found.len > new_found.len) {
+                    if (found->second.len + 1 > current_found_len) {
                       // we have better option. Replace this match!
-                      new_found = down_found;
-                      if (down_found.len > longest_sequence_len) {
-                        longest_sequence_len = down_found.len;
+                      current_sequence = found;
+                      current_found_len = found->second.len + 1;
+                      if (current_found_len > longest_sequence_len) {
+                        longest_sequence_len = current_found_len;
                         break; // this match is the best - nothing to search further
                       }
                     }
                   }
                 }
-                if (new_found.len) {
-                  temp_cache.emplace_back(new_pos, std::move(new_found));
+                if (current_found_len) {
+                  auto new_found = current_sequence->second;
+                  new_found.append(current_pos, &pos_iterator);
+                  temp_cache.emplace_back(current_pos, std::move(new_found));
                 }
               }
             } else  if (potential > longest_sequence_len&& potential >= min_match_count_) {
               // this ngram at this position  could potentially start a long enough sequence
               // so add it to candidate list
               temp_cache.emplace_back(std::piecewise_construct,
-                std::forward_as_tuple(new_pos),
-                std::forward_as_tuple(new_pos, &pos_iterator));
+                std::forward_as_tuple(current_pos),
+                std::forward_as_tuple(current_pos, &pos_iterator));
               if (!longest_sequence_len) {
                 longest_sequence_len = 1;
               }
@@ -238,25 +234,27 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           for (const auto& p : temp_cache) {
             auto res = search_buf_.insert(p);
             if (!res.second) {
-              // pos already used. This could be if same ngram used several times. Replace
+              // pos already used. This could be if same ngram used several times. 
+              // replace with new length
               res.first->second = p.second;
             }
           }
         }
-        --potential; // we are done with this term. Next will have potential one less as less matches left
-      }
-      
-      if (!potential) {
-        break; // all further terms will not add anything
-      }
+        --potential; // we are done with this term. 
+                     // next will have potential one less as less matches left
 
-      if (longest_sequence_len + potential < min_match_count_) {
-        break; // all further terms will not let us build long enough sequence
-      }
-      
-      // if we have no scoring - we could stop searh once we got enough matches
-      if (longest_sequence_len >= min_match_count_ && ord_->empty()) {
-        break;
+        if (!potential) {
+          break; // all further terms will not add anything
+        }
+
+        if (longest_sequence_len + potential < min_match_count_) {
+          break; // all further terms will not let us build long enough sequence
+        }
+
+        // if we have no scoring - we could stop searh once we got enough matches
+        if (longest_sequence_len >= min_match_count_ && ord_->empty()) {
+          break;
+        }
       }
     }
 
