@@ -197,7 +197,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   longest_sequence_len = current_found_len;
                 } else {
                   // maybe some previous candidates could produce better results.
-                  // lets go downward and check if there are any candidates which could became longer
+                  // lets go leftward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
                     if (found->second.len + 1 > current_found_len) {
@@ -258,18 +258,26 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     // Now cleanup all shorter candidate and let the longest form the frequency
     if (longest_sequence_len >= min_match_count_  && !ord_->empty()) {
       std::set<size_t> used_pos;
+      std::vector<const position_t*> first_longest;
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
         assert(i->second.len <= longest_sequence_len);
         if (i->second.len < longest_sequence_len) {
           i = search_buf_.erase(i);
         } else {
           bool delete_candidate = false;
-          // check if this positions are used in some other sequence
-          // to exclude overlapping sequences
-          for (auto p : i->second.pos_sequence) {
-            if (used_pos.find(p) != used_pos.end()) {
-              delete_candidate = true;
-              break;
+          if (first_longest.empty()) {
+            first_longest = i->second.sequence;
+          } else {
+            delete_candidate = first_longest != i->second.sequence;
+          }
+          if (!delete_candidate) {
+            // check if this positions are used in some other sequence
+            // to exclude overlapping sequences
+            for (auto p : i->second.pos_sequence) {
+              if (used_pos.find(p) != used_pos.end()) {
+                delete_candidate = true;
+                break;
+              }
             }
           }
           if (delete_candidate) {
