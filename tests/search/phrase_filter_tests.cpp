@@ -4237,11 +4237,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // "quick|quilt|hhh brown|brother fox"
     {
       irs::bytes_ref actual_value;
-
       irs::by_phrase q;
       q.field("phrase_anl")
-       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"quick", "quilt", "hhh"})
-       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"brown", "brother"})
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::bytes_ref>{irs::ref_cast<irs::byte_type>(irs::string_ref("quick")), irs::ref_cast<irs::byte_type>(irs::string_ref("quilt")), irs::ref_cast<irs::byte_type>(irs::string_ref("hhh"))})
+       .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::bstring>{irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), irs::ref_cast<irs::byte_type>(irs::string_ref("brother"))})
        .push_back(irs::by_phrase::info_t::select_term{}, std::vector<irs::string_ref>{"fox"});
 
       auto prepared = q.prepare(rdr);

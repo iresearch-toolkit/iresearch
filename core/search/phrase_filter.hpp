@@ -164,6 +164,15 @@ class IRESEARCH_API by_phrase : public filter {
     return insert(t, pos, std::move(trans_terms));
   }
 
+  by_phrase& insert(const info_t::select_term& t, size_t pos, const std::vector<bytes_ref>& terms) {
+    select_term_info_t trans_terms;
+    trans_terms.reserve(terms.size());
+    std::transform(terms.cbegin(), terms.cend(), std::back_inserter(trans_terms), [](const bytes_ref& term) {
+      return term;
+    });
+    return insert(t, pos, std::move(trans_terms));
+  }
+
   template<typename T, typename = typename std::enable_if<!std::is_same<T, info_t::select_term>::value>::type>
   by_phrase& insert(const T& t, size_t pos, bstring&& term) {
     is_simple_term_only &= std::is_same<T, info_t::simple_term>::value; // constexpr
@@ -188,6 +197,10 @@ class IRESEARCH_API by_phrase : public filter {
   }
 
   by_phrase& push_back(const info_t::select_term& t, const std::vector<string_ref>& terms, size_t offs = 0) {
+    return insert(t, next_pos() + offs, terms);
+  }
+
+  by_phrase& push_back(const info_t::select_term& t, const std::vector<bytes_ref>& terms, size_t offs = 0) {
     return insert(t, next_pos() + offs, terms);
   }
 
