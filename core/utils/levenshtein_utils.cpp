@@ -447,20 +447,6 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-void print(const automaton& a) {
-  fst::SymbolTable st;
-  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
-  for (int i = 97; i < 97 + 28; ++i) {
-    st.AddSymbol(std::string(1, char(i)), i);
-  }
-  std::fstream f;
-  f.open("111", std::fstream::binary | std::fstream::out);
-  if (f) {
-    int i = 5;
-  }
-  fst::drawFst(a, f, "", &st, &st);
-}
-
 NS_END
 
 NS_ROOT

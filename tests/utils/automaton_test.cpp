@@ -607,20 +607,6 @@ TEST(automaton_test, match_wildcard) {
   }
 }
 
-void print(const irs::automaton& a) {
-  fst::SymbolTable st;
-  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
-  for (int i = 97; i < 97 + 28; ++i) {
-    st.AddSymbol(std::string(1, char(i)), i);
-  }
-  std::fstream f;
-  f.open("111", std::fstream::binary | std::fstream::out);
-  if (f) {
-    int i = 5;
-  }
-  fst::drawFst(a, f, "", &st, &st);
-}
-
 TEST(automaton_test, utf8_transitions) {
   irs::automaton a;
   auto start = a.AddState();
@@ -649,6 +635,6 @@ TEST(automaton_test, utf8_transitions) {
   irs::utf8_transitions_builder builder(a);
   builder.insert(start, def, arcs.begin(), arcs.end());
 
-  print(a);
+  fst::drawFst(a, "111");
 }
 

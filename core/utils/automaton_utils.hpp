@@ -155,25 +155,6 @@ class automaton_term_iterator final : public seek_term_iterator {
   const bytes_ref* value_;
 }; // automaton_term_iterator
 
-
-namespace  {
-
-void print(const irs::automaton& a) {
-  fst::SymbolTable st;
-  st.AddSymbol(std::string(1, '*'), fst::fsa::kRho);
-  for (int i = 97; i < 97 + 28; ++i) {
-    st.AddSymbol(std::string(1, char(i)), i);
-  }
-  std::fstream f;
-  f.open("111", std::fstream::binary | std::fstream::out);
-  if (f) {
-    int i = 5;
-  }
-  fst::drawFst(a, f, "", &st, &st);
-}
-
-}
-
 class utf8_transitions_builder {
  public:
   explicit utf8_transitions_builder(automaton& a) noexcept
