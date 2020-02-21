@@ -146,14 +146,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
   struct search_state {
-    explicit search_state(size_t p, const score* s) : len(1), scr{s}, pos{p}, parent{nullptr} {}
+    explicit search_state(size_t p, const score* s) : scr{s}, parent{nullptr}, pos{p}, len(1) {}
     search_state(search_state&&) = default;
     search_state(const search_state&) = default;
     search_state& operator=(const search_state&) = default;
 
     // appending constructor
     search_state(const search_state* other, size_t p, const score* s) 
-      : len(other->len + 1), scr{s}, pos{p}, parent{other} {}
+      : scr{s}, parent{other}, pos{p}, len(other->len + 1) {}
 
     void reversed_sequence(std::vector<const score*>& scores, std::vector<size_t>& poses) const {
       scores.reserve(len);
@@ -168,10 +168,10 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
       }
     }
 
-    size_t len;
     const score* scr;
-    size_t pos;
     const search_state* parent;
+    size_t pos;
+    size_t len;
   };
 
   using search_states_t = std::map<uint32_t, search_state*, std::greater<uint32_t>>;
