@@ -152,7 +152,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     search_state& operator=(const search_state&) = default;
 
     // appending constructor
-    search_state(const search_state* other, size_t p, const score* s) 
+    search_state(std::shared_ptr<search_state>& other, size_t p, const score* s) 
       : scr{s}, parent{other}, pos{p}, len(other->len + 1) {}
 
     void reversed_sequence(std::vector<const score*>& scores, std::vector<size_t>& poses) const {
@@ -169,19 +169,17 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     }
 
     const score* scr;
-    const search_state* parent;
+    std::shared_ptr<search_state> parent;
     size_t pos;
     size_t len;
   };
 
-  using search_states_t = std::map<uint32_t, search_state*, std::greater<uint32_t>>;
-  using pos_temp_t = std::vector<std::pair<uint32_t, search_state*>>;
-  using search_states_arena_t = std::forward_list<search_state>;
+  using search_states_t = std::map<uint32_t, std::shared_ptr<search_state>, std::greater<uint32_t>>;
+  using pos_temp_t = std::vector<std::pair<uint32_t, std::shared_ptr<search_state>>>;
 
   bool check_serial_positions() {
     size_t potential = disjunction_.count_matched(); // how long max sequence could be in best case
     search_buf_.clear();
-    states_arena_.clear();
     size_t longest_sequence_len = 0;
     seq_freq_.value = 0;
     for (const auto& pos_iterator : pos_) {
@@ -231,31 +229,31 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 if (current_found_len) {
                   //temp_cache.emplace_back(current_pos, 
                   //                        search_state(current_sequence->second, current_pos, pos_iterator.score));
-                  states_arena_.emplace_front(search_state(current_sequence->second, current_pos, pos_iterator.score));
-                  auto res = search_buf_.try_emplace(current_pos, &states_arena_.front());
+                  auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.score);
+                  auto res = search_buf_.try_emplace(current_pos, new_candidate);
                   if (!res.second) {
                     // pos already used. This could be if same ngram used several times.
                     // replace with new length through swap cache - to not spoil
                     // candidate for following positions of same ngram
-                    swap_cache.emplace_back(current_pos, &states_arena_.front());
+                    swap_cache.emplace_back(current_pos, new_candidate);
                   }
                 } else if (initial_found->second->scr == pos_iterator.score &&
                            potential > longest_sequence_len && potential >= min_match_count_) {
                   // we just hit same iterator and found no better place to join,
                   // so it will produce new candidate
-                  states_arena_.emplace_front(search_state(current_pos, pos_iterator.score));
+                  auto new_candidate = std::make_shared<search_state>(current_pos, pos_iterator.score);
                   search_buf_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(current_pos),
-                    std::forward_as_tuple(&states_arena_.front()));
+                    std::forward_as_tuple(new_candidate));
                 }
               }
             } else  if (potential > longest_sequence_len && potential >= min_match_count_) {
               // this ngram at this position  could potentially start a long enough sequence
               // so add it to candidate list
-              states_arena_.emplace_front(search_state(current_pos, pos_iterator.score));
+              auto new_candidate = std::make_shared<search_state>(current_pos, pos_iterator.score);
               search_buf_.emplace(std::piecewise_construct,
                 std::forward_as_tuple(current_pos),
-                std::forward_as_tuple(&states_arena_.front()));
+                std::forward_as_tuple(new_candidate));
               if (!longest_sequence_len) {
                 longest_sequence_len = 1;
               }
@@ -338,7 +336,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   const order::prepared* ord_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   search_states_t search_buf_;
-  search_states_arena_t states_arena_;
   const states_t& states_;
   score scr_;
 };
