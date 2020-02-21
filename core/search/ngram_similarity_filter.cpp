@@ -152,21 +152,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     search_state& operator=(const search_state&) = default;
 
     // appending constructor
-    search_state(std::shared_ptr<search_state>& other, size_t p, const score* s) 
+    search_state(std::shared_ptr<search_state>& other, size_t p, const score* s)
       : scr{s}, parent{other}, pos{p}, len(other->len + 1) {}
-
-    void reversed_sequence(std::vector<const score*>& scores, std::vector<size_t>& poses) const {
-      scores.reserve(len);
-      poses.reserve(len);
-      scores.push_back(scr);
-      poses.push_back(pos);
-      auto cur_parent = parent;
-      while (cur_parent) {
-        scores.push_back(cur_parent->scr);
-        poses.push_back(cur_parent->pos);
-        cur_parent = cur_parent->parent;
-      }
-    }
 
     const score* scr;
     std::shared_ptr<search_state> parent;
@@ -214,7 +201,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   // lets go leftward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
-                    if (found->second->scr != pos_iterator.score && 
+                    if (found->second->scr != pos_iterator.score &&
                         found->second->len + 1 > current_found_len) {
                       // we have better option. Replace this match!
                       current_sequence = found;
@@ -227,8 +214,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   }
                 }
                 if (current_found_len) {
-                  //temp_cache.emplace_back(current_pos, 
-                  //                        search_state(current_sequence->second, current_pos, pos_iterator.score));
                   auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.score);
                   auto res = search_buf_.try_emplace(current_pos, new_candidate);
                   if (!res.second) {
@@ -283,42 +268,85 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
       }
     }
 
-    // Now cleanup all shorter candidate and let the longest form the frequency
     if (longest_sequence_len >= min_match_count_  && !ord_->empty()) {
       std::set<size_t> used_pos;
-      longest_sequence_.clear();
-      longest_sequence_.reserve(pos_.size());
       uint32_t freq = 0;
-      for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
-        assert(i->second->len <= longest_sequence_len);
+      longest_sequence_.clear();
+      size_t count_longest{ 0 };
+      search_state* longest_ptr{ nullptr };
+
+      // try to optimize case with one longest candidate
+      // performance profiling shows it is majority of cases
+      for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end; ++i) {
         if (i->second->len == longest_sequence_len) {
-          bool delete_candidate = false;
-          std::vector<const score*> sequence;
-          std::vector<size_t> pos_sequence;
-          i->second->reversed_sequence(sequence, pos_sequence);
-          // only first longest sequence will contribute to frequency
-          if (longest_sequence_.empty()) {
-            longest_sequence_ = sequence;
-          } else {
-            delete_candidate = longest_sequence_ != sequence;
-          }
-          if (!delete_candidate) {
-            // check if this positions are used in some other sequence
-            // to exclude overlapping sequences
-            for (auto p : pos_sequence) {
-              if (used_pos.find(p) != used_pos.end()) {
+          ++count_longest;
+          longest_ptr = i->second.get();
+        }
+        if (count_longest > 1) {
+          break;
+        }
+      }
+
+      if (count_longest > 1) {
+        sequence.reserve(longest_sequence_len);
+        pos_sequence.reserve(longest_sequence_len);
+        for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
+          sequence.clear();
+          pos_sequence.clear();
+          assert(i->second->len <= longest_sequence_len);
+          if (i->second->len == longest_sequence_len) {
+            bool delete_candidate = false;
+            // only first longest sequence will contribute to frequency
+            if (longest_sequence_.empty()) {
+              longest_sequence_.push_back(i->second->scr);
+              pos_sequence.push_back(i->second->pos);
+              auto cur_parent = i->second->parent;
+              while (cur_parent) {
+                longest_sequence_.push_back(cur_parent->scr);
+                pos_sequence.push_back(cur_parent->pos);
+                cur_parent = cur_parent->parent;
+              }
+            } else {
+              if (used_pos.find(i->second->pos) != used_pos.end() ||
+                  i->second->scr != longest_sequence_[0]) {
                 delete_candidate = true;
-                break;
+              } else {
+                sequence.push_back(i->second->scr);
+                pos_sequence.push_back(i->second->pos);
+                auto cur_parent = i->second->parent;
+                size_t j = 1;
+                while (cur_parent) {
+                  assert(j < longest_sequence_.size());
+                  if (longest_sequence_[j] != cur_parent->scr ||
+                    used_pos.find(cur_parent->pos) != used_pos.end()) {
+                    delete_candidate = true;
+                    break;
+                  }
+                  sequence.push_back(cur_parent->scr);
+                  pos_sequence.push_back(cur_parent->pos);
+                  cur_parent = cur_parent->parent;
+                  ++j;
+                }
               }
             }
+            if (!delete_candidate) {
+              ++freq;
+              used_pos.insert(std::begin(pos_sequence),
+                              std::end(pos_sequence));
+            }
           }
-          if (!delete_candidate) {
-            ++freq;
-            used_pos.insert(std::begin(pos_sequence),
-                            std::end(pos_sequence));
-          }
+          ++i;
         }
-        ++i;
+      } else {
+        assert(longest_ptr != nullptr);
+        assert(longest_ptr->len == longest_sequence_len);
+        freq = 1;
+        longest_sequence_.push_back(longest_ptr->scr);
+        auto cur_parent = longest_ptr->parent;
+        while (cur_parent) {
+          longest_sequence_.push_back(cur_parent->scr);
+          cur_parent = cur_parent->parent;
+        }
       }
       seq_freq_.value = freq;
       assert(!pos_.empty());
@@ -338,6 +366,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   search_states_t search_buf_;
   const states_t& states_;
   score scr_;
+  std::vector<const score*> sequence;
+  std::vector<size_t> pos_sequence;
 };
 
 //////////////////////////////////////////////////////////////////////////////
