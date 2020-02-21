@@ -328,6 +328,17 @@ TEST(levenshtein_utils_test, test_description_1) {
         { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2 },
       }
     );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 3 },
+      }
+    );
   }
 
   // transpositions
@@ -402,7 +413,7 @@ TEST(levenshtein_utils_test, test_description_2) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 3, 3 },
       }
     );
   }
@@ -440,7 +451,7 @@ TEST(levenshtein_utils_test, test_description_2) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 3, 3 },
       }
     );
   }
@@ -481,7 +492,7 @@ TEST(levenshtein_utils_test, test_description_3) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 3, 3 },
       }
     );
 
@@ -540,7 +551,7 @@ TEST(levenshtein_utils_test, test_description_3) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 3, 3 },
       }
     );
   }
@@ -585,7 +596,7 @@ TEST(levenshtein_utils_test, test_description_4) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 3 },
+        { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 3, 3 },
       }
     );
   }
