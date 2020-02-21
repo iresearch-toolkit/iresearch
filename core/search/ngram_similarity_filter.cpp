@@ -182,7 +182,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           pos.next();
         }
         if (!pos_limits::eof(pos.value())) {
-          pos_temp_t temp_cache;
+          pos_temp_t swap_cache;
           auto last_found_pos = pos_limits::invalid();
           do {
             auto current_pos = pos.value();
@@ -192,7 +192,9 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 last_found_pos = found->first;
                 auto current_sequence = found;
                 // if we hit same position - set length to 0 to force checking candidates to the left
-                size_t current_found_len = (found->first == current_pos) ? 0 : found->second.len + 1;
+                size_t current_found_len = (found->first == current_pos ||
+                                            found->second.sequence.back() == pos_iterator.score) ? 0 : found->second.len + 1;
+                auto initial_found = found;
                 if (current_found_len > longest_sequence_len) {
                   longest_sequence_len = current_found_len;
                 } else {
@@ -200,7 +202,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   // lets go leftward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
-                    if (found->second.len + 1 > current_found_len) {
+                    if (found->second.sequence.back() != pos_iterator.score && 
+                        found->second.len + 1 > current_found_len) {
                       // we have better option. Replace this match!
                       current_sequence = found;
                       current_found_len = found->second.len + 1;
@@ -212,14 +215,29 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   }
                 }
                 if (current_found_len) {
-                  temp_cache.emplace_back(current_pos, 
-                                          search_state(current_sequence->second, current_pos, pos_iterator.score));
+                  //temp_cache.emplace_back(current_pos, 
+                  //                        search_state(current_sequence->second, current_pos, pos_iterator.score));
+                  auto new_candidate = search_state(current_sequence->second, current_pos, pos_iterator.score);
+                  auto res = search_buf_.try_emplace(current_pos, std::move(new_candidate));
+                  if (!res.second) {
+                    // pos already used. This could be if same ngram used several times.
+                    // replace with new length through swap cache - to not spoil
+                    // candidate for following positions of same ngram
+                    swap_cache.emplace_back(current_pos, std::move(new_candidate));
+                  }
+                } else if (initial_found->second.sequence.back() == pos_iterator.score &&
+                           potential > longest_sequence_len && potential >= min_match_count_) {
+                  // we just hit same iterator and found no better place to join,
+                  // so it will produce new candidate
+                  search_buf_.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(current_pos),
+                    std::forward_as_tuple(current_pos, pos_iterator.score));
                 }
               }
             } else  if (potential > longest_sequence_len && potential >= min_match_count_) {
               // this ngram at this position  could potentially start a long enough sequence
               // so add it to candidate list
-              temp_cache.emplace_back(std::piecewise_construct,
+              search_buf_.emplace(std::piecewise_construct,
                 std::forward_as_tuple(current_pos),
                 std::forward_as_tuple(current_pos, pos_iterator.score));
               if (!longest_sequence_len) {
@@ -227,13 +245,10 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
               }
             }
           } while (pos.next());
-          for (auto& p : temp_cache) {
-            auto res = search_buf_.try_emplace(p.first, std::move(p.second));
-            if (!res.second) {
-              // pos already used. This could be if same ngram used several times.
-              // replace with new length
-              res.first->second = p.second;
-            }
+          for (auto& p : swap_cache) {
+            auto res = search_buf_.find(p.first);
+            assert(res != search_buf_.end());
+            std::swap(res->second, p.second);
           }
         }
         --potential; // we are done with this term.
@@ -467,7 +482,6 @@ filter::prepared::ptr by_ngram_similarity::prepare(
 
   // prepare ngrams stats
   auto collectors = ord.prepare_collectors(ngrams_.size());
-
 
   for (const auto& segment : rdr) {
     // get term dictionary for field
