@@ -643,18 +643,16 @@ automaton make_levenshtein_automaton(
       }
     }
 
-    if (arcs.empty() && default_state != fst::kNoStateId) {
+    if (arcs.empty() && default_state == INVALID_STATE) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
+      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
     } else if (ascii) {
+      assert(fst::kNoStateId == default_state);
+
       // optimization for ascii only input without default state
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
         a.EmplaceArc(state.from, arc.first.front(), arc.second);
-      }
-
-      if (default_state != fst::kNoStateId) {
-        a.EmplaceArc(state.from, fst::fsa::kRho, default_state);
       }
     } else {
       builder.insert(state.from, default_state, arcs.begin(), arcs.end());
