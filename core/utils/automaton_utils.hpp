@@ -292,8 +292,9 @@ class utf8_transitions_builder {
     }
 
    private:
-    static bool equals(const state& lhs, automaton::StateId rhs, const automaton& fst) {
+    static bool equals(const state& lhs, automaton::StateId rhs, const automaton& fst) noexcept {
       if (lhs.id != fst::kNoStateId) {
+        // already a part of automaton
         return lhs.id == rhs;
       }
 
@@ -321,14 +322,21 @@ class utf8_transitions_builder {
       return true;
     }
 
-    static size_t hash(automaton::StateId id, const automaton& fst) {
+    static size_t hash(automaton::StateId id, const automaton& fst) noexcept {
       size_t hash = 0;
-      for (fst::ArcIterator<automaton> it(fst, id); !it.Done(); it.Next()) {
-        const auto& a = it.Value();
-        hash = hash_combine(hash, a.ilabel);
-        hash = hash_combine(hash, a.nextstate);
-        hash = hash_combine(hash, a.weight.Hash());
+
+      fst::ArcIteratorData<automaton::Arc> arcs;
+      fst.InitArcIterator(id, &arcs);
+
+      const auto* begin = arcs.arcs;
+      const auto* end = arcs.arcs + arcs.narcs;
+
+      for (; begin != end; ++begin) {
+        hash = hash_combine(hash, begin->ilabel);
+        hash = hash_combine(hash, begin->nextstate);
+        hash = hash_combine(hash, begin->weight.Hash());
       }
+
       return hash;
     }
 
