@@ -31,7 +31,7 @@ NS_ROOT
 
 template<typename Char> struct wildcard_traits;
 
-using wildcard_traits_t = wildcard_traits<irs::byte_type>;
+using wildcard_traits_t = wildcard_traits<byte_type>;
 
 enum class WildcardType {
   TERM      = 0,  // foo
