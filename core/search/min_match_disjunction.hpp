@@ -75,7 +75,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(doc_limits::invalid()),
+      doc_(doc_limits::invalid()), lead_(itrs_.size()),
       ord_(&ord) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());

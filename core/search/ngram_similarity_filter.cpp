@@ -20,7 +20,6 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <forward_list>
 #include "ngram_similarity_filter.hpp"
 #include "min_match_disjunction.hpp"
 #include "disjunction.hpp"
@@ -146,14 +145,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
   struct search_state {
-    explicit search_state(size_t p, const score* s) : scr{s}, parent{nullptr}, pos{p}, len(1) {}
+    explicit search_state(size_t p, const score* s) : parent{nullptr}, scr{s}, pos{p}, len(1) {}
     search_state(search_state&&) = default;
     search_state(const search_state&) = default;
     search_state& operator=(const search_state&) = default;
 
     // appending constructor
     search_state(std::shared_ptr<search_state>& other, size_t p, const score* s)
-      : scr{s}, parent{other}, pos{p}, len(other->len + 1) {}
+      : parent{other}, scr{s}, pos{p}, len(other->len + 1) {}
 
     std::shared_ptr<search_state> parent;
     const score* scr;
