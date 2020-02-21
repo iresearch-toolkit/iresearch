@@ -163,7 +163,7 @@ class utf8_transitions_builder {
 
   template<typename Iterator>
   void insert(automaton::StateId from, automaton::StateId rho_state, Iterator begin, Iterator end) {
-    last_ = bytes_ref::NIL;
+    last_ = bytes_ref::EMPTY;
     states_map_.reset();
 
     std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
@@ -176,7 +176,7 @@ class utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_.empty() || last_ <= begin->first);
+      assert(last_ <= begin->first);
 
       const auto& label = std::get<0>(*begin);
       insert(label, std::get<1>(*begin));
