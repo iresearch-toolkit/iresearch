@@ -155,8 +155,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     search_state(std::shared_ptr<search_state>& other, size_t p, const score* s)
       : scr{s}, parent{other}, pos{p}, len(other->len + 1) {}
 
-    const score* scr;
     std::shared_ptr<search_state> parent;
+    const score* scr;
     size_t pos;
     size_t len;
   };
@@ -215,30 +215,28 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 }
                 if (current_found_len) {
                   auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.score);
-                  auto res = search_buf_.try_emplace(current_pos, new_candidate);
+                  auto res = search_buf_.try_emplace(current_pos, std::move(new_candidate));
                   if (!res.second) {
                     // pos already used. This could be if same ngram used several times.
                     // replace with new length through swap cache - to not spoil
                     // candidate for following positions of same ngram
-                    swap_cache.emplace_back(current_pos, new_candidate);
+                    swap_cache.emplace_back(current_pos, std::move(new_candidate));
                   }
                 } else if (initial_found->second->scr == pos_iterator.score &&
                            potential > longest_sequence_len && potential >= min_match_count_) {
                   // we just hit same iterator and found no better place to join,
                   // so it will produce new candidate
-                  auto new_candidate = std::make_shared<search_state>(current_pos, pos_iterator.score);
                   search_buf_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(current_pos),
-                    std::forward_as_tuple(new_candidate));
+                    std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.score)));
                 }
               }
             } else  if (potential > longest_sequence_len && potential >= min_match_count_) {
               // this ngram at this position  could potentially start a long enough sequence
               // so add it to candidate list
-              auto new_candidate = std::make_shared<search_state>(current_pos, pos_iterator.score);
               search_buf_.emplace(std::piecewise_construct,
                 std::forward_as_tuple(current_pos),
-                std::forward_as_tuple(new_candidate));
+                std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.score)));
               if (!longest_sequence_len) {
                 longest_sequence_len = 1;
               }
@@ -280,30 +278,30 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end; ++i) {
         if (i->second->len == longest_sequence_len) {
           ++count_longest;
+          if (count_longest > 1) {
+            break;
+          }
           longest_ptr = i->second.get();
-        }
-        if (count_longest > 1) {
-          break;
         }
       }
 
       if (count_longest > 1) {
-        sequence.reserve(longest_sequence_len);
-        pos_sequence.reserve(longest_sequence_len);
+        sequence_.reserve(longest_sequence_len);
+        pos_sequence_.reserve(longest_sequence_len);
         for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
-          sequence.clear();
-          pos_sequence.clear();
+          sequence_.clear();
+          pos_sequence_.clear();
           assert(i->second->len <= longest_sequence_len);
           if (i->second->len == longest_sequence_len) {
             bool delete_candidate = false;
             // only first longest sequence will contribute to frequency
             if (longest_sequence_.empty()) {
               longest_sequence_.push_back(i->second->scr);
-              pos_sequence.push_back(i->second->pos);
+              pos_sequence_.push_back(i->second->pos);
               auto cur_parent = i->second->parent;
               while (cur_parent) {
                 longest_sequence_.push_back(cur_parent->scr);
-                pos_sequence.push_back(cur_parent->pos);
+                pos_sequence_.push_back(cur_parent->pos);
                 cur_parent = cur_parent->parent;
               }
             } else {
@@ -311,8 +309,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   i->second->scr != longest_sequence_[0]) {
                 delete_candidate = true;
               } else {
-                sequence.push_back(i->second->scr);
-                pos_sequence.push_back(i->second->pos);
+                sequence_.push_back(i->second->scr);
+                pos_sequence_.push_back(i->second->pos);
                 auto cur_parent = i->second->parent;
                 size_t j = 1;
                 while (cur_parent) {
@@ -322,8 +320,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                     delete_candidate = true;
                     break;
                   }
-                  sequence.push_back(cur_parent->scr);
-                  pos_sequence.push_back(cur_parent->pos);
+                  sequence_.push_back(cur_parent->scr);
+                  pos_sequence_.push_back(cur_parent->pos);
                   cur_parent = cur_parent->parent;
                   ++j;
                 }
@@ -331,8 +329,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             }
             if (!delete_candidate) {
               ++freq;
-              used_pos.insert(std::begin(pos_sequence),
-                              std::end(pos_sequence));
+              used_pos.insert(std::begin(pos_sequence_),
+                              std::end(pos_sequence_));
             }
           }
           ++i;
@@ -366,8 +364,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   search_states_t search_buf_;
   const states_t& states_;
   score scr_;
-  std::vector<const score*> sequence;
-  std::vector<size_t> pos_sequence;
+  std::vector<const score*> sequence_;
+  std::vector<size_t> pos_sequence_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
