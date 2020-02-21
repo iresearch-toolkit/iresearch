@@ -86,6 +86,7 @@ void utf8_transitions_builder::insert(
 
 void utf8_transitions_builder::finish(automaton::StateId from) {
   assert(!states_.empty());
+
   minimize(1);
 
   auto& root = states_.front();
@@ -101,7 +102,7 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
   }
 
   // in presence of default state we have to add some extra
-  // transitions from root to properly handle multi-byte sequences
+  // transitions from root to properly handle multi-bytes sequences
   // and preserve correctness of arcs order
 
   auto add_rho_state = [from, this](automaton::Arc::Label label) {
@@ -132,15 +133,15 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
     add_rho_state(min);
   }
 
-  // connect intermediate states of default multi-byte UTF8 sequence
+  // connect intermediate states of default multi-bytes UTF8 sequence
 
   a_->EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
   a_->EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
   a_->EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 
+  // ensure everything is cleaned up
   root.clear();
 
-  // ensure everything is cleaned up
   assert(std::all_of(
     states_.begin(), states_.end(), [](const state& s) noexcept {
       return s.arcs.empty() &&

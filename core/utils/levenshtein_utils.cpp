@@ -664,9 +664,8 @@ automaton make_levenshtein_automaton(
   static constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kODeterministic |
     fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kNoIEpsilons | fst::kNoOEpsilons |
     fst::kAcceptor;
-  assert(a.Properties(EXPECTED_PROPERTIES, true));
+  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
 
   // ensure invalid state has no outbound transitions
   assert(0 == a.NumArcs(invalid_state));
