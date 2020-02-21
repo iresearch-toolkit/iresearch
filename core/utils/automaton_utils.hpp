@@ -230,11 +230,11 @@ class utf8_transitions_builder {
       : rho_id(rhs.rho_id),
         id(rhs.id),
         arcs(std::move(rhs.arcs)) {
-      rhs.id = fst::kNoStateId;
       rhs.rho_id = fst::kNoStateId;
+      rhs.id = fst::kNoStateId;
     }
 
-    void clear() {
+    void clear() noexcept {
       rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
       arcs.clear();
@@ -293,15 +293,31 @@ class utf8_transitions_builder {
 
    private:
     static bool equals(const state& lhs, automaton::StateId rhs, const automaton& fst) {
-      if (fst.NumArcs(rhs) != lhs.arcs.size()) {
+      if (lhs.id != fst::kNoStateId) {
+        return lhs.id == rhs;
+      }
+
+      fst::ArcIteratorData<automaton::Arc> rarcs;
+      fst.InitArcIterator(rhs, &rarcs);
+
+      const bool has_rho = (fst::kNoStateId != lhs.rho_id);
+
+      if ((lhs.arcs.size() + + size_t(has_rho)) != rarcs.narcs) {
         return false;
       }
 
-      for (fst::ArcIterator<automaton>it(fst, rhs); !it.Done(); it.Next()) {
-        if (lhs.arcs[it.Position()] != it.Value()) {
+      const auto* rarc = rarcs.arcs;
+      for (const auto& larc : lhs.arcs) {
+        if (larc != *rarc) {
           return false;
         }
+        ++rarc;
       }
+
+      if (has_rho && (rarc->ilabel != fst::fsa::kRho || rarc->nextstate != lhs.rho_id)) {
+        return false;
+      }
+
       return true;
     }
 

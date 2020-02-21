@@ -29,10 +29,12 @@
 
 NS_LOCAL
 
+using irs::automaton;
+
 // table contains indexes of states in
 // utf8_transitions_builder::rho_states_ table
-const irs::automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
-  // 1 byte sequence (0-191)
+const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
+  // 1 byte sequence (0-127)
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -41,10 +43,11 @@ const irs::automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  // invalid sequence (128-191)
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   // 2 bytes sequence (192-223)
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -101,6 +104,16 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
   // transitions from root to properly handle multi-byte sequences
   // and preserve correctness of arcs order
 
+  auto add_rho_state = [from, this](automaton::Arc::Label label) {
+    const auto rho_state_idx = UTF8_RHO_STATE_TABLE[label];
+
+    if (fst::kNoStateId == rho_state_idx) {
+      return;
+    }
+
+    a_->EmplaceArc(from, label, rho_states_[rho_state_idx]);
+  };
+
   automaton::Arc::Label min = 0;
 
   for (const arc& a : root.arcs) {
@@ -108,7 +121,7 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
     assert(min <= a.label); // ensure arcs are sorted
 
     for (; min < a.label; ++min) {
-      a_->EmplaceArc(from, min, rho_states_[UTF8_RHO_STATE_TABLE[min]]);
+      add_rho_state(min);
     }
 
     assert(min == a.label);
@@ -116,17 +129,14 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
   }
 
   for (; min < 256; ++min) {
-    a_->EmplaceArc(from, min, rho_states_[UTF8_RHO_STATE_TABLE[min]]);
+    add_rho_state(min);
   }
 
   // connect intermediate states of default multi-byte UTF8 sequence
 
-  for (size_t i = 1; i < 4; ++i) {
-    const auto to = rho_states_[i - 1];
-    const auto from = rho_states_[i];
-
-    a_->EmplaceArc(from, fst::fsa::kRho, to);
-  }
+  a_->EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
+  a_->EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
+  a_->EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 
   root.clear();
 
