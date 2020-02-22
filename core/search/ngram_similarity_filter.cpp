@@ -84,13 +84,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     const term_reader& field,
     boost_t boost,
     const byte_type* stats,
+    size_t total_terms_count,
     size_t min_match_count = 1,
     const order::prepared& ord = order::prepared::unordered())
     : pos_(extract_positions(itrs)),
       min_match_count_(min_match_count),
       disjunction_(std::forward<doc_iterators_t>(itrs), min_match_count,
       order::prepared::unordered()),// we are not interested in disjunction`s scoring
-      ord_(&ord), states_(states) {
+      ord_(&ord), states_(states), total_terms_count_(total_terms_count) {
     scores_vals_.resize(pos_.size());
 
     attrs_.emplace(seq_freq_);
@@ -347,7 +348,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
       }
       seq_freq_.value = freq;
       assert(!pos_.empty());
-      filter_boost_.value = (boost_t)longest_sequence_len / (boost_t)pos_.size();
+      filter_boost_.value = (boost_t)longest_sequence_len / (boost_t)total_terms_count_;
     }
     return longest_sequence_len >= min_match_count_;
   }
@@ -365,6 +366,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   score scr_;
   std::vector<const score*> sequence_;
   std::vector<size_t> pos_sequence_;
+  size_t total_terms_count_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -406,7 +408,6 @@ class ngram_similarity_query : public filter::prepared {
     itrs.reserve(query_state.terms.size());
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
-        // here we skip empty as no relative order of ngram matters
         continue;
       }
       auto term = query_state.field->iterator();
@@ -414,7 +415,6 @@ class ngram_similarity_query : public filter::prepared {
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::NIL, *term_state)) {
-        // here we skip empty as no relative order of ngram matters
         continue;
       }
 
@@ -441,7 +441,6 @@ class ngram_similarity_query : public filter::prepared {
     auto features = ord.features() | by_ngram_similarity::features();
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
-        itrs.emplace_back(doc_iterator::empty());
         continue;
       }
       auto term = query_state.field->iterator();
@@ -449,7 +448,6 @@ class ngram_similarity_query : public filter::prepared {
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::NIL, *term_state)) {
-        itrs.emplace_back(doc_iterator::empty());
         continue;
       }
 
@@ -465,7 +463,8 @@ class ngram_similarity_query : public filter::prepared {
       return doc_iterator::empty();
     }
     return memory::make_shared<ngram_similarity_doc_iterator<doc_iterator::ptr>>(
-      std::move(itrs), states_, rdr, *query_state.field, boost(), stats_.c_str(), min_match_count_, ord);
+      std::move(itrs), states_, rdr, *query_state.field, boost(), stats_.c_str(),
+      query_state.terms.size(), min_match_count_, ord);
   }
 
   size_t min_match_count_;

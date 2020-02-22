@@ -295,6 +295,43 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     }
 }
 
+TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
+  // sequence 1 2 3 4 pattern 1 5 6 2 -> longest is 1 2  and  boost 0.5
+  // as only first longest counted
+  {
+    tests::json_doc_generator gen(
+      "[{ \"seq\" : 1, \"field\": [ \"1\", \"2\", \"3\", \"4\"] }]",
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+  irs::order order;
+  auto& scorer = order.add<tests::sort::custom_sort>(false);
+  irs::by_ngram_similarity filter;
+  filter.threshold(0.5).field("field").push_back("1").push_back("5").push_back("6").push_back("2");
+
+  auto prepared_order = order.prepare();
+  auto prepared = filter.prepare(rdr, prepared_order);
+  size_t count = 0;
+  for (const auto& sub : rdr) {
+    auto docs = prepared->execute(sub, prepared_order);
+    auto& doc = docs->attributes().get<irs::document>();
+    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto& frequency = docs->attributes().get<irs::frequency>();
+    // ensure all iterators contain  attributes
+    ASSERT_TRUE(bool(doc));
+    ASSERT_TRUE(bool(boost));
+    ASSERT_TRUE(bool(frequency));
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), doc->value);
+    ASSERT_FALSE(irs::doc_limits::eof(doc->value));
+    ASSERT_DOUBLE_EQ(0.5, boost->value);
+    ASSERT_EQ(1, frequency->value);
+    ASSERT_FALSE(docs->next());
+  }
+}
+
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   {
     tests::json_doc_generator gen(
