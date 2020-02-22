@@ -75,7 +75,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      doc_(doc_limits::invalid()), lead_(itrs_.size()),
+      lead_(itrs_.size()), doc_(doc_limits::invalid()),
       ord_(&ord) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
@@ -251,25 +251,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     return lead_;
   }
 
- protected:
-  doc_iterators_t itrs_; // sub iterators
-  size_t min_match_count_; // minimum number of hits
-  document doc_; // current doc
-  size_t lead_; // number of iterators in lead group
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the first iterator in the lead group
-  //////////////////////////////////////////////////////////////////////////////
-  inline std::vector<size_t>::iterator lead() {
-    return heap_.end() - lead_;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the iterator right after the lead group
-  //////////////////////////////////////////////////////////////////////////////
-  inline std::vector<size_t>::iterator lead_end() {
-    return heap_.end();
-  }
-
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief push all valid iterators to lead
   //////////////////////////////////////////////////////////////////////////////
@@ -292,7 +274,6 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
- private:
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
@@ -422,6 +403,13 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @returns the first iterator in the lead group
+  //////////////////////////////////////////////////////////////////////////////
+  inline std::vector<size_t>::iterator lead() {
+    return heap_.end() - lead_;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief adds iterator to the lead group
   //////////////////////////////////////////////////////////////////////////////
   inline void add_lead() {
@@ -446,8 +434,12 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
+  doc_iterators_t itrs_; // sub iterators
   std::vector<size_t> heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
+  size_t min_match_count_; // minimum number of hits
+  size_t lead_; // number of iterators in lead group
+  document doc_; // current doc
   const order::prepared* ord_;
 }; // min_match_disjunction
 

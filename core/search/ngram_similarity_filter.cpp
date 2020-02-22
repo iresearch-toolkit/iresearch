@@ -70,10 +70,10 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     for (const auto& itr : itrs) {
       auto& attrs = itr->attributes();
       // get needed positions for iterators
-      auto& p = attrs.get<position>();
-      auto& d = attrs.get<document>();
-      auto& s = attrs.get<score>();
-      pos.emplace_back(p.get(), d.get(), s.get());
+      auto p = attrs.get<position>().get();
+      auto d = attrs.get<document>().get();
+      auto s = attrs.get<score>().get();
+      pos.emplace_back(p, d, s);
     }
     return pos;
   }
