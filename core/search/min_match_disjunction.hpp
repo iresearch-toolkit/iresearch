@@ -84,7 +84,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     std::sort(
       itrs_.begin(), itrs_.end(),
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-        return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0); // !!! why not use cost_iterator_adapter.est ???
+        return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0);
     });
 
     // make 'document' attribute accessible from outside
@@ -96,7 +96,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
         // estimate only first min_match_count_ subnodes
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs->attributes(), 0); // !!! why not use cost_iterator_adapter.est ???
+          return lhs + cost::extract(rhs->attributes(), 0);
         });
       });
 
