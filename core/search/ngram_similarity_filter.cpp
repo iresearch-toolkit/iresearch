@@ -30,6 +30,7 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 #include "utils/misc.hpp"
+#include "utils/map_utils.hpp"
 
 NS_ROOT
 
@@ -54,10 +55,10 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
  public:
   struct position_t {
     position_t(position* p, document* d, score* s)
-      : pos(p), doc(d), score(s) {}
+      : pos(p), doc(d), scr(s) {}
     position* pos;
     document* doc;
-    score* score;
+    score* scr;
   };
 
   typedef std::vector<position_t> positions_t;
@@ -70,9 +71,9 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     for (const auto& itr : itrs) {
       auto& attrs = itr->attributes();
       // get needed positions for iterators
-      auto p = attrs.get<position>().get();
-      auto d = attrs.get<document>().get();
-      auto s = attrs.get<score>().get();
+      auto p = attrs.template get<position>().get();
+      auto d = attrs.template get<document>().get();
+      auto s = attrs.template get<score>().get();
       pos.emplace_back(p, d, s);
     }
     return pos;
@@ -95,7 +96,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     scores_vals_.resize(pos_.size());
 
     attrs_.emplace(seq_freq_);
-    attrs_.emplace<document>() = disjunction_.attributes().get<document>();
+    attrs_.emplace<document>() = disjunction_.attributes().template get<document>();
     attrs_.emplace<filter_boost>(filter_boost_);
 
     if (scr_.prepare(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost))) {
@@ -192,7 +193,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                 auto current_sequence = found;
                 // if we hit same position - set length to 0 to force checking candidates to the left
                 size_t current_found_len = (found->first == current_pos ||
-                                            found->second->scr == pos_iterator.score) ? 0 : found->second->len + 1;
+                                            found->second->scr == pos_iterator.scr) ? 0 : found->second->len + 1;
                 auto initial_found = found;
                 if (current_found_len > longest_sequence_len) {
                   longest_sequence_len = current_found_len;
@@ -201,7 +202,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   // lets go leftward and check if there are any candidates which could became longer
                   // if we stick this ngram to them rather than the closest one found
                   for (++found; found != search_buf_.end(); ++found) {
-                    if (found->second->scr != pos_iterator.score &&
+                    if (found->second->scr != pos_iterator.scr &&
                         found->second->len + 1 > current_found_len) {
                       // we have better option. Replace this match!
                       current_sequence = found;
@@ -214,21 +215,21 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   }
                 }
                 if (current_found_len) {
-                  auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.score);
-                  auto res = search_buf_.try_emplace(current_pos, std::move(new_candidate));
+                  auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.scr);
+                  auto res =  map_utils::try_emplace(search_buf_, current_pos, std::move(new_candidate));
                   if (!res.second) {
                     // pos already used. This could be if same ngram used several times.
                     // replace with new length through swap cache - to not spoil
                     // candidate for following positions of same ngram
                     swap_cache.emplace_back(current_pos, std::move(new_candidate));
                   }
-                } else if (initial_found->second->scr == pos_iterator.score &&
+                } else if (initial_found->second->scr == pos_iterator.scr &&
                            potential > longest_sequence_len && potential >= min_match_count_) {
                   // we just hit same iterator and found no better place to join,
                   // so it will produce new candidate
                   search_buf_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(current_pos),
-                    std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.score)));
+                    std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.scr)));
                 }
               }
             } else  if (potential > longest_sequence_len && potential >= min_match_count_) {
@@ -236,7 +237,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
               // so add it to candidate list
               search_buf_.emplace(std::piecewise_construct,
                 std::forward_as_tuple(current_pos),
-                std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.score)));
+                std::forward_as_tuple(std::make_shared<search_state>(current_pos, pos_iterator.scr)));
               if (!longest_sequence_len) {
                 longest_sequence_len = 1;
               }
@@ -386,7 +387,6 @@ class ngram_similarity_query : public filter::prepared {
       const sub_reader& rdr,
       const order::prepared& ord,
       const attribute_view&) const override {
-    typedef disjunction<doc_iterator::ptr> disjunction_t;
     auto query_state = states_.find(rdr);
     if (!query_state || !query_state->field) {
       // invalid state
