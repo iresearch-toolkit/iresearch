@@ -66,7 +66,7 @@ void utf8_transitions_builder::insert(
     const byte_type* label,
     const size_t size,
     const automaton::StateId to) {
-  assert(label);
+  assert(label && size < 5);
 
   add_states(size); // ensure we have enough states
   const size_t prefix = 1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
@@ -99,20 +99,17 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   });
 #endif
 
+  auto& root = states_.front();
   minimize(a, 1);
 
   if (fst::kNoStateId == rho_states_[0]) {
-    if (!states_.empty()) {
-      // no default state: just add transitions from the
-      // root node to its successors
-      auto& root = states_.front();
-
-      for (const auto& arc : root.arcs) {
-        a.EmplaceArc(from, arc.label, arc.id);
-      }
-
-      root.clear();
+    // no default state: just add transitions from the
+    // root node to its successors
+    for (const auto& arc : root.arcs) {
+      a.EmplaceArc(from, arc.label, arc.id);
     }
+
+    root.clear();
 
     return;
   }
@@ -137,23 +134,19 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
   automaton::Arc::Label min = 0;
 
-  if (!states_.empty()) {
-    auto& root = states_.front();
+  for (const auto& arc : root.arcs) {
+    assert(arc.label < 256);
+    assert(min <= arc.label); // ensure arcs are sorted
 
-    for (const auto& arc : root.arcs) {
-      assert(arc.label < 256);
-      assert(min <= arc.label); // ensure arcs are sorted
-
-      for (; min < arc.label; ++min) {
-        add_rho_arc(min);
-      }
-
-      assert(min == arc.label);
-      a.EmplaceArc(from, min++, arc.id);
+    for (; min < arc.label; ++min) {
+      add_rho_arc(min);
     }
 
-    root.clear();
+    assert(min == arc.label);
+    a.EmplaceArc(from, min++, arc.id);
   }
+
+  root.clear();
 
   // add remaining rho transitions
 

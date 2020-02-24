@@ -27,6 +27,7 @@
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
 #include "draw-impl.h"
 
 NS_ROOT
@@ -125,7 +126,10 @@ class automaton_term_iterator final : public seek_term_iterator {
 
 class utf8_transitions_builder {
  public:
-  utf8_transitions_builder() = default;
+  utf8_transitions_builder() {
+    // ensure we have enough space for utf8 sequence
+    add_states(utf8_utils::MAX_CODE_POINT_SIZE);
+  }
 
   template<typename Iterator>
   void insert(automaton& a,
@@ -134,6 +138,9 @@ class utf8_transitions_builder {
               Iterator begin, Iterator end) {
     last_ = bytes_ref::EMPTY;
     states_map_.reset();
+
+    assert(!states_.empty());
+    states_.front().id = from;
 
     std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
 
@@ -145,7 +152,7 @@ class utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= begin->first);
+      assert(last_ <= std::get<0>(*begin));
 
       const auto& label = std::get<0>(*begin);
       insert(a, label.c_str(), label.size(), std::get<1>(*begin));
@@ -178,13 +185,6 @@ class utf8_transitions_builder {
       return !(*this == rhs);
     }
 
-    friend size_t hash_value(const arc& a) {
-      size_t hash = 0;
-      hash = hash_combine(hash, a.label);
-      hash = hash_combine(hash, a.id);
-      return hash;
-    }
-
     union {
       state* target;
       automaton::StateId id;
@@ -212,10 +212,14 @@ class utf8_transitions_builder {
     friend size_t hash_value(const state& s) {
       size_t seed = 0;
 
-      seed = hash_combine(seed, s.rho_id);
-      seed = hash_combine(seed, s.id);
       for (auto& arc: s.arcs) {
-        seed = hash_combine(seed, hash_value(arc));
+        seed = hash_combine(seed, arc.label);
+        seed = hash_combine(seed, arc.id);
+      }
+
+      if (fst::kNoStateId != s.rho_id) {
+        seed = hash_combine(seed, fst::fsa::kRho);
+        seed = hash_combine(seed, s.rho_id);
       }
 
       return seed;
@@ -228,25 +232,27 @@ class utf8_transitions_builder {
 
   class state_map : private util::noncopyable {
    public:
-    static const size_t InitialSize = 16;
-
-    state_map(): states_(InitialSize, fst::kNoStateId) {}
+    state_map(size_t capacity = 16)
+      : states_(capacity, fst::kNoStateId) {
+    }
 
     automaton::StateId insert(const state& s, automaton& fst) {
-
       automaton::StateId id;
       const size_t mask = states_.size() - 1;
-      size_t pos = hash_value(s) % mask;
-      for ( ;; ++pos, pos %= mask ) {
+      for (size_t pos = hash_value(s) % mask;;++pos, pos %= mask) {
         if (fst::kNoStateId == states_[pos]) {
           states_[pos] = id = add_state(s, fst);
+          assert(hash_value(s) == hash(id, fst));
           ++count_;
 
           if (count_ > 2 * states_.size() / 3) {
             rehash(fst);
           }
+
           break;
-        } else if (equals(s, states_[pos], fst)) {
+        }
+
+        if (equals(s, states_[pos], fst)) {
           id = states_[pos];
           break;
         }
@@ -272,7 +278,7 @@ class utf8_transitions_builder {
 
       const bool has_rho = (fst::kNoStateId != lhs.rho_id);
 
-      if ((lhs.arcs.size() + + size_t(has_rho)) != rarcs.narcs) {
+      if ((lhs.arcs.size() + size_t(has_rho)) != rarcs.narcs) {
         return false;
       }
 
@@ -303,7 +309,6 @@ class utf8_transitions_builder {
       for (; begin != end; ++begin) {
         hash = hash_combine(hash, begin->ilabel);
         hash = hash_combine(hash, begin->nextstate);
-        hash = hash_combine(hash, begin->weight.Hash());
       }
 
       return hash;
@@ -354,7 +359,7 @@ class utf8_transitions_builder {
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
-    if (states_.size() < ++size ) {
+    if (states_.size() < ++size) {
       states_.resize(size);
     }
   }
