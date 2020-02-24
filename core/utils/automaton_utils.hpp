@@ -31,37 +31,6 @@
 
 NS_ROOT
 
-inline automaton match_any_char() {
- automaton a;
- const auto start = a.AddState();
- const auto finish = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, fst::fsa::kRho, finish);
- a.SetFinal(finish);
-
- return a;
-}
-
-inline automaton match_any() {
- automaton a;
- const auto start = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, fst::fsa::kRho, start);
- a.SetFinal(start);
-
- return a;
-}
-
-inline automaton match_char(automaton::Arc::Label c) {
- automaton a;
- const auto start = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, c, start);
- a.SetFinal(start);
-
- return a;
-}
-
 template<typename Char, typename Matcher>
 automaton::Weight accept(const automaton& a, Matcher& matcher, const basic_string_ref<Char>& target) {
   auto state = a.Start();
@@ -83,7 +52,6 @@ template<typename Char>
 automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
-  // FIXME optimize rho label lookup (just check last arc)
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
   return accept(a, matcher, target);
 }
@@ -157,21 +125,22 @@ class automaton_term_iterator final : public seek_term_iterator {
 
 class utf8_transitions_builder {
  public:
-  explicit utf8_transitions_builder(automaton& a) noexcept
-    : a_(&a) {
-  }
+  utf8_transitions_builder() = default;
 
   template<typename Iterator>
-  void insert(automaton::StateId from, automaton::StateId rho_state, Iterator begin, Iterator end) {
+  void insert(automaton& a,
+              automaton::StateId from,
+              automaton::StateId rho_state,
+              Iterator begin, Iterator end) {
     last_ = bytes_ref::EMPTY;
     states_map_.reset();
 
     std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
 
     if (fst::kNoStateId != rho_state) {
-      rho_states_[1] = a_->AddState();
-      rho_states_[2] = a_->AddState();
-      rho_states_[3] = a_->AddState();
+      rho_states_[1] = a.AddState();
+      rho_states_[2] = a.AddState();
+      rho_states_[3] = a.AddState();
     }
 
     for (; begin != end; ++begin) {
@@ -179,11 +148,11 @@ class utf8_transitions_builder {
       assert(last_ <= begin->first);
 
       const auto& label = std::get<0>(*begin);
-      insert(label, std::get<1>(*begin));
+      insert(a, label.c_str(), label.size(), std::get<1>(*begin));
       last_ = label;
     }
 
-    finish(from);
+    finish(a, from);
   }
 
  private:
@@ -390,7 +359,7 @@ class utf8_transitions_builder {
     }
   }
 
-  void minimize(size_t prefix) {
+  void minimize(automaton& a, size_t prefix) {
     assert(prefix > 0);
 
     for (size_t i = last_.size(); i >= prefix; --i) {
@@ -398,20 +367,22 @@ class utf8_transitions_builder {
       state& p = states_[i - 1];
       assert(!p.arcs.empty());
 
-      p.arcs.back().id = states_map_.insert(s, *a_);
+      p.arcs.back().id = states_map_.insert(s, a);
       s.clear();
     }
   }
 
-  void insert(const bytes_ref& label, automaton::StateId target);
+  void insert(automaton& a,
+              const byte_type* label_data,
+              const size_t label_size,
+              automaton::StateId target);
 
-  void finish(automaton::StateId from);
+  void finish(automaton& a, automaton::StateId from);
 
   automaton::StateId rho_states_[4];
   std::vector<state> states_;
   state_map states_map_;
   bytes_ref last_;
-  automaton* a_;
 }; // utf8_automaton_builder
 
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(

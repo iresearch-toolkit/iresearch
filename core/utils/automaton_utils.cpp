@@ -62,13 +62,15 @@ NS_END
 NS_ROOT
 
 void utf8_transitions_builder::insert(
-    const bytes_ref& label,
+    automaton& a,
+    const byte_type* label,
+    const size_t size,
     const automaton::StateId to) {
-  const auto size = label.size();
+  assert(label);
 
   add_states(size); // ensure we have enough states
-  const size_t prefix = 1 + common_prefix_length(last_, label);
-  minimize(prefix); // minimize suffix
+  const size_t prefix = 1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
+  minimize(a, prefix); // minimize suffix
 
   // add current word suffix
   for (size_t i = prefix; i <= size; ++i) {
@@ -84,33 +86,53 @@ void utf8_transitions_builder::insert(
   }
 }
 
-void utf8_transitions_builder::finish(automaton::StateId from) {
-  minimize(1);
+void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
+#ifdef IRESEARCH_DEBUG
+  auto ensure_empty = make_finally([this]() {
+    // ensure everything is cleaned up
+    assert(std::all_of(
+      states_.begin(), states_.end(), [](const state& s) noexcept {
+        return s.arcs.empty() &&
+          s.id == fst::kNoStateId &&
+          s.rho_id == fst::kNoStateId;
+    }));
+  });
+#endif
+
+  minimize(a, 1);
 
   if (fst::kNoStateId == rho_states_[0]) {
     if (!states_.empty()) {
       // no default state: just add transitions from the
       // root node to its successors
-      for (const arc& a : states_.front().arcs) {
-        a_->EmplaceArc(from, a.label, a.id);
+      auto& root = states_.front();
+
+      for (const auto& arc : root.arcs) {
+        a.EmplaceArc(from, arc.label, arc.id);
       }
+
+      root.clear();
     }
 
     return;
   }
 
+  // reserve enough memory to store all outbound transitions
+
+  a.ReserveArcs(from, 256);
+
   // in presence of default state we have to add some extra
   // transitions from root to properly handle multi-bytes sequences
   // and preserve correctness of arcs order
 
-  auto add_rho_arc = [from, this](automaton::Arc::Label label) {
+  auto add_rho_arc = [&a, from, this](automaton::Arc::Label label) {
     const auto rho_state_idx = UTF8_RHO_STATE_TABLE[label];
 
     if (fst::kNoStateId == rho_state_idx) {
       return;
     }
 
-    a_->EmplaceArc(from, label, rho_states_[rho_state_idx]);
+    a.EmplaceArc(from, label, rho_states_[rho_state_idx]);
   };
 
   automaton::Arc::Label min = 0;
@@ -118,16 +140,16 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
   if (!states_.empty()) {
     auto& root = states_.front();
 
-    for (const arc& a : root.arcs) {
-      assert(a.label < 256);
-      assert(min <= a.label); // ensure arcs are sorted
+    for (const auto& arc : root.arcs) {
+      assert(arc.label < 256);
+      assert(min <= arc.label); // ensure arcs are sorted
 
-      for (; min < a.label; ++min) {
+      for (; min < arc.label; ++min) {
         add_rho_arc(min);
       }
 
-      assert(min == a.label);
-      a_->EmplaceArc(from, min++, a.id);
+      assert(min == arc.label);
+      a.EmplaceArc(from, min++, arc.id);
     }
 
     root.clear();
@@ -141,17 +163,9 @@ void utf8_transitions_builder::finish(automaton::StateId from) {
 
   // connect intermediate states of default multi-bytes UTF8 sequence
 
-  a_->EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
-  a_->EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
-  a_->EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
-
-  // ensure everything is cleaned up
-  assert(std::all_of(
-    states_.begin(), states_.end(), [](const state& s) noexcept {
-      return s.arcs.empty() &&
-        s.id == fst::kNoStateId &&
-        s.rho_id == fst::kNoStateId;
-  }));
+  a.EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
+  a.EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
+  a.EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 }
 
 filter::prepared::ptr prepare_automaton_filter(const string_ref& field,

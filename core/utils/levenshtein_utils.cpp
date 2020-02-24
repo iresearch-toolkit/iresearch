@@ -601,7 +601,7 @@ automaton make_levenshtein_automaton(
   stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
-  utf8_transitions_builder builder(a);
+  utf8_transitions_builder builder;
 
   while (!stack.empty()) {
     const auto state = stack.back();
@@ -655,7 +655,7 @@ automaton make_levenshtein_automaton(
         a.EmplaceArc(state.from, arc.first.front(), arc.second);
       }
     } else {
-      builder.insert(state.from, default_state, arcs.begin(), arcs.end());
+      builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
     }
   }
 

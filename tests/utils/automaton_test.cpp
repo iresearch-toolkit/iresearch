@@ -607,34 +607,211 @@ TEST(automaton_test, match_wildcard) {
   }
 }
 
-TEST(automaton_test, utf8_transitions) {
-  irs::automaton a;
-  auto start = a.AddState();
-  auto finish = a.AddState();
-  auto invalid = a.AddState();
-  auto def = a.AddState();
-  a.SetStart(start);
-  a.SetFinal(finish);
+TEST(utf8_transitions_builder_test, ascii) {
+  irs::utf8_transitions_builder builder;
 
-  std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF5\x85\x97\x86")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x85")), finish);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x86")), finish);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x85\x96")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x97")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x9E\x97")), invalid);
-  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x85\x97")), invalid);
-//  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81")), invalid);
-//  arcs.emplace_back(irs::bytes_ref::NIL, def);
+  auto assert_arc = [](
+      const irs::automaton::Arc& actual_arc,
+      irs::automaton::Arc::Label expected_label,
+      irs::automaton::StateId expected_target) {
+    ASSERT_EQ(expected_label, actual_arc.ilabel);
+    ASSERT_EQ(expected_label, actual_arc.olabel);
+    ASSERT_EQ(expected_target, actual_arc.nextstate);
+    ASSERT_EQ(fst::fsa::BooleanWeight(false), actual_arc.weight);
+  };
 
-  std::sort(arcs.begin(), arcs.end());
+  static constexpr auto EXPECTED_PROPERTIES =
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kIDeterministic | fst::kODeterministic |
+    fst::kAcceptor;
 
-  irs::utf8_transitions_builder builder(a);
-  builder.insert(start, def, arcs.begin(), arcs.end());
+  // ascii sequence
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish0 = a.AddState();
+    auto finish1 = a.AddState();
 
-  fst::drawFst(a, "111");
+    std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("a")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("0")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("7")), finish1);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("U")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), finish1);
+    std::sort(arcs.begin(), arcs.end());
+
+    builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
+
+    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
+    ASSERT_EQ(3, a.NumStates());
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(arcs.size(), actual_arcs.narcs);
+
+      auto* actual_arc = actual_arcs.arcs;
+      for (auto& arc : arcs) {
+        ASSERT_EQ(1, arc.first.size());
+        assert_arc(*actual_arc, arc.first[0], arc.second);
+        ++actual_arc;
+      }
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'finish0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish0, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'finish1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish1, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+  }
+
+  // ascii sequence with default state
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish0 = a.AddState();
+    auto finish1 = a.AddState();
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    a.SetStart(start);
+
+    std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("a")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("0")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("7")), finish1);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("U")), finish0);
+    arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), finish1);
+    std::sort(arcs.begin(), arcs.end());
+
+    builder.insert(a, start, finish1, arcs.begin(), arcs.end());
+
+    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
+    ASSERT_EQ(6, a.NumStates()); // +3 intermediate states
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(256, actual_arcs.narcs);
+
+      auto* actual_arc = actual_arcs.arcs;
+      auto expected_arc = arcs.begin();
+      irs::automaton::Arc::Label label = 0;
+
+      while (expected_arc != arcs.end() && label < 192) {
+        for (; label < expected_arc->first[0]; ++label) {
+          assert_arc(*actual_arc, label, finish1);
+          ++actual_arc;
+        }
+
+        ASSERT_EQ(label, expected_arc->first[0]);
+        assert_arc(*actual_arc, label, expected_arc->second);
+        ++label;
+        ++actual_arc;
+        ++expected_arc;
+      }
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, finish1);
+        ++actual_arc;
+      }
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, finish1);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish0, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'finish1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish1, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+  }
+
+
+  //irs::automaton a;
+  //auto start = a.AddState();
+  //auto invalid = a.AddState();
+  //a.SetStart(start);
+  //a.SetFinal(finish);
+
+  //std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs;
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF5\x85\x97\x86")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x85")), finish);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD1\x86")), finish);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("b")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x85\x96")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x97")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x9E\x97")), invalid);
+  //arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xE3\x85\x97")), invalid);
+////  arcs.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81")), invalid);
+////  arcs.emplace_back(irs::bytes_ref::NIL, def);
+
+  //std::sort(arcs.begin(), arcs.end());
+
+  //irs::utf8_transitions_builder builder(a);
+  //builder.insert(start, def, arcs.begin(), arcs.end());
+
+  //fst::drawFst(a, "111");
 }
 
