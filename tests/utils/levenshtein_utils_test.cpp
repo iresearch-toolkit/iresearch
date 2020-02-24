@@ -39,6 +39,13 @@ void assert_description(
     const std::vector<std::tuple<irs::bytes_ref, size_t, size_t>>& candidates) {
   auto a = irs::make_levenshtein_automaton(description, target);
 
+  // ensure only invalid state has no outbound connections
+  ASSERT_GE(a.NumStates(), 1);
+  ASSERT_EQ(0, a.NumArcs(0));
+  for (irs::automaton::StateId state = 1; state < a.NumStates(); ++state) {
+    ASSERT_GT(a.NumArcs(state), 0);
+  }
+
   for (auto& entry : candidates) {
     const auto candidate = std::get<0>(entry);
     const size_t expected_distance = std::get<1>(entry);
