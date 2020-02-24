@@ -776,6 +776,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   ASSERT_EQ(collect_field_count + collect_term_count, finish_count);
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
     tests::json_doc_generator gen(
@@ -858,7 +860,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   check_query(filter, order, expected, rdr);
 }
 
-
+#endif
 
 INSTANTIATE_TEST_CASE_P(
   ngram_similarity_test,
