@@ -694,7 +694,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       };
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
-  std::vector<irs::boost_t> expected_filter_boost{4./6., 4./6., 4./6., 4./6., 0.5, 0.5, 0.5};
+  std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
   check_query(filter, order, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
@@ -763,7 +763,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       };
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
-  std::vector<irs::boost_t> expected_filter_boost{4./6., 4./6., 4./6., 4./6., 0.5, 0.5, 0.5};
+  std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
   check_query(filter, order, expected, rdr);
   ASSERT_EQ(expected_frequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
