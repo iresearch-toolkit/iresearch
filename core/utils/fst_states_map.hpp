@@ -31,6 +31,11 @@
 
 NS_ROOT
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class fst_states_map
+/// @brief helper class for deduplication of fst states while building
+///        minimal acyclic subsequential transducer
+//////////////////////////////////////////////////////////////////////////////
 template<typename Fst,
          typename State,
          typename PushState,

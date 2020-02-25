@@ -124,6 +124,12 @@ class automaton_term_iterator final : public seek_term_iterator {
   const bytes_ref* value_;
 }; // automaton_term_iterator
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class utf8_transitions_builder
+/// @brief helper class for building minimal acyclic binary automaton from
+///        a specified root, a default (rho) state and a set of arcs with
+///        UTF-8 encoded labels
+//////////////////////////////////////////////////////////////////////////////
 class utf8_transitions_builder {
  public:
   utf8_transitions_builder() {
