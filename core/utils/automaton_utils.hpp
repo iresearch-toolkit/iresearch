@@ -28,6 +28,7 @@
 #include "search/filter.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
+#include "utils/ebo.hpp"
 #include "draw-impl.h"
 
 NS_ROOT
@@ -124,6 +125,113 @@ class automaton_term_iterator final : public seek_term_iterator {
   const bytes_ref* value_;
 }; // automaton_term_iterator
 
+template<typename Fst,
+         typename State,
+         typename Hash,
+         typename StateEq>
+class state_map : private compact<0, Hash>,
+                    private compact<1, StateEq>,
+                    private util::noncopyable {
+ public:
+  using fst_type = Fst;
+  using state_type = State;
+  using state_id = typename fst_type::StateId;
+  using hasher = Hash;
+  using state_equal = StateEq;
+
+  explicit state_map(
+      size_t capacity = 16,
+      const hasher& hash_function = {},
+      const state_equal& state_eq = {})
+    : compact<0, hasher>{ hash_function },
+      compact<1, state_equal>{ state_eq },
+      states_(capacity, fst::kNoStateId) {
+  }
+
+  state_id insert(const state_type& s, fst_type& fst) {
+    const auto state_equal = state_eq();
+    const auto hasher = hash_function();
+
+    const size_t mask = states_.size() - 1;
+    for (size_t pos = hasher(s, fst) % mask;;++pos, pos %= mask) {
+      auto& bucket = states_[pos];
+
+      if (fst::kNoStateId == bucket) {
+        const state_id id = bucket = add_state(s, fst);
+        assert(hasher(s, fst) == hasher(id, fst));
+        ++count_;
+
+        if (count_ > 2 * states_.size() / 3) {
+          rehash(fst);
+        }
+
+        return id;
+      }
+
+      if (state_equal(s, bucket, fst)) {
+        return bucket;
+      }
+    }
+  }
+
+  void reset() noexcept {
+    count_ = 0;
+    std::fill(states_.begin(), states_.end(), fst::kNoStateId);
+  }
+
+  hasher hash_function() const noexcept {
+    return compact<0, hasher>::get();
+  }
+
+  state_equal state_eq() const noexcept {
+    return compact<1, state_equal>::get();
+  }
+
+ private:
+  void rehash(const fst_type& fst) {
+    const auto hasher = hash_function();
+
+    std::vector<state_id> states(states_.size() * 2, fst::kNoStateId);
+    const size_t mask = states.size() - 1;
+    for (auto id : states_) {
+      if (fst::kNoStateId == id) {
+        continue;
+      }
+
+      size_t pos = hasher(id, fst) % mask;
+      for (;;++pos, pos %= mask) {
+        if (fst::kNoStateId == states[pos] ) {
+          states[pos] = id;
+          break;
+        }
+      }
+    }
+
+    states_ = std::move(states);
+  }
+
+  state_id add_state(const state_type& s, fst_type& fst) {
+    state_id id = s.id;
+
+    if (id == fst::kNoStateId) {
+      id = fst.AddState();
+    }
+
+    for (const auto& a : s.arcs) {
+      fst.EmplaceArc(id, a.label, a.id);
+    }
+
+    if (s.rho_id != fst::kNoStateId) {
+      fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
+    }
+
+    return id;
+  }
+
+  std::vector<state_id> states_;
+  size_t count_{};
+}; // state_map
+
 class utf8_transitions_builder {
  public:
   utf8_transitions_builder() {
@@ -209,65 +317,51 @@ class utf8_transitions_builder {
       arcs.clear();
     }
 
-    friend size_t hash_value(const state& s) {
-      size_t seed = 0;
-
-      for (auto& arc: s.arcs) {
-        seed = hash_combine(seed, arc.label);
-        seed = hash_combine(seed, arc.id);
-      }
-
-      if (fst::kNoStateId != s.rho_id) {
-        seed = hash_combine(seed, fst::fsa::kRho);
-        seed = hash_combine(seed, s.rho_id);
-      }
-
-      return seed;
-    }
-
     automaton::StateId rho_id{fst::kNoStateId};
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
 
-  class state_map : private util::noncopyable {
-   public:
-    state_map(size_t capacity = 16)
-      : states_(capacity, fst::kNoStateId) {
-    }
-
-    automaton::StateId insert(const state& s, automaton& fst) {
-      automaton::StateId id;
-      const size_t mask = states_.size() - 1;
-      for (size_t pos = hash_value(s) % mask;;++pos, pos %= mask) {
-        if (fst::kNoStateId == states_[pos]) {
-          states_[pos] = id = add_state(s, fst);
-          assert(hash_value(s) == hash(id, fst));
-          ++count_;
-
-          if (count_ > 2 * states_.size() / 3) {
-            rehash(fst);
-          }
-
-          break;
-        }
-
-        if (equals(s, states_[pos], fst)) {
-          id = states_[pos];
-          break;
-        }
+  struct state_hash {
+    size_t operator()(const state& s, const automaton& fst) const noexcept {
+      if (fst::kNoStateId != s.id) {
+        return operator()(s.id, fst);
       }
 
-      return id;
+      size_t hash = 0;
+
+      for (auto& arc: s.arcs) {
+        hash = hash_combine(hash, arc.label);
+        hash = hash_combine(hash, arc.id);
+      }
+
+      if (fst::kNoStateId != s.rho_id) {
+        hash = hash_combine(hash, fst::fsa::kRho);
+        hash = hash_combine(hash, s.rho_id);
+      }
+
+      return hash;
     }
 
-    void reset() noexcept {
-      count_ = 0;
-      std::fill(states_.begin(), states_.end(), fst::kNoStateId);
-    }
+    size_t operator()(automaton::StateId id, const automaton& fst) const noexcept {
+      fst::ArcIteratorData<automaton::Arc> arcs;
+      fst.InitArcIterator(id, &arcs);
 
-   private:
-    static bool equals(const state& lhs, automaton::StateId rhs, const automaton& fst) noexcept {
+      const auto* begin = arcs.arcs;
+      const auto* end = arcs.arcs + arcs.narcs;
+
+      size_t hash = 0;
+      for (; begin != end; ++begin) {
+        hash = hash_combine(hash, begin->ilabel);
+        hash = hash_combine(hash, begin->nextstate);
+      }
+
+      return hash;
+    }
+  };
+
+  struct state_equal {
+    bool operator()(const state& lhs, automaton::StateId rhs, const automaton& fst) const noexcept {
       if (lhs.id != fst::kNoStateId) {
         // already a part of automaton
         return lhs.id == rhs;
@@ -296,66 +390,7 @@ class utf8_transitions_builder {
 
       return true;
     }
-
-    static size_t hash(automaton::StateId id, const automaton& fst) noexcept {
-      size_t hash = 0;
-
-      fst::ArcIteratorData<automaton::Arc> arcs;
-      fst.InitArcIterator(id, &arcs);
-
-      const auto* begin = arcs.arcs;
-      const auto* end = arcs.arcs + arcs.narcs;
-
-      for (; begin != end; ++begin) {
-        hash = hash_combine(hash, begin->ilabel);
-        hash = hash_combine(hash, begin->nextstate);
-      }
-
-      return hash;
-    }
-
-    void rehash(const automaton& fst) {
-      std::vector<automaton::StateId> states(states_.size() * 2, fst::kNoStateId);
-      const size_t mask = states.size() - 1;
-      for (auto id : states_) {
-
-        if (fst::kNoStateId == id) {
-          continue;
-        }
-
-        size_t pos = hash(id, fst) % mask;
-        for (;;++pos, pos %= mask) {
-          if (fst::kNoStateId == states[pos] ) {
-            states[pos] = id;
-            break;
-          }
-        }
-      }
-
-      states_ = std::move(states);
-    }
-
-    automaton::StateId add_state(const state& s, automaton& fst) {
-      automaton::StateId id = s.id;
-
-      if (id == fst::kNoStateId) {
-        id = fst.AddState();
-      }
-
-      for (const arc& a : s.arcs) {
-        fst.EmplaceArc(id, a.label, a.id);
-      }
-
-      if (s.rho_id != fst::kNoStateId) {
-        fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
-      }
-
-      return id;
-    }
-
-    std::vector<automaton::StateId> states_;
-    size_t count_{};
-  }; // state_map
+  };
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
@@ -373,6 +408,7 @@ class utf8_transitions_builder {
       assert(!p.arcs.empty());
 
       p.arcs.back().id = states_map_.insert(s, a);
+
       s.clear();
     }
   }
@@ -386,7 +422,7 @@ class utf8_transitions_builder {
 
   automaton::StateId rho_states_[4];
   std::vector<state> states_;
-  state_map states_map_;
+  state_map<automaton, state, state_hash, state_equal> states_map_;
   bytes_ref last_;
 }; // utf8_automaton_builder
 
