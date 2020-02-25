@@ -23,6 +23,9 @@
 #ifndef IRESEARCH_FST_STATES_MAP_H
 #define IRESEARCH_FST_STATES_MAP_H
 
+#include <vector>
+
+#include "shared.hpp"
 #include "ebo.hpp"
 #include "noncopyable.hpp"
 
@@ -30,25 +33,30 @@ NS_ROOT
 
 template<typename Fst,
          typename State,
+         typename PushState,
          typename Hash,
          typename StateEq,
          typename Fst::StateId NoStateId>
 class fst_states_map : private compact<0, Hash>,
                        private compact<1, StateEq>,
+                       private compact<2, PushState>,
                        private util::noncopyable {
  public:
   using fst_type = Fst;
   using state_type = State;
   using state_id = typename fst_type::StateId;
+  using push_state = PushState;
   using hasher = Hash;
   using state_equal = StateEq;
 
   explicit fst_states_map(
       size_t capacity = 16,
+      const push_state state_emplace = {},
       const hasher& hash_function = {},
       const state_equal& state_eq = {})
     : compact<0, hasher>{ hash_function },
       compact<1, state_equal>{ state_eq },
+      compact<2, push_state>{ state_emplace },
       states_(capacity, NoStateId) {
   }
 
@@ -57,11 +65,13 @@ class fst_states_map : private compact<0, Hash>,
     const auto hasher = hash_function();
 
     const size_t mask = states_.size() - 1;
-    for (size_t pos = hasher(s, fst) % mask;;++pos, pos %= mask) {
+    size_t pos = hasher(s, fst) % mask;
+    for (;;++pos, pos %= mask) {
       auto& bucket = states_[pos];
 
       if (NoStateId == bucket) {
-        const state_id id = bucket = add_state(s, fst);
+        const auto push_state = state_emplace();
+        const state_id id = bucket = push_state(s, fst);
         assert(hasher(s, fst) == hasher(id, fst));
         ++count_;
 
@@ -91,45 +101,33 @@ class fst_states_map : private compact<0, Hash>,
     return compact<1, state_equal>::get();
   }
 
+  push_state state_emplace() const noexcept {
+    return compact<2, push_state>::get();
+  }
+
  private:
   void rehash(const fst_type& fst) {
     const auto hasher = hash_function();
 
     std::vector<state_id> states(states_.size() * 2, NoStateId);
     const size_t mask = states.size() - 1;
-    for (auto id : states_) {
+    for (const auto id : states_) {
       if (NoStateId == id) {
         continue;
       }
 
       size_t pos = hasher(id, fst) % mask;
       for (;;++pos, pos %= mask) {
-        if (NoStateId == states[pos] ) {
-          states[pos] = id;
+        auto& bucket = states[pos];
+
+        if (NoStateId == bucket) {
+          bucket = id;
           break;
         }
       }
     }
 
     states_ = std::move(states);
-  }
-
-  state_id add_state(const state_type& s, fst_type& fst) {
-    state_id id = s.id;
-
-    if (id == NoStateId) {
-      id = fst.AddState();
-    }
-
-    for (const auto& a : s.arcs) {
-      fst.EmplaceArc(id, a.label, a.id);
-    }
-
-    if (s.rho_id != NoStateId) {
-      fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
-    }
-
-    return id;
   }
 
   std::vector<state_id> states_;

@@ -284,8 +284,29 @@ class utf8_transitions_builder {
     }
   };
 
+  struct state_emplace {
+    automaton::StateId operator()(const state& s, automaton& fst) const {
+      auto id = s.id;
+
+      if (id == fst::kNoStateId) {
+        id = fst.AddState();
+      }
+
+      for (const auto& a : s.arcs) {
+        fst.EmplaceArc(id, a.label, a.id);
+      }
+
+      if (s.rho_id != fst::kNoStateId) {
+        fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
+      }
+
+      return id;
+    }
+  };
+
   using automaton_states_map = fst_states_map<
-    automaton, state, state_hash,
+    automaton, state,
+    state_emplace, state_hash,
     state_equal, fst::kNoStateId>;
 
   void add_states(size_t size) {
