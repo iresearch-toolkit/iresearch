@@ -253,12 +253,12 @@ class postings_writer_base : public irs::postings_writer {
   static const int32_t TERMS_FORMAT_MIN = 0;
   static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
 
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_ONEBASED = FORMAT_MIN;
-  static constexpr int32_t FORMAT_SSE_ONEBASED = FORMAT_ONEBASED + 1;
-  static constexpr int32_t FORMAT_ZEROBASED = FORMAT_SSE_ONEBASED + 1;
-  static constexpr int32_t FORMAT_SSE_ZEROBASED = FORMAT_ZEROBASED + 1;
-  static constexpr int32_t FORMAT_MAX = FORMAT_SSE_ZEROBASED; 
+  static constexpr int32_t FORMAT_MIN = 0;           
+  static constexpr int32_t FORMAT_POSITIONS_ONEBASED = FORMAT_MIN; // positions are stored one based
+  static constexpr int32_t FORMAT_SSE_POSITIONS_ONEBASED = FORMAT_POSITIONS_ONEBASED + 1; // positions are stored one based, sse used
+  static constexpr int32_t FORMAT_POSITIONS_ZEROBASED = FORMAT_SSE_POSITIONS_ONEBASED + 1; // positions are stored zero based
+  static constexpr int32_t FORMAT_SSE_POSITIONS_ZEROBASED = FORMAT_POSITIONS_ZEROBASED + 1; // positions are stored zero based, sse used
+  static constexpr int32_t FORMAT_MAX = FORMAT_SSE_POSITIONS_ZEROBASED; 
 
   static const uint32_t MAX_SKIP_LEVELS = 10;
   static const uint32_t BLOCK_SIZE = 128;
@@ -276,7 +276,10 @@ class postings_writer_base : public irs::postings_writer {
   postings_writer_base(int32_t postings_format_version, int32_t terms_format_version)
     : skip_(BLOCK_SIZE, SKIP_N),
       postings_format_version_(postings_format_version),
-      terms_format_version_(terms_format_version) {
+      terms_format_version_(terms_format_version),
+      pos_min_(FORMAT_POSITIONS_ONEBASED == postings_format_version_ ||   // first position offsets now is format dependent
+               FORMAT_SSE_POSITIONS_ONEBASED == postings_format_version_ ?
+               pos_limits::min() : pos_limits::invalid()) { 
     assert(postings_format_version >= FORMAT_MIN && postings_format_version <= FORMAT_MAX);
     assert(terms_format_version >= TERMS_FORMAT_MIN && terms_format_version <= TERMS_FORMAT_MAX);
     attrs_.emplace(docs_);
@@ -373,7 +376,6 @@ class postings_writer_base : public irs::postings_writer {
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
     void pos(uint32_t pos) { 
-        assert(pos <= UINT32_C(0x7FFFFFFF));
         buf[size] = pos; 
     }
 
@@ -451,6 +453,7 @@ class postings_writer_base : public irs::postings_writer {
   size_t docs_count_{};             // number of processed documents
   const int32_t postings_format_version_;
   const int32_t terms_format_version_;
+  uint32_t pos_min_; // initial base value for writing positions offsets
 };
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -790,8 +793,8 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
     }
   }
   if (pos_) {
-    pos_->last = (uint32_t)(FORMAT_ONEBASED == postings_format_version_ ||
-                            FORMAT_SSE_ONEBASED == postings_format_version_);
+    pos_->last = (uint32_t)(FORMAT_POSITIONS_ONEBASED == postings_format_version_ ||
+                            FORMAT_SSE_POSITIONS_ONEBASED == postings_format_version_);
   }
 
   if (pay_) {
@@ -1451,7 +1454,7 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
-    if /*constexpr*/ (IteratorTraits::adjust_first_position()) {
+    if /*constexpr*/ (IteratorTraits::zero_based_position()) {
       value_ += (uint32_t)(!pos_limits::valid(value_));
     }
     value_ += this->pos_deltas_[this->buf_pos_];
@@ -5272,7 +5275,7 @@ size_t postings_reader_base::decode(
   return size_t(std::distance(in, p));
 }
 
-template<typename FormatTraits, bool AdjustFirstPosition = true>
+template<typename FormatTraits, bool ZeroBasedPosition>
 class postings_reader final: public postings_reader_base {
  public:
   template<bool Freq, bool Pos, bool Offset, bool Payload>
@@ -5281,7 +5284,7 @@ class postings_reader final: public postings_reader_base {
     static constexpr bool position() { return Freq && Pos; }
     static constexpr bool offset() { return position() && Offset; }
     static constexpr bool payload() { return position() && Payload; }
-    static constexpr bool adjust_first_position() { return AdjustFirstPosition; }
+    static constexpr bool zero_based_position() { return ZeroBasedPosition; }
   };
 
   virtual irs::doc_iterator::ptr iterator(
@@ -5297,8 +5300,8 @@ class postings_reader final: public postings_reader_base {
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
-template<typename FormatTraits, bool AdjustFirstPosition>
-irs::doc_iterator::ptr postings_reader<FormatTraits, AdjustFirstPosition>::iterator(
+template<typename FormatTraits, bool ZeroBasedPosition>
+irs::doc_iterator::ptr postings_reader<FormatTraits, ZeroBasedPosition>::iterator(
     const flags& field,
     const attribute_view& attrs,
     const flags& req) {
@@ -5475,7 +5478,7 @@ irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) con
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits>>();
+  return irs::postings_reader::make<::postings_reader<format_traits, true>>();
 }
 
 /*static*/ irs::format::ptr format10::make() {
@@ -5606,7 +5609,7 @@ class format13 : public format12 {
 };
 
 irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_ZEROBASED;
+  constexpr const auto VERSION = postings_writer_base::FORMAT_POSITIONS_ZEROBASED;
 
   if (volatile_state) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
@@ -5671,7 +5674,7 @@ class format12simd final : public format12 {
 }; // format12simd
 
 irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_ONEBASED;
+  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
 
   if (volatile_state) {
     return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
@@ -5681,7 +5684,7 @@ irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state)
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits_simd>>();
+  return irs::postings_reader::make<::postings_reader<format_traits_simd, true>>();
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
@@ -5711,7 +5714,7 @@ public:
 }; // format13simd
 
 irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_ZEROBASED;
+  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
 
   if (volatile_state) {
     return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);

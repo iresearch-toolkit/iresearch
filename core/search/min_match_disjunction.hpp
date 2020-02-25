@@ -47,7 +47,7 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
       : score_iterator_adapter<DocIterator>(std::move(it)) {
-      est = cost::extract(this->it->attributes(), cost::MAX); // !!! why not zero as in sorting by cost below ?
+      est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
@@ -239,6 +239,12 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief calculates total count of matched iterators. This value could be
+  ///        greater than required min_match. All matched iterators points
+  ///        to current matched document after this call.
+  /// @returns total matched iterators count
+  //////////////////////////////////////////////////////////////////////////////
   size_t count_matched() {
     push_valid_to_lead();
     return lead_;
