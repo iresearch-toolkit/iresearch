@@ -132,7 +132,8 @@ class automaton_term_iterator final : public seek_term_iterator {
 //////////////////////////////////////////////////////////////////////////////
 class utf8_transitions_builder {
  public:
-  utf8_transitions_builder() {
+  utf8_transitions_builder()
+    : states_map_(16, state_emplace(weight_)) {
     // ensure we have enough space for utf8 sequence
     add_states(utf8_utils::MAX_CODE_POINT_SIZE);
   }
@@ -142,18 +143,23 @@ class utf8_transitions_builder {
               automaton::StateId from,
               automaton::StateId rho_state,
               Iterator begin, Iterator end) {
+    // we propagate weight from 'from' node to all intermediate states
+    // that were created by transitions builder
+    weight_ = a.Final(from);
     last_ = bytes_ref::EMPTY;
     states_map_.reset();
 
+    // 'from' state is already a part of automaton
     assert(!states_.empty());
     states_.front().id = from;
 
+    // create intermediate default states if necessary
     std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
 
     if (fst::kNoStateId != rho_state) {
-      rho_states_[1] = a.AddState();
-      rho_states_[2] = a.AddState();
-      rho_states_[3] = a.AddState();
+      a.SetFinal(rho_states_[1] = a.AddState(), weight_);
+      a.SetFinal(rho_states_[2] = a.AddState(), weight_);
+      a.SetFinal(rho_states_[3] = a.AddState(), weight_);
     }
 
     for (; begin != end; ++begin) {
@@ -256,7 +262,7 @@ class utf8_transitions_builder {
 
       return hash;
     }
-  };
+  }; // state_hash
 
   struct state_equal {
     bool operator()(const state& lhs, automaton::StateId rhs, const automaton& fst) const noexcept {
@@ -288,14 +294,20 @@ class utf8_transitions_builder {
 
       return true;
     }
-  };
+  }; // state_equal
 
-  struct state_emplace {
+  class state_emplace {
+   public:
+    explicit state_emplace(const automaton::Weight& weight) noexcept
+      : weight(&weight) {
+    }
+
     automaton::StateId operator()(const state& s, automaton& fst) const {
       auto id = s.id;
 
       if (id == fst::kNoStateId) {
         id = fst.AddState();
+        fst.SetFinal(*weight);
       }
 
       for (const auto& a : s.arcs) {
@@ -308,7 +320,10 @@ class utf8_transitions_builder {
 
       return id;
     }
-  };
+
+   private:
+    const automaton::Weight* weight;
+  }; // state_emplace
 
   using automaton_states_map = fst_states_map<
     automaton, state,
@@ -343,6 +358,7 @@ class utf8_transitions_builder {
 
   void finish(automaton& a, automaton::StateId from);
 
+  automaton::Weight weight_;
   automaton::StateId rho_states_[4];
   std::vector<state> states_;
   automaton_states_map states_map_;

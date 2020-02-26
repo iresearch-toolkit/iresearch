@@ -326,6 +326,16 @@ TEST(levenshtein_utils_test, test_description_1) {
 
     assert_description(
       description,
+      irs::ref_cast<irs::byte_type>("a"_sr),
+      {
+        { irs::bytes_ref::EMPTY, 1, 1 },
+        // incomplete utf8 sequence - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xD1"_sr), 1, 1 },
+      }
+    );
+
+    assert_description(
+      description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0 },

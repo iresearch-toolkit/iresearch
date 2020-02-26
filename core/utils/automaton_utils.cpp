@@ -124,11 +124,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
   auto add_rho_arc = [&a, from, this](automaton::Arc::Label label) {
     const auto rho_state_idx = UTF8_RHO_STATE_TABLE[label];
-
-    if (fst::kNoStateId == rho_state_idx) {
-      return;
-    }
-
     a.EmplaceArc(from, label, rho_states_[rho_state_idx]);
   };
 

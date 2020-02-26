@@ -590,11 +590,18 @@ automaton make_levenshtein_automaton(
   std::vector<automaton::StateId> transitions(description.size()*num_offsets,
                                               fst::kNoStateId);
 
-  // result automaton
   automaton a;
   a.ReserveStates(transitions.size());
   const auto invalid_state = a.AddState(); // state without outbound transitions
   a.SetStart(a.AddState());                // initial state
+
+  // check if start state is final
+  const auto distance = description.distance(1, utf8_size);
+
+  if (distance <= description.max_distance()) {
+    assert(distance < fst::fsa::BooleanWeight::MaxPayload);
+    a.SetFinal(a.Start(), {true, distance});
+  }
 
   // state stack
   std::vector<state> stack;
