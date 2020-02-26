@@ -34,19 +34,24 @@ TEST(utf8_utils_test, static_const) {
 TEST(utf8_utils_test, test) {
   // ascii sequence
   {
-    const irs::byte_type invalid = 0;
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"));
     const std::vector<uint32_t> expected = { 0x0061, 0x0062, 0x0063, 0x0064 };
 
     {
       auto expected_begin = expected.begin();
-      for (auto begin = str.begin(); begin != str.end(); ) {
-        auto next = irs::utf8_utils::next(begin, &invalid);
-        ASSERT_NE(&invalid, next);
+      auto begin = str.begin();
+      auto end = str.end();
+      for (; begin != str.end(); ) {
+        auto next = irs::utf8_utils::next(begin, end);
         ASSERT_EQ(1, std::distance(begin, next));
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
         ASSERT_EQ(begin, next);
         ++expected_begin;
+        if (expected_begin == expected.end()) {
+          ASSERT_EQ(end, next);
+        } else {
+          ASSERT_NE(end, next);
+        }
       }
       ASSERT_EQ(expected.end(), expected_begin);
     }
@@ -68,19 +73,24 @@ TEST(utf8_utils_test, test) {
 
   // 2-bytes sequence
   {
-    const irs::byte_type invalid = 0;
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = { 0x043F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442};
 
     {
       auto expected_begin = expected.begin();
-      for (auto begin = str.begin(); begin != str.end(); ) {
-        auto next = irs::utf8_utils::next(begin, &invalid);
-        ASSERT_NE(&invalid, next);
+      auto begin = str.begin();
+      auto end = str.end();
+      for (; begin != str.end(); ) {
+        auto next = irs::utf8_utils::next(begin, end);
         ASSERT_EQ(2, std::distance(begin, next));
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
         ASSERT_EQ(begin, next);
         ++expected_begin;
+        if (expected_begin == expected.end()) {
+          ASSERT_EQ(end, next);
+        } else {
+          ASSERT_NE(end, next);
+        }
       }
       ASSERT_EQ(expected.end(), expected_begin);
     }
@@ -111,13 +121,19 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.begin();
-      for (auto begin = str.begin(); begin != str.end(); ) {
-        auto next = irs::utf8_utils::next(begin, &invalid);
-        ASSERT_NE(&invalid, next);
+      auto begin = str.begin();
+      auto end = str.end();
+      for (; begin != str.end(); ) {
+        auto next = irs::utf8_utils::next(begin, end);
         ASSERT_EQ(3, std::distance(begin, next));
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
         ASSERT_EQ(begin, next);
         ++expected_begin;
+        if (expected_begin == expected.end()) {
+          ASSERT_EQ(end, next);
+        } else {
+          ASSERT_NE(end, next);
+        }
       }
       ASSERT_EQ(expected.end(), expected_begin);
     }
@@ -139,7 +155,6 @@ TEST(utf8_utils_test, test) {
 
   // 4-bytes sequence
   {
-    const irs::byte_type invalid = 0;
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
     const std::vector<uint32_t> expected = {
       0x1F601, // grinning face with smiling eyes
@@ -148,13 +163,19 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.begin();
-      for (auto begin = str.begin(); begin != str.end(); ) {
-        auto next = irs::utf8_utils::next(begin, &invalid);
-        ASSERT_NE(&invalid, next);
+      auto begin = str.begin();
+      auto end = str.end();
+      for (; begin != str.end(); ) {
+        auto next = irs::utf8_utils::next(begin, end);
         ASSERT_EQ(4, std::distance(begin, next));
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
         ASSERT_EQ(begin, next);
         ++expected_begin;
+        if (expected_begin == expected.end()) {
+          ASSERT_EQ(end, next);
+        } else {
+          ASSERT_NE(end, next);
+        }
       }
       ASSERT_EQ(expected.end(), expected_begin);
     }
