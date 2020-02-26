@@ -92,22 +92,15 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
       min_match_count_(min_match_count),
       disjunction_(std::forward<doc_iterators_t>(itrs), min_match_count,
       order::prepared::unordered()),// we are not interested in disjunction`s scoring
-      ord_(&ord), states_(states), total_terms_count_(total_terms_count) {
+      states_(states), total_terms_count_(total_terms_count) {
     scores_vals_.resize(pos_.size());
 
     attrs_.emplace(seq_freq_);
     doc_ = (attrs_.emplace<document>() = disjunction_.attributes().template get<document>()).get();
     attrs_.emplace<filter_boost>(filter_boost_);
 
-    if (scr_.prepare(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost))) {
-      attrs_.emplace(scr_);
-    }
-
-    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
-      auto& self = const_cast<ngram_similarity_doc_iterator<DocIterator>&>(
-        *static_cast<const ngram_similarity_doc_iterator<DocIterator>*>(ctx));
-      self.score_impl(score);
-    });
+    prepare_score(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost));
+    empty_order_ = ord.empty();
   }
 
   virtual bool next() override {
@@ -132,19 +125,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
  private:
-  inline void score_impl(byte_type* lhs) {
-    const irs::byte_type** pVal = scores_vals_.data();
-    assert(!longest_sequence_.empty());
-    std::for_each(
-      longest_sequence_.begin(), longest_sequence_.end(),
-      [this, lhs, &pVal](const score* s) {
-        if (&irs::score::no_score() != s) {
-          s->evaluate();
-          *pVal++ = s->c_str();
-        }
-      });
-    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
-  }
 
   struct search_state {
     search_state(size_t p, const score* s) : parent{nullptr}, scr{s}, pos{p}, len(1) {}
@@ -261,13 +241,13 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
         }
 
         // if we have no scoring - we could stop searh once we got enough matches
-        if (longest_sequence_len >= min_match_count_ && ord_->empty()) {
+        if (longest_sequence_len >= min_match_count_ && empty_order_) {
           break;
         }
       }
     }
 
-    if (longest_sequence_len >= min_match_count_  && !ord_->empty()) {
+    if (longest_sequence_len >= min_match_count_  && !empty_order_) {
       std::set<size_t> used_pos;
       uint32_t freq = 0;
       longest_sequence_.clear();
@@ -340,12 +320,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
         assert(longest_ptr != nullptr);
         assert(longest_ptr->len == longest_sequence_len);
         freq = 1;
-        longest_sequence_.push_back(longest_ptr->scr);
-        auto cur_parent = longest_ptr->parent;
-        while (cur_parent) {
-          longest_sequence_.push_back(cur_parent->scr);
-          cur_parent = cur_parent->parent;
-        }
       }
       seq_freq_.value = freq;
       assert(!pos_.empty());
@@ -360,15 +334,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   filter_boost filter_boost_;
   size_t min_match_count_;
   min_match_disjunction<DocIterator> disjunction_;
-  const order::prepared* ord_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   search_states_t search_buf_;
   const states_t& states_;
-  score scr_;
   std::vector<const score*> sequence_;
   std::vector<size_t> pos_sequence_;
   size_t total_terms_count_;
   const document* doc_;
+  bool empty_order_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
