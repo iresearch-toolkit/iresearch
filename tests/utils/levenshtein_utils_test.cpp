@@ -341,7 +341,12 @@ TEST(levenshtein_utils_test, test_description_1) {
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 2 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr),  2, 3 },
       }
