@@ -601,9 +601,9 @@ automaton make_levenshtein_automaton(
   stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
-  utf8_transitions_builder builder;
+  arcs.resize(utf8_size); // allocate space for max possible number of arcs
 
-  while (!stack.empty()) {
+  for (utf8_transitions_builder builder; !stack.empty(); ) {
     const auto state = stack.back();
     stack.pop_back();
     arcs.clear();
