@@ -32,19 +32,20 @@
 #include "utils/misc.hpp"
 #include "utils/map_utils.hpp"
 
-NS_ROOT
 
 NS_LOCAL
 
 struct ngram_segment_state_t {
-  const term_reader* field{};
-  std::vector<seek_term_iterator::cookie_ptr> terms;
+  const irs::term_reader* field{};
+  std::vector<irs::seek_term_iterator::cookie_ptr> terms;
 };
 
-typedef states_cache<ngram_segment_state_t> states_t;
-typedef std::vector<bstring> stats_t;
+typedef irs::states_cache<ngram_segment_state_t> states_t;
+typedef std::vector<irs::bstring> stats_t;
 
 NS_END
+
+NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 ///@class ngram_similarity_doc_iterator
@@ -61,9 +62,8 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     score* scr;
   };
 
-  typedef std::vector<position_t> positions_t;
-  using base = min_match_disjunction<DocIterator>;
-  using doc_iterators_t = typename base::doc_iterators_t;
+  using positions_t = std::vector<position_t>;
+  using doc_iterators_t = typename min_match_disjunction<DocIterator>::doc_iterators_t;
 
   static positions_t extract_positions(const doc_iterators_t& itrs) {
     positions_t pos;
@@ -96,7 +96,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     scores_vals_.resize(pos_.size());
 
     attrs_.emplace(seq_freq_);
-    attrs_.emplace<document>() = disjunction_.attributes().template get<document>();
+    doc_ = (attrs_.emplace<document>() = disjunction_.attributes().template get<document>()).get();
     attrs_.emplace<filter_boost>(filter_boost_);
 
     if (scr_.prepare(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost))) {
@@ -112,12 +112,12 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
 
   virtual bool next() override {
     bool next = false;
-    while (true == (next = disjunction_.next()) && !check_serial_positions()) {}
+    while ((next = disjunction_.next()) && !check_serial_positions()) {}
     return next;
   }
 
   virtual doc_id_t value() const override {
-    return disjunction_.value();
+    return doc_->value;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -128,7 +128,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     }
 
     next();
-    return disjunction_.value();
+    return doc_->value;
   }
 
  private:
@@ -147,7 +147,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
   struct search_state {
-    explicit search_state(size_t p, const score* s) : parent{nullptr}, scr{s}, pos{p}, len(1) {}
+    search_state(size_t p, const score* s) : parent{nullptr}, scr{s}, pos{p}, len(1) {}
     search_state(search_state&&) = default;
     search_state(const search_state&) = default;
     search_state& operator=(const search_state&) = default;
@@ -166,12 +166,12 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   using pos_temp_t = std::vector<std::pair<uint32_t, std::shared_ptr<search_state>>>;
 
   bool check_serial_positions() {
-    size_t potential = disjunction_.count_matched(); // how long max sequence could be in best case
+    size_t potential = disjunction_.count_matched(); // how long max sequence could be in the best case
     search_buf_.clear();
     size_t longest_sequence_len = 0;
     seq_freq_.value = 0;
     for (const auto& pos_iterator : pos_) {
-      if (pos_iterator.doc->value == disjunction_.value()) {
+      if (pos_iterator.doc->value == doc_->value) {
         position& pos = *(pos_iterator.pos);
         if (potential <= longest_sequence_len || potential < min_match_count_) {
           // this term could not start largest (or long enough) sequence.
@@ -368,6 +368,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   std::vector<const score*> sequence_;
   std::vector<size_t> pos_sequence_;
   size_t total_terms_count_;
+  const document* doc_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -510,12 +511,13 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
-  if (ngrams_.empty() || fld_.empty() || threshold_ < 0. || threshold_ > 1.) {
+  if (ngrams_.empty() || fld_.empty()) {
     // empty field or terms or invalid threshold
     return filter::prepared::empty();
   }
 
-  size_t min_match_count = static_cast<size_t>(std::ceil(static_cast<double>(ngrams_.size()) * threshold_));
+  size_t min_match_count = std::max(
+    static_cast<size_t>(std::ceil(static_cast<double>(ngrams_.size()) * threshold_)), (size_t)1);
 
   states_t query_states(rdr.size());
 

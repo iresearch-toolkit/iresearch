@@ -60,10 +60,10 @@ class IRESEARCH_API by_ngram_similarity : public filter {
 
   float_t threshold() const noexcept { return threshold_; }
 
-  by_ngram_similarity& threshold(float_t d) {
+  by_ngram_similarity& threshold(float_t d) noexcept {
     assert(d >= 0.);
     assert(d <= 1.);
-    threshold_ = d;
+    threshold_ = std::max(0.f, std::min(1.f, d));
     return *this;
   }
   
