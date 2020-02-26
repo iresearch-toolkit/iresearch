@@ -30,6 +30,189 @@
 
 NS_BEGIN(tests)
 
+// ----------------------------------------------------------------------------
+// --SECTION--                            by_ngram_similarity filter base tests
+// ----------------------------------------------------------------------------
+TEST(ngram_similarity_base_test, ctor) {
+  irs::by_ngram_similarity q;
+  ASSERT_EQ(irs::by_ngram_similarity::type(), q.type());
+  ASSERT_TRUE(q.empty());
+  ASSERT_EQ(0, q.size());
+  ASSERT_EQ(q.begin(), q.end());
+  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_DOUBLE_EQ(1., q.threshold());
+  ASSERT_EQ("", q.field());
+
+
+  auto& features = irs::by_ngram_similarity::features();
+  ASSERT_EQ(2, features.size());
+  ASSERT_TRUE(features.check<irs::frequency>());
+  ASSERT_TRUE(features.check<irs::position>());
+}
+
+TEST(ngram_similarity_base_test, push_back_insert_clear) {
+  irs::by_ngram_similarity q;
+
+  // push_back
+  {
+    q.push_back("1");
+    const std::string s2 = "2";
+    q.push_back(s2);
+    const irs::bstring s3 = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    q.push_back(s3);
+    ASSERT_FALSE(q.empty());
+    ASSERT_EQ(3, q.size());
+
+    // check elements via iterators
+    {
+      auto it = q.begin();
+      ASSERT_NE(q.end(), it);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("1")), *it);
+      ++it;
+      ASSERT_NE(q.end(), it);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("2")), *it);
+      ++it;
+      ASSERT_NE(q.end(), it);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("3")), *it);
+      ++it;
+      ASSERT_EQ(q.end(), it);
+    }
+  }
+
+  q.clear();
+  ASSERT_TRUE(q.empty());
+  ASSERT_EQ(0, q.size());
+  ASSERT_EQ(q.begin(), q.end());
+}
+
+TEST(ngram_similarity_base_test, boost) {
+  // no boost
+  {
+    // no terms no field
+    {
+      irs::by_ngram_similarity q;
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q;
+      q.field("field").push_back("1").push_back("2").threshold(0.5f);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q;
+      q.field("field").push_back("1").push_back("2").push_back("3").push_back("4").threshold(0.5f);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+  }
+
+  // with boost
+  {
+    iresearch::boost_t boost = 1.5f;
+
+    // no terms, return empty query
+    {
+      irs::by_ngram_similarity q;
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q;
+      q.field("field").push_back("1").push_back("2").threshold(0.5f);
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q;
+      q.field("field").push_back("1").push_back("2").push_back("3").push_back("4")
+        .threshold(0.5f).boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+  }
+}
+
+TEST(ngram_similarity_base_test, equal) {
+  ASSERT_EQ(irs::by_ngram_similarity(), irs::by_ngram_similarity());
+
+  {
+    irs::by_ngram_similarity q0;
+    q0.field("a");
+    q0.push_back("1");
+    q0.push_back("2");
+    q0.threshold(0.5);
+
+    irs::by_ngram_similarity q1;
+    q1.field("a");
+    q1.push_back("1");
+    q1.push_back("2");
+    q1.threshold(0.5);
+    ASSERT_EQ(q0, q1);
+
+    // different threshold
+    irs::by_ngram_similarity q2;
+    q2.field("a");
+    q2.push_back("1");
+    q2.push_back("2");
+    q2.threshold(0.25);
+    ASSERT_NE(q0, q2);
+
+    // different terms
+    irs::by_ngram_similarity q3;
+    q3.field("a");
+    q3.push_back("1");
+    q3.push_back("3");
+    q3.threshold(0.5);
+    ASSERT_NE(q0, q3);
+
+    // different terms count (less)
+    irs::by_ngram_similarity q4;
+    q4.field("a");
+    q4.push_back("1");
+    q4.threshold(0.5);
+    ASSERT_NE(q0, q4);
+
+    // different terms count (more)
+    irs::by_ngram_similarity q5;
+    q5.field("a");
+    q5.push_back("1");
+    q5.push_back("2");
+    q5.push_back("2");
+    q5.threshold(0.5);
+    ASSERT_NE(q0, q5);
+
+    //different field
+    irs::by_ngram_similarity q6;
+    q6.field("b");
+    q6.push_back("1");
+    q6.push_back("2");
+    q6.threshold(0.5);
+    ASSERT_NE(q0, q6);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                         by_ngram_similarity filter matcher tests
+// ----------------------------------------------------------------------------
 class ngram_similarity_filter_test_case : public tests::filter_test_case_base {
 };
 
@@ -343,7 +526,7 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.1).field("field").push_back("ee")
+  filter.threshold(0.1f).field("field").push_back("ee")
     .push_back("we").push_back("qq").push_back("rr")
     .push_back("ff").push_back("never_match");
 
@@ -397,7 +580,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.1).field("field").push_back("ee")
+  filter.threshold(0.1f).field("field").push_back("ee")
     .push_back("ss").push_back("qq").push_back("rr")
     .push_back("ff").push_back("never_match");
 
@@ -465,7 +648,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
 
@@ -499,7 +682,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.33).field("field").push_back("at")
+  filter.threshold(0.33f).field("field").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll").push_back("never_match");
 
@@ -534,7 +717,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.333).field("field").push_back("at")
+  filter.threshold(0.333f).field("field").push_back("at")
     .push_back("never_match").push_back("la").push_back("as")
     .push_back("ll");
 
@@ -569,7 +752,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("at")
     .push_back("never_match").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
@@ -604,7 +787,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.28).field("field").push_back("at")
+  filter.threshold(0.28f).field("field").push_back("at")
     .push_back("never_match").push_back("tl").push_back("never_match2").push_back("la").push_back("as")
     .push_back("ll");
 
@@ -649,7 +832,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll").push_back("never_match");
 
@@ -718,7 +901,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
 
@@ -788,7 +971,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   auto rdr = open_reader();
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
   docs_t expected{ 11, 12, 8, 13, 5, 1, 2};
@@ -808,7 +991,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
   docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
@@ -829,7 +1012,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
   docs_t expected{13, 11, 12, 2, 1, 8, 5};
@@ -850,7 +1033,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("never_match").push_back("at")
+  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
     .push_back("tl").push_back("la").push_back("as")
     .push_back("ll");
   docs_t expected{ 13, 11, 12, 2, 1, 8, 5};
@@ -874,3 +1057,7 @@ INSTANTIATE_TEST_CASE_P(
     tests::to_string);
 
 NS_END // tests
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

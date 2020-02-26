@@ -58,7 +58,7 @@ class IRESEARCH_API by_ngram_similarity : public filter {
 
   virtual size_t hash() const noexcept override;
 
-  double threshold() const noexcept { return threshold_; }
+  float_t threshold() const noexcept { return threshold_; }
 
   by_ngram_similarity& threshold(float_t d) {
     assert(d >= 0.);
