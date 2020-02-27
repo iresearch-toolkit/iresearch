@@ -450,13 +450,14 @@ the first whitespace is ignored), in the directory corresponding to its language
 ## Query filter building blocks
 | Filter    |       Description    |          
 |-----------|----------------------|
+|iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
 |iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
 |iresearch::by_prefix|for filtering of exact value prefixes
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
-|iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
+|iresearch::by_wildcard|for filtering of values based on matching pattern
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters
