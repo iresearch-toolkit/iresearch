@@ -125,7 +125,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
  private:
-
   struct search_state {
     search_state(size_t p, const score* s) : parent{nullptr}, scr{s}, pos{p}, len(1) {}
     search_state(search_state&&) = default;
