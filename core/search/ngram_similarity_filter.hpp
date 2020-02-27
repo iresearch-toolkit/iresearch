@@ -67,7 +67,7 @@ class IRESEARCH_API by_ngram_similarity : public filter {
     return *this;
   }
   
-  by_ngram_similarity& field(std::string fld) {
+  by_ngram_similarity& field(std::string fld) noexcept {
     fld_ = std::move(fld); 
     return *this;
   }
