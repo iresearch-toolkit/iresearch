@@ -382,10 +382,10 @@ TEST(levenshtein_utils_test, test_description_1) {
         { irs::ref_cast<irs::byte_type>("b"_sr), 1, 1 },
         // 2-byte sequence
         { irs::ref_cast<irs::byte_type>("\xD1\x83"_sr), 0, 0 },
-        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1\x83"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1\x83"_sr), 1, 1 },
         // incomplete 2-byte utf8 char - treat symbol as non-existent
         { irs::ref_cast<irs::byte_type>("\xD1"_sr), 1, 1 },
-        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1"_sr), 0, 0 },
         // 3-byte sequence
         { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"_sr), 2, 2 },

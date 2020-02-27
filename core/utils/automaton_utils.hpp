@@ -143,7 +143,7 @@ class utf8_transitions_builder {
               automaton::StateId from,
               automaton::StateId rho_state,
               Iterator begin, Iterator end) {
-    // we propagate weight from 'from' node to all intermediate states
+    // we inherit weight from 'from' node to all intermediate states
     // that were created by transitions builder
     weight_ = a.Final(from);
     last_ = bytes_ref::EMPTY;
@@ -299,7 +299,7 @@ class utf8_transitions_builder {
   class state_emplace {
    public:
     explicit state_emplace(const automaton::Weight& weight) noexcept
-      : weight(&weight) {
+      : weight_(&weight) {
     }
 
     automaton::StateId operator()(const state& s, automaton& fst) const {
@@ -307,7 +307,7 @@ class utf8_transitions_builder {
 
       if (id == fst::kNoStateId) {
         id = fst.AddState();
-        fst.SetFinal(*weight);
+        fst.SetFinal(id, *weight_);
       }
 
       for (const auto& a : s.arcs) {
@@ -322,7 +322,7 @@ class utf8_transitions_builder {
     }
 
    private:
-    const automaton::Weight* weight;
+    const automaton::Weight* weight_;
   }; // state_emplace
 
   using automaton_states_map = fst_states_map<
