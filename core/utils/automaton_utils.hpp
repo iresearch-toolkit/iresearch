@@ -188,12 +188,12 @@ class utf8_transitions_builder {
         label(rhs.label) {
     }
 
-    bool operator==(const automaton::Arc& rhs) const {
+    bool operator==(const automaton::Arc& rhs) const noexcept {
       return label == rhs.ilabel
         && id == rhs.nextstate;
     }
 
-    bool operator!=(const automaton::Arc& rhs) const {
+    bool operator!=(const automaton::Arc& rhs) const noexcept {
       return !(*this == rhs);
     }
 

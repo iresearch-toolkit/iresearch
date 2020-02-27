@@ -592,8 +592,14 @@ automaton make_levenshtein_automaton(
 
   automaton a;
   a.ReserveStates(transitions.size());
-  const auto invalid_state = a.AddState(); // state without outbound transitions
-  a.SetStart(a.AddState());                // initial state
+
+  // terminal state without outbound transitions
+  const auto invalid_state = a.AddState();
+  assert(INVALID_STATE == invalid_state);
+  UNUSED(invalid_state);
+
+  // initial state
+  a.SetStart(a.AddState());
 
   // check if start state is final
   const auto distance = description.distance(1, utf8_size);
@@ -627,7 +633,7 @@ automaton make_levenshtein_automaton(
       auto& to = transitions[transition.first*num_offsets + offset];
 
       if (INVALID_STATE == transition.first) {
-        to = invalid_state;
+        to = INVALID_STATE;
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
@@ -644,19 +650,17 @@ automaton make_levenshtein_automaton(
       if (chi && to != default_state) {
         arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
         ascii &= (entry.size == 1);
-      } else if (fst::kNoStateId == default_state) {
+      } else {
+        assert(fst::kNoStateId == default_state || to == default_state);
         default_state = to;
-        ascii = false;
       }
     }
 
-    if (arcs.empty() && default_state == INVALID_STATE) {
+    if (INVALID_STATE == default_state && arcs.empty()) {
       // optimization for invalid terminal state
       a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
-    } else if (ascii) {
-      assert(fst::kNoStateId == default_state);
-
-      // optimization for ascii only input without default state
+    } else if (INVALID_STATE == default_state && ascii && !a.Final(state.from)) {
+      // optimization for ascii only input without default state and weight
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
         a.EmplaceArc(state.from, arc.first.front(), arc.second);
@@ -675,7 +679,7 @@ automaton make_levenshtein_automaton(
   assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
 
   // ensure invalid state has no outbound transitions
-  assert(0 == a.NumArcs(invalid_state));
+  assert(0 == a.NumArcs(INVALID_STATE));
 #endif
 
   return a;

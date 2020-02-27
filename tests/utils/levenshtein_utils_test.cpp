@@ -205,6 +205,9 @@ TEST(levenshtein_utils_test, test_description_0) {
         { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 1, 2 },
         { irs::ref_cast<irs::byte_type>("alphazez"_sr),  1, 2 },
         { irs::ref_cast<irs::byte_type>("lphazez"_sr),   1, 3 },
+        { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 1, 2 },
+        { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"_sr), 1, 2 },
       }
     );
   }
@@ -731,7 +734,7 @@ TEST(levenshtein_utils_test, test_description_2) {
         { irs::ref_cast<irs::byte_type>("lphazez"_sr),   3, 3 },
         { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 2, 2 },
-        { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"_sr), 2, 2 },
       }
     );
 
