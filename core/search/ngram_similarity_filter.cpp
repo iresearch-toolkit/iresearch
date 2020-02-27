@@ -310,8 +310,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           ++i;
         }
       } else {
-        assert(longest_ptr != nullptr);
-        assert(longest_ptr->len == longest_sequence_len);
         freq = 1;
       }
       seq_freq_.value = freq;
