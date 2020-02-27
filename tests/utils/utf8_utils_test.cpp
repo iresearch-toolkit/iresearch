@@ -65,8 +65,23 @@ TEST(utf8_utils_test, test) {
     }
 
     {
+      auto expected_begin = expected.begin();
+      for (auto begin = str.begin(), end = str.end(); begin != end; ++expected_begin) {
+        const auto cp = irs::utf8_utils::next_checked(begin, end);
+        ASSERT_EQ(*expected_begin, cp);
+      }
+      ASSERT_EQ(expected.end(), expected_begin);
+    }
+
+    {
       std::vector<uint32_t> actual;
       irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      ASSERT_EQ(expected, actual);
+    }
+
+    {
+      std::vector<uint32_t> actual;
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -104,15 +119,29 @@ TEST(utf8_utils_test, test) {
     }
 
     {
+      auto expected_begin = expected.begin();
+      for (auto begin = str.begin(), end = str.end(); begin != end; ++expected_begin) {
+        const auto cp = irs::utf8_utils::next_checked(begin, end);
+        ASSERT_EQ(*expected_begin, cp);
+      }
+      ASSERT_EQ(expected.end(), expected_begin);
+    }
+
+    {
       std::vector<uint32_t> actual;
       irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      ASSERT_EQ(expected, actual);
+    }
+
+    {
+      std::vector<uint32_t> actual;
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
 
   // 3-bytes sequence
   {
-    const irs::byte_type invalid = 0;
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xE2\x9D\xA4"));
     const std::vector<uint32_t> expected = {
       0x2796, // heavy minus sign
@@ -147,8 +176,23 @@ TEST(utf8_utils_test, test) {
     }
 
     {
+      auto expected_begin = expected.begin();
+      for (auto begin = str.begin(), end = str.end(); begin != end; ++expected_begin) {
+        const auto cp = irs::utf8_utils::next_checked(begin, end);
+        ASSERT_EQ(*expected_begin, cp);
+      }
+      ASSERT_EQ(expected.end(), expected_begin);
+    }
+
+    {
       std::vector<uint32_t> actual;
       irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      ASSERT_EQ(expected, actual);
+    }
+
+    {
+      std::vector<uint32_t> actual;
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -189,8 +233,23 @@ TEST(utf8_utils_test, test) {
     }
 
     {
+      auto expected_begin = expected.begin();
+      for (auto begin = str.begin(), end = str.end(); begin != end; ++expected_begin) {
+        const auto cp = irs::utf8_utils::next_checked(begin, end);
+        ASSERT_EQ(*expected_begin, cp);
+      }
+      ASSERT_EQ(expected.end(), expected_begin);
+    }
+
+    {
       std::vector<uint32_t> actual;
       irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      ASSERT_EQ(expected, actual);
+    }
+
+    {
+      std::vector<uint32_t> actual;
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }

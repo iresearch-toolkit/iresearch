@@ -119,7 +119,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.ReserveArcs(from, 256);
 
   // in presence of default state we have to add some extra
-  // transitions from root to properly handle multi-bytes sequences
+  // transitions from root to properly handle multi-byte sequences
   // and preserve correctness of arcs order
 
   auto add_rho_arc = [&a, from, this](automaton::Arc::Label label) {
@@ -149,7 +149,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     add_rho_arc(min);
   }
 
-  // connect intermediate states of default multi-bytes UTF8 sequence
+  // connect intermediate states of default multi-byte UTF8 sequence
 
   a.EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
   a.EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);

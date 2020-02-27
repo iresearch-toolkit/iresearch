@@ -56,15 +56,30 @@ void assert_description(
                  " , Precise distance: " << expected_distance_precise);
 
     std::vector<uint32_t> utf8_target, utf8_candidate;
-    irs::utf8_utils::utf8_to_utf32(target, std::back_inserter(utf8_target));
-    irs::utf8_utils::utf8_to_utf32(candidate, std::back_inserter(utf8_candidate));
+    irs::utf8_utils::utf8_to_utf32_checked(target, std::back_inserter(utf8_target));
+    irs::utf8_utils::utf8_to_utf32_checked(candidate, std::back_inserter(utf8_candidate));
     const irs::basic_string_ref<uint32_t> utf8_target_ref(utf8_target.data(), utf8_target.size());
     const irs::basic_string_ref<uint32_t> utf8_candidate_ref(utf8_candidate.data(), utf8_candidate.size());
 
     ASSERT_EQ(expected_distance_precise, irs::edit_distance(utf8_candidate_ref, utf8_target_ref));
     ASSERT_EQ(expected_distance_precise, irs::edit_distance(utf8_target_ref, utf8_candidate_ref));
-    ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
-    ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
+
+    {
+      size_t actual_distance;
+      if (irs::edit_distance(actual_distance, description, candidate, target)) {
+        ASSERT_EQ(expected_distance, actual_distance);
+        ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
+      }
+    }
+
+    {
+      size_t actual_distance;
+      if (irs::edit_distance(actual_distance, description, target, candidate)) {
+        ASSERT_EQ(expected_distance, actual_distance);
+        ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
+      }
+    }
+
     const auto state = irs::accept(a, candidate);
     ASSERT_EQ(expected_distance <= description.max_distance(), bool(state));
     if (state) {
@@ -329,8 +344,64 @@ TEST(levenshtein_utils_test, test_description_1) {
       irs::ref_cast<irs::byte_type>("a"_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1 },
-        // incomplete utf8 sequence - treat symbol as non-existent
+        // 1-byte sequence
+        { irs::ref_cast<irs::byte_type>("a"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("b"_sr), 1, 1 },
+        // 2-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xD1\x83"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1\x83"_sr), 2, 2 },
+        // incomplete 2-byte utf8 char - treat symbol as non-existent
         { irs::ref_cast<irs::byte_type>("\xD1"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1"_sr), 1, 1 },
+        // 3-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"_sr), 2, 2 },
+        // incomplete 3-byte utf8 char - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"_sr), 1, 1 },
+        // 4-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"_sr), 2, 2 },
+        // incomplete 4-byte utf8 char - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"_sr), 1, 1 },
+      }
+    );
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x83"_sr),
+      {
+        { irs::bytes_ref::EMPTY, 1, 1 },
+        // 1-byte sequence
+        { irs::ref_cast<irs::byte_type>("a"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("b"_sr), 1, 1 },
+        // 2-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xD1\x83"_sr), 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1\x83"_sr), 2, 2 },
+        // incomplete 2-byte utf8 char - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xD1"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x83\xD1"_sr), 1, 1 },
+        // 3-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"_sr), 2, 2 },
+        // incomplete 3-byte utf8 char - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"_sr), 1, 1 },
+        // 4-byte sequence
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"_sr), 2, 2 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"_sr), 2, 2 },
+        // incomplete 4-byte utf8 char - treat symbol as non-existent
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"_sr), 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"_sr), 1, 1 },
       }
     );
 

@@ -712,4 +712,45 @@ size_t edit_distance(const parametric_description& description,
   return description.distance(state, lhs_chars.size() - offset);
 }
 
+bool edit_distance(
+    size_t& distance,
+    const parametric_description& description,
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size) {
+  assert(description);
+
+  memory::arena<uint32_t, 16> arena;
+  memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
+  if (!utf8_utils::utf8_to_utf32_checked(lhs, lhs_size, std::back_inserter(lhs_chars))) {
+    return false;
+  }
+
+  size_t state = 1;  // current parametric state
+  size_t offset = 0; // current offset
+
+  for (auto* rhs_end = rhs + rhs_size; rhs < rhs_end; ) {
+    const auto c = utf8_utils::next_checked(rhs, rhs_end);
+
+    if (utf8_utils::INVALID_CODE_POINT == c) {
+      return false;
+    }
+
+    const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
+    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto chi = ::chi(begin, end, c);
+    const auto& transition = description.transition(state, chi);
+
+    if (INVALID_STATE == transition.first) {
+      distance = description.max_distance() + 1;
+      return true;
+    }
+
+    state = transition.first;
+    offset += transition.second;
+  }
+
+  distance = description.distance(state, lhs_chars.size() - offset);
+  return true;
+}
+
 NS_END

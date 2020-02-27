@@ -279,6 +279,47 @@ inline size_t edit_distance(
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words up to
+///        specified in description.max_distance.
+/// @param evaluated edit distance
+/// @param description parametric description
+/// @param lhs string to compare (utf8 encoded)
+/// @param lhs_size size of the string to comprare
+/// @param rhs string to compare (utf8 encoded)
+/// @param rhs_size size of the string to comprare
+/// @returns true if both lhs_string and rhs_strign are valid UTF-8 sequences,
+///          false - otherwise
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API bool edit_distance(
+  size_t& distance,
+  const parametric_description& description,
+  const byte_type* lhs, size_t lhs_size,
+  const byte_type* rhs, size_t rhs_size);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evaluates edit distance between the specified words up to
+///        specified in description.max_distance
+/// @param description parametric description
+/// @param lhs string to compare (utf8 encoded)
+/// @param rhs string to compare (utf8 encoded)
+/// @returns true if both lhs_string and rhs_strign are valid UTF-8 sequences,
+///          false - otherwise
+/// @note accepts only valid descriptions, calling function with
+///       invalid description is undefined behaviour
+////////////////////////////////////////////////////////////////////////////////
+inline bool edit_distance(
+    size_t& distance,
+    const parametric_description& description,
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) {
+  return edit_distance(distance, description,
+                       lhs.begin(), lhs.size(),
+                       rhs.begin(), rhs.size());
+}
+
 NS_END
 
 #endif // IRESEARCH_LEVENSHTEIN_UTILS_H
