@@ -238,8 +238,9 @@ IRESEARCH_API parametric_description read(data_input& in);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates DFA based on provided parametric description and target
 /// @param description parametric description
-/// @param target actual "string" (utf8 encoded)
+/// @param target valid UTF-8 encoded string
 /// @returns DFA
+/// @note if 'target' isn't a valid UTF-8 sequence, behaviour is undefined
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton make_levenshtein_automaton(
   const parametric_description& description,
