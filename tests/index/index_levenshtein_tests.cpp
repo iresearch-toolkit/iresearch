@@ -50,10 +50,14 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
         while (expected_terms->next()) {
           auto& expected_term = expected_terms->value();
+
           auto edit_distance = irs::edit_distance(expected_term, target);
           if (edit_distance > description.max_distance()) {
             continue;
           }
+
+          SCOPED_TRACE(testing::Message("Expected term: '")
+            << irs::ref_cast<char>(expected_term));
 
           ASSERT_TRUE(actual_terms->next());
           auto& actual_term = actual_terms->value();
