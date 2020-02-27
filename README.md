@@ -456,6 +456,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
+|iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters
