@@ -452,6 +452,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |-----------|----------------------|
 |iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
 |iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
+|iresearch::by_ngram_similarity|for filtering of values based on NGram model
 |iresearch::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
 |iresearch::by_prefix|for filtering of exact value prefixes
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
