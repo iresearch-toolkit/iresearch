@@ -577,7 +577,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 - Apple Clang: 9
 
 ## License
-Copyright (c) 2017-2019 ArangoDB GmbH
+Copyright (c) 2017-2020 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

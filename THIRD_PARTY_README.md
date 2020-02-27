@@ -2,7 +2,7 @@ IResearch search engine
 
 Third Party Software Read Me
 
-Copyright© 2017 ArangoDB GmbH. All rights reserved.
+Copyright© 2017-2020 ArangoDB GmbH. All rights reserved.
 Published October, 2017
 
 Copyright© 2016-2017 EMC Corporation. All rights reserved.
@@ -73,10 +73,6 @@ number of components produced by third parties
     - Copyright: Daniel Lemire
     - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
     - How it's used: compression library
-12. Title: utfcpp
-    - Copyright: Nemanja Trifunovic
-    - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
-    - How it's used: For operating UTF-8 strings in unit tests
 
 ## Third Party Open Source Software licenses
 
