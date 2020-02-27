@@ -243,7 +243,7 @@ struct custom_sort: public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
-  std::pair<irs::score_ctx_ptr, irs::score_f>(*prepare_scorer)(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&){};
+  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
