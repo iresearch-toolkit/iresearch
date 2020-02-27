@@ -153,10 +153,10 @@ class utf8_transitions_builder {
     assert(!states_.empty());
     states_.front().id = from;
 
-    // create intermediate default states if necessary
     std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
 
     if (fst::kNoStateId != rho_state) {
+      // create intermediate default states if necessary
       a.SetFinal(rho_states_[1] = a.AddState(), weight_);
       a.SetFinal(rho_states_[2] = a.AddState(), weight_);
       a.SetFinal(rho_states_[3] = a.AddState(), weight_);
