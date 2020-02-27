@@ -249,7 +249,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     if (longest_sequence_len >= min_match_count_  && !empty_order_) {
       uint32_t freq = 0;
       size_t count_longest{ 0 };
-      search_state* longest_ptr{ nullptr };
       // try to optimize case with one longest candidate
       // performance profiling shows it is majority of cases
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end; ++i) {
@@ -258,7 +257,6 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
           if (count_longest > 1) {
             break;
           }
-          longest_ptr = i->second.get();
         }
       }
 
