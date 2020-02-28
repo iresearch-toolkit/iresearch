@@ -58,6 +58,20 @@ FORCE_INLINE const byte_type* next(const byte_type* begin, const byte_type* end)
   return begin > end ? end : begin;
 }
 
+inline size_t cp_length(const uint32_t cp_start) noexcept {
+  if (cp_start < 0x80) {
+    return 1;
+  } else if ((cp_start >> 5) == 0x06) {
+    return 2;
+  } else if ((cp_start >> 4) == 0x0E) {
+    return 3;
+  } else if ((cp_start >> 3) == 0x1E) {
+    return 4;
+  }
+
+  return 0;
+}
+
 inline uint32_t next_checked(const byte_type*& begin, const byte_type* end) noexcept {
   IRS_ASSERT(begin);
   IRS_ASSERT(end);

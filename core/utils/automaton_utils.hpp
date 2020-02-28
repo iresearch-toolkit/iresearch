@@ -365,6 +365,18 @@ class utf8_transitions_builder {
   bytes_ref last_;
 }; // utf8_automaton_builder
 
+void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to,
+  const byte_type* begin,
+  const byte_type* end);
+
+void utf8_emplace_rho_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const string_ref& field,
   const automaton& acceptor,
