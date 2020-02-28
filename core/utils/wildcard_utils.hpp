@@ -124,6 +124,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   }
 
   if (match_all_state != fst::kNoLabel) {
+    a.DeleteArcs(to);
     a.EmplaceArc(to, fst::fsa::kRho, to);
   }
 
