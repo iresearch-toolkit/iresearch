@@ -554,6 +554,17 @@ TEST(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
+    auto a = irs::from_wildcard<char>("a%b%d");
+    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+  }
+
+  // mixed
+  {
     auto a = irs::from_wildcard<char>("%_");
     ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
     ASSERT_FALSE(irs::accept<char>(a, ""));

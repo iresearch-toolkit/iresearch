@@ -57,28 +57,33 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
 
   automaton::StateId match_all_state = fst::kNoStateId;
   bool escaped = false;
-  auto appendChar = [&match_all_state, &escaped, &a, &to, &from](Char c) {
+  auto appendChar = [&expr, &match_all_state, &escaped, &a, &to, &from](Char c, bool is_last) {
     to = a.AddState();
     a.EmplaceArc(from, c, to);
     from = to;
     escaped = false;
     if (match_all_state != fst::kNoStateId) {
-      auto state = a.AddState();
-      a.ReserveArcs(state, 2);
-      a.EmplaceArc(match_all_state, fst::fsa::kRho, state);
-      a.EmplaceArc(state, fst::fsa::kRho, state);
-      a.EmplaceArc(state, c, to);
       a.EmplaceArc(to, c, to);
-      a.EmplaceArc(to, fst::fsa::kRho, state);
+      if (is_last) {
+        a.EmplaceArc(to, fst::fsa::kRho, match_all_state);
+      }
+      a.EmplaceArc(match_all_state, fst::fsa::kRho, match_all_state);
       match_all_state = fst::kNoStateId;
     }
   };
 
-  for (const auto c : expr) {
+  const auto* begin = expr.begin();
+  const auto* end = expr.end();
+  const auto* back = expr.end() - 1;
+
+  for (; begin < end; ++begin) {
+    const auto c = *begin;
+    const auto is_last = (begin == back);
+
     switch (c) {
       case Traits::MATCH_ANY_STRING: {
         if (escaped) {
-          appendChar(c);
+          appendChar(c, is_last);
         } else {
           match_all_state = from;
         }
@@ -86,7 +91,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
       }
       case Traits::MATCH_ANY_CHAR: {
         if (escaped) {
-          appendChar(c);
+          appendChar(c, is_last);
         } else {
           to = a.AddState();
           a.EmplaceArc(from, fst::fsa::kRho, to);
@@ -95,14 +100,14 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
       } break;
       case Traits::ESCAPE: {
        if (escaped) {
-         appendChar(c);
+         appendChar(c, is_last);
        } else {
          escaped = !escaped;
        }
        break;
       }
       default: {
-        appendChar(c);
+        appendChar(c, is_last);
         break;
       }
     }
@@ -110,7 +115,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
 
   // non-terminated escape sequence
   if (escaped) {
-    appendChar(Traits::ESCAPE);
+    appendChar(Traits::ESCAPE, true);
   }
 
   if (match_all_state != fst::kNoLabel) {
@@ -119,12 +124,16 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
 
   a.SetFinal(to);
 
-  fst::ArcSort(&a, fst::ILabelCompare<fst::fsa::Transition>());
+#ifdef IRESEARCH_DEBUG
+  // ensure resulting automaton is sorted and deterministic
+  static constexpr auto EXPECTED_PROPERTIES =
+    fst::kIDeterministic | fst::kODeterministic |
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kAcceptor;
+  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
+#endif
 
-  automaton res;
-  fst::Determinize(a, &res);
-
-  return res;
+  return a;
 }
 
 NS_END
