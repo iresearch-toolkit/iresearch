@@ -616,6 +616,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   }
 }
 
+#ifndef IRESEARCH_DLL
 // -----------------------------------------------------------------------------
 // --SECTION--                                     utf8_transitions_builder_test
 // -----------------------------------------------------------------------------
@@ -1107,4 +1108,6 @@ TEST_F(utf8_transitions_builder_test, multi_bytes_sequence) {
     assert_automaton(a, expected_automaton);
   }
 }
+
+#endif
 

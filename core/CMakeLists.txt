@@ -593,6 +593,7 @@ if(MSVC)
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_STATIC}
   )
 endif()
 
