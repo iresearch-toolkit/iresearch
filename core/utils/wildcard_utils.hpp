@@ -49,7 +49,6 @@ template<
   typename = typename std::enable_if<Traits::MATCH_ANY_CHAR != Traits::MATCH_ANY_STRING>::type>
 automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   automaton a;
-  a.ReserveStates(expr.size() + 1);
 
   automaton::StateId from = a.AddState();
   automaton::StateId to = from;
