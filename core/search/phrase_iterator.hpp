@@ -204,7 +204,7 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
       // lead->reset(); // Do not need here. There is the first time always.
       lead->next();
 
-      position::value_t base_offset = 0;
+      position::value_t base_offset = pos_limits::eof();
       while (!pos_limits::eof(base_offset = lead->value())) {
         auto match = true;
         for (auto it = pos_.begin() + 1; it != end; ++it) {
