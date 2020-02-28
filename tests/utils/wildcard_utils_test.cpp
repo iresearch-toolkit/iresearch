@@ -29,12 +29,26 @@
 // --SECTION--                                           wildcard_automaton_test
 // -----------------------------------------------------------------------------
 
-TEST(wildcard_automaton_test, match_wildcard) {
+class wildcard_automaton_test : public test_base {
+ protected:
+  static void assert_properties(const irs::automaton& a) {
+    constexpr auto EXPECTED_PROPERTIES =
+      fst::kILabelSorted | fst::kOLabelSorted |
+      fst::kIDeterministic | fst::kODeterministic |
+      fst::kAcceptor | fst::kUnweighted;
+
+    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
+  }
+};
+
+TEST_F(wildcard_automaton_test, match_wildcard) {
   // check automaton structure
   {
     auto lhs = irs::from_wildcard<char>("%b%");
     auto rhs = irs::from_wildcard<char>("%b%%%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+    assert_properties(lhs);
+    assert_properties(rhs);
 
     for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
       ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
@@ -46,6 +60,8 @@ TEST(wildcard_automaton_test, match_wildcard) {
     auto lhs = irs::from_wildcard<char>("b%%%%%s");
     auto rhs = irs::from_wildcard<char>("b%%%s");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+    assert_properties(lhs);
+    assert_properties(rhs);
 
     for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
       ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
@@ -57,6 +73,8 @@ TEST(wildcard_automaton_test, match_wildcard) {
     auto lhs = irs::from_wildcard<char>("b%%__%%%s%");
     auto rhs = irs::from_wildcard<char>("b%%%%%%%__%%%%%%%%s%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+    assert_properties(lhs);
+    assert_properties(rhs);
 
     for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
       ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
@@ -66,7 +84,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // nil string
   {
     auto a = irs::from_wildcard<char>(irs::string_ref::NIL);
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
@@ -75,7 +93,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // empty string
   {
     auto a = irs::from_wildcard<char>(irs::string_ref::EMPTY);
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
@@ -84,7 +102,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // any or empty string
   {
     auto a = irs::from_wildcard<char>("%");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -94,8 +112,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // any or empty string
   {
     auto a = irs::from_wildcard<char>("%%");
-
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -108,7 +125,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // any char
   {
     auto a = irs::from_wildcard<char>("_");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -118,7 +135,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // two any chars
   {
     auto a = irs::from_wildcard<char>("__");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
@@ -131,7 +148,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // any char (suffix)
   {
     auto a = irs::from_wildcard<char>("a_");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a_"));
@@ -142,7 +159,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // any char (prefix)
   {
     auto a = irs::from_wildcard<char>("_a");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "_a"));
@@ -153,7 +170,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // escaped '_'
   {
     auto a = irs::from_wildcard<char>("\\_a");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "_a"));
@@ -164,7 +181,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // escaped '\'
   {
     auto a = irs::from_wildcard<char>("\\\\\\_a");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "\\_a"));
@@ -175,7 +192,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // nonterminated '\'
   {
     auto a = irs::from_wildcard<char>("a\\");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a\\"));
@@ -186,7 +203,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // escaped '%'
   {
     auto a = irs::from_wildcard<char>("\\\\\\%a");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "\\%a"));
@@ -197,7 +214,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // prefix
   {
     auto a = irs::from_wildcard<char>("foo%");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "foo"));
@@ -209,8 +226,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // prefix
   {
     auto a = irs::from_wildcard<char>("v%%");
-
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "vcc"));
@@ -222,7 +238,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // suffix
   {
     auto a = irs::from_wildcard<char>("%foo");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "foo"));
@@ -234,7 +250,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("a%bce_d");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
@@ -245,7 +261,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("a%b%d");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
@@ -256,7 +272,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("%_");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -269,7 +285,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("%_d");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "ad"));
@@ -282,7 +298,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("%%_");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -295,7 +311,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("_%");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "a"));
@@ -308,7 +324,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("v%%c");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "vcc"));
@@ -320,7 +336,7 @@ TEST(wildcard_automaton_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard<char>("v%c");
-    ASSERT_EQ(fst::kAcceptor | fst::kUnweighted, a.Properties(fst::kAcceptor | fst::kUnweighted, true));
+    assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<char>(a, "vcc"));

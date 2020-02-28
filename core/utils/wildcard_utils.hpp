@@ -101,14 +101,15 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
             match_all_state = to;
           }
         }
-      } break;
+        break;
+      }
       case Traits::ESCAPE: {
-       if (escaped) {
-         appendChar(c, is_last);
-       } else {
-         escaped = !escaped;
-       }
-       break;
+        if (escaped) {
+          appendChar(c, is_last);
+        } else {
+          escaped = !escaped;
+        }
+        break;
       }
       default: {
         appendChar(c, is_last);
