@@ -122,12 +122,12 @@ class IRESEARCH_API by_phrase : public filter {
 
   by_phrase();
 
-  by_phrase& field(std::string fld) {
+  by_phrase& field(std::string fld) noexcept {
     fld_ = std::move(fld);
     return *this;
   }
 
-  const std::string& field() const { return fld_; }
+  const std::string& field() const noexcept { return fld_; }
 
   // inserts term to the specified position
   template<typename T, typename = typename std::enable_if<!std::is_same<T, info_t::select_term>::value>::type>
@@ -180,7 +180,7 @@ class IRESEARCH_API by_phrase : public filter {
     return *this;
   }
 
-  // inserts term to the end of the phrase with 
+  // inserts term to the end of the phrase with
   // the specified offset from the last term
   template<typename T, typename = typename std::enable_if<!std::is_same<T, info_t::select_term>::value>::type>
   by_phrase& push_back(const T& t, const bytes_ref& term, size_t offs = 0) {
@@ -214,14 +214,14 @@ class IRESEARCH_API by_phrase : public filter {
     return phrase_.at(pos); 
   }
 
-  bool empty() const { return phrase_.empty(); }
-  size_t size() const { return phrase_.size(); }
+  bool empty() const noexcept { return phrase_.empty(); }
+  size_t size() const noexcept { return phrase_.size(); }
 
-  const_iterator begin() const { return phrase_.begin(); }
-  const_iterator end() const { return phrase_.end(); }
+  const_iterator begin() const noexcept { return phrase_.begin(); }
+  const_iterator end() const noexcept { return phrase_.end(); }
 
-  iterator begin() { return phrase_.begin(); }
-  iterator end() { return phrase_.end(); }
+  iterator begin() noexcept { return phrase_.begin(); }
+  iterator end() noexcept { return phrase_.end(); }
 
   using filter::prepare;
 
@@ -236,12 +236,12 @@ class IRESEARCH_API by_phrase : public filter {
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept override;
- 
+
  private:
   size_t next_pos() const {
     return phrase_.empty() ? 0 : 1 + phrase_.rbegin()->first;
   }
-  
+
   size_t first_pos() const {
     return phrase_.empty() ? 0 : phrase_.begin()->first;
   }

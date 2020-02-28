@@ -79,6 +79,9 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
                    field(), term(), scored_terms_limit());
   }
 
+
+  using by_prefix::scored_terms_limit;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
@@ -87,7 +90,7 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     return *this;
   }
 
-  using by_prefix::scored_terms_limit;
+  
 }; // by_wildcard
 
 #endif // IRESEARCH_WILDCARD_FILTER_H

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2019 ArangoDB GmbH, Cologne, Germany
@@ -24,44 +24,16 @@
 #define IRESEARCH_AUTOMATON_UTILS_H
 
 #include "automaton.hpp"
+#include "fst_states_map.hpp"
+#include "hash_utils.hpp"
+#include "utf8_utils.hpp"
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
 
 NS_ROOT
 
-inline automaton match_any_char() {
- automaton a;
- const auto start = a.AddState();
- const auto finish = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, fst::fsa::kRho, finish);
- a.SetFinal(finish);
-
- return a;
-}
-
-inline automaton match_any() {
- automaton a;
- const auto start = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, fst::fsa::kRho, start);
- a.SetFinal(start);
-
- return a;
-}
-
-inline automaton match_char(automaton::Arc::Label c) {
- automaton a;
- const auto start = a.AddState();
- a.SetStart(start);
- a.EmplaceArc(start, c, start);
- a.SetFinal(start);
-
- return a;
-}
-
 template<typename Char, typename Matcher>
-automaton::Weight accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, Matcher& matcher, const basic_string_ref<Char>& target) {
   auto state = a.Start();
   matcher.SetState(state);
 
@@ -78,10 +50,9 @@ automaton::Weight accept(const automaton& a, Matcher& matcher, const irs::basic_
 }
 
 template<typename Char>
-automaton::Weight accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
+automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
-  // FIXME optimize rho label lookup (just check last arc)
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
   return accept(a, matcher, target);
 }
@@ -98,7 +69,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return *value_;
   }
 
-  virtual doc_iterator::ptr postings(const irs::flags& features) const override {
+  virtual doc_iterator::ptr postings(const flags& features) const override {
     return it_->postings(features);
   }
 
@@ -152,6 +123,247 @@ class automaton_term_iterator final : public seek_term_iterator {
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
 }; // automaton_term_iterator
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class utf8_transitions_builder
+/// @brief helper class for building minimal acyclic binary automaton from
+///        a specified root, a default (rho) state and a set of arcs with
+///        UTF-8 encoded labels
+//////////////////////////////////////////////////////////////////////////////
+class utf8_transitions_builder {
+ public:
+  utf8_transitions_builder()
+    : states_map_(16, state_emplace(weight_)) {
+    // ensure we have enough space for utf8 sequence
+    add_states(utf8_utils::MAX_CODE_POINT_SIZE);
+  }
+
+  template<typename Iterator>
+  void insert(automaton& a,
+              automaton::StateId from,
+              automaton::StateId rho_state,
+              Iterator begin, Iterator end) {
+    // we inherit weight from 'from' node to all intermediate states
+    // that were created by transitions builder
+    weight_ = a.Final(from);
+    last_ = bytes_ref::EMPTY;
+    states_map_.reset();
+
+    // 'from' state is already a part of automaton
+    assert(!states_.empty());
+    states_.front().id = from;
+
+    std::fill(std::begin(rho_states_), std::end(rho_states_), rho_state);
+
+    if (fst::kNoStateId != rho_state) {
+      // create intermediate default states if necessary
+      a.SetFinal(rho_states_[1] = a.AddState(), weight_);
+      a.SetFinal(rho_states_[2] = a.AddState(), weight_);
+      a.SetFinal(rho_states_[3] = a.AddState(), weight_);
+    }
+
+    for (; begin != end; ++begin) {
+      // we expect sorted input
+      assert(last_ <= std::get<0>(*begin));
+
+      const auto& label = std::get<0>(*begin);
+      insert(a, label.c_str(), label.size(), std::get<1>(*begin));
+      last_ = label;
+    }
+
+    finish(a, from);
+  }
+
+ private:
+  struct state;
+
+  struct arc : private util::noncopyable {
+    arc(automaton::Arc::Label label, state* target)
+      : target(target),
+        label(label) {
+    }
+
+    arc(arc&& rhs) noexcept
+      : target(rhs.target),
+        label(rhs.label) {
+    }
+
+    bool operator==(const automaton::Arc& rhs) const noexcept {
+      return label == rhs.ilabel
+        && id == rhs.nextstate;
+    }
+
+    bool operator!=(const automaton::Arc& rhs) const noexcept {
+      return !(*this == rhs);
+    }
+
+    union {
+      state* target;
+      automaton::StateId id;
+    };
+    automaton::Arc::Label label;
+  }; // arc
+
+  struct state : private util::noncopyable {
+    state() = default;
+
+    state(state&& rhs) noexcept
+      : rho_id(rhs.rho_id),
+        id(rhs.id),
+        arcs(std::move(rhs.arcs)) {
+      rhs.rho_id = fst::kNoStateId;
+      rhs.id = fst::kNoStateId;
+    }
+
+    void clear() noexcept {
+      rho_id = fst::kNoStateId;
+      id = fst::kNoStateId;
+      arcs.clear();
+    }
+
+    automaton::StateId rho_id{fst::kNoStateId};
+    automaton::StateId id{fst::kNoStateId};
+    std::vector<arc> arcs;
+  }; // state
+
+  struct state_hash {
+    size_t operator()(const state& s, const automaton& fst) const noexcept {
+      if (fst::kNoStateId != s.id) {
+        return operator()(s.id, fst);
+      }
+
+      size_t hash = 0;
+
+      for (auto& arc: s.arcs) {
+        hash = hash_combine(hash, arc.label);
+        hash = hash_combine(hash, arc.id);
+      }
+
+      if (fst::kNoStateId != s.rho_id) {
+        hash = hash_combine(hash, fst::fsa::kRho);
+        hash = hash_combine(hash, s.rho_id);
+      }
+
+      return hash;
+    }
+
+    size_t operator()(automaton::StateId id, const automaton& fst) const noexcept {
+      fst::ArcIteratorData<automaton::Arc> arcs;
+      fst.InitArcIterator(id, &arcs);
+
+      const auto* begin = arcs.arcs;
+      const auto* end = arcs.arcs + arcs.narcs;
+
+      size_t hash = 0;
+      for (; begin != end; ++begin) {
+        hash = hash_combine(hash, begin->ilabel);
+        hash = hash_combine(hash, begin->nextstate);
+      }
+
+      return hash;
+    }
+  }; // state_hash
+
+  struct state_equal {
+    bool operator()(const state& lhs, automaton::StateId rhs, const automaton& fst) const noexcept {
+      if (lhs.id != fst::kNoStateId) {
+        // already a part of automaton
+        return lhs.id == rhs;
+      }
+
+      fst::ArcIteratorData<automaton::Arc> rarcs;
+      fst.InitArcIterator(rhs, &rarcs);
+
+      const bool has_rho = (fst::kNoStateId != lhs.rho_id);
+
+      if ((lhs.arcs.size() + size_t(has_rho)) != rarcs.narcs) {
+        return false;
+      }
+
+      const auto* rarc = rarcs.arcs;
+      for (const auto& larc : lhs.arcs) {
+        if (larc != *rarc) {
+          return false;
+        }
+        ++rarc;
+      }
+
+      if (has_rho && (rarc->ilabel != fst::fsa::kRho || rarc->nextstate != lhs.rho_id)) {
+        return false;
+      }
+
+      return true;
+    }
+  }; // state_equal
+
+  class state_emplace {
+   public:
+    explicit state_emplace(const automaton::Weight& weight) noexcept
+      : weight_(&weight) {
+    }
+
+    automaton::StateId operator()(const state& s, automaton& fst) const {
+      auto id = s.id;
+
+      if (id == fst::kNoStateId) {
+        id = fst.AddState();
+        fst.SetFinal(id, *weight_);
+      }
+
+      for (const auto& a : s.arcs) {
+        fst.EmplaceArc(id, a.label, a.id);
+      }
+
+      if (s.rho_id != fst::kNoStateId) {
+        fst.EmplaceArc(id, fst::fsa::kRho, s.rho_id);
+      }
+
+      return id;
+    }
+
+   private:
+    const automaton::Weight* weight_;
+  }; // state_emplace
+
+  using automaton_states_map = fst_states_map<
+    automaton, state,
+    state_emplace, state_hash,
+    state_equal, fst::kNoStateId>;
+
+  void add_states(size_t size) {
+    // reserve size + 1 for root state
+    if (states_.size() < ++size) {
+      states_.resize(size);
+    }
+  }
+
+  void minimize(automaton& a, size_t prefix) {
+    assert(prefix > 0);
+
+    for (size_t i = last_.size(); i >= prefix; --i) {
+      state& s = states_[i];
+      state& p = states_[i - 1];
+      assert(!p.arcs.empty());
+
+      p.arcs.back().id = states_map_.insert(s, a);
+
+      s.clear();
+    }
+  }
+
+  void insert(automaton& a,
+              const byte_type* label_data,
+              const size_t label_size,
+              automaton::StateId target);
+
+  void finish(automaton& a, automaton::StateId from);
+
+  automaton::Weight weight_;
+  automaton::StateId rho_states_[4];
+  std::vector<state> states_;
+  automaton_states_map states_map_;
+  bytes_ref last_;
+}; // utf8_automaton_builder
 
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const string_ref& field,

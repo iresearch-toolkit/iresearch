@@ -77,6 +77,9 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
                    max_distance_, provider_, with_transpositions_);
   }
 
+
+  using by_prefix::scored_terms_limit;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
@@ -85,7 +88,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     return *this;
   }
 
-  using by_prefix::scored_terms_limit;
+  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets maximum allowed edit distance
