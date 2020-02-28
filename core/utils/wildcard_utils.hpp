@@ -96,6 +96,10 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
           to = a.AddState();
           a.EmplaceArc(from, fst::fsa::kRho, to);
           from = to;
+
+          if (match_all_state != fst::kNoStateId) {
+            match_all_state = to;
+          }
         }
       } break;
       case Traits::ESCAPE: {
