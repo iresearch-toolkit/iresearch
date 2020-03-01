@@ -44,8 +44,8 @@ class wildcard_automaton_test : public test_base {
 TEST_F(wildcard_automaton_test, match_wildcard) {
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard<char>("%b%");
-    auto rhs = irs::from_wildcard<char>("%b%%%");
+    auto lhs = irs::from_wildcard("%b%");
+    auto rhs = irs::from_wildcard("%b%%%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -57,8 +57,8 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard<char>("b%%%%%s");
-    auto rhs = irs::from_wildcard<char>("b%%%s");
+    auto lhs = irs::from_wildcard("b%%%%%s");
+    auto rhs = irs::from_wildcard("b%%%s");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -70,8 +70,8 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard<char>("b%%__%%%s%");
-    auto rhs = irs::from_wildcard<char>("b%%%%%%%__%%%%%%%%s%");
+    auto lhs = irs::from_wildcard("b%%__%%%s%");
+    auto rhs = irs::from_wildcard("b%%%%%%%__%%%%%%%%s%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -83,7 +83,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // nil string
   {
-    auto a = irs::from_wildcard<char>(irs::string_ref::NIL);
+    auto a = irs::from_wildcard(irs::string_ref::NIL);
     assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -92,7 +92,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // empty string
   {
-    auto a = irs::from_wildcard<char>(irs::string_ref::EMPTY);
+    auto a = irs::from_wildcard(irs::string_ref::EMPTY);
     assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -101,7 +101,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // any or empty string
   {
-    auto a = irs::from_wildcard<char>("%");
+    auto a = irs::from_wildcard("%");
     assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -111,7 +111,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // any or empty string
   {
-    auto a = irs::from_wildcard<char>("%%");
+    auto a = irs::from_wildcard("%%");
     assert_properties(a);
     ASSERT_TRUE(irs::accept<char>(a, ""));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -124,7 +124,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // any char
   {
-    auto a = irs::from_wildcard<char>("_");
+    auto a = irs::from_wildcard("_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -134,7 +134,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // two any chars
   {
-    auto a = irs::from_wildcard<char>("__");
+    auto a = irs::from_wildcard("__");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -147,7 +147,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // any char (suffix)
   {
-    auto a = irs::from_wildcard<char>("a_");
+    auto a = irs::from_wildcard("a_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -158,7 +158,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // any char (prefix)
   {
-    auto a = irs::from_wildcard<char>("_a");
+    auto a = irs::from_wildcard("_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -169,7 +169,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // escaped '_'
   {
-    auto a = irs::from_wildcard<char>("\\_a");
+    auto a = irs::from_wildcard("\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -180,7 +180,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // escaped '\'
   {
-    auto a = irs::from_wildcard<char>("\\\\\\_a");
+    auto a = irs::from_wildcard("\\\\\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -191,7 +191,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // nonterminated '\'
   {
-    auto a = irs::from_wildcard<char>("a\\");
+    auto a = irs::from_wildcard("a\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -202,7 +202,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // escaped '%'
   {
-    auto a = irs::from_wildcard<char>("\\\\\\%a");
+    auto a = irs::from_wildcard("\\\\\\%a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -213,7 +213,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // prefix
   {
-    auto a = irs::from_wildcard<char>("foo%");
+    auto a = irs::from_wildcard("foo%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -225,7 +225,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // prefix
   {
-    auto a = irs::from_wildcard<char>("v%%");
+    auto a = irs::from_wildcard("v%%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -237,7 +237,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // suffix
   {
-    auto a = irs::from_wildcard<char>("%foo");
+    auto a = irs::from_wildcard("%foo");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -249,7 +249,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("a%bce_d");
+    auto a = irs::from_wildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -260,7 +260,18 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("a%b%d");
+    auto a = irs::from_wildcard("b%d%a");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
+  }
+
+  // mixed
+  {
+    auto a = irs::from_wildcard("a%b%d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -271,7 +282,19 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("%_");
+    auto a = irs::from_wildcard("a%b%db");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1db"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce11db"));
+  }
+
+  // mixed
+  {
+    auto a = irs::from_wildcard("%_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -282,12 +305,69 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
   }
 
-  // mixed
+  // mixed, terminal "\\"
   {
-    auto a = irs::from_wildcard<char>("%_d");
+    auto a = irs::from_wildcard("%\\\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
+    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+  }
+
+  // mixed, terminal "\\"
+  {
+    auto a = irs::from_wildcard("%_\\\\");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
+    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+  }
+
+  // mixed, non-terminated "\\"
+  {
+    auto a = irs::from_wildcard("%\\");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<char>(a, "\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
+    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+  }
+
+  // mixed, non-terminated "\\"
+  {
+    auto a = irs::from_wildcard("%_\\");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
+    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
+    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
+    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+  }
+
+  // mixed
+  {
+    auto a = irs::from_wildcard("%_d");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_FALSE(irs::accept<char>(a, "d"));
     ASSERT_TRUE(irs::accept<char>(a, "ad"));
     ASSERT_TRUE(irs::accept<char>(a, "aad"));
     ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
@@ -297,7 +377,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("%_%_%d");
+    auto a = irs::from_wildcard("%_%_%d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -314,7 +394,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("%_%_%d%");
+    auto a = irs::from_wildcard("%_%_%d%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -331,7 +411,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("%%_");
+    auto a = irs::from_wildcard("%%_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -344,7 +424,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("_%");
+    auto a = irs::from_wildcard("_%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -357,7 +437,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("v%%c");
+    auto a = irs::from_wildcard("v%%c");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -369,7 +449,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard<char>("v%c");
+    auto a = irs::from_wildcard("v%c");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));

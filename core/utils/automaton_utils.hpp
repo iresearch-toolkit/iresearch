@@ -368,9 +368,8 @@ class utf8_transitions_builder {
 void utf8_emplace_arc(
   automaton& a,
   automaton::StateId from,
-  automaton::StateId to,
-  const byte_type* begin,
-  const byte_type* end);
+  const bytes_ref& label,
+  automaton::StateId to);
 
 void utf8_emplace_rho_arc(
   automaton& a,

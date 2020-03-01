@@ -64,44 +64,36 @@ NS_ROOT
 void utf8_emplace_arc(
     automaton& a,
     automaton::StateId from,
-    automaton::StateId to,
-    const byte_type* begin,
-    const byte_type* end) {
-  const size_t len = utf8_utils::cp_length(*begin);
-
-  if (begin + len >= end) {
-    // invalid UTF-8 char
-    return;
-  }
-
-  switch (len) {
+    const bytes_ref& label,
+    automaton::StateId to) {
+  switch (label.size()) {
     case 0: return;
     case 1: {
-      a.EmplaceArc(from, begin[0], to);
+      a.EmplaceArc(from, label[0], to);
       return;
     }
     case 2: {
       const auto s0 = a.AddState();
-      a.EmplaceArc(from, begin[0], s0);
-      a.EmplaceArc(s0, begin[1], to);
+      a.EmplaceArc(from, label[0], s0);
+      a.EmplaceArc(s0, label[1], to);
       return;
     }
     case 3: {
       const auto s0 = a.AddState();
       const auto s1 = a.AddState();
-      a.EmplaceArc(from, begin[0], s0);
-      a.EmplaceArc(s0, begin[1], s1);
-      a.EmplaceArc(s1, begin[2], to);
+      a.EmplaceArc(from, label[0], s0);
+      a.EmplaceArc(s0, label[1], s1);
+      a.EmplaceArc(s1, label[2], to);
       return;
     }
     case 4: {
       const auto s0 = a.AddState();
       const auto s1 = a.AddState();
       const auto s2 = a.AddState();
-      a.EmplaceArc(from, begin[0], s0);
-      a.EmplaceArc(s0, begin[1], s1);
-      a.EmplaceArc(s1, begin[2], s2);
-      a.EmplaceArc(s2, begin[2], to);
+      a.EmplaceArc(from, label[0], s0);
+      a.EmplaceArc(s0, label[1], s1);
+      a.EmplaceArc(s1, label[2], s2);
+      a.EmplaceArc(s2, label[3], to);
       return;
     }
   }
@@ -113,7 +105,7 @@ void utf8_emplace_rho_arc(
     automaton::StateId to) {
   const auto id = a.NumStates(); // stated ids are sequential
   a.AddStates(3);
-  const automaton::StateId rho_states[] { to, id + 1, id + 2, id + 3 };
+  const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
 
   // add rho transitions
 

@@ -20,58 +20,45 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_WILDCARD_UTILS_H
-#define IRESEARCH_WILDCARD_UTILS_H
+#include "wildcard_utils.hpp"
 
-#include "automaton.hpp"
-#include "draw-impl.h"
+#include "automaton_utils.hpp"
 
 NS_ROOT
 
-template<typename Char>
-struct wildcard_traits {
-  using char_type = Char;
-
-  // match any string or empty string
-  static constexpr Char MATCH_ANY_STRING= Char('%');
-
-  // match any char
-  static constexpr Char MATCH_ANY_CHAR = Char('_');
-
-  // denotes beginning of escape sequence
-  static constexpr Char ESCAPE = Char('\\');
+enum Match : byte_type {
+  ANY_STRING = '%',
+  ANY_CHAR = '_',
+  ESCAPE = '\\'
 };
 
-template<
-  typename Char,
-  typename Traits = wildcard_traits<Char>,
-  // brackets over condition are for circumventing MSVC parser bug
-  typename = typename std::enable_if<(sizeof(Char) < sizeof(fst::fsa::kMaxLabel))>::type, 
-  typename = typename std::enable_if<Traits::MATCH_ANY_CHAR != Traits::MATCH_ANY_STRING>::type>
-automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
-  automaton a;
+automaton from_wildcard(const bytes_ref& expr) {
+  std::pair<bytes_ref, automaton::StateId> arc;
+  utf8_transitions_builder b;
 
   struct {
    automaton::StateId from;
    automaton::StateId to;
    automaton::StateId match_all_state{ fst::kNoStateId };
-   Char match_all_label{};
+   bytes_ref match_all_label{};
    bool escaped{ false };
    bool match_all{ false };
   } state;
 
+  automaton a;
   state.from = a.AddState();
   state.to = state.from;
   a.SetStart(state.from);
 
-  auto appendChar = [&state, &a](Char c) {
+  auto appendChar = [&state, &a, &b, &arc](const bytes_ref& c) {
     state.to = a.AddState();
     if (!state.match_all) {
-      a.EmplaceArc(state.from, c, state.to);
+      utf8_emplace_arc(a, state.from, c, state.to);
       state.match_all_state = fst::kNoStateId;
     } else {
-      a.EmplaceArc(state.from, c, state.to);
-      a.EmplaceArc(state.from, fst::fsa::kRho, state.from);
+      arc.first = c;
+      arc.second = state.to;
+      b.insert(a, state.from, state.from, &arc, &arc + 1);
 
       state.match_all_state = state.from;
       state.match_all_label = c;
@@ -81,24 +68,31 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
     state.escaped = false;
   };
 
-  const auto* begin = expr.begin();
+  const auto* label_begin = expr.begin();
   const auto* end = expr.end();
 
-  for (; begin < end; ++begin) {
-    const auto c = *begin;
+  while (label_begin < end) {
+    const auto label_length = utf8_utils::cp_length(*label_begin);
+    const auto label_end = label_begin + label_length;
 
-    switch (c) {
-      case Traits::MATCH_ANY_STRING: {
+    if (!label_length || label_end > end) {
+      // invalid UTF-8 sequence
+      a.DeleteStates();
+      return a;
+    }
+
+    switch (*label_begin) {
+      case Match::ANY_STRING: {
         if (state.escaped) {
-          appendChar(c);
+          appendChar({label_begin, label_length});
         } else {
           state.match_all = true;
         }
         break;
       }
-      case Traits::MATCH_ANY_CHAR: {
+      case Match::ANY_CHAR: {
         if (state.escaped) {
-          appendChar(c);
+          appendChar({label_begin, label_length});
         } else {
           state.to = a.AddState();
           a.EmplaceArc(state.from, fst::fsa::kRho, state.to);
@@ -106,34 +100,38 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
         }
         break;
       }
-      case Traits::ESCAPE: {
+      case Match::ESCAPE: {
         if (state.escaped) {
-          appendChar(c);
+          appendChar({label_begin, label_length});
         } else {
           state.escaped = !state.escaped;
         }
         break;
       }
       default: {
-        appendChar(c);
+        appendChar({label_begin, label_length});
         break;
       }
     }
+
+    label_begin = label_end;
   }
 
   if (state.escaped) {
     // non-terminated escape sequence
-    appendChar(Traits::ESCAPE);
+    const byte_type c = Match::ESCAPE;
+    appendChar({&c, 1});
   } if (state.match_all) {
     // terminal MATCH_ALL
-    a.EmplaceArc(state.to, fst::fsa::kRho, state.to);
+    utf8_emplace_rho_arc(a, state.to, state.to);
     state.match_all_state = fst::kNoStateId;
   }
 
   if (state.match_all_state != fst::kNoStateId) {
     // non-terminal MATCH_ALL
-    a.EmplaceArc(state.to, state.match_all_label, state.to);
-    a.EmplaceArc(state.to, fst::fsa::kRho, state.match_all_state);
+    arc.first = state.match_all_label;
+    arc.second = state.to;
+    b.insert(a, state.to, state.match_all_state, &arc, &arc + 1);
   }
 
   a.SetFinal(state.to);
@@ -150,13 +148,4 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   return a;
 }
 
-IRESEARCH_API automaton from_wildcard(const bytes_ref& expr);
-
-inline automaton from_wildcard(const string_ref& expr) {
-  return from_wildcard(ref_cast<byte_type>(expr));
-}
-
 NS_END
-
-#endif // IRESEARCH_WILDCARD_UTILS_H
-
