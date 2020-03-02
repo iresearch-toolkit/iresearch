@@ -93,6 +93,7 @@ class fixed_phrase_frequency {
     return freq;
   }
 
+ private:
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
 }; // fixed_phrase_iterator
@@ -182,6 +183,7 @@ class variadic_phrase_frequency {
     return freq;
   }
 
+ private:
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
 }; // variadic_phrase_iterator
