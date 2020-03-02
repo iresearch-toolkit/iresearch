@@ -31,12 +31,6 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
-
-using wildcard_traits_t = irs::wildcard_traits<irs::byte_type>;
-
-NS_END
-
 NS_ROOT
 
 WildcardType wildcard_type(const bytes_ref& expr) noexcept {
@@ -48,17 +42,17 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   size_t num_match_any_string = 0;
   for (const auto c : expr) {
     switch (c) {
-      case wildcard_traits_t::MATCH_ANY_STRING:
+      case WildcardMatch::ANY_STRING:
         num_match_any_string += size_t(!escaped);
         escaped = false;
         break;
-      case wildcard_traits_t::MATCH_ANY_CHAR:
+      case WildcardMatch::ANY_CHAR:
         if (!escaped) {
           return WildcardType::WILDCARD;
         }
         escaped = false;
         break;
-      case wildcard_traits_t::ESCAPE:
+      case WildcardMatch::ESCAPE:
         escaped = !escaped;
         break;
       default:
@@ -76,7 +70,7 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   }
 
   return std::all_of(expr.end() - num_match_any_string, expr.end(),
-                     [](byte_type c) { return c == wildcard_traits_t::MATCH_ANY_STRING; })
+                     [](byte_type c) { return c == WildcardMatch::ANY_STRING; })
     ?  WildcardType::PREFIX
     :  WildcardType::WILDCARD;
 }
@@ -101,7 +95,7 @@ filter::prepared::ptr by_wildcard::prepare(
                                 scored_terms_limit());
     case WildcardType::PREFIX: {
       assert(!term().empty());
-      const auto pos = term().find(wildcard_traits_t::MATCH_ANY_STRING);
+      const auto pos = term().find(WildcardMatch::ANY_STRING);
       assert(pos != irs::bstring::npos);
 
       return by_prefix::prepare(index, order, boost, field,
@@ -110,7 +104,7 @@ filter::prepared::ptr by_wildcard::prepare(
     }
 
     case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
+      return prepare_automaton_filter(field, from_wildcard(term()),
                                       scored_terms_limit(), index, order, boost);
   }
 

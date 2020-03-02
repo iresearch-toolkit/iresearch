@@ -371,6 +371,13 @@ void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
+void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId rho_state,
+  const bytes_ref& label,
+  automaton::StateId to);
+
 void utf8_emplace_rho_arc(
   automaton& a,
   automaton::StateId from,

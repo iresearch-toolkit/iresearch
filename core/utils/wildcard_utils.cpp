@@ -23,19 +23,11 @@
 #include "wildcard_utils.hpp"
 
 #include "automaton_utils.hpp"
+#include "draw-impl.h"
 
 NS_ROOT
 
-enum Match : byte_type {
-  ANY_STRING = '%',
-  ANY_CHAR = '_',
-  ESCAPE = '\\'
-};
-
 automaton from_wildcard(const bytes_ref& expr) {
-  std::pair<bytes_ref, automaton::StateId> arc;
-  utf8_transitions_builder b;
-
   struct {
    automaton::StateId from;
    automaton::StateId to;
@@ -50,15 +42,13 @@ automaton from_wildcard(const bytes_ref& expr) {
   state.to = state.from;
   a.SetStart(state.from);
 
-  auto appendChar = [&state, &a, &b, &arc](const bytes_ref& c) {
+  auto appendChar = [&a, &state](const bytes_ref& c) {
     state.to = a.AddState();
     if (!state.match_all) {
       utf8_emplace_arc(a, state.from, c, state.to);
       state.match_all_state = fst::kNoStateId;
     } else {
-      arc.first = c;
-      arc.second = state.to;
-      b.insert(a, state.from, state.from, &arc, &arc + 1);
+      utf8_emplace_arc(a, state.from, state.from, c, state.to);
 
       state.match_all_state = state.from;
       state.match_all_label = c;
@@ -82,7 +72,7 @@ automaton from_wildcard(const bytes_ref& expr) {
     }
 
     switch (*label_begin) {
-      case Match::ANY_STRING: {
+      case WildcardMatch::ANY_STRING: {
         if (state.escaped) {
           appendChar({label_begin, label_length});
         } else {
@@ -90,7 +80,7 @@ automaton from_wildcard(const bytes_ref& expr) {
         }
         break;
       }
-      case Match::ANY_CHAR: {
+      case WildcardMatch::ANY_CHAR: {
         if (state.escaped) {
           appendChar({label_begin, label_length});
         } else {
@@ -100,7 +90,7 @@ automaton from_wildcard(const bytes_ref& expr) {
         }
         break;
       }
-      case Match::ESCAPE: {
+      case WildcardMatch::ESCAPE: {
         if (state.escaped) {
           appendChar({label_begin, label_length});
         } else {
@@ -119,7 +109,7 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (state.escaped) {
     // non-terminated escape sequence
-    const byte_type c = Match::ESCAPE;
+    const byte_type c = WildcardMatch::ESCAPE;
     appendChar({&c, 1});
   } if (state.match_all) {
     // terminal MATCH_ALL
@@ -129,9 +119,7 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (state.match_all_state != fst::kNoStateId) {
     // non-terminal MATCH_ALL
-    arc.first = state.match_all_label;
-    arc.second = state.to;
-    b.insert(a, state.to, state.match_all_state, &arc, &arc + 1);
+    utf8_emplace_arc(a, state.to, state.match_all_state, state.match_all_label, state.to);
   }
 
   a.SetFinal(state.to);

@@ -64,10 +64,85 @@ NS_ROOT
 void utf8_emplace_arc(
     automaton& a,
     automaton::StateId from,
+    automaton::StateId rho_state,
+    const bytes_ref& label,
+    automaton::StateId to) {
+  if (fst::kNoStateId == rho_state) {
+    return utf8_emplace_arc(a, from, label, to);
+  }
+
+  if (label.empty()) {
+    return;
+  }
+
+  // reserve enough arcs and states (stated ids are sequential)
+  a.ReserveArcs(from, 256);
+  const auto id = a.NumStates();
+  a.AddStates(3 + label.size() - 1);
+
+  const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
+
+  const automaton::Arc::Label lead = label.front();
+  automaton::Arc::Label min = 0;
+
+  for (; min < lead; ++min) {
+    a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
+  }
+
+  switch (label.size()) {
+    case 1: {
+      a.EmplaceArc(from, lead, to);
+      break;
+    }
+    case 2: {
+      const auto s0 = id + 3;
+      a.EmplaceArc(from, lead, s0);
+      a.EmplaceArc(s0, label[1], to);
+      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[0]);
+      break;
+    }
+    case 3: {
+      const auto s0 = id + 3;
+      const auto s1 = id + 4;
+      a.EmplaceArc(from, lead, s0);
+      a.EmplaceArc(s0, label[1], s1);
+      a.EmplaceArc(s1, label[2], to);
+      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[1]);
+      a.EmplaceArc(s1, fst::fsa::kRho, rho_states[0]);
+      break;
+    }
+    case 4: {
+      const auto s0 = id + 3;
+      const auto s1 = id + 4;
+      const auto s2 = id + 5;
+      a.EmplaceArc(from, lead, s0);
+      a.EmplaceArc(s0, label[1], s1);
+      a.EmplaceArc(s1, label[2], s2);
+      a.EmplaceArc(s2, label[3], to);
+      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[2]);
+      a.EmplaceArc(s1, fst::fsa::kRho, rho_states[1]);
+      a.EmplaceArc(s2, fst::fsa::kRho, rho_states[0]);
+      break;
+    }
+  }
+
+  for (++min; min < 256; ++min) {
+    a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
+  }
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+
+  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
+  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
+  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+}
+
+void utf8_emplace_arc(
+    automaton& a,
+    automaton::StateId from,
     const bytes_ref& label,
     automaton::StateId to) {
   switch (label.size()) {
-    case 0: return;
     case 1: {
       a.EmplaceArc(from, label[0], to);
       return;
