@@ -130,19 +130,22 @@ class fixed_phrase_iterator final : public phrase_iterator<Conjunction> {
     lead.next();
 
     for (auto end = pos_.end(); !pos_limits::eof(lead.value());) {
-      const position::value_t base_offset = lead.value();
+      const position::value_t base_position = lead.value();
 
       match = true;
 
       for (auto it = pos_.begin() + 1; it != end; ++it) {
         position& pos = it->first;
-        const auto term_offset = base_offset + it->second;
-        const auto seeked = pos.seek(term_offset);
+        const auto term_position = base_position + it->second;
+        if (!pos_limits::valid(term_position)) {
+          return freq;
+        }
+        const auto seeked = pos.seek(term_position);
 
         if (pos_limits::eof(seeked)) {
           // exhausted
           return freq;
-        } else if (seeked != term_offset) {
+        } else if (seeked != term_position) {
           // seeked too far from the lead
           match = false;
 
@@ -204,12 +207,16 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
       // lead->reset(); // Do not need here. There is the first time always.
       lead->next();
 
-      position::value_t base_offset = pos_limits::eof();
-      while (!pos_limits::eof(base_offset = lead->value())) {
+      position::value_t base_position = pos_limits::eof();
+      while (!pos_limits::eof(base_position = lead->value())) {
         auto match = true;
         for (auto it = pos_.begin() + 1; it != end; ++it) {
-          const auto term_offset = base_offset + it->second;
           match = false;
+          const auto term_position = base_position + it->second;
+          if (!pos_limits::valid(term_position)) {
+            global_match = false; // invalid for all
+            break;
+          }
           auto min_seeked = std::numeric_limits<position::value_t>::max();
           auto* ita = it->first->get();
           assert(ita);
@@ -218,11 +225,11 @@ class variadic_phrase_iterator final : public phrase_iterator<Conjunction> {
             auto* it_adapter = ita->value();
             auto* p = it_adapter->position;
             p->reset();
-            const auto seeked = p->seek(term_offset);
+            const auto seeked = p->seek(term_position);
 
             if (pos_limits::eof(seeked)) {
               continue;
-            } else if (seeked != term_offset) {
+            } else if (seeked != term_position) {
               if (seeked < min_seeked) {
                 min_seeked = seeked;
               }
