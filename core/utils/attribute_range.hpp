@@ -31,9 +31,7 @@
 NS_ROOT
 
 template<typename Adapter>
-class IRESEARCH_API_TEMPLATE attribute_range final
-  : public attribute,
-    public util::const_attribute_view_provider {
+class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
  public:
   typedef std::vector<size_t> indexes_t;
   typedef std::vector<Adapter*> iterators_t;
@@ -47,10 +45,6 @@ class IRESEARCH_API_TEMPLATE attribute_range final
 
   void set(iterators_t&& iterators) noexcept {
     iterators_ = std::move(iterators);
-  }
-
-  const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
   }
 
   Adapter* value() noexcept {
