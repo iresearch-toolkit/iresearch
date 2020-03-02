@@ -96,7 +96,7 @@ class fixed_phrase_frequency {
  private:
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
-}; // fixed_phrase_iterator
+}; // fixed_phrase_frequency
 
 class variadic_phrase_frequency {
  public:
@@ -186,7 +186,7 @@ class variadic_phrase_frequency {
  private:
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
-}; // variadic_phrase_iterator
+}; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
