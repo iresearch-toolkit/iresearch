@@ -191,7 +191,7 @@ class variadic_phrase_frequency {
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
 template<typename Conjunction, typename Frequency>
-class phrase_iterator : public doc_iterator_base, protected Frequency {
+class phrase_iterator : public doc_iterator_base, Frequency {
  public:
   typedef typename Frequency::positions_t positions_t;
 
