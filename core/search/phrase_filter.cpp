@@ -142,7 +142,7 @@ class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> 
     auto features = ord.features() | by_phrase::required();
 
     typedef conjunction<doc_iterator::ptr> conjunction_t;
-    typedef fixed_phrase_iterator<conjunction_t> phrase_iterator_t;
+    typedef phrase_iterator<conjunction_t, fixed_phrase_frequency> phrase_iterator_t;
 
     conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -220,14 +220,14 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     auto features = ord.features() | by_phrase::required();
 
     typedef conjunction<doc_iterator::ptr> conjunction_t;
-    typedef variadic_phrase_iterator<conjunction_t> phrase_iterator_t;
+    typedef phrase_iterator<conjunction_t, variadic_phrase_frequency> phrase_iterator_t;
 
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
     typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>> disjunction_t;
 
-    variadic_phrase_iterator<conjunction_t>::positions_t positions;
+    phrase_iterator_t::positions_t positions;
     positions.resize(phrase_state->terms.size());
 
     // find term using cached state
