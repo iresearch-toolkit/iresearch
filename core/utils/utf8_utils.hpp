@@ -81,17 +81,7 @@ inline uint32_t next_checked(const byte_type*& begin, const byte_type* end) noex
   }
 
   uint32_t cp = *begin;
-  size_t size = 0;
-
-  if (cp < 0x80) {
-    size = 1;
-  } else if ((cp >> 5) == 0x06) {
-    size = 2;
-  } else if ((cp >> 4) == 0x0E) {
-    size = 3;
-  } else if ((cp >> 3) == 0x1E) {
-    size = 4;
-  }
+  const size_t size = cp_length(cp);
 
   begin += size;
 

@@ -333,7 +333,6 @@ TEST(boolean_weight_test, plus) {
   ASSERT_EQ(BooleanWeight::One(), Plus(BooleanWeight::NoWeight(), BooleanWeight::One()));
 }
 
-#ifndef IRESEARCH_DLL
 // -----------------------------------------------------------------------------
 // --SECTION--                                     utf8_transitions_builder_test
 // -----------------------------------------------------------------------------
@@ -825,6 +824,3 @@ TEST_F(utf8_transitions_builder_test, multi_bytes_sequence) {
     assert_automaton(a, expected_automaton);
   }
 }
-
-#endif
-
