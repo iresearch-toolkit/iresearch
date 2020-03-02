@@ -296,6 +296,20 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 
   // mixed
   {
+    auto a = irs::from_wildcard("\xE2\x9E\x61\x25\xE2\x9E\x61");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\x61"))));
+  }
+
+  // mixed
+  {
     auto a = irs::from_wildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
@@ -527,8 +541,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
   }
 
   // invalid UTF-8 sequence
-  {
-    auto a = irs::from_wildcard("v%c");
-
-  }
+  ASSERT_EQ(0, irs::from_wildcard("\xD0").NumStates());
+  ASSERT_EQ(0, irs::from_wildcard("\xE2\x9E").NumStates());
+  ASSERT_EQ(0, irs::from_wildcard("\xF0\x9F\x98").NumStates());
 }
