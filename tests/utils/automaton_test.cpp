@@ -765,7 +765,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
   }
 }
 
-TEST_F(utf8_transitions_builder_test, multi_bytes_sequence) {
+TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
   irs::utf8_transitions_builder builder;
 
   {
@@ -823,4 +823,253 @@ TEST_F(utf8_transitions_builder_test, multi_bytes_sequence) {
 
     assert_automaton(a, expected_automaton);
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             utf8_emplace_arc_test
+// -----------------------------------------------------------------------------
+
+class utf8_emplace_arc_test : public test_base {
+ protected:
+  static void assert_properties(const irs::automaton& a) {
+    constexpr auto EXPECTED_PROPERTIES =
+      fst::kILabelSorted | fst::kOLabelSorted |
+      fst::kIDeterministic | fst::kODeterministic |
+      fst::kAcceptor;
+
+    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
+  }
+
+  static void assert_arc(
+      const irs::automaton::Arc& actual_arc,
+      irs::automaton::Arc::Label expected_label,
+      irs::automaton::StateId expected_target) {
+    ASSERT_EQ(expected_label, actual_arc.ilabel);
+    ASSERT_EQ(expected_label, actual_arc.olabel);
+    ASSERT_EQ(expected_target, actual_arc.nextstate);
+    ASSERT_EQ(fst::fsa::BooleanWeight(false), actual_arc.weight);
+  }
+
+  static void assert_state(
+      const irs::automaton& a,
+      const irs::automaton::StateId state,
+      const std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>& expected_arcs) {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(state, &actual_arcs);
+    ASSERT_EQ(expected_arcs.size(), actual_arcs.narcs);
+
+    auto* actual_arc = actual_arcs.arcs;
+    for (auto& expected_arc : expected_arcs) {
+      assert_arc(*actual_arc, expected_arc.first, expected_arc.second);
+      ++actual_arc;
+    }
+  };
+
+  static void assert_automaton(
+      const irs::automaton& a,
+      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>& expected_automaton) {
+    ASSERT_EQ(expected_automaton.size(), a.NumStates());
+    irs::automaton::StateId state = 0;
+    for (auto& expected_arcs : expected_automaton) {
+      assert_state(a, state, expected_arcs);
+      ++state;
+    }
+  }
+};
+
+TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
+   // 1-byte sequence
+   {
+     irs::automaton a;
+     auto start = a.AddState();
+     auto finish = a.AddState();
+     a.SetStart(start);
+     a.SetFinal(finish);
+
+     const irs::string_ref label = "a";
+     irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
+
+     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+       { { 0x61, 1 } },
+       { }
+     };
+
+     assert_properties(a);
+     assert_automaton(a, expected_automaton);
+
+     ASSERT_FALSE(irs::accept<char>(a, ""));
+     ASSERT_TRUE(irs::accept<char>(a, "a"));
+     ASSERT_FALSE(irs::accept<char>(a, "\xD0\xBF"));
+     ASSERT_FALSE(irs::accept<char>(a, "\xE2\x9E\x96"));
+     ASSERT_FALSE(irs::accept<char>(a, "\xF0\x9F\x98\x81"));
+   }
+
+   // 2-byte sequence
+   {
+     irs::automaton a;
+     auto start = a.AddState();
+     auto finish = a.AddState();
+     a.SetStart(start);
+     a.SetFinal(finish);
+
+     const irs::string_ref label = "\xD0\xBF";
+     irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
+
+     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+       { { 0xD0, 2 } },
+       { },
+       { { 0xBF, 1 } },
+     };
+
+     assert_properties(a);
+     assert_automaton(a, expected_automaton);
+
+     ASSERT_FALSE(irs::accept<char>(a, ""));
+     ASSERT_FALSE(irs::accept<char>(a, "a"));
+     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
+   }
+
+   // 3-byte sequence
+   {
+     irs::automaton a;
+     auto start = a.AddState();
+     auto finish = a.AddState();
+     a.SetStart(start);
+     a.SetFinal(finish);
+
+     const irs::string_ref label = "\xE2\x9E\x96";
+     irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
+
+     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+       { { 0xE2, 2 } },
+       { },
+       { { 0x9E, 3 } },
+       { { 0x96, 1 } },
+     };
+
+     assert_properties(a);
+     assert_automaton(a, expected_automaton);
+
+     ASSERT_FALSE(irs::accept<char>(a, ""));
+     ASSERT_FALSE(irs::accept<char>(a, "a"));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
+   }
+
+   // 4-byte sequence
+   {
+     irs::automaton a;
+     auto start = a.AddState();
+     auto finish = a.AddState();
+     a.SetStart(start);
+     a.SetFinal(finish);
+
+     const irs::string_ref label = "\xF0\x9F\x98\x81";
+     irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
+
+     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+       { { 0xF0, 2 } },
+       { },
+       { { 0x9F, 3 } },
+       { { 0x98, 4 } },
+       { { 0x81, 1 } },
+     };
+
+     assert_properties(a);
+     assert_automaton(a, expected_automaton);
+
+     ASSERT_FALSE(irs::accept<char>(a, ""));
+     ASSERT_FALSE(irs::accept<char>(a, "a"));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
+   }
+}
+
+TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
+   irs::automaton a;
+   auto start = a.AddState();
+   auto finish = a.AddState();
+   a.SetStart(start);
+   a.SetFinal(finish);
+   auto intermediate0 = a.NumStates();
+   auto intermediate1 = a.NumStates() + 1;
+   auto intermediate2 = a.NumStates() + 2;
+   irs::utf8_emplace_rho_arc(a, start, finish);
+
+   assert_properties(a);
+
+   {
+     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+     a.InitArcIterator(start, &actual_arcs);
+     ASSERT_EQ(256, actual_arcs.narcs);
+
+     auto* actual_arc = actual_arcs.arcs;
+     irs::automaton::Arc::Label label = 0;
+
+     for (; label < 192; ++label) {
+       assert_arc(*actual_arc, label, finish);
+       ++actual_arc;
+     }
+
+     for (; label < 224; ++label) {
+       assert_arc(*actual_arc, label, intermediate0);
+       ++actual_arc;
+     }
+
+     for (; label < 240; ++label) {
+       assert_arc(*actual_arc, label, intermediate1);
+       ++actual_arc;
+     }
+
+     for (; label < 256; ++label) {
+       assert_arc(*actual_arc, label, intermediate2);
+       ++actual_arc;
+     }
+
+     ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+   }
+
+   // arcs from 'intermediate0'
+   {
+     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+     a.InitArcIterator(intermediate0, &actual_arcs);
+     ASSERT_EQ(1, actual_arcs.narcs);
+     assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, finish);
+   }
+
+   // arcs from 'intermediate1'
+   {
+     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+     a.InitArcIterator(intermediate1, &actual_arcs);
+     ASSERT_EQ(1, actual_arcs.narcs);
+     assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+   }
+
+   // arcs from 'intermediate2'
+   {
+     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+     a.InitArcIterator(intermediate2, &actual_arcs);
+     ASSERT_EQ(1, actual_arcs.narcs);
+     assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+   }
+
+   // arcs from 'finish0'
+   {
+     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+     a.InitArcIterator(finish, &actual_arcs);
+     ASSERT_EQ(0, actual_arcs.narcs);
+   }
+
+   ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+   ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+   ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+   ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+   ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
+   ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF\xD0\xBF"))));
+   ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xD0\xBF"))));
+   ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\xD0\xBF"))));
 }

@@ -85,377 +85,387 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
   {
     auto a = irs::from_wildcard(irs::string_ref::NIL);
     assert_properties(a);
-    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
   }
 
   // empty string
   {
     auto a = irs::from_wildcard(irs::string_ref::EMPTY);
     assert_properties(a);
-    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
   }
 
   // any or empty string
   {
     auto a = irs::from_wildcard("%");
     assert_properties(a);
-    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "abc"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
   }
 
   // any or empty string
   {
     auto a = irs::from_wildcard("%%");
     assert_properties(a);
-    ASSERT_TRUE(irs::accept<char>(a, ""));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // any char
   {
     auto a = irs::from_wildcard("_");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "abc"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
   }
 
   // two any chars
   {
     auto a = irs::from_wildcard("__");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "ba"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xD0\xBF"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // any char (suffix)
   {
     auto a = irs::from_wildcard("a_");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a_"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "ab"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a_"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ab"))));
   }
 
   // any char (prefix)
   {
     auto a = irs::from_wildcard("_a");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "_a"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "ba"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("_a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
   }
 
   // escaped '_'
   {
     auto a = irs::from_wildcard("\\_a");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "_a"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "ba"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("_a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
   }
 
   // escaped '\'
   {
     auto a = irs::from_wildcard("\\\\\\_a");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "\\_a"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "ba"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\_a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
   }
 
   // nonterminated '\'
   {
     auto a = irs::from_wildcard("a\\");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "ba"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a\\"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
   }
 
   // escaped '%'
   {
     auto a = irs::from_wildcard("\\\\\\%a");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "\\%a"));
-    ASSERT_FALSE(irs::accept<char>(a, "a"));
-    ASSERT_FALSE(irs::accept<char>(a, "ba"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\%a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
   }
 
   // prefix
   {
     auto a = irs::from_wildcard("foo%");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "foo"));
-    ASSERT_TRUE(irs::accept<char>(a, "foobar"));
-    ASSERT_FALSE(irs::accept<char>(a, "foa"));
-    ASSERT_FALSE(irs::accept<char>(a, "foabar"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foa"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foabar"))));
   }
 
   // prefix
   {
     auto a = irs::from_wildcard("v%%");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vcc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vccc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczczvccccc"))));
   }
 
   // suffix
   {
     auto a = irs::from_wildcard("%foo");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "foo"));
-    ASSERT_TRUE(irs::accept<char>(a, "bfoo"));
-    ASSERT_FALSE(irs::accept<char>(a, "foa"));
-    ASSERT_FALSE(irs::accept<char>(a, "bfoa"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("bfoo"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("foa"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("bfoa"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("a%bce_d");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("b%d%a");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("a%b%d");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("a%b%db");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1db"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11db"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1db"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11db"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("%_");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed, terminal "\\"
   {
     auto a = irs::from_wildcard("%\\\\");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11\\"))));
   }
 
   // mixed, terminal "\\"
   {
     auto a = irs::from_wildcard("%_\\\\");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11\\"))));
   }
 
   // mixed, non-terminated "\\"
   {
     auto a = irs::from_wildcard("%\\");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11\\"))));
   }
 
   // mixed, non-terminated "\\"
   {
     auto a = irs::from_wildcard("%_\\");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "a\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa\\"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1\\"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1\\1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11\\"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa\\"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1\\1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11\\"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("%_d");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "d"));
-    ASSERT_TRUE(irs::accept<char>(a, "ad"));
-    ASSERT_TRUE(irs::accept<char>(a, "aad"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11d"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("%_%_%d");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "ad"));
-    ASSERT_TRUE(irs::accept<char>(a, "add"));
-    ASSERT_FALSE(irs::accept<char>(a, "add1"));
-    ASSERT_TRUE(irs::accept<char>(a, "abd"));
-    ASSERT_TRUE(irs::accept<char>(a, "ddd"));
-    ASSERT_TRUE(irs::accept<char>(a, "aad"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_FALSE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11d"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("add"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("add1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abd"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ddd"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("%_%_%d%");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_FALSE(irs::accept<char>(a, "ad"));
-    ASSERT_TRUE(irs::accept<char>(a, "add"));
-    ASSERT_TRUE(irs::accept<char>(a, "add1"));
-    ASSERT_TRUE(irs::accept<char>(a, "abd"));
-    ASSERT_TRUE(irs::accept<char>(a, "ddd"));
-    ASSERT_TRUE(irs::accept<char>(a, "aad"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "1azbce11d"));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("add"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("add1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abd"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ddd"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aad"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("1azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("%%_");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("_%");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "a"));
-    ASSERT_TRUE(irs::accept<char>(a, "aa"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce1d1"));
-    ASSERT_TRUE(irs::accept<char>(a, "azbce11d"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aa"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce1d1"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("azbce11d"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("v%%c");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vcc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vccc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczczvccccc"))));
   }
 
   // mixed
   {
     auto a = irs::from_wildcard("v%c");
     assert_properties(a);
-    ASSERT_FALSE(irs::accept<char>(a, ""));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<char>(a, "vcc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vccc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczc"));
-    ASSERT_TRUE(irs::accept<char>(a, "vczczvccccc"));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vcc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vccc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczczvccccc"))));
   }
 }

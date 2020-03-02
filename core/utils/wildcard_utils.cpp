@@ -84,7 +84,7 @@ automaton from_wildcard(const bytes_ref& expr) {
           appendChar({label_begin, label_length});
         } else {
           state.to = a.AddState();
-          a.EmplaceArc(state.from, fst::fsa::kRho, state.to);
+          utf8_emplace_rho_arc(a, state.from, state.to);
           state.from = state.to;
         }
         break;
