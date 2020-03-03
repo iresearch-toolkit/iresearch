@@ -33,48 +33,6 @@
 
 NS_ROOT
 
-WildcardType wildcard_type(const bytes_ref& expr) noexcept {
-  if (expr.empty()) {
-    return WildcardType::TERM;
-  }
-
-  bool escaped = false;
-  size_t num_match_any_string = 0;
-  for (const auto c : expr) {
-    switch (c) {
-      case WildcardMatch::ANY_STRING:
-        num_match_any_string += size_t(!escaped);
-        escaped = false;
-        break;
-      case WildcardMatch::ANY_CHAR:
-        if (!escaped) {
-          return WildcardType::WILDCARD;
-        }
-        escaped = false;
-        break;
-      case WildcardMatch::ESCAPE:
-        escaped = !escaped;
-        break;
-      default:
-        escaped = false;
-        break;
-    }
-  }
-
-  if (0 == num_match_any_string) {
-    return WildcardType::TERM;
-  }
-
-  if (expr.size() == num_match_any_string) {
-    return WildcardType::MATCH_ALL;
-  }
-
-  return std::all_of(expr.end() - num_match_any_string, expr.end(),
-                     [](byte_type c) { return c == WildcardMatch::ANY_STRING; })
-    ?  WildcardType::PREFIX
-    :  WildcardType::WILDCARD;
-}
-
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
@@ -87,6 +45,8 @@ filter::prepared::ptr by_wildcard::prepare(
   const string_ref field = this->field();
 
   switch (wildcard_type(term())) {
+    case WildcardType::INVALID:
+      return prepared::empty();
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term());
     case WildcardType::MATCH_ALL:

@@ -27,6 +27,16 @@
 
 NS_ROOT
 
+enum class WildcardType {
+  INVALID  = 0, // invalid input sequence
+  TERM,         // foo
+  MATCH_ALL,    // *
+  PREFIX,       // foo*
+  WILDCARD      // f_o*
+};
+
+IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
+
 enum WildcardMatch : byte_type {
   ANY_STRING = '%',
   ANY_CHAR = '_',

@@ -26,6 +26,67 @@
 
 NS_ROOT
 
+WildcardType wildcard_type(const bytes_ref& expr) noexcept {
+  if (expr.empty()) {
+    return WildcardType::TERM;
+  }
+
+  bool escaped = false;
+  size_t num_match_any_string = 0;
+  size_t num_adjacent_match_any_string = 0;
+
+  const auto* char_begin = expr.begin();
+  const auto* end = expr.end();
+
+  for (size_t i = 0; char_begin < end; ++i) {
+    const auto char_length = utf8_utils::cp_length(*char_begin);
+    const auto char_end = char_begin + char_length;
+
+    if (!char_length || char_end > end) {
+      return WildcardType::INVALID;
+    }
+
+    switch (*char_begin) {
+      case WildcardMatch::ANY_STRING:
+        num_adjacent_match_any_string += size_t(!escaped);
+        num_match_any_string += size_t(!escaped);
+        escaped = false;
+        break;
+      case WildcardMatch::ANY_CHAR:
+        if (!escaped) {
+          return WildcardType::WILDCARD;
+        }
+        num_adjacent_match_any_string = 0;
+        escaped = false;
+        break;
+      case WildcardMatch::ESCAPE:
+        num_adjacent_match_any_string = 0;
+        escaped = !escaped;
+        break;
+      default:
+        num_adjacent_match_any_string = 0;
+        escaped = false;
+        break;
+    }
+
+    char_begin = char_end;
+  }
+
+  if (0 == num_match_any_string) {
+    return WildcardType::TERM;
+  }
+
+  if (expr.size() == num_match_any_string) {
+    return WildcardType::MATCH_ALL;
+  }
+
+  if (num_match_any_string == num_adjacent_match_any_string) {
+    return WildcardType::PREFIX;
+  }
+
+  return WildcardType::WILDCARD;
+}
+
 automaton from_wildcard(const bytes_ref& expr) {
   struct {
    automaton::StateId from;
