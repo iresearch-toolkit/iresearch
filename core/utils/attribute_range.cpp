@@ -39,7 +39,7 @@ const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
-template class AttributeRange; \
+template class IRESEARCH_API AttributeRange; \
 template struct attribute_view::ref<AttributeRange>; \
 REGISTER_ATTRIBUTE(AttributeRange);
 
