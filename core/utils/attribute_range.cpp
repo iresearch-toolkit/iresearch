@@ -44,16 +44,19 @@ REGISTER_ATTRIBUTE(AttributeRange);
 
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
-#define ADD_ATTRIBUTE_RANGE(AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange) \
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange) \
+template class IRESEARCH_API Adapter; \
 template class IRESEARCH_API AttributeRange;
 
 #else
 
-#define ADD_ATTRIBUTE_RANGE(AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange)
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange)
 
 #endif
 
-ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
-ADD_ATTRIBUTE_RANGE(attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>);
+#define DEFINE_ATTRIBUTE_RANGE(Adapter) ADD_ATTRIBUTE_RANGE(Adapter, attribute_range<Adapter>);
+
+DEFINE_ATTRIBUTE_RANGE(score_iterator_adapter<doc_iterator::ptr>);
+DEFINE_ATTRIBUTE_RANGE(position_score_iterator_adapter<doc_iterator::ptr>);
 
 NS_END // ROOT
