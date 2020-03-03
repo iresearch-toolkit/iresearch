@@ -206,7 +206,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   // add segment
   {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      resource("simple_sequential_utf8.json"),
       &tests::generic_json_field_factory);
     add_segment( gen );
   }
@@ -334,6 +334,30 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
 
     check_query(irs::by_wildcard().field("prefix").term("a%d%"), docs, costs, rdr);
     check_query(irs::by_wildcard().field("prefix").term("a%d%%"), docs, costs, rdr);
+  }
+
+  {
+    docs_t docs{ 1, 26 };
+    costs_t costs{ docs.size() };
+
+    check_query(irs::by_wildcard().field("utf8").term("\x25\xD0\xB9"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("utf8").term("\x25\x25\xD0\xB9"), docs, costs, rdr);
+  }
+
+  {
+    docs_t docs{ 26 };
+    costs_t costs{ docs.size() };
+
+    check_query(irs::by_wildcard().field("utf8").term("\xD0\xB2\x25\xD0\xB9"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("utf8").term("\xD0\xB2\x25\x25\xD0\xB9"), docs, costs, rdr);
+  }
+
+  {
+    docs_t docs{ 1, 3 };
+    costs_t costs{ docs.size() };
+
+    check_query(irs::by_wildcard().field("utf8").term("\xD0\xBF\x25"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("utf8").term("\xD0\xBF\x25\x25"), docs, costs, rdr);
   }
 
   // whole word
