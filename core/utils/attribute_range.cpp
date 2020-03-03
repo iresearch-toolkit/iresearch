@@ -34,14 +34,24 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
   return false;
 }
 
-#define ADD_ATTRIBUTE_RANGE(AttributeRange) template<> \
+#define ADD_ATTRIBUTE_RANGE_T(AttributeRange) template<> \
 const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
-template class IRESEARCH_API AttributeRange; \
 template struct attribute_view::ref<AttributeRange>; \
 REGISTER_ATTRIBUTE(AttributeRange);
+
+#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
+
+#define ADD_ATTRIBUTE_RANGE(AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange) \
+template class IRESEARCH_API AttributeRange;
+
+#else
+
+#define ADD_ATTRIBUTE_RANGE(AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange)
+
+#endif
 
 ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
 ADD_ATTRIBUTE_RANGE(attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>);
