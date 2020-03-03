@@ -33,7 +33,10 @@
 NS_ROOT
 
 template<typename Char, typename Matcher>
-automaton::Weight accept(const automaton& a, Matcher& matcher, const basic_string_ref<Char>& target) {
+inline automaton::Weight accept(
+    const automaton& a,
+    Matcher& matcher,
+    const basic_string_ref<Char>& target) {
   auto state = a.Start();
   matcher.SetState(state);
 
@@ -50,7 +53,7 @@ automaton::Weight accept(const automaton& a, Matcher& matcher, const basic_strin
 }
 
 template<typename Char>
-automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
+inline automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
@@ -130,7 +133,7 @@ class automaton_term_iterator final : public seek_term_iterator {
 ///        a specified root, a default (rho) state and a set of arcs with
 ///        UTF-8 encoded labels
 //////////////////////////////////////////////////////////////////////////////
-class utf8_transitions_builder {
+class IRESEARCH_API utf8_transitions_builder {
  public:
   utf8_transitions_builder()
     : states_map_(16, state_emplace(weight_)) {
@@ -365,6 +368,48 @@ class utf8_transitions_builder {
   bytes_ref last_;
 }; // utf8_automaton_builder
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief establish UTF-8 labeled connection between specified source and
+///        target states
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  const bytes_ref& label,
+  automaton::StateId to);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief establish UTF-8 labeled connection between specified source (from)
+///        and target (to) states with the fallback to default (rho_state)
+///        state
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId rho_state,
+  const bytes_ref& label,
+  automaton::StateId to);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief establish default connnection between specified source (from) and
+///        and target (to)
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void utf8_emplace_rho_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief instantiate compiled filter based on a specified automaton, field
+///        and other properties
+/// @param field field name
+/// @param acceptor input automaton
+/// @param scored_terms_limit score as many terms
+/// @param index index reader
+/// @param order compiled order
+/// @param bool query boost
+/// @returns compiled filter
+//////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const string_ref& field,
   const automaton& acceptor,

@@ -31,55 +31,7 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
-
-using wildcard_traits_t = irs::wildcard_traits<irs::byte_type>;
-
-NS_END
-
 NS_ROOT
-
-WildcardType wildcard_type(const bytes_ref& expr) noexcept {
-  if (expr.empty()) {
-    return WildcardType::TERM;
-  }
-
-  bool escaped = false;
-  size_t num_match_any_string = 0;
-  for (const auto c : expr) {
-    switch (c) {
-      case wildcard_traits_t::MATCH_ANY_STRING:
-        num_match_any_string += size_t(!escaped);
-        escaped = false;
-        break;
-      case wildcard_traits_t::MATCH_ANY_CHAR:
-        if (!escaped) {
-          return WildcardType::WILDCARD;
-        }
-        escaped = false;
-        break;
-      case wildcard_traits_t::ESCAPE:
-        escaped = !escaped;
-        break;
-      default:
-        escaped = false;
-        break;
-    }
-  }
-
-  if (0 == num_match_any_string) {
-    return WildcardType::TERM;
-  }
-
-  if (expr.size() == num_match_any_string) {
-    return WildcardType::MATCH_ALL;
-  }
-
-  return std::all_of(expr.end() - num_match_any_string, expr.end(),
-                     [](byte_type c) { return c == wildcard_traits_t::MATCH_ANY_STRING; })
-    ?  WildcardType::PREFIX
-    :  WildcardType::WILDCARD;
-}
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
@@ -93,6 +45,8 @@ filter::prepared::ptr by_wildcard::prepare(
   const string_ref field = this->field();
 
   switch (wildcard_type(term())) {
+    case WildcardType::INVALID:
+      return prepared::empty();
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term());
     case WildcardType::MATCH_ALL:
@@ -101,16 +55,20 @@ filter::prepared::ptr by_wildcard::prepare(
                                 scored_terms_limit());
     case WildcardType::PREFIX: {
       assert(!term().empty());
-      const auto pos = term().find(wildcard_traits_t::MATCH_ANY_STRING);
-      assert(pos != irs::bstring::npos);
+      const auto* begin = term().c_str();
+      const auto* end = begin + term().size();
+
+      // term() is already checked to be a valid UTF-8 sequence
+      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+      assert(pos != end);
 
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(term().c_str(), pos), // remove trailing '%'
+                                bytes_ref(begin, size_t(pos - begin)), // remove trailing '%'
                                 scored_terms_limit());
     }
 
     case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
+      return prepare_automaton_filter(field, from_wildcard(term()),
                                       scored_terms_limit(), index, order, boost);
   }
 
