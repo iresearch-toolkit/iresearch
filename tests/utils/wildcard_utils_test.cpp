@@ -29,7 +29,7 @@
 // --SECTION--                                           wildcard_automaton_test
 // -----------------------------------------------------------------------------
 
-class wildcard_automaton_test : public test_base {
+class wildcard_utils_test : public test_base {
  protected:
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
@@ -41,7 +41,7 @@ class wildcard_automaton_test : public test_base {
   }
 };
 
-TEST_F(wildcard_automaton_test, match_wildcard) {
+TEST_F(wildcard_utils_test, match_wildcard) {
   // check automaton structure
   {
     auto lhs = irs::from_wildcard("%b%");
@@ -546,7 +546,7 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
   ASSERT_EQ(0, irs::from_wildcard("\xF0\x9F\x98").NumStates());
 }
 
-TEST_F(wildcard_automaton_test, wildcard_type) {
+TEST_F(wildcard_utils_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::INVALID, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0")))); // invalid UTF-8 sequence
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2"))));
@@ -555,7 +555,10 @@ TEST_F(wildcard_automaton_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\foo"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%%"))));
-  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2\x21"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2\x25"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\x25"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2\x25\x25"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\x25\xD0\xE2\x25\x25"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%_"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%\\"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("fo%o\\%"))));
