@@ -75,13 +75,13 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32<false>(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32<true>(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -129,13 +129,13 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32<false>(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32<true>(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -186,13 +186,13 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32<false>(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32<true>(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -243,13 +243,13 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      irs::utf8_utils::utf8_to_utf32(str, irs::irstd::back_emplacer(actual));
+      irs::utf8_utils::utf8_to_utf32<false>(str, irs::irstd::back_emplacer(actual));
       ASSERT_EQ(expected, actual);
     }
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32_checked(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::utf8_to_utf32<true>(str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }

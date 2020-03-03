@@ -58,7 +58,7 @@ FORCE_INLINE const byte_type* next(const byte_type* begin, const byte_type* end)
   return begin > end ? end : begin;
 }
 
-inline size_t cp_length(const uint32_t cp_start) noexcept {
+FORCE_INLINE size_t cp_length(const uint32_t cp_start) noexcept {
   if (cp_start < 0x80) {
     return 1;
   } else if ((cp_start >> 5) == 0x06) {
@@ -107,7 +107,7 @@ inline uint32_t next_checked(const byte_type*& begin, const byte_type* end) noex
   return INVALID_CODE_POINT;
 }
 
-FORCE_INLINE uint32_t next(const byte_type*& it) noexcept {
+inline uint32_t next(const byte_type*& it) noexcept {
   IRS_ASSERT(it);
 
   uint32_t cp = *it;
@@ -157,13 +157,34 @@ FORCE_INLINE size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
   return 4;
 }
 
-template<typename OutputIterator>
-inline bool utf8_to_utf32_checked(const byte_type* begin, size_t size, OutputIterator out) {
-  for (auto end = begin + size; begin < end; ) {
-    const auto cp = next_checked(begin, end);
+template<bool Checked = true>
+inline size_t find(const byte_type* begin, const size_t size, uint32_t ch) noexcept {
+  size_t pos = 0;
+  for (auto end = begin + size; begin < end; ++pos) {
+    const auto cp = Checked ? next_checked(begin, end) : next(begin);
 
-    if (cp == INVALID_CODE_POINT) {
-      return false;
+    if (cp == ch) {
+      return pos;
+    }
+  }
+
+  return bstring::npos;
+}
+
+template<bool Checked = true>
+FORCE_INLINE size_t find(const bytes_ref& in, uint32_t ch) noexcept {
+  return find<Checked>(in.c_str(), in.size(), ch);
+}
+
+template<bool Checked, typename OutputIterator>
+inline bool utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator out) {
+  for (auto end = begin + size; begin < end; ) {
+    const auto cp = Checked ? next_checked(begin, end) : next(begin);
+
+    if /*constexpr*/ (Checked) {
+      if (cp == INVALID_CODE_POINT) {
+        return false;
+      }
     }
 
     *out = cp;
@@ -172,21 +193,9 @@ inline bool utf8_to_utf32_checked(const byte_type* begin, size_t size, OutputIte
   return true;
 }
 
-template<typename OutputIterator>
-inline bool utf8_to_utf32_checked(const bytes_ref& in, OutputIterator out) {
-  return utf8_to_utf32_checked(in.begin(), in.size(), out);
-}
-
-template<typename OutputIterator>
-inline void utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator out) {
-  for (auto end = begin + size; begin < end; ++out) {
-    *out = next(begin);
-  }
-}
-
-template<typename OutputIterator>
-inline void utf8_to_utf32(const bytes_ref& in, OutputIterator out) {
-  utf8_to_utf32(in.begin(), in.size(), out);
+template<bool Checked = true, typename OutputIterator>
+FORCE_INLINE bool utf8_to_utf32(const bytes_ref& in, OutputIterator out) {
+  return utf8_to_utf32<Checked>(in.begin(), in.size(), out);
 }
 
 NS_END

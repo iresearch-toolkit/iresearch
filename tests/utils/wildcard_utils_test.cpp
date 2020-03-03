@@ -549,11 +549,13 @@ TEST_F(wildcard_automaton_test, match_wildcard) {
 TEST_F(wildcard_automaton_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::INVALID, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0")))); // invalid UTF-8 sequence
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\foo"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\%foo"))));
   ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\foo"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"))));
   ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xE2\x21"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%_"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%\\"))));
   ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("fo%o\\%"))));
