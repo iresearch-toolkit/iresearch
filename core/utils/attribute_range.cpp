@@ -25,17 +25,6 @@
 
 NS_ROOT
 
-#define ADD_ATTRIBUTE_RANGE(AttributeRange) template<> \
-const attribute::type_id& AttributeRange::type() { \
-  static attribute::type_id type(#AttributeRange); \
-  return type; \
-} \
-template struct attribute_view::ref<AttributeRange>; \
-REGISTER_ATTRIBUTE(AttributeRange);
-
-ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
-ADD_ATTRIBUTE_RANGE(attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>);
-
 template<>
 bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next() {
   if (current_index_ < iterators_.size()) {
@@ -44,5 +33,17 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
   }
   return false;
 }
+
+#define ADD_ATTRIBUTE_RANGE(AttributeRange) template<> \
+const attribute::type_id& AttributeRange::type() { \
+  static attribute::type_id type(#AttributeRange); \
+  return type; \
+} \
+template class AttributeRange; \
+template struct attribute_view::ref<AttributeRange>; \
+REGISTER_ATTRIBUTE(AttributeRange);
+
+ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
+ADD_ATTRIBUTE_RANGE(attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>);
 
 NS_END // ROOT
