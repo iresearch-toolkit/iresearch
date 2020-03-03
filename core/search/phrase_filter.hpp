@@ -38,18 +38,18 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase : public filter {
  public:
-  struct info_t {
+  struct IRESEARCH_API info_t {
     enum class Type {
       TERM, PREFIX, WILDCARD, LEVENSHTEIN, SELECT
     } type;
 
-    struct simple_term {
+    struct IRESEARCH_API simple_term {
       bool operator==(const simple_term& /*other*/) const noexcept {
         return true;
       }
     };
 
-    struct general_term {
+    struct IRESEARCH_API general_term {
       bool operator==(const general_term& other) const noexcept {
         return scored_terms_limit == other.scored_terms_limit;
       }
@@ -57,19 +57,19 @@ class IRESEARCH_API by_phrase : public filter {
       size_t scored_terms_limit{1024};
     };
 
-    struct prefix_term : general_term {
+    struct IRESEARCH_API prefix_term : general_term {
     };
 
-    struct wildcard_term : general_term {
+    struct IRESEARCH_API wildcard_term : general_term {
     };
 
-    struct levenshtein_term : general_term {
+    struct IRESEARCH_API levenshtein_term : general_term {
       byte_type max_distance{0};
       by_edit_distance::pdp_f provider{irs::default_pdp};
       bool with_transpositions{false};
     };
 
-    struct select_term {
+    struct IRESEARCH_API select_term {
       bool operator==(const select_term& /*other*/) const noexcept {
         return true;
       }
