@@ -20,6 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/automaton.hpp" // FOR FST_NO_DYNAMIC_LINKING
+
 #include "phrase_filter.hpp"
 
 #include <boost/functional/hash.hpp>
