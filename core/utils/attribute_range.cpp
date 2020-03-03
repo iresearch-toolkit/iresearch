@@ -32,11 +32,11 @@ const attribute::type_id& AttributeRange::type() { \
 } \
 REGISTER_ATTRIBUTE(AttributeRange);
 
-ADD_ATTRIBUTE_RANGE(attribute_range<irs::score_iterator_adapter<irs::doc_iterator::ptr>>);
-ADD_ATTRIBUTE_RANGE(attribute_range<irs::position_score_iterator_adapter<irs::doc_iterator::ptr>>);
+ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
+ADD_ATTRIBUTE_RANGE(attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>);
 
 template<>
-bool attribute_range<irs::position_score_iterator_adapter<irs::doc_iterator::ptr>>::next() {
+bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next() {
   if (current_index_ < iterators_.size()) {
     value_ = iterators_[current_index_++];
     return true;

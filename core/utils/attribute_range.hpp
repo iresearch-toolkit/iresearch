@@ -33,14 +33,13 @@ NS_ROOT
 template<typename Adapter>
 class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
  public:
-  typedef std::vector<size_t> indexes_t;
   typedef std::vector<Adapter*> iterators_t;
 
   DECLARE_REFERENCE(attribute_range);
   DECLARE_TYPE_ID(attribute::type_id);
 
   static attribute_range<Adapter>* extract(const attribute_view& attrs) noexcept {
-    return attrs.get<irs::attribute_range<Adapter>>().get();
+    return attrs.get<attribute_range<Adapter>>().get();
   }
 
   void set(iterators_t&& iterators) noexcept {
