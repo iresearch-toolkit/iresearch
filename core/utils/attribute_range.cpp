@@ -30,6 +30,7 @@ const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
+template class attribute_view::ref<AttributeRange>; \
 REGISTER_ATTRIBUTE(AttributeRange);
 
 ADD_ATTRIBUTE_RANGE(attribute_range<score_iterator_adapter<doc_iterator::ptr>>);
