@@ -158,6 +158,19 @@ FORCE_INLINE size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
 }
 
 template<bool Checked = true>
+inline const byte_type* find(const byte_type* begin, const byte_type* end, uint32_t ch) noexcept {
+  for (const byte_type* char_begin = begin; begin < end; char_begin = begin) {
+    const auto cp = Checked ? next_checked(begin, end) : next(begin);
+
+    if (cp == ch) {
+      return char_begin;
+    }
+  }
+
+  return end;
+}
+
+template<bool Checked = true>
 inline size_t find(const byte_type* begin, const size_t size, uint32_t ch) noexcept {
   size_t pos = 0;
   for (auto end = begin + size; begin < end; ++pos) {
@@ -169,11 +182,6 @@ inline size_t find(const byte_type* begin, const size_t size, uint32_t ch) noexc
   }
 
   return bstring::npos;
-}
-
-template<bool Checked = true>
-FORCE_INLINE size_t find(const bytes_ref& in, uint32_t ch) noexcept {
-  return find<Checked>(in.c_str(), in.size(), ch);
 }
 
 template<bool Checked, typename OutputIterator>

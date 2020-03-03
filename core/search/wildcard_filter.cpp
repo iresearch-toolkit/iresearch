@@ -55,12 +55,15 @@ filter::prepared::ptr by_wildcard::prepare(
                                 scored_terms_limit());
     case WildcardType::PREFIX: {
       assert(!term().empty());
+      const auto* begin = term().c_str();
+      const auto* end = begin + term().size();
+
       // term() is already checked to be a valid UTF-8 sequence
-      const auto pos = utf8_utils::find<false>(term(), WildcardMatch::ANY_STRING);
-      assert(pos != irs::bstring::npos);
+      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+      assert(pos != end);
 
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(term().c_str(), pos), // remove trailing '%'
+                                bytes_ref(begin, size_t(pos - begin)), // remove trailing '%'
                                 scored_terms_limit());
     }
 
