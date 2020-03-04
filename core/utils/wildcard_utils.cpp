@@ -167,9 +167,13 @@ automaton from_wildcard(const bytes_ref& expr) {
     label_begin = label_end;
   }
 
+  // need this variable to preserve valid address
+  // for cases with match all and  terminal escape
+  // character (%\\)
+  const byte_type c = WildcardMatch::ESCAPE;
+
   if (state.escaped) {
     // non-terminated escape sequence
-    const byte_type c = WildcardMatch::ESCAPE;
     appendChar({&c, 1});
   } if (state.match_all) {
     // terminal MATCH_ALL
