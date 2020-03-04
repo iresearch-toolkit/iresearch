@@ -62,7 +62,6 @@ class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   Adapter* value_{nullptr};
   iterators_t iterators_;
-  attribute_view attrs_;
   size_t current_index_{0};
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // attribute_range
