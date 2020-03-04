@@ -45,9 +45,8 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
   
   const T* lhs_ngram_start_end  = lhs + lhs_size - ngram_size + 1; // <end> for ngram start
 
-  //auxilarry table for storing previous calc results
-  std::vector<float_t> S((std::max(lhs_ngram_length, rhs_ngram_length) + 1) * 
-                         (std::max(lhs_ngram_length, rhs_ngram_length) + 1), 0);
+  float_t prev_best = 0;
+  std::vector<float_t> S(std::max(lhs_ngram_length, rhs_ngram_length) + 1, 0);
 
   size_t lhs_ngram_idx = 1;
   for (; lhs_ngram_start != lhs_ngram_start_end; ++lhs_ngram_start, ++lhs_ngram_idx) {
@@ -66,16 +65,17 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
           break;
         }
       }
-      S[lhs_ngram_idx * (lhs_ngram_length + 1) + rhs_ngram_idx] =
+      auto tmp = S[rhs_ngram_idx];
+      S[rhs_ngram_idx] =
           std::max(
-            std::max(S[(lhs_ngram_idx - 1) * (lhs_ngram_length + 1) + rhs_ngram_idx],
-                     S[lhs_ngram_idx * (lhs_ngram_length  + 1) + rhs_ngram_idx - 1]),
-            S[(lhs_ngram_idx - 1) * (lhs_ngram_length + 1) + rhs_ngram_idx - 1] + similarity);
+            std::max(S[rhs_ngram_idx - 1],
+                     S[lhs_ngram_idx]),
+            prev_best + similarity);
+      prev_best = tmp;
     }
   }
 
-  return S[(lhs_ngram_length) * (lhs_ngram_length + 1) + rhs_ngram_length] / 
-         float_t(std::max(lhs_ngram_length, rhs_ngram_length));
+  return S[rhs_ngram_length] / float_t(std::max(lhs_ngram_length, rhs_ngram_length));
 }
 
 NS_END
