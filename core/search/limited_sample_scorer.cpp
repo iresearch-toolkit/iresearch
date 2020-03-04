@@ -59,15 +59,14 @@ void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term, size_t docs_c
     return; // no doc_ids in iterator
   }
 
-//FIXME use doc attribute
-//  auto* doc = itr->attributes().get<irs::document>().get();
-//
-//  if (!doc) {
-//    return; // no doc value
-//  }
+  auto* doc = itr->attributes().get<irs::document>().get();
+
+  if (!doc) {
+    return; // no doc value
+  }
 
   while (itr->next()) {
-    buf.set(itr->value());
+    buf.set(doc->value);
   }
 };
 
