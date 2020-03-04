@@ -56,8 +56,9 @@
 #include "index/field_meta.hpp"
 #include "utils/fst_table_matcher.hpp"
 #include "utils/levenshtein_utils.hpp"
-#include "utils/wildcard_utils.hpp"
 #include "utils/misc.hpp"
+#include "utils/utf8_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
 
@@ -708,6 +709,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       switch (word.second.first.type) {
         case info_t::Type::WILDCARD:
           switch (irs::wildcard_type(pattern)) {
+            case WildcardType::INVALID:
+              stop = true;
+              break;
             case WildcardType::TERM:
               type = info_t::Type::TERM;
               break;
@@ -717,9 +721,13 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               break;
             case WildcardType::PREFIX: {
               assert(!pattern.empty());
-              const auto pos = word.second.second.find(irs::wildcard_traits_t::MATCH_ANY_STRING);
-              assert(pos != irs::bstring::npos);
-              pattern = bytes_ref(pattern.c_str(), pos); // remove trailing '%'
+              const auto* begin = pattern.c_str();
+              const auto* end = begin + pattern.size();
+
+              // pattern is already checked to be a valid UTF-8 sequence
+              const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+              assert(pos != end);
+              pattern = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
               type = info_t::Type::PREFIX;
               break;
             }
@@ -737,6 +745,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           break;
         default:
           break;
+      }
+      if (stop) {
+        break;
       }
 
       switch (type) {
@@ -777,7 +788,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           break;
         }
         case info_t::Type::WILDCARD: {
-          const auto& acceptor = from_wildcard<byte_type, wildcard_traits_t>(pattern);
+          const auto& acceptor = from_wildcard(pattern);
           automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
 
           if (fst::kError == matcher.Properties(0)) {

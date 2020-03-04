@@ -29,19 +29,6 @@
 
 NS_ROOT
 
-template<typename Char> struct wildcard_traits;
-
-using wildcard_traits_t = wildcard_traits<byte_type>;
-
-enum class WildcardType {
-  TERM      = 0,  // foo
-  MATCH_ALL,      // *
-  PREFIX,         // foo*
-  WILDCARD        // f_o*
-};
-
-IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter

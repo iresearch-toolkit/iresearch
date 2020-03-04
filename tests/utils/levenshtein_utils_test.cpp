@@ -56,8 +56,8 @@ void assert_description(
                  " , Precise distance: " << expected_distance_precise);
 
     std::vector<uint32_t> utf8_target, utf8_candidate;
-    irs::utf8_utils::utf8_to_utf32_checked(target, std::back_inserter(utf8_target));
-    irs::utf8_utils::utf8_to_utf32_checked(candidate, std::back_inserter(utf8_candidate));
+    irs::utf8_utils::utf8_to_utf32<true>(target, std::back_inserter(utf8_target));
+    irs::utf8_utils::utf8_to_utf32<true>(candidate, std::back_inserter(utf8_candidate));
     const irs::basic_string_ref<uint32_t> utf8_target_ref(utf8_target.data(), utf8_target.size());
     const irs::basic_string_ref<uint32_t> utf8_candidate_ref(utf8_candidate.data(), utf8_candidate.size());
 
@@ -126,8 +126,8 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs = "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBB\xD0\xBE";
 
     std::vector<uint32_t> lhs_utf8, rhs_utf8;
-    irs::utf8_utils::utf8_to_utf32(irs::ref_cast<irs::byte_type>(lhs), std::back_inserter(lhs_utf8));
-    irs::utf8_utils::utf8_to_utf32(irs::ref_cast<irs::byte_type>(rhs), std::back_inserter(rhs_utf8));
+    irs::utf8_utils::utf8_to_utf32<false>(irs::ref_cast<irs::byte_type>(lhs), std::back_inserter(lhs_utf8));
+    irs::utf8_utils::utf8_to_utf32<false>(irs::ref_cast<irs::byte_type>(rhs), std::back_inserter(rhs_utf8));
 
     ASSERT_EQ(4, irs::edit_distance(lhs_utf8.data(), lhs_utf8.size(), rhs_utf8.data(), rhs_utf8.size()));
     ASSERT_EQ(4, irs::edit_distance(rhs_utf8.data(), rhs_utf8.size(), lhs_utf8.data(), lhs_utf8.size()));
