@@ -27,30 +27,29 @@ NS_ROOT
 
 template<>
 bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next() {
-  if (current_index_ < iterators_.size()) {
-    value_ = iterators_[current_index_++];
-    return true;
-  }
-  return false;
+  assert(ars_);
+  value_ = ars_->get_next_iterator();
+  return value_ != nullptr;
 }
 
-#define ADD_ATTRIBUTE_RANGE_T(AttributeRange) template<> \
+#define ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange) template<> \
 const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
+template struct attribute_range_state<Adapter>; \
 template struct attribute_view::ref<AttributeRange>; \
 REGISTER_ATTRIBUTE(AttributeRange);
 
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange) \
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange) \
 template class IRESEARCH_API Adapter; \
 template class IRESEARCH_API AttributeRange;
 
 #else
 
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(AttributeRange)
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange)
 
 #endif
 

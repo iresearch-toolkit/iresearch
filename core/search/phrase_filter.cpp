@@ -227,7 +227,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
-    typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>> disjunction_t;
+    typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>, true> disjunction_t;
 
     phrase_iterator_t::positions_t positions;
     positions.resize(phrase_state->terms.size());

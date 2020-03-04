@@ -31,10 +31,15 @@
 NS_ROOT
 
 template<typename Adapter>
+struct attribute_range_state {
+  virtual Adapter* get_next_iterator() = 0;
+  virtual void reset_next_iterator_state() = 0;
+  virtual ~attribute_range_state() = default;
+};
+
+template<typename Adapter>
 class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
  public:
-  typedef std::vector<Adapter*> iterators_t;
-
   DECLARE_REFERENCE(attribute_range);
   DECLARE_TYPE_ID(attribute::type_id);
 
@@ -42,8 +47,8 @@ class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
     return attrs.get<attribute_range<Adapter>>().get();
   }
 
-  void set(iterators_t&& iterators) noexcept {
-    iterators_ = std::move(iterators);
+  void set_state(attribute_range_state<Adapter>* ars) noexcept {
+    ars_ = ars;
   }
 
   Adapter* value() noexcept {
@@ -55,14 +60,15 @@ class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
   }
 
   void reset() {
-    current_index_ = 0;
+    value_ = nullptr;
+    assert(ars_);
+    ars_->reset_next_iterator_state();
   }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  Adapter* value_{nullptr};
-  iterators_t iterators_;
-  size_t current_index_{0};
+  attribute_range_state<Adapter>* ars_ = nullptr;
+  Adapter* value_ = nullptr;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // attribute_range
 
