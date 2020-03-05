@@ -32,32 +32,15 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
   return value_ != nullptr;
 }
 
-#define ATTRIBUTE_RANGE_TYPE(AttributeRange) template<> \
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) template<> \
 const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
-}
-
-#define INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange) \
-template struct attribute_range_state<Adapter>; \
-template struct attribute_view::ref<AttributeRange>; \
-REGISTER_ATTRIBUTE(AttributeRange);
-
-#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
-
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
-template struct IRESEARCH_API Adapter; \
-template struct IRESEARCH_API AttributeRange; \
-INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
-
-#else
-
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
-template struct Adapter; \
-template struct AttributeRange; \
-INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
-
-#endif
+} \
+MSVC_ONLY(template struct IRESEARCH_API Adapter;) \
+MSVC_ONLY(template struct IRESEARCH_API AttributeRange;) \
+MSVC_ONLY(template struct IRESEARCH_API attribute_range_state<Adapter>;) \
+MSVC_ONLY(template struct IRESEARCH_API attribute_view::ref<AttributeRange>;)
 
 #define DEFINE_ATTRIBUTE_RANGE(Adapter) ADD_ATTRIBUTE_RANGE(Adapter, attribute_range<Adapter>);
 
