@@ -32,15 +32,13 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
   return value_ != nullptr;
 }
 
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) template<> \
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) template<> MSVC_ONLY(IRESEARCH_API) \
 const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
 MSVC_ONLY(template struct IRESEARCH_API Adapter;) \
-MSVC_ONLY(template struct IRESEARCH_API AttributeRange;) \
-MSVC_ONLY(template struct IRESEARCH_API attribute_range_state<Adapter>;) \
-MSVC_ONLY(template struct IRESEARCH_API attribute_view::ref<AttributeRange>;)
+MSVC_ONLY(template struct IRESEARCH_API AttributeRange;)
 
 #define DEFINE_ATTRIBUTE_RANGE(Adapter) ADD_ATTRIBUTE_RANGE(Adapter, attribute_range<Adapter>);
 
