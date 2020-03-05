@@ -35,8 +35,15 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
                          const T* rhs, size_t rhs_size,
                          size_t ngram_size) {
 
-  if (lhs_size < ngram_size || rhs_size < ngram_size) {
+  if (ngram_size == 0 || lhs_size < ngram_size || rhs_size < ngram_size) {
     return 0.f;
+  }
+
+  if /*consexpr*/ (use_ngram_position_match) {
+    if (lhs_size > rhs_size) {
+      std::swap(lhs_size, rhs_size);
+      std::swap(lhs, rhs);
+    }
   }
 
   const size_t lhs_ngram_count = lhs_size - ngram_size + 1;
@@ -80,13 +87,13 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
       cache[rhs_ngram_idx] =
           std::max(
             std::max(cache[rhs_ngram_idx - 1],
-                     cache[lhs_ngram_idx]),
+                     cache[rhs_ngram_idx]),
             d + similarity);
       d = tmp;
     }
   }
 
-  return cache[rhs_ngram_count] / float_t(std::max(lhs_ngram_count, rhs_ngram_count));
+  return cache[rhs_ngram_count] / float_t(rhs_ngram_count);
 }
 
 NS_END
