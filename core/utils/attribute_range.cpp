@@ -46,8 +46,8 @@ REGISTER_ATTRIBUTE(AttributeRange);
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
 #define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
-template class IRESEARCH_API Adapter; \
-template class IRESEARCH_API AttributeRange; \
+template struct IRESEARCH_API Adapter; \
+template struct IRESEARCH_API AttributeRange; \
 INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
 
 #else
