@@ -23,7 +23,6 @@
 #include "wildcard_utils.hpp"
 
 #include "automaton_utils.hpp"
-#include "draw-impl.h"
 
 NS_ROOT
 
