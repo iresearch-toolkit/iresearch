@@ -32,24 +32,30 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
   return value_ != nullptr;
 }
 
-#define ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange) template<> \
+#define ATTRIBUTE_RANGE_TYPE(AttributeRange) template<> \
 const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
-} \
+}
+
+#define INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange) \
 template struct attribute_range_state<Adapter>; \
 template struct attribute_view::ref<AttributeRange>; \
 REGISTER_ATTRIBUTE(AttributeRange);
 
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange) \
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
 template class IRESEARCH_API Adapter; \
-template class IRESEARCH_API AttributeRange;
+template class IRESEARCH_API AttributeRange; \
+INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
 
 #else
 
-#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ADD_ATTRIBUTE_RANGE_T(Adapter, AttributeRange)
+#define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
+template class Adapter; \
+template class AttributeRange; \
+INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
 
 #endif
 
