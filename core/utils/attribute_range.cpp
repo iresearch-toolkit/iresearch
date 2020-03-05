@@ -53,8 +53,8 @@ INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
 #else
 
 #define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) ATTRIBUTE_RANGE_TYPE(AttributeRange) \
-template class Adapter; \
-template class AttributeRange; \
+template struct Adapter; \
+template struct AttributeRange; \
 INSTANTIATE_ATTRIBUTE_RANGE_DEPENDENCIES(Adapter, AttributeRange)
 
 #endif
