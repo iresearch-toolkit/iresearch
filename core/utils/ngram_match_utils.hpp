@@ -39,7 +39,7 @@ NS_ROOT
 /// true disables normalizing resulting similarity by length of longest string and
 /// result is evaluated based strictly on target length (search-like semantics).
 /// If search_semantics is false there is no difference which string pass
-/// as target.
+/// as target. First characters affixing currently is not implemented
 /// @param target string to seek similarity for
 /// @param target_size length of target string
 /// @param src string to seek similarity in
@@ -88,8 +88,10 @@ float_t ngram_similarity(const T* target, size_t target_size,
   const T* t_ngram_start = target;
   const T* t_ngram_start_end  = target + target_size - ngram_size + 1; // end() analog for target ngram start
 
-  float_t d = 0; // will store upper-left cell value for current case
+  float_t d = 0; // will store upper-left cell value for current cache row
   std::vector<float_t> cache(s_ngram_count + 1, 0);
+
+  // here could be constructed source string with start characters affixing
 
   size_t t_ngram_idx = 1;
   for (; t_ngram_start != t_ngram_start_end; ++t_ngram_start, ++t_ngram_idx) {
