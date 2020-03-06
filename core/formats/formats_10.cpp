@@ -1618,6 +1618,13 @@ class doc_iterator final : public irs::doc_iterator_base {
         attrs_.emplace(pos_);
       }
     }
+
+    if (1 == term_state_.docs_count) {
+      *docs_ = (doc_limits::min)() + term_state_.e_single_doc;
+      *doc_freqs_ = term_freq_;
+      doc_freq_ = doc_freqs_;
+      ++end_;
+    }
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -1763,6 +1770,8 @@ class doc_iterator final : public irs::doc_iterator_base {
   }
 
   void refill() {
+    // should never call refill for singleton documents
+    assert(1 != term_state_.docs_count);
     const auto left = term_state_.docs_count - cur_pos_;
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
@@ -1789,12 +1798,6 @@ class doc_iterator final : public irs::doc_iterator_base {
       }
 
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
-    } else if (1 == term_state_.docs_count) {
-      docs_[0] = term_state_.e_single_doc;
-      if (term_freq_) {
-        doc_freqs_[0] = term_freq_;
-      }
-      end_ = docs_ + 1;
     } else {
       read_end_block(left);
       end_ = docs_ + left;
@@ -1806,7 +1809,7 @@ class doc_iterator final : public irs::doc_iterator_base {
     }
 
     begin_ = docs_;
-    doc_freq_ = docs_ + postings_writer_base::BLOCK_SIZE;
+    doc_freq_ = doc_freqs_;
   }
 
   std::vector<skip_state> skip_levels_;
