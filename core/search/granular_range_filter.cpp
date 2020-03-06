@@ -161,7 +161,6 @@ void collect_terms_between(
     return; // skipped current term and no more terms in segment
   }
 
-  const auto& masked_begin_term = mask_value(terms.value(), prefix_size); // the starting term for range collection
   const auto& masked_end_term = mask_value(end_term, prefix_size); // the ending term for range collection
 
   collect_terms(
