@@ -35,23 +35,40 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
                          const T* rhs, size_t rhs_size,
                          size_t ngram_size) {
 
-  if (ngram_size == 0 || lhs_size < ngram_size || rhs_size < ngram_size) {
+  if (ngram_size == 0) {
     return 0.f;
   }
+
 
   if /*consexpr*/ (use_ngram_position_match) {
     if (lhs_size > rhs_size) {
       std::swap(lhs_size, rhs_size);
       std::swap(lhs, rhs);
     }
+  } 
+
+  if (lhs_size < ngram_size || rhs_size < ngram_size) {
+    if /*constexpr*/ (use_ngram_position_match) {
+      if (lhs_size == 0 && rhs_size == 0) {
+        return 1; // consider two empty strings as matched
+      }
+      const T* r = rhs;
+      size_t matched = 0;
+      for (const T* it = lhs; it != lhs + lhs_size; ) {
+        matched += size_t(*it == *r);
+        ++r;
+        ++it;
+      }
+      return float_t(matched) / float_t(rhs_size);
+    } else {
+      return 0;
+    }
   }
 
   const size_t lhs_ngram_count = lhs_size - ngram_size + 1;
   const size_t rhs_ngram_count = rhs_size - ngram_size + 1;
-
   const T* lhs_ngram_start = lhs;
-  
-  const T* lhs_ngram_start_end  = lhs + lhs_size - ngram_size + 1; // <end> for ngram start
+  const T* lhs_ngram_start_end  = lhs + lhs_size - ngram_size + 1; // end() analog for lhs ngram start
 
   float_t d = 0;
   std::vector<float_t> cache(std::max(lhs_ngram_count, rhs_ngram_count) + 1, 0);
@@ -61,11 +78,10 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
     const T* lhs_ngram_end = lhs_ngram_start + ngram_size;
     const T* rhs_ngram_start = rhs;
     size_t rhs_ngram_idx = 1;
-    const T* rhs_ngram_start_end  = rhs + rhs_size - ngram_size + 1; // <end> for ngram start
+    const T* rhs_ngram_start_end  = rhs + rhs_size - ngram_size + 1; // end() analog for rhs ngram start
 
     for (; rhs_ngram_start != rhs_ngram_start_end; ++rhs_ngram_start, ++rhs_ngram_idx) {
       const T* rhs_ngram_end = rhs_ngram_start + ngram_size;
-      // boolean similarity by now. Just match or not!
       float_t similarity = use_ngram_position_match ? 0 : 1;
       for (const T* l = lhs_ngram_start, *r = rhs_ngram_start; l != lhs_ngram_end && r != rhs_ngram_end; ++l, ++r) {
         if /*constexpr*/ (!use_ngram_position_match) {
@@ -92,7 +108,6 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
       d = tmp;
     }
   }
-
   return cache[rhs_ngram_count] / float_t(rhs_ngram_count);
 }
 
