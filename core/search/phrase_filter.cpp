@@ -710,7 +710,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
         case info_t::Type::WILDCARD:
           switch (irs::wildcard_type(pattern)) {
             case WildcardType::INVALID:
-              stop = true;
+              if (ord.empty()) {
+                stop = true;
+                // else we should collect
+                // stats for other terms in phrase
+              }
               break;
             case WildcardType::TERM:
               type = info_t::Type::TERM;
@@ -752,8 +756,12 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
       switch (type) {
         case info_t::Type::TERM: {
-          if (!term->seek(pattern) && ord.empty()) {
-            stop = true;
+          if (!term->seek(pattern)) {
+            if (ord.empty()) {
+              stop = true;
+              // else we should collect
+              // stats for other terms in phrase
+            }
             break;
           }
 
@@ -767,14 +775,24 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
         }
         case info_t::Type::PREFIX: {
           // seek to prefix
-          if (SeekResult::END == term->seek_ge(pattern) && ord.empty()) {
-            stop = true;
+          if (SeekResult::END == term->seek_ge(pattern)) {
+            if (ord.empty()) {
+              stop = true;
+              // else we should collect
+              // stats for other terms in phrase
+            }
             break;
           }
 
           const auto& value = term->value();
 
+          #ifdef IRESEARCH_DEBUG
+            auto found = false;
+          #endif
           while (starts_with(value, pattern)) {
+            #ifdef IRESEARCH_DEBUG
+              found = true;
+            #endif
             term->read();
             collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
 
@@ -784,6 +802,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               break;
             }
           }
+          #ifdef IRESEARCH_DEBUG
+            assert(found);
+          #endif
           ++found_words_count;
           break;
         }
@@ -795,19 +816,32 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                           "got the following properties " IR_UINT64_T_SPECIFIER "",
                           acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-            stop = true;
+            if (ord.empty()) {
+              stop = true;
+              // else we should collect
+              // stats for other terms in phrase
+            }
             break;
           }
 
           auto term_wildcard = tr->iterator(matcher);
 
+          #ifdef IRESEARCH_DEBUG
+            auto found = false;
+          #endif
           while (term_wildcard->next()) {
+            #ifdef IRESEARCH_DEBUG
+              found = true;
+            #endif
             term_wildcard->read();
             collectors.collect(sr, *tr, term_itr, term_wildcard->attributes()); // collect statistics
 
             // estimate phrase & term
             pt.emplace_back(term_wildcard->cookie());
           }
+          #ifdef IRESEARCH_DEBUG
+            assert(found);
+          #endif
           ++found_words_count;
           break;
         }
@@ -816,7 +850,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           const auto& d = (*word.second.first.lt.provider)(word.second.first.lt.max_distance,
                                                            word.second.first.lt.with_transpositions);
           if (!d) {
-            stop = true;
+            if (ord.empty()) {
+              stop = true;
+              // else we should collect
+              // stats for other terms in phrase
+            }
             break;
           }
           const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.second);
@@ -826,18 +864,31 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                           "got the following properties " IR_UINT64_T_SPECIFIER "",
                           acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-            stop = true;
+            if (ord.empty()) {
+              stop = true;
+              // else we should collect
+              // stats for other terms in phrase
+            }
             break;
           }
           auto term_levenshtein = tr->iterator(matcher);
 
+          #ifdef IRESEARCH_DEBUG
+            auto found = false;
+          #endif
           while (term_levenshtein->next()) {
+            #ifdef IRESEARCH_DEBUG
+              found = true;
+            #endif
             term_levenshtein->read();
             collectors.collect(sr, *tr, term_itr, term_levenshtein->attributes()); // collect statistics
 
             // estimate phrase & term
             pt.emplace_back(term_levenshtein->cookie());
           }
+          #ifdef IRESEARCH_DEBUG
+            assert(found);
+          #endif
           ++found_words_count;
           break;
         }
@@ -860,6 +911,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             ++found_words_count;
           } else if (ord.empty()) {
             stop = true;
+            // else we should collect
+            // stats for other terms in phrase
           }
           break;
         }
