@@ -91,29 +91,53 @@ automaton from_wildcard(const bytes_ref& expr) {
   struct {
    automaton::StateId from;
    automaton::StateId to;
-   automaton::StateId match_all_state{ fst::kNoStateId };
+   automaton::StateId match_all_from{ fst::kNoStateId };
+   automaton::StateId match_all_to{ fst::kNoStateId };
    bytes_ref match_all_label{};
    bool escaped{ false };
    bool match_all{ false };
   } state;
+
+  utf8_transitions_builder builder;
+  std::pair<bytes_ref, automaton::StateId> arcs[2];
 
   automaton a;
   state.from = a.AddState();
   state.to = state.from;
   a.SetStart(state.from);
 
-  auto appendChar = [&a, &state](const bytes_ref& c) {
+  auto appendChar = [&a, &builder, &arcs, &state](const bytes_ref& c) {
     state.to = a.AddState();
     if (!state.match_all) {
-      utf8_emplace_arc(a, state.from, c, state.to);
-      state.match_all_state = fst::kNoStateId;
+      if (state.match_all_label.null()) {
+        utf8_emplace_arc(a, state.from, c, state.to);
+      } else {
+        const auto r = compare(c, state.match_all_label);
+
+        if (!r) {
+          utf8_emplace_arc(a, state.from, state.match_all_from, c, state.to);
+          state.match_all_to = state.to;
+        } else {
+          arcs[0] = { c, state.to };
+          arcs[1] = { state.match_all_label, state.match_all_to };
+
+          if (r > 0) {
+            std::swap(arcs[0], arcs[1]);
+          }
+
+          builder.insert(a, state.from, state.match_all_from,
+                         std::begin(arcs), std::end(arcs));
+        }
+      }
     } else {
       utf8_emplace_arc(a, state.from, state.from, c, state.to);
 
-      state.match_all_state = state.from;
+      state.match_all_from = state.from;
+      state.match_all_to = state.to;
       state.match_all_label = c;
       state.match_all = false;
     }
+
     state.from = state.to;
     state.escaped = false;
   };
@@ -167,19 +191,24 @@ automaton from_wildcard(const bytes_ref& expr) {
     label_begin = label_end;
   }
 
+  // need this variable to preserve valid address
+  // for cases with match all and  terminal escape
+  // character (%\\)
+  const byte_type c = WildcardMatch::ESCAPE;
+
   if (state.escaped) {
     // non-terminated escape sequence
-    const byte_type c = WildcardMatch::ESCAPE;
     appendChar({&c, 1});
   } if (state.match_all) {
     // terminal MATCH_ALL
     utf8_emplace_rho_arc(a, state.to, state.to);
-    state.match_all_state = fst::kNoStateId;
+    state.match_all_from = fst::kNoStateId;
   }
 
-  if (state.match_all_state != fst::kNoStateId) {
+  if (state.match_all_from != fst::kNoStateId) {
     // non-terminal MATCH_ALL
-    utf8_emplace_arc(a, state.to, state.match_all_state, state.match_all_label, state.to);
+    utf8_emplace_arc(a, state.to, state.match_all_from,
+                     state.match_all_label, state.match_all_to);
   }
 
   a.SetFinal(state.to);
