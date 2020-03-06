@@ -799,7 +799,7 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
           assert(it < itrs_.size());
           return itrs_[it].value() == doc_.value;
         },
-        [this, lhs, &pVal](size_t it) {
+        [this, &pVal](size_t it) {
           assert(it < itrs_.size());
           detail::evaluate_score_iter(pVal, itrs_[it]);
       });

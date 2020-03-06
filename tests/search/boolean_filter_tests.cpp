@@ -110,7 +110,7 @@ struct basic_sort : irs::sort {
     }
 
     virtual void merge(irs::byte_type* dst, const irs::byte_type** src_start,
-                       const size_t size, size_t offset) const {
+                       const size_t size, size_t offset) const override {
       score_cast<size_t>(dst + offset) = 0;
       for (size_t i = 0; i < size; ++i) {
         score_cast<size_t>(dst + offset) += score_cast<size_t>(src_start[i]  + offset);

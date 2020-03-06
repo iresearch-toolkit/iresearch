@@ -222,7 +222,7 @@ struct custom_sort: public irs::sort {
       return irs::memory::make_unique<collector>(sort_);
     }
 
-    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
       score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
       for (size_t i = 0; i < size; ++i) {
         if (sort_.scorer_add) {
@@ -366,7 +366,7 @@ struct frequency_sort: public irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+    virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const override {
       auto& score = score_cast(dst_buf + offset);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();

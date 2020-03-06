@@ -956,8 +956,8 @@ struct skip_context : skip_state {
 struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
-  version10::term_meta* term_state;
-  uint32_t* freq;
+  const version10::term_meta* term_state;
+  const uint32_t* freq;
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;

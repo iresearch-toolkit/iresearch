@@ -435,7 +435,7 @@ class IRESEARCH_API sort {
     ///        specified 'offset' to 'dst', i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
     virtual void merge(byte_type* dst, const byte_type** src_start,
-                       const size_t size, size_t offset) const {
+                       const size_t size, size_t offset) const override {
       auto& casted_dst = base_t::score_cast(dst + offset);
       casted_dst = ScoreType();
       for (size_t i = 0; i < size; ++i) {
