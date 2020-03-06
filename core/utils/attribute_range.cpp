@@ -37,9 +37,8 @@ const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
-MSVC_ONLY(template struct IRESEARCH_API Adapter;) \
-MSVC_ONLY(template struct IRESEARCH_API AttributeRange;) \
-template MSVC_ONLY(IRESEARCH_API) const attribute::type_id& AttributeRange::type();
+template struct MSVC_ONLY(IRESEARCH_API) Adapter; \
+template struct MSVC_ONLY(IRESEARCH_API) AttributeRange;
 
 #define DEFINE_ATTRIBUTE_RANGE(Adapter) ADD_ATTRIBUTE_RANGE(Adapter, attribute_range<Adapter>);
 
