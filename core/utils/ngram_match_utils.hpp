@@ -29,61 +29,59 @@
 
 NS_ROOT
 
-
 template<typename T, bool use_ngram_position_match>
-float_t ngram_similarity(const T* lhs, size_t lhs_size,
-                         const T* rhs, size_t rhs_size,
+float_t ngram_similarity(const T* target, size_t target_size,
+                         const T* src, size_t src_size,
                          size_t ngram_size) {
-
   if (ngram_size == 0) {
     return 0.f;
   }
 
-
   if /*consexpr*/ (use_ngram_position_match) {
-    if (lhs_size > rhs_size) {
-      std::swap(lhs_size, rhs_size);
-      std::swap(lhs, rhs);
+    if (target_size > src_size) {
+      std::swap(target_size, src_size);
+      std::swap(target, src);
     }
-  } 
+  }
 
-  if (lhs_size < ngram_size || rhs_size < ngram_size) {
+  if (target_size < ngram_size || src_size < ngram_size) {
     if /*constexpr*/ (use_ngram_position_match) {
-      if (lhs_size == 0 && rhs_size == 0) {
+      if (target_size == 0 && src_size == 0) {
         return 1; // consider two empty strings as matched
       }
-      const T* r = rhs;
+      const T* r = src;
       size_t matched = 0;
-      for (const T* it = lhs; it != lhs + lhs_size; ) {
+      for (const T* it = target; it != target + target_size; ) {
         matched += size_t(*it == *r);
         ++r;
         ++it;
       }
-      return float_t(matched) / float_t(rhs_size);
+      return float_t(matched) / float_t(src_size);
     } else {
+      // search implies some ngrams should be found, but if intput is too short, no ngrams = no matches
       return 0;
     }
   }
 
-  const size_t lhs_ngram_count = lhs_size - ngram_size + 1;
-  const size_t rhs_ngram_count = rhs_size - ngram_size + 1;
-  const T* lhs_ngram_start = lhs;
-  const T* lhs_ngram_start_end  = lhs + lhs_size - ngram_size + 1; // end() analog for lhs ngram start
+  const size_t t_ngram_count = target_size - ngram_size + 1;
+  const size_t s_ngram_count = src_size - ngram_size + 1;
+  const T* t_ngram_start = target;
+  const T* t_ngram_start_end  = target + target_size - ngram_size + 1; // end() analog for target ngram start
 
   float_t d = 0;
-  std::vector<float_t> cache(std::max(lhs_ngram_count, rhs_ngram_count) + 1, 0);
+  std::vector<float_t> cache(s_ngram_count + 1, 0);
 
-  size_t lhs_ngram_idx = 1;
-  for (; lhs_ngram_start != lhs_ngram_start_end; ++lhs_ngram_start, ++lhs_ngram_idx) {
-    const T* lhs_ngram_end = lhs_ngram_start + ngram_size;
-    const T* rhs_ngram_start = rhs;
-    size_t rhs_ngram_idx = 1;
-    const T* rhs_ngram_start_end  = rhs + rhs_size - ngram_size + 1; // end() analog for rhs ngram start
+  size_t t_ngram_idx = 1;
+  for (; t_ngram_start != t_ngram_start_end; ++t_ngram_start, ++t_ngram_idx) {
+    const T* t_ngram_end = t_ngram_start + ngram_size;
+    const T* s_ngram_start = src;
+    size_t s_ngram_idx = 1;
+    const T* s_ngram_start_end  = src + src_size - ngram_size + 1; // end() analog for src ngram start
 
-    for (; rhs_ngram_start != rhs_ngram_start_end; ++rhs_ngram_start, ++rhs_ngram_idx) {
-      const T* rhs_ngram_end = rhs_ngram_start + ngram_size;
+    for (; s_ngram_start != s_ngram_start_end; ++s_ngram_start, ++s_ngram_idx) {
+      const T* rhs_ngram_end = s_ngram_start + ngram_size;
       float_t similarity = use_ngram_position_match ? 0 : 1;
-      for (const T* l = lhs_ngram_start, *r = rhs_ngram_start; l != lhs_ngram_end && r != rhs_ngram_end; ++l, ++r) {
+      for (const T* l = t_ngram_start, *r = s_ngram_start; l != t_ngram_end && r != rhs_ngram_end; ++l, ++r) {
         if /*constexpr*/ (!use_ngram_position_match) {
           if (*l != *r) {
             similarity = 0;
@@ -99,19 +97,20 @@ float_t ngram_similarity(const T* lhs, size_t lhs_size,
         similarity = similarity / float_t(ngram_size);
       }
 
-      auto tmp = cache[rhs_ngram_idx];
-      cache[rhs_ngram_idx] =
+      auto tmp = cache[s_ngram_idx];
+      cache[s_ngram_idx] =
           std::max(
-            std::max(cache[rhs_ngram_idx - 1],
-                     cache[rhs_ngram_idx]),
+            std::max(cache[s_ngram_idx - 1],
+                     cache[s_ngram_idx]),
             d + similarity);
       d = tmp;
     }
   }
-  return cache[rhs_ngram_count] / float_t(rhs_ngram_count);
+  return cache[s_ngram_count] /
+         float_t((use_ngram_position_match) ? s_ngram_count : t_ngram_count);
 }
 
 NS_END
 
 
-#endif IRESEARCH_NGRAM_MATCH_UTILS_H // IRESEARCH_NGRAM_MATCH_UTILS_H
+#endif // IRESEARCH_NGRAM_MATCH_UTILS_H

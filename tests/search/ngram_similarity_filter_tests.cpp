@@ -25,6 +25,7 @@
 #include "search/ngram_similarity_filter.hpp"
 #include "search/tfidf.hpp"
 #include "search/bm25.hpp"
+#include "utils/ngram_match_utils.hpp"
 
 #include <functional>
 
@@ -248,6 +249,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(0.75, boost->value);
+    const irs::string_ref rhs = "134";
+    const irs::string_ref lhs = "1234";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -287,6 +293,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
+    const irs::string_ref rhs = "11223344";
+    const irs::string_ref lhs = "1234";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -324,6 +335,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
+    const irs::string_ref rhs = "121134";
+    const irs::string_ref lhs = "1234";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -361,6 +377,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
+    const irs::string_ref rhs = "121111";
+    const irs::string_ref lhs = "11";
+    ASSERT_DOUBLE_EQ(
+        boost->value,
+        (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -399,6 +420,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
+    const irs::string_ref rhs = "121212121212121";
+    const irs::string_ref lhs = "121";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(4, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -436,6 +462,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
+    const irs::string_ref rhs = "11";
+    const irs::string_ref lhs = "11";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -473,6 +504,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_FALSE(irs::doc_limits::eof(doc->value));
         ASSERT_DOUBLE_EQ(0.5, boost->value);
+        const irs::string_ref rhs = "24241313";
+        const irs::string_ref lhs = "1234";
+        ASSERT_DOUBLE_EQ(
+          boost->value,
+          (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
         ASSERT_EQ(2, frequency->value);
         ASSERT_FALSE(docs->next());
     }
@@ -510,6 +546,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(0.5, boost->value);
+    const irs::string_ref lhs = "1234";
+    const irs::string_ref rhs = "1562";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -549,6 +590,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1., boost->value);
+    const irs::string_ref rhs = "1123451";
+    const irs::string_ref lhs = "123451";
+    ASSERT_DOUBLE_EQ(
+      boost->value,
+      (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
