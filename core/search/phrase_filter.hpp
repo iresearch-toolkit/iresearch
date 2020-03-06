@@ -150,6 +150,19 @@ class IRESEARCH_API by_phrase : public filter {
     return *this;
   }
 
+  by_phrase& insert(const info_t::select_term& t, size_t pos, select_term_info_t&& terms) {
+    assert(!terms.empty());
+    if (terms.size() == 1) {
+      phrase_[pos] = {info_t(info_t::simple_term()), terms.front()};
+    } else {
+      is_simple_term_only = false;
+      phrase_[pos] = {info_t(t), bstring()};
+      auto it = select_phrase_.insert({pos, std::move(terms)}).first;
+      std::sort(it->second.begin(), it->second.end()); // optimization
+    }
+    return *this;
+  }
+
   template<typename T, typename = typename std::enable_if<!std::is_same<T, info_t::select_term>::value>::type>
   by_phrase& insert(const T& t, size_t pos, const string_ref& term) {
     return insert(t, pos, ref_cast<byte_type>(term));
