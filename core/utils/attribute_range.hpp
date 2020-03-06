@@ -54,9 +54,7 @@ class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
     return value_;
   }
 
-  bool next() {
-    return false; // see specializations
-  }
+  bool next();
 
   void reset() {
     value_ = nullptr;
