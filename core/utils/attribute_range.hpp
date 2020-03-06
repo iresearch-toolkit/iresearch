@@ -40,7 +40,6 @@ struct attribute_range_state {
 template<typename Adapter>
 class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
  public:
-  DECLARE_REFERENCE(attribute_range);
   DECLARE_TYPE_ID(attribute::type_id);
 
   static attribute_range<Adapter>* extract(const attribute_view& attrs) noexcept {

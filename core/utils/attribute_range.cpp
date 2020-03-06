@@ -33,7 +33,7 @@ bool attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>::next()
 }
 
 #define ADD_ATTRIBUTE_RANGE(Adapter, AttributeRange) template<> \
-const attribute::type_id& AttributeRange::type() { \
+/*static*/ const attribute::type_id& AttributeRange::type() { \
   static attribute::type_id type(#AttributeRange); \
   return type; \
 } \
