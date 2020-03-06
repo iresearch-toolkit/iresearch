@@ -73,9 +73,6 @@ NS_END // detail
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 struct IRESEARCH_API_TEMPLATE position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
-
-  typename attribute_view::ref<irs::position> attribute;
-
   position_score_iterator_adapter(typename position_score_iterator_adapter<DocIterator>::doc_iterator_t&& it) noexcept
     : score_iterator_adapter<DocIterator>(std::move(it)) {
     auto& attrs = this->it->attributes();
