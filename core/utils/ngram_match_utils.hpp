@@ -29,7 +29,25 @@
 
 NS_ROOT
 
-template<typename T, bool use_ngram_position_match>
+////////////////////////////////////////////////////////////////////////////////
+/// Evaluates ngram similarity between the specified strings based on
+/// "N-gram similarity and distance" by Grzegorz Kondrak
+/// http://www.cs.ualberta.ca/~kondrak/papers/spire05.pdf
+/// Could operate in two forms depending on search_semantics.
+/// If search_semantics is false then positional ngram similarity is used,
+/// binary ngram similarity is used otherwise. Also setting search_semantics to
+/// true disables normalizing resulting similarity by length of longest string and
+/// result is evaluated based strictly on target length (search-like semantics).
+/// If search_semantics is false there is no difference which string pass
+/// as target.
+/// @param target string to seek similarity for
+/// @param target_size length of target string
+/// @param src string to seek similarity in
+/// @param src_size length of source string
+/// @param ngram_size ngram size
+/// @returns similarity value
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, bool search_semantics>
 float_t ngram_similarity(const T* target, size_t target_size,
                          const T* src, size_t src_size,
                          size_t ngram_size) {
@@ -37,7 +55,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
     return 0.f;
   }
 
-  if /*consexpr*/ (use_ngram_position_match) {
+  if /*consexpr*/ (!search_semantics) {
     if (target_size > src_size) {
       std::swap(target_size, src_size);
       std::swap(target, src);
@@ -45,7 +63,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
   }
 
   if (target_size < ngram_size || src_size < ngram_size) {
-    if /*constexpr*/ (use_ngram_position_match) {
+    if /*constexpr*/ (!search_semantics) {
       if (target_size == 0 && src_size == 0) {
         return 1; // consider two empty strings as matched
       }
@@ -58,7 +76,9 @@ float_t ngram_similarity(const T* target, size_t target_size,
       }
       return float_t(matched) / float_t(src_size);
     } else {
-      // search implies some ngrams should be found, but if intput is too short, no ngrams = no matches
+      if (target_size == src_size) {
+        return memcmp(target, src, target_size * sizeof(T)) == 0 ? 1 : 0;
+      }
       return 0;
     }
   }
@@ -68,7 +88,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
   const T* t_ngram_start = target;
   const T* t_ngram_start_end  = target + target_size - ngram_size + 1; // end() analog for target ngram start
 
-  float_t d = 0;
+  float_t d = 0; // will store upper-left cell value for current case
   std::vector<float_t> cache(s_ngram_count + 1, 0);
 
   size_t t_ngram_idx = 1;
@@ -80,9 +100,9 @@ float_t ngram_similarity(const T* target, size_t target_size,
 
     for (; s_ngram_start != s_ngram_start_end; ++s_ngram_start, ++s_ngram_idx) {
       const T* rhs_ngram_end = s_ngram_start + ngram_size;
-      float_t similarity = use_ngram_position_match ? 0 : 1;
+      float_t similarity = !search_semantics ? 0 : 1;
       for (const T* l = t_ngram_start, *r = s_ngram_start; l != t_ngram_end && r != rhs_ngram_end; ++l, ++r) {
-        if /*constexpr*/ (!use_ngram_position_match) {
+        if /*constexpr*/ (search_semantics) {
           if (*l != *r) {
             similarity = 0;
             break;
@@ -93,7 +113,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
           }
         }
       }
-      if /*constexpr*/ (use_ngram_position_match) {
+      if /*constexpr*/ (!search_semantics) {
         similarity = similarity / float_t(ngram_size);
       }
 
@@ -107,7 +127,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
     }
   }
   return cache[s_ngram_count] /
-         float_t((use_ngram_position_match) ? s_ngram_count : t_ngram_count);
+         float_t((!search_semantics) ? s_ngram_count : t_ngram_count);
 }
 
 NS_END
