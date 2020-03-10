@@ -24,9 +24,6 @@
 #define IRESEARCH_ATTRIBUTE_RANGE_H
 
 #include "attributes.hpp"
-#include "attributes_provider.hpp"
-
-#include <vector>
 
 NS_ROOT
 
