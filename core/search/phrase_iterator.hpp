@@ -111,6 +111,7 @@ class variadic_phrase_frequency {
       const order::prepared& ord)
     : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
+    assert(0 == pos_.front().second); // lead offset is always 0
   }
 
  protected:
