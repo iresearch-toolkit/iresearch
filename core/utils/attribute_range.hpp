@@ -38,7 +38,7 @@ struct attribute_range_state {
 };
 
 template<typename Adapter>
-class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
+class attribute_range final : public attribute {
  public:
   DECLARE_TYPE_ID(attribute::type_id);
 
@@ -63,10 +63,8 @@ class IRESEARCH_API_TEMPLATE attribute_range final : public attribute {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_range_state<Adapter>* ars_ = nullptr;
   Adapter* value_ = nullptr;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // attribute_range
 
 NS_END // ROOT
