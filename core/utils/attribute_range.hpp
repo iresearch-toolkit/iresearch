@@ -39,10 +39,6 @@ class attribute_range final : public attribute {
  public:
   DECLARE_TYPE_ID(attribute::type_id);
 
-  static attribute_range<Adapter>* extract(const attribute_view& attrs) noexcept {
-    return attrs.get<attribute_range<Adapter>>().get();
-  }
-
   void set_state(attribute_range_state<Adapter>* ars) noexcept {
     ars_ = ars;
   }
