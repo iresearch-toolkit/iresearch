@@ -125,7 +125,7 @@ class variadic_phrase_frequency {
       auto* lead_adapter = posa->value();
       auto* lead = lead_adapter->position;
       auto global_match = true;
-      // lead->reset(); // Do not need here. There is the first time always.
+      // lead->reset(); // Do not need here. There is always a first time.
       lead->next();
 
       position::value_t base_position = pos_limits::eof();
