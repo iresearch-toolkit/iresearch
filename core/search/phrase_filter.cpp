@@ -305,102 +305,114 @@ bool by_phrase::equals(const filter& rhs) const noexcept {
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-by_phrase::info_t::info_t() : type(Type::TERM), st() {
+by_phrase::info_t::info_t() : type(PhrasePartType::TERM), st() {
 }
 
 by_phrase::info_t::info_t(const info_t& other) {
   type = other.type;
+  allocate();
   switch (type) {
-  case Type::TERM:
-    this->st = other.st;
-    break;
-  case Type::PREFIX:
-    this->pt = other.pt;
-    break;
-  case Type::WILDCARD:
-    this->wt = other.wt;
-    break;
-  case Type::LEVENSHTEIN:
-    this->lt = other.lt;
-    break;
-  case Type::SELECT:
-    this->ct = other.ct;
-    break;
-  default:
-    assert(false);
+    case PhrasePartType::TERM:
+      this->st = other.st;
+      break;
+    case PhrasePartType::PREFIX:
+      this->pt = other.pt;
+      break;
+    case PhrasePartType::WILDCARD:
+      this->wt = other.wt;
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      this->lt = other.lt;
+      break;
+    case PhrasePartType::SET:
+      this->ct = other.ct;
+      break;
+    default:
+      assert(false);
   }
 }
 
 by_phrase::info_t::info_t(info_t&& other) noexcept {
   type = other.type;
+  allocate();
   switch (type) {
-  case Type::TERM:
-    this->st = std::move(other.st);
-    break;
-  case Type::PREFIX:
-    this->pt = std::move(other.pt);
-    break;
-  case Type::WILDCARD:
-    this->wt = std::move(other.wt);
-    break;
-  case Type::LEVENSHTEIN:
-    this->lt = std::move(other.lt);
-    break;
-  case Type::SELECT:
-    this->ct = std::move(other.ct);
-    break;
-  default:
-    assert(false);
+    case PhrasePartType::TERM:
+      this->st = std::move(other.st);
+      break;
+    case PhrasePartType::PREFIX:
+      this->pt = std::move(other.pt);
+      break;
+    case PhrasePartType::WILDCARD:
+      this->wt = std::move(other.wt);
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      this->lt = std::move(other.lt);
+      break;
+    case PhrasePartType::SET:
+      this->ct = std::move(other.ct);
+      break;
+    default:
+      assert(false);
   }
 }
 
 by_phrase::info_t::info_t(const simple_term& st) {
-  type = Type::TERM;
+  type = PhrasePartType::TERM;
+  allocate();
   this->st = st;
 }
 
 by_phrase::info_t::info_t(simple_term&& st) noexcept {
-  type = Type::TERM;
+  type = PhrasePartType::TERM;
+  allocate();
   this->st = std::move(st);
 }
 
 by_phrase::info_t::info_t(const prefix_term& pt) {
-  type = Type::PREFIX;
+  type = PhrasePartType::PREFIX;
+  allocate();
   this->pt = pt;
 }
 
 by_phrase::info_t::info_t(prefix_term&& pt) noexcept {
-  type = Type::PREFIX;
+  type = PhrasePartType::PREFIX;
+  allocate();
   this->pt = std::move(pt);
 }
 
 by_phrase::info_t::info_t(const wildcard_term& wt) {
-  type = Type::WILDCARD;
+  type = PhrasePartType::WILDCARD;
+  allocate();
   this->wt = wt;
 }
 
 by_phrase::info_t::info_t(wildcard_term&& wt) noexcept {
-  type = Type::WILDCARD;
+  type = PhrasePartType::WILDCARD;
+  allocate();
   this->wt = std::move(wt);
 }
 
 by_phrase::info_t::info_t(const levenshtein_term& lt) {
-  type = Type::LEVENSHTEIN;
+  type = PhrasePartType::LEVENSHTEIN;
+  allocate();
   this->lt = lt;
 }
 
 by_phrase::info_t::info_t(levenshtein_term&& lt) noexcept {
-  type = Type::LEVENSHTEIN;
+  type = PhrasePartType::LEVENSHTEIN;
+  allocate();
   this->lt = std::move(lt);
 }
 
-by_phrase::info_t::info_t(const select_term& ct) {
-  type = Type::SELECT;
+by_phrase::info_t::info_t(const set_term& ct) {
+  type = PhrasePartType::SET;
+  allocate();
   this->ct = ct;
 }
 
-by_phrase::info_t::info_t(select_term&& ct) noexcept {
-  type = Type::SELECT;
+by_phrase::info_t::info_t(set_term&& ct) noexcept {
+  type = PhrasePartType::SET;
+  allocate();
   this->ct = std::move(ct);
 }
 
@@ -408,25 +420,25 @@ by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
   if (&other == this) {
     return *this;
   }
-  type = other.type;
+  recreate(other.type);
   switch (type) {
-  case Type::TERM:
-    st = other.st;
-    break;
-  case Type::PREFIX:
-    pt = other.pt;
-    break;
-  case Type::WILDCARD:
-    wt = other.wt;
-    break;
-  case Type::LEVENSHTEIN:
-    lt = other.lt;
-    break;
-  case Type::SELECT:
-    ct = other.ct;
-    break;
-  default:
-    assert(false);
+    case PhrasePartType::TERM:
+      st = other.st;
+      break;
+    case PhrasePartType::PREFIX:
+      pt = other.pt;
+      break;
+    case PhrasePartType::WILDCARD:
+      wt = other.wt;
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      lt = other.lt;
+      break;
+    case PhrasePartType::SET:
+      ct = other.ct;
+      break;
+    default:
+      assert(false);
   }
   return *this;
 }
@@ -435,25 +447,25 @@ by_phrase::info_t& by_phrase::info_t::operator=(info_t&& other) noexcept {
   if (&other == this) {
     return *this;
   }
-  type = other.type;
+  recreate(other.type);
   switch (type) {
-  case Type::TERM:
-    st = std::move(other.st);
-    break;
-  case Type::PREFIX:
-    pt = std::move(other.pt);
-    break;
-  case Type::WILDCARD:
-    wt = std::move(other.wt);
-    break;
-  case Type::LEVENSHTEIN:
-    lt = std::move(other.lt);
-    break;
-  case Type::SELECT:
-    ct = std::move(other.ct);
-    break;
-  default:
-    assert(false);
+    case PhrasePartType::TERM:
+      st = std::move(other.st);
+      break;
+    case PhrasePartType::PREFIX:
+      pt = std::move(other.pt);
+      break;
+    case PhrasePartType::WILDCARD:
+      wt = std::move(other.wt);
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      lt = std::move(other.lt);
+      break;
+    case PhrasePartType::SET:
+      ct = std::move(other.ct);
+      break;
+    default:
+      assert(false);
   }
   return *this;
 }
@@ -463,43 +475,100 @@ bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
     return false;
   }
   switch (type) {
-  case Type::TERM:
-    return st == other.st;
-  case Type::PREFIX:
-    return pt == other.pt;
-  case Type::WILDCARD:
-    return wt == other.wt;
-  case Type::LEVENSHTEIN:
-    return lt == other.lt;
-  case Type::SELECT:
-    return ct == other.ct;
-  default:
-    assert(false);
+    case PhrasePartType::TERM:
+      return st == other.st;
+    case PhrasePartType::PREFIX:
+      return pt == other.pt;
+    case PhrasePartType::WILDCARD:
+      return wt == other.wt;
+    case PhrasePartType::LEVENSHTEIN:
+      return lt == other.lt;
+    case PhrasePartType::SET:
+      return ct == other.ct;
+    default:
+      assert(false);
   }
   return false;
+}
+
+void by_phrase::info_t::allocate() noexcept {
+  switch (type) {
+    case PhrasePartType::TERM:
+      new (&st) simple_term();
+      break;
+    case PhrasePartType::PREFIX:
+      new (&pt) prefix_term();
+      break;
+    case PhrasePartType::WILDCARD:
+      new (&wt) wildcard_term();
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      new (&lt) levenshtein_term();
+      break;
+    case PhrasePartType::SET:
+      new (&ct) set_term();
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void by_phrase::info_t::destroy() noexcept {
+  switch (type) {
+    case PhrasePartType::TERM:
+      st.~simple_term();
+      break;
+    case PhrasePartType::PREFIX:
+      pt.~prefix_term();
+      break;
+    case PhrasePartType::WILDCARD:
+      wt.~wildcard_term();
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      lt.~levenshtein_term();
+      break;
+    case PhrasePartType::SET:
+      ct.~set_term();
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void by_phrase::info_t::recreate(PhrasePartType new_type) noexcept {
+  if (type != new_type) {
+    destroy();
+    type = new_type;
+    allocate();
+  }
 }
 
 size_t hash_value(const by_phrase::info_t& info) {
   auto seed = std::hash<int>()(static_cast<int>(info.type));
   switch (info.type) {
-  case by_phrase::info_t::Type::TERM:
-    break;
-  case by_phrase::info_t::Type::PREFIX:
-    ::boost::hash_combine(seed, std::hash<size_t>()(info.pt.scored_terms_limit));
-    break;
-  case by_phrase::info_t::Type::WILDCARD:
-    ::boost::hash_combine(seed, std::hash<size_t>()(info.wt.scored_terms_limit));
-    break;
-  case by_phrase::info_t::Type::LEVENSHTEIN:
-    ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
-    ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
-    ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
-    ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
-    break;
-  case by_phrase::info_t::Type::SELECT:
-    break;
-  default:
-    assert(false);
+    case by_phrase::PhrasePartType::TERM:
+      break;
+    case by_phrase::PhrasePartType::PREFIX:
+      ::boost::hash_combine(seed, std::hash<size_t>()(info.pt.scored_terms_limit));
+      break;
+    case by_phrase::PhrasePartType::WILDCARD:
+      ::boost::hash_combine(seed, std::hash<size_t>()(info.wt.scored_terms_limit));
+      break;
+    case by_phrase::PhrasePartType::LEVENSHTEIN:
+      ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
+      ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
+      ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
+      ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
+      break;
+    case by_phrase::PhrasePartType::SET:
+      std::for_each(
+        info.ct.terms.cbegin(), info.ct.terms.cend(),
+        [&seed](const bstring& term) {
+          ::boost::hash_combine(seed, term);
+      });
+      break;
+    default:
+      assert(false);
   }
   return seed;
 }
@@ -512,16 +581,6 @@ size_t by_phrase::hash() const noexcept {
     phrase_.begin(), phrase_.end(),
     [&seed](const by_phrase::term_t& term) {
       ::boost::hash_combine(seed, term);
-  });
-  std::for_each(
-    select_phrase_.begin(), select_phrase_.end(),
-    [&seed](const by_phrase::select_term_t& terms) {
-    ::boost::hash_combine(seed, terms.first);
-    std::for_each(
-      terms.second.begin(), terms.second.end(),
-      [&seed](const bstring& term) {
-        ::boost::hash_combine(seed, term);
-    });
   });
   return seed;
 }
@@ -536,33 +595,33 @@ filter::prepared::ptr by_phrase::prepare(
     return filter::prepared::empty();
   }
 
-  auto phrase_size = phrase_.size();
+  const auto phrase_size = phrase_.size();
   if (1 == phrase_size) {
     const auto& term_info = phrase_.begin()->second;
-    switch (term_info.first.type) {
-    case info_t::Type::TERM: // similar to `term_query`
-      return term_query::make(rdr, ord, boost*this->boost(), fld_, phrase_.begin()->second.second);
-    case info_t::Type::PREFIX:
-      return by_prefix::prepare(rdr, ord, boost*this->boost(), fld_, term_info.second,
-                                term_info.first.pt.scored_terms_limit);
-    case info_t::Type::WILDCARD:
-      return by_wildcard::prepare(rdr, ord, boost*this->boost(), fld_,
-                                  term_info.second, term_info.first.wt.scored_terms_limit);
-    case info_t::Type::LEVENSHTEIN:
-      return by_edit_distance::prepare(rdr, ord, boost*this->boost(), fld_,
-                                       term_info.second, term_info.first.lt.scored_terms_limit,
-                                       term_info.first.lt.max_distance, term_info.first.lt.provider,
-                                       term_info.first.lt.with_transpositions);
-    case info_t::Type::SELECT:
-      // do nothing
-      break;
-    default:
-      assert(false);
+    switch (term_info.type) {
+      case PhrasePartType::TERM: // similar to `term_query`
+        return term_query::make(rdr, ord, boost*this->boost(), fld_, term_info.st.term);
+      case PhrasePartType::PREFIX:
+        return by_prefix::prepare(rdr, ord, boost*this->boost(), fld_, term_info.pt.term,
+                                  term_info.pt.scored_terms_limit);
+      case PhrasePartType::WILDCARD:
+        return by_wildcard::prepare(rdr, ord, boost*this->boost(), fld_,
+                                    term_info.wt.term, term_info.wt.scored_terms_limit);
+      case PhrasePartType::LEVENSHTEIN:
+        return by_edit_distance::prepare(rdr, ord, boost*this->boost(), fld_,
+                                         term_info.lt.term, term_info.lt.scored_terms_limit,
+                                         term_info.lt.max_distance, term_info.lt.provider,
+                                         term_info.lt.with_transpositions);
+      case PhrasePartType::SET:
+        // do nothing
+        break;
+      default:
+        assert(false);
     }
   }
 
   // prepare phrase stats (collector for each term)
-  if (is_simple_term_only) {
+  if (is_simple_term_only_) {
     return fixed_prepare_collect(rdr, ord, boost, ord.fixed_prepare_collectors(phrase_size));
   }
   return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
@@ -604,9 +663,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     size_t term_itr = 0;
 
     for (const auto& word : phrase_) {
-      assert(info_t::Type::TERM == word.second.first.type);
+      assert(PhrasePartType::TERM == word.second.type);
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
-      if (!term->seek(word.second.second)) {
+      if (!term->seek(word.second.st.term)) {
         if (ord.empty()) {
           break;
         } else {
@@ -702,12 +761,18 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     for (const auto& word : phrase_) {
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
       auto& pt = phrase_terms[i++];
-      auto type = word.second.first.type;
-      bytes_ref pattern = word.second.second;
+      auto type = word.second.type;
+      bytes_ref pattern;
       auto stop = false;
-
-      switch (word.second.first.type) {
-        case info_t::Type::WILDCARD:
+      switch (word.second.type) {
+        case PhrasePartType::TERM:
+          pattern = word.second.st.term;
+          break;
+        case PhrasePartType::PREFIX:
+          pattern = word.second.pt.term;
+          break;
+        case PhrasePartType::WILDCARD:
+          pattern = word.second.wt.term;
           switch (irs::wildcard_type(pattern)) {
             case WildcardType::INVALID:
               if (ord.empty()) {
@@ -717,11 +782,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               }
               break;
             case WildcardType::TERM:
-              type = info_t::Type::TERM;
+              type = PhrasePartType::TERM;
               break;
             case WildcardType::MATCH_ALL:
               pattern = bytes_ref::EMPTY; // empty prefix == match all
-              type = info_t::Type::PREFIX;
+              type = PhrasePartType::PREFIX;
               break;
             case WildcardType::PREFIX: {
               assert(!pattern.empty());
@@ -732,7 +797,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
               assert(pos != end);
               pattern = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
-              type = info_t::Type::PREFIX;
+              type = PhrasePartType::PREFIX;
               break;
             }
             case WildcardType::WILDCARD:
@@ -742,20 +807,26 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               assert(false);
           }
           break;
-        case info_t::Type::LEVENSHTEIN:
-          if (0 == word.second.first.lt.max_distance) {
-            type = info_t::Type::TERM;
+        case PhrasePartType::LEVENSHTEIN:
+          if (0 == word.second.lt.max_distance) {
+            type = PhrasePartType::TERM;
+          }
+          break;
+        case PhrasePartType::SET:
+          if (word.second.ct.terms.size() == 1) {
+            pattern = word.second.ct.terms.front();
+            type = PhrasePartType::TERM;
           }
           break;
         default:
-          break;
+          assert(false);
       }
       if (stop) {
         break;
       }
 
       switch (type) {
-        case info_t::Type::TERM: {
+        case PhrasePartType::TERM: {
           if (!term->seek(pattern)) {
             if (ord.empty()) {
               stop = true;
@@ -773,7 +844,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           ++found_words_count;
           break;
         }
-        case info_t::Type::PREFIX: {
+        case PhrasePartType::PREFIX: {
           // seek to prefix
           if (SeekResult::END == term->seek_ge(pattern)) {
             if (ord.empty()) {
@@ -808,7 +879,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           ++found_words_count;
           break;
         }
-        case info_t::Type::WILDCARD: {
+        case PhrasePartType::WILDCARD: {
           const auto& acceptor = from_wildcard(pattern);
           automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
 
@@ -826,29 +897,28 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
           auto term_wildcard = tr->iterator(matcher);
 
-          #ifdef IRESEARCH_DEBUG
-            auto found = false;
-          #endif
+          auto found = false;
           while (term_wildcard->next()) {
-            #ifdef IRESEARCH_DEBUG
-              found = true;
-            #endif
+            found = true;
             term_wildcard->read();
             collectors.collect(sr, *tr, term_itr, term_wildcard->attributes()); // collect statistics
 
             // estimate phrase & term
             pt.emplace_back(term_wildcard->cookie());
           }
-          #ifdef IRESEARCH_DEBUG
-            assert(found);
-          #endif
-          ++found_words_count;
+          if (found) {
+            ++found_words_count;
+          } else if (ord.empty()) {
+            stop = true;
+            // else we should collect
+            // stats for other terms in phrase
+          }
           break;
         }
-        case info_t::Type::LEVENSHTEIN: {
-          assert(word.second.first.lt.provider);
-          const auto& d = (*word.second.first.lt.provider)(word.second.first.lt.max_distance,
-                                                           word.second.first.lt.with_transpositions);
+        case PhrasePartType::LEVENSHTEIN: {
+          assert(word.second.lt.provider);
+          const auto& d = (*word.second.lt.provider)(word.second.lt.max_distance,
+                                                     word.second.lt.with_transpositions);
           if (!d) {
             if (ord.empty()) {
               stop = true;
@@ -857,7 +927,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
             }
             break;
           }
-          const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.second);
+          const auto& acceptor = irs::make_levenshtein_automaton(d, word.second.lt.term);
           automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
 
           if (fst::kError == matcher.Properties(0)) {
@@ -873,29 +943,27 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           }
           auto term_levenshtein = tr->iterator(matcher);
 
-          #ifdef IRESEARCH_DEBUG
-            auto found = false;
-          #endif
+          auto found = false;
           while (term_levenshtein->next()) {
-            #ifdef IRESEARCH_DEBUG
-              found = true;
-            #endif
+            found = true;
             term_levenshtein->read();
             collectors.collect(sr, *tr, term_itr, term_levenshtein->attributes()); // collect statistics
 
             // estimate phrase & term
             pt.emplace_back(term_levenshtein->cookie());
           }
-          #ifdef IRESEARCH_DEBUG
-            assert(found);
-          #endif
-          ++found_words_count;
+          if (found) {
+            ++found_words_count;
+          } else if (ord.empty()) {
+            stop = true;
+            // else we should collect
+            // stats for other terms in phrase
+          }
           break;
         }
-        case info_t::Type::SELECT: {
-          const auto& sel_terms = select_phrase_.at(word.first);
+        case PhrasePartType::SET: {
           auto found = false;
-          for (const auto& pat : sel_terms) {
+          for (const auto& pat : word.second.ct.terms) {
             if (!term->seek(pat)) {
               continue;
             }
