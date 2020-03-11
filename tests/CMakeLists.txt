@@ -122,6 +122,7 @@ set(IReSearch_tests_sources
   ./utils/fst_builder_test.cpp
   ./utils/fst_utils_test.cpp
   ./utils/fst_string_weight_test.cpp
+  ./utils/ngram_match_utils_tests.cpp
   ./tests_param.cpp
   ./tests_main.cpp
 )

@@ -128,12 +128,15 @@ class parametric_state {
       }
     }
 
-    for (auto begin = positions_.begin(); begin != positions_.end(); ) {
-      if (subsumes(new_pos, *begin)) {
-        std::swap(*begin, positions_.back());
-        positions_.pop_back(); // removed positions subsumed by new_pos
-      } else {
-        ++begin;
+    if (!positions_.empty()) {
+      for (auto begin = positions_.data(), end = positions_.data() + positions_.size(); begin != end; ) {
+        if (subsumes(new_pos, *begin)) {
+          std::swap(*begin, positions_.back());
+          positions_.pop_back(); // removed positions subsumed by new_pos
+          end = positions_.data() + positions_.size();
+        } else {
+          ++begin;
+        }
       }
     }
 
