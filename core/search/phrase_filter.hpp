@@ -92,7 +92,7 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
  private:
-  struct info_t {
+  struct IRESEARCH_API info_t {
     ~info_t() {
       destroy();
     }
