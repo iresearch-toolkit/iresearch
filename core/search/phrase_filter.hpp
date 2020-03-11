@@ -91,7 +91,8 @@ class IRESEARCH_API by_phrase : public filter {
     std::vector<bstring> terms;
   };
 
-  struct IRESEARCH_API info_t {
+ private:
+  struct info_t {
     ~info_t() {
       destroy();
     }
@@ -131,17 +132,13 @@ class IRESEARCH_API by_phrase : public filter {
     void recreate(PhrasePartType new_type) noexcept;
   };
 
- private:
   // positions and terms
   typedef std::map<size_t, info_t> terms_t;
   typedef terms_t::value_type term_t;
 
-  size_t hash_value(const by_phrase::info_t& info);
+  friend size_t hash_value(const by_phrase::info_t& info);
 
  public:
-  typedef terms_t::const_iterator const_iterator;
-  typedef terms_t::iterator iterator;
-
   // returns set of features required for filter
   static const flags& required();
 
@@ -170,19 +167,53 @@ class IRESEARCH_API by_phrase : public filter {
     return insert(std::forward<PhrasePart>(t), next_pos() + offs);
   }
 
-  info_t& operator[](size_t pos) { return phrase_[pos]; }
-  const info_t& operator[](size_t pos) const {
-    return phrase_.at(pos);
+  bool get(size_t pos, simple_term& t) {
+    const auto& inf = phrase_.at(pos);
+    if (PhrasePartType::TERM != inf.type) {
+      return false;
+    }
+    t = inf.st;
+    return true;
+  }
+
+  bool get(size_t pos, prefix_term& t) {
+    const auto& inf = phrase_.at(pos);
+    if (PhrasePartType::PREFIX != inf.type) {
+      return false;
+    }
+    t = inf.pt;
+    return true;
+  }
+
+  bool get(size_t pos, wildcard_term& t) {
+    const auto& inf = phrase_.at(pos);
+    if (PhrasePartType::WILDCARD != inf.type) {
+      return false;
+    }
+    t = inf.wt;
+    return true;
+  }
+
+  bool get(size_t pos, levenshtein_term& t) {
+    const auto& inf = phrase_.at(pos);
+    if (PhrasePartType::LEVENSHTEIN != inf.type) {
+      return false;
+    }
+    t = inf.lt;
+    return true;
+  }
+
+  bool get(size_t pos, set_term& t) {
+    const auto& inf = phrase_.at(pos);
+    if (PhrasePartType::SET != inf.type) {
+      return false;
+    }
+    t = inf.ct;
+    return true;
   }
 
   bool empty() const noexcept { return phrase_.empty(); }
   size_t size() const noexcept { return phrase_.size(); }
-
-  const_iterator begin() const noexcept { return phrase_.begin(); }
-  const_iterator end() const noexcept { return phrase_.end(); }
-
-  iterator begin() noexcept { return phrase_.begin(); }
-  iterator end() noexcept { return phrase_.end(); }
 
   using filter::prepare;
 
