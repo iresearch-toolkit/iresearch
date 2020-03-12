@@ -928,6 +928,15 @@ doc_iterator::ptr make_disjunction(
   );
 }
 
+template<typename DocIterator, typename Adapter, bool EnableUnary>
+struct disjunction_visitor {
+  virtual void visit(unary_disjunction<DocIterator, Adapter>& ref) = 0;
+  virtual void visit(basic_disjunction<DocIterator, Adapter>& ref) = 0;
+  virtual void visit(small_disjunction<DocIterator, Adapter>& ref) = 0;
+  virtual void visit(disjunction<DocIterator, Adapter, EnableUnary>& ref) = 0;
+  virtual ~disjunction_visitor() = default;
+};
+
 NS_END // ROOT
 
 #endif // IRESEARCH_DISJUNCTION_H
