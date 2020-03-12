@@ -126,7 +126,7 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const info_t& other) const noexcept;
 
-  private:
+   private:
     void allocate() noexcept;
     void destroy() noexcept;
     void recreate(PhrasePartType new_type) noexcept;
