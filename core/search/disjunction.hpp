@@ -99,7 +99,7 @@ struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
 
 template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
-  virtual void visit(const std::function<bool(Adapter&)>& /*visitor*/) = 0;
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,8 +130,10 @@ class unary_disjunction final : public doc_iterator_base<compound_doc_iterator<A
     return it_->seek(target);
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
-    visitor(it_);
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+    assert(ctx);
+    assert(visitor);
+    visitor(ctx, it_);
   }
 
  private:
@@ -193,12 +195,14 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
     return (doc_.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
-    if (*lhs_.doc == doc_.value && !visitor(lhs_)) {
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+    assert(ctx);
+    assert(visitor);
+    if (*lhs_.doc == doc_.value && !visitor(ctx, lhs_)) {
       return;
     }
     seek_iterator_impl(rhs_, doc_.value);
-    if (*rhs_.doc == doc_.value && !visitor(rhs_)) {
+    if (*rhs_.doc == doc_.value && !visitor(ctx, rhs_)) {
       return;
     }
   }
@@ -405,10 +409,12 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
     return (doc_.value = min);
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+    assert(ctx);
+    assert(visitor);
     hitch_all_iterators();
     for (auto& it : itrs_) {
-      if (it->value() == doc_.value && !visitor(it)) {
+      if (it->value() == doc_.value && !visitor(ctx, it)) {
         return;
       }
     }
@@ -588,10 +594,12 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
     return doc_.value = lead().value();
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+    assert(ctx);
+    assert(visitor);
     hitch_all_iterators();
     auto& lead = itrs_[heap_.back()];
-    auto cont = visitor(lead);
+    auto cont = visitor(ctx, lead);
     if (cont && heap_.size() > 1) {
       auto value = lead.value();
       irstd::heap::for_each_if(
@@ -601,9 +609,9 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
           assert(it < itrs_.size());
           return cont && itrs_[it].value() == value;
         },
-        [this, &visitor, &cont](const size_t it) {
+        [this, ctx, visitor, &cont](const size_t it) {
           assert(it < itrs_.size());
-          cont = visitor(itrs_[it]);
+          cont = visitor(ctx, itrs_[it]);
         });
     }
   }
