@@ -140,24 +140,23 @@ class variadic_phrase_frequency {
 
     auto visitor = [this, &freq, &term_position, &min_seeked, &match, &innerVisitor](
         position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
-      const auto size = pos_.size();
+      const auto end = pos_.end();
       auto* lead = lead_adapter.position;
       lead->next();
       position::value_t base_position = pos_limits::eof();
       while (!pos_limits::eof(base_position = lead->value())) {
         match = true;
-        for (size_t i = 1; i < size; ++i) {
-          auto& p = pos_[i];
+        for (auto it = pos_.begin() + 1; it != end; ++it) {
           match = false;
-          term_position = base_position + p.second;
+          term_position = base_position + it->second;
           if (!pos_limits::valid(term_position)) {
             return false; // invalid for all
           }
           min_seeked = pos_limits::eof();
-          p.first->visit(innerVisitor);
+          it->first->visit(innerVisitor);
           if (!match) {
             if (!pos_limits::eof(min_seeked)) {
-              lead->seek(min_seeked - p.second);
+              lead->seek(min_seeked - it->second);
               break;
             }
             return true; // eof for all
