@@ -72,7 +72,7 @@ NS_END // detail
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
-  position_score_iterator_adapter(typename position_score_iterator_adapter<DocIterator>::doc_iterator_t&& it) noexcept
+  position_score_iterator_adapter(DocIterator&& it) noexcept
     : score_iterator_adapter<DocIterator>(std::move(it)) {
     auto& attrs = this->it->attributes();
     position = irs::position::extract(attrs);
@@ -88,8 +88,8 @@ struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
 
   position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) noexcept {
     if (this != &rhs) {
-      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
       position = rhs.position;
+      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
     }
     return *this;
   }
