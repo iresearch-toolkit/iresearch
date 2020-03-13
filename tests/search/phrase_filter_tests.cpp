@@ -6052,52 +6052,52 @@ TEST(by_phrase_test, push_back_insert) {
 
     // check elements via positions
     {
-      irs::by_phrase::simple_term st1;
-      ASSERT_TRUE(q.get(0, st1));
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, st1);
-      irs::by_phrase::simple_term st2;
-      ASSERT_TRUE(q.get(2, st2));
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))}, st2);
-      irs::by_phrase::simple_term st3;
-      ASSERT_TRUE(q.get(3, st3));
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, st3);
+      const irs::by_phrase::simple_term* st1 = q.get<irs::by_phrase::simple_term>(0);
+      ASSERT_TRUE(st1);
+      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, *st1);
+      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(2);
+      ASSERT_TRUE(st2);
+      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))}, *st2);
+      const irs::by_phrase::simple_term* st3 = q.get<irs::by_phrase::simple_term>(3);
+      ASSERT_TRUE(st3);
+      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, *st3);
     }
 
     // push term 
     {
       irs::by_phrase::simple_term st1{irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"))};
       q.push_back(st1, 0);
-      irs::by_phrase::simple_term st2;
-      ASSERT_TRUE(q.get(4, st2));
-      ASSERT_EQ(st1, st2);
+      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(4);
+      ASSERT_TRUE(st2);
+      ASSERT_EQ(st1, *st2);
 
       irs::by_phrase::prefix_term pt1;
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("cat"));
       q.push_back(pt1, 0);
-      irs::by_phrase::prefix_term pt2;
-      ASSERT_TRUE(q.get(5, pt2));
-      ASSERT_EQ(pt1, pt2);
+      const irs::by_phrase::prefix_term* pt2 = q.get<irs::by_phrase::prefix_term>(5);
+      ASSERT_TRUE(pt2);
+      ASSERT_EQ(pt1, *pt2);
 
       irs::by_phrase::wildcard_term wt1;
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("dog"));
       q.push_back(wt1, 0);
-      irs::by_phrase::wildcard_term wt2;
-      ASSERT_TRUE(q.get(6, wt2));
-      ASSERT_EQ(wt1, wt2);
+      const irs::by_phrase::wildcard_term* wt2 = q.get<irs::by_phrase::wildcard_term>(6);
+      ASSERT_TRUE(wt2);
+      ASSERT_EQ(wt1, *wt2);
 
       irs::by_phrase::levenshtein_term lt1;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("whale"));
       q.push_back(lt1, 0);
-      irs::by_phrase::levenshtein_term lt2;
-      ASSERT_TRUE(q.get(7, lt2));
-      ASSERT_EQ(lt1, lt2);
+      const irs::by_phrase::levenshtein_term* lt2 = q.get<irs::by_phrase::levenshtein_term>(7);
+      ASSERT_TRUE(lt2);
+      ASSERT_EQ(lt1, *lt2);
 
       irs::by_phrase::set_term ct1;
       ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("bird"))};
       q.push_back(ct1, 0);
-      irs::by_phrase::set_term ct2;
-      ASSERT_TRUE(q.get(8, ct2));
-      ASSERT_EQ(ct1, ct2);
+      const irs::by_phrase::set_term* ct2 = q.get<irs::by_phrase::set_term>(8);
+      ASSERT_TRUE(ct2);
+      ASSERT_EQ(ct1, *ct2);
     }
     ASSERT_EQ(8, q.size());
   }
@@ -6105,21 +6105,21 @@ TEST(by_phrase_test, push_back_insert) {
   // insert
   {
     q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))}, 3);
-    irs::by_phrase::simple_term st1;
-    ASSERT_TRUE(q.get(3, st1));
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))}, st1);
+    const irs::by_phrase::simple_term* st1 = q.get<irs::by_phrase::simple_term>(3);
+    ASSERT_TRUE(st1);
+    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))}, *st1);
     ASSERT_EQ(8, q.size());
 
     q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"))}, 9);
-    irs::by_phrase::simple_term st2;
-    ASSERT_TRUE(q.get(9, st2));
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"))}, st2);
+    const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(9);
+    ASSERT_TRUE(st2);
+    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"))}, *st2);
     ASSERT_EQ(9, q.size());
 
     q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, 28);
-    irs::by_phrase::simple_term st3;
-    ASSERT_TRUE(q.get(28, st3));
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, st3);
+    const irs::by_phrase::simple_term* st3 = q.get<irs::by_phrase::simple_term>(28);
+    ASSERT_TRUE(st3);
+    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, *st3);
     ASSERT_EQ(10, q.size());
   }
 }

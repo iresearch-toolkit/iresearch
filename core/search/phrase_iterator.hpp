@@ -139,7 +139,7 @@ class variadic_phrase_frequency {
             global_match = false; // invalid for all
             break;
           }
-          auto min_seeked = std::numeric_limits<position::value_t>::max();
+          auto min_seeked = pos_limits::eof();
           auto* ita = it->first->get();
           assert(ita);
           ita->reset();
@@ -161,7 +161,7 @@ class variadic_phrase_frequency {
             break;
           }
           if (!match) {
-            if (min_seeked < std::numeric_limits<position::value_t>::max()) {
+            if (!pos_limits::eof(min_seeked)) {
               lead->seek(min_seeked - it->second);
               break;
             }

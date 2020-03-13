@@ -43,6 +43,8 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
   struct simple_term {
+    static constexpr PhrasePartType type = PhrasePartType::TERM;
+
     bool operator==(const simple_term& other) const noexcept {
       return term == other.term;
     }
@@ -51,6 +53,8 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
   struct prefix_term {
+    static constexpr PhrasePartType type = PhrasePartType::PREFIX;
+
     bool operator==(const prefix_term& other) const noexcept {
       return term == other.term;
     }
@@ -60,6 +64,8 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
   struct wildcard_term {
+    static constexpr PhrasePartType type = PhrasePartType::WILDCARD;
+
     bool operator==(const wildcard_term& other) const noexcept {
       return term == other.term;
     }
@@ -69,6 +75,8 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
   struct levenshtein_term {
+    static constexpr PhrasePartType type = PhrasePartType::LEVENSHTEIN;
+
     bool operator==(const levenshtein_term& other) const noexcept {
       return with_transpositions == other.with_transpositions &&
           max_distance == other.max_distance &&
@@ -84,6 +92,8 @@ class IRESEARCH_API by_phrase : public filter {
   };
 
   struct set_term {
+    static constexpr PhrasePartType type = PhrasePartType::SET;
+
     bool operator==(const set_term& other) const noexcept {
       return terms == other.terms;
     }
@@ -167,49 +177,13 @@ class IRESEARCH_API by_phrase : public filter {
     return insert(std::forward<PhrasePart>(t), next_pos() + offs);
   }
 
-  bool get(size_t pos, simple_term& t) {
+  template<typename PhrasePart>
+  const PhrasePart* get(size_t pos) const noexcept {
     const auto& inf = phrase_.at(pos);
-    if (PhrasePartType::TERM != inf.type) {
-      return false;
+    if (inf.type != PhrasePart::type) {
+      return nullptr;
     }
-    t = inf.st;
-    return true;
-  }
-
-  bool get(size_t pos, prefix_term& t) {
-    const auto& inf = phrase_.at(pos);
-    if (PhrasePartType::PREFIX != inf.type) {
-      return false;
-    }
-    t = inf.pt;
-    return true;
-  }
-
-  bool get(size_t pos, wildcard_term& t) {
-    const auto& inf = phrase_.at(pos);
-    if (PhrasePartType::WILDCARD != inf.type) {
-      return false;
-    }
-    t = inf.wt;
-    return true;
-  }
-
-  bool get(size_t pos, levenshtein_term& t) {
-    const auto& inf = phrase_.at(pos);
-    if (PhrasePartType::LEVENSHTEIN != inf.type) {
-      return false;
-    }
-    t = inf.lt;
-    return true;
-  }
-
-  bool get(size_t pos, set_term& t) {
-    const auto& inf = phrase_.at(pos);
-    if (PhrasePartType::SET != inf.type) {
-      return false;
-    }
-    t = inf.ct;
-    return true;
+    return reinterpret_cast<const PhrasePart*>(&inf.st);
   }
 
   bool empty() const noexcept { return phrase_.empty(); }
