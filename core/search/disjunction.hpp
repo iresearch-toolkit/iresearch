@@ -194,7 +194,12 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
     if (hitch_iterators) {
       seek_iterator_impl(rhs_, doc_.value);
     }
-    (lhs_->value() == doc_.value && !visitor(lhs_)) || (rhs_->value() == doc_.value && !visitor(rhs_));
+    if (lhs_->value() == doc_.value && !visitor(lhs_)) {
+      return;
+    }
+    if (rhs_->value() == doc_.value && !visitor(rhs_)) {
+      return;
+    }
   }
 
  private:
