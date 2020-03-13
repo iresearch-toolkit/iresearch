@@ -268,8 +268,9 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
       if (!is_found) {
         return doc_iterator::empty();
       }
-      conj_itrs.emplace_back(make_disjunction<disjunction_t>(std::move(disj_itrs)));
-      ps.first = &conj_itrs.back()->attributes().get<attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>>();
+      auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
+      ps.first = dynamic_cast<disjunction_visitor<position_score_iterator_adapter<doc_iterator::ptr>>*>(disj.get());
+      conj_itrs.emplace_back(std::move(disj));
       ++position;
     }
 
@@ -547,18 +548,22 @@ size_t hash_value(const by_phrase::info_t& info) {
   auto seed = std::hash<int>()(static_cast<int>(info.type));
   switch (info.type) {
     case by_phrase::PhrasePartType::TERM:
+      ::boost::hash_combine(seed, std::hash<bstring>()(info.st.term));
       break;
     case by_phrase::PhrasePartType::PREFIX:
       ::boost::hash_combine(seed, std::hash<size_t>()(info.pt.scored_terms_limit));
+      ::boost::hash_combine(seed, std::hash<bstring>()(info.pt.term));
       break;
     case by_phrase::PhrasePartType::WILDCARD:
       ::boost::hash_combine(seed, std::hash<size_t>()(info.wt.scored_terms_limit));
+      ::boost::hash_combine(seed, std::hash<bstring>()(info.wt.term));
       break;
     case by_phrase::PhrasePartType::LEVENSHTEIN:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
-      ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
-      ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
       ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
+      ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
+      ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
+      ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
+      ::boost::hash_combine(seed, std::hash<bstring>()(info.lt.term));
       break;
     case by_phrase::PhrasePartType::SET:
       std::for_each(

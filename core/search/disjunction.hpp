@@ -29,7 +29,6 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 #include "index/iterators.hpp"
-#include "utils/attribute_range.hpp"
 
 NS_ROOT
 NS_BEGIN(detail)
@@ -99,60 +98,21 @@ struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
 }; // position_score_iterator_adapter
 
 template<typename Adapter>
-class attribute_range_adapter {
- public:
-  attribute_range_adapter(typename attribute_view::ref<attribute_range<Adapter>>::type& map_attribute_range) {
-    map_attribute_range = &attribute_range_;
-  }
-
- protected:
-  attribute_range<Adapter> attribute_range_;
-};
-
-template<typename Adapter>
-class unary_disjunction_state : protected attribute_range_state<Adapter> {
- protected:
-  bool state_finished_; // is all iterators exhausted
-};
-
-template<typename Adapter>
-class basic_disjunction_state : protected attribute_range_state<Adapter> {
- protected:
-  bool state_finished_; // is all iterators exhausted
-  bool state_is_min_; // is current iterator has a minimal value
-  bool state_is_new_document_; // is a document value updated
-};
-
-template<typename Adapter>
-class small_disjunction_state : protected attribute_range_state<Adapter> {
- protected:
-  bool state_finished_; // is all iterators exhausted
-  size_t state_idx_; // current index
-  bool state_is_new_document_; // is a document value updated
-};
-
-template<typename Adapter>
-class disjunction_state : protected attribute_range_state<Adapter> {
- protected:
-  bool state_finished_; // is all iterators exhausted
-  size_t state_idx_; // current heap index
-  bool state_is_new_document_; // is a document value updated
+struct disjunction_visitor {
+  virtual void visit(const std::function<bool(Adapter&)>& /*visitor*/, bool /*hitch_iterators*/) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class unary_disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class unary_disjunction final : public doc_iterator_base, attribute_range_adapter<Adapter>, unary_disjunction_state<Adapter> {
+class unary_disjunction final : public doc_iterator_base, public disjunction_visitor<Adapter> {
  public:
   typedef Adapter doc_iterator_t;
 
   unary_disjunction(doc_iterator_t&& it)
-    : attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
-      doc_(doc_limits::invalid()),
-      it_(std::move(it)) {
+    : it_(std::move(it)) {
     attrs_.emplace<irs::document>(*it_->attributes().template get<irs::document>());
-    this->attribute_range_.set_state(this);
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -167,16 +127,11 @@ class unary_disjunction final : public doc_iterator_base, attribute_range_adapte
     return it_->seek(target);
   }
 
+  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool /*hitch_iterators*/) override {
+    visitor(it_);
+  }
+
  private:
-  virtual Adapter* get_next_iterator() override {
-    return this->state_finished_ ? nullptr : (this->state_finished_ = true, &it_);
-  }
-
-  virtual void reset_next_iterator_state() override {
-    this->state_finished_ = false;
-  }
-
-  document doc_;
   doc_iterator_t it_;
 }; // unary_disjunction
 
@@ -185,7 +140,7 @@ class unary_disjunction final : public doc_iterator_base, attribute_range_adapte
 /// @brief use for special adapters only
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_range_adapter<Adapter>, basic_disjunction_state<Adapter> {
+class basic_disjunction final : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
  public:
   typedef Adapter doc_iterator_t;
 
@@ -218,14 +173,12 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_r
   }
 
   virtual bool next() override {
-    this->state_is_new_document_ = true;
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
     return !doc_limits::eof(doc_.value = std::min(lhs_.value(), rhs_.value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    this->state_is_new_document_ = true;
     if (target <= doc_.value) {
       return doc_.value;
     }
@@ -237,6 +190,13 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_r
     return (doc_.value = std::min(lhs_.value(), rhs_.value()));
   }
 
+  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
+    if (hitch_iterators) {
+      seek_iterator_impl(rhs_, doc_.value);
+    }
+    (lhs_->value() == doc_.value && !visitor(lhs_)) || (rhs_->value() == doc_.value && !visitor(rhs_));
+  }
+
  private:
   struct resolve_overload_tag { };
 
@@ -245,12 +205,10 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_r
       doc_iterator_t&& rhs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
-      lhs_(std::move(lhs)),
+    : lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
       ord_(&ord) {
-    this->attribute_range_.set_state(this);
     // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
     // prepare score
@@ -322,43 +280,6 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_r
     return false;
   }
 
-  virtual Adapter* get_next_iterator() override {
-    if (this->state_finished_) {
-      return nullptr;
-    }
-
-    auto l_value = lhs_.value();
-    auto r_value = rhs_.value();
-    if (this->state_is_min_) {
-      if (l_value == doc_.value && r_value != doc_.value) {
-        this->state_finished_ = true;
-        return &lhs_;
-      }
-
-      if (r_value == doc_.value && l_value != doc_.value) {
-        this->state_finished_ = true;
-        return &rhs_;
-      }
-
-      this->state_is_min_ = false;
-      return r_value < l_value ? &rhs_ : &lhs_;
-    }
-
-    this->state_finished_ = true;
-    return r_value < l_value ? &lhs_ : &rhs_;
-  }
-
-  virtual void reset_next_iterator_state() override {
-    // call after success next() or seek()
-    assert(!doc_limits::eof(doc_.value));
-    if (this->state_is_new_document_) {
-      seek_iterator_impl(rhs_, doc_.value);
-      this->state_is_new_document_ = false;
-    }
-    this->state_is_min_ = true;
-    this->state_finished_ = false;
-  }
-
   mutable doc_iterator_t lhs_;
   mutable doc_iterator_t rhs_;
   mutable const irs::byte_type* scores_vals_[2];
@@ -371,7 +292,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, attribute_r
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter<Adapter>, small_disjunction_state<Adapter> {
+class small_disjunction : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
  public:
   typedef Adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -416,7 +337,6 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
   }
 
   virtual bool next() override {
-    this->state_is_new_document_ = true;
     if (doc_limits::eof(doc_.value)) {
       return false;
     }
@@ -445,7 +365,6 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    this->state_is_new_document_ = true;
     if (doc_limits::eof(doc_.value)) {
       return doc_.value;
     }
@@ -480,6 +399,17 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
     return (doc_.value = min);
   }
 
+  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
+    if (hitch_iterators) {
+      hitch_all_iterators();
+    }
+    for (auto& it : itrs_) {
+      if (it->value() == doc_.value && !visitor(it)) {
+        return;
+      }
+    }
+  }
+
  private:
   struct resolve_overload_tag{};
 
@@ -487,13 +417,11 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
       ord_(&ord) {
-    this->attribute_range_.set_state(this);
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -550,29 +478,6 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
     }
   }
 
-  virtual Adapter* get_next_iterator() override {
-    if (this->state_finished_) {
-      return nullptr;
-    }
-    auto size = itrs_.size();
-    for (; this->state_idx_ < size && itrs_[this->state_idx_].value() != doc_.value; ++this->state_idx_) {}
-
-    if (size == this->state_idx_) {
-      this->state_finished_ = true;
-      return nullptr;
-    }
-    return &itrs_[this->state_idx_++];
-  }
-
-  virtual void reset_next_iterator_state() override {
-    if (this->state_is_new_document_) {
-      hitch_all_iterators();
-      this->state_is_new_document_ = false;
-    }
-    this->state_finished_ = false;
-    this->state_idx_ = 0;
-  }
-
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
   document doc_;
@@ -593,7 +498,7 @@ class small_disjunction : public doc_iterator_base, score_ctx, attribute_range_a
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>, bool EnableUnary = false>
-class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter<Adapter>, disjunction_state<Adapter> {
+class disjunction : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
  public:
   typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
   typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
@@ -634,7 +539,6 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
   }
 
   virtual bool next() override {
-    this->state_is_new_document_ = true;
     if (doc_limits::eof(doc_.value)) {
       return false;
     }
@@ -658,7 +562,6 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    this->state_is_new_document_ = true;
     if (doc_limits::eof(doc_.value)) {
       return doc_.value;
     }
@@ -676,6 +579,28 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
     return doc_.value = lead().value();
   }
 
+  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
+    if (hitch_iterators) {
+      hitch_all_iterators();
+    }
+    auto& lead = itrs_[heap_.back()];
+    auto cont = visitor(lead);
+    if (cont && heap_.size() > 1) {
+      auto value = lead.value();
+      irstd::heap::for_each_if(
+        heap_.cbegin(),
+        heap_.cend()-1,
+        [this, value, &cont](const size_t it) {
+          assert(it < itrs_.size());
+          return cont && itrs_[it].value() == value;
+        },
+        [this, &visitor, &cont](const size_t it) {
+          assert(it < itrs_.size());
+          cont = visitor(itrs_[it]);
+        });
+    }
+  }
+
  private:
   struct resolve_overload_tag{};
 
@@ -683,14 +608,11 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : attribute_range_adapter<Adapter>(attrs_.emplace<irs::attribute_range<Adapter>>()),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
       ord_(&ord) {
-    this->attribute_range_.set_state(this);
-
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
@@ -805,66 +727,6 @@ class disjunction : public doc_iterator_base, score_ctx, attribute_range_adapter
       });
     }
     ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
-  }
-
-  Adapter* get_next_iterator() override {
-    // if exhausted
-    if (this->state_finished_) {
-      return nullptr;
-    }
-    const auto size = heap_.size();
-    // if the first time
-    if (std::numeric_limits<size_t>::max() == this->state_idx_) {
-      this->state_idx_ = 0;
-      if (1 == size) {
-        this->state_finished_ = true;
-      }
-      assert(heap_.back() < itrs_.size());
-      return &itrs_[heap_.back()];
-    }
-    assert(size > 1);
-    const auto bottom = size - 1;
-    do {
-      if (this->state_idx_ < bottom) {
-        assert(heap_[this->state_idx_] < itrs_.size());
-        auto& itr = itrs_[heap_[this->state_idx_]];
-        if (itr.value() == doc_.value) {
-          this->state_idx_ = (this->state_idx_ << 1) + 1;
-          return &itr;
-        }
-      }
-      do {
-        if (0 == this->state_idx_) {
-          this->state_finished_ = true;
-          return nullptr;
-        }
-        const auto up_idx = (this->state_idx_ - 1) >> 1;
-        if ((this->state_idx_ & 1) == 0) {
-          assert((up_idx << 1) + 2 == this->state_idx_);
-          this->state_idx_ = up_idx;
-          continue;
-        }
-        assert((up_idx << 1) + 1 == this->state_idx_);
-        this->state_idx_ += 1;
-        break;
-      } while (true);
-    } while (true);
-
-    assert(false);
-    this->state_finished_ = true;
-    return nullptr;
-  }
-
-  virtual void reset_next_iterator_state() override {
-    // call after success next() or seek()
-    assert(!doc_limits::eof(doc_.value));
-    assert(!heap_.empty());
-    if (this->state_is_new_document_) {
-      hitch_all_iterators();
-      this->state_is_new_document_ = false;
-    }
-    this->state_finished_ = false;
-    this->state_idx_ = std::numeric_limits<size_t>::max();
   }
 
   doc_iterators_t itrs_;

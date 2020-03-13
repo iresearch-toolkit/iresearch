@@ -26,7 +26,6 @@
 #include "disjunction.hpp"
 #include "score_doc_iterators.hpp"
 #include "shared.hpp"
-#include "utils/attribute_range.hpp"
 
 NS_ROOT
 
@@ -101,7 +100,7 @@ class fixed_phrase_frequency {
 class variadic_phrase_frequency {
  public:
   typedef std::pair<
-    const attribute_view::ref<attribute_range<position_score_iterator_adapter<doc_iterator::ptr>>>::type*, // position attribute
+    disjunction_visitor<position_score_iterator_adapter<doc_iterator::ptr>>*,
     position::value_t // desired offset in the phrase
   > position_t;
   typedef std::vector<position_t> positions_t;
@@ -112,80 +111,80 @@ class variadic_phrase_frequency {
     : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
+    is_iterators_hitched_.resize(pos_.size());
   }
 
  protected:
   // returns frequency of the phrase
   frequency::value_t phrase_freq() {
     frequency::value_t freq = 0;
-    auto end = pos_.end();
-    auto* posa = pos_.front().first->get();
-    assert(posa);
-    posa->reset();
-    while (posa->next()) {
-      auto* lead_adapter = posa->value();
-      auto* lead = lead_adapter->position;
-      auto global_match = true;
-      // lead->reset(); // Do not need here. There is always a first time.
-      lead->next();
+    position::value_t term_position = pos_limits::eof();
+    uint32_t min_seeked = pos_limits::eof();
+    auto match = false;
+    // reset is_hitched
+    is_iterators_hitched_.assign(is_iterators_hitched_.size(), 0);
 
+    auto innerVisitor = [&term_position, &min_seeked, &match](
+        position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
+      auto* p = it_adapter.position;
+      p->reset();
+      const auto seeked = p->seek(term_position);
+      if (pos_limits::eof(seeked)) {
+        return true;
+      } else if (seeked != term_position) {
+        if (seeked < min_seeked) {
+          min_seeked = seeked;
+        }
+        return true;
+      }
+      match = true;
+      return false;
+    };
+
+    auto visitor = [this, &freq, &term_position, &min_seeked, &match, &innerVisitor](
+        position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
+      const auto size = pos_.size();
+      auto* lead = lead_adapter.position;
+      lead->next();
       position::value_t base_position = pos_limits::eof();
       while (!pos_limits::eof(base_position = lead->value())) {
-        auto match = true;
-        for (auto it = pos_.begin() + 1; it != end; ++it) {
+        match = true;
+        for (size_t i = 1; i < size; ++i) {
+          auto& p = pos_[i];
           match = false;
-          const auto term_position = base_position + it->second;
+          term_position = base_position + p.second;
           if (!pos_limits::valid(term_position)) {
-            global_match = false; // invalid for all
-            break;
+            return false; // invalid for all
           }
-          auto min_seeked = pos_limits::eof();
-          auto* ita = it->first->get();
-          assert(ita);
-          ita->reset();
-          while (ita->next()) {
-            auto* it_adapter = ita->value();
-            auto* p = it_adapter->position;
-            p->reset();
-            const auto seeked = p->seek(term_position);
-
-            if (pos_limits::eof(seeked)) {
-              continue;
-            } else if (seeked != term_position) {
-              if (seeked < min_seeked) {
-                min_seeked = seeked;
-              }
-              continue;
-            }
-            match = true;
-            break;
-          }
+          min_seeked = pos_limits::eof();
+          auto& h = is_iterators_hitched_[i];
+          p.first->visit(innerVisitor, 0 == h);
+          h = 1;
           if (!match) {
             if (!pos_limits::eof(min_seeked)) {
-              lead->seek(min_seeked - it->second);
+              lead->seek(min_seeked - p.second);
               break;
             }
-            global_match = false; // eof for all
-            break;
+            return true; // eof for all
           }
-        }
-        if (!global_match) {
-          break;
         }
         if (match) {
-          if (order_->empty()) {
-            return 1;
-          }
           ++freq;
+          if (order_->empty()) {
+            return false;
+          }
           lead->next();
         }
       }
-    }
+      return true;
+    };
+    pos_.front().first->visit(visitor, true);
     return freq;
   }
 
  private:
   positions_t pos_; // list of desired positions along with corresponding attributes
+  std::vector<int> is_iterators_hitched_; // hitch iterators one time
   const order::prepared* order_;
 }; // variadic_phrase_frequency
 
