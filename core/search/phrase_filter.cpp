@@ -270,7 +270,7 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
       }
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
       ps.first = dynamic_cast<disjunction_visitor<position_score_iterator_adapter<doc_iterator::ptr>>*>(disj.get());
-      conj_itrs.emplace_back(std::move(disj));
+      conj_itrs.emplace_back(disj);
       ++position;
     }
 
