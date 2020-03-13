@@ -1558,7 +1558,7 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final : public irs::doc_iterator_base {
+class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 

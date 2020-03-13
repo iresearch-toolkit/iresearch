@@ -98,25 +98,28 @@ struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
 }; // position_score_iterator_adapter
 
 template<typename Adapter>
-struct disjunction_visitor {
-  virtual void visit(const std::function<bool(Adapter&)>& /*visitor*/, bool /*hitch_iterators*/) = 0;
+struct compound_doc_iterator : doc_iterator {
+  virtual void visit(const std::function<bool(Adapter&)>& /*visitor*/) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class unary_disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class unary_disjunction final : public doc_iterator_base, public disjunction_visitor<Adapter> {
+class unary_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>> {
  public:
   typedef Adapter doc_iterator_t;
 
   unary_disjunction(doc_iterator_t&& it)
     : it_(std::move(it)) {
-    attrs_.emplace<irs::document>(*it_->attributes().template get<irs::document>());
+  }
+
+  virtual const attribute_view& attributes() const noexcept override {
+    return it_->attributes();
   }
 
   virtual doc_id_t value() const noexcept override {
-    return it_.value();
+    return it_.doc->value;
   }
 
   virtual bool next() override {
@@ -127,7 +130,7 @@ class unary_disjunction final : public doc_iterator_base, public disjunction_vis
     return it_->seek(target);
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool /*hitch_iterators*/) override {
+  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
     visitor(it_);
   }
 
@@ -140,7 +143,7 @@ class unary_disjunction final : public doc_iterator_base, public disjunction_vis
 /// @brief use for special adapters only
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class basic_disjunction final : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
+class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
  public:
   typedef Adapter doc_iterator_t;
 
@@ -150,7 +153,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
       const order::prepared& ord = order::prepared::unordered())
     : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate([this](){
+    this->estimate([this](){
       cost::cost_t est = 0;
       est += cost::extract(lhs_->attributes(), 0);
       est += cost::extract(rhs_->attributes(), 0);
@@ -165,7 +168,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
       cost::cost_t est)
     : basic_disjunction(std::move(lhs), std::move(rhs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate(est);
+    this->estimate(est);
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -190,14 +193,12 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
     return (doc_.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
-    if (hitch_iterators) {
-      seek_iterator_impl(rhs_, doc_.value);
-    }
-    if (lhs_->value() == doc_.value && !visitor(lhs_)) {
+  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
+    if (*lhs_.doc == doc_.value && !visitor(lhs_)) {
       return;
     }
-    if (rhs_->value() == doc_.value && !visitor(rhs_)) {
+    seek_iterator_impl(rhs_, doc_.value);
+    if (*rhs_.doc == doc_.value && !visitor(rhs_)) {
       return;
     }
   }
@@ -215,14 +216,14 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
       doc_(doc_limits::invalid()),
       ord_(&ord) {
     // make 'document' attribute accessible from outside
-    attrs_.emplace(doc_);
+    this->attrs_.emplace(doc_);
     // prepare score
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
       scores_vals_[0] = lhs.score->c_str();
       scores_vals_[1] = rhs.score->c_str();
-      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
 
         const irs::byte_type** pVal = self.scores_vals_;
@@ -236,7 +237,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
       scores_vals_[0] = lhs.score->c_str();
-      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
@@ -244,14 +245,14 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
       // only right sub-iterator has score
       scores_vals_[0] = rhs.score->c_str();
       assert(lhs_.score == &irs::score::no_score());
-      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
+      this->prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
     }
   }
 
@@ -297,7 +298,7 @@ class basic_disjunction final : public doc_iterator_base, score_ctx, public disj
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class small_disjunction : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
+class small_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
  public:
   typedef Adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -308,7 +309,7 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
       cost::cost_t est)
     : small_disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate(est);
+    this->estimate(est);
   }
 
   explicit small_disjunction(
@@ -316,7 +317,7 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
       const order::prepared& ord = order::prepared::unordered())
     : small_disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate([this](){
+    this->estimate([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
@@ -404,10 +405,8 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
     return (doc_.value = min);
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
-    if (hitch_iterators) {
-      hitch_all_iterators();
-    }
+  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
+    hitch_all_iterators();
     for (auto& it : itrs_) {
       if (it->value() == doc_.value && !visitor(it)) {
         return;
@@ -437,13 +436,13 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
     }
     scores_vals_.resize(scored_itrs_.size());
     // make 'document' attribute accessible from outside
-    attrs_.emplace(doc_);
+    this->attrs_.emplace(doc_);
 
     // prepare score
     if (scored_itrs_.empty()) {
-      prepare_score(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
+      this->prepare_score(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
     } else {
-      prepare_score(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
+      this->prepare_score(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const small_disjunction*>(ctx);
         const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto& it : self.scored_itrs_) {
@@ -470,6 +469,9 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
   }
 
   void hitch_all_iterators() {
+    if (last_hitched_doc_ == doc_.value) {
+      return; // nothing to do
+    }
     for (auto rbegin = itrs_.rbegin(); rbegin != itrs_.rend();) {
       auto& it = *rbegin;
       ++rbegin;
@@ -481,8 +483,10 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
         #endif
       }
     }
+    last_hitched_doc_ = doc_.value;
   }
 
+  doc_id_t last_hitched_doc_{ doc_limits::invalid() };
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
   document doc_;
@@ -503,7 +507,7 @@ class small_disjunction : public doc_iterator_base, score_ctx, public disjunctio
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>, bool EnableUnary = false>
-class disjunction : public doc_iterator_base, score_ctx, public disjunction_visitor<Adapter> {
+class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
  public:
   typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
   typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
@@ -514,7 +518,7 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
   typedef std::vector<size_t> heap_container;
   typedef heap_container::iterator heap_iterator;
 
-  static const bool kEnableUnary = EnableUnary;
+  static constexpr bool ENABLE_UNARY = EnableUnary;
 
   disjunction(
       doc_iterators_t&& itrs,
@@ -522,7 +526,7 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
       cost::cost_t est)
     : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate(est);
+    this->estimate(est);
   }
 
   explicit disjunction(
@@ -530,7 +534,7 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
       const order::prepared& ord = order::prepared::unordered())
     : disjunction(std::move(itrs), ord, resolve_overload_tag()) {
     // estimate disjunction
-    estimate([this](){
+    this->estimate([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
@@ -584,10 +588,8 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
     return doc_.value = lead().value();
   }
 
-  virtual void visit(const std::function<bool(Adapter&)>& visitor, bool hitch_iterators) override {
-    if (hitch_iterators) {
-      hitch_all_iterators();
-    }
+  virtual void visit(const std::function<bool(Adapter&)>& visitor) override {
+    hitch_all_iterators();
     auto& lead = itrs_[heap_.back()];
     auto cont = visitor(lead);
     if (cont && heap_.size() > 1) {
@@ -624,7 +626,7 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
     // make 'document' attribute accessible from outside
-    attrs_.emplace(doc_);
+    this->attrs_.emplace(doc_);
 
     // prepare external heap
     heap_.resize(itrs_.size());
@@ -632,7 +634,7 @@ class disjunction : public doc_iterator_base, score_ctx, public disjunction_visi
     scores_vals_.resize(itrs_.size(), nullptr);
 
     // prepare score
-    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+    this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
       self.score_impl(score);
     });
@@ -755,7 +757,7 @@ doc_iterator::ptr make_disjunction(
       // empty or unreachable search criteria
       return doc_iterator::empty();
     case 1:
-      if /*constexpr*/ (Disjunction::kEnableUnary) {
+      if /*constexpr*/ (Disjunction::ENABLE_UNARY) {
         typedef typename Disjunction::unary_disjunction_t unary_disjunction_t;
         return doc_iterator::make<unary_disjunction_t>(
           std::move(itrs.front())

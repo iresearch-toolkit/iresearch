@@ -100,7 +100,7 @@ class fixed_phrase_frequency {
 class variadic_phrase_frequency {
  public:
   typedef std::pair<
-    disjunction_visitor<position_score_iterator_adapter<doc_iterator::ptr>>*,
+    compound_doc_iterator<position_score_iterator_adapter<doc_iterator::ptr>>*,
     position::value_t // desired offset in the phrase
   > position_t;
   typedef std::vector<position_t> positions_t;
@@ -111,7 +111,6 @@ class variadic_phrase_frequency {
     : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
-    is_iterators_hitched_.resize(pos_.size());
   }
 
  protected:
@@ -121,8 +120,6 @@ class variadic_phrase_frequency {
     position::value_t term_position = pos_limits::eof();
     uint32_t min_seeked = pos_limits::eof();
     auto match = false;
-    // reset is_hitched
-    is_iterators_hitched_.assign(is_iterators_hitched_.size(), 0);
 
     auto innerVisitor = [&term_position, &min_seeked, &match](
         position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
@@ -157,9 +154,7 @@ class variadic_phrase_frequency {
             return false; // invalid for all
           }
           min_seeked = pos_limits::eof();
-          auto& h = is_iterators_hitched_[i];
-          p.first->visit(innerVisitor, 0 == h);
-          h = 1;
+          p.first->visit(innerVisitor);
           if (!match) {
             if (!pos_limits::eof(min_seeked)) {
               lead->seek(min_seeked - p.second);
@@ -178,20 +173,19 @@ class variadic_phrase_frequency {
       }
       return true;
     };
-    pos_.front().first->visit(visitor, true);
+    pos_.front().first->visit(visitor);
     return freq;
   }
 
  private:
   positions_t pos_; // list of desired positions along with corresponding attributes
-  std::vector<int> is_iterators_hitched_; // hitch iterators one time
   const order::prepared* order_;
 }; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
 template<typename Conjunction, typename Frequency>
-class phrase_iterator : public doc_iterator_base, Frequency {
+class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
  public:
   typedef typename Frequency::positions_t positions_t;
 

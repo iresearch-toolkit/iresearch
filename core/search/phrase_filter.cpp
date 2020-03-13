@@ -228,7 +228,8 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
-    typedef disjunction<doc_iterator::ptr, irs::position_score_iterator_adapter<doc_iterator::ptr>, true> disjunction_t;
+    typedef position_score_iterator_adapter<doc_iterator::ptr> adapter_t;
+    typedef disjunction<doc_iterator::ptr, adapter_t, true> disjunction_t;
 
     phrase_iterator_t::positions_t positions;
     positions.resize(phrase_state->terms.size());
@@ -269,7 +270,13 @@ class variadic_phrase_query : public phrase_query<order::prepared::VariadicConta
         return doc_iterator::empty();
       }
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
-      ps.first = dynamic_cast<disjunction_visitor<position_score_iterator_adapter<doc_iterator::ptr>>*>(disj.get());
+      typedef irs::compound_doc_iterator<adapter_t> compound_doc_iterator_t;
+      #ifdef IRESEARCH_DEBUG
+        ps.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
+        assert(ps.first);
+      #else
+        ps.first = static_cast<compound_doc_iterator_t*>(disj.get());
+      #endif
       conj_itrs.emplace_back(std::move(disj));
       ++position;
     }
@@ -306,10 +313,10 @@ bool by_phrase::equals(const filter& rhs) const noexcept {
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-by_phrase::info_t::info_t() : type(PhrasePartType::TERM), st() {
+by_phrase::phrase_part::phrase_part() : type(PhrasePartType::TERM), st() {
 }
 
-by_phrase::info_t::info_t(const info_t& other) {
+by_phrase::phrase_part::phrase_part(const phrase_part& other) {
   type = other.type;
   allocate();
   switch (type) {
@@ -333,7 +340,7 @@ by_phrase::info_t::info_t(const info_t& other) {
   }
 }
 
-by_phrase::info_t::info_t(info_t&& other) noexcept {
+by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
   type = other.type;
   allocate();
   switch (type) {
@@ -357,67 +364,67 @@ by_phrase::info_t::info_t(info_t&& other) noexcept {
   }
 }
 
-by_phrase::info_t::info_t(const simple_term& st) {
+by_phrase::phrase_part::phrase_part(const simple_term& st) {
   type = PhrasePartType::TERM;
   allocate();
   this->st = st;
 }
 
-by_phrase::info_t::info_t(simple_term&& st) noexcept {
+by_phrase::phrase_part::phrase_part(simple_term&& st) noexcept {
   type = PhrasePartType::TERM;
   allocate();
   this->st = std::move(st);
 }
 
-by_phrase::info_t::info_t(const prefix_term& pt) {
+by_phrase::phrase_part::phrase_part(const prefix_term& pt) {
   type = PhrasePartType::PREFIX;
   allocate();
   this->pt = pt;
 }
 
-by_phrase::info_t::info_t(prefix_term&& pt) noexcept {
+by_phrase::phrase_part::phrase_part(prefix_term&& pt) noexcept {
   type = PhrasePartType::PREFIX;
   allocate();
   this->pt = std::move(pt);
 }
 
-by_phrase::info_t::info_t(const wildcard_term& wt) {
+by_phrase::phrase_part::phrase_part(const wildcard_term& wt) {
   type = PhrasePartType::WILDCARD;
   allocate();
   this->wt = wt;
 }
 
-by_phrase::info_t::info_t(wildcard_term&& wt) noexcept {
+by_phrase::phrase_part::phrase_part(wildcard_term&& wt) noexcept {
   type = PhrasePartType::WILDCARD;
   allocate();
   this->wt = std::move(wt);
 }
 
-by_phrase::info_t::info_t(const levenshtein_term& lt) {
+by_phrase::phrase_part::phrase_part(const levenshtein_term& lt) {
   type = PhrasePartType::LEVENSHTEIN;
   allocate();
   this->lt = lt;
 }
 
-by_phrase::info_t::info_t(levenshtein_term&& lt) noexcept {
+by_phrase::phrase_part::phrase_part(levenshtein_term&& lt) noexcept {
   type = PhrasePartType::LEVENSHTEIN;
   allocate();
   this->lt = std::move(lt);
 }
 
-by_phrase::info_t::info_t(const set_term& ct) {
+by_phrase::phrase_part::phrase_part(const set_term& ct) {
   type = PhrasePartType::SET;
   allocate();
   this->ct = ct;
 }
 
-by_phrase::info_t::info_t(set_term&& ct) noexcept {
+by_phrase::phrase_part::phrase_part(set_term&& ct) noexcept {
   type = PhrasePartType::SET;
   allocate();
   this->ct = std::move(ct);
 }
 
-by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) noexcept {
   if (&other == this) {
     return *this;
   }
@@ -444,7 +451,7 @@ by_phrase::info_t& by_phrase::info_t::operator=(const info_t& other) noexcept {
   return *this;
 }
 
-by_phrase::info_t& by_phrase::info_t::operator=(info_t&& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(phrase_part&& other) noexcept {
   if (&other == this) {
     return *this;
   }
@@ -471,7 +478,7 @@ by_phrase::info_t& by_phrase::info_t::operator=(info_t&& other) noexcept {
   return *this;
 }
 
-bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
+bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept {
   if (type != other.type) {
     return false;
   }
@@ -492,7 +499,7 @@ bool by_phrase::info_t::operator==(const info_t& other) const noexcept {
   return false;
 }
 
-void by_phrase::info_t::allocate() noexcept {
+void by_phrase::phrase_part::allocate() noexcept {
   switch (type) {
     case PhrasePartType::TERM:
       new (&st) simple_term();
@@ -514,7 +521,7 @@ void by_phrase::info_t::allocate() noexcept {
   }
 }
 
-void by_phrase::info_t::destroy() noexcept {
+void by_phrase::phrase_part::destroy() noexcept {
   switch (type) {
     case PhrasePartType::TERM:
       st.~simple_term();
@@ -536,7 +543,7 @@ void by_phrase::info_t::destroy() noexcept {
   }
 }
 
-void by_phrase::info_t::recreate(PhrasePartType new_type) noexcept {
+void by_phrase::phrase_part::recreate(PhrasePartType new_type) noexcept {
   if (type != new_type) {
     destroy();
     type = new_type;
@@ -544,7 +551,7 @@ void by_phrase::info_t::recreate(PhrasePartType new_type) noexcept {
   }
 }
 
-size_t hash_value(const by_phrase::info_t& info) {
+size_t hash_value(const by_phrase::phrase_part& info) {
   auto seed = std::hash<int>()(static_cast<int>(info.type));
   switch (info.type) {
     case by_phrase::PhrasePartType::TERM:

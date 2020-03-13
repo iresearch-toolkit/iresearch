@@ -42,7 +42,7 @@ NS_ROOT
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class min_match_disjunction : public doc_iterator_base, score_ctx {
+class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
