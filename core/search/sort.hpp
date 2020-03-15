@@ -61,8 +61,8 @@ typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
 typedef void(*score_f)(const score_ctx* ctx, byte_type*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief combine range of scores denoted by 'src_start' and 'size' at a
-///        specified 'offset' to 'dst', i.e. using +=
+/// @brief combine range of scores denoted by 'src_start' and 'size' to 'dst',
+///        i.e. using +=
 ////////////////////////////////////////////////////////////////////////////////
 typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
                        const byte_type** src, const size_t count);
@@ -339,7 +339,7 @@ struct order_bucket : private util::noncopyable {
     return *this;
   }
 
-  sort::prepared::ptr bucket;
+  sort::prepared::ptr bucket; // prepared score
   size_t score_offset; // offset in score buffer
   size_t stats_offset; // offset in stats buffer
   bool reverse;
