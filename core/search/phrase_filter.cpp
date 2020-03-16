@@ -870,7 +870,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
           const auto& value = term->value();
 
           #ifdef IRESEARCH_DEBUG
-            auto found = false;
+            IRESEARCH_IGNORE_UNUSED auto found = false;
           #endif
           while (starts_with(value, pattern)) {
             #ifdef IRESEARCH_DEBUG
