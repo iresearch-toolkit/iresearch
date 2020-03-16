@@ -92,8 +92,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
   // term query
   {
-    auto lhs = irs::by_term().field("foo").term("foo\\%").prepare(irs::sub_reader::empty());
-    auto rhs = irs::by_wildcard().field("foo").term("foo%").prepare(irs::sub_reader::empty());
+    auto lhs = irs::by_term().field("foo").term("foo%").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("foo\\%").prepare(irs::sub_reader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
