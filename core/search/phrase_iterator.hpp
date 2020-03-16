@@ -97,10 +97,6 @@ class fixed_phrase_frequency {
   const order::prepared* order_;
 }; // fixed_phrase_frequency
 
-bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter);
-
-bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter);
-
 class variadic_phrase_frequency {
  public:
   typedef std::pair<
@@ -109,6 +105,7 @@ class variadic_phrase_frequency {
   > position_t;
   typedef std::vector<position_t> positions_t;
 
+ private:
   struct inner_visitor_ctx {
     bool match = false;
     position::value_t term_position = pos_limits::eof();
@@ -123,6 +120,7 @@ class variadic_phrase_frequency {
     inner_visitor_ctx in_vis_ctx;
   };
 
+ public:
   variadic_phrase_frequency(
       positions_t&& pos,
       const order::prepared& ord)
@@ -144,65 +142,65 @@ class variadic_phrase_frequency {
   }
 
  private:
+  static bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
+    assert(ctx);
+    auto* ivc = reinterpret_cast<variadic_phrase_frequency::inner_visitor_ctx*>(ctx);
+    auto* p = it_adapter.position;
+    p->reset();
+    const auto seeked = p->seek(ivc->term_position);
+    if (pos_limits::eof(seeked)) {
+      return true;
+    } else if (seeked != ivc->term_position) {
+      if (seeked < ivc->min_seeked) {
+        ivc->min_seeked = seeked;
+      }
+      return true;
+    }
+    ivc->match = true;
+    return false;
+  }
+
+  static bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
+    assert(ctx);
+    auto* vc = reinterpret_cast<variadic_phrase_frequency::visitor_ctx*>(ctx);
+    const auto end = vc->pos->end();
+    auto* lead = lead_adapter.position;
+    lead->next();
+    position::value_t base_position = pos_limits::eof();
+    while (!pos_limits::eof(base_position = lead->value())) {
+      vc->in_vis_ctx.match = true;
+      assert(vc->pos);
+      for (auto it = vc->pos->begin() + 1; it != end; ++it) {
+        vc->in_vis_ctx.match = false;
+        vc->in_vis_ctx.term_position = base_position + it->second;
+        if (!pos_limits::valid(vc->in_vis_ctx.term_position)) {
+          return false; // invalid for all
+        }
+        vc->in_vis_ctx.min_seeked = pos_limits::eof();
+        assert(vc->in_vis);
+        it->first->visit(&vc->in_vis_ctx, vc->in_vis);
+        if (!vc->in_vis_ctx.match) {
+          if (!pos_limits::eof(vc->in_vis_ctx.min_seeked)) {
+            lead->seek(vc->in_vis_ctx.min_seeked - it->second);
+            break;
+          }
+          return true; // eof for all
+        }
+      }
+      if (vc->in_vis_ctx.match) {
+        ++vc->freq;
+        if (vc->is_order_empty) {
+          return false;
+        }
+        lead->next();
+      }
+    }
+    return true;
+  }
+
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
 }; // variadic_phrase_frequency
-
-bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
-  assert(ctx);
-  auto* ivc = reinterpret_cast<variadic_phrase_frequency::inner_visitor_ctx*>(ctx);
-  auto* p = it_adapter.position;
-  p->reset();
-  const auto seeked = p->seek(ivc->term_position);
-  if (pos_limits::eof(seeked)) {
-    return true;
-  } else if (seeked != ivc->term_position) {
-    if (seeked < ivc->min_seeked) {
-      ivc->min_seeked = seeked;
-    }
-    return true;
-  }
-  ivc->match = true;
-  return false;
-}
-
-bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
-  assert(ctx);
-  auto* vc = reinterpret_cast<variadic_phrase_frequency::visitor_ctx*>(ctx);
-  const auto end = vc->pos->end();
-  auto* lead = lead_adapter.position;
-  lead->next();
-  position::value_t base_position = pos_limits::eof();
-  while (!pos_limits::eof(base_position = lead->value())) {
-    vc->in_vis_ctx.match = true;
-    assert(vc->pos);
-    for (auto it = vc->pos->begin() + 1; it != end; ++it) {
-      vc->in_vis_ctx.match = false;
-      vc->in_vis_ctx.term_position = base_position + it->second;
-      if (!pos_limits::valid(vc->in_vis_ctx.term_position)) {
-        return false; // invalid for all
-      }
-      vc->in_vis_ctx.min_seeked = pos_limits::eof();
-      assert(vc->in_vis);
-      it->first->visit(&vc->in_vis_ctx, vc->in_vis);
-      if (!vc->in_vis_ctx.match) {
-        if (!pos_limits::eof(vc->in_vis_ctx.min_seeked)) {
-          lead->seek(vc->in_vis_ctx.min_seeked - it->second);
-          break;
-        }
-        return true; // eof for all
-      }
-    }
-    if (vc->in_vis_ctx.match) {
-      ++vc->freq;
-      if (vc->is_order_empty) {
-        return false;
-      }
-      lead->next();
-    }
-  }
-  return true;
-}
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
