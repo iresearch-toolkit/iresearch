@@ -31,6 +31,27 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
+NS_LOCAL
+
+inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+  out.reserve(in.size());
+
+  bool copy = true;
+  std::copy_if(in.begin(), in.end(), std::back_inserter(out),
+               [&copy](irs::byte_type c) {
+    if (c == irs::WildcardMatch::ESCAPE) {
+      copy = !copy;
+    } else {
+      copy = true;
+    }
+    return copy;
+  });
+
+  return out;
+}
+
+NS_END
+
 NS_ROOT
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -43,20 +64,32 @@ filter::prepared::ptr by_wildcard::prepare(
     const attribute_view& /*ctx*/) const {
   boost *= this->boost();
   const string_ref field = this->field();
+  bytes_ref term = this->term();
+  bstring buf;
 
-  switch (wildcard_type(term())) {
+  switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return prepared::empty();
-    case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, term());
+    case WildcardType::TERM_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
+     case WildcardType::TERM:
+      return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
                                 scored_terms_limit());
+    case WildcardType::PREFIX_ESCAPED:
+      term = unescape(term, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
     case WildcardType::PREFIX: {
-      assert(!term().empty());
-      const auto* begin = term().c_str();
-      const auto* end = begin + term().size();
+      assert(!term.empty());
+      const auto* begin = term.c_str();
+      const auto* end = begin + term.size();
 
       // term() is already checked to be a valid UTF-8 sequence
       const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
@@ -68,7 +101,7 @@ filter::prepared::ptr by_wildcard::prepare(
     }
 
     case WildcardType::WILDCARD:
-      return prepare_automaton_filter(field, from_wildcard(term()),
+      return prepare_automaton_filter(field, from_wildcard(term),
                                       scored_terms_limit(), index, order, boost);
   }
 
