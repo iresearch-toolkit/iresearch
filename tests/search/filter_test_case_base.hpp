@@ -299,7 +299,7 @@ struct frequency_sort: public irs::sort {
         ASSERT_TRUE(src.prepared);
         ASSERT_TRUE(dst.prepared);
 
-        if (std::numeric_limits<double>::infinity()) {
+        if (std::numeric_limits<double>::infinity() == dst.value) {
           dst.id = src.id;
           dst.value = 0;
         }
