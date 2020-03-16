@@ -144,7 +144,7 @@ class variadic_phrase_frequency {
  private:
   static bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
     assert(ctx);
-    auto* ivc = reinterpret_cast<variadic_phrase_frequency::inner_visitor_ctx*>(ctx);
+    auto* ivc = reinterpret_cast<inner_visitor_ctx*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
     const auto seeked = p->seek(ivc->term_position);
@@ -162,7 +162,7 @@ class variadic_phrase_frequency {
 
   static bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
     assert(ctx);
-    auto* vc = reinterpret_cast<variadic_phrase_frequency::visitor_ctx*>(ctx);
+    auto* vc = reinterpret_cast<visitor_ctx*>(ctx);
     const auto end = vc->pos->end();
     auto* lead = lead_adapter.position;
     lead->next();
