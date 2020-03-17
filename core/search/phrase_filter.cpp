@@ -751,6 +751,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   // iterate over the segments
   const string_ref field = fld_;
 
+  bstring buf;
   for (const auto& sr : rdr) {
     // get term dictionary for field
     const term_reader* tr = sr.field(field);
@@ -777,7 +778,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       auto& pt = phrase_terms[i++];
       auto type = word.second.type;
       bytes_ref pattern;
-      bstring buf;
       auto stop = false;
       switch (word.second.type) {
         case PhrasePartType::TERM:
