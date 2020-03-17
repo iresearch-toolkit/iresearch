@@ -137,9 +137,9 @@ class IRESEARCH_API by_phrase : public filter {
     bool operator==(const phrase_part& other) const noexcept;
 
    private:
-    void allocate() noexcept;
+    void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
-    void recreate(PhrasePartType new_type) noexcept;
+    void recreate(phrase_part&& other) noexcept;
   };
 
   // positions and terms

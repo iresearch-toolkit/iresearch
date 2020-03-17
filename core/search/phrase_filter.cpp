@@ -317,137 +317,75 @@ by_phrase::phrase_part::phrase_part() : type(PhrasePartType::TERM), st() {
 }
 
 by_phrase::phrase_part::phrase_part(const phrase_part& other) {
-  type = other.type;
-  allocate();
-  switch (type) {
-    case PhrasePartType::TERM:
-      this->st = other.st;
-      break;
-    case PhrasePartType::PREFIX:
-      this->pt = other.pt;
-      break;
-    case PhrasePartType::WILDCARD:
-      this->wt = other.wt;
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      this->lt = other.lt;
-      break;
-    case PhrasePartType::SET:
-      this->ct = other.ct;
-      break;
-    default:
-      assert(false);
-  }
+  auto copy_other = other;
+  allocate(std::move(copy_other));
 }
 
 by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
-  type = other.type;
-  allocate();
-  switch (type) {
-    case PhrasePartType::TERM:
-      this->st = std::move(other.st);
-      break;
-    case PhrasePartType::PREFIX:
-      this->pt = std::move(other.pt);
-      break;
-    case PhrasePartType::WILDCARD:
-      this->wt = std::move(other.wt);
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      this->lt = std::move(other.lt);
-      break;
-    case PhrasePartType::SET:
-      this->ct = std::move(other.ct);
-      break;
-    default:
-      assert(false);
-  }
+  allocate(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const simple_term& st) {
+by_phrase::phrase_part::phrase_part(const simple_term& other) {
   type = PhrasePartType::TERM;
-  allocate();
-  this->st = st;
+  auto copy_st = other;
+  new (&st) simple_term(std::move(copy_st));
 }
 
-by_phrase::phrase_part::phrase_part(simple_term&& st) noexcept {
+by_phrase::phrase_part::phrase_part(simple_term&& other) noexcept {
   type = PhrasePartType::TERM;
-  allocate();
-  this->st = std::move(st);
+  new (&st) simple_term(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const prefix_term& pt) {
+by_phrase::phrase_part::phrase_part(const prefix_term& other) {
   type = PhrasePartType::PREFIX;
-  allocate();
-  this->pt = pt;
+  auto copy_pt = other;
+  new (&pt) prefix_term(std::move(copy_pt));
 }
 
-by_phrase::phrase_part::phrase_part(prefix_term&& pt) noexcept {
+by_phrase::phrase_part::phrase_part(prefix_term&& other) noexcept {
   type = PhrasePartType::PREFIX;
-  allocate();
-  this->pt = std::move(pt);
+  new (&pt) prefix_term(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const wildcard_term& wt) {
+by_phrase::phrase_part::phrase_part(const wildcard_term& other) {
   type = PhrasePartType::WILDCARD;
-  allocate();
-  this->wt = wt;
+  auto copy_wt = other;
+  new (&wt) wildcard_term(std::move(copy_wt));
 }
 
-by_phrase::phrase_part::phrase_part(wildcard_term&& wt) noexcept {
+by_phrase::phrase_part::phrase_part(wildcard_term&& other) noexcept {
   type = PhrasePartType::WILDCARD;
-  allocate();
-  this->wt = std::move(wt);
+  new (&wt) wildcard_term(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const levenshtein_term& lt) {
+by_phrase::phrase_part::phrase_part(const levenshtein_term& other) {
   type = PhrasePartType::LEVENSHTEIN;
-  allocate();
-  this->lt = lt;
+  auto copy_lt = other;
+  new (&lt) levenshtein_term(std::move(copy_lt));
 }
 
-by_phrase::phrase_part::phrase_part(levenshtein_term&& lt) noexcept {
+by_phrase::phrase_part::phrase_part(levenshtein_term&& other) noexcept {
   type = PhrasePartType::LEVENSHTEIN;
-  allocate();
-  this->lt = std::move(lt);
+  new (&lt) levenshtein_term(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const set_term& ct) {
+by_phrase::phrase_part::phrase_part(const set_term& other) {
   type = PhrasePartType::SET;
-  allocate();
-  this->ct = ct;
+  auto copy_ct = other;
+  new (&ct) set_term(std::move(copy_ct));
 }
 
-by_phrase::phrase_part::phrase_part(set_term&& ct) noexcept {
+by_phrase::phrase_part::phrase_part(set_term&& other) noexcept {
   type = PhrasePartType::SET;
-  allocate();
-  this->ct = std::move(ct);
+  new (&ct) set_term(std::move(other));
 }
 
 by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) noexcept {
   if (&other == this) {
     return *this;
   }
-  recreate(other.type);
-  switch (type) {
-    case PhrasePartType::TERM:
-      st = other.st;
-      break;
-    case PhrasePartType::PREFIX:
-      pt = other.pt;
-      break;
-    case PhrasePartType::WILDCARD:
-      wt = other.wt;
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      lt = other.lt;
-      break;
-    case PhrasePartType::SET:
-      ct = other.ct;
-      break;
-    default:
-      assert(false);
-  }
+  auto copy_other = other;
+  recreate(std::move(copy_other));
   return *this;
 }
 
@@ -455,26 +393,7 @@ by_phrase::phrase_part& by_phrase::phrase_part::operator=(phrase_part&& other) n
   if (&other == this) {
     return *this;
   }
-  recreate(other.type);
-  switch (type) {
-    case PhrasePartType::TERM:
-      st = std::move(other.st);
-      break;
-    case PhrasePartType::PREFIX:
-      pt = std::move(other.pt);
-      break;
-    case PhrasePartType::WILDCARD:
-      wt = std::move(other.wt);
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      lt = std::move(other.lt);
-      break;
-    case PhrasePartType::SET:
-      ct = std::move(other.ct);
-      break;
-    default:
-      assert(false);
-  }
+  recreate(std::move(other));
   return *this;
 }
 
@@ -499,22 +418,23 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
   return false;
 }
 
-void by_phrase::phrase_part::allocate() noexcept {
+void by_phrase::phrase_part::allocate(phrase_part&& other) noexcept {
+  type = other.type;
   switch (type) {
     case PhrasePartType::TERM:
-      new (&st) simple_term();
+      new (&st) simple_term(std::move(other.st));
       break;
     case PhrasePartType::PREFIX:
-      new (&pt) prefix_term();
+      new (&pt) prefix_term(std::move(other.pt));
       break;
     case PhrasePartType::WILDCARD:
-      new (&wt) wildcard_term();
+      new (&wt) wildcard_term(std::move(other.wt));
       break;
     case PhrasePartType::LEVENSHTEIN:
-      new (&lt) levenshtein_term();
+      new (&lt) levenshtein_term(std::move(other.lt));
       break;
     case PhrasePartType::SET:
-      new (&ct) set_term();
+      new (&ct) set_term(std::move(other.ct));
       break;
     default:
       assert(false);
@@ -543,34 +463,33 @@ void by_phrase::phrase_part::destroy() noexcept {
   }
 }
 
-void by_phrase::phrase_part::recreate(PhrasePartType new_type) noexcept {
-  if (type != new_type) {
+void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
+  if (type != other.type) {
     destroy();
-    type = new_type;
-    allocate();
   }
+  allocate(std::move(other));
 }
 
 size_t hash_value(const by_phrase::phrase_part& info) {
-  auto seed = std::hash<int>()(static_cast<int>(info.type));
+  auto seed = std::hash<int>()(static_cast<std::underlying_type<by_phrase::PhrasePartType>::type>(info.type));
   switch (info.type) {
     case by_phrase::PhrasePartType::TERM:
-      ::boost::hash_combine(seed, std::hash<bstring>()(info.st.term));
+      ::boost::hash_combine(seed, info.st.term);
       break;
     case by_phrase::PhrasePartType::PREFIX:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.pt.scored_terms_limit));
-      ::boost::hash_combine(seed, std::hash<bstring>()(info.pt.term));
+      ::boost::hash_combine(seed, info.pt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.pt.term);
       break;
     case by_phrase::PhrasePartType::WILDCARD:
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.wt.scored_terms_limit));
-      ::boost::hash_combine(seed, std::hash<bstring>()(info.wt.term));
+      ::boost::hash_combine(seed, info.wt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.wt.term);
       break;
     case by_phrase::PhrasePartType::LEVENSHTEIN:
-      ::boost::hash_combine(seed, std::hash<bool>()(info.lt.with_transpositions));
-      ::boost::hash_combine(seed, std::hash<byte_type>()(info.lt.max_distance));
-      ::boost::hash_combine(seed, std::hash<size_t>()(info.lt.scored_terms_limit));
-      ::boost::hash_combine(seed, std::hash<by_edit_distance::pdp_f>()(info.lt.provider));
-      ::boost::hash_combine(seed, std::hash<bstring>()(info.lt.term));
+      ::boost::hash_combine(seed, info.lt.with_transpositions);
+      ::boost::hash_combine(seed, info.lt.max_distance);
+      ::boost::hash_combine(seed, info.lt.scored_terms_limit);
+      ::boost::hash_combine(seed, info.lt.provider);
+      ::boost::hash_combine(seed, info.lt.term);
       break;
     case by_phrase::PhrasePartType::SET:
       std::for_each(
