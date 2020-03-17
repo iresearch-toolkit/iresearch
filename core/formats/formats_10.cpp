@@ -1381,6 +1381,7 @@ struct position_impl<IteratorTraits, false, false> {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer_base::BLOCK_SIZE;
+    cookie_.file_pointer_ = state.pos_ptr;
     cookie_.pend_pos_ = pend_pos_;
   }
 
