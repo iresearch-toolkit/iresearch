@@ -733,6 +733,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   );
 }
 
+irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
+
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& rdr,
     const order::prepared& ord,
@@ -775,6 +777,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       auto& pt = phrase_terms[i++];
       auto type = word.second.type;
       bytes_ref pattern;
+      bstring buf;
       auto stop = false;
       switch (word.second.type) {
         case PhrasePartType::TERM:
@@ -793,6 +796,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
                 // stats for other terms in phrase
               }
               break;
+            case WildcardType::TERM_ESCAPED:
+              pattern = unescape(pattern, buf);
+              #if IRESEARCH_CXX > IRESEARCH_CXX_14
+                [[fallthrough]];
+              #endif
             case WildcardType::TERM:
               type = PhrasePartType::TERM;
               break;
@@ -800,6 +808,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
               pattern = bytes_ref::EMPTY; // empty prefix == match all
               type = PhrasePartType::PREFIX;
               break;
+            case WildcardType::PREFIX_ESCAPED:
+              pattern = unescape(pattern, buf);
+              #if IRESEARCH_CXX > IRESEARCH_CXX_14
+                [[fallthrough]];
+              #endif
             case WildcardType::PREFIX: {
               assert(!pattern.empty());
               const auto* begin = pattern.c_str();

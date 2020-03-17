@@ -218,7 +218,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
     : lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
-      ord_(&ord) {
+      merger_(ord.prepare_merger()) {
     // make 'document' attribute accessible from outside
     this->attrs_.emplace(doc_);
     // prepare score
@@ -235,7 +235,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
         pVal += !matched_iterators;
         matched_iterators += (size_t)self.score_iterator_impl(self.rhs_);
         // always call merge. even if zero matched - we need to reset last accumulated score at least.
-        self.ord_->merge(score, pVal, matched_iterators);
+        self.merger_(score, pVal, matched_iterators);
       });
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
@@ -243,7 +243,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       scores_vals_[0] = lhs.score->c_str();
       this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
+        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
@@ -251,7 +251,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       assert(lhs_.score == &irs::score::no_score());
       this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.ord_->merge(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
+        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
@@ -294,7 +294,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   mutable doc_iterator_t rhs_;
   mutable const irs::byte_type* scores_vals_[2];
   document doc_;
-  const order::prepared* ord_;
+  order::prepared::merger merger_;
 }; // basic_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +431,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
-      ord_(&ord) {
+      merger_(ord.prepare_merger()) {
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -463,7 +463,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
             *pVal++ = it.score->c_str();
           }
         }
-        self.ord_->merge(score, self.scores_vals_.data(), std::distance(self.scores_vals_.data(), pVal));
+        self.merger_(score, self.scores_vals_.data(), std::distance(self.scores_vals_.data(), pVal));
       });
     }
   }
@@ -497,7 +497,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   doc_iterators_t scored_itrs_; // iterators with scores
   document doc_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
-  const order::prepared* ord_;
+  order::prepared::merger merger_;
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +627,7 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
-      ord_(&ord) {
+      merger_(ord.prepare_merger()) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
@@ -741,14 +741,15 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
           detail::evaluate_score_iter(pVal, itrs_[it]);
       });
     }
-    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
+
+    merger_(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_;
   heap_container heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   document doc_;
-  const order::prepared* ord_;
+  order::prepared::merger merger_;
 }; // disjunction
 
 //////////////////////////////////////////////////////////////////////////////

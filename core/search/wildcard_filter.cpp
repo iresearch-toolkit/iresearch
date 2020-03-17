@@ -33,6 +33,23 @@
 
 NS_ROOT
 
+inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+  out.reserve(in.size());
+
+  bool copy = true;
+  std::copy_if(in.begin(), in.end(), std::back_inserter(out),
+               [&copy](irs::byte_type c) {
+    if (c == irs::WildcardMatch::ESCAPE) {
+      copy = !copy;
+    } else {
+      copy = true;
+    }
+    return copy;
+  });
+
+  return out;
+}
+
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
@@ -43,19 +60,32 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     const string_ref& field,
     const bstring& term,
     size_t scored_terms_limit) {
+  bytes_ref t = term;
+  bstring buf;
+
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return prepared::empty();
+    case WildcardType::TERM_ESCAPED:
+      t = unescape(t, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
     case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, term);
+      return term_query::make(index, order, boost, field, t);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
                                 scored_terms_limit);
+    case WildcardType::PREFIX_ESCAPED:
+      t = unescape(t, buf);
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
     case WildcardType::PREFIX: {
-      assert(!term.empty());
-      const auto* begin = term.c_str();
-      const auto* end = begin + term.size();
+      assert(!t.empty());
+      const auto* begin = t.c_str();
+      const auto* end = begin + t.size();
 
       // term is already checked to be a valid UTF-8 sequence
       const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
