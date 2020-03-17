@@ -58,34 +58,32 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    const bstring& term,
+    bytes_ref term,
     size_t scored_terms_limit) {
-  bytes_ref t = term;
   bstring buf;
-
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return prepared::empty();
     case WildcardType::TERM_ESCAPED:
-      t = unescape(t, buf);
+      term = unescape(term, buf);
 #if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
     case WildcardType::TERM:
-      return term_query::make(index, order, boost, field, t);
+      return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
                                 scored_terms_limit);
     case WildcardType::PREFIX_ESCAPED:
-      t = unescape(t, buf);
+      term = unescape(term, buf);
 #if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
     case WildcardType::PREFIX: {
-      assert(!t.empty());
-      const auto* begin = t.c_str();
-      const auto* end = begin + t.size();
+      assert(!term.empty());
+      const auto* begin = term.c_str();
+      const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence
       const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
