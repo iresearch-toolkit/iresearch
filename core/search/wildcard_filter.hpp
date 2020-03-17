@@ -26,26 +26,8 @@
 #include "filter.hpp"
 #include "prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
-
-inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
-  out.reserve(in.size());
-
-  bool copy = true;
-  std::copy_if(in.begin(), in.end(), std::back_inserter(out),
-               [&copy](irs::byte_type c) {
-    if (c == irs::WildcardMatch::ESCAPE) {
-      copy = !copy;
-    } else {
-      copy = true;
-    }
-    return copy;
-  });
-
-  return out;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard

@@ -733,6 +733,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   );
 }
 
+irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
+
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& rdr,
     const order::prepared& ord,
