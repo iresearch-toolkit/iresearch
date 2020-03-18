@@ -65,12 +65,23 @@ struct basic_sort : irs::sort {
 
   struct prepared_sort final : irs::sort::prepared {
     explicit prepared_sort(size_t idx) : idx(idx) {
-      merge_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
-                       const irs::byte_type** src_start, const size_t size) {
+      aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                           const irs::byte_type** src_start, const size_t size) {
         const auto offset = ctx->score_offset;
         score_cast<size_t>(dst + offset) = 0;
         for (size_t i = 0; i < size; ++i) {
           score_cast<size_t>(dst + offset) += score_cast<size_t>(src_start[i]  + offset);
+        }
+      };
+
+      max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                     const irs::byte_type** src_start, const size_t size) {
+        const auto offset = ctx->score_offset;
+        score_cast<size_t>(dst + offset) = 0;
+        for (size_t i = 0; i < size; ++i) {
+          auto& lhs = score_cast<size_t>(dst + offset);
+          auto& rhs = score_cast<size_t>(src_start[i]  + offset);
+          lhs = std::max(lhs, rhs);
         }
       };
     }
@@ -2028,6 +2039,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
       irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
       irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
       prepared_order,
+      irs::sort::MergeType::AGGREGATE,
       1 // custom cost
     );
     auto& doc = it.attributes().get<irs::document>();
@@ -2849,7 +2861,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(), 1); // custom cost
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -2901,7 +2913,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -2966,7 +2978,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3029,7 +3041,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3671,7 +3683,7 @@ TEST(disjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(), 1); // custom cost
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3723,7 +3735,7 @@ TEST(disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3788,7 +3800,7 @@ TEST(disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
@@ -3851,7 +3863,7 @@ TEST(disjunction_test, scored_seek_next) {
     auto prepared_order = ord.prepare();
 
     auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
-    disjunction it(std::move(res.first), prepared_order, 1); // custom cost
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
 
