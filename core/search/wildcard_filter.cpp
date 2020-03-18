@@ -31,9 +31,9 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
+NS_LOCAL
 
-irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -50,8 +50,32 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
   return out;
 }
 
+NS_END
+
+NS_ROOT
+
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
+
+/*static*/ bytes_ref by_wildcard::get_unescaped_term(const bytes_ref& term, bstring& buf) {
+  return unescape(term, buf);
+}
+
+/*static*/ bytes_ref by_wildcard::get_empty_term() {
+  return bytes_ref::EMPTY; // empty prefix == match all
+}
+
+/*static*/ bytes_ref by_wildcard::get_prefix_term(const bytes_ref& term) {
+  assert(!term.empty());
+  const auto* begin = term.c_str();
+  const auto* end = begin + term.size();
+
+  // term is already checked to be a valid UTF-8 sequence
+  const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+  assert(pos != end);
+
+  return bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+}
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
@@ -73,24 +97,16 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
       return term_query::make(index, order, boost, field, term);
     case WildcardType::MATCH_ALL:
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref::EMPTY, // empty prefix == match all
+                                get_empty_term(),
                                 scored_terms_limit);
     case WildcardType::PREFIX_ESCAPED:
-      term = unescape(term, buf);
+      term = get_unescaped_term(term, buf);
 #if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
     case WildcardType::PREFIX: {
-      assert(!term.empty());
-      const auto* begin = term.c_str();
-      const auto* end = begin + term.size();
-
-      // term is already checked to be a valid UTF-8 sequence
-      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-      assert(pos != end);
-
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(begin, size_t(pos - begin)), // remove trailing '%'
+                                get_prefix_term(term),
                                 scored_terms_limit);
     }
 

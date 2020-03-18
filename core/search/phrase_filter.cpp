@@ -629,10 +629,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   );
 }
 
-irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
-
-/*static*/ bool by_phrase::variadic_optimize(const phrase_part& phr_part, bstring& buf, PhrasePartType& type,
-                                             bytes_ref& pattern, bool& valid, bool is_ord_empty) {
+/*static*/ bool by_phrase::variadic_optimize(
+    const phrase_part& phr_part, bstring& buf, PhrasePartType& type,
+    bytes_ref& pattern, bool& valid, bool is_ord_empty) {
   switch (phr_part.type) {
     case PhrasePartType::TERM:
       pattern = phr_part.st.term;
@@ -652,7 +651,7 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
           valid = false;
           break;
         case WildcardType::TERM_ESCAPED:
-          pattern = unescape(pattern, buf);
+          pattern = by_wildcard::get_unescaped_term(pattern, buf);
           #if IRESEARCH_CXX > IRESEARCH_CXX_14
             [[fallthrough]];
           #endif
@@ -660,23 +659,16 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
           type = PhrasePartType::TERM;
           break;
         case WildcardType::MATCH_ALL:
-          pattern = bytes_ref::EMPTY; // empty prefix == match all
+          pattern = by_wildcard::get_empty_term();
           type = PhrasePartType::PREFIX;
           break;
         case WildcardType::PREFIX_ESCAPED:
-          pattern = unescape(pattern, buf);
+          pattern = by_wildcard::get_unescaped_term(pattern, buf);
           #if IRESEARCH_CXX > IRESEARCH_CXX_14
             [[fallthrough]];
           #endif
         case WildcardType::PREFIX: {
-          assert(!pattern.empty());
-          const auto* begin = pattern.c_str();
-          const auto* end = begin + pattern.size();
-
-          // pattern is already checked to be a valid UTF-8 sequence
-          const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-          assert(pos != end);
-          pattern = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+          pattern = by_wildcard::get_prefix_term(pattern);
           type = PhrasePartType::PREFIX;
           break;
         }
@@ -706,13 +698,14 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
   return true;
 }
 
-/*static*/ bool by_phrase::variadic_type_collect(const sub_reader& sr, const term_reader* tr,
-                                                 const order::prepared::variadic_terms_collectors& collectors,
-                                                 phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-                                                 const seek_term_iterator::ptr& term,
-                                                 const phrase_part& phr_part, PhrasePartType type,
-                                                 const bytes_ref& pattern, size_t& found_words_count,
-                                                 size_t term_itr, bool is_ord_empty) {
+/*static*/ bool by_phrase::variadic_type_collect(
+    const sub_reader& sr, const term_reader* tr,
+    const order::prepared::variadic_terms_collectors& collectors,
+    phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
+    const seek_term_iterator::ptr& term,
+    const phrase_part& phr_part, PhrasePartType type,
+    const bytes_ref& pattern, size_t& found_words_count,
+    size_t term_itr, bool is_ord_empty) {
   auto& pt = phrase_terms[term_itr];
   switch (type) {
     case PhrasePartType::TERM: {
@@ -807,7 +800,7 @@ irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out);
     case PhrasePartType::LEVENSHTEIN: {
       assert(phr_part.lt.provider);
       const auto& d = (*phr_part.lt.provider)(phr_part.lt.max_distance,
-                                                 phr_part.lt.with_transpositions);
+                                              phr_part.lt.with_transpositions);
       if (!d) {
         if (is_ord_empty) {
           return false;
