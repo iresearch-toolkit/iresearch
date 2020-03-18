@@ -32,9 +32,10 @@ template<size_t Size, size_t Align>
 struct aligned_value {
   irs::memory::aligned_storage<Size, Align> data;
 
-  // need these operators to be sort API compliant
-  bool operator<(const aligned_value&) const { return false; }
-  aligned_value operator+=(const aligned_value&) { return *this; }
+  // need these operators only to be sort API compliant
+  bool operator<(const aligned_value&) const noexcept { return false; }
+  const aligned_value& operator+=(const aligned_value&) const noexcept { return *this; }
+  const aligned_value& operator+(const aligned_value&) const noexcept { return *this; }
 };
 
 template<typename ScoreType, typename StatsType>
