@@ -924,7 +924,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       auto type = word.second.type;
       bytes_ref pattern;
       auto valid = true;
-      if (!this->variadic_optimize(word.second, buf, type, pattern, valid, is_ord_empty)) {
+      if (!variadic_optimize(word.second, buf, type, pattern, valid, is_ord_empty)) {
         break;
       }
       if (!valid) {
