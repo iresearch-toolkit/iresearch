@@ -276,7 +276,8 @@ if (USE_PVS_STUDIO)
 
   set_target_properties(
     ${PVS_STUDIO_TARGET_NAME}
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>>"
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
@@ -290,7 +291,8 @@ if (USE_PVS_STUDIO)
 
   set_target_properties(
     ${PVS_STUDIO_TARGET_NAME}-html
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>>"
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
@@ -304,7 +306,8 @@ if (USE_PVS_STUDIO)
 
   set_target_properties(
     ${PVS_STUDIO_TARGET_NAME}-xml
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>>"
+    PROPERTIES
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 endif()
 
