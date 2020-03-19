@@ -949,6 +949,14 @@ class IRESEARCH_API order final {
         (*merge_func_)(bucket_, score, rhs_start, count);
       }
 
+      FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
+        return merge_func == merge_func_;
+      }
+
+      FORCE_INLINE bool operator!=(merge_f merge_func) const noexcept {
+        return merge_func != merge_func_;
+      }
+
      private:
       friend class order;
 
