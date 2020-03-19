@@ -249,9 +249,8 @@ class IRESEARCH_API by_phrase : public filter {
       const sub_reader& sr, const term_reader* tr,
       const order::prepared::variadic_terms_collectors& collectors,
       phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-      const seek_term_iterator::ptr& term,
       const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   static bool variadic_prefix_collect(
       const sub_reader& sr, const term_reader* tr,
@@ -259,21 +258,21 @@ class IRESEARCH_API by_phrase : public filter {
       phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
       const seek_term_iterator::ptr& term,
       const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   static bool variadic_wildcard_collect(
       const sub_reader& sr, const term_reader* tr,
       const order::prepared::variadic_terms_collectors& collectors,
       phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
       const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   static bool variadic_levenshtein_collect(
       const sub_reader& sr, const term_reader* tr,
       const order::prepared::variadic_terms_collectors& collectors,
       phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
       const phrase_part& phr_part, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   static bool variadic_set_collect(
       const sub_reader& sr, const term_reader* tr,
@@ -281,7 +280,7 @@ class IRESEARCH_API by_phrase : public filter {
       phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
       const seek_term_iterator::ptr& term,
       const phrase_part& phr_part, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   static bool variadic_type_collect(
       const sub_reader& sr, const term_reader* tr,
@@ -290,7 +289,7 @@ class IRESEARCH_API by_phrase : public filter {
       const seek_term_iterator::ptr& term,
       const phrase_part& phr_part, PhrasePartType type,
       const bytes_ref& pattern, size_t& found_words_count,
-      size_t term_itr, bool is_ord_empty);
+      size_t term_offset, bool is_ord_empty);
 
   filter::prepared::ptr variadic_prepare_collect(
       const index_reader& rdr,

@@ -32,15 +32,17 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
+NS_ROOT
+
 NS_LOCAL
 
-inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
+inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
   std::copy_if(in.begin(), in.end(), std::back_inserter(out),
-               [&copy](irs::byte_type c) {
-    if (c == irs::WildcardMatch::ESCAPE) {
+               [&copy](byte_type c) {
+    if (c == WildcardMatch::ESCAPE) {
       copy = !copy;
     } else {
       copy = true;
@@ -53,42 +55,42 @@ inline irs::bytes_ref unescape(const irs::bytes_ref& in, irs::bstring& out) {
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
 inline void callWildcardType(
-    irs::bstring& buf, irs::bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
+    bstring& buf, bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
   switch (wildcard_type(term)) {
-    case irs::WildcardType::INVALID:
+    case WildcardType::INVALID:
       inv();
       break;
-    case irs::WildcardType::TERM_ESCAPED:
+    case WildcardType::TERM_ESCAPED:
       term = unescape(term, buf);
 #if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
-    case irs::WildcardType::TERM:
+    case WildcardType::TERM:
       t(term);
       break;
-    case irs::WildcardType::MATCH_ALL:
-      term = irs::bytes_ref::EMPTY;
+    case WildcardType::MATCH_ALL:
+      term = bytes_ref::EMPTY;
       p(term);
       break;
-    case irs::WildcardType::PREFIX_ESCAPED:
+    case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
 #if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
-    case irs::WildcardType::PREFIX: {
+    case WildcardType::PREFIX: {
       assert(!term.empty());
       const auto* begin = term.c_str();
       const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence
-      const auto* pos = irs::utf8_utils::find<false>(begin, end, irs::WildcardMatch::ANY_STRING);
+      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
       assert(pos != end);
 
-      term = irs::bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+      term = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
       p(term);
       break;
     }
-    case irs::WildcardType::WILDCARD:
+    case WildcardType::WILDCARD:
       w(term);
       break;
     default:
@@ -98,8 +100,6 @@ inline void callWildcardType(
 }
 
 NS_END
-
-NS_ROOT
 
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)

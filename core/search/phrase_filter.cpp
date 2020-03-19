@@ -535,6 +535,23 @@ filter::prepared::ptr by_phrase::prepare(
   return variadic_prepare_collect(rdr, ord, boost, ord.variadic_prepare_collectors(phrase_size));
 }
 
+NS_LOCAL
+
+template<typename PhraseTerms>
+struct simple_term_visitor_ctx {
+  PhraseTerms& phrase_terms;
+};
+
+template<typename PhraseTerms>
+void simple_term_visitor(void* ctx, const seek_term_iterator::ptr& terms) {
+  assert(ctx);
+  auto& vis_ctx = *reinterpret_cast<simple_term_visitor_ctx<PhraseTerms>*>(ctx);
+  // estimate phrase & term
+  vis_ctx.phrase_terms.emplace_back(terms->cookie());
+}
+
+NS_END
+
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& rdr,
     const order::prepared& ord,
@@ -543,8 +560,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   // per segment phrase states
   fixed_phrase_query::states_t phrase_states(rdr.size());
 
+  typedef phrase_state<order::prepared::FixedContainer>::terms_states_t ts_t;
   // per segment phrase terms
-  phrase_state<order::prepared::FixedContainer>::terms_states_t phrase_terms;
+  ts_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.reserve(phrase_size);
 
@@ -566,28 +584,22 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
     collectors.collect(sr, *tr); // collect field statistics once per segment
 
-    // find terms
-    seek_term_iterator::ptr term = tr->iterator();
-    size_t term_itr = 0;
+    size_t term_offset = 0;
+    auto is_ord_empty = ord.empty();
+
+    simple_term_visitor_ctx<ts_t> vis_ctx{phrase_terms};
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
-      if (!term->seek(word.second.st.term)) {
-        if (ord.empty()) {
+      if (!term_query::visit(sr, *tr, word.second.st.term, collectors,
+                             term_offset, &vis_ctx, simple_term_visitor<ts_t>)) {
+        if (is_ord_empty) {
           break;
-        } else {
-          // continue here because we should collect
-          // stats for other terms in phrase
-          continue;
         }
+        // continue here because we should collect
+        // stats for other terms in phrase
       }
-
-      term->read(); // read term attributes
-      collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-      // estimate phrase & term
-      phrase_terms.emplace_back(term->cookie());
+      ++term_offset;
     }
 
     // we have not found all needed terms
@@ -669,10 +681,12 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     const sub_reader& sr, const term_reader* tr,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const seek_term_iterator::ptr& term,
     const bytes_ref& pattern, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
-  if (!term->seek(pattern)) {
+    size_t term_offset, bool is_ord_empty) {
+  typedef phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type ts_t;
+  simple_term_visitor_ctx<ts_t> vis_ctx{pt};
+  if (!term_query::visit(sr, *tr, pattern, collectors,
+                         term_offset, &vis_ctx, simple_term_visitor<ts_t>)) {
     if (is_ord_empty) {
       return false;
       // else we should collect
@@ -680,11 +694,6 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     }
     return true;
   }
-  term->read(); // read term attributes
-  collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
-
-  // estimate phrase & term
-  pt.emplace_back(term->cookie());
   ++found_words_count;
 
   return true;
@@ -696,7 +705,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const seek_term_iterator::ptr& term,
     const bytes_ref& pattern, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
+    size_t term_offset, bool is_ord_empty) {
   // seek to prefix
   if (SeekResult::END == term->seek_ge(pattern)) {
     if (is_ord_empty) {
@@ -716,7 +725,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
       found = true;
     #endif
     term->read();
-    collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
+    collectors.collect(sr, *tr, term_offset, term->attributes()); // collect statistics
 
     // estimate phrase & term
     pt.emplace_back(term->cookie());
@@ -737,7 +746,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const bytes_ref& pattern, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
+    size_t term_offset, bool is_ord_empty) {
   const auto& acceptor = from_wildcard(pattern);
   automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
 
@@ -757,7 +766,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
   while (term_wildcard->next()) {
     found = true;
     term_wildcard->read();
-    collectors.collect(sr, *tr, term_itr, term_wildcard->attributes()); // collect statistics
+    collectors.collect(sr, *tr, term_offset, term_wildcard->attributes()); // collect statistics
 
     // estimate phrase & term
     pt.emplace_back(term_wildcard->cookie());
@@ -777,7 +786,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const phrase_part& phr_part, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
+    size_t term_offset, bool is_ord_empty) {
   assert(phr_part.lt.provider);
   const auto& d = (*phr_part.lt.provider)(phr_part.lt.max_distance,
                                           phr_part.lt.with_transpositions);
@@ -808,7 +817,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     while (term_levenshtein->next()) {
       found = true;
       term_levenshtein->read();
-      collectors.collect(sr, *tr, term_itr, term_levenshtein->attributes()); // collect statistics
+      collectors.collect(sr, *tr, term_offset, term_levenshtein->attributes()); // collect statistics
 
       // estimate phrase & term
       pt.emplace_back(term_levenshtein->cookie());
@@ -830,7 +839,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const seek_term_iterator::ptr& term,
     const phrase_part& phr_part, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
+    size_t term_offset, bool is_ord_empty) {
   auto found = false;
   for (const auto& pat : phr_part.ct.terms) {
     if (!term->seek(pat)) {
@@ -839,7 +848,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     found = true;
 
     term->read(); // read term attributes
-    collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
+    collectors.collect(sr, *tr, term_offset, term->attributes()); // collect statistics
 
     // estimate phrase & term
     pt.emplace_back(term->cookie());
@@ -861,24 +870,24 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     const seek_term_iterator::ptr& term,
     const phrase_part& phr_part, PhrasePartType type,
     const bytes_ref& pattern, size_t& found_words_count,
-    size_t term_itr, bool is_ord_empty) {
-  auto& pt = phrase_terms[term_itr];
+    size_t term_offset, bool is_ord_empty) {
+  auto& pt = phrase_terms[term_offset];
   switch (type) {
     case PhrasePartType::TERM:
-      return variadic_term_collect(sr, tr, collectors, pt, term, pattern,
-                                   found_words_count, term_itr, is_ord_empty);
+      return variadic_term_collect(sr, tr, collectors, pt, pattern,
+                                   found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::PREFIX:
       return variadic_prefix_collect(sr, tr, collectors, pt, term, pattern,
-                                     found_words_count, term_itr, is_ord_empty);
+                                     found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::WILDCARD:
       return variadic_wildcard_collect(sr, tr, collectors, pt, pattern,
-                                       found_words_count, term_itr, is_ord_empty);
+                                       found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::LEVENSHTEIN:
       return variadic_levenshtein_collect(sr, tr, collectors, pt, phr_part,
-                                          found_words_count, term_itr, is_ord_empty);
+                                          found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::SET:
       return variadic_set_collect(sr, tr, collectors, pt, term, phr_part,
-                                  found_words_count, term_itr, is_ord_empty);
+                                  found_words_count, term_offset, is_ord_empty);
     default:
       assert(false);
   }
@@ -921,11 +930,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
-    size_t term_itr = 0;
+    size_t term_offset = 0;
     size_t found_words_count = 0;
 
     for (const auto& word : phrase_) {
-      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
+      auto next_stats = irs::make_finally([&term_offset]()->void{ ++term_offset; });
       auto type = word.second.type;
       bytes_ref pattern;
       auto valid = true;
@@ -936,7 +945,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
         continue;
       }
       if (!variadic_type_collect(sr, tr, collectors, phrase_terms, term, word.second, type,
-                                 pattern, found_words_count, term_itr, is_ord_empty)) {
+                                 pattern, found_words_count, term_offset, is_ord_empty)) {
         break;
       }
     }
