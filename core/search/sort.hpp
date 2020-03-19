@@ -407,77 +407,40 @@ struct score_traits {
   }
 
   static void aggregate(const order_bucket* ctx, byte_type* dst,
-                        const byte_type** src_start, size_t size) {
+                        const byte_type** src_begin, size_t size) {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
+    casted_dst = ScoreType();
 
-    switch (size) {
+    const auto** src_end = src_begin + size;
+    const auto** src_next = src_begin + 4;
+    for (; src_next <= src_end; src_begin = src_next, src_next += 4) {
+      casted_dst += score_cast(src_begin[0] + offset)
+                 +  score_cast(src_begin[1] + offset)
+                 +  score_cast(src_begin[2] + offset)
+                 +  score_cast(src_begin[3] + offset);
+    }
+
+    switch (std::distance(src_end, src_next)) {
       case 0:
-        casted_dst = ScoreType();
         break;
       case 1:
-        casted_dst = score_cast(src_start[0] + offset);
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset)
+                   +  score_cast(src_begin[2] + offset);
         break;
       case 2:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset);
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset);
         break;
       case 3:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset);
-        break;
-      case 4:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset)
-                   + score_cast(src_start[3] + offset);
-        break;
-      case 5:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset)
-                   + score_cast(src_start[3] + offset)
-                   + score_cast(src_start[4] + offset);
-        break;
-      case 6:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset)
-                   + score_cast(src_start[3] + offset)
-                   + score_cast(src_start[4] + offset)
-                   + score_cast(src_start[5] + offset);
-        break;
-      case 7:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset)
-                   + score_cast(src_start[3] + offset)
-                   + score_cast(src_start[4] + offset)
-                   + score_cast(src_start[5] + offset)
-                   + score_cast(src_start[6] + offset);
-        break;
-      case 8:
-        casted_dst = score_cast(src_start[0] + offset)
-                   + score_cast(src_start[1] + offset)
-                   + score_cast(src_start[2] + offset)
-                   + score_cast(src_start[3] + offset)
-                   + score_cast(src_start[4] + offset)
-                   + score_cast(src_start[5] + offset)
-                   + score_cast(src_start[6] + offset)
-                   + score_cast(src_start[7] + offset);
-        break;
-      default:
-        casted_dst = score_cast(src_start[0] + offset);
-        for (--size; size; ) {
-          casted_dst += score_cast(src_start[size--] + offset);
-        }
+        casted_dst += score_cast(src_begin[0] + offset);
         break;
     }
   }
 
   static void max(const order_bucket* ctx, byte_type* dst,
-                  const byte_type** src_start, size_t size) {
+                  const byte_type** src_begin, size_t size) {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
 
@@ -486,68 +449,17 @@ struct score_traits {
         casted_dst = ScoreType();
         break;
       case 1:
-        casted_dst = score_cast(src_start[0] + offset);
+        casted_dst = score_cast(src_begin[0] + offset);
         break;
       case 2:
-        casted_dst = std::max(score_cast(src_start[0] + offset),
-                              score_cast(src_start[1] + offset));
-        break;
-      case 3:
-        casted_dst = std::max(
-                       std::max(score_cast(src_start[0] + offset),
-                                score_cast(src_start[1] + offset)),
-                       score_cast(src_start[2] + offset));
-        break;
-      case 4:
-        casted_dst = std::max(
-                       std::max(score_cast(src_start[0] + offset),
-                                score_cast(src_start[1] + offset)),
-                       std::max(score_cast(src_start[2] + offset),
-                                score_cast(src_start[3] + offset)));
-        break;
-      case 5:
-        casted_dst = std::max(
-                       std::max(std::max(score_cast(src_start[0] + offset),
-                                         score_cast(src_start[1] + offset)),
-                                std::max(score_cast(src_start[2] + offset),
-                                         score_cast(src_start[3] + offset))),
-                       score_cast(src_start[4] + offset));
-        break;
-      case 6:
-        casted_dst = std::max(
-                       std::max(std::max(score_cast(src_start[0] + offset),
-                                         score_cast(src_start[1] + offset)),
-                                std::max(score_cast(src_start[2] + offset),
-                                         score_cast(src_start[3] + offset))),
-                       std::max(score_cast(src_start[4] + offset),
-                                score_cast(src_start[5] + offset)));
-        break;
-      case 7:
-        casted_dst = std::max(
-                       std::max(std::max(score_cast(src_start[0] + offset),
-                                         score_cast(src_start[1] + offset)),
-                                std::max(score_cast(src_start[2] + offset),
-                                         score_cast(src_start[3] + offset))),
-                       std::max(std::max(score_cast(src_start[4] + offset),
-                                         score_cast(src_start[5] + offset)),
-                                score_cast(src_start[6] + offset)));
-
-        break;
-      case 8:
-        casted_dst = std::max(
-                       std::max(std::max(score_cast(src_start[0] + offset),
-                                         score_cast(src_start[1] + offset)),
-                                std::max(score_cast(src_start[2] + offset),
-                                         score_cast(src_start[3] + offset))),
-                       std::max(std::max(score_cast(src_start[4] + offset),
-                                         score_cast(src_start[5] + offset)),
-                                std::max(score_cast(src_start[6] + offset),
-                                         score_cast(src_start[7] + offset))));
+        casted_dst = std::max(score_cast(src_begin[0] + offset),
+                              score_cast(src_begin[1] + offset));
         break;
       default:
-        casted_dst = score_cast(src_start[0] + offset);
-        for (--size; size; ) {
-          casted_dst = std::max(score_cast(src_start[size--] + offset), casted_dst);
+        casted_dst = score_cast(*src_begin + offset);
+        const auto* src_end = src_begin + size;
+        for (++src_begin; src_begin != src_end; ) {
+          casted_dst = std::max(score_cast(*src_begin++ + offset), casted_dst);
         }
         break;
     }
