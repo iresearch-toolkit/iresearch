@@ -648,6 +648,7 @@ bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
     }
     case PhrasePartType::LEVENSHTEIN:
       if (0 == phr_part.lt.max_distance) {
+        pattern = phr_part.lt.term;
         type = PhrasePartType::TERM;
       }
       break;
