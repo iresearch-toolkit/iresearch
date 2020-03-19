@@ -66,12 +66,6 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
                    field(), term(), scored_terms_limit());
   }
 
-  static inline bytes_ref get_unescaped_term(const bytes_ref& term, bstring& buf);
-
-  static inline bytes_ref get_empty_term();
-
-  static inline bytes_ref get_prefix_term(const bytes_ref& term);
-
 
   using by_prefix::scored_terms_limit;
 

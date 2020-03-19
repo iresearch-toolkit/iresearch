@@ -629,6 +629,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   );
 }
 
+bool wildcard_phrase_helper(bstring& buf, by_phrase::PhrasePartType& type,
+                            bytes_ref& pattern, bool& valid, bool is_ord_empty);
+
 /*static*/ bool by_phrase::variadic_optimize(
     const phrase_part& phr_part, bstring& buf, PhrasePartType& type,
     bytes_ref& pattern, bool& valid, bool is_ord_empty) {
@@ -639,47 +642,10 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     case PhrasePartType::PREFIX:
       pattern = phr_part.pt.term;
       break;
-    case PhrasePartType::WILDCARD:
+    case PhrasePartType::WILDCARD: {
       pattern = phr_part.wt.term;
-      switch (wildcard_type(pattern)) {
-        case WildcardType::INVALID:
-          if (is_ord_empty) {
-            return false;
-            // else we should collect
-            // stats for other terms in phrase
-          }
-          valid = false;
-          break;
-        case WildcardType::TERM_ESCAPED:
-          pattern = by_wildcard::get_unescaped_term(pattern, buf);
-          #if IRESEARCH_CXX > IRESEARCH_CXX_14
-            [[fallthrough]];
-          #endif
-        case WildcardType::TERM:
-          type = PhrasePartType::TERM;
-          break;
-        case WildcardType::MATCH_ALL:
-          pattern = by_wildcard::get_empty_term();
-          type = PhrasePartType::PREFIX;
-          break;
-        case WildcardType::PREFIX_ESCAPED:
-          pattern = by_wildcard::get_unescaped_term(pattern, buf);
-          #if IRESEARCH_CXX > IRESEARCH_CXX_14
-            [[fallthrough]];
-          #endif
-        case WildcardType::PREFIX: {
-          pattern = by_wildcard::get_prefix_term(pattern);
-          type = PhrasePartType::PREFIX;
-          break;
-        }
-        case WildcardType::WILDCARD:
-          // do nothing
-          break;
-        default:
-          assert(false);
-          return false;
-      }
-      break;
+      return wildcard_phrase_helper(buf, type, pattern, valid, is_ord_empty);
+    }
     case PhrasePartType::LEVENSHTEIN:
       if (0 == phr_part.lt.max_distance) {
         type = PhrasePartType::TERM;
