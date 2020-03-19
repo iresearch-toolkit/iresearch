@@ -65,7 +65,7 @@ typedef void(*score_f)(const score_ctx* ctx, byte_type*);
 ///        i.e. using +=
 ////////////////////////////////////////////////////////////////////////////////
 typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
-                       const byte_type** src, const size_t count);
+                       const byte_type** src, size_t count);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -189,7 +189,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     static void noop_merge(
         const order_bucket*, byte_type*,
-        const byte_type**, const size_t) noexcept {
+        const byte_type**, size_t) noexcept {
       // NOOP
     }
 
@@ -407,7 +407,7 @@ struct score_traits {
   }
 
   static void aggregate(const order_bucket* ctx, byte_type* dst,
-                        const byte_type** src_start, const size_t size) {
+                        const byte_type** src_start, size_t size) {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
 
@@ -469,15 +469,15 @@ struct score_traits {
         break;
       default:
         casted_dst = score_cast(src_start[0] + offset);
-        for (size_t i = 1; i < size; ++i) {
-          casted_dst += score_cast(src_start[i] + offset);
+        for (--size; size; ) {
+          casted_dst += score_cast(src_start[size--] + offset);
         }
         break;
     }
   }
 
   static void max(const order_bucket* ctx, byte_type* dst,
-                  const byte_type** src_start, const size_t size) {
+                  const byte_type** src_start, size_t size) {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
 
@@ -546,8 +546,8 @@ struct score_traits {
         break;
       default:
         casted_dst = score_cast(src_start[0] + offset);
-        for (size_t i = 1; i < size; ++i) {
-          casted_dst = std::max(score_cast(src_start[i] + offset), casted_dst);
+        for (--size; size; ) {
+          casted_dst = std::max(score_cast(src_start[size--] + offset), casted_dst);
         }
         break;
     }
