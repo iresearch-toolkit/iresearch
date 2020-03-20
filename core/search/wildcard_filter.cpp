@@ -131,7 +131,7 @@ by_wildcard::by_wildcard() noexcept
   : by_prefix(by_wildcard::type()) {
 }
 
-/*static*/ void by_wildcard::wildcard_phrase_helper(
+/*static*/ void by_wildcard::phrase_helper(
     const term_reader& reader,
     bytes_ref term,
     filter_visitor& fv) {

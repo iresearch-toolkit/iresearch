@@ -543,7 +543,7 @@ NS_END
     phrase_terms_t& phrase_terms, const bytes_ref& term, size_t term_offset) {
   phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
     segment, reader, collectors, phrase_terms, term_offset);
-  by_wildcard::wildcard_phrase_helper(reader, term, ptv);
+  by_wildcard::phrase_helper(reader, term, ptv);
 
   return ptv.found();
 }
@@ -555,7 +555,7 @@ NS_END
   assert(phr_part.lt.provider);
   phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
     segment, reader, collectors, phrase_terms, term_offset);
-  by_edit_distance::levenshtein_phrase_helper(
+  by_edit_distance::phrase_helper(
     reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
     phr_part.lt.with_transpositions, ptv);
 
