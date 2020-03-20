@@ -670,19 +670,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   );
 }
 
-void wildcard_phrase_helper(
-  const term_reader& reader,
-  bytes_ref term,
-  filter_visitor& fv);
-
-void levenshtein_phrase_helper(
-  const term_reader& reader,
-  const bytes_ref& term,
-  byte_type max_distance,
-  by_edit_distance::pdp_f provider,
-  bool with_transpositions,
-  filter_visitor& fv);
-
 /*static*/ bool by_phrase::variadic_term_collect(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
@@ -714,7 +701,7 @@ void levenshtein_phrase_helper(
     const bytes_ref& term, size_t term_offset) {
   phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
     segment, reader, collectors, phrase_terms, term_offset);
-  wildcard_phrase_helper(reader, term, ptv);
+  by_wildcard::wildcard_phrase_helper(reader, term, ptv);
 
   return ptv.found();
 }
@@ -727,8 +714,10 @@ void levenshtein_phrase_helper(
   assert(phr_part.lt.provider);
   phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
     segment, reader, collectors, phrase_terms, term_offset);
-  levenshtein_phrase_helper(reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
-                            phr_part.lt.with_transpositions, ptv);
+  by_edit_distance::levenshtein_phrase_helper(
+    reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
+    phr_part.lt.with_transpositions, ptv);
+
   return ptv.found();
 }
 

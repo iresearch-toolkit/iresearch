@@ -29,6 +29,8 @@
 
 NS_ROOT
 
+class filter_visitor;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
@@ -45,6 +47,11 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     const string_ref& field,
     bytes_ref term,
     size_t scored_terms_limit);
+
+  static void wildcard_phrase_helper(
+    const term_reader& reader,
+    bytes_ref term,
+    filter_visitor& fv);
 
   explicit by_wildcard() noexcept;
 
