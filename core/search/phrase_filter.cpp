@@ -772,18 +772,10 @@ void levenshtein_phrase_helper(
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
     const phrase_part& phr_part, size_t term_offset) {
-  auto type = phr_part.type;
-  bytes_ref term;
-  if (PhrasePartType::TERM == phr_part.type) {
-    term = phr_part.st.term;
-  } else if (PhrasePartType::SET == phr_part.type && phr_part.ct.terms.size() == 1) {
-    term = phr_part.ct.terms.front();
-    type = PhrasePartType::TERM;
-  }
   auto& pt = phrase_terms[term_offset];
-  switch (type) {
+  switch (phr_part.type) {
     case PhrasePartType::TERM:
-      return variadic_term_collect(segment, reader, collectors, pt, term, term_offset);
+      return variadic_term_collect(segment, reader, collectors, pt, phr_part.st.term, term_offset);
     case PhrasePartType::PREFIX:
       return variadic_prefix_collect(segment, reader, collectors, pt, phr_part.pt.term, term_offset);
     case PhrasePartType::WILDCARD:
