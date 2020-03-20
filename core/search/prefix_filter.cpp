@@ -32,6 +32,89 @@
 
 NS_ROOT
 
+NS_LOCAL
+
+struct visitor_ctx {
+  limited_sample_scorer& scorer;
+  multiterm_query::states_t& states;
+  const sub_reader& segment;
+  const term_reader& reader;
+  multiterm_state* state;
+  const decltype(irs::term_meta::docs_count) NO_DOCS;
+  const decltype(irs::term_meta::docs_count)* docs_count;
+};
+
+void previsitor(void* ctx, const seek_term_iterator::ptr& terms) {
+  assert(ctx);
+  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
+  // get term metadata
+  auto& meta = terms->attributes().get<term_meta>();
+
+  // NOTE: we can't use reference to 'docs_count' here, like
+  // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+  // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+  // probably due to broken optimization
+  vis_ctx.docs_count = meta ? &meta->docs_count : &vis_ctx.NO_DOCS;
+}
+
+void if_visitor(void* ctx) {
+  assert(ctx);
+  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
+  // get state for current segment
+  vis_ctx.state = &vis_ctx.states.insert(vis_ctx.segment);
+  vis_ctx.state->reader = &vis_ctx.reader;
+}
+
+void loop_visitor(void* ctx, const seek_term_iterator::ptr& terms) {
+  assert(ctx);
+  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
+
+  // fill scoring candidates
+  assert(vis_ctx.docs_count);
+  assert(vis_ctx.state);
+  vis_ctx.scorer.collect(*vis_ctx.docs_count, vis_ctx.state->count++, *vis_ctx.state, vis_ctx.segment, *terms);
+  vis_ctx.state->estimation += *vis_ctx.docs_count; // collect cost
+}
+
+NS_END
+
+/*static*/ bool by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    void* ctx,
+    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx),
+    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+  // find term
+  auto terms = reader.iterator();
+
+  // seek to prefix
+  if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
+    return false;
+  }
+
+  previsitor(ctx, terms);
+
+  const auto& value = terms->value();
+  if (starts_with(value, prefix)) {
+    terms->read();
+
+    if_visitor(ctx);
+
+    do {
+      loop_visitor(ctx, terms);
+
+      if (!terms->next()) {
+        break;
+      }
+
+      terms->read();
+    } while (starts_with(value, prefix));
+  }
+
+  return true;
+}
+
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
@@ -54,44 +137,9 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    seek_term_iterator::ptr terms = reader->iterator();
+    visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
 
-    // seek to prefix
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    auto& value = terms->value();
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    if (starts_with(value, prefix)) {
-      terms->read();
-
-      // get state for current segment
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        // fill scoring candidates
-        scorer.collect(*docs_count, state.count++, state, segment, *terms);
-        state.estimation += *docs_count; // collect cost
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(value, prefix));
-    }
+    visit(*reader, prefix, &vis_ctx, previsitor, if_visitor, loop_visitor);
   }
 
   std::vector<bstring> stats;

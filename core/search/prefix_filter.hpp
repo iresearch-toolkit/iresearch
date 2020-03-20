@@ -32,6 +32,14 @@ class IRESEARCH_API by_prefix : public by_term {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
+  static bool visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    void* ctx,
+    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx),
+    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
+
   static prepared::ptr prepare(
     const index_reader& index,
     const order::prepared& ord,
