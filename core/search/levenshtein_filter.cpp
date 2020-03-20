@@ -125,10 +125,9 @@ void levenshtein_phrase_helper(
     bool with_transpositions,
     const order::prepared::variadic_terms_collectors& collectors,
     size_t term_offset,
-    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   executeLevenshtein(
     max_distance, provider, with_transpositions,
@@ -136,8 +135,8 @@ void levenshtein_phrase_helper(
     [&term, &segment, &reader, &collectors, term_offset, ctx, term_visitor]() {
       term_query::visit(segment, reader, term, collectors, term_offset, ctx, term_visitor);
     },
-    [&term, &reader, ctx, previsitor, if_visitor, loop_visitor](const parametric_description& d) {
-      automaton_visit(make_levenshtein_automaton(d, term), reader, ctx, previsitor, if_visitor, loop_visitor);
+    [&term, &reader, ctx, if_visitor, loop_visitor](const parametric_description& d) {
+      automaton_visit(make_levenshtein_automaton(d, term), reader, ctx, if_visitor, loop_visitor);
     }
   );
 }

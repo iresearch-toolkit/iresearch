@@ -137,10 +137,9 @@ void wildcard_phrase_helper(
     const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     size_t term_offset,
-    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   bstring buf;
   executeWildcard(
@@ -149,11 +148,11 @@ void wildcard_phrase_helper(
     [&segment, &reader, &collectors, term_offset, ctx, term_visitor](const bytes_ref& term) {
       term_query::visit(segment, reader, term, collectors, term_offset, ctx, term_visitor);
     },
-    [&reader, ctx, previsitor, if_visitor, loop_visitor](const bytes_ref& term) {
-      by_prefix::visit(reader, term, ctx, previsitor, if_visitor, loop_visitor);
+    [&reader, ctx, if_visitor, loop_visitor](const bytes_ref& term) {
+      by_prefix::visit(reader, term, ctx, if_visitor, loop_visitor);
     },
-    [&reader, ctx, previsitor, if_visitor, loop_visitor](const bytes_ref& term) {
-      automaton_visit(from_wildcard(term), reader, ctx, previsitor, if_visitor, loop_visitor);
+    [&reader, ctx, if_visitor, loop_visitor](const bytes_ref& term) {
+      automaton_visit(from_wildcard(term), reader, ctx, if_visitor, loop_visitor);
     }
   );
 }

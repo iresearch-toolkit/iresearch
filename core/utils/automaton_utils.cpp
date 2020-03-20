@@ -308,8 +308,7 @@ void automaton_visit_with_matcher(
     const term_reader& reader,
     automaton_table_matcher& matcher,
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   auto terms = reader.iterator(matcher);
 
@@ -317,10 +316,8 @@ void automaton_visit_with_matcher(
     return;
   }
 
-  previsitor(ctx, terms);
-
   if (terms->next()) {
-    if_visitor(ctx);
+    if_visitor(ctx, terms);
 
     do {
       terms->read(); // read term attributes
@@ -334,8 +331,7 @@ void automaton_visit(
     const automaton& acceptor,
     const term_reader& reader,
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   auto error = false;
   auto matcher = get_automaton_matcher(acceptor, error);
@@ -343,11 +339,10 @@ void automaton_visit(
   if (error) {
     return;
   }
-  automaton_visit_with_matcher(reader, matcher, ctx, previsitor, if_visitor, loop_visitor);
+  automaton_visit_with_matcher(reader, matcher, ctx, if_visitor, loop_visitor);
 }
 
-void filter_previsitor(void* ctx, const seek_term_iterator::ptr& terms);
-void filter_if_visitor(void* ctx);
+void filter_if_visitor(void* ctx, const seek_term_iterator::ptr& terms);
 void filter_loop_visitor(void* ctx, const seek_term_iterator::ptr& terms);
 
 filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
@@ -376,7 +371,7 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
 
     filter_visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
 
-    automaton_visit_with_matcher(*reader, matcher, &vis_ctx, filter_previsitor, filter_if_visitor, filter_loop_visitor);
+    automaton_visit_with_matcher(*reader, matcher, &vis_ctx, filter_if_visitor, filter_loop_visitor);
   }
 
   std::vector<bstring> stats;

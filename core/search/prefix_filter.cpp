@@ -37,8 +37,7 @@ NS_ROOT
     const term_reader& reader,
     const bytes_ref& prefix,
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   // find term
   auto terms = reader.iterator();
@@ -48,13 +47,11 @@ NS_ROOT
     return;
   }
 
-  previsitor(ctx, terms);
-
   const auto& value = terms->value();
   if (starts_with(value, prefix)) {
     terms->read();
 
-    if_visitor(ctx);
+    if_visitor(ctx, terms);
 
     do {
       loop_visitor(ctx, terms);
@@ -92,7 +89,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 
     filter_visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
 
-    visit(*reader, prefix, &vis_ctx, filter_previsitor, filter_if_visitor, filter_loop_visitor);
+    visit(*reader, prefix, &vis_ctx, filter_if_visitor, filter_loop_visitor);
   }
 
   std::vector<bstring> stats;

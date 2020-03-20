@@ -24,7 +24,7 @@
 
 NS_ROOT
 
-void filter_previsitor(void* ctx, const seek_term_iterator::ptr& terms) {
+void filter_if_visitor(void* ctx, const seek_term_iterator::ptr& terms) {
   assert(ctx);
   auto& vis_ctx = *reinterpret_cast<filter_visitor_ctx*>(ctx);
   // get term metadata
@@ -35,11 +35,7 @@ void filter_previsitor(void* ctx, const seek_term_iterator::ptr& terms) {
   // since not gcc4.9 nor msvc2015-2019 can handle this correctly
   // probably due to broken optimization
   vis_ctx.docs_count = meta ? &meta->docs_count : &vis_ctx.NO_DOCS;
-}
 
-void filter_if_visitor(void* ctx) {
-  assert(ctx);
-  auto& vis_ctx = *reinterpret_cast<filter_visitor_ctx*>(ctx);
   // get state for current segment
   vis_ctx.state = &vis_ctx.states.insert(vis_ctx.segment);
   vis_ctx.state->reader = &vis_ctx.reader;

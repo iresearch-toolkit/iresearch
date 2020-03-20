@@ -422,8 +422,7 @@ IRESEARCH_API void automaton_visit(
   const automaton& acceptor,
   const term_reader& reader,
   void* ctx,
-  void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-  void (*if_visitor)(void* ctx),
+  void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
   void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
 NS_END

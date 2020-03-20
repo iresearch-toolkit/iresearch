@@ -567,12 +567,7 @@ struct common_term_visitor_ctx : term_visitor_ctx<vts_t> {
   const order::prepared::variadic_terms_collectors& collectors;
 };
 
-void previsitor(void* ctx, const seek_term_iterator::ptr& /*terms*/) {
-  assert(ctx);
-  // do nothing
-}
-
-void if_visitor(void* ctx) {
+void if_visitor(void* ctx, const seek_term_iterator::ptr& /*terms*/) {
   assert(ctx);
   auto& vis_ctx = *reinterpret_cast<common_term_visitor_ctx*>(ctx);
   vis_ctx.found = true;
@@ -686,10 +681,9 @@ void wildcard_phrase_helper(
     const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     size_t term_offset,
-    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
 void levenshtein_phrase_helper(
@@ -701,10 +695,9 @@ void levenshtein_phrase_helper(
     bool with_transpositions,
     const order::prepared::variadic_terms_collectors& collectors,
     size_t term_offset,
-    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
 /*static*/ bool by_phrase::variadic_term_collect(
@@ -724,7 +717,7 @@ void levenshtein_phrase_helper(
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const bytes_ref& term, size_t term_offset) {
   auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
-  by_prefix::visit(reader, term, &vis_ctx, previsitor, if_visitor, loop_visitor);
+  by_prefix::visit(reader, term, &vis_ctx, if_visitor, loop_visitor);
 
   return vis_ctx.found;
 }
@@ -735,8 +728,8 @@ void levenshtein_phrase_helper(
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const bytes_ref& term, size_t term_offset) {
   auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
-  wildcard_phrase_helper(term, segment, reader, collectors, term_offset, term_visitor<vts_t>,
-                         &vis_ctx, previsitor, if_visitor, loop_visitor);
+  wildcard_phrase_helper(term, segment, reader, collectors, term_offset, &vis_ctx,
+                         term_visitor<vts_t>, if_visitor, loop_visitor);
 
   return vis_ctx.found;
 }
@@ -749,8 +742,8 @@ void levenshtein_phrase_helper(
   assert(phr_part.lt.provider);
   auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
   levenshtein_phrase_helper(phr_part.lt.term, segment, reader, phr_part.lt.max_distance, phr_part.lt.provider,
-                            phr_part.lt.with_transpositions, collectors, term_offset, term_visitor<vts_t>,
-                            &vis_ctx, previsitor, if_visitor, loop_visitor);
+                            phr_part.lt.with_transpositions, collectors, term_offset, &vis_ctx,
+                            term_visitor<vts_t>, if_visitor, loop_visitor);
 
   return vis_ctx.found;
 }

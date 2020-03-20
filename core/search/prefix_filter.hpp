@@ -36,8 +36,7 @@ class IRESEARCH_API by_prefix : public by_term {
     const term_reader& reader,
     const bytes_ref& prefix,
     void* ctx,
-    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx),
+    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
   static prepared::ptr prepare(

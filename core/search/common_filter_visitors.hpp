@@ -38,9 +38,7 @@ struct filter_visitor_ctx {
   const decltype(term_meta::docs_count)* docs_count;
 };
 
-void filter_previsitor(void* ctx, const seek_term_iterator::ptr& terms);
-
-void filter_if_visitor(void* ctx);
+void filter_if_visitor(void* ctx, const seek_term_iterator::ptr& terms);
 
 void filter_loop_visitor(void* ctx, const seek_term_iterator::ptr& terms);
 
