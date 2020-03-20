@@ -41,8 +41,8 @@ class term_visitor : public filter_visitor {
     const term_reader& reader,
     const order::prepared::fixed_terms_collectors& collectors,
     term_query::states_t& states,
-    size_t term_offset)
-  : term_offset_(term_offset), segment_(segment), reader_(reader),
+    size_t term_offset
+  ) : term_offset_(term_offset), segment_(segment), reader_(reader),
     collectors_(collectors), states_(states) {}
 
   virtual void prepare(const seek_term_iterator::ptr& terms) override {

@@ -548,8 +548,8 @@ class phrase_term_visitor : public filter_visitor {
     const term_reader& reader,
     const Collectors& collectors,
     phrase_terms_t& phrase_terms,
-    size_t term_offset)
-  : term_offset_(term_offset), segment_(segment), reader_(reader),
+    size_t term_offset
+  ) : term_offset_(term_offset), segment_(segment), reader_(reader),
     collectors_(collectors), phrase_terms_(phrase_terms) {}
 
   virtual void prepare(const seek_term_iterator::ptr& terms) override {
