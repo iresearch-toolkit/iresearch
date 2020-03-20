@@ -785,7 +785,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   const auto is_ord_empty = ord.empty();
 
-  bstring buf;
   for (const auto& segment : index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
