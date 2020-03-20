@@ -159,10 +159,46 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const phrase_part& other) const noexcept;
 
+    static bool variadic_type_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
+      const phrase_part& phr_part, size_t term_offset);
+
    private:
     void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
     void recreate(phrase_part&& other) noexcept;
+
+    static bool variadic_term_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
+      const bytes_ref& term, size_t term_offset);
+
+    static bool variadic_prefix_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
+      const bytes_ref& term, size_t term_offset);
+
+    static bool variadic_wildcard_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
+      const bytes_ref& term, size_t term_offset);
+
+    static bool variadic_levenshtein_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
+      const phrase_part& phr_part, size_t term_offset);
+
+    static bool variadic_set_collect(
+      const sub_reader& segment, const term_reader& reader,
+      const order::prepared::variadic_terms_collectors& collectors,
+      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
+      const phrase_part& phr_part, size_t term_offset);
   };
 
   // positions and terms
@@ -240,42 +276,6 @@ class IRESEARCH_API by_phrase : public filter {
     const order::prepared& ord,
     boost_t boost,
     order::prepared::fixed_terms_collectors collectors) const;
-
-  static bool variadic_term_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-    const bytes_ref& term, size_t term_offset);
-
-  static bool variadic_prefix_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-    const bytes_ref& term, size_t term_offset);
-
-  static bool variadic_wildcard_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-    const bytes_ref& term, size_t term_offset);
-
-  static bool variadic_levenshtein_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-    const phrase_part& phr_part, size_t term_offset);
-
-  static bool variadic_set_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-    const phrase_part& phr_part, size_t term_offset);
-
-  static bool variadic_type_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-    const phrase_part& phr_part, size_t term_offset);
 
   filter::prepared::ptr variadic_prepare_collect(
     const index_reader& index,
