@@ -131,33 +131,31 @@ by_wildcard::by_wildcard() noexcept
   : by_prefix(by_wildcard::type()) {
 }
 
-bool wildcard_phrase_helper(
-    bstring& buf,
-    by_phrase::PhrasePartType& type,
-    bytes_ref& pattern,
-    bool& valid,
-    bool is_ord_empty) {
-  auto res = true;
+void wildcard_phrase_helper(
+    bytes_ref term,
+    const sub_reader& segment,
+    const term_reader& reader,
+    const order::prepared::variadic_terms_collectors& collectors,
+    size_t term_offset,
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void* ctx,
+    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx),
+    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+  bstring buf;
   callWildcardType(
-    buf, pattern,
-    [&res, &is_ord_empty, &valid]() {
-      if (is_ord_empty) {
-        res = false;
-        // else we should collect
-        // stats for other terms in phrase
-      } else {
-        valid = false;
-      }
+    buf, term,
+    []() {},
+    [&segment, &reader, &collectors, term_offset, ctx, term_visitor](const bytes_ref& term) {
+      term_query::visit(segment, reader, term, collectors, term_offset, ctx, term_visitor);
     },
-    [&type](const bytes_ref& /*term*/) {
-      type = by_phrase::PhrasePartType::TERM;
+    [&reader, ctx, previsitor, if_visitor, loop_visitor](const bytes_ref& term) {
+      by_prefix::visit(reader, term, ctx, previsitor, if_visitor, loop_visitor);
     },
-    [&type](const bytes_ref& /*term*/) {
-      type = by_phrase::PhrasePartType::PREFIX;
-    },
-    [](const bytes_ref& /*term*/) {}
+    [&reader, ctx, previsitor, if_visitor, loop_visitor](const bytes_ref& term) {
+      automaton_visit(from_wildcard(term), reader, ctx, previsitor, if_visitor, loop_visitor);
+    }
   );
-  return res;
 }
 
 NS_END

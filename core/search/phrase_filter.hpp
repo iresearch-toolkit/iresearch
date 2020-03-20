@@ -236,14 +236,13 @@ class IRESEARCH_API by_phrase : public filter {
   }
 
   filter::prepared::ptr fixed_prepare_collect(
-    const index_reader& reader,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     order::prepared::fixed_terms_collectors collectors) const;
 
   static bool variadic_optimize(
-    const phrase_part& phr_part, bstring& buf, PhrasePartType& type,
-    bytes_ref& pattern, bool& valid, bool is_ord_empty);
+    const phrase_part& phr_part, PhrasePartType& type, bytes_ref& pattern);
 
   static bool variadic_term_collect(
     const sub_reader& segment, const term_reader& reader,
@@ -289,7 +288,7 @@ class IRESEARCH_API by_phrase : public filter {
     size_t term_offset, bool is_ord_empty);
 
   filter::prepared::ptr variadic_prepare_collect(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
     order::prepared::variadic_terms_collectors collectors) const;

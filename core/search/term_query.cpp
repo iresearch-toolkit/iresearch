@@ -53,7 +53,7 @@ void visitor(void* ctx, const seek_term_iterator::ptr& terms) {
 NS_END
 
 template<typename Collectors>
-/*static*/ bool term_query::visit(
+/*static*/ void term_query::visit(
     const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
@@ -65,7 +65,7 @@ template<typename Collectors>
   auto terms = reader.iterator();
 
   if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
-    return false;
+    return;
   }
 
   // read term attributes
@@ -75,11 +75,9 @@ template<typename Collectors>
   collectors.collect(segment, reader, term_offset, terms->attributes());
 
   visitor(ctx, terms);
-
-  return true;
 }
 
-template bool term_query::visit(
+template void term_query::visit(
     const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
@@ -88,7 +86,7 @@ template bool term_query::visit(
     void* ctx,
     void (*visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
-template bool term_query::visit(
+template void term_query::visit(
     const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,

@@ -32,7 +32,7 @@ class IRESEARCH_API by_prefix : public by_term {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  static bool visit(
+  static void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     void* ctx,

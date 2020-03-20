@@ -25,6 +25,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
+#include "common_filter_visitors.hpp"
 #include "multiterm_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -32,53 +33,7 @@
 
 NS_ROOT
 
-NS_LOCAL
-
-struct visitor_ctx {
-  limited_sample_scorer& scorer;
-  multiterm_query::states_t& states;
-  const sub_reader& segment;
-  const term_reader& reader;
-  multiterm_state* state;
-  const decltype(irs::term_meta::docs_count) NO_DOCS;
-  const decltype(irs::term_meta::docs_count)* docs_count;
-};
-
-void previsitor(void* ctx, const seek_term_iterator::ptr& terms) {
-  assert(ctx);
-  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
-  // get term metadata
-  auto& meta = terms->attributes().get<term_meta>();
-
-  // NOTE: we can't use reference to 'docs_count' here, like
-  // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-  // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-  // probably due to broken optimization
-  vis_ctx.docs_count = meta ? &meta->docs_count : &vis_ctx.NO_DOCS;
-}
-
-void if_visitor(void* ctx) {
-  assert(ctx);
-  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
-  // get state for current segment
-  vis_ctx.state = &vis_ctx.states.insert(vis_ctx.segment);
-  vis_ctx.state->reader = &vis_ctx.reader;
-}
-
-void loop_visitor(void* ctx, const seek_term_iterator::ptr& terms) {
-  assert(ctx);
-  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
-
-  // fill scoring candidates
-  assert(vis_ctx.docs_count);
-  assert(vis_ctx.state);
-  vis_ctx.scorer.collect(*vis_ctx.docs_count, vis_ctx.state->count++, *vis_ctx.state, vis_ctx.segment, *terms);
-  vis_ctx.state->estimation += *vis_ctx.docs_count; // collect cost
-}
-
-NS_END
-
-/*static*/ bool by_prefix::visit(
+/*static*/ void by_prefix::visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     void* ctx,
@@ -90,7 +45,7 @@ NS_END
 
   // seek to prefix
   if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
-    return false;
+    return;
   }
 
   previsitor(ctx, terms);
@@ -111,8 +66,6 @@ NS_END
       terms->read();
     } while (starts_with(value, prefix));
   }
-
-  return true;
 }
 
 DEFINE_FILTER_TYPE(by_prefix)
@@ -131,15 +84,15 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   // iterate over the segments
   for (const auto& segment: index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-    visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
+    filter_visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
 
-    visit(*reader, prefix, &vis_ctx, previsitor, if_visitor, loop_visitor);
+    visit(*reader, prefix, &vis_ctx, filter_previsitor, filter_if_visitor, filter_loop_visitor);
   }
 
   std::vector<bstring> stats;
