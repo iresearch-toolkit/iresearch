@@ -27,6 +27,8 @@
 
 NS_ROOT
 
+class filter_visitor;
+
 class IRESEARCH_API by_prefix : public by_term {
  public:
   DECLARE_FILTER_TYPE();
@@ -35,9 +37,7 @@ class IRESEARCH_API by_prefix : public by_term {
   static void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
-    void* ctx,
-    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
+    filter_visitor& fv);
 
   static prepared::ptr prepare(
     const index_reader& index,

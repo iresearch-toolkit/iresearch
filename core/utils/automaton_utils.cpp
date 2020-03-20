@@ -23,7 +23,7 @@
 #include "automaton_utils.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/common_filter_visitors.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/limited_sample_scorer.hpp"
 #include "search/multiterm_query.hpp"
 #include "utils/fst_table_matcher.hpp"
@@ -307,9 +307,7 @@ automaton_table_matcher get_automaton_matcher(const automaton& acceptor, bool& e
 void automaton_visit_with_matcher(
     const term_reader& reader,
     automaton_table_matcher& matcher,
-    void* ctx,
-    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+    filter_visitor& fv) {
   auto terms = reader.iterator(matcher);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -317,40 +315,36 @@ void automaton_visit_with_matcher(
   }
 
   if (terms->next()) {
-    if_visitor(ctx, terms);
+    fv.prepare(terms);
 
     do {
       terms->read(); // read term attributes
 
-      loop_visitor(ctx, terms);
+      fv.visit();
     } while (terms->next());
   }
 }
 
 void automaton_visit(
-    const automaton& acceptor,
     const term_reader& reader,
-    void* ctx,
-    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+    const automaton& acceptor,
+    filter_visitor& fv) {
   auto error = false;
   auto matcher = get_automaton_matcher(acceptor, error);
 
   if (error) {
     return;
   }
-  automaton_visit_with_matcher(reader, matcher, ctx, if_visitor, loop_visitor);
+  automaton_visit_with_matcher(reader, matcher, fv);
 }
 
-void filter_if_visitor(void* ctx, const seek_term_iterator::ptr& terms);
-void filter_loop_visitor(void* ctx, const seek_term_iterator::ptr& terms);
-
-filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
-                                               const automaton& acceptor,
-                                               size_t scored_terms_limit,
-                                               const index_reader& index,
-                                               const order::prepared& order,
-                                               boost_t boost) {
+filter::prepared::ptr prepare_automaton_filter(
+    const string_ref& field,
+    const automaton& acceptor,
+    size_t scored_terms_limit,
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost) {
   auto error = false;
   auto matcher = get_automaton_matcher(acceptor, error);
 
@@ -369,9 +363,9 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
       continue;
     }
 
-    filter_visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
+    multiterm_visitor mtv(segment, *reader, scorer, states);
 
-    automaton_visit_with_matcher(*reader, matcher, &vis_ctx, filter_if_visitor, filter_loop_visitor);
+    automaton_visit_with_matcher(*reader, matcher, mtv);
   }
 
   std::vector<bstring> stats;

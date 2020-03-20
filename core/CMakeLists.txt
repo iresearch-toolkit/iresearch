@@ -126,7 +126,6 @@ set(IResearch_core_sources
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./search/ngram_similarity_filter.cpp
-  ./search/common_filter_visitors.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 
   ./store/directory.cpp 
@@ -216,7 +215,7 @@ set(IResearch_core_headers
   ./search/conjunction.hpp
   ./search/exclusion.hpp
   ./search/ngram_similarity_filter.hpp
-  ./search/common_filter_visitors.hpp
+  ./search/filter_visitor.hpp
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp

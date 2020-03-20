@@ -30,6 +30,7 @@
 NS_ROOT
 
 struct term_reader;
+class filter_visitor;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_state
@@ -58,15 +59,10 @@ class term_query : public filter::prepared {
 
   DECLARE_SHARED_PTR(term_query);
 
-  template<typename Collectors>
   static void visit(
-    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
-    const Collectors& collectors,
-    size_t term_offset,
-    void* ctx,
-    void (*visitor)(void* ctx, const seek_term_iterator::ptr& terms));
+    filter_visitor& fv);
 
   static ptr make(
     const index_reader& rdr,

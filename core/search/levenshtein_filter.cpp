@@ -117,26 +117,20 @@ bool by_edit_distance::equals(const filter& rhs) const noexcept {
 }
 
 void levenshtein_phrase_helper(
-    const bytes_ref& term,
-    const sub_reader& segment,
     const term_reader& reader,
+    const bytes_ref& term,
     byte_type max_distance,
     by_edit_distance::pdp_f provider,
     bool with_transpositions,
-    const order::prepared::variadic_terms_collectors& collectors,
-    size_t term_offset,
-    void* ctx,
-    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+    filter_visitor& fv) {
   executeLevenshtein(
     max_distance, provider, with_transpositions,
     []() {},
-    [&term, &segment, &reader, &collectors, term_offset, ctx, term_visitor]() {
-      term_query::visit(segment, reader, term, collectors, term_offset, ctx, term_visitor);
+    [&reader, &term, &fv]() {
+      term_query::visit(reader, term, fv);
     },
-    [&term, &reader, ctx, if_visitor, loop_visitor](const parametric_description& d) {
-      automaton_visit(make_levenshtein_automaton(d, term), reader, ctx, if_visitor, loop_visitor);
+    [&reader, &term, &fv](const parametric_description& d) {
+      automaton_visit(reader, make_levenshtein_automaton(d, term), fv);
     }
   );
 }

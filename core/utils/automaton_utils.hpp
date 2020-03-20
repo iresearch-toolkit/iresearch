@@ -418,12 +418,12 @@ IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const order::prepared& order,
   boost_t boost);
 
+class filter_visitor;
+
 IRESEARCH_API void automaton_visit(
-  const automaton& acceptor,
   const term_reader& reader,
-  void* ctx,
-  void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-  void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
+  const automaton& acceptor,
+  filter_visitor& fv);
 
 NS_END
 

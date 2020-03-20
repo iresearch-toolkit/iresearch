@@ -24,6 +24,7 @@
 
 #include "shared.hpp"
 #include "score_doc_iterators.hpp"
+#include "filter_visitor.hpp"
 #include "index/index_reader.hpp"
 
 NS_ROOT
@@ -33,34 +34,50 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 NS_LOCAL
 
-struct visitor_ctx {
-  const sub_reader& segment;
-  const term_reader& reader;
-  term_query::states_t& states;
-};
+class term_visitor : public filter_visitor {
+ public:
+  term_visitor(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const order::prepared::fixed_terms_collectors& collectors,
+    term_query::states_t& states,
+    size_t term_offset)
+  : term_offset_(term_offset), segment_(segment), reader_(reader),
+    collectors_(collectors), states_(states) {}
 
-void visitor(void* ctx, const seek_term_iterator::ptr& terms) {
-  assert(ctx);
-  auto& vis_ctx = *reinterpret_cast<visitor_ctx*>(ctx);
-  // Cache term state in prepared query attributes.
-  // Later, using cached state we could easily "jump" to
-  // postings without relatively expensive FST traversal
-  auto& state = vis_ctx.states.insert(vis_ctx.segment);
-  state.reader = &vis_ctx.reader;
-  state.cookie = terms->cookie();
-}
+  virtual void prepare(const seek_term_iterator::ptr& terms) override {
+    terms_ = &terms;
+  }
+
+  virtual void visit() override {
+    // collect statistics
+    assert(terms_);
+    collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes());
+
+    // Cache term state in prepared query attributes.
+    // Later, using cached state we could easily "jump" to
+    // postings without relatively expensive FST traversal
+    auto& state = states_.insert(segment_);
+    state.reader = &reader_;
+    assert(terms_);
+    state.cookie = (*terms_)->cookie();
+  }
+
+ private:
+  const size_t term_offset_;
+  const sub_reader& segment_;
+  const term_reader& reader_;
+  const order::prepared::fixed_terms_collectors& collectors_;
+  term_query::states_t& states_;
+  const seek_term_iterator::ptr* terms_ = nullptr;
+};
 
 NS_END
 
-template<typename Collectors>
 /*static*/ void term_query::visit(
-    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
-    const Collectors& collectors,
-    size_t term_offset,
-    void* ctx,
-    void (*visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+    filter_visitor& fv) {
   // find term
   auto terms = reader.iterator();
 
@@ -68,32 +85,13 @@ template<typename Collectors>
     return;
   }
 
+  fv.prepare(terms);
+
   // read term attributes
   terms->read();
 
-  // collect statistics
-  collectors.collect(segment, reader, term_offset, terms->attributes());
-
-  visitor(ctx, terms);
+  fv.visit();
 }
-
-template void term_query::visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    const order::prepared::fixed_terms_collectors& collectors,
-    size_t term_offset,
-    void* ctx,
-    void (*visitor)(void* ctx, const seek_term_iterator::ptr& terms));
-
-template void term_query::visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    const order::prepared::variadic_terms_collectors& collectors,
-    size_t term_offset,
-    void* ctx,
-    void (*visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
 /*static*/ term_query::ptr term_query::make(
     const index_reader& index,
@@ -115,9 +113,10 @@ template void term_query::visit(
 
     collectors.collect(segment, *reader); // collect field statistics once per segment
 
-    auto vis_ctx = visitor_ctx{segment, *reader, states};
     // term_offset = 0 because only 1 term
-    visit(segment, *reader, term, collectors, 0, &vis_ctx, visitor);
+    term_visitor tv(segment, *reader, collectors, states, 0);
+
+    visit(*reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);

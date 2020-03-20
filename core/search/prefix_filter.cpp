@@ -25,7 +25,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
-#include "common_filter_visitors.hpp"
+#include "filter_visitor.hpp"
 #include "multiterm_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -36,9 +36,7 @@ NS_ROOT
 /*static*/ void by_prefix::visit(
     const term_reader& reader,
     const bytes_ref& prefix,
-    void* ctx,
-    void (*if_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
-    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
+    filter_visitor& fv) {
   // find term
   auto terms = reader.iterator();
 
@@ -51,10 +49,10 @@ NS_ROOT
   if (starts_with(value, prefix)) {
     terms->read();
 
-    if_visitor(ctx, terms);
+    fv.prepare(terms);
 
     do {
-      loop_visitor(ctx, terms);
+      fv.visit();
 
       if (!terms->next()) {
         break;
@@ -87,9 +85,9 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    filter_visitor_ctx vis_ctx{scorer, states, segment, *reader, nullptr, 0, nullptr};
+    multiterm_visitor mtv(segment, *reader, scorer, states);
 
-    visit(*reader, prefix, &vis_ctx, filter_if_visitor, filter_loop_visitor);
+    visit(*reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;
