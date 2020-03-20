@@ -245,19 +245,19 @@ class IRESEARCH_API by_phrase : public filter {
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset);
+    const bytes_ref& term, size_t term_offset);
 
   static bool variadic_prefix_collect(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset);
+    const bytes_ref& term, size_t term_offset);
 
   static bool variadic_wildcard_collect(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset);
+    const bytes_ref& term, size_t term_offset);
 
   static bool variadic_levenshtein_collect(
     const sub_reader& segment, const term_reader& reader,

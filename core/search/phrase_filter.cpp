@@ -711,9 +711,9 @@ void levenshtein_phrase_helper(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset) {
+    const bytes_ref& term, size_t term_offset) {
   term_visitor_ctx<vts_t> vis_ctx(false, pt);
-  term_query::visit(segment, reader, pattern, collectors, term_offset, &vis_ctx, term_visitor<vts_t>);
+  term_query::visit(segment, reader, term, collectors, term_offset, &vis_ctx, term_visitor<vts_t>);
 
   return vis_ctx.found;
 }
@@ -722,9 +722,9 @@ void levenshtein_phrase_helper(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset) {
+    const bytes_ref& term, size_t term_offset) {
   auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
-  by_prefix::visit(reader, pattern, &vis_ctx, previsitor, if_visitor, loop_visitor);
+  by_prefix::visit(reader, term, &vis_ctx, previsitor, if_visitor, loop_visitor);
 
   return vis_ctx.found;
 }
@@ -733,9 +733,9 @@ void levenshtein_phrase_helper(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
-    const bytes_ref& pattern, size_t term_offset) {
+    const bytes_ref& term, size_t term_offset) {
   auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
-  wildcard_phrase_helper(pattern, segment, reader, collectors, term_offset, term_visitor<vts_t>,
+  wildcard_phrase_helper(term, segment, reader, collectors, term_offset, term_visitor<vts_t>,
                          &vis_ctx, previsitor, if_visitor, loop_visitor);
 
   return vis_ctx.found;
@@ -761,8 +761,8 @@ void levenshtein_phrase_helper(
     phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& pt,
     const phrase_part& phr_part, size_t term_offset) {
   auto found = false;
-  for (const auto& pattern : phr_part.ct.terms) {
-    found |= variadic_term_collect(segment, reader, collectors, pt, pattern, term_offset);
+  for (const auto& term : phr_part.ct.terms) {
+    found |= variadic_term_collect(segment, reader, collectors, pt, term, term_offset);
   }
   return found;
 }
