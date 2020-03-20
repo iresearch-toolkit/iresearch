@@ -692,36 +692,20 @@ void wildcard_phrase_helper(
     void (*if_visitor)(void* ctx),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
-/*static*/ bool by_phrase::variadic_optimize(
-    const phrase_part& phr_part, PhrasePartType& type, bytes_ref& pattern) {
-  switch (phr_part.type) {
-    case PhrasePartType::TERM:
-      pattern = phr_part.st.term;
-      break;
-    case PhrasePartType::PREFIX:
-      pattern = phr_part.pt.term;
-      break;
-    case PhrasePartType::WILDCARD: {
-      pattern = phr_part.wt.term;
-    }
-    case PhrasePartType::LEVENSHTEIN:
-      if (0 == phr_part.lt.max_distance) {
-        pattern = phr_part.lt.term;
-        type = PhrasePartType::TERM;
-      }
-      break;
-    case PhrasePartType::SET:
-      if (phr_part.ct.terms.size() == 1) {
-        pattern = phr_part.ct.terms.front();
-        type = PhrasePartType::TERM;
-      }
-      break;
-    default:
-      assert(false);
-      return false;
-  }
-  return true;
-}
+void levenshtein_phrase_helper(
+    const bytes_ref& term,
+    const sub_reader& segment,
+    const term_reader& reader,
+    byte_type max_distance,
+    by_edit_distance::pdp_f provider,
+    bool with_transpositions,
+    const order::prepared::variadic_terms_collectors& collectors,
+    size_t term_offset,
+    void (*term_visitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void* ctx,
+    void (*previsitor)(void* ctx, const seek_term_iterator::ptr& terms),
+    void (*if_visitor)(void* ctx),
+    void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms));
 
 /*static*/ bool by_phrase::variadic_term_collect(
     const sub_reader& segment, const term_reader& reader,
@@ -794,48 +778,20 @@ void wildcard_phrase_helper(
     const phrase_part& phr_part, size_t& found_words_count,
     size_t term_offset, bool is_ord_empty) {
   assert(phr_part.lt.provider);
-  const auto& d = (*phr_part.lt.provider)(phr_part.lt.max_distance,
-                                          phr_part.lt.with_transpositions);
-  if (!d) {
+  auto vis_ctx = common_term_visitor_ctx(false, pt, term_offset, segment, reader, collectors);
+  levenshtein_phrase_helper(phr_part.lt.term, segment, reader, phr_part.lt.max_distance, phr_part.lt.provider,
+                            phr_part.lt.with_transpositions, collectors, term_offset, term_visitor<vts_t>,
+                            &vis_ctx, previsitor, if_visitor, loop_visitor);
+  if (!vis_ctx.found) {
     if (is_ord_empty) {
       return false;
       // else we should collect
       // stats for other terms in phrase
     }
-  } else {
-    const auto& acceptor = irs::make_levenshtein_automaton(d, phr_part.lt.term);
-    automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
-
-    if (fst::kError == matcher.Properties(0)) {
-      IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
-                    "got the following properties " IR_UINT64_T_SPECIFIER "",
-                    acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
-      if (is_ord_empty) {
-        return false;
-        // else we should collect
-        // stats for other terms in phrase
-      }
-      return true;
-    }
-    auto term_levenshtein = reader.iterator(matcher);
-
-    auto found = false;
-    while (term_levenshtein->next()) {
-      found = true;
-      term_levenshtein->read();
-      collectors.collect(segment, reader, term_offset, term_levenshtein->attributes()); // collect statistics
-
-      // estimate phrase & term
-      pt.emplace_back(term_levenshtein->cookie());
-    }
-    if (found) {
-      ++found_words_count;
-    } else if (is_ord_empty) {
-      return false;
-      // else we should collect
-      // stats for other terms in phrase
-    }
+    return true;
   }
+  ++found_words_count;
+
   return true;
 }
 
@@ -864,19 +820,26 @@ void wildcard_phrase_helper(
     const sub_reader& segment, const term_reader& reader,
     const order::prepared::variadic_terms_collectors& collectors,
     phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-    const phrase_part& phr_part, PhrasePartType type,
-    const bytes_ref& pattern, size_t& found_words_count,
+    const phrase_part& phr_part, size_t& found_words_count,
     size_t term_offset, bool is_ord_empty) {
+  auto type = phr_part.type;
+  bytes_ref term;
+  if (PhrasePartType::TERM == phr_part.type) {
+    term = phr_part.st.term;
+  } else if (PhrasePartType::SET == phr_part.type && phr_part.ct.terms.size() == 1) {
+    term = phr_part.ct.terms.front();
+    type = PhrasePartType::TERM;
+  }
   auto& pt = phrase_terms[term_offset];
   switch (type) {
     case PhrasePartType::TERM:
-      return variadic_term_collect(segment, reader, collectors, pt, pattern,
+      return variadic_term_collect(segment, reader, collectors, pt, term,
                                    found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::PREFIX:
-      return variadic_prefix_collect(segment, reader, collectors, pt, pattern,
+      return variadic_prefix_collect(segment, reader, collectors, pt, phr_part.pt.term,
                                      found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::WILDCARD:
-      return variadic_wildcard_collect(segment, reader, collectors, pt, pattern,
+      return variadic_wildcard_collect(segment, reader, collectors, pt, phr_part.wt.term,
                                        found_words_count, term_offset, is_ord_empty);
     case PhrasePartType::LEVENSHTEIN:
       return variadic_levenshtein_collect(segment, reader, collectors, pt, phr_part,
@@ -929,17 +892,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
     for (const auto& word : phrase_) {
       auto next_stats = irs::make_finally([&term_offset]()->void{ ++term_offset; });
-      auto type = word.second.type;
-      bytes_ref pattern;
-      auto valid = true;
-      if (!variadic_optimize(word.second, type, pattern)) {
-        break;
-      }
-      if (!valid) {
-        continue;
-      }
-      if (!variadic_type_collect(segment, *reader, collectors, phrase_terms, word.second, type,
-                                 pattern, found_words_count, term_offset, is_ord_empty)) {
+      if (!variadic_type_collect(segment, *reader, collectors, phrase_terms, word.second,
+                                 found_words_count, term_offset, is_ord_empty)) {
         break;
       }
     }

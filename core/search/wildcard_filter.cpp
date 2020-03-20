@@ -54,7 +54,7 @@ inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
 }
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-inline void callWildcardType(
+inline void executeWildcard(
     bstring& buf, bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
@@ -113,7 +113,7 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     size_t scored_terms_limit) {
   bstring buf;
   filter::prepared::ptr res;
-  callWildcardType(
+  executeWildcard(
     buf, term,
     [&res]() {
       res = prepared::empty(); },
@@ -143,7 +143,7 @@ void wildcard_phrase_helper(
     void (*if_visitor)(void* ctx),
     void (*loop_visitor)(void* ctx, const seek_term_iterator::ptr& terms)) {
   bstring buf;
-  callWildcardType(
+  executeWildcard(
     buf, term,
     []() {},
     [&segment, &reader, &collectors, term_offset, ctx, term_visitor](const bytes_ref& term) {
