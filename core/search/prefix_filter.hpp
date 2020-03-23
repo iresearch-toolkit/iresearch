@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-class filter_visitor;
+struct filter_visitor;
 
 class IRESEARCH_API by_prefix : public by_term {
  public:

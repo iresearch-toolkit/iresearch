@@ -30,7 +30,7 @@
 NS_ROOT
 
 struct term_reader;
-class filter_visitor;
+struct filter_visitor;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_state

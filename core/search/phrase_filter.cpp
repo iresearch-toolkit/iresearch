@@ -114,7 +114,7 @@ class fixed_phrase_query : public phrase_query<order::prepared::FixedContainer> 
     auto phrase_state = states_.find(rdr);
 
     if (!phrase_state) {
-      // invalid state 
+      // invalid state
       return doc_iterator::empty();
     }
 

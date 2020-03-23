@@ -418,7 +418,7 @@ IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const order::prepared& order,
   boost_t boost);
 
-class filter_visitor;
+struct filter_visitor;
 
 IRESEARCH_API void automaton_visit(
   const term_reader& reader,

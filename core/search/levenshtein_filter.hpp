@@ -30,7 +30,7 @@
 NS_ROOT
 
 class parametric_description;
-class filter_visitor;
+struct filter_visitor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
