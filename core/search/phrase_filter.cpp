@@ -395,6 +395,43 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
   return false;
 }
 
+/*static*/ bool by_phrase::phrase_part::variadic_type_collect(
+    const term_reader& reader,
+    const phrase_part& phr_part,
+    phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv) {
+  auto found = false;
+  switch (phr_part.type) {
+    case PhrasePartType::TERM:
+      term_query::visit(reader, phr_part.st.term, ptv);
+      found = ptv.found();
+      break;
+    case PhrasePartType::PREFIX:
+      by_prefix::visit(reader, phr_part.pt.term, ptv);
+      found = ptv.found();
+      break;
+    case PhrasePartType::WILDCARD:
+      by_wildcard::phrase_helper(reader, phr_part.wt.term, ptv);
+      found = ptv.found();
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      by_edit_distance::phrase_helper(
+        reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
+        phr_part.lt.with_transpositions, ptv);
+      found = ptv.found();
+      break;
+    case PhrasePartType::SET:
+      for (const auto& term : phr_part.ct.terms) {
+        term_query::visit(reader, term, ptv);
+        found |= ptv.found();
+        ptv.reset();
+      }
+      break;
+    default:
+      assert(false);
+  }
+  return found;
+}
+
 void by_phrase::phrase_part::allocate(phrase_part&& other) noexcept {
   type = other.type;
   switch (type) {
@@ -445,43 +482,6 @@ void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
     destroy();
   }
   allocate(std::move(other));
-}
-
-/*static*/ bool by_phrase::phrase_part::variadic_type_collect(
-    const term_reader& reader,
-    const phrase_part& phr_part,
-    phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv) {
-  auto found = false;
-  switch (phr_part.type) {
-    case PhrasePartType::TERM:
-      term_query::visit(reader, phr_part.st.term, ptv);
-      found = ptv.found();
-      break;
-    case PhrasePartType::PREFIX:
-      by_prefix::visit(reader, phr_part.pt.term, ptv);
-      found = ptv.found();
-      break;
-    case PhrasePartType::WILDCARD:
-      by_wildcard::phrase_helper(reader, phr_part.wt.term, ptv);
-      found = ptv.found();
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      by_edit_distance::phrase_helper(
-        reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
-        phr_part.lt.with_transpositions, ptv);
-      found = ptv.found();
-      break;
-    case PhrasePartType::SET:
-      for (const auto& term : phr_part.ct.terms) {
-        term_query::visit(reader, term, ptv);
-        found |= ptv.found();
-        ptv.reset();
-      }
-      break;
-    default:
-      assert(false);
-  }
-  return found;
 }
 
 size_t hash_value(const by_phrase::phrase_part& info) {
