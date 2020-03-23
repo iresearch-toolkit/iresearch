@@ -24,8 +24,6 @@
 #define IRESEARCH_PHRASE_ITERATOR_H
 
 #include "disjunction.hpp"
-#include "score_doc_iterators.hpp"
-#include "shared.hpp"
 
 NS_ROOT
 

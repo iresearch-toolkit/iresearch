@@ -20,45 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/automaton.hpp" // FOR FST_NO_DYNAMIC_LINKING
-
-#include "phrase_filter.hpp"
-
 #include <boost/functional/hash.hpp>
 
-#include "shared.hpp"
-#include "cost.hpp"
-#include "term_query.hpp"
-#include "conjunction.hpp"
-#include "disjunction.hpp"
-#include "levenshtein_filter.hpp"
-#include "prefix_filter.hpp"
-#include "wildcard_filter.hpp"
-
-#if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
+#include "phrase_filter.hpp"
 #include "phrase_iterator.hpp"
-
-#if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#include "analysis/token_attributes.hpp"
-
-#include "index/index_reader.hpp"
+#include "term_query.hpp"
+#include "wildcard_filter.hpp"
 #include "index/field_meta.hpp"
-#include "utils/fst_table_matcher.hpp"
-#include "utils/levenshtein_utils.hpp"
-#include "utils/misc.hpp"
-#include "utils/utf8_utils.hpp"
-#include "utils/wildcard_utils.hpp"
 
 NS_ROOT
 
