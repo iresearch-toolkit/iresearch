@@ -99,6 +99,23 @@ inline void executeWildcard(
   }
 }
 
+void by_prefix_visit(const term_reader& reader,
+                     bytes_ref term,
+                     filter_visitor& fv) {
+  by_prefix::visit(reader, term, fv);
+}
+void term_query_visit(const term_reader& reader,
+                      bytes_ref term,
+                      filter_visitor& fv) {
+  term_query::visit(reader, term, fv);
+}
+
+void automaton_visit(const term_reader& reader,
+                     bytes_ref term,
+                     filter_visitor& fv) {
+  automaton_visit(reader, from_wildcard(term), fv);
+}
+
 NS_END
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -140,13 +157,13 @@ by_wildcard::by_wildcard() noexcept
     buf, term,
     []() {},
     [&reader, &fv](const bytes_ref& term) {
-      term_query::visit(reader, term, fv);
+      term_query_visit(reader, term, fv);
     },
     [&reader, &fv](const bytes_ref& term) {
-      by_prefix::visit(reader, term, fv);
+      by_prefix_visit(reader, term, fv);
     },
     [&reader, &fv](const bytes_ref& term) {
-      automaton_visit(reader, from_wildcard(term), fv);
+      automaton_visit(reader, term, fv);
     }
   );
 }
