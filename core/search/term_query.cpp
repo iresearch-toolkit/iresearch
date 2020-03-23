@@ -45,7 +45,7 @@ class term_visitor : public filter_visitor {
   ) : term_offset_(term_offset), segment_(segment), reader_(reader),
     collectors_(collectors), states_(states) {}
 
-  virtual void prepare(const seek_term_iterator::ptr& terms) override {
+  virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
     terms_ = &terms;
   }
 

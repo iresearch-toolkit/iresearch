@@ -169,7 +169,7 @@ class IRESEARCH_API by_phrase : public filter {
         const Collectors& collectors
       ) : segment_(segment), reader_(reader), collectors_(collectors) {}
 
-      virtual void prepare(const seek_term_iterator::ptr& terms) override {
+      virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
         terms_ = &terms;
         found_ = true;
       }
