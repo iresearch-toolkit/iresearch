@@ -33,10 +33,11 @@
 
 NS_ROOT
 
+template<typename Visitor>
 /*static*/ void by_prefix::visit(
     const term_reader& reader,
     const bytes_ref& prefix,
-    filter_visitor& fv) {
+    Visitor& visitor) {
   // find term
   auto terms = reader.iterator();
 
@@ -49,10 +50,10 @@ NS_ROOT
   if (starts_with(value, prefix)) {
     terms->read();
 
-    fv.prepare(terms);
+    visitor.prepare(terms);
 
     do {
-      fv.visit();
+      visitor.visit();
 
       if (!terms->next()) {
         break;
@@ -62,6 +63,9 @@ NS_ROOT
     } while (starts_with(value, prefix));
   }
 }
+
+template void by_prefix::visit(const term_reader& reader, const bytes_ref& prefix, filter_visitor& visitor);
+template void by_prefix::visit(const term_reader& reader, const bytes_ref& prefix, multiterm_visitor& visitor);
 
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)

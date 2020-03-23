@@ -78,10 +78,11 @@ class term_visitor final : public filter_visitor {
 
 NS_END
 
+template<typename Visitor>
 /*static*/ void term_query::visit(
     const term_reader& reader,
     const bytes_ref& term,
-    filter_visitor& fv) {
+    Visitor& visitor) {
   // find term
   auto terms = reader.iterator();
 
@@ -89,13 +90,16 @@ NS_END
     return;
   }
 
-  fv.prepare(terms);
+  visitor.prepare(terms);
 
   // read term attributes
   terms->read();
 
-  fv.visit();
+  visitor.visit();
 }
+
+template void term_query::visit(const term_reader& reader, const bytes_ref& term, filter_visitor& visitor);
+template void term_query::visit(const term_reader& reader, const bytes_ref& term, term_visitor& visitor);
 
 /*static*/ term_query::ptr term_query::make(
     const index_reader& index,

@@ -34,10 +34,11 @@ class IRESEARCH_API by_prefix : public by_term {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
+  template<typename Visitor>
   static void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
-    filter_visitor& fv);
+    Visitor& visitor);
 
   static prepared::ptr prepare(
     const index_reader& index,
