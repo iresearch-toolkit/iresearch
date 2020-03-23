@@ -99,22 +99,26 @@ inline void executeWildcard(
   }
 }
 
-void by_prefix_visit(const term_reader& reader,
-                     bytes_ref term,
-                     filter_visitor& fv) {
+////////////////////////////////////////////////////////////////////////////////
+// MSVC2019 does not link inner functions in lambdas directly
+inline void by_prefix_visit(const term_reader& reader,
+                            const bytes_ref& term,
+                            filter_visitor& fv) {
   by_prefix::visit(reader, term, fv);
 }
-void term_query_visit(const term_reader& reader,
-                      bytes_ref term,
-                      filter_visitor& fv) {
+
+inline void term_query_visit(const term_reader& reader,
+                             const bytes_ref& term,
+                             filter_visitor& fv) {
   term_query::visit(reader, term, fv);
 }
 
-void automaton_visit(const term_reader& reader,
-                     bytes_ref term,
-                     filter_visitor& fv) {
+inline void automaton_visit(const term_reader& reader,
+                            const bytes_ref& term,
+                            filter_visitor& fv) {
   automaton_visit(reader, from_wildcard(term), fv);
 }
+////////////////////////////////////////////////////////////////////////////////
 
 NS_END
 
