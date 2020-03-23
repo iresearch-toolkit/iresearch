@@ -169,6 +169,15 @@ class IRESEARCH_API by_phrase : public filter {
         const Collectors& collectors
       ) : segment_(segment), reader_(reader), collectors_(collectors) {}
 
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors,
+        phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms
+      ) : phrase_term_visitor(segment, reader, collectors) {
+        phrase_terms_ = &phrase_terms;
+      }
+
       virtual void prepare(const seek_term_iterator::ptr& terms) noexcept override {
         terms_ = &terms;
         found_ = true;
@@ -188,11 +197,14 @@ class IRESEARCH_API by_phrase : public filter {
         terms_ = nullptr;
       }
 
-      void reset(phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms, size_t term_offset) noexcept {
-        assert(phrase_terms);
+      void reset(size_t term_offset) noexcept {
         reset();
-        phrase_terms_ = phrase_terms;
         term_offset_ = term_offset;
+      }
+
+      void reset(phrase_state<order::prepared::FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
+        reset(term_offset);
+        phrase_terms_ = &phrase_terms;
       }
 
       bool found() const noexcept { return found_; }

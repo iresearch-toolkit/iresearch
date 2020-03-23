@@ -607,11 +607,11 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     auto is_ord_empty = ord.empty();
 
     phrase_part::phrase_term_visitor<order::prepared::fixed_terms_collectors> ptv(
-      segment, *reader, collectors);
-    ptv.reset(&phrase_terms, term_offset);
+      segment, *reader, collectors, phrase_terms);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
+      ptv.reset(term_offset);
       term_query::visit(*reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
@@ -620,7 +620,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
         // continue here because we should collect
         // stats for other terms in phrase
       }
-      ptv.reset();
       ++term_offset;
     }
 
@@ -703,8 +702,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       segment, *reader, collectors);
 
     for (const auto& word : phrase_) {
-      auto& pt = phrase_terms[term_offset];
-      ptv.reset(&pt, term_offset);
+      ptv.reset(phrase_terms[term_offset], term_offset);
       if (!phrase_part::variadic_type_collect(*reader, word.second, ptv)) {
         if (is_ord_empty) {
           break;
