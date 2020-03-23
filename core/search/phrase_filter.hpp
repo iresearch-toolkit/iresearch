@@ -26,6 +26,7 @@
 #include <map>
 
 #include "filter.hpp"
+#include "filter_visitor.hpp"
 #include "levenshtein_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/string.hpp"
@@ -159,46 +160,62 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const phrase_part& other) const noexcept;
 
+    template<typename Collectors>
+    class phrase_term_visitor : public filter_visitor {
+     public:
+      phrase_term_visitor(
+        const sub_reader& segment,
+        const term_reader& reader,
+        const Collectors& collectors
+      ) : segment_(segment), reader_(reader), collectors_(collectors) {}
+
+      virtual void prepare(const seek_term_iterator::ptr& terms) override {
+        terms_ = &terms;
+        found_ = true;
+      }
+
+      virtual void visit() override {
+        assert(terms_);
+        collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes()); // collect statistics
+
+        // estimate phrase & term
+        assert(phrase_terms_);
+        phrase_terms_->emplace_back((*terms_)->cookie());
+      }
+
+      void reset() noexcept {
+        found_ = false;
+        terms_ = nullptr;
+      }
+
+      void reset(phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms, size_t term_offset) noexcept {
+        assert(phrase_terms);
+        reset();
+        phrase_terms_ = phrase_terms;
+        term_offset_ = term_offset;
+      }
+
+      bool found() const noexcept { return found_; }
+
+     private:
+      bool found_ = false;
+      size_t term_offset_ = 0;
+      const sub_reader& segment_;
+      const term_reader& reader_;
+      const Collectors& collectors_;
+      phrase_state<order::prepared::FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
+      const seek_term_iterator::ptr* terms_ = nullptr;
+    };
+
     static bool variadic_type_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-      const phrase_part& phr_part, size_t term_offset);
+      const term_reader& reader,
+      const phrase_part& phr_part,
+      phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv);
 
    private:
     void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
     void recreate(phrase_part&& other) noexcept;
-
-    static bool variadic_term_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-      const bytes_ref& term, size_t term_offset);
-
-    static bool variadic_prefix_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-      const bytes_ref& term, size_t term_offset);
-
-    static bool variadic_wildcard_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-      const bytes_ref& term, size_t term_offset);
-
-    static bool variadic_levenshtein_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-      const phrase_part& phr_part, size_t term_offset);
-
-    static bool variadic_set_collect(
-      const sub_reader& segment, const term_reader& reader,
-      const order::prepared::variadic_terms_collectors& collectors,
-      phrase_state<order::prepared::VariadicContainer>::terms_states_t::value_type& phrase_terms,
-      const phrase_part& phr_part, size_t term_offset);
   };
 
   // positions and terms

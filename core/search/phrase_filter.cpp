@@ -34,7 +34,6 @@
 #include "levenshtein_filter.hpp"
 #include "prefix_filter.hpp"
 #include "wildcard_filter.hpp"
-#include "filter_visitor.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
@@ -449,126 +448,38 @@ void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
 }
 
 /*static*/ bool by_phrase::phrase_part::variadic_type_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_state<order::prepared::VariadicContainer>::terms_states_t& phrase_terms,
-    const phrase_part& phr_part, size_t term_offset) {
-  auto& pt = phrase_terms[term_offset];
+    const term_reader& reader,
+    const phrase_part& phr_part,
+    phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv) {
+  auto found = false;
   switch (phr_part.type) {
     case PhrasePartType::TERM:
-      return variadic_term_collect(segment, reader, collectors, pt, phr_part.st.term, term_offset);
+      term_query::visit(reader, phr_part.st.term, ptv);
+      found = ptv.found();
+      break;
     case PhrasePartType::PREFIX:
-      return variadic_prefix_collect(segment, reader, collectors, pt, phr_part.pt.term, term_offset);
+      by_prefix::visit(reader, phr_part.pt.term, ptv);
+      found = ptv.found();
+      break;
     case PhrasePartType::WILDCARD:
-      return variadic_wildcard_collect(segment, reader, collectors, pt, phr_part.wt.term, term_offset);
+      by_wildcard::phrase_helper(reader, phr_part.wt.term, ptv);
+      found = ptv.found();
+      break;
     case PhrasePartType::LEVENSHTEIN:
-      return variadic_levenshtein_collect(segment, reader, collectors, pt, phr_part, term_offset);
+      by_edit_distance::phrase_helper(
+        reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
+        phr_part.lt.with_transpositions, ptv);
+      found = ptv.found();
+      break;
     case PhrasePartType::SET:
-      return variadic_set_collect(segment, reader, collectors, pt, phr_part, term_offset);
+      for (const auto& term : phr_part.ct.terms) {
+        term_query::visit(reader, term, ptv);
+        found |= ptv.found();
+        ptv.reset();
+      }
+      break;
     default:
       assert(false);
-  }
-  return false;
-}
-
-NS_LOCAL
-
-typedef phrase_state<order::prepared::FixedContainer>::terms_states_t phrase_terms_t;
-
-template<typename Collectors>
-class phrase_term_visitor : public filter_visitor {
- public:
-  phrase_term_visitor(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const Collectors& collectors,
-    phrase_terms_t& phrase_terms,
-    size_t term_offset
-  ) : term_offset_(term_offset), segment_(segment), reader_(reader),
-    collectors_(collectors), phrase_terms_(phrase_terms) {}
-
-  virtual void prepare(const seek_term_iterator::ptr& terms) override {
-    terms_ = &terms;
-    found_ = true;
-  }
-
-  virtual void visit() override {
-    assert(terms_);
-    collectors_.collect(segment_, reader_, term_offset_, (*terms_)->attributes()); // collect statistics
-
-    // estimate phrase & term
-    phrase_terms_.emplace_back((*terms_)->cookie());
-  }
-
-  void resetFound() { found_ = false; }
-  bool found() const noexcept { return found_; }
-
- private:
-  bool found_ = false;
-  size_t term_offset_;
-  const sub_reader& segment_;
-  const term_reader& reader_;
-  const Collectors& collectors_;
-  phrase_terms_t& phrase_terms_;
-  const seek_term_iterator::ptr* terms_ = nullptr;
-};
-
-NS_END
-
-/*static*/ bool by_phrase::phrase_part::variadic_term_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_terms_t& phrase_terms, const bytes_ref& term, size_t term_offset) {
-  phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
-    segment, reader, collectors, phrase_terms, term_offset);
-  term_query::visit(reader, term, ptv);
-
-  return ptv.found();
-}
-
-/*static*/ bool by_phrase::phrase_part::variadic_prefix_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_terms_t& phrase_terms, const bytes_ref& term, size_t term_offset) {
-  phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
-    segment, reader, collectors, phrase_terms, term_offset);
-  by_prefix::visit(reader, term, ptv);
-
-  return ptv.found();
-}
-
-/*static*/ bool by_phrase::phrase_part::variadic_wildcard_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_terms_t& phrase_terms, const bytes_ref& term, size_t term_offset) {
-  phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
-    segment, reader, collectors, phrase_terms, term_offset);
-  by_wildcard::phrase_helper(reader, term, ptv);
-
-  return ptv.found();
-}
-
-/*static*/ bool by_phrase::phrase_part::variadic_levenshtein_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_terms_t& phrase_terms, const phrase_part& phr_part, size_t term_offset) {
-  assert(phr_part.lt.provider);
-  phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
-    segment, reader, collectors, phrase_terms, term_offset);
-  by_edit_distance::phrase_helper(
-    reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
-    phr_part.lt.with_transpositions, ptv);
-
-  return ptv.found();
-}
-
-/*static*/ bool by_phrase::phrase_part::variadic_set_collect(
-    const sub_reader& segment, const term_reader& reader,
-    const order::prepared::variadic_terms_collectors& collectors,
-    phrase_terms_t& phrase_terms, const phrase_part& phr_part, size_t term_offset) {
-  auto found = false;
-  for (const auto& term : phr_part.ct.terms) {
-    found |= variadic_term_collect(segment, reader, collectors, phrase_terms, term, term_offset);
   }
   return found;
 }
@@ -670,7 +581,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   fixed_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_terms_t phrase_terms;
+  phrase_state<order::prepared::FixedContainer>::terms_states_t phrase_terms;
   auto phrase_size = phrase_.size();
   phrase_terms.reserve(phrase_size);
 
@@ -695,8 +606,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     size_t term_offset = 0;
     auto is_ord_empty = ord.empty();
 
-    phrase_term_visitor<order::prepared::fixed_terms_collectors> ptv(
-      segment, *reader, collectors, phrase_terms, term_offset);
+    phrase_part::phrase_term_visitor<order::prepared::fixed_terms_collectors> ptv(
+      segment, *reader, collectors);
+    ptv.reset(&phrase_terms, term_offset);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
@@ -708,7 +620,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
         // continue here because we should collect
         // stats for other terms in phrase
       }
-      ptv.resetFound();
+      ptv.reset();
       ++term_offset;
     }
 
@@ -787,9 +699,13 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     size_t term_offset = 0;
     size_t found_words_count = 0;
 
+    phrase_part::phrase_term_visitor<order::prepared::variadic_terms_collectors> ptv(
+      segment, *reader, collectors);
+
     for (const auto& word : phrase_) {
-      if (!phrase_part::variadic_type_collect(
-          segment, *reader, collectors, phrase_terms, word.second, term_offset)) {
+      auto& pt = phrase_terms[term_offset];
+      ptv.reset(&pt, term_offset);
+      if (!phrase_part::variadic_type_collect(*reader, word.second, ptv)) {
         if (is_ord_empty) {
           break;
         }
