@@ -302,61 +302,6 @@ by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
   allocate(std::move(other));
 }
 
-by_phrase::phrase_part::phrase_part(const simple_term& other) {
-  type = PhrasePartType::TERM;
-  auto copy_st = other;
-  new (&st) simple_term(std::move(copy_st));
-}
-
-by_phrase::phrase_part::phrase_part(simple_term&& other) noexcept {
-  type = PhrasePartType::TERM;
-  new (&st) simple_term(std::move(other));
-}
-
-by_phrase::phrase_part::phrase_part(const prefix_term& other) {
-  type = PhrasePartType::PREFIX;
-  auto copy_pt = other;
-  new (&pt) prefix_term(std::move(copy_pt));
-}
-
-by_phrase::phrase_part::phrase_part(prefix_term&& other) noexcept {
-  type = PhrasePartType::PREFIX;
-  new (&pt) prefix_term(std::move(other));
-}
-
-by_phrase::phrase_part::phrase_part(const wildcard_term& other) {
-  type = PhrasePartType::WILDCARD;
-  auto copy_wt = other;
-  new (&wt) wildcard_term(std::move(copy_wt));
-}
-
-by_phrase::phrase_part::phrase_part(wildcard_term&& other) noexcept {
-  type = PhrasePartType::WILDCARD;
-  new (&wt) wildcard_term(std::move(other));
-}
-
-by_phrase::phrase_part::phrase_part(const levenshtein_term& other) {
-  type = PhrasePartType::LEVENSHTEIN;
-  auto copy_lt = other;
-  new (&lt) levenshtein_term(std::move(copy_lt));
-}
-
-by_phrase::phrase_part::phrase_part(levenshtein_term&& other) noexcept {
-  type = PhrasePartType::LEVENSHTEIN;
-  new (&lt) levenshtein_term(std::move(other));
-}
-
-by_phrase::phrase_part::phrase_part(const set_term& other) {
-  type = PhrasePartType::SET;
-  auto copy_ct = other;
-  new (&ct) set_term(std::move(copy_ct));
-}
-
-by_phrase::phrase_part::phrase_part(set_term&& other) noexcept {
-  type = PhrasePartType::SET;
-  new (&ct) set_term(std::move(other));
-}
-
 by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) noexcept {
   if (&other == this) {
     return *this;
@@ -410,11 +355,11 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
       found = ptv.found();
       break;
     case PhrasePartType::WILDCARD:
-      by_wildcard::phrase_helper(reader, phr_part.wt.term, ptv);
+      by_wildcard::visit(reader, phr_part.wt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::LEVENSHTEIN:
-      by_edit_distance::phrase_helper(
+      by_edit_distance::visit(
         reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
         phr_part.lt.with_transpositions, ptv);
       found = ptv.found();

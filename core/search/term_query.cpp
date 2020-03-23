@@ -34,7 +34,11 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 NS_LOCAL
 
-class term_visitor : public filter_visitor {
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_visitor
+/// @brief filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
+class term_visitor final : public filter_visitor {
  public:
   term_visitor(
     const sub_reader& segment,
