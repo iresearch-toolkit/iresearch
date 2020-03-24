@@ -33,8 +33,10 @@
 
 NS_ROOT
 
+NS_LOCAL
+
 template<typename Visitor>
-/*static*/ void by_prefix::visit(
+void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
@@ -64,8 +66,14 @@ template<typename Visitor>
   }
 }
 
-template void by_prefix::visit(const term_reader& reader, const bytes_ref& prefix, filter_visitor& visitor);
-template void by_prefix::visit(const term_reader& reader, const bytes_ref& prefix, multiterm_visitor& visitor);
+NS_END
+
+/*static*/ void by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  irs::visit(reader, prefix, visitor);
+}
 
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
@@ -91,7 +99,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 
     multiterm_visitor mtv(segment, *reader, scorer, states);
 
-    visit(*reader, prefix, mtv);
+    irs::visit(*reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;

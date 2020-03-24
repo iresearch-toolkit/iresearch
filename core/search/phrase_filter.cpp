@@ -313,11 +313,11 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
   auto found = false;
   switch (phr_part.type) {
     case PhrasePartType::TERM:
-      term_query::visit<filter_visitor>(reader, phr_part.st.term, ptv);
+      term_query::visit(reader, phr_part.st.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::PREFIX:
-      by_prefix::visit<filter_visitor>(reader, phr_part.pt.term, ptv);
+      by_prefix::visit(reader, phr_part.pt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::WILDCARD:
@@ -332,7 +332,7 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
       break;
     case PhrasePartType::SET:
       for (const auto& term : phr_part.ct.terms) {
-        term_query::visit<filter_visitor>(reader, term, ptv);
+        term_query::visit(reader, term, ptv);
         found |= ptv.found();
         ptv.reset();
       }
@@ -553,7 +553,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
       ptv.reset(term_offset);
-      term_query::visit<filter_visitor>(*reader, word.second.st.term, ptv);
+      term_query::visit(*reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;

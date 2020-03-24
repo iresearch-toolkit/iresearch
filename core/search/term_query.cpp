@@ -76,10 +76,8 @@ class term_visitor final : public filter_visitor {
   const seek_term_iterator::ptr* terms_ = nullptr;
 };
 
-NS_END
-
 template<typename Visitor>
-/*static*/ void term_query::visit(
+void visit(
     const term_reader& reader,
     const bytes_ref& term,
     Visitor& visitor) {
@@ -98,8 +96,14 @@ template<typename Visitor>
   visitor.visit();
 }
 
-template void term_query::visit(const term_reader& reader, const bytes_ref& term, filter_visitor& visitor);
-template void term_query::visit(const term_reader& reader, const bytes_ref& term, term_visitor& visitor);
+NS_END
+
+/*static*/ void term_query::visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
+  irs::visit(reader, term, visitor);
+}
 
 /*static*/ term_query::ptr term_query::make(
     const index_reader& index,
@@ -124,7 +128,7 @@ template void term_query::visit(const term_reader& reader, const bytes_ref& term
     // term_offset = 0 because only 1 term
     term_visitor tv(segment, *reader, collectors, states, 0);
 
-    visit(*reader, term, tv);
+    irs::visit(*reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);
