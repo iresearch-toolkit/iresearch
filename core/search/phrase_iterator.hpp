@@ -250,7 +250,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
       return target;
     }
 
-    if (doc_limits::eof(value()) || (phrase_freq_.value = this->phrase_freq())) {
+    if (doc_limits::eof(value()) || doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {
       return value();
     }
 

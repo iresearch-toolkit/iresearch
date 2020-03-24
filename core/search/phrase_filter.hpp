@@ -233,8 +233,10 @@ class IRESEARCH_API by_phrase : public filter {
       phrase_term_visitor<order::prepared::variadic_terms_collectors>& ptv);
 
    private:
+    void allocate(const phrase_part& other);
     void allocate(phrase_part&& other) noexcept;
     void destroy() noexcept;
+    void recreate(const phrase_part& other);
     void recreate(phrase_part&& other) noexcept;
   };
 

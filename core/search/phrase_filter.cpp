@@ -262,8 +262,7 @@ by_phrase::phrase_part::phrase_part() : type(PhrasePartType::TERM), st() {
 }
 
 by_phrase::phrase_part::phrase_part(const phrase_part& other) {
-  auto copy_other = other;
-  allocate(std::move(copy_other));
+  allocate(other);
 }
 
 by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
@@ -274,8 +273,7 @@ by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& oth
   if (&other == this) {
     return *this;
   }
-  auto copy_other = other;
-  recreate(std::move(copy_other));
+  recreate(other);
   return *this;
 }
 
@@ -345,6 +343,29 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
   return found;
 }
 
+void by_phrase::phrase_part::allocate(const phrase_part& other) {
+  type = other.type;
+  switch (type) {
+    case PhrasePartType::TERM:
+      new (&st) simple_term(other.st);
+      break;
+    case PhrasePartType::PREFIX:
+      new (&pt) prefix_term(other.pt);
+      break;
+    case PhrasePartType::WILDCARD:
+      new (&wt) wildcard_term(other.wt);
+      break;
+    case PhrasePartType::LEVENSHTEIN:
+      new (&lt) levenshtein_term(other.lt);
+      break;
+    case PhrasePartType::SET:
+      new (&ct) set_term(other.ct);
+      break;
+    default:
+      assert(false);
+  }
+}
+
 void by_phrase::phrase_part::allocate(phrase_part&& other) noexcept {
   type = other.type;
   switch (type) {
@@ -388,6 +409,13 @@ void by_phrase::phrase_part::destroy() noexcept {
     default:
       assert(false);
   }
+}
+
+void by_phrase::phrase_part::recreate(const phrase_part& other) {
+  if (type != other.type) {
+    destroy();
+  }
+  allocate(other);
 }
 
 void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
