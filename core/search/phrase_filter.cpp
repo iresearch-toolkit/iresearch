@@ -269,7 +269,7 @@ by_phrase::phrase_part::phrase_part(phrase_part&& other) noexcept {
   allocate(std::move(other));
 }
 
-by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) noexcept {
+by_phrase::phrase_part& by_phrase::phrase_part::operator=(const phrase_part& other) {
   if (&other == this) {
     return *this;
   }

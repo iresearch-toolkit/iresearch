@@ -159,7 +159,7 @@ class IRESEARCH_API by_phrase : public filter {
   #pragma GCC diagnostic pop
 #endif
 
-    phrase_part& operator=(const phrase_part& other) noexcept;
+    phrase_part& operator=(const phrase_part& other);
     phrase_part& operator=(phrase_part&& other) noexcept;
 
     bool operator==(const phrase_part& other) const noexcept;

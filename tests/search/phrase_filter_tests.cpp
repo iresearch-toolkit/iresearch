@@ -6572,6 +6572,42 @@ TEST(by_phrase_test, equal) {
   }
 }
 
+TEST(by_phrase_test, copy_move) {
+  {
+    irs::by_phrase q0;
+    irs::by_phrase::simple_term st{irs::ref_cast<irs::byte_type>(irs::string_ref("very"))};
+    irs::by_phrase::prefix_term pt;
+    pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+    irs::by_phrase::set_term ct;
+    ct.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")),
+                irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
+    irs::by_phrase::wildcard_term wt;
+    wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+    irs::by_phrase::levenshtein_term lt;
+    lt.max_distance = 2;
+    lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+    q0.field("name");
+    q0.push_back(st);
+    q0.push_back(pt);
+    q0.push_back(ct);
+    q0.push_back(wt);
+    q0.push_back(lt);
+    q0.push_back(std::move(st));
+    q0.push_back(std::move(pt));
+    q0.push_back(std::move(ct));
+    q0.push_back(std::move(wt));
+    q0.push_back(std::move(lt));
+
+    irs::by_phrase q1 = q0;
+    ASSERT_EQ(q0, q1);
+    ASSERT_EQ(q0.hash(), q1.hash());
+    irs::by_phrase q2 = q0;
+    irs::by_phrase q3 = std::move(q2);
+    ASSERT_EQ(q0, q3);
+    ASSERT_EQ(q0.hash(), q3.hash());
+  }
+}
+
 INSTANTIATE_TEST_CASE_P(
   phrase_filter_test,
   phrase_filter_test_case,
