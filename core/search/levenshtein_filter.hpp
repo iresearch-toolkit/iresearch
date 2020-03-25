@@ -30,6 +30,7 @@
 NS_ROOT
 
 class parametric_description;
+struct filter_visitor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
@@ -45,6 +46,25 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   //////////////////////////////////////////////////////////////////////////////
   using pdp_f = const parametric_description&(*)(byte_type, bool);
 
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term,
+    size_t scored_terms_limit,
+    byte_type max_distance,
+    pdp_f provider,
+    bool with_transpositions);
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& term,
+    byte_type max_distance,
+    pdp_f provider,
+    bool with_transpositions,
+    filter_visitor& fv);
+
   explicit by_edit_distance() noexcept;
 
   using by_prefix::field;
@@ -57,11 +77,14 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+      const index_reader& index,
+      const order::prepared& order,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, order, this->boost()*boost,
+                   field(), term(), scored_terms_limit(),
+                   max_distance_, provider_, with_transpositions_);
+  }
 
 
   using by_prefix::scored_terms_limit;
@@ -132,6 +155,6 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   bool with_transpositions_{false};
 }; // by_edit_distance
 
-#endif // IRESEARCH_LEVENSHTEIN_FILTER_H
-
 NS_END
+
+#endif // IRESEARCH_LEVENSHTEIN_FILTER_H

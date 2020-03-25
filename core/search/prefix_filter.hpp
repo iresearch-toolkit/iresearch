@@ -27,10 +27,17 @@
 
 NS_ROOT
 
+struct filter_visitor;
+
 class IRESEARCH_API by_prefix : public by_term {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static void visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor);
 
   static prepared::ptr prepare(
     const index_reader& index,
@@ -64,7 +71,7 @@ class IRESEARCH_API by_prefix : public by_term {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  by_prefix& scored_terms_limit(size_t limit) {
+  by_prefix& scored_terms_limit(size_t limit) noexcept {
     scored_terms_limit_ = limit;
     return *this;
   }
@@ -72,7 +79,7 @@ class IRESEARCH_API by_prefix : public by_term {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const {
+  size_t scored_terms_limit() const noexcept {
     return scored_terms_limit_;
   }
 

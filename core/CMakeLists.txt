@@ -215,6 +215,7 @@ set(IResearch_core_headers
   ./search/conjunction.hpp
   ./search/exclusion.hpp
   ./search/ngram_similarity_filter.hpp
+  ./search/filter_visitor.hpp
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp

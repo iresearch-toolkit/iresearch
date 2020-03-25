@@ -93,7 +93,7 @@ struct score_iterator_adapter {
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class conjunction : public doc_iterator_base, score_ctx {
+class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;

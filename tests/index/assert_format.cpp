@@ -412,6 +412,10 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
+    virtual void reset() override {
+      assert(false); // unsupported
+    }
+
    private:
     std::set<tests::position>::const_iterator next_;
     irs::offset offs_;

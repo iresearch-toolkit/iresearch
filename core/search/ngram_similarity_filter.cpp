@@ -52,7 +52,7 @@ NS_ROOT
 ///@brief adapter for min_match_disjunction with honor of terms orderings
 //////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
+class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, score_ctx {
  public:
   struct position_t {
     position_t(position* p, document* d, score* s)
@@ -495,7 +495,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.terms.reserve(ngrams_.size());
 
   // prepare ngrams stats
-  auto collectors = ord.prepare_collectors(ngrams_.size());
+  auto collectors = ord.fixed_prepare_collectors(ngrams_.size());
 
   for (const auto& segment : rdr) {
     // get term dictionary for field

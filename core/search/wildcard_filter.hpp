@@ -29,6 +29,8 @@
 
 NS_ROOT
 
+struct filter_visitor;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
@@ -37,6 +39,19 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    bytes_ref term,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const term_reader& reader,
+    bytes_ref term,
+    filter_visitor& fv);
 
   explicit by_wildcard() noexcept;
 
@@ -50,11 +65,13 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+      const index_reader& index,
+      const order::prepared& order,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
+    return prepare(index, order, this->boost()*boost,
+                   field(), term(), scored_terms_limit());
+  }
 
 
   using by_prefix::scored_terms_limit;

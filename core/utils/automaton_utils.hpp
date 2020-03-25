@@ -418,6 +418,19 @@ IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const order::prepared& order,
   boost_t boost);
 
+struct filter_visitor;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief visit an automaton with a reader using a forwarded visitor
+/// @param reader term reader
+/// @param acceptor input automaton
+/// @param fv visitor
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void automaton_visit(
+  const term_reader& reader,
+  const automaton& acceptor,
+  filter_visitor& fv);
+
 NS_END
 
 #endif

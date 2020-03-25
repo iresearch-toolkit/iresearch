@@ -2449,7 +2449,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
   return memory::make_managed<irs::field_iterator, true>(it.release());
 }
 
-size_t field_reader::size() const {
+size_t field_reader::size() const noexcept {
   return fields_.size();
 }
 
