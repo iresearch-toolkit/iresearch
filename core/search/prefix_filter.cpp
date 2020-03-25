@@ -87,7 +87,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     const string_ref& field,
     const bytes_ref& prefix,
     size_t scored_terms_limit) {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
   // iterate over the segments
@@ -107,7 +107,9 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   std::vector<bstring> stats;
   scorer.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
 by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
