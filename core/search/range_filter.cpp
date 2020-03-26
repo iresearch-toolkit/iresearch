@@ -132,7 +132,7 @@ filter::prepared::ptr by_range::prepare(
     return prepared::empty();
   }
 
-  limited_sample_collector<term_frequency> scorer(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 
   const string_ref field = this->field();
@@ -174,19 +174,19 @@ filter::prepared::ptr by_range::prepare(
     switch (rng_.max_type) {
       case BoundType::UNBOUNDED:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [](const bytes_ref&) {
+          segment, *reader, *terms, states, collector, [](const bytes_ref&) {
             return true;
         });
         break;
       case BoundType::INCLUSIVE:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
             return term <= max;
         });
         break;
       case BoundType::EXCLUSIVE:
         ::collect_terms(
-          segment, *reader, *terms, states, scorer, [max](const bytes_ref& term) {
+          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
             return term < max;
         });
         break;
@@ -194,7 +194,7 @@ filter::prepared::ptr by_range::prepare(
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, ord, stats);
+  collector.score(index, ord, stats);
 
   return memory::make_shared<multiterm_query>(
     std::move(states), std::move(stats),
