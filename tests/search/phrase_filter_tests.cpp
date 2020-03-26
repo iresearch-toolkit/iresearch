@@ -1600,6 +1600,38 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(values(docs->value(), actual_value));
       ASSERT_EQ("PHW5", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC0", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC0", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC1", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC1", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC2", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC2", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC3", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("SPWLC3", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
       ASSERT_FALSE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
@@ -6367,7 +6399,7 @@ TEST(by_phrase_test, boost) {
       ASSERT_EQ(boost, prepared->boost());
     }
 
-    // prefix, wildcard, and levenshtein terms
+    // prefix, wildcard, levenshtein, set
     {
       irs::by_phrase q;
       irs::by_phrase::prefix_term pt;
@@ -6377,7 +6409,8 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase::levenshtein_term lt;
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brwn"));
-      q.field("field").push_back(std::move(pt)).push_back(std::move(wt)).push_back(lt);
+      irs::by_phrase::set_term ct{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}};
+      q.field("field").push_back(std::move(pt)).push_back(std::move(wt)).push_back(lt).push_back(ct);
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
