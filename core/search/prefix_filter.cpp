@@ -70,15 +70,15 @@ NS_END
 
 NS_ROOT
 
+DEFINE_FILTER_TYPE(by_prefix)
+DEFINE_FACTORY_DEFAULT(by_prefix)
+
 /*static*/ void by_prefix::visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     filter_visitor& visitor) {
   ::visit(reader, prefix, visitor);
 }
-
-DEFINE_FILTER_TYPE(by_prefix)
-DEFINE_FACTORY_DEFAULT(by_prefix)
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,
