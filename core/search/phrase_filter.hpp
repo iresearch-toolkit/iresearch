@@ -79,7 +79,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::PREFIX;
 
     bool operator==(const prefix_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -90,7 +91,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::WILDCARD;
 
     bool operator==(const wildcard_term& other) const noexcept {
-      return term == other.term;
+      return scored_terms_limit == other.scored_terms_limit &&
+          term == other.term;
     }
 
     size_t scored_terms_limit{1024};
@@ -103,6 +105,7 @@ class IRESEARCH_API by_phrase : public filter {
     bool operator==(const levenshtein_term& other) const noexcept {
       return with_transpositions == other.with_transpositions &&
           max_distance == other.max_distance &&
+          scored_terms_limit == other.scored_terms_limit &&
           provider == other.provider &&
           term == other.term;
     }
@@ -128,7 +131,8 @@ class IRESEARCH_API by_phrase : public filter {
     static constexpr PhrasePartType type = PhrasePartType::RANGE;
 
     bool operator==(const range_term& other) const noexcept {
-      return rng == other.rng;
+      return scored_terms_limit == other.scored_terms_limit &&
+          rng == other.rng;
     }
 
     size_t scored_terms_limit{1024};
