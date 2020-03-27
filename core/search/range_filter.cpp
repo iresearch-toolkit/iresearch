@@ -25,6 +25,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
+#include "filter_visitor.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
@@ -32,13 +33,12 @@
 
 NS_LOCAL
 
-template<typename Comparer>
+using namespace irs;
+
+template<typename Visitor, typename Comparer>
 void collect_terms(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field,
-    irs::seek_term_iterator& terms,
-    irs::multiterm_query::states_t& states,
-    irs::limited_sample_collector<irs::term_frequency>& collector,
+    seek_term_iterator& terms,
+    Visitor& visitor,
     Comparer cmp) {
   auto& value = terms.value();
 
@@ -46,37 +46,73 @@ void collect_terms(
     // read attributes
     terms.read();
 
-    // get state for current segment
-    auto& state = states.insert(segment);
-    state.reader = &field;
-
-    // get term metadata
-    auto& meta = terms.attributes().get<irs::term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    collector.prepare(segment, terms, state);
-    irs::term_frequency key{*docs_count, 0};
+    visitor.prepare(terms);
 
     do {
-      // fill scoring candidates
-      collector.collect(key);
+      visitor.visit();
 
       if (!terms.next()) {
         break;
       }
 
-      // read attributes
       terms.read();
-
-      ++key.offset;
-      key.frequency = *docs_count;
     } while (cmp(value));
+  }
+}
+
+template<typename Visitor>
+void visit(
+    const term_reader& reader,
+    const range<bstring>& rng,
+    Visitor& visitor) {
+  auto terms = reader.iterator();
+
+  if (IRS_UNLIKELY(!terms)) {
+    return;
+  }
+
+  auto res = false;
+
+  // seek to min
+  switch (rng.min_type) {
+    case BoundType::UNBOUNDED:
+      res = terms->next();
+      break;
+    case BoundType::INCLUSIVE:
+      res = seek_min<true>(*terms, rng.min);
+      break;
+    case BoundType::EXCLUSIVE:
+      res = seek_min<false>(*terms, rng.min);
+      break;
+  }
+
+  if (!res) {
+    // reached the end, nothing to collect
+    return;
+  }
+
+  // now we are on the target or the next term
+  const bytes_ref max = rng.max;
+
+  switch (rng.max_type) {
+    case BoundType::UNBOUNDED:
+      ::collect_terms(
+        *terms, visitor, [](const bytes_ref&) {
+          return true;
+      });
+      break;
+    case BoundType::INCLUSIVE:
+      ::collect_terms(
+        *terms, visitor, [max](const bytes_ref& term) {
+          return term <= max;
+      });
+      break;
+    case BoundType::EXCLUSIVE:
+      ::collect_terms(
+        *terms, visitor, [max](const bytes_ref& term) {
+          return term < max;
+      });
+      break;
   }
 }
 
@@ -147,50 +183,9 @@ filter::prepared::ptr by_range::prepare(
       continue;
     }
 
-    auto terms = reader->iterator();
-    bool res = false;
+    multiterm_visitor mtv(segment, *reader, collector, states);
 
-    // seek to min
-    switch (rng_.min_type) {
-      case BoundType::UNBOUNDED:
-        res = terms->next();
-        break;
-      case BoundType::INCLUSIVE:
-        res = seek_min<true>(*terms, rng_.min);
-        break;
-      case BoundType::EXCLUSIVE:
-        res = seek_min<false>(*terms, rng_.min);
-        break;
-    }
-
-    if (!res) {
-      // reached the end, nothing to collect
-      continue;
-    }
-
-    // now we are on the target or the next term
-    const irs::bytes_ref max = rng_.max;
-
-    switch (rng_.max_type) {
-      case BoundType::UNBOUNDED:
-        ::collect_terms(
-          segment, *reader, *terms, states, collector, [](const bytes_ref&) {
-            return true;
-        });
-        break;
-      case BoundType::INCLUSIVE:
-        ::collect_terms(
-          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
-            return term <= max;
-        });
-        break;
-      case BoundType::EXCLUSIVE:
-        ::collect_terms(
-          segment, *reader, *terms, states, collector, [max](const bytes_ref& term) {
-            return term < max;
-        });
-        break;
-    }
+    ::visit(*reader, rng_, mtv);
   }
 
   std::vector<bstring> stats;
