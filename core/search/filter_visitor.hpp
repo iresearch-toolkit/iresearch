@@ -47,8 +47,8 @@ struct filter_visitor {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_visitor
-/// @brief filter visitor for multiterm queries
+/// @class multiterm_visitor_base
+/// @brief base filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
 template<typename States>
 class multiterm_visitor_base : public filter_visitor {
@@ -102,6 +102,10 @@ class multiterm_visitor_base : public filter_visitor {
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class multiterm_visitor
+/// @brief filter visitor for multiterm queries
+//////////////////////////////////////////////////////////////////////////////
 class multiterm_visitor final : public multiterm_visitor_base<multiterm_query::states_t> {
  public:
   multiterm_visitor(

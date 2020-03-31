@@ -495,6 +495,10 @@ void visit(
   collect_terms_within(*terms, prefix_size, rng.min, rng.max, irs::BoundType::INCLUSIVE == rng.min_type, irs::BoundType::INCLUSIVE == rng.max_type, visitor);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class ranular_range_visitor
+/// @brief filter visitor for granular range queries
+//////////////////////////////////////////////////////////////////////////////
 class granular_range_visitor final : public irs::multiterm_visitor_base<granular_states_t> {
  public:
   granular_range_visitor(
