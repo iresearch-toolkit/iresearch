@@ -267,6 +267,73 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
 // --SECTION--                                                        collectors
 // -----------------------------------------------------------------------------
 
+field_collectors::field_collectors(const order::prepared& buckets)
+  : collectors_base<sort::field_collector::ptr>(buckets.size(), buckets) {
+  auto begin = collectors_.begin();
+  for (auto& bucket : buckets) {
+    *begin = bucket.bucket->prepare_field_collector();
+    ++begin;
+  }
+  assert(begin == collectors_.end());
+}
+
+
+void field_collectors::finish(byte_type* stats_buf, const index_reader& index) const {
+  // special case where term statistics collection is not applicable
+  // e.g. by_column_existence filter
+  assert(buckets_->size() == collectors_.size());
+
+  for (size_t i = 0, count = collectors_.size(); i < count; ++i) {
+    auto& sort = (*buckets_)[i];
+    assert(sort.bucket); // ensured by order::prepare
+
+    sort.bucket->collect(
+      stats_buf + sort.stats_offset, // where stats for bucket start
+      index,
+      collectors_[i].get(),
+      nullptr
+    );
+  }
+}
+
+
+term_collectors::term_collectors(const order::prepared& buckets, size_t size)
+  : collectors_base<sort::term_collector::ptr>(buckets.size()*size, buckets) {
+  // add term collectors from each bucket
+  // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
+  auto begin = collectors_.begin();
+  for (size_t i = 0; i < size; ++i) {
+    for (auto& entry: buckets) {
+      assert(entry.bucket); // ensured by order::prepare
+      *begin = entry.bucket->prepare_term_collector();
+      ++begin;
+    }
+  }
+  assert(begin == collectors_.end());
+}
+
+
+void term_collectors::finish(byte_type* stats_buf,
+                             const field_collectors& field_collectors,
+                             const index_reader& index) const {
+  auto bucket_count = buckets_->size();
+  assert(collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
+
+  for (size_t i = 0, count = collectors_.size(); i < count; ++i) {
+    auto bucket_offset = i % bucket_count;
+    auto& sort = (*buckets_)[bucket_offset];
+    assert(sort.bucket); // ensured by order::prepare
+
+    assert(i % bucket_count < field_collectors.size());
+    sort.bucket->collect(
+      stats_buf + sort.stats_offset, // where stats for bucket start
+      index,
+      field_collectors[bucket_offset],
+      collectors_[i].get()
+    );
+  }
+}
+
 template<template<typename...> class T>
 collectors<T>::collectors(const order::prepared& buckets)
   : buckets_(buckets) {
@@ -386,7 +453,7 @@ void fixed_terms_collectors::finish(
   }
 }
 
-size_t fixed_terms_collectors::push_back() {
+size_t fixed_terms_collectors::push_back1() {
   auto term_offset = term_collectors_.size() / buckets_.size();
 
   term_collectors_.reserve(term_collectors_.size() + buckets_.size());

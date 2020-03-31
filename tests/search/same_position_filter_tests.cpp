@@ -73,10 +73,10 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr{
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr{
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
       auto pord = order.prepare();
@@ -107,10 +107,10 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
       auto pord = order.prepare();
@@ -142,10 +142,10 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
       auto pord = order.prepare();

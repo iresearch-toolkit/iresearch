@@ -96,8 +96,12 @@ class IRESEARCH_API sort {
      ////////////////////////////////////////////////////////////////////////////
      virtual void collect(
        const sub_reader& segment,
-       const term_reader& field
-     ) = 0;
+       const term_reader& field) = 0;
+
+     ////////////////////////////////////////////////////////////////////////////
+     /// @brief clear collected stats
+     ////////////////////////////////////////////////////////////////////////////
+     virtual void reset() = 0;
 
      ///////////////////////////////////////////////////////////////////////////
      /// @brief collect field related statistics from a serialized
@@ -145,8 +149,12 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs
-    ) = 0;
+      const attribute_view& term_attrs) = 0;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief clear collected stats
+    ////////////////////////////////////////////////////////////////////////////
+    virtual void reset() = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     /// @brief collect term related statistics from a serialized
@@ -1030,6 +1038,111 @@ class IRESEARCH_API order final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
+template<typename Collector>
+class collectors_base {
+ public:
+  using iterator_type = typename std::vector<Collector>::const_iterator;
+
+  explicit collectors_base(size_t size, const order::prepared& buckets)
+    : collectors_(size), buckets_(&buckets) {
+  }
+
+  collectors_base(collectors_base&&) = default;
+  collectors_base& operator=(collectors_base&&) = default;
+
+  iterator_type begin() const noexcept {
+    return collectors_.begin();
+  }
+
+  iterator_type end() const noexcept {
+    return collectors_.end();
+  }
+
+  bool empty() const noexcept {
+    return collectors_.empty();
+  }
+
+  size_t size() const noexcept {
+    return collectors_.size();
+  }
+
+  void reset() {
+    for (auto& collector : collectors_) {
+      collector->reset();
+    }
+  }
+
+  typename Collector::pointer operator[](size_t i) const noexcept {
+    assert(i < collectors_.size());
+    return collectors_[i].get();
+  }
+
+  template<typename... Args>
+  void collect(Args&&... args) {
+    switch (collectors_.size()) {
+      case 0:
+        return;
+      case 1:
+        collectors_.front()->collect(std::forward<Args>(args)...);
+        return;
+      case 2:
+        collectors_.front()->collect(std::forward<Args>(args)...);
+        collectors_.back()->collect(std::forward<Args>(args)...);
+        return;
+      default:
+        for (auto& collector : collectors_) {
+          collector->collect(std::forward<Args>(args)...);
+        }
+    }
+  }
+
+ protected:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::vector<Collector> collectors_;
+  const order::prepared* buckets_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+};
+
+class IRESEARCH_API field_collectors : public collectors_base<sort::field_collector::ptr> {
+ public:
+  explicit field_collectors(const order::prepared& buckets);
+  field_collectors(field_collectors&& rhs) = default;
+  field_collectors& operator=(field_collectors&& rhs) = default;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief store collected index statistics into 'stats' of the
+  ///        current 'filter'
+  /// @param stats out-parameter to store statistics for later use in
+  ///        calls to score(...)
+  /// @param index the full index to collect statistics on
+  /// @note called once on the 'index' for every term matched by a filter
+  ///       calling collect(...) on each of its segments
+  /// @note if not matched terms then called exactly once
+  //////////////////////////////////////////////////////////////////////////
+  void finish(byte_type* stats_buf, const index_reader& index) const;
+};
+
+class IRESEARCH_API term_collectors : collectors_base<sort::term_collector::ptr> {
+ public:
+  term_collectors(const order::prepared& buckets, size_t size);
+  term_collectors(term_collectors&& rhs) = default;
+  term_collectors& operator=(term_collectors&& rhs) = default;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief store collected index statistics into 'stats' of the
+  ///        current 'filter'
+  /// @param stats out-parameter to store statistics for later use in
+  ///        calls to score(...)
+  /// @param index the full index to collect statistics on
+  /// @note called once on the 'index' for every term matched by a filter
+  ///       calling collect(...) on each of its segments
+  /// @note if not matched terms then called exactly once
+  //////////////////////////////////////////////////////////////////////////
+  void finish(byte_type* stats_buf,
+              const field_collectors& field_collectors,
+              const index_reader& index) const;
+};
+
 ////////////////////////////////////////////////////////////////////////////
 /// @brief a convinience class for filters to invoke collector functions
 ///        on collectors in each order bucket
@@ -1108,7 +1221,7 @@ class IRESEARCH_API fixed_terms_collectors : public collectors<FixedContainer> {
   /// @brief add collectors for another term
   /// @return term_offset
   //////////////////////////////////////////////////////////////////////////
-  size_t push_back();
+  size_t push_back1();
 
   // term_collectors_; size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
 };

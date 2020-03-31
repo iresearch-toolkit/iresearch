@@ -96,19 +96,39 @@ struct custom_sort: public irs::sort {
 
   class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
-    class collector
-      : public irs::sort::field_collector, public irs::sort::term_collector {
+    class field_collector :  public irs::sort::field_collector {
      public:
-      collector(const custom_sort& sort): sort_(sort) {}
+      field_collector(const custom_sort& sort): sort_(sort) {}
 
       virtual void collect(
-        const irs::sub_reader& segment,
-        const irs::term_reader& field
-      ) override {
+          const irs::sub_reader& segment,
+          const irs::term_reader& field) override {
         if (sort_.collector_collect_field) {
           sort_.collector_collect_field(segment, field);
         }
       }
+
+      virtual void reset() override {
+        if (sort_.field_reset_) {
+          sort_.field_reset_();
+        }
+      }
+
+      virtual void collect(const irs::bytes_ref& in) override {
+        // NOOP
+      }
+
+      virtual void write(irs::data_output& out) const override {
+        // NOOP
+      }
+
+     private:
+      const custom_sort& sort_;
+    };
+
+    class term_collector : public irs::sort::term_collector {
+     public:
+      term_collector(const custom_sort& sort): sort_(sort) {}
 
       virtual void collect(
         const irs::sub_reader& segment,
@@ -117,6 +137,12 @@ struct custom_sort: public irs::sort {
       ) override {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
+        }
+      }
+
+      virtual void reset() override {
+        if (sort_.term_reset_) {
+          sort_.term_reset_();
         }
       }
 
@@ -202,7 +228,7 @@ struct custom_sort: public irs::sort {
         return sort_.prepare_field_collector_();
       }
 
-      return irs::memory::make_unique<collector>(sort_);
+      return irs::memory::make_unique<field_collector>(sort_);
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
@@ -243,7 +269,7 @@ struct custom_sort: public irs::sort {
         return sort_.prepare_term_collector_();
       }
 
-      return irs::memory::make_unique<collector>(sort_);
+      return irs::memory::make_unique<term_collector>(sort_);
     }
 
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
@@ -264,6 +290,8 @@ struct custom_sort: public irs::sort {
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_max;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
+  std::function<void()> term_reset_;
+  std::function<void()> field_reset_;
 
   DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
@@ -352,10 +380,13 @@ struct frequency_sort: public irs::sort {
       virtual void collect(
           const irs::sub_reader& segment,
           const irs::term_reader& field,
-          const irs::attribute_view& term_attrs
-      ) override {
+          const irs::attribute_view& term_attrs) override {
         meta_attr = term_attrs.get<irs::term_meta>();
         docs_count += meta_attr->docs_count;
+      }
+
+      virtual void reset() noexcept override {
+        docs_count = 0;
       }
 
       virtual void collect(const irs::bytes_ref& in) override {

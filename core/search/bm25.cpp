@@ -194,9 +194,8 @@ struct field_collector final: public irs::sort::field_collector {
   uint64_t total_term_freq = 0; // number of terms for processed field
 
   virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field
-  ) override {
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
     auto& freq = field.attributes().get<irs::frequency>();
@@ -204,6 +203,11 @@ struct field_collector final: public irs::sort::field_collector {
     if (freq) {
       total_term_freq += freq->value;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_field = 0;
+    total_term_freq = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -238,6 +242,10 @@ struct term_collector final: public irs::sort::term_collector {
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_term = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
