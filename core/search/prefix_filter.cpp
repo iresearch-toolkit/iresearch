@@ -73,13 +73,6 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
-/*static*/ void by_prefix::visit(
-    const term_reader& reader,
-    const bytes_ref& prefix,
-    filter_visitor& visitor) {
-  ::visit(reader, prefix, visitor);
-}
-
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,
     const order::prepared& ord,
@@ -99,7 +92,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    multiterm_visitor mtv(segment, *reader, collector, states);
+    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
 
     ::visit(*reader, prefix, mtv);
   }
@@ -110,6 +103,13 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   return memory::make_shared<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
+}
+
+/*static*/ void by_prefix::visit(
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  ::visit(reader, prefix, visitor);
 }
 
 by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }

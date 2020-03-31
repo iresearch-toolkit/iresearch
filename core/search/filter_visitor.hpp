@@ -23,6 +23,7 @@
 #ifndef IRESEARCH_FILTER_VISITOR_H
 #define IRESEARCH_FILTER_VISITOR_H
 
+#include "granular_range_filter.hpp"
 #include "multiterm_query.hpp"
 #include "formats/formats.hpp"
 
@@ -50,16 +51,19 @@ struct filter_visitor {
 /// @class multiterm_visitor
 /// @brief filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
+template<typename States>
 class multiterm_visitor final : public filter_visitor {
  public:
   multiterm_visitor(
       const sub_reader& segment,
       const term_reader& reader,
       limited_sample_collector<term_frequency>& collector,
-      multiterm_query::states_t& states)
+      States& states)
     : segment_(segment), reader_(reader),
       collector_(collector), states_(states) {
   }
+
+  multiterm_state& get_state();
 
   virtual void prepare(const seek_term_iterator& terms) override {
     // get term metadata
@@ -72,7 +76,7 @@ class multiterm_visitor final : public filter_visitor {
     docs_count_ = meta ? &meta->docs_count : &no_docs_;
 
     // get state for current segment
-    auto& state = states_.insert(segment_);
+    auto& state = get_state();
     state.reader = &reader_;
 
     collector_.prepare(segment_, terms, state);
@@ -92,10 +96,25 @@ class multiterm_visitor final : public filter_visitor {
   const sub_reader& segment_;
   const term_reader& reader_;
   limited_sample_collector<term_frequency>& collector_;
-  multiterm_query::states_t& states_;
+  States& states_;
   term_frequency key_;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
 };
+
+template<>
+inline multiterm_state& multiterm_visitor<multiterm_query::states_t>::get_state() {
+  // get state for current segment
+  return states_.insert(segment_);
+}
+
+template<>
+inline multiterm_state& multiterm_visitor<by_granular_range::states_t>::get_state() {
+  return states_.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(&segment_),
+    std::forward_as_tuple()
+  )->second; // create a new range state
+}
 
 NS_END
 
