@@ -47,13 +47,13 @@ struct filter_visitor {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_visitor_base
-/// @brief base filter visitor for multiterm queries
+/// @class multiterm_visitor
+/// @brief filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
 template<typename States>
-class multiterm_visitor_base : public filter_visitor {
+class multiterm_visitor final : public filter_visitor {
  public:
-  multiterm_visitor_base(
+  multiterm_visitor(
       const sub_reader& segment,
       const term_reader& reader,
       limited_sample_collector<term_frequency>& collector,
@@ -73,7 +73,7 @@ class multiterm_visitor_base : public filter_visitor {
     docs_count_ = meta ? &meta->docs_count : &no_docs_;
 
     // get state for current segment
-    auto& state = get_state();
+    auto& state = states_.insert(segment_);
     state.reader = &reader_;
 
     collector_.prepare(segment_, terms, state);
@@ -88,38 +88,14 @@ class multiterm_visitor_base : public filter_visitor {
     ++key_.offset;
   }
 
- protected:
-  virtual multiterm_state& get_state() = 0;
-
-  const sub_reader& segment_;
-  States& states_;
-
  private:
   const decltype(term_meta::docs_count) no_docs_ = 0;
+  const sub_reader& segment_;
   const term_reader& reader_;
   limited_sample_collector<term_frequency>& collector_;
+  States& states_;
   term_frequency key_;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_visitor
-/// @brief filter visitor for multiterm queries
-//////////////////////////////////////////////////////////////////////////////
-class multiterm_visitor final : public multiterm_visitor_base<multiterm_query::states_t> {
- public:
-  multiterm_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
-      limited_sample_collector<term_frequency>& collector,
-      multiterm_query::states_t& states)
-    : multiterm_visitor_base(segment, reader, collector, states) {}
-
- private:
-  virtual multiterm_state& get_state() override {
-    // get state for current segment
-    return states_.insert(segment_);
-  }
 };
 
 NS_END

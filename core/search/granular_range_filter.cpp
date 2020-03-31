@@ -50,8 +50,6 @@ NS_LOCAL
 // max_term (with e.g. N=3)-/                                                 
 //////////////////////////////////////////////////////////////////////////////
 
-typedef std::unordered_multimap<const irs::sub_reader*, irs::multiterm_state> granular_states_t;
-
 // return the granularity portion of the term
 irs::bytes_ref mask_granularity(const irs::bytes_ref& term, size_t prefix_size) {
   return term.size() > prefix_size
@@ -495,27 +493,18 @@ void visit(
   collect_terms_within(*terms, prefix_size, rng.min, rng.max, irs::BoundType::INCLUSIVE == rng.min_type, irs::BoundType::INCLUSIVE == rng.max_type, visitor);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class ranular_range_visitor
-/// @brief filter visitor for granular range queries
-//////////////////////////////////////////////////////////////////////////////
-class granular_range_visitor final : public irs::multiterm_visitor_base<granular_states_t> {
- public:
-  granular_range_visitor(
-      const irs::sub_reader& segment,
-      const irs::term_reader& reader,
-      irs::limited_sample_collector<irs::term_frequency>& collector,
-      granular_states_t& states)
-    : multiterm_visitor_base(segment, reader, collector, states) {}
+struct granular_states {
+  granular_states(size_t size) : states(size) {}
 
- private:
-  virtual irs::multiterm_state& get_state() override {
-    return states_.emplace(
+  irs::multiterm_state& insert(const irs::sub_reader& segment) {
+    return states.emplace(
       std::piecewise_construct,
-      std::forward_as_tuple(&segment_),
+      std::forward_as_tuple(&segment),
       std::forward_as_tuple()
     )->second; // create a new range state
   }
+
+  std::unordered_multimap<const irs::sub_reader*, irs::multiterm_state> states;
 };
 
 NS_END // NS_LOCAL
@@ -548,7 +537,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
   }
 
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  granular_states_t states(index.size());
+  granular_states states(index.size());
 
   // iterate over the segments
   for (const auto& segment: index) {
@@ -559,7 +548,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
       continue; // no such field in this reader
     }
 
-    granular_range_visitor mtv(segment, *reader, collector, states);
+    multiterm_visitor<granular_states> mtv(segment, *reader, collector, states);
 
     ::visit(*reader, rng, mtv);
   }
@@ -576,7 +565,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
   const sub_reader* previous_reader = nullptr;
 
   // build a set of regular range query states
-  for (auto& entry: states) {
+  for (auto& entry: states.states) {
     auto& reader = entry.first;
     auto& state = entry.second;
 

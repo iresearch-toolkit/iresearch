@@ -92,7 +92,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    multiterm_visitor mtv(segment, *reader, collector, states);
+    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
 
     ::visit(*reader, prefix, mtv);
   }
