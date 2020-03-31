@@ -1077,25 +1077,6 @@ class collectors_base {
     return collectors_[i].get();
   }
 
-  template<typename... Args>
-  void collect(Args&&... args) {
-    switch (collectors_.size()) {
-      case 0:
-        return;
-      case 1:
-        collectors_.front()->collect(std::forward<Args>(args)...);
-        return;
-      case 2:
-        collectors_.front()->collect(std::forward<Args>(args)...);
-        collectors_.back()->collect(std::forward<Args>(args)...);
-        return;
-      default:
-        for (auto& collector : collectors_) {
-          collector->collect(std::forward<Args>(args)...);
-        }
-    }
-  }
-
  protected:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<Collector> collectors_;
@@ -1110,6 +1091,16 @@ class IRESEARCH_API field_collectors : public collectors_base<sort::field_collec
   field_collectors& operator=(field_collectors&& rhs) = default;
 
   //////////////////////////////////////////////////////////////////////////
+  /// @brief collect field related statistics, i.e. field used in the filter
+  /// @param segment the segment being processed (e.g. for columnstore)
+  /// @param field the field matched by the filter in the 'segment'
+  /// @note called once for every field matched by a filter per each segment
+  /// @note always called on each matched 'field' irrespective of if it
+  ///       contains a matching 'term'
+  //////////////////////////////////////////////////////////////////////////
+  void collect(const sub_reader& segment, const term_reader& field) const;
+
+  //////////////////////////////////////////////////////////////////////////
   /// @brief store collected index statistics into 'stats' of the
   ///        current 'filter'
   /// @param stats out-parameter to store statistics for later use in
@@ -1122,11 +1113,24 @@ class IRESEARCH_API field_collectors : public collectors_base<sort::field_collec
   void finish(byte_type* stats_buf, const index_reader& index) const;
 };
 
-class IRESEARCH_API term_collectors : collectors_base<sort::term_collector::ptr> {
+class IRESEARCH_API term_collectors : public collectors_base<sort::term_collector::ptr> {
  public:
   term_collectors(const order::prepared& buckets, size_t size);
   term_collectors(term_collectors&& rhs) = default;
   term_collectors& operator=(term_collectors&& rhs) = default;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief collect term related statistics, i.e. term used in the filter
+  /// @param segment the segment being processed (e.g. for columnstore)
+  /// @param field the field matched by the filter in the 'segment'
+  /// @param term_offset offset of term, value < constructor 'terms_count'
+  /// @param term_attributes the attributes of the matched term in the field
+  /// @note called once for every term matched by a filter in the 'field'
+  ///       per each segment
+  /// @note only called on a matched 'term' in the 'field' in the 'segment'
+  //////////////////////////////////////////////////////////////////////////
+  void collect(const sub_reader& segment, const term_reader& field,
+               size_t term_idx, const attribute_view& attrs) const;
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief store collected index statistics into 'stats' of the

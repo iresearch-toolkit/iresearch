@@ -105,7 +105,10 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       term_query::visit(reader, term, fv);
     },
     [&reader, &term, &fv](const parametric_description& d) {
-      automaton_visit(reader, make_levenshtein_automaton(d, term), fv);
+      const auto acceptor = make_levenshtein_automaton(d, term);
+      auto matcher = make_automaton_matcher(acceptor);
+
+      automaton_visit(reader, matcher, fv);
     }
   );
 }

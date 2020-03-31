@@ -271,12 +271,35 @@ field_collectors::field_collectors(const order::prepared& buckets)
   : collectors_base<sort::field_collector::ptr>(buckets.size(), buckets) {
   auto begin = collectors_.begin();
   for (auto& bucket : buckets) {
+    // FIXME
+    // in case of entry.bucket->prepare_field_collector() returned nullptr,
+    // put dummy obj to avoid null checks in collect
+
     *begin = bucket.bucket->prepare_field_collector();
     ++begin;
   }
   assert(begin == collectors_.end());
 }
 
+
+void field_collectors::collect(const sub_reader& segment,
+                               const term_reader& field) const {
+  switch (collectors_.size()) {
+    case 0:
+      return;
+    case 1:
+      collectors_.front()->collect(segment, field);
+      return;
+    case 2:
+      collectors_.front()->collect(segment, field);
+      collectors_.back()->collect(segment, field);
+      return;
+    default:
+      for (auto& collector : collectors_) {
+        collector->collect(segment, field);
+      }
+  }
+}
 
 void field_collectors::finish(byte_type* stats_buf, const index_reader& index) const {
   // special case where term statistics collection is not applicable
@@ -296,7 +319,6 @@ void field_collectors::finish(byte_type* stats_buf, const index_reader& index) c
   }
 }
 
-
 term_collectors::term_collectors(const order::prepared& buckets, size_t size)
   : collectors_base<sort::term_collector::ptr>(buckets.size()*size, buckets) {
   // add term collectors from each bucket
@@ -305,6 +327,11 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
   for (size_t i = 0; i < size; ++i) {
     for (auto& entry: buckets) {
       assert(entry.bucket); // ensured by order::prepare
+
+      // FIXME
+      // in case of entry.bucket->prepare_term_collector() returned nullptr,
+      // put dummy obj to avoid null checks in collect
+
       *begin = entry.bucket->prepare_term_collector();
       ++begin;
     }
@@ -312,6 +339,43 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
   assert(begin == collectors_.end());
 }
 
+
+void term_collectors::collect(
+    const sub_reader& segment, const term_reader& field,
+    size_t term_idx, const attribute_view& attrs) const {
+  // collector may be null if prepare_term_collector() returned nullptr
+
+  switch (collectors_.size()) {
+    case 0:
+      return;
+    case 1: {
+      auto* collector = collectors_[term_idx].get();
+      if (collector) collector->collect(segment, field, attrs);
+      return;
+    }
+    case 2: {
+      auto* collector0 = collectors_[term_idx].get();
+      if (collector0) collector0->collect(segment, field, attrs);
+      auto* collector1 = collectors_[term_idx + 1].get();
+      if (collector1) collector1->collect(segment, field, attrs);
+      return;
+    }
+    default: {
+      const size_t count = buckets_->size();
+      const size_t term_offset_count = term_idx * count;
+      for (size_t i = 0; i < count; ++i) {
+        const auto idx = term_offset_count + i;
+        assert(idx < collectors_.size()); // enforced by allocation in the constructor
+        auto* collector = collectors_[idx].get();
+
+        if (collector) { // may be null if prepare_term_collector() returned nullptr
+          collector->collect(segment, field, attrs);
+        }
+      }
+      return;
+    }
+  }
+}
 
 void term_collectors::finish(byte_type* stats_buf,
                              const field_collectors& field_collectors,

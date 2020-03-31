@@ -115,7 +115,10 @@ inline void term_query_visit(const term_reader& reader,
 inline void automaton_visit(const term_reader& reader,
                             const bytes_ref& term,
                             filter_visitor& fv) {
-  automaton_visit(reader, from_wildcard(term), fv);
+  const auto acceptor = from_wildcard(term);
+  auto matcher = make_automaton_matcher(acceptor);
+
+  automaton_visit(reader, matcher, fv);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,7 +151,9 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
       res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
-      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit, index, order, boost);}
+      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
+                                     index, order, boost);
+    }
   );
   return res;
 }
