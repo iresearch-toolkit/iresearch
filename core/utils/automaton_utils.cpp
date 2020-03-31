@@ -353,7 +353,7 @@ filter::prepared::ptr prepare_automaton_filter(
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
+    multiterm_visitor mtv(segment, *reader, collector, states);
 
     automaton_visit_with_matcher(*reader, matcher, mtv);
   }

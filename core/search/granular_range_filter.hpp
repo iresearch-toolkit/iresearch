@@ -44,7 +44,6 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_granular_range: public filter {
  public:
-  typedef std::unordered_multimap<const irs::sub_reader*, irs::multiterm_state> states_t;
   // granularity levels and terms
   typedef bytes_ref::char_type granularity_level_t;
   typedef std::map<granularity_level_t, bstring> terms_t;

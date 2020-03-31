@@ -162,7 +162,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
+    multiterm_visitor mtv(segment, *reader, collector, states);
 
     ::visit(*reader, rng, mtv);
   }
