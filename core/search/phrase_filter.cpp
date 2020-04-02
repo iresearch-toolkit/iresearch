@@ -68,36 +68,35 @@ NS_ROOT
 /// @class phrase_term_visitor
 /// @brief filter visitor for phrase queries
 //////////////////////////////////////////////////////////////////////////////
-class phrase_term_visitor final : public filter_visitor {
+class phrase_term_visitor final : public filter_visitor,
+                                  private util::noncopyable {
  public:
   phrase_term_visitor(
       const sub_reader& segment,
       const term_reader& reader,
-      terms_states_t& phrase_terms,
-      term_collectors* collectors = nullptr)
+      terms_states_t& phrase_terms) noexcept
     : segment_(segment),
       reader_(reader),
-      phrase_terms_(&phrase_terms),
-      collectors_(collectors) {
+      phrase_terms_(phrase_terms) {
   }
 
   virtual void prepare(const seek_term_iterator& terms) noexcept override {
     terms_ = &terms;
+    attrs_ = &terms.attributes();
     found_ = true;
   }
 
   virtual void visit() override {
-    assert(terms_);
-    if (variadic_) {
-      auto term_offset = collectors_->push_back();
-      collectors_->collect(segment_, reader_, term_offset, terms_->attributes()); // collect statistics
-    } else {
-      collectors_->collect(segment_, reader_, term_offset_, terms_->attributes()); // collect statistics
+    assert(terms_ && attrs_ && collectors_);
+
+    if (stats_size_ <= term_offset_) {
+      collectors_->push_back();
+      ++stats_size_;
+      assert((stats_size_ - 1) == term_offset_);
     }
 
-    // estimate phrase & term
-    assert(phrase_terms_);
-    phrase_terms_->emplace_back(terms_->cookie());
+    collectors_->collect(segment_, reader_, term_offset_++, *attrs_);
+    phrase_terms_.emplace_back(terms_->cookie());
   }
 
   void reset() noexcept {
@@ -105,29 +104,25 @@ class phrase_term_visitor final : public filter_visitor {
     terms_ = nullptr;
   }
 
-  void reset(size_t term_offset) noexcept {
+  void reset(term_collectors& collectors) noexcept {
     reset();
-    term_offset_ = term_offset;
-  }
-
-  void reset(term_collectors& collectors,
-             size_t term_offset) noexcept {
-    reset(term_offset);
+    term_offset_ = 0;
     collectors_ = &collectors;
+    stats_size_ = collectors.size();
   }
 
   bool found() const noexcept { return found_; }
 
-  bool variadic_ = false;
-
  private:
-  bool found_ = false;
   size_t term_offset_ = 0;
+  size_t stats_size_ = 0;
   const sub_reader& segment_;
   const term_reader& reader_;
-  terms_states_t* phrase_terms_;
+  terms_states_t& phrase_terms_;
   term_collectors* collectors_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;
+  const attribute_view* attrs_ = nullptr;
+  bool found_ = false;
 };
 
 NS_END
@@ -674,16 +669,14 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     field_stats.collect(segment, *reader); // collect field statistics once per segment
-    //collectors.collect(segment, *reader); // collect field statistics once per segment
 
-    size_t term_offset = 0;
     auto is_ord_empty = ord.empty();
 
-    phrase_term_visitor ptv(segment, *reader, phrase_terms, &term_stats);
+    phrase_term_visitor ptv(segment, *reader, phrase_terms);
+    ptv.reset(term_stats);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      ptv.reset(term_offset);
       term_query::visit(*reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
@@ -692,7 +685,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
         // continue here because we should collect
         // stats for other terms in phrase
       }
-      ++term_offset;
     }
 
     // we have not found all needed terms
@@ -743,7 +735,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   // stats collectors
   field_collectors field_stats(ord);
 
-  // FIXME
   std::vector<term_collectors> phrase_part_stats;
   phrase_part_stats.reserve(phrase_size);
   for (size_t i = 0; i < phrase_size; ++i) {
@@ -777,15 +768,15 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
     field_stats.collect(segment, *reader); // collect field statistics once per segment
 
-    size_t term_offset = 0;
+    size_t part_offset = 0;
     size_t found_words_count = 0;
 
     phrase_term_visitor ptv(segment, *reader, phrase_terms);
-    ptv.variadic_ = true; // FIXME
 
     for (const auto& word : phrase_) {
       const auto terms_count = phrase_terms.size();
-      ptv.reset(phrase_part_stats[term_offset], term_offset);
+
+      ptv.reset(phrase_part_stats[part_offset]);
       if (!word.second.collect(*reader, ptv)) {
         if (is_ord_empty) {
           break;
@@ -795,8 +786,10 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       } else {
         ++found_words_count;
       }
-      num_terms[term_offset] = phrase_terms.size() - terms_count;
-      ++term_offset;
+
+      // number of terms per phrase part
+      num_terms[part_offset] = phrase_terms.size() - terms_count;
+      ++part_offset;
     }
 
     // we have not found all needed terms

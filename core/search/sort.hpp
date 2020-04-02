@@ -1076,10 +1076,6 @@ class collectors_base {
     return collectors_.empty();
   }
 
-  size_t size() const noexcept {
-    return collectors_.size();
-  }
-
   void reset() {
     for (auto& collector : collectors_) {
       collector->reset();
@@ -1108,6 +1104,10 @@ class IRESEARCH_API field_collectors : public collectors_base<sort::field_collec
   explicit field_collectors(const order::prepared& buckets);
   field_collectors(field_collectors&& rhs) = default;
   field_collectors& operator=(field_collectors&& rhs) = default;
+
+  size_t size() const noexcept {
+    return collectors_.size();
+  }
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief collect field related statistics, i.e. field used in the filter
@@ -1143,6 +1143,10 @@ class IRESEARCH_API term_collectors : public collectors_base<sort::term_collecto
   term_collectors(const order::prepared& buckets, size_t size);
   term_collectors(term_collectors&& rhs) = default;
   term_collectors& operator=(term_collectors&& rhs) = default;
+
+  size_t size() const noexcept {
+    return buckets_->size() ? collectors_.size() / buckets_->size() : 0;
+  }
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief add collectors for another term
