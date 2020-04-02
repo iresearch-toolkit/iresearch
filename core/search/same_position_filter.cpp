@@ -264,7 +264,8 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<fixed_terms_collectors> term_stats;
+  field_collectors field_stats(ord);
+  std::vector<term_collectors> term_stats;
   term_stats.reserve(terms_.size());
 
   for(auto size = terms_.size(); size; --size) {
@@ -288,7 +289,7 @@ filter::prepared::ptr by_same_position::prepare(
         continue;
       }
 
-      term_itr->collect(segment, *field); // collect field statistics once per segment
+      field_stats.collect(segment, *field); // collect field statistics once per segment
 
       // find terms
       seek_term_iterator::ptr term = field->iterator();
@@ -336,7 +337,7 @@ filter::prepared::ptr by_same_position::prepare(
     auto* stats_buf = const_cast<byte_type*>(stat_itr->data());
 
     ord.prepare_stats(stats_buf);
-    term_itr->finish(stats_buf, index);
+    term_itr->finish(stats_buf, field_stats, index);
     ++stat_itr;
     ++term_itr;
   }

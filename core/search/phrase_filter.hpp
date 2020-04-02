@@ -32,28 +32,7 @@
 
 NS_ROOT
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class phrase_state
-/// @brief cached per reader phrase state
-//////////////////////////////////////////////////////////////////////////////
-template<template<typename...> class T>
-struct phrase_state {
-  typedef seek_term_iterator::cookie_ptr term_state_t;
-  typedef T<term_state_t> terms_states_t;
-
-  phrase_state() = default;
-
-  phrase_state(phrase_state&& rhs) noexcept
-    : terms(std::move(rhs.terms)),
-      reader(rhs.reader) {
-    rhs.reader = nullptr;
-  }
-
-  phrase_state& operator=(const phrase_state&) = delete;
-
-  terms_states_t terms;
-  const term_reader* reader{};
-}; // phrase_state
+class phrase_term_visitor;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_phrase
@@ -181,73 +160,7 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const phrase_part& other) const noexcept;
 
-    //////////////////////////////////////////////////////////////////////////////
-    /// @class phrase_term_visitor
-    /// @brief filter visitor for phrase queries
-    //////////////////////////////////////////////////////////////////////////////
-    template<typename Collectors>
-    class phrase_term_visitor final : public filter_visitor {
-     public:
-      phrase_term_visitor(
-        const sub_reader& segment,
-        const term_reader& reader,
-        const Collectors& collectors
-      ) : segment_(segment), reader_(reader), collectors_(collectors) {}
-
-      phrase_term_visitor(
-        const sub_reader& segment,
-        const term_reader& reader,
-        const Collectors& collectors,
-        phrase_state<FixedContainer>::terms_states_t& phrase_terms
-      ) : phrase_term_visitor(segment, reader, collectors) {
-        phrase_terms_ = &phrase_terms;
-      }
-
-      virtual void prepare(const seek_term_iterator& terms) noexcept override {
-        terms_ = &terms;
-        found_ = true;
-      }
-
-      virtual void visit() override {
-        assert(terms_);
-        collectors_.collect(segment_, reader_, term_offset_, terms_->attributes()); // collect statistics
-
-        // estimate phrase & term
-        assert(phrase_terms_);
-        phrase_terms_->emplace_back(terms_->cookie());
-      }
-
-      void reset() noexcept {
-        found_ = false;
-        terms_ = nullptr;
-      }
-
-      void reset(size_t term_offset) noexcept {
-        reset();
-        term_offset_ = term_offset;
-      }
-
-      void reset(phrase_state<FixedContainer>::terms_states_t& phrase_terms, size_t term_offset) noexcept {
-        reset(term_offset);
-        phrase_terms_ = &phrase_terms;
-      }
-
-      bool found() const noexcept { return found_; }
-
-     private:
-      bool found_ = false;
-      size_t term_offset_ = 0;
-      const sub_reader& segment_;
-      const term_reader& reader_;
-      const Collectors& collectors_;
-      phrase_state<FixedContainer>::terms_states_t* phrase_terms_ = nullptr;
-      const seek_term_iterator* terms_ = nullptr;
-    };
-
-    static bool variadic_type_collect(
-      const term_reader& reader,
-      const phrase_part& phr_part,
-      phrase_term_visitor<variadic_terms_collectors>& ptv);
+    bool collect(const term_reader& reader, phrase_term_visitor& visitor) const;
 
    private:
     void allocate(const phrase_part& other);
@@ -294,10 +207,18 @@ class IRESEARCH_API by_phrase : public filter {
 
   template<typename PhrasePart>
   const PhrasePart* get(size_t pos) const noexcept {
-    const auto& inf = phrase_.at(pos);
+    const auto it = phrase_.find(pos);
+
+    if (it == phrase_.end()) {
+      return nullptr;
+    }
+
+    const auto& inf = it->second;
+
     if (inf.type != PhrasePart::type) {
       return nullptr;
     }
+
     return reinterpret_cast<const PhrasePart*>(&inf.st);
   }
 
@@ -330,14 +251,12 @@ class IRESEARCH_API by_phrase : public filter {
   filter::prepared::ptr fixed_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost,
-    fixed_terms_collectors collectors) const;
+    boost_t boost) const;
 
   filter::prepared::ptr variadic_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost,
-    variadic_terms_collectors collectors) const;
+    boost_t boost) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;

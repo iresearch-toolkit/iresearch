@@ -495,7 +495,8 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.terms.reserve(ngrams_.size());
 
   // prepare ngrams stats
-  fixed_terms_collectors collectors(ord, ngrams_.size());
+  field_collectors field_stats(ord);
+  term_collectors term_stats(ord, ngrams_.size());
 
   for (const auto& segment : rdr) {
     // get term dictionary for field
@@ -510,7 +511,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     }
 
     term_states.field = field;
-    collectors.collect(segment, *field); // collect field statistics once per segment
+    field_stats.collect(segment, *field); // collect field statistics once per segment
     size_t term_itr = 0;
     size_t count_terms = 0;
     for (const auto& ngram : ngrams_) {
@@ -522,7 +523,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       auto& state = term_states.terms.back();
       if (term->seek(ngram)) {
         term->read(); // read term attributes
-        collectors.collect(segment, *field, term_itr, term->attributes()); // collect statistics
+        term_stats.collect(segment, *field, term_itr, term->attributes()); // collect statistics
         state = term->cookie();
         ++count_terms;
       }
@@ -544,7 +545,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, rdr);
+  term_stats.finish(stats_buf, field_stats, rdr);
 
   return memory::make_shared<ngram_similarity_query>(
       min_match_count,

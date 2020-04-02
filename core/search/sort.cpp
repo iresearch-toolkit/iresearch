@@ -30,6 +30,17 @@
 
 NS_ROOT
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      filter_boost
+// -----------------------------------------------------------------------------
+
+filter_boost::filter_boost() noexcept
+  : basic_attribute<boost_t>(1.f) {
+}
+
+REGISTER_ATTRIBUTE(filter_boost);
+DEFINE_ATTRIBUTE_TYPE(filter_boost);
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
@@ -344,16 +355,19 @@ void term_collectors::collect(
     const sub_reader& segment, const term_reader& field,
     size_t term_idx, const attribute_view& attrs) const {
   // collector may be null if prepare_term_collector() returned nullptr
+  const size_t count = buckets_->size();
 
-  switch (collectors_.size()) {
+  switch (count) {
     case 0:
       return;
     case 1: {
+      assert(term_idx < collectors_.size());
       auto* collector = collectors_[term_idx].get();
       if (collector) collector->collect(segment, field, attrs);
       return;
     }
     case 2: {
+      assert(term_idx + 1 < collectors_.size());
       auto* collector0 = collectors_[term_idx].get();
       if (collector0) collector0->collect(segment, field, attrs);
       auto* collector1 = collectors_[term_idx + 1].get();
@@ -361,7 +375,6 @@ void term_collectors::collect(
       return;
     }
     default: {
-      const size_t count = buckets_->size();
       const size_t term_offset_count = term_idx * count;
       for (size_t i = 0; i < count; ++i) {
         const auto idx = term_offset_count + i;
@@ -373,6 +386,39 @@ void term_collectors::collect(
         }
       }
       return;
+    }
+  }
+}
+
+
+size_t term_collectors::push_back() {
+  const size_t size = buckets_->size();
+
+  switch (size) {
+    case 0:
+      return 0;
+    case 1: {
+      const auto term_offset = collectors_.size();
+      assert((*buckets_)[0].bucket); // ensured by order::prepare
+      collectors_.emplace_back((*buckets_)[0].bucket->prepare_term_collector());
+      return term_offset;
+    }
+    case 2: {
+      const auto term_offset = collectors_.size() / 2;
+      assert((*buckets_)[0].bucket); // ensured by order::prepare
+      collectors_.emplace_back((*buckets_)[0].bucket->prepare_term_collector());
+      assert((*buckets_)[1].bucket); // ensured by order::prepare
+      collectors_.emplace_back((*buckets_)[1].bucket->prepare_term_collector());
+      return term_offset;
+    }
+    default: {
+      const auto term_offset = collectors_.size() / size;
+      collectors_.reserve(collectors_.size() + size);
+      for (auto& entry: (*buckets_)) {
+        assert(entry.bucket); // ensured by order::prepare
+        collectors_.emplace_back(entry.bucket->prepare_term_collector());
+      }
+      return term_offset;
     }
   }
 }
@@ -398,221 +444,4 @@ void term_collectors::finish(byte_type* stats_buf,
   }
 }
 
-template<template<typename...> class T>
-collectors<T>::collectors(const order::prepared& buckets)
-  : buckets_(buckets) {
-  field_collectors_.reserve(buckets_.size());
-
-  // add field collectors from each bucket
-  for (auto& entry: buckets_) {
-    assert(entry.bucket); // ensured by order::prepare
-    field_collectors_.emplace_back(entry.bucket->prepare_field_collector());
-  }
-}
-
-template<template<typename...> class T>
-collectors<T>::collectors(collectors<T>&& other) noexcept
-  : buckets_(other.buckets_),
-    field_collectors_(std::move(other.field_collectors_)),
-    term_collectors_(std::move(other.term_collectors_)) {
-}
-
-template<template<typename...> class T>
-void collectors<T>::collect(
-    const sub_reader& segment,
-    const term_reader& field) const {
-  for (auto& entry: field_collectors_) {
-    if (entry) { // may be null if prepare_field_collector() returned nullptr
-      entry->collect(segment, field);
-    }
-  }
-}
-
-template<template<typename...> class T>
-void collectors<T>::empty_finish(
-    byte_type* stats_buf,
-    const index_reader& index) const {
-  // special case where term statistics collection is not applicable
-  // e.g. by_column_existence filter
-  assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
-
-  for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
-    auto& sort = buckets_[i];
-    assert(sort.bucket); // ensured by order::prepare
-
-    sort.bucket->collect(
-      stats_buf + sort.stats_offset, // where stats for bucket start
-      index,
-      field_collectors_[i].get(),
-      nullptr
-    );
-  }
-}
-
-template class collectors<FixedContainer>;
-template class collectors<VariadicContainer>;
-
-fixed_terms_collectors::fixed_terms_collectors(
-    const order::prepared& buckets,
-    size_t terms_count)
-  : collectors<FixedContainer>(buckets) {
-  term_collectors_.reserve(buckets_.size() * terms_count);
-
-  // add term collectors from each bucket
-  // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-  for (size_t i = 0; i < terms_count; ++i) {
-    for (auto& entry: buckets_) {
-      assert(entry.bucket); // ensured by order::prepare
-      term_collectors_.emplace_back(entry.bucket->prepare_term_collector());
-    }
-  }
-}
-
-fixed_terms_collectors::fixed_terms_collectors(fixed_terms_collectors&& other) noexcept
-  : collectors<FixedContainer>(std::move(other)) {
-}
-
-void fixed_terms_collectors::collect(
-    const sub_reader& segment,
-    const term_reader& field,
-    size_t term_offset,
-    const attribute_view& term_attrs) const {
-  size_t count = buckets_.size();
-  size_t term_offset_count = term_offset * count;
-  for (size_t i = 0; i < count; ++i) {
-    const auto idx = term_offset_count + i;
-    assert(idx < term_collectors_.size()); // enforced by allocation in the constructor
-    auto& entry = term_collectors_[idx];
-
-    if (entry) { // may be null if prepare_term_collector() returned nullptr
-      entry->collect(segment, field, term_attrs);
-    }
-  }
-}
-
-void fixed_terms_collectors::finish(
-    byte_type* stats_buf,
-    const index_reader& index) const {
-  // special case where term statistics collection is not applicable
-  // e.g. by_column_existence filter
-  if (term_collectors_.empty()) {
-    empty_finish(stats_buf, index);
-  } else {
-    auto bucket_count = buckets_.size();
-    assert(term_collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
-
-    for (size_t i = 0, count = term_collectors_.size(); i < count; ++i) {
-      auto bucket_offset = i % bucket_count;
-      auto& sort = buckets_[bucket_offset];
-      assert(sort.bucket); // ensured by order::prepare
-
-      assert(i % bucket_count < field_collectors_.size()); // enforced by allocation in the constructor
-      sort.bucket->collect(
-        stats_buf + sort.stats_offset, // where stats for bucket start
-        index,
-        field_collectors_[bucket_offset].get(),
-        term_collectors_[i].get()
-      );
-    }
-  }
-}
-
-size_t fixed_terms_collectors::push_back1() {
-  auto term_offset = term_collectors_.size() / buckets_.size();
-
-  term_collectors_.reserve(term_collectors_.size() + buckets_.size());
-
-  for (auto& entry: buckets_) {
-    assert(entry.bucket); // ensured by order::prepare
-    term_collectors_.emplace_back(entry.bucket->prepare_term_collector());
-  }
-
-  return term_offset;
-}
-
-variadic_terms_collectors::variadic_terms_collectors(
-    const order::prepared& buckets,
-    size_t terms_count)
-  : collectors<VariadicContainer>(buckets) {
-  term_collectors_.resize(buckets_.size());
-
-  // reserve minimal term collectors count
-  for (auto& tc : term_collectors_) {
-    tc.reserve(terms_count);
-  }
-}
-
-variadic_terms_collectors::variadic_terms_collectors(variadic_terms_collectors&& other) noexcept
-  : collectors<VariadicContainer>(std::move(other)) {
-}
-
-void variadic_terms_collectors::collect(
-    const sub_reader& segment,
-    const term_reader& field,
-    size_t /*term_offset*/,
-    const attribute_view& term_attrs) const {
-  for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
-    auto& entry = buckets_[i];
-    assert(entry.bucket); // ensured by order::prepare
-    auto& tc = term_collectors_[i];
-    tc.emplace_back(entry.bucket->prepare_term_collector());
-    auto& e = tc.back();
-
-    if (e) { // may be null if prepare_term_collector() returned nullptr
-      e->collect(segment, field, term_attrs);
-    }
-  }
-}
-
-void variadic_terms_collectors::finish(
-    byte_type* stats_buf,
-    const index_reader& index) const {
-  // special case where term statistics collection is not applicable
-  // e.g. by_column_existence filter
-  if (term_collectors_.empty()) {
-    empty_finish(stats_buf, index);
-  } else {
-    auto count = term_collectors_.size();
-    assert(count == buckets_.size());
-
-    for (size_t i = 0; i < count; ++i) {
-      const auto& sort = buckets_[i];
-      assert(sort.bucket); // ensured by order::prepare
-
-      assert(i < field_collectors_.size());
-      const auto& tc = term_collectors_[i];
-      const auto* fc = field_collectors_[i].get();
-      for (size_t j = 0, tc_count = tc.size(); j < tc_count; ++j) {
-        sort.bucket->collect(
-          stats_buf + sort.stats_offset, // where stats for bucket start
-          index,
-          fc,
-          tc[j].get()
-        );
-      }
-    }
-  }
-}
-
-size_t variadic_terms_collectors::push_back() {
-  assert(false); // unsupported
-
-  return 0;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      filter boost
-// -----------------------------------------------------------------------------
-
-filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(1.f) {
-}
-
-REGISTER_ATTRIBUTE(filter_boost);
-DEFINE_ATTRIBUTE_TYPE(filter_boost);
-
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

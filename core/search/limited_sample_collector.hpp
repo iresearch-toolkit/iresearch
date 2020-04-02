@@ -269,7 +269,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       auto& stats_entry = res.first->second;
 
       // collect statistics, 0 because only 1 term
-      stats_entry.collectors.collect(*scored_state.segment, field, 0, term_itr->attributes());
+      stats_entry.term_stats.collect(*scored_state.segment, field, 0, term_itr->attributes());
 
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),
@@ -288,7 +288,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
 
       order.prepare_stats(stats_buf);
-      entry.second.collectors.finish(stats_buf, index);
+      entry.second.term_stats.finish(stats_buf, entry.second.field_stats, index);
     }
   }
 
@@ -299,17 +299,20 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
         const irs::term_reader& field,
         const irs::order::prepared& order,
         uint32_t& state_offset)
-      : collectors(order, 1) { // 1 term per bstring because a range is treated as a disjunction
+      : field_stats(order),
+        term_stats(order, 1) { // 1 term per bstring because a range is treated as a disjunction
 
       // once per every 'state' collect field statistics over the entire index
       for (auto& segment: index) {
-        collectors.collect(segment, field); // collect field statistics once per segment
+        // FIXME
+        field_stats.collect(segment, field); // collect field statistics once per segment
       }
 
       stats_offset = state_offset++;
     }
 
-    fixed_terms_collectors collectors;
+    field_collectors field_stats;
+    term_collectors term_stats;
     uint32_t stats_offset;
   };
 
