@@ -202,7 +202,3 @@ TEST(index_meta_tests, last_generation) {
   ASSERT_TRUE(index_exists);
   EXPECT_EQ(expected_seg_file, last_seg_file);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

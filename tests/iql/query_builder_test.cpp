@@ -1321,7 +1321,3 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(0, query.error->find("order conversion error, node: @9\n'b'('c'()@8)@9 ASC"));
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
