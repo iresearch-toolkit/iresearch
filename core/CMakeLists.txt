@@ -908,6 +908,146 @@ if(MSVC)
   )
 endif()
 
+if (USE_S2)
+
+################################################################################
+### analysis plugin : geo
+################################################################################
+
+message(${S2_INCLUDE_DIR})
+
+add_library(${IResearch_TARGET_NAME}-analyzer-geo-shared
+  SHARED
+  ./analysis/geo_token_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-geo-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-geo-static
+  STATIC
+  ./analysis/geo_token_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-geo-static)
+
+# setup CRT
+if(MSVC)
+  add_library(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt
+    SHARED
+    ./analysis/geo_token_stream.cpp
+  )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt)
+
+  add_library(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt
+    STATIC
+    ./analysis/geo_token_stream.cpp
+  )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt)
+endif()
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-geo-shared
+  PRIVATE ${S2_INCLUDE_DIR}
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-geo-static
+  PRIVATE ${S2_INCLUDE_DIR}
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt
+    PRIVATE ${S2_INCLUDE_DIR}
+  )
+
+  target_include_directories(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt
+    PRIVATE ${S2_INCLUDE_DIR}
+  )
+endif()
+
+# setup CRT
+if(MSVC)
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-geo-shared
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-geo-static
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+endif()
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-geo-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-geo
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-geo-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-geo-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+# setup CRT
+if(MSVC)
+  set_target_properties(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME analyzer-geo-scrt
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+    CXX_VISIBILITY_PRESET hidden
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME analyzer-geo-scrt-s
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+endif()
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-geo-shared
+  ${IResearch_TARGET_NAME}-shared
+  s2
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-geo-static
+  ${IResearch_TARGET_NAME}-static
+  s2
+)
+
+# setup CRT
+if(MSVC)
+  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-geo-shared-scrt
+    ${IResearch_TARGET_NAME}-shared-scrt
+    s2
+  )
+
+  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-geo-static-scrt
+    ${IResearch_TARGET_NAME}-static-scrt
+    s2
+  )
+endif()
+
+endif()
+
 ################################################################################
 ### analysis plugin : text
 ################################################################################

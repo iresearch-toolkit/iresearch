@@ -74,6 +74,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
+option(USE_S2 "Use GEO functionality based on Google S2 library" OFF)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -250,8 +251,8 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
 
-add_subdirectory(core)
 add_subdirectory(external)
+add_subdirectory(core)
 add_subdirectory(utils)
 
 if (USE_PYRESEARCH)
