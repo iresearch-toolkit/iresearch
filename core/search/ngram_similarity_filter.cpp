@@ -20,10 +20,12 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/functional/hash.hpp>
+
 #include "ngram_similarity_filter.hpp"
 #include "min_match_disjunction.hpp"
+#include "collectors.hpp"
 #include "disjunction.hpp"
-#include <boost/functional/hash.hpp>
 #include "shared.hpp"
 #include "cost.hpp"
 #include "analysis/token_attributes.hpp"
@@ -31,7 +33,6 @@
 #include "index/field_meta.hpp"
 #include "utils/misc.hpp"
 #include "utils/map_utils.hpp"
-
 
 NS_LOCAL
 

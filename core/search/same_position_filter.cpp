@@ -26,6 +26,7 @@
 
 #include "shared.hpp"
 #include "term_query.hpp"
+#include "collectors.hpp"
 #include "conjunction.hpp"
 #include "index/field_meta.hpp"
 #include "analysis/token_attributes.hpp"

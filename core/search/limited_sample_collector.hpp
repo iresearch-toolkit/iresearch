@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 #include "cost.hpp"
-#include "sort.hpp"
+#include "collectors.hpp"
 #include "index/iterators.hpp"
 #include "utils/string.hpp"
 #include "utils/bitset.hpp"

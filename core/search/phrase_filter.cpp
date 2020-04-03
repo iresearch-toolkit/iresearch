@@ -90,9 +90,10 @@ class phrase_term_visitor final : public filter_visitor,
     assert(terms_ && attrs_ && collectors_);
 
     if (stats_size_ <= term_offset_) {
+      // variadic phrase case
       collectors_->push_back();
+      assert(stats_size_ == term_offset_);
       ++stats_size_;
-      assert((stats_size_ - 1) == term_offset_);
     }
 
     collectors_->collect(segment_, reader_, term_offset_++, *attrs_);
