@@ -34,11 +34,12 @@ NS_ROOT
 /// @class collector_wrapper
 /// @brief a convinience base class for collector wrappers
 ////////////////////////////////////////////////////////////////////////////
-template<typename Collector>
+template<typename Wrapper, typename Collector>
 class collector_wrapper {
  public:
-  using element_type = typename Collector::ptr::element_type;
-  using pointer = typename Collector::ptr::pointer;
+  using collector_ptr = typename Collector::ptr;
+  using element_type = typename collector_ptr::element_type;
+  using pointer = typename collector_ptr::pointer;
 
   pointer get() const noexcept { return collector_.get(); }
   pointer operator->() const noexcept { return get(); }
@@ -46,14 +47,56 @@ class collector_wrapper {
   explicit operator bool() const noexcept { return static_cast<bool>(collector_); }
 
  protected:
+  collector_wrapper() noexcept
+    : collector_(&Wrapper::noop()) {
+  }
+
+  ~collector_wrapper() {
+    reset(nullptr);
+  }
+
   explicit collector_wrapper(pointer collector) noexcept
-    : collector_(collector) {
+    : collector_(!collector ? &Wrapper::noop() : collector) {
     assert(collector_);
   }
-  collector_wrapper(collector_wrapper&&) = default;
-  collector_wrapper& operator=(collector_wrapper&&) = default;
 
-  typename Collector::ptr collector_;
+  collector_wrapper(collector_wrapper&& rhs) noexcept
+    : collector_(std::move(rhs.collector_)) {
+    rhs.collector_.reset(&Wrapper::noop());
+    assert(collector_);
+  }
+
+  collector_wrapper& operator=(pointer collector) noexcept {
+    if (!collector) {
+      collector = &Wrapper::noop();
+    }
+
+    if (collector_.get() != collector) {
+      reset(collector);
+    }
+
+    assert(collector_);
+    return *this;
+  }
+
+  collector_wrapper& operator=(collector_wrapper&& rhs) noexcept {
+    if (this != &rhs) {
+      reset(rhs.collector_.release());
+      rhs.collector_.reset(&Wrapper::noop());
+    }
+    assert(collector_);
+    return *this;
+  }
+
+ private:
+  void reset(pointer collector) noexcept {
+    if (collector_.get() == &Wrapper::noop()) {
+      collector_.release();
+    }
+    collector_.reset(collector);
+  }
+
+  collector_ptr collector_;
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -105,21 +148,25 @@ class collectors_base {
 ////////////////////////////////////////////////////////////////////////////
 /// @class field_collector_wrapper
 /// @brief wrapper around sort::field_collector which guarantees collector
-//         is not nullptr
+///        is not nullptr
 ////////////////////////////////////////////////////////////////////////////
-class field_collector_wrapper : public collector_wrapper<sort::field_collector> {
+class field_collector_wrapper
+    : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
  public:
   using collector_type = sort::field_collector;
+  using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
 
-  field_collector_wrapper() noexcept;
-  field_collector_wrapper(collector_type::ptr&& collector) noexcept;
-  field_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept;
-  ~field_collector_wrapper();
+  static collector_type& noop() noexcept;
 
- private:
-  using base_type = collector_wrapper<collector_type>;
-
-  void reset(collector_type* collector) noexcept;
+  field_collector_wrapper() = default;
+  field_collector_wrapper(field_collector_wrapper&& rhs) = default;
+  field_collector_wrapper(collector_type::ptr&& collector) noexcept
+    : base_type(collector.release()) {
+  }
+  field_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
+    base_type::operator=(collector.release());
+    return *this;
+  }
 }; // field_collector_wrapper
 
 ////////////////////////////////////////////////////////////////////////////
@@ -163,21 +210,25 @@ class IRESEARCH_API field_collectors : public collectors_base<field_collector_wr
 ////////////////////////////////////////////////////////////////////////////
 /// @class term_collector_wrapper
 /// @brief wrapper around sort::term_collector which guarantees collector
-//         is not nullptr
+///         is not nullptr
 ////////////////////////////////////////////////////////////////////////////
-class term_collector_wrapper : public collector_wrapper<sort::term_collector> {
+class term_collector_wrapper
+    : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
  public:
   using collector_type = sort::term_collector;
+  using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
 
-  term_collector_wrapper() noexcept;
-  term_collector_wrapper(collector_type::ptr&& collector) noexcept;
-  term_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept;
-  ~term_collector_wrapper();
+  static collector_type& noop() noexcept;
 
- private:
-  using base_type = collector_wrapper<collector_type>;
-
-  void reset(collector_type* collector) noexcept;
+  term_collector_wrapper() = default;
+  term_collector_wrapper(term_collector_wrapper&& rhs) = default;
+  term_collector_wrapper(collector_type::ptr&& collector) noexcept
+    : base_type(collector.release()) {
+  }
+  term_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
+    base_type::operator=(collector.release());
+    return *this;
+  }
 }; // term_collector_wrapper
 
 ////////////////////////////////////////////////////////////////////////////
@@ -186,7 +237,7 @@ class term_collector_wrapper : public collector_wrapper<sort::term_collector> {
 ///        all buckets
 /// @param terms_count number of term_collectors to allocate
 ////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API term_collectors : public collectors_base<sort::term_collector::ptr> {
+class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrapper> {
  public:
   term_collectors(const order::prepared& buckets, size_t size);
   term_collectors(term_collectors&& rhs) = default;

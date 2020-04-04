@@ -56,29 +56,13 @@ NS_ROOT
 // --SECTION--                                           field_collector_wrapper
 // -----------------------------------------------------------------------------
 
-field_collector_wrapper::field_collector_wrapper() noexcept
-  : base_type(&NOOP_FIELD_STATS) {
+/*static*/ field_collector_wrapper::collector_type& field_collector_wrapper::noop() noexcept {
+  return NOOP_FIELD_STATS;
 }
 
-field_collector_wrapper::field_collector_wrapper(collector_type::ptr&& collector) noexcept
-  : base_type(!collector ? &NOOP_FIELD_STATS : collector.release()) {
-}
-
-field_collector_wrapper& field_collector_wrapper::operator=(collector_type::ptr&& collector) noexcept {
-  reset(!collector ? &NOOP_FIELD_STATS : collector.release());
-  return *this;
-};
-
-field_collector_wrapper::~field_collector_wrapper() {
-  reset(nullptr);
-}
-
-void field_collector_wrapper::reset(sort::field_collector* collector) noexcept {
-  if (collector_.get() == &NOOP_FIELD_STATS) {
-    collector_.release();
-  }
-  collector_.reset(collector);
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  field_collectors
+// -----------------------------------------------------------------------------
 
 field_collectors::field_collectors(const order::prepared& buckets)
   : collectors_base<field_collector_wrapper>(buckets.size(), buckets) {
@@ -90,10 +74,6 @@ field_collectors::field_collectors(const order::prepared& buckets)
   }
   assert(begin == collectors_.end());
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  field_collectors
-// -----------------------------------------------------------------------------
 
 void field_collectors::collect(const sub_reader& segment,
                                const term_reader& field) const {
@@ -136,28 +116,8 @@ void field_collectors::finish(byte_type* stats_buf, const index_reader& index) c
 // --SECTION--                                            term_collector_wrapper
 // -----------------------------------------------------------------------------
 
-term_collector_wrapper::term_collector_wrapper() noexcept
-  : base_type(&NOOP_TERM_STATS) {
-}
-
-term_collector_wrapper::term_collector_wrapper(collector_type::ptr&& collector) noexcept
-  : base_type(!collector ? &NOOP_TERM_STATS : collector.release()) {
-}
-
-term_collector_wrapper& term_collector_wrapper::operator=(collector_type::ptr&& collector) noexcept {
-  reset(!collector ? &NOOP_TERM_STATS : collector.release());
-  return *this;
-};
-
-term_collector_wrapper::~term_collector_wrapper() {
-  reset(nullptr);
-}
-
-void term_collector_wrapper::reset(collector_type* collector) noexcept {
-  if (collector_.get() == &NOOP_TERM_STATS) {
-    collector_.release();
-  }
-  collector_.reset(collector);
+/*static*/ term_collector_wrapper::collector_type& term_collector_wrapper::noop() noexcept {
+  return NOOP_TERM_STATS;
 }
 
 // -----------------------------------------------------------------------------
@@ -165,7 +125,7 @@ void term_collector_wrapper::reset(collector_type* collector) noexcept {
 // -----------------------------------------------------------------------------
 
 term_collectors::term_collectors(const order::prepared& buckets, size_t size)
-  : collectors_base<sort::term_collector::ptr>(buckets.size()*size, buckets) {
+  : collectors_base<term_collector_wrapper>(buckets.size()*size, buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
   auto begin = collectors_.begin();
