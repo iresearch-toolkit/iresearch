@@ -32,7 +32,7 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-class geo_token_stream final : public analyzer,
+class geo_token_stream final : public token_stream,
                                private util::noncopyable {
  private:
   class term : public term_attribute {
@@ -45,9 +45,6 @@ class geo_token_stream final : public analyzer,
   }; // term
 
  public:
-  DECLARE_ANALYZER_TYPE();
-  DECLARE_FACTORY(const S2RegionTermIndexer::Options& opts);
-
   static void init(); // for triggering registration in a static build
 
   explicit geo_token_stream(const S2RegionTermIndexer::Options& opts,
@@ -58,8 +55,11 @@ class geo_token_stream final : public analyzer,
   }
 
   virtual bool next() noexcept override;
-  virtual bool reset(const string_ref& data) override;
 
+  void reset(const S2Point& point);
+  void reset(const S2Region& region);
+
+ private:
   S2RegionTermIndexer indexer_;
   std::vector<std::string> terms_;
   const std::string* begin_{ terms_.data() };

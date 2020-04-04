@@ -25,12 +25,9 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(geo_token_stream, "geo")
-
 geo_token_stream::geo_token_stream(const S2RegionTermIndexer::Options& opts,
                                    const string_ref& prefix)
-  : analyzer(type()),
-    indexer_(opts),
+  : indexer_(opts),
     prefix_(prefix) {
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
@@ -46,14 +43,17 @@ bool geo_token_stream::next() noexcept {
   return true;
 }
 
-bool geo_token_stream::reset(const string_ref& data) {
-  const S2Point* p = reinterpret_cast<const S2Point*>(data.c_str());
-  terms_ = indexer_.GetIndexTerms(*p, prefix_);
+void geo_token_stream::reset(const S2Point& point) {
+  terms_ = indexer_.GetIndexTerms(point, prefix_);
   begin_ = terms_.data();
   end_ = begin_ + terms_.size();
-  return true;
 }
 
+void geo_token_stream::reset(const S2Region& region) {
+  terms_ = indexer_.GetIndexTerms(region, prefix_);
+  begin_ = terms_.data();
+  end_ = begin_ + terms_.size();
+}
 
 NS_END // analysis
 NS_END // ROOT
