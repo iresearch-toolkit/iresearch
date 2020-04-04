@@ -617,6 +617,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-geo-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
 
