@@ -61,13 +61,15 @@ class geo_filter_test_case : public tests::filter_test_case_base {
 //}
 //#endif
 //
-//TEST(by_term_test, ctor) {
-//  irs::by_term q;
-//  ASSERT_EQ(irs::by_term::type(), q.type());
-//  ASSERT_TRUE(q.term().empty());
-//  ASSERT_EQ("", q.field());
-//  ASSERT_EQ(irs::no_boost(), q.boost());
-//}
+TEST(by_geo_distance_test, ctor) {
+  irs::by_geo_distance q;
+  ASSERT_EQ(irs::by_geo_distance::type(), q.type());
+  ASSERT_EQ(S2Point(), q.point());
+  ASSERT_EQ(0., q.distance());
+  ASSERT_EQ("", q.field());
+  ASSERT_EQ(irs::no_boost(), q.boost());
+}
+
 //
 //TEST(by_term_test, equal) { 
 //  irs::by_term q;

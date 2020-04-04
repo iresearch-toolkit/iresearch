@@ -394,6 +394,8 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-geo-static
 )
 
 # setup CRT
@@ -415,6 +417,7 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
+    ${IResearch_TARGET_NAME}-geo-static-scrt
  )
 endif()
 
@@ -531,8 +534,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
+  ${S2_STATIC_LIB}
 )
-
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
@@ -544,6 +547,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-geo-static
+  ${S2_STATIC_LIB}
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
@@ -575,6 +580,7 @@ if(MSVC)
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
     ${SIMD_LIBRARY_SHARED}
+    ${S2_STATIC_LIB}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
@@ -587,6 +593,8 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
+    ${IResearch_TARGET_NAME}-geo-static-scrt
+    ${S2_STATIC_LIB}
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
@@ -600,6 +608,7 @@ endif()
 
 unset(IResearch_STATIC_LIBRARIES)
 
+
 set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
@@ -608,6 +617,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
+  "$<TARGET_FILE:s2>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"

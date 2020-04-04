@@ -89,6 +89,16 @@ class by_geo_distance final : public geo_filter {
 
   by_geo_distance();
 
+  double_t distance() const noexcept { return distance_; }
+  by_geo_distance& distance(double_t distance) noexcept {
+    distance_ = distance;
+  }
+
+  const S2Point& point() const noexcept { return point_; }
+  by_geo_distance point(const S2Point& point) noexcept {
+    point_ = point;
+  }
+
   virtual size_t hash() const noexcept override;
 
  protected:
