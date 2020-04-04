@@ -1917,20 +1917,19 @@ endif()
 
 if (S2_FOUND)
 
-set(${IResearch_TARGET_NAME}_geo_source
+set(IResearch_geo_source
   ./analysis/geo_token_stream.cpp
 )
-
 add_library(${IResearch_TARGET_NAME}-geo-shared
   SHARED
-  ${IResearch_TARGET_NAME_geo_source}
+  ${IResearch_geo_source}
 )
 
 set_ipo(${IResearch_TARGET_NAME}-geo-shared)
 
 add_library(${IResearch_TARGET_NAME}-geo-static
   STATIC
-  ${IResearch_TARGET_NAME_geo_source}
+  ${IResearch_geo_source}
 )
 
 set_ipo(${IResearch_TARGET_NAME}-geo-static)
@@ -1939,14 +1938,14 @@ set_ipo(${IResearch_TARGET_NAME}-geo-static)
 if(MSVC)
   add_library(${IResearch_TARGET_NAME}-geo-shared-scrt
     SHARED
-    ${IResearch_TARGET_NAME_geo_source}
+    ${IResearch_geo_source}
   )
 
   set_ipo(${IResearch_TARGET_NAME}-geo-shared-scrt)
 
   add_library(${IResearch_TARGET_NAME}-geo-static-scrt
     STATIC
-    ${IResearch_TARGET_NAME_geo_source}
+    ${IResearch_geo_source}
   )
 
   set_ipo(${IResearch_TARGET_NAME}-geo-static-scrt)
