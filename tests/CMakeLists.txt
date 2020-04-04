@@ -36,7 +36,15 @@ if (USE_SIMDCOMP)
   )
 endif()
 
+if (S2_FOUND)
+  set(IReSearch_tests_geo_sources
+    ./search/geo_filter_test.cpp
+  )
+endif()
+
 set(IReSearch_tests_sources
+  ${IReSearch_tests_geo_sources}
+  #  ${IReSearch_tests_optimized_sources}
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
@@ -183,6 +191,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
+  ${IResearch_TARGET_NAME}-geo-shared
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
@@ -195,6 +204,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-geo-static
 )
 
 target_include_directories(${IResearchTests_TARGET_NAME}-shared
@@ -237,6 +247,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
+  ${IResearch_TARGET_NAME}-geo-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
@@ -268,6 +279,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${S2_INCLUDE_DIR}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
@@ -278,6 +290,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${S2_INCLUDE_DIR}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>

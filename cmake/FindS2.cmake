@@ -52,7 +52,7 @@ elseif (NOT MSVC)
 endif()
 
 find_path(S2_INCLUDE_DIR
-  s1angle.h
+  s2/s1angle.h
   PATHS ${S2_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
 )

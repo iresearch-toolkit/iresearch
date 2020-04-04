@@ -1920,6 +1920,7 @@ if (S2_FOUND)
 
 set(IResearch_geo_source
   ./analysis/geo_token_stream.cpp
+  ./search/geo_filter.cpp
 )
 add_library(${IResearch_TARGET_NAME}-geo-shared
   SHARED

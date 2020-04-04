@@ -23,11 +23,12 @@
 #ifndef IRESEARCH_GEO_TOKEN_STREAM_H
 #define IRESEARCH_GEO_TOKEN_STREAM_H
 
+#include <s2/s2region_term_indexer.h>
+
 #include "shared.hpp"
 #include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
-#include "s2/s2region_term_indexer.h"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -39,7 +40,7 @@ class geo_token_stream final : public token_stream,
    public:
     void value(const std::string& v) noexcept {
       value_ = bytes_ref(
-        reinterpret_cast<const byte_type*>(v.c_str()), 
+        reinterpret_cast<const byte_type*>(v.c_str()),
         v.size());
     }
   }; // term
