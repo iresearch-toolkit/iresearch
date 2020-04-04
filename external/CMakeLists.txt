@@ -246,15 +246,6 @@ target_include_directories(
 add_subdirectory(simdcomp)
 
 ################################################################################
-### S2 library
-################################################################################
-
-add_subdirectory(s2)
-
-ExternalProject_Get_Property(s2-geometry SOURCE_DIR)
-set(S2_INCLUDE_DIR ${SOURCE_DIR}/src PARENT_SCOPE)
-
-################################################################################
 ### utfcpp library
 ################################################################################
 

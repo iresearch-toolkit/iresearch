@@ -146,6 +146,12 @@ endif()
 ### find 3rd party libraries
 ################################################################################
 
+if (USE_S2)
+  find_package(S2
+    REQUIRED
+  )
+endif()
+
 # find Boost
 find_package(BoostLocal
   REQUIRED
