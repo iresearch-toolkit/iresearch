@@ -30,6 +30,8 @@
 
 NS_LOCAL
 
+
+
 using namespace irs;
 
 class term_visitor final : public filter_visitor {
@@ -139,9 +141,14 @@ bool by_geo_distance::equals(const filter& rhs) const noexcept {
 }
 
 std::vector<std::string> by_geo_distance::get_geo_terms(S2RegionTermIndexer& indexer) const {
-  const S1Angle radius = S1Angle::Radians(S2Earth::MetersToRadians(distance_));
-  const S2Cap region(point_, radius);
+  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(distance_)));
 
+  // FIXME  if (!region.is_valid()) {
+  if (!(S2::IsUnitLength(point_) && radius.length2() <= 4)) {
+    return {};
+  }
+
+  const S2Cap region(point_, radius);
   return indexer.GetQueryTerms(region, {});
 }
 

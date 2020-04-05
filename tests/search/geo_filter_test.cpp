@@ -70,35 +70,39 @@ TEST(by_geo_distance_test, ctor) {
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
-//
-//TEST(by_term_test, equal) { 
-//  irs::by_term q;
-//  q.field("field").term("term");
-//  ASSERT_EQ(q, irs::by_term().field("field").term("term"));
-//  ASSERT_NE(q, irs::by_term().field("field1").term("term"));
-//}
-//
-//TEST(by_term_test, boost) {
-//  // no boost
-//  {
-//    irs::by_term q;
-//    q.field("field").term("term");
-//
-//    auto prepared = q.prepare(irs::sub_reader::empty());
-//    ASSERT_EQ(irs::no_boost(), prepared->boost());
-//  }
-//
-//  // with boost
-//  {
-//    irs::boost_t boost = 1.5f;
-//    irs::by_term q;
-//    q.field("field").term("term");
-//    q.boost(boost);
-//
-//    auto prepared = q.prepare(irs::sub_reader::empty());
-//    ASSERT_EQ(boost, prepared->boost());
-//  }
-//}
+TEST(by_geo_distance_test, equal) {
+  irs::by_geo_distance q;
+  q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
+  ASSERT_EQ(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field"));
+  ASSERT_EQ(q.hash(), irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field").hash());
+  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field1"));
+  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(6.).field("field"));
+  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{2., 2., 3.}).distance(5.).field("field"));
+  ASSERT_EQ(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field").boost(2.));
+}
+
+TEST(by_geo_distance_test, boost) {
+  // no boost
+  {
+    irs::by_geo_distance q;
+    q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
+
+    auto prepared = q.prepare(irs::sub_reader::empty());
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
+  }
+
+  // with boost
+  {
+    irs::boost_t boost = 1.5f;
+    irs::by_geo_distance q;
+    q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
+    q.boost(boost);
+
+    auto prepared = q.prepare(irs::sub_reader::empty());
+    ASSERT_EQ(boost, prepared->boost());
+  }
+}
+
 //
 //INSTANTIATE_TEST_CASE_P(
 //  term_filter_test,
