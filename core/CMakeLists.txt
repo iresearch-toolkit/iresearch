@@ -394,9 +394,13 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
-  ${IResearch_TARGET_NAME}-scorer-bm25-static
-  ${IResearch_TARGET_NAME}-geo-static
 )
+ 
+if (S2_FOUND)
+  add_dependencies(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-geo-static
+  )
+endif()
 
 # setup CRT
 if(MSVC)
@@ -417,8 +421,13 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    ${IResearch_TARGET_NAME}-geo-static-scrt
  )
+
+ if (S2_FOUND)
+   add_dependencies(${IResearch_TARGET_NAME}-static-scrt
+     ${IResearch_TARGET_NAME}-geo-static-scrt
+   )
+ endif()
 endif()
 
 
@@ -547,7 +556,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
-  ${IResearch_TARGET_NAME}-geo-static
+  $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-static>
   ${S2_STATIC_LIB}
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
@@ -593,7 +602,7 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    ${IResearch_TARGET_NAME}-geo-static-scrt
+    $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-static-scrt>
     ${S2_STATIC_LIB}
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
@@ -608,7 +617,6 @@ endif()
 
 unset(IResearch_STATIC_LIBRARIES)
 
-
 set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
@@ -617,7 +625,6 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
-  "$<TARGET_FILE:s2>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
@@ -627,8 +634,9 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  "$<TARGET_FILE:${IResearch_TARGET_NAME}-geo-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
+  $<$<BOOL:${S2_FOUND}>:"$<TARGET_FILE:${IResearch_TARGET_NAME}-geo-static>">
+  $<$<BOOL:${S2_FOUND}>:"$<TARGET_FILE:${S2_STATIC_LIB}>">
 )
 
 if (MSVC)

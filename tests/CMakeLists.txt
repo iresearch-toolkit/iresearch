@@ -30,21 +30,7 @@ set(IResearchTests_INCLUDE_DIR
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (USE_SIMDCOMP)
-  set(IReSearch_tests_optimized_sources
-    ./store/store_utils_optimized_tests.cpp
-  )
-endif()
-
-if (S2_FOUND)
-  set(IReSearch_tests_geo_sources
-    ./search/geo_filter_test.cpp
-  )
-endif()
-
 set(IReSearch_tests_sources
-  ${IReSearch_tests_geo_sources}
-  #  ${IReSearch_tests_optimized_sources}
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
@@ -145,6 +131,18 @@ set(IReSearch_tests_headers
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
 
+if (USE_SIMDCOMP)
+  list(APPEND IReSearch_tests_sources
+    ./store/store_utils_optimized_tests.cpp
+  )
+endif()
+
+if (S2_FOUND)
+  list(APPEND IReSearch_tests_sources
+    ./search/geo_filter_test.cpp
+  )
+endif()
+
 if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
@@ -191,7 +189,6 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
-  ${IResearch_TARGET_NAME}-geo-shared
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
@@ -204,8 +201,17 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
-  ${IResearch_TARGET_NAME}-geo-static
 )
+
+if (S2_FOUND)
+  add_dependencies(${IResearchTests_TARGET_NAME}-shared
+    ${IResearch_TARGET_NAME}-geo-shared
+  )
+
+  add_dependencies(${IResearchTests_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-geo-static
+  )
+endif()
 
 target_include_directories(${IResearchTests_TARGET_NAME}-shared
   PRIVATE ${PROJECT_BINARY_DIR}/core
@@ -247,16 +253,19 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${IResearch_TARGET_NAME}-geo-shared
+  $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-shared>
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
+  $<$<BOOL:${S2_FOUND}>:${OPENSSL_CRYPTO_LIBRARY}>
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
-  ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-static-allinone
+  $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-static>
+  ${GCOV_LIBRARY}
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
+  $<$<BOOL:${S2_FOUND}>:${OPENSSL_CRYPTO_LIBRARY}>
 )
 
 # setup CRT
