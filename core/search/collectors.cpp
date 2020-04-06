@@ -215,10 +215,11 @@ size_t term_collectors::push_back() {
 void term_collectors::finish(byte_type* stats_buf,
                              const field_collectors& field_collectors,
                              const index_reader& index) const {
-  auto bucket_count = buckets_->size();
-  assert(collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
+  const auto bucket_count = buckets_->size();
+  const auto count = collectors_.size();
+  assert(0 == count || count % bucket_count == 0); // enforced by allocation in the constructor
 
-  for (size_t i = 0, count = collectors_.size(); i < count; ++i) {
+  for (size_t i = 0; i < count; ++i) {
     auto bucket_offset = i % bucket_count;
     auto& sort = (*buckets_)[bucket_offset];
     assert(sort.bucket); // ensured by order::prepare
