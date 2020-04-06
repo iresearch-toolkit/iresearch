@@ -74,9 +74,9 @@ class field_base : public ifield {
   field_base& operator=(const field_base&) = default;
 
   irs::flags& features() { return features_; }
-  const irs::flags& features() const { return features_; }
+  virtual const irs::flags& features() const override { return features_; }
 
-  irs::string_ref name() const { return name_; }
+  virtual irs::string_ref name() const override { return name_; }
   void name(std::string&& name) { name_ = std::move(name); }
   void name(const std::string& name) { name_ = name; }
 

@@ -22,16 +22,44 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+
+#include "index/doc_generator.hpp"
 #include "filter_test_case_base.hpp"
+
+#include "analysis/geo_token_stream.hpp"
 #include "search/geo_filter.hpp"
 
 NS_LOCAL
 
-class geo_filter_test_case : public tests::filter_test_case_base {
- protected:
+struct geo_field final : tests::field_base {
+  virtual irs::token_stream& get_tokens() const override {
+    return stream;
+  }
 
+  virtual bool write(irs::data_output&) const override {
+    return false;
+  }
 
-}; // geo_filter_test_case
+  mutable irs::analysis::geo_token_stream stream;
+};
+
+class geo_filter_test_case : public tests::filter_test_case_base { };
+
+TEST_P(geo_filter_test_case, test) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential_geo.json"),
+      [](tests::document& doc,
+         const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+
+    });
+
+    add_segment(gen);
+  }
+
+}
 
 //#ifndef IRESEARCH_DLL
 //TEST_P(term_filter_test_case, visit) {
@@ -119,7 +147,3 @@ TEST(by_geo_distance_test, boost) {
 //);
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
