@@ -156,7 +156,7 @@ class field_collector_wrapper
   using collector_type = sort::field_collector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
 
-  static collector_type& noop() noexcept;
+  IRESEARCH_API static collector_type& noop() noexcept;
 
   field_collector_wrapper() = default;
   field_collector_wrapper(field_collector_wrapper&& rhs) = default;
@@ -218,7 +218,7 @@ class term_collector_wrapper
   using collector_type = sort::term_collector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
 
-  static collector_type& noop() noexcept;
+  IRESEARCH_API static collector_type& noop() noexcept;
 
   term_collector_wrapper() = default;
   term_collector_wrapper(term_collector_wrapper&& rhs) = default;

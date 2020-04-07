@@ -5781,8 +5781,10 @@ void init() {
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
+  REGISTER_FORMAT(::format13);
 #ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12simd);
+  REGISTER_FORMAT(::format13simd);
 #endif // IRESEARCH_SSE2
 #endif
 }
