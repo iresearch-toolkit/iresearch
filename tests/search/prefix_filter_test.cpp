@@ -327,7 +327,10 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0", "1_1", "1_2")
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"},
+                      tests::format_info{"1_3", "1_0"})
   ),
   tests::to_string
 );
