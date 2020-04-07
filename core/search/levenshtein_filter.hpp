@@ -52,7 +52,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     boost_t boost,
     const string_ref& field,
     const bytes_ref& term,
-    size_t scored_terms_limit,
+    size_t terms_limit,
     byte_type max_distance,
     pdp_f provider,
     bool with_transpositions);

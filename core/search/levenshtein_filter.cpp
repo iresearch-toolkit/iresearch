@@ -41,6 +41,18 @@ NS_LOCAL
 
 using namespace irs;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns levenshtein similarity
+////////////////////////////////////////////////////////////////////////////////
+FORCE_INLINE boost_t similarity(uint32_t distance, uint32_t size) noexcept {
+  assert(size);
+
+  static_assert(sizeof(boost_t) == sizeof(uint32_t),
+                "sizeof(boost_t) != sizeof(uint32_t)");
+
+  return 1.f - boost_t(distance) / size;
+}
+
 template<typename Invalid, typename Term, typename Levenshtein>
 inline void executeLevenshtein(byte_type max_distance,
                                by_edit_distance::pdp_f provider, bool with_transpositions,
@@ -61,13 +73,30 @@ inline void executeLevenshtein(byte_type max_distance,
   lev(d);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @returns levenshtein similarity
-////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE float_t similarity(uint32_t distance, uint32_t size) noexcept {
-  assert(size);
-  return 1.f - float_t(distance) / size;
-}
+template<typename Visitor>
+struct top_terms_visitor : util::noncopyable {
+  explicit top_terms_visitor(Visitor& visitor) noexcept
+    : visitor(&visitor) {
+  }
+
+  void operator()(const irs::sub_reader& /*segment*/,
+                  const irs::term_reader& field,
+                  uint32_t /*docs_count*/) const {
+    it = field.iterator();
+    visitor.prepare(*it);
+  }
+
+  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
+      return;
+    }
+
+    visitor.visit();
+  }
+
+  mutable seek_term_iterator::ptr it;
+  Visitor& visitor;
+};
 
 template<typename StatesType>
 struct aggregated_stats_visitor : util::noncopyable {
@@ -78,21 +107,16 @@ struct aggregated_stats_visitor : util::noncopyable {
       states(states) {
   }
 
-  void operator()(boost_t key,
-                  const irs::bytes_ref& /*term*/) noexcept {
-    boost = std::max(0.f, key);
-  }
-
   void operator()(const irs::sub_reader& segment,
                   const irs::term_reader& field,
-                  uint32_t docs_count) {
+                  uint32_t docs_count) const {
     it = field.iterator();
     state = &states.insert(segment);
     state->reader = &field;
     state->scored_states_estimation += docs_count;
   }
 
-  void operator()(seek_term_iterator::cookie_ptr& cookie) {
+  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
     if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
       return;
     }
@@ -103,38 +127,42 @@ struct aggregated_stats_visitor : util::noncopyable {
 
   const term_collectors& term_stats;
   StatesType& states;
-  seek_term_iterator::ptr it;
-  typename StatesType::state_type* state{};
+  mutable seek_term_iterator::ptr it;
+  mutable typename StatesType::state_type* state{};
   const sub_reader* segment{};
   const term_reader* field{};
   boost_t boost{ irs::no_boost() };
 };
 
-class top_terms_visitor final : public filter_visitor {
+template<typename Collector, typename Callback>
+class levenshtein_terms_visitor : public filter_visitor {
  public:
-  top_terms_visitor(
+  levenshtein_terms_visitor(
       size_t size,
-      uint32_t utf8_term_size,
-      byte_type no_distance) noexcept
-    : collector_(size),
-      utf8_term_size_(utf8_term_size),
-      no_distance_(no_distance) {
+      const parametric_description& d,
+      const bytes_ref& term,
+      const Callback& callback)
+    : callback_(callback),
+      collector_(size),
+      utf8_term_size_(std::max(1U, uint32_t(utf8_utils::utf8_length(term)))),
+      no_distance_(d.max_distance() + 1) {
   }
 
   void prepare(const sub_reader& segment, const term_reader& field) noexcept {
     segment_ = &segment;
     field_ = &field;
+    callback_(segment, field);
   }
 
   template<typename Visitor>
-  void visit(Visitor& visitor) {
+  void visit(const Visitor& visitor) {
     collector_.visit(visitor);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const seek_term_iterator& terms) override {
+  virtual void prepare(const seek_term_iterator& terms) final {
     term_ = &terms.value();
 
     auto& payload = terms.attributes().get<irs::payload>();
@@ -147,7 +175,7 @@ class top_terms_visitor final : public filter_visitor {
     collector_.prepare(*segment_, *field_, terms);
   }
 
-  virtual void visit() override {
+  virtual void visit() final {
      const auto utf8_value_size = static_cast<uint32_t>(utf8_utils::utf8_length(*term_));
      const auto key = ::similarity(*distance_, std::min(utf8_value_size, utf8_term_size_));
 
@@ -155,7 +183,8 @@ class top_terms_visitor final : public filter_visitor {
   }
 
  private:
-  top_terms_collector<boost_t> collector_;
+  const Callback& callback_;
+  Collector collector_;
   const byte_type* distance_{&no_distance_};
   const sub_reader* segment_{};
   const term_reader* field_{};
@@ -164,22 +193,15 @@ class top_terms_visitor final : public filter_visitor {
   const byte_type no_distance_;
 };
 
-filter::prepared::ptr prepare_levenshtein_filter(
+template<typename Collector>
+bool collect_terms(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
     const string_ref& field,
     const bytes_ref& term,
-    size_t scored_terms_limit,
-    const parametric_description& d) {
+    const parametric_description& d,
+    Collector& collector) {
   const auto acceptor = make_levenshtein_automaton(d, term);
   auto matcher = make_automaton_matcher(acceptor);
-
-  const uint32_t utf8_term_size = std::max(1U, static_cast<uint32_t>(utf8_utils::utf8_length(term)));
-  top_terms_visitor term_collector(scored_terms_limit, utf8_term_size, d.max_distance() + 1);
-
-  field_collectors field_stats(order);
-  term_collectors term_stats(order, 1);
 
   for (auto& segment : index) {
     auto* reader = segment.field(field);
@@ -188,21 +210,79 @@ filter::prepared::ptr prepare_levenshtein_filter(
       continue;
     }
 
-    // wrong matcher
-    if (!::automaton_visit(*reader, matcher, term_collector)) {
-      return filter::prepared::empty();
-    }
+    collector.prepare(segment, *reader);
 
-    field_stats.collect(segment, *reader);
+    // wrong matcher
+    if (!::automaton_visit(*reader, matcher, collector)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+template<typename Visitor>
+void visit_levenshtein_terms(
+    const index_reader& index,
+    const string_ref& field,
+    const bytes_ref& term,
+    size_t terms_limit,
+    const parametric_description& d,
+    Visitor& visitor) {
+  using top_terms_collector = top_terms_collector<top_term<boost_t>>;
+
+  auto callback = [](
+      const sub_reader& /*segment*/,
+      const term_reader& /*field*/) {
+    // NOOP
+  };
+
+  levenshtein_terms_visitor<top_terms_collector, decltype(callback)> term_collector(
+     terms_limit, d, term, callback);
+
+  if (!collect_terms(index, field, term, d, term_collector)) {
+    return;
+  }
+
+  top_terms_visitor<Visitor> visit_terms(visitor);
+  term_collector.visit(visit_terms);
+}
+
+filter::prepared::ptr prepare_levenshtein_filter(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term,
+    size_t terms_limit,
+    const parametric_description& d) {
+  using top_terms_collector = top_terms_collector<top_term_state<boost_t>>;
+
+  field_collectors field_stats(order);
+  term_collectors term_stats(order, 1);
+
+  auto callback = [&field_stats](
+      const sub_reader& segment,
+      const term_reader& field) {
+    field_stats.collect(segment, field);
+  };
+
+  levenshtein_terms_visitor<top_terms_collector, decltype(callback)> term_collector(
+     terms_limit, d, term, callback);
+
+  if (!collect_terms(index, field, term, d, term_collector)) {
+    return filter::prepared::empty();
   }
 
   multiterm_query::states_t states(index.size());
-  aggregated_stats_visitor<decltype(states)> visitor(states, term_stats);
-  term_collector.visit(visitor);
+  aggregated_stats_visitor<decltype(states)> aggregate_stats(states, term_stats);
+  term_collector.visit([&aggregate_stats](top_term_state<boost_t>& state) {
+    aggregate_stats.boost = std::max(0.f, state.key);
+    state.visit(aggregate_stats);
+  });
 
   std::vector<bstring> stats(1);
   stats.back().resize(order.stats_size(), 0);
-
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, field_stats, index);
 
