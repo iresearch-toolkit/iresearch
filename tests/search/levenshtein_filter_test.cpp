@@ -89,6 +89,136 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
 
 class by_edit_distance_test_case : public tests::filter_test_case_base { };
 
+TEST_P(by_edit_distance_test_case, test_order) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("levenshtein_sequential.json"),
+      &tests::generic_json_field_factory
+    );
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
+
+  {
+    docs_t docs{28, 29};
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    size_t term_collectors_count = 0;
+    size_t field_collectors_count = 0;
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      ++collect_field_count;
+    };
+    scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      ++collect_term_count;
+    };
+    scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++finish_count;
+    };
+    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+      ++field_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+    };
+    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+      ++term_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+    };
+
+    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0), order, docs, rdr);
+    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
+    ASSERT_EQ(1, collect_field_count); // 1 fields
+    ASSERT_EQ(2, collect_term_count); // 2 different terms
+    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+  }
+
+  {
+    docs_t docs{28, 29};
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    size_t term_collectors_count = 0;
+    size_t field_collectors_count = 0;
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      ++collect_field_count;
+    };
+    scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      ++collect_term_count;
+    };
+    scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++finish_count;
+    };
+    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+      ++field_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+    };
+    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+      ++term_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+    };
+
+    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(10), order, docs, rdr);
+    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
+    ASSERT_EQ(1, collect_field_count); // 1 fields
+    ASSERT_EQ(2, collect_term_count); // 2 different terms
+    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+  }
+
+  {
+    docs_t docs{29};
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    size_t term_collectors_count = 0;
+    size_t field_collectors_count = 0;
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      ++collect_field_count;
+    };
+    scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      ++collect_term_count;
+    };
+    scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++finish_count;
+    };
+    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+      ++field_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+    };
+    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+      ++term_collectors_count;
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+    };
+
+    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(1), order, docs, rdr);
+    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
+    ASSERT_EQ(1, collect_field_count); // 1 fields
+    ASSERT_EQ(1, collect_term_count); // 1 term
+    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+  }
+}
+
 TEST_P(by_edit_distance_test_case, test_filter) {
   // add data
   {

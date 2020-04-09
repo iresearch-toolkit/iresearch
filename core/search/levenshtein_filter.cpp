@@ -26,6 +26,7 @@
 #include "term_query.hpp"
 #include "limited_sample_collector.hpp"
 #include "top_terms_collector.hpp"
+#include "all_terms_collector.hpp"
 #include "filter_visitor.hpp"
 #include "multiterm_query.hpp"
 #include "index/index_reader.hpp"
@@ -139,11 +140,9 @@ class levenshtein_terms_visitor : public filter_visitor {
  public:
   levenshtein_terms_visitor(
       Collector& collector,
-      field_collectors& field_stats,
       const parametric_description& d,
       const bytes_ref& term)
-    : field_stats_(field_stats),
-      collector_(collector),
+    : collector_(collector),
       utf8_term_size_(std::max(1U, uint32_t(utf8_utils::utf8_length(term)))),
       no_distance_(d.max_distance() + 1) {
   }
@@ -151,7 +150,6 @@ class levenshtein_terms_visitor : public filter_visitor {
   void prepare(const sub_reader& segment, const term_reader& field) noexcept {
     segment_ = &segment;
     field_ = &field;
-    field_stats_.collect(segment, field);
   }
 
   template<typename Visitor>
@@ -183,7 +181,6 @@ class levenshtein_terms_visitor : public filter_visitor {
   }
 
  private:
-  field_collectors& field_stats_;
   Collector& collector_;
   const sub_reader* segment_{};
   const term_reader* field_{};
@@ -199,10 +196,8 @@ bool collect_terms(
     const string_ref& field,
     const bytes_ref& term,
     const parametric_description& d,
-    field_collectors& field_stats,
     Collector& collector) {
-  levenshtein_terms_visitor<Collector> visitor(
-     collector, field_stats, d, term);
+  levenshtein_terms_visitor<Collector> visitor(collector, d, term);
 
   const auto acceptor = make_levenshtein_automaton(d, term);
   auto matcher = make_automaton_matcher(acceptor);
@@ -225,6 +220,26 @@ bool collect_terms(
   return true;
 }
 
+class top_terms_collector : public irs::top_terms_collector<top_term_state<boost_t>> {
+ public:
+  using base_type = irs::top_terms_collector<top_term_state<boost_t>>;
+
+  top_terms_collector(size_t size, field_collectors& field_stats)
+    : base_type(size),
+      field_stats_(field_stats) {
+  }
+
+  void prepare(const sub_reader& segment,
+               const term_reader& field,
+               const seek_term_iterator& terms) {
+    field_stats_.collect(segment, field);
+    base_type::prepare(segment, field, terms);
+  }
+
+ private:
+  field_collectors& field_stats_;
+};
+
 template<typename Visitor>
 void visit_levenshtein_terms(
     const index_reader& index,
@@ -233,79 +248,17 @@ void visit_levenshtein_terms(
     size_t terms_limit,
     const parametric_description& d,
     Visitor& visitor) {
-  using top_terms_collector = top_terms_collector<top_term<boost_t>>;
+  using top_terms_collector = irs::top_terms_collector<top_term<boost_t>>;
 
-  field_collectors field_stats(order::prepared::unordered());
   top_terms_collector term_collector(terms_limit);
 
-  if (!collect_terms(index, field, term, d, field_stats, term_collector)) {
+  if (!collect_terms(index, field, term, d, term_collector)) {
     return;
   }
 
   top_terms_visitor<Visitor> visit_terms(visitor);
   term_collector.visit(visit_terms);
 }
-
-template<typename States>
-class all_terms_collector : util::noncopyable {
- public:
-  all_terms_collector(States& states, field_collectors& field_stats, term_collectors& term_stats)
-    : states_(states), field_stats_(field_stats), term_stats_(term_stats) {
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief prepare scorer for terms collecting
-  /// @param segment segment reader for the current term
-  /// @param state state containing this scored term
-  /// @param terms segment term-iterator positioned at the current term
-  //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment,
-               const term_reader& field,
-               const seek_term_iterator& terms) noexcept {
-    field_stats_.collect(segment, field);
-
-    auto& state = states_.insert(segment);
-    state.reader = &field;
-
-    state_.state = &state;
-    state_.segment = &segment;
-    state_.field = &field;
-    state_.terms = &terms;
-    state_.attrs = &terms.attributes();
-
-    // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
-    state_.docs_count = meta ? &meta->docs_count : &no_docs_;
-  }
-
-  void collect(const boost_t boost = no_boost()) {
-    term_stats_.collect(*state_.segment, *state_.state->reader, 0, *state_.attrs);
-
-    assert(state_.state);
-    auto& state = *state_.state;
-    state.scored_states.emplace_back(state_.terms->cookie(), 0, boost);
-    state.scored_states_estimation += *state_.docs_count;
-  }
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of state of the collector
-  //////////////////////////////////////////////////////////////////////////////
-  struct collector_state {
-    const sub_reader* segment{};
-    const term_reader* field{};
-    const seek_term_iterator* terms{};
-    const attribute_view* attrs{};
-    const uint32_t* docs_count{};
-    typename States::state_type* state{};
-  };
-
-  collector_state state_;
-  States& states_;
-  field_collectors& field_stats_;
-  term_collectors& term_stats_;
-  const decltype(term_meta::docs_count) no_docs_{0};
-};
 
 filter::prepared::ptr prepare_levenshtein_filter(
     const index_reader& index,
@@ -322,16 +275,13 @@ filter::prepared::ptr prepare_levenshtein_filter(
   if (!terms_limit) {
     all_terms_collector<decltype(states)> term_collector(states, field_stats, term_stats);
 
-    if (!collect_terms(index, field, term, d, field_stats, term_collector)) {
+    if (!collect_terms(index, field, term, d, term_collector)) {
       return filter::prepared::empty();
     }
-
   } else {
-    using top_terms_collector = top_terms_collector<top_term_state<boost_t>>;
+    top_terms_collector term_collector(terms_limit, field_stats);
 
-    top_terms_collector term_collector(terms_limit);
-
-    if (!collect_terms(index, field, term, d, field_stats, term_collector)) {
+    if (!collect_terms(index, field, term, d, term_collector)) {
       return filter::prepared::empty();
     }
 
