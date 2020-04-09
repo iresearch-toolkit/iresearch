@@ -20,11 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "automaton_utils.hpp"
+#include "utils/automaton_utils.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/filter_visitor.hpp"
-#include "search/multiterm_query.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "utils/fst_table_matcher.hpp"
 
 NS_LOCAL

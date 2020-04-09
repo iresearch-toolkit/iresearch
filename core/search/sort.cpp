@@ -182,8 +182,7 @@ order::prepared::scorers::scorers(
     const term_reader& field,
     const byte_type* stats_buf,
     const attribute_view& doc,
-    boost_t boost
-) {
+    boost_t boost) {
   scorers_.reserve(buckets.size());
 
   for (auto& entry: buckets) {

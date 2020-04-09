@@ -27,8 +27,10 @@
 #include <vector>
 
 #include "shared.hpp"
-#include "search/limited_sample_collector.hpp" // FIXME remove
+#include "analysis/token_attributes.hpp"
+#include "index/iterators.hpp"
 #include "search/sort.hpp"
+#include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 NS_ROOT

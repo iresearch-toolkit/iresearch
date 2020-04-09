@@ -23,13 +23,13 @@
 #ifndef IRESEARCH_AUTOMATON_UTILS_H
 #define IRESEARCH_AUTOMATON_UTILS_H
 
-#include "automaton.hpp"
-#include "fst_states_map.hpp"
-#include "fst_table_matcher.hpp"
-#include "hash_utils.hpp"
-#include "utf8_utils.hpp"
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
+#include "utils/automaton.hpp"
+#include "utils/fst_states_map.hpp"
+#include "utils/fst_table_matcher.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 NS_ROOT
 

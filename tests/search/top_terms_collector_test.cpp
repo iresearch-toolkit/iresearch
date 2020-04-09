@@ -22,7 +22,9 @@
 
 #include "tests_shared.hpp"
 
+#include "search/collectors.hpp"
 #include "search/top_terms_collector.hpp"
+#include "search/multiterm_query.hpp"
 #include "search/filter.hpp"
 #include "search/scorers.hpp"
 #include "formats/empty_term_reader.hpp"

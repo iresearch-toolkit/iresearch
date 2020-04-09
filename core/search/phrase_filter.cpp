@@ -20,13 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "search/phrase_filter.hpp"
+
 #include <boost/functional/hash.hpp>
 
-#include "phrase_filter.hpp"
-#include "phrase_iterator.hpp"
-#include "term_query.hpp"
-#include "wildcard_filter.hpp"
 #include "index/field_meta.hpp"
+#include "search/collectors.hpp"
+#include "search/phrase_iterator.hpp"
+#include "search/term_query.hpp"
+#include "search/wildcard_filter.hpp"
 
 NS_LOCAL
 

@@ -24,14 +24,14 @@
 #define IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 
 #include "shared.hpp"
-#include "cost.hpp"
-#include "collectors.hpp"
-#include "index/iterators.hpp"
-#include "utils/string.hpp"
-#include "utils/bitset.hpp"
 #include "analysis/token_attributes.hpp"
+#include "search/collectors.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/multiterm_query.hpp"
 #include "index/index_reader.hpp"
+#include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/string.hpp"
 
 NS_ROOT
 
@@ -66,68 +66,6 @@ inline void fill(bitset& bs, const term_iterator& term, size_t docs_count) {
 
   fill(bs, *it);
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @struct multiterm_state
-/// @brief cached per reader state
-//////////////////////////////////////////////////////////////////////////////
-struct multiterm_state {
-  struct term_state {
-    term_state(seek_term_iterator::seek_cookie::ptr&& cookie,
-               uint32_t stat_offset,
-               boost_t boost = no_boost()) noexcept
-      : cookie(std::move(cookie)),
-        stat_offset(stat_offset),
-        boost(boost) {
-    }
-    term_state(term_state&& rhs) = default;
-    term_state& operator=(term_state&& rhs) = default;
-
-    seek_term_iterator::seek_cookie::ptr cookie;
-    uint32_t stat_offset{};
-    float_t boost{ no_boost() };
-  };
-
-  multiterm_state() = default;
-  multiterm_state(multiterm_state&& rhs) = default;
-  multiterm_state& operator=(multiterm_state&& rhs) = default;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return true if state is empty
-  //////////////////////////////////////////////////////////////////////////////
-  bool empty() const noexcept {
-    return !scored_states_estimation && unscored_docs.none();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return total cost of execution
-  //////////////////////////////////////////////////////////////////////////////
-  cost::cost_t estimation() const noexcept {
-    return scored_states_estimation + unscored_docs.count();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reader using for iterate over the terms
-  //////////////////////////////////////////////////////////////////////////////
-  const term_reader* reader{};
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief scored term states
-  //////////////////////////////////////////////////////////////////////////////
-  std::vector<term_state> scored_states;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief matching doc_ids that may have been skipped
-  ///        while collecting statistics and should not be
-  ///        scored by the disjunction
-  //////////////////////////////////////////////////////////////////////////////
-  bitset unscored_docs;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief estimated cost of scored states
-  //////////////////////////////////////////////////////////////////////////////
-  cost::cost_t scored_states_estimation{};
-}; // multiterm_state
 
 template<typename Key>
 struct no_boost_converter {
@@ -388,6 +326,58 @@ struct term_frequency {
     return frequency < rhs.frequency
         || (frequency == rhs.frequency && offset < rhs.offset);
   }
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class multiterm_visitor
+/// @brief filter visitor for multiterm queries
+//////////////////////////////////////////////////////////////////////////////
+template<typename States>
+class multiterm_visitor final : public filter_visitor {
+ public:
+  multiterm_visitor(
+      const sub_reader& segment,
+      const term_reader& reader,
+      limited_sample_collector<term_frequency>& collector,
+      States& states)
+    : segment_(segment), reader_(reader),
+      collector_(collector), states_(states) {
+  }
+
+  virtual void prepare(const seek_term_iterator& terms) override {
+    // get term metadata
+    auto& meta = terms.attributes().get<term_meta>();
+
+    // NOTE: we can't use reference to 'docs_count' here, like
+    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+    // probably due to broken optimization
+    docs_count_ = meta ? &meta->docs_count : &no_docs_;
+
+    // get state for current segment
+    auto& state = states_.insert(segment_);
+    state.reader = &reader_;
+
+    collector_.prepare(segment_, terms, state);
+    key_.offset = 0;
+  }
+
+  virtual void visit() override {
+    // fill scoring candidates
+    assert(docs_count_);
+    key_.frequency = *docs_count_;
+    collector_.collect(key_);
+    ++key_.offset;
+  }
+
+ private:
+  const decltype(term_meta::docs_count) no_docs_ = 0;
+  const sub_reader& segment_;
+  const term_reader& reader_;
+  limited_sample_collector<term_frequency>& collector_;
+  States& states_;
+  term_frequency key_;
+  const decltype(term_meta::docs_count)* docs_count_ = nullptr;
 };
 
 NS_END

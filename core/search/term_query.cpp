@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "term_query.hpp"
+#include "search/term_query.hpp"
 
 #include "shared.hpp"
-#include "score_doc_iterators.hpp"
-#include "filter_visitor.hpp"
 #include "index/index_reader.hpp"
+#include "search/collectors.hpp"
+#include "search/score_doc_iterators.hpp"
+#include "search/filter_visitor.hpp"
 
 NS_LOCAL
 
