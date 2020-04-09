@@ -1135,7 +1135,6 @@ TEST_P(range_filter_test_case, by_range_order) {
   by_range_sequential_order();
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(range_filter_test_case, visit) {
   // add segment
   {
@@ -1165,7 +1164,6 @@ TEST_P(range_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 INSTANTIATE_TEST_CASE_P(
   range_filter_test,

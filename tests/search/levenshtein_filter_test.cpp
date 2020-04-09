@@ -333,7 +333,6 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(irs::by_edit_distance().max_distance(5).field("title").scored_terms_limit(0).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(by_edit_distance_test_case, visit) {
   // add segment
   {
@@ -364,7 +363,6 @@ TEST_P(by_edit_distance_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 INSTANTIATE_TEST_CASE_P(
   by_edit_distance_test,

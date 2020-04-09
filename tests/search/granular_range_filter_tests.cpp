@@ -2021,7 +2021,6 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   }
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(granular_range_filter_test_case, visit) {
   // add segment
   {
@@ -2051,7 +2050,6 @@ TEST_P(granular_range_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 INSTANTIATE_TEST_CASE_P(
   granular_range_filter_test,

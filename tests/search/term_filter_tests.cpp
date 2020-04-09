@@ -602,7 +602,6 @@ TEST_P(term_filter_test_case, by_term_cost) {
   by_term_sequential_cost();
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(term_filter_test_case, visit) {
   // add segment
   {
@@ -628,7 +627,6 @@ TEST_P(term_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
