@@ -31,6 +31,7 @@ TEST(by_edit_distance_test, ctor) {
   irs::by_edit_distance q;
   ASSERT_EQ(irs::by_edit_distance::type(), q.type());
   ASSERT_EQ(0, q.max_distance());
+  ASSERT_EQ(1024, q.scored_terms_limit());
   ASSERT_FALSE(q.with_transpositions());
   ASSERT_TRUE(q.term().empty());
   ASSERT_TRUE(q.field().empty());
@@ -41,7 +42,8 @@ TEST(by_edit_distance_test, equal) {
   irs::by_edit_distance q;
   q.field("field").max_distance(1).with_transpositions(true).term("bar");
 
-  ASSERT_EQ(q, irs::by_edit_distance().field("field").max_distance(1).with_transpositions(true).term("bar"));
+  ASSERT_EQ(q, irs::by_edit_distance().field("field").max_distance(1).scored_terms_limit(1024).with_transpositions(true).term("bar"));
+  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).scored_terms_limit(0).with_transpositions(true).term("bar"));
   ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).term("bar"));
   ASSERT_NE(q, irs::by_edit_distance().field("field1").max_distance(1).with_transpositions(true).term("bar"));
   ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).with_transpositions(true).term("bar1"));
@@ -110,32 +112,53 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   // distance 0 (term query)
   check_query(irs::by_edit_distance().field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
   check_query(irs::by_edit_distance().max_distance(0).field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(0).term("aa"), docs_t{27}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(1).term("aa"), docs_t{27}, costs_t{1}, rdr);
   check_query(irs::by_edit_distance().max_distance(0).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(0).term("ababab"), docs_t{17}, costs_t{1}, rdr);
 
   // distance 1
   check_query(irs::by_edit_distance().max_distance(1).field("title"), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(1), docs_t{29}, costs_t{1}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").term(""), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).term(""), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").term(irs::bytes_ref::NIL), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).term(irs::bytes_ref::NIL), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").term("aa"), docs_t{27, 28}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).term("aa"), docs_t{27, 28}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).term("ababab"), docs_t{17}, costs_t{1}, rdr);
 
   // distance 2
   check_query(irs::by_edit_distance().max_distance(2).field("title"), docs_t{27, 28, 29}, costs_t{3}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(0), docs_t{27, 28, 29}, costs_t{3}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(1), docs_t{29}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(2), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(2).field("title").term("aa"), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(0).term("aa"), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
   check_query(irs::by_edit_distance().max_distance(2).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(0).term("ababab"), docs_t{17}, costs_t{1}, rdr);
 
   // distance 3
   check_query(irs::by_edit_distance().max_distance(3).field("title"), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
+  check_query(irs::by_edit_distance().max_distance(3).field("title").scored_terms_limit(0), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
   check_query(irs::by_edit_distance().max_distance(3).field("title").term("aaaa"), docs_t{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, costs_t{12}, rdr);
+  check_query(irs::by_edit_distance().max_distance(3).field("title").scored_terms_limit(0).term("aaaa"), docs_t{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, costs_t{12}, rdr);
   check_query(irs::by_edit_distance().max_distance(3).field("title").term("ababab"), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 32}, costs_t{9}, rdr);
+  check_query(irs::by_edit_distance().max_distance(3).field("title").scored_terms_limit(0).term("ababab"), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 32}, costs_t{9}, rdr);
 
   // distance 4
   check_query(irs::by_edit_distance().max_distance(4).field("title"), docs_t{27, 28, 29, 30, 31, 32}, costs_t{6}, rdr);
+  check_query(irs::by_edit_distance().max_distance(4).field("title").scored_terms_limit(0), docs_t{27, 28, 29, 30, 31, 32}, costs_t{6}, rdr);
   check_query(irs::by_edit_distance().max_distance(4).field("title").term("ababab"), docs_t{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, costs_t{18}, rdr);
+  check_query(irs::by_edit_distance().max_distance(4).field("title").scored_terms_limit(0).term("ababab"), docs_t{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, costs_t{18}, rdr);
 
   // default provider doesn't support Levenshtein distances > 4
   check_query(irs::by_edit_distance().max_distance(5).field("title"), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().max_distance(5).scored_terms_limit(0).field("title"), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_edit_distance().max_distance(6).field("title"), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().max_distance(6).scored_terms_limit(0).field("title"), docs_t{}, costs_t{0}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Damerau-Levenshtein
@@ -143,27 +166,41 @@ TEST_P(by_edit_distance_test_case, test_filter) {
 
   // distance 0 (term query)
   check_query(irs::by_edit_distance().field("title").with_transpositions(true).term("aa"), docs_t{27}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().field("title").with_transpositions(true).scored_terms_limit(0).term("aa"), docs_t{27}, costs_t{1}, rdr);
   check_query(irs::by_edit_distance().max_distance(0).with_transpositions(true).field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).with_transpositions(true).scored_terms_limit(0).field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
   check_query(irs::by_edit_distance().max_distance(0).with_transpositions(true).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(0).with_transpositions(true).scored_terms_limit(0).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
 
   // distance 1
   check_query(irs::by_edit_distance().max_distance(1).field("title").with_transpositions(true), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).with_transpositions(true), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").with_transpositions(true).term(""), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).with_transpositions(true).term(""), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").with_transpositions(true).term(irs::bytes_ref::NIL), docs_t{28, 29}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).with_transpositions(true).term(irs::bytes_ref::NIL), docs_t{28, 29}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").with_transpositions(true).term("aa"), docs_t{27, 28}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).with_transpositions(true).term("aa"), docs_t{27, 28}, costs_t{2}, rdr);
   check_query(irs::by_edit_distance().max_distance(1).field("title").with_transpositions(true).term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0).with_transpositions(true).term("ababab"), docs_t{17}, costs_t{1}, rdr);
 
   // distance 2
   check_query(irs::by_edit_distance().max_distance(2).field("title").with_transpositions(true).term("aa"), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(0).with_transpositions(true).term("aa"), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
   check_query(irs::by_edit_distance().max_distance(2).field("title").with_transpositions(true).term("ababab"), docs_t{17, 18}, costs_t{2}, rdr);
+  check_query(irs::by_edit_distance().max_distance(2).field("title").scored_terms_limit(0).with_transpositions(true).term("ababab"), docs_t{17, 18}, costs_t{2}, rdr);
 
   // distance 3
   check_query(irs::by_edit_distance().max_distance(3).field("title").with_transpositions(true), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
+  check_query(irs::by_edit_distance().max_distance(3).field("title").scored_terms_limit(0).with_transpositions(true), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
   check_query(irs::by_edit_distance().max_distance(3).field("title").with_transpositions(true).term("ababab"), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, costs_t{10}, rdr);
+  check_query(irs::by_edit_distance().max_distance(3).field("title").scored_terms_limit(0).with_transpositions(true).term("ababab"), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, costs_t{10}, rdr);
 
   // default provider doesn't support Damerau-Levenshtein distances > 3
   check_query(irs::by_edit_distance().max_distance(4).field("title").with_transpositions(true), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().max_distance(4).field("title").scored_terms_limit(0).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
   check_query(irs::by_edit_distance().max_distance(5).field("title").with_transpositions(true), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance().max_distance(5).field("title").scored_terms_limit(0).with_transpositions(true), docs_t{}, costs_t{0}, rdr);
 }
 
 #ifndef IRESEARCH_DLL

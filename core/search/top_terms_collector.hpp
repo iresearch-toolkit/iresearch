@@ -163,10 +163,9 @@ template<typename State,
     state_.field = &field;
     state_.terms = &terms;
     state_.term = &terms.value();
-    state_.attrs = &terms.attributes();
 
     // get term metadata
-    auto& meta = state_.attrs->template get<term_meta>();
+    auto& meta = terms.attributes().get<term_meta>();
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
@@ -182,7 +181,6 @@ template<typename State,
       if (res.second) {
         heap_.emplace_back(res.first);
         push();
-
       }
 
       res.first->second.emplace(state_);
@@ -237,14 +235,8 @@ template<typename State,
     const term_reader* field{};
     const seek_term_iterator* terms{};
     const bytes_ref* term{};
-    const attribute_view* attrs{};
     const uint32_t* docs_count{};
   };
-
-  void collect_state(state_type& state) {
-    state.emplace(*state_.segment, *state_.field,
-                  state_.terms->cookie(), *state_.docs_count);
-  }
 
   void push() noexcept {
     std::push_heap(
