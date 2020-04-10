@@ -35,7 +35,7 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(1.f) {
+  : basic_attribute<boost_t>(no_boost()) {
 }
 
 REGISTER_ATTRIBUTE(filter_boost);
