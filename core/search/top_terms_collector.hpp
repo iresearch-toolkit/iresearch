@@ -111,7 +111,7 @@ struct top_term_state : top_term<T> {
     } else {
       auto& segment = segments.back();
       ++segment.terms_count;
-      ++segment.docs_count += docs_count;
+      segment.docs_count += docs_count;
     }
     terms.emplace_back(state.terms->cookie());
   }
@@ -131,6 +131,9 @@ struct top_term_state : top_term<T> {
   std::vector<seek_term_iterator::cookie_ptr> terms;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class top_terms_collector
+//////////////////////////////////////////////////////////////////////////////
 template<typename State,
          typename Comparer = top_term_comparer<typename State::key_type>
 > class top_terms_collector : private compact<0, Comparer>,
@@ -143,11 +146,15 @@ template<typename State,
   using key_type = typename state_type::key_type;
   using comparer_type = Comparer;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @note we disallow 0 size collectors for consistency since we're not
+  ///       interested in this use case and don't want to burden "collect(...)"
+  //////////////////////////////////////////////////////////////////////////////
   explicit top_terms_collector(
       size_t size,
       const Comparer& comp = {})
     : comparer_rep(comp),
-      size_(size) {
+      size_(std::max(size_t(1), size)) {
     heap_.reserve(size);
     terms_.reserve(size); // ensure all iterators remain valid
   }
@@ -283,9 +290,8 @@ template<typename State,
   states_map_t terms_;
   size_t size_;
   const decltype(term_meta::docs_count) no_docs_{0};
-};
+}; // top_terms_collector
 
 NS_END
 
 #endif // IRESEARCH_TOP_TERMS_COLLECTOR_H
-

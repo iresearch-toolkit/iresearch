@@ -153,7 +153,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   typedef const std::pair<irs::string_ref, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
-    : begin_(begin), end_(end) {
+    : begin_(begin), end_(end), cookie_ptr_(begin) {
     attrs_.emplace(meta_);
   }
 
@@ -173,7 +173,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<struct cookie>(begin_);
+    return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
   virtual const irs::attribute_view& attributes() const noexcept override {
@@ -186,6 +186,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     }
 
     value_ = irs::ref_cast<irs::byte_type>(begin_->first);
+    cookie_ptr_ = begin_;
     meta_ = begin_->second;
     ++begin_;
     return true;
@@ -201,116 +202,107 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return irs::doc_iterator::empty();
   }
 
- private:
-  struct cookie : seek_cookie {
-    explicit cookie(iterator_type ptr) noexcept
+  struct seek_ptr : seek_cookie {
+    explicit seek_ptr(iterator_type ptr) noexcept
       : ptr(ptr) {
     }
 
     iterator_type  ptr;
   };
 
-
+ private:
   irs::attribute_view attrs_;
   term_meta meta_;
   irs::bytes_ref value_;
   iterator_type begin_;
   iterator_type end_;
+  iterator_type cookie_ptr_;
 }; // term_iterator
 
-template<typename StatesType>
-struct aggregated_stats_visitor {
-  aggregated_stats_visitor(StatesType& states, const irs::order::prepared& ord)
-    : collectors(ord, 1),
-      states(&states) {
+struct sub_reader final : irs::sub_reader {
+  sub_reader(size_t num_docs)
+    : num_docs(num_docs) {
   }
 
-  void operator()(irs::byte_type key,
-                  const irs::bytes_ref& term) {
+  virtual const irs::column_meta* column(const irs::string_ref& name) const override {
+    UNUSED(name);
+    return nullptr;
+  }
+  virtual irs::column_iterator::ptr columns() const override {
+    return irs::column_iterator::empty();
+  }
+  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
+    UNUSED(field);
+    return nullptr;
+  }
+  virtual uint64_t docs_count() const override {
+    return 0;
+  }
+  virtual irs::doc_iterator::ptr docs_iterator() const override {
+    return irs::doc_iterator::empty();
+  }
+  virtual const irs::term_reader* field(const irs::string_ref& field) const override {
+    UNUSED(field);
+    return nullptr;
+  }
+  virtual irs::field_iterator::ptr fields() const override {
+    return irs::field_iterator::empty();
+  }
+  virtual uint64_t live_docs_count() const override {
+    return 0;
+  }
+  virtual const irs::sub_reader& operator[](size_t) const override {
+    throw std::out_of_range("index out of range");
+  }
+  virtual size_t size() const override { return 0; }
+  virtual const irs::columnstore_reader::column_reader* sort() const override {
+    return nullptr;
   }
 
-  void operator()(const irs::sub_reader& segment,
-                  const irs::term_reader& field,
-                  uint32_t docs_count) {
-    it = field.iterator();
-    state = &states->insert(segment);
-    state->reader = &field;
-    state->scored_states_estimation += docs_count;
-  }
+  size_t num_docs;
+}; // index_reader
 
-  void operator()(seek_term_iterator::cookie_ptr& cookie) {
-    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
-      return;
-    }
+struct state {
+  struct segment_state {
+    const irs::term_reader* field;
+    uint32_t docs_count;
+    std::vector<const std::pair<irs::string_ref, term_meta>*> cookies;
+  };
 
-    collectors.collect(*segment, *field, 0, it->attributes());
-    state->scored_states.emplace_back(std::move(cookie), 0, boost);
-  }
-
-  irs::term_collectors collectors;
-  irs::seek_term_iterator::ptr it;
-  typename StatesType::state_type* state;
-  StatesType* states{};
-  const irs::sub_reader* segment{};
-  const irs::term_reader* field{};
-  irs::boost_t boost{ irs::no_boost() };
+  std::map<const irs::sub_reader*, segment_state> segments;
 };
 
-//template<typename StatesType>
-//struct visitor {
-//  visitor(irs::bstring* stats,
-//          StatesType& states,
-//          const irs::order::prepared& ord, size_t terms_count)
-//    : stats_(stats),
-//      ord_(&ord),
-//      collectors(ord, 1), // 1 term at a time
-//      states(&states) {
-//  }
-//
-//  void operator()(irs::byte_type key,
-//                  const irs::bytes_ref& term) const {
-//    if (stat_offset) {
-//      collectors.finish(const_cast<irs::byte_type*>(stats_[stat_offset - 1].data()),
-//    }
-//
-//    ++stat_offset;
-//    collectors = irs::fixed_terms_collectors(*ord_, 1);
-//  }
-//
-//  void operator()(const irs::sub_reader& segment,
-//                  const irs::term_reader& field,
-//                  uint32_t docs_count) const {
-//    it = field.iterator();
-//    state = states->insert(segment);
-//    state->reader = &field;
-//    state->scored_states_estimation += docs_count;
-//  }
-//
-//  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
-//    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
-//      return;
-//    }
-//
-//    collectors.collect(segment, field, 0, it->attributes());
-//    state->scored_states.emplace_back(std::move(cookie), stat_offset, boost);
-//  }
-//
-//  irs::bstring* stats_;
-//  const irs::order::prepared* ord_;
-//  uint32_t stat_offset{std::numeric_limits<uint32_t>::max()};
-//  irs::fixed_terms_collectors collectors;
-//  irs::seek_term_iterator::ptr it;
-//  mutable typename StatesType::state_type* state;
-//  mutable StatesType* states{};
-//  mutable const irs::sub_reader* segment{};
-//  mutable const irs::term_reader* field{};
-//  mutable irs::boost_t boost{ irs::no_boost() };
-//};
+struct state_visitor {
+  void operator()(const irs::sub_reader& segment, const irs::term_reader& field, uint32_t docs) const {
+    auto it = expected_state.segments.find(&segment);
+    ASSERT_NE(it, expected_state.segments.end());
+    ASSERT_EQ(it->second.field, &field);
+    ASSERT_EQ(it->second.docs_count, docs);
+    expected_cookie = it->second.cookies.begin();
+  }
+
+  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+    auto* cookie_impl =  static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
+
+    ASSERT_EQ(*expected_cookie, cookie_impl->ptr);
+
+    ++expected_cookie;
+  }
+
+  mutable decltype(state::segment_state::cookies)::const_iterator expected_cookie;
+  const struct state& expected_state;
+};
 
 NS_END
 
-TEST(top_terms_collector_test, test) {
-  const std::pair<irs::string_ref, term_meta> TERMS[] {
+TEST(top_terms_collector_test, test_top_k) {
+  using collector_type = irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+  collector_type collector(5);
+
+  // segment 0
+  irs::empty_term_reader term_reader0(42);
+  sub_reader segment0(100);
+  const std::pair<irs::string_ref, term_meta> TERMS0[] {
     { "F", { 1, 1 } },
     { "G", { 2, 2 } },
     { "H", { 3, 3 } },
@@ -325,25 +317,126 @@ TEST(top_terms_collector_test, test) {
     { "K", { 15, 35 } },
   };
 
-  irs::order ord;
-  ord.add<::sort>(true);
+  {
+    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
+    collector.prepare(segment0, term_reader0, it);
 
-  auto prepared = ord.prepare();
-
-  irs::empty_term_reader term_reader(42);
-  seek_term_iterator it(std::begin(TERMS), std::end(TERMS));
-
-  irs::top_terms_collector<irs::top_term_state<irs::byte_type>> collector(5);
-  collector.prepare(irs::sub_reader::empty(), term_reader, it);
-
-  while (it.next()) {
-    collector.collect(it.value().front());
+    while (it.next()) {
+      collector.collect(it.value().front());
+    }
   }
 
-  irs::states_cache<irs::multiterm_state> states(1);
-  std::vector<irs::bstring> stats;
+  // segment 1
+  irs::empty_term_reader term_reader1(42);
+  sub_reader segment1(100);
+  const std::pair<irs::string_ref, term_meta> TERMS1[] {
+    { "F", { 1, 1 } },
+    { "G", { 2, 2 } },
+    { "H", { 3, 3 } },
+    { "B", { 3, 3 } },
+    { "C", { 3, 3 } },
+    { "A", { 3, 3 } },
+    { "K", { 15, 35 } },
+  };
 
-  aggregated_stats_visitor<decltype(states)> visitor(states, prepared);
+  {
+    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
+    collector.prepare(segment1, term_reader1, it);
 
-  //collector.visit(visitor);
+    while (it.next()) {
+      collector.collect(it.value().front());
+    }
+  }
+
+  std::map<char, state> expected_states {
+    { 'J', { { { &segment0, { &term_reader0, 5,  { TERMS0 + 10 } } } } } },
+    { 'K', { { { &segment0, { &term_reader0, 15, { TERMS0 + 11 } } }, { &segment1, { &term_reader1, 15, { TERMS1 + 6 } } } } }  },
+    { 'I', { { { &segment0, { &term_reader0, 15, { TERMS0 + 9  } } } } }  },
+    { 'H', { { { &segment0, { &term_reader0, 5,  { TERMS0 + 2, TERMS0 + 6 } } }, { &segment1, { &term_reader1, 3, { TERMS1 + 2 } } } } }  },
+    { 'G', { { { &segment0, { &term_reader0, 2,  { TERMS0 + 1  } } } } }  },
+  };
+
+  auto visitor = [&expected_states](collector_type::state_type& state) {
+    auto it = expected_states.find(char(state.key));
+    ASSERT_NE(it, expected_states.end());
+    ASSERT_EQ(it->first, state.key);
+    ASSERT_EQ(irs::bstring(1, irs::byte_type(it->first)), state.term);
+
+    ::state_visitor state_visitor{{}, it->second};
+
+    state.visit(state_visitor);
+  };
+
+  collector.visit(visitor);
+}
+
+TEST(top_terms_collector_test, test_top_0) {
+  using collector_type = irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+  collector_type collector(0); // same as collector(1)
+
+  // segment 0
+  irs::empty_term_reader term_reader0(42);
+  sub_reader segment0(100);
+  const std::pair<irs::string_ref, term_meta> TERMS0[] {
+    { "F", { 1, 1 } },
+    { "G", { 2, 2 } },
+    { "H", { 3, 3 } },
+    { "B", { 3, 3 } },
+    { "C", { 3, 3 } },
+    { "A", { 3, 3 } },
+    { "H", { 2, 2 } },
+    { "D", { 5, 5 } },
+    { "E", { 5, 5 } },
+    { "I", { 15, 15 } },
+    { "J", { 5, 25 } },
+    { "K", { 15, 35 } },
+  };
+
+  {
+    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
+    collector.prepare(segment0, term_reader0, it);
+
+    while (it.next()) {
+      collector.collect(it.value().front());
+    }
+  }
+
+  // segment 1
+  irs::empty_term_reader term_reader1(42);
+  sub_reader segment1(100);
+  const std::pair<irs::string_ref, term_meta> TERMS1[] {
+    { "F", { 1, 1 } },
+    { "G", { 2, 2 } },
+    { "H", { 3, 3 } },
+    { "B", { 3, 3 } },
+    { "C", { 3, 3 } },
+    { "A", { 3, 3 } },
+    { "K", { 15, 35 } },
+  };
+
+  {
+    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
+    collector.prepare(segment1, term_reader1, it);
+
+    while (it.next()) {
+      collector.collect(it.value().front());
+    }
+  }
+
+  std::map<char, state> expected_states {
+    { 'K', { { { &segment0, { &term_reader0, 15, { TERMS0 + 11 } } }, { &segment1, { &term_reader1, 15, { TERMS1 + 6 } } } } }  },
+  };
+
+  auto visitor = [&expected_states](collector_type::state_type& state) {
+    auto it = expected_states.find(char(state.key));
+    ASSERT_NE(it, expected_states.end());
+    ASSERT_EQ(it->first, state.key);
+    ASSERT_EQ(irs::bstring(1, irs::byte_type(it->first)), state.term);
+
+    ::state_visitor state_visitor{{}, it->second};
+
+    state.visit(state_visitor);
+  };
+
+  collector.visit(visitor);
 }
