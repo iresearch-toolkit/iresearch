@@ -26,7 +26,7 @@
 
 #include "shared.hpp"
 #include "filter_visitor.hpp"
-#include "multiterm_query.hpp"
+#include "limited_sample_collector.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
@@ -209,7 +209,3 @@ size_t by_range::hash() const noexcept {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

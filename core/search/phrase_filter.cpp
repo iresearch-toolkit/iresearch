@@ -20,13 +20,115 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "search/phrase_filter.hpp"
+
 #include <boost/functional/hash.hpp>
 
-#include "phrase_filter.hpp"
-#include "phrase_iterator.hpp"
-#include "term_query.hpp"
-#include "wildcard_filter.hpp"
 #include "index/field_meta.hpp"
+#include "search/collectors.hpp"
+#include "search/phrase_iterator.hpp"
+#include "search/term_query.hpp"
+#include "search/wildcard_filter.hpp"
+
+NS_LOCAL
+
+using namespace irs;
+
+typedef seek_term_iterator::cookie_ptr term_state_t;
+typedef std::vector<term_state_t> terms_states_t;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class fixed_phrase_state
+/// @brief cached per reader phrase state
+//////////////////////////////////////////////////////////////////////////////
+struct fixed_phrase_state {
+  fixed_phrase_state() = default;
+  fixed_phrase_state(fixed_phrase_state&& rhs) = default;
+  fixed_phrase_state& operator=(const fixed_phrase_state&) = delete;
+
+  std::vector<term_state_t> terms;
+  const term_reader* reader{};
+}; // fixed_phrase_state
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class variadic_phrase_state
+/// @brief cached per reader phrase state
+//////////////////////////////////////////////////////////////////////////////
+struct variadic_phrase_state : fixed_phrase_state {
+  variadic_phrase_state() = default;
+  variadic_phrase_state(variadic_phrase_state&& rhs) = default;
+  variadic_phrase_state& operator=(const variadic_phrase_state&) = delete;
+
+  std::vector<size_t> num_terms; // number of terms per phrase part
+}; // variadic_phrase_state
+
+NS_END
+
+NS_ROOT
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class phrase_term_visitor
+/// @brief filter visitor for phrase queries
+//////////////////////////////////////////////////////////////////////////////
+class phrase_term_visitor final : public filter_visitor,
+                                  private util::noncopyable {
+ public:
+  phrase_term_visitor(
+      const sub_reader& segment,
+      const term_reader& reader,
+      terms_states_t& phrase_terms) noexcept
+    : segment_(segment),
+      reader_(reader),
+      phrase_terms_(phrase_terms) {
+  }
+
+  virtual void prepare(const seek_term_iterator& terms) noexcept override {
+    terms_ = &terms;
+    attrs_ = &terms.attributes();
+    found_ = true;
+  }
+
+  virtual void visit() override {
+    assert(terms_ && attrs_ && collectors_);
+
+    if (stats_size_ <= term_offset_) {
+      // variadic phrase case
+      collectors_->push_back();
+      assert(stats_size_ == term_offset_);
+      ++stats_size_;
+    }
+
+    collectors_->collect(segment_, reader_, term_offset_++, *attrs_);
+    phrase_terms_.emplace_back(terms_->cookie());
+  }
+
+  void reset() noexcept {
+    found_ = false;
+    terms_ = nullptr;
+  }
+
+  void reset(term_collectors& collectors) noexcept {
+    reset();
+    term_offset_ = 0;
+    collectors_ = &collectors;
+    stats_size_ = collectors.size();
+  }
+
+  bool found() const noexcept { return found_; }
+
+ private:
+  size_t term_offset_ = 0;
+  size_t stats_size_ = 0;
+  const sub_reader& segment_;
+  const term_reader& reader_;
+  terms_states_t& phrase_terms_;
+  term_collectors* collectors_ = nullptr;
+  const seek_term_iterator* terms_ = nullptr;
+  const attribute_view* attrs_ = nullptr;
+  bool found_ = false;
+};
+
+NS_END
 
 NS_ROOT
 
@@ -34,13 +136,11 @@ NS_ROOT
 /// @class phrase_query
 /// @brief prepared phrase query implementation
 //////////////////////////////////////////////////////////////////////////////
-template<template<typename...> class T>
+template<typename State>
 class phrase_query : public filter::prepared {
  public:
-  typedef states_cache<phrase_state<T>> states_t;
+  typedef states_cache<State> states_t;
   typedef std::vector<position::value_t> positions_t;
-
-  DECLARE_SHARED_PTR(phrase_query<T>);
 
   phrase_query(
       states_t&& states,
@@ -59,17 +159,14 @@ class phrase_query : public filter::prepared {
   bstring stats_;
 }; // phrase_query
 
-class fixed_phrase_query : public phrase_query<FixedContainer> {
+class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
  public:
-
-  DECLARE_SHARED_PTR(fixed_phrase_query);
-
   fixed_phrase_query(
-      typename phrase_query<FixedContainer>::states_t&& states,
-      typename phrase_query<FixedContainer>::positions_t&& positions,
-      bstring&& stats,
-      boost_t boost) noexcept
-    : phrase_query<FixedContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+      states_t&& states, positions_t&& positions,
+      bstring&& stats, boost_t boost) noexcept
+    : phrase_query<fixed_phrase_state>(
+        std::move(states),  std::move(positions),
+        std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -137,17 +234,14 @@ class fixed_phrase_query : public phrase_query<FixedContainer> {
   }
 }; // fixed_phrase_query
 
-class variadic_phrase_query : public phrase_query<VariadicContainer> {
+class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
-
-  DECLARE_SHARED_PTR(variadic_phrase_query);
-
   variadic_phrase_query(
-      states_t&& states,
-      positions_t&& positions,
-      bstring&& stats,
-      boost_t boost) noexcept
-    : phrase_query<VariadicContainer>(std::move(states), std::move(positions), std::move(stats), boost) {
+      states_t&& states, positions_t&& positions,
+      bstring&& stats, boost_t boost) noexcept
+    : phrase_query<variadic_phrase_state>(
+        std::move(states), std::move(positions),
+        std::move(stats), boost) {
   }
 
   using filter::prepared::execute;
@@ -165,7 +259,7 @@ class variadic_phrase_query : public phrase_query<VariadicContainer> {
     }
 
     // get features required for query & order
-    auto features = ord.features() | by_phrase::required();
+    const auto features = ord.features() | by_phrase::required();
 
     typedef conjunction<doc_iterator::ptr> conjunction_t;
     typedef phrase_iterator<conjunction_t, variadic_phrase_frequency> phrase_iterator_t;
@@ -176,25 +270,28 @@ class variadic_phrase_query : public phrase_query<VariadicContainer> {
     typedef position_score_iterator_adapter<doc_iterator::ptr> adapter_t;
     typedef disjunction<doc_iterator::ptr, adapter_t, true> disjunction_t;
 
+    const auto phrase_size = phrase_state->num_terms.size();
+
     phrase_iterator_t::positions_t positions;
-    positions.resize(phrase_state->terms.size());
+    positions.resize(phrase_size);
 
     // find term using cached state
     auto terms = phrase_state->reader->iterator();
     auto position = positions_.begin();
 
-    size_t i = 0;
-    for (const auto& term_states : phrase_state->terms) {
-      auto is_found = false;
-      auto& ps = positions[i++];
-      ps.second = *position;
+    auto term_state = phrase_state->terms.begin();
+    for (size_t i = 0; i < phrase_size; ++i) {
+      const auto num_terms = phrase_state->num_terms[i];
+      auto& pos = positions[i];
+      pos.second = *position;
 
       disjunction_t::doc_iterators_t disj_itrs;
-      disj_itrs.reserve(term_states.size());
-      for (const auto& term_state : term_states) {
-        // use bytes_ref::blank here since we do not need just to "jump"
+      disj_itrs.reserve(num_terms);
+      for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
+        assert(*term_state);
+        // use bytes_ref::NIL here since we do not need just to "jump"
         // to cached state, and we are not interested in term value itself
-        if (!terms->seek(bytes_ref::NIL, *term_state)) {
+        if (!terms->seek(bytes_ref::NIL, **term_state)) {
           continue;
         }
 
@@ -208,23 +305,24 @@ class variadic_phrase_query : public phrase_query<VariadicContainer> {
 
         // add base iterator
         disj_itrs.emplace_back(std::move(docs));
-
-        is_found = true;
       }
-      if (!is_found) {
+
+      if (disj_itrs.empty()) {
         return doc_iterator::empty();
       }
+
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
       typedef irs::compound_doc_iterator<adapter_t> compound_doc_iterator_t;
       #ifdef IRESEARCH_DEBUG
-        ps.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
-        assert(ps.first);
+        pos.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
+        assert(pos.first);
       #else
-        ps.first = static_cast<compound_doc_iterator_t*>(disj.get());
+        pos.first = static_cast<compound_doc_iterator_t*>(disj.get());
       #endif
       conj_itrs.emplace_back(std::move(disj));
       ++position;
     }
+    assert(term_state == phrase_state->terms.end());
 
     return memory::make_shared<phrase_iterator_t>(
       std::move(conj_itrs),
@@ -308,39 +406,38 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
   return false;
 }
 
-/*static*/ bool by_phrase::phrase_part::variadic_type_collect(
+bool by_phrase::phrase_part::collect(
     const term_reader& reader,
-    const phrase_part& phr_part,
-    phrase_term_visitor<variadic_terms_collectors>& ptv) {
+    phrase_term_visitor& ptv) const {
   auto found = false;
-  switch (phr_part.type) {
+  switch (type) {
     case PhrasePartType::TERM:
-      term_query::visit(reader, phr_part.st.term, ptv);
+      term_query::visit(reader, st.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::PREFIX:
-      by_prefix::visit(reader, phr_part.pt.term, ptv);
+      by_prefix::visit(reader, pt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::WILDCARD:
-      by_wildcard::visit(reader, phr_part.wt.term, ptv);
+      by_wildcard::visit(reader, wt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::LEVENSHTEIN:
       by_edit_distance::visit(
-        reader, phr_part.lt.term, phr_part.lt.max_distance, phr_part.lt.provider,
-        phr_part.lt.with_transpositions, ptv);
+        reader, lt.term, lt.max_distance, lt.provider,
+        lt.with_transpositions, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::SET:
-      for (const auto& term : phr_part.ct.terms) {
+      for (const auto& term : ct.terms) {
         term_query::visit(reader, term, ptv);
         found |= ptv.found();
         ptv.reset();
       }
       break;
     case PhrasePartType::RANGE:
-      by_range::visit(reader, phr_part.rt.rng, ptv);
+      by_range::visit(reader, rt.rng, ptv);
       found = ptv.found();
       break;
     default:
@@ -440,6 +537,7 @@ void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
   allocate(std::move(other));
 }
 
+// defined in a separate unit
 size_t hash_value(const by_range::range_t& rng);
 
 size_t hash_value(const by_phrase::phrase_part& info) {
@@ -534,22 +632,27 @@ filter::prepared::ptr by_phrase::prepare(
 
   // prepare phrase stats (collector for each term)
   if (is_simple_term_only_) {
-    return fixed_prepare_collect(index, ord, boost, fixed_terms_collectors(ord, phrase_size));
+    return fixed_prepare_collect(index, ord, boost);
   }
-  return variadic_prepare_collect(index, ord, boost, variadic_terms_collectors(ord, phrase_size));
+
+  return variadic_prepare_collect(index, ord, boost);
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost,
-    fixed_terms_collectors collectors) const {
+    boost_t boost) const {
+  const auto phrase_size = phrase_.size();
+
+  // stats collectors
+  field_collectors field_stats(ord);
+  term_collectors term_stats(ord, phrase_size);
+
   // per segment phrase states
   fixed_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<FixedContainer>::terms_states_t phrase_terms;
-  auto phrase_size = phrase_.size();
+  terms_states_t phrase_terms;
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
@@ -568,17 +671,15 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
       continue;
     }
 
-    collectors.collect(segment, *reader); // collect field statistics once per segment
+    field_stats.collect(segment, *reader); // collect field statistics once per segment
 
-    size_t term_offset = 0;
     auto is_ord_empty = ord.empty();
 
-    phrase_part::phrase_term_visitor<fixed_terms_collectors> ptv(
-      segment, *reader, collectors, phrase_terms);
+    phrase_term_visitor ptv(segment, *reader, phrase_terms);
+    ptv.reset(term_stats);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      ptv.reset(term_offset);
       term_query::visit(*reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
@@ -587,7 +688,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
         // continue here because we should collect
         // stats for other terms in phrase
       }
-      ++term_offset;
     }
 
     // we have not found all needed terms
@@ -619,7 +719,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, index);
+  term_stats.finish(stats_buf, field_stats, index);
 
   return memory::make_shared<fixed_phrase_query>(
     std::move(phrase_states),
@@ -632,19 +732,28 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost,
-    variadic_terms_collectors collectors) const {
+    boost_t boost) const {
+  const auto phrase_size = phrase_.size();
+
+  // stats collectors
+  field_collectors field_stats(ord);
+
+  std::vector<term_collectors> phrase_part_stats;
+  phrase_part_stats.reserve(phrase_size);
+  for (size_t i = 0; i < phrase_size; ++i) {
+    phrase_part_stats.emplace_back(ord, 0);
+  }
+
   // per segment phrase states
   variadic_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  phrase_state<VariadicContainer>::terms_states_t phrase_terms;
-  auto phrase_size = phrase_.size();
-  phrase_terms.resize(phrase_size);
+  std::vector<size_t> num_terms(phrase_size); // number of terms per part
+  terms_states_t phrase_terms;
+  phrase_terms.reserve(phrase_size); // reserve space for at least 1 term per part
 
   // iterate over the segments
   const string_ref field = fld_;
-
   const auto is_ord_empty = ord.empty();
 
   for (const auto& segment : index) {
@@ -660,17 +769,18 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       continue;
     }
 
-    collectors.collect(segment, *reader); // collect field statistics once per segment
+    field_stats.collect(segment, *reader); // collect field statistics once per segment
 
-    size_t term_offset = 0;
+    size_t part_offset = 0;
     size_t found_words_count = 0;
 
-    phrase_part::phrase_term_visitor<variadic_terms_collectors> ptv(
-      segment, *reader, collectors);
+    phrase_term_visitor ptv(segment, *reader, phrase_terms);
 
     for (const auto& word : phrase_) {
-      ptv.reset(phrase_terms[term_offset], term_offset);
-      if (!phrase_part::variadic_type_collect(*reader, word.second, ptv)) {
+      const auto terms_count = phrase_terms.size();
+
+      ptv.reset(phrase_part_stats[part_offset]);
+      if (!word.second.collect(*reader, ptv)) {
         if (is_ord_empty) {
           break;
         }
@@ -679,22 +789,26 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       } else {
         ++found_words_count;
       }
-      ++term_offset;
+
+      // number of terms per phrase part
+      num_terms[part_offset] = phrase_terms.size() - terms_count;
+      ++part_offset;
     }
 
     // we have not found all needed terms
     if (found_words_count != phrase_size) {
-      for (auto& pt : phrase_terms) {
-        pt.clear();
-      }
+      phrase_terms.clear();
       continue;
     }
 
     auto& state = phrase_states.insert(segment);
     state.terms = std::move(phrase_terms);
+    state.num_terms = std::move(num_terms);
     state.reader = reader;
+    assert(phrase_size == state.num_terms.size());
 
-    phrase_terms.resize(phrase_size);
+    phrase_terms.reserve(phrase_size);
+    num_terms.resize(phrase_size); // reserve space for at least 1 term per part
   }
 
   // offset of the first term in a phrase
@@ -713,7 +827,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, index);
+  for (auto& collector: phrase_part_stats) {
+    collector.finish(stats_buf, field_stats, index);
+  }
 
   return memory::make_shared<variadic_phrase_query>(
     std::move(phrase_states),
@@ -724,7 +840,3 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

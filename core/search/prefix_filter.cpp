@@ -25,8 +25,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
-#include "filter_visitor.hpp"
-#include "multiterm_query.hpp"
+#include "limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -127,7 +126,3 @@ bool by_prefix::equals(const filter& rhs) const noexcept {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

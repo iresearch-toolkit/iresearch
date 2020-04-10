@@ -1642,10 +1642,10 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
       ++finish_count;
     };
     scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
     check_query(
       irs::by_granular_range()
@@ -2021,7 +2021,6 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   }
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(granular_range_filter_test_case, visit) {
   // add segment
   {
@@ -2051,7 +2050,6 @@ TEST_P(granular_range_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 INSTANTIATE_TEST_CASE_P(
   granular_range_filter_test,
@@ -2068,7 +2066,3 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

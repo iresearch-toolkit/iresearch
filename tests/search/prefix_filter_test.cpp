@@ -65,10 +65,10 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
       check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
@@ -290,7 +290,6 @@ TEST_P(prefix_filter_test_case, by_prefix) {
   by_prefix_schemas();
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(prefix_filter_test_case, visit) {
   // add segment
   {
@@ -316,7 +315,6 @@ TEST_P(prefix_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 INSTANTIATE_TEST_CASE_P(
   prefix_filter_test,
@@ -327,13 +325,12 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0", "1_1", "1_2")
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"},
+                      tests::format_info{"1_3", "1_0"})
   ),
   tests::to_string
 );
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

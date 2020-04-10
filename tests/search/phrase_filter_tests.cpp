@@ -5087,10 +5087,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(sort);
       };
       sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(sort);
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
         ASSERT_TRUE(
@@ -7303,11 +7303,8 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0", "1_3")
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_3", "1_0"})
   ),
   tests::to_string
 );
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

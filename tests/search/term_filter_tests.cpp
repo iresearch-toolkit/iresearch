@@ -477,10 +477,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
@@ -602,7 +602,6 @@ TEST_P(term_filter_test_case, by_term_cost) {
   by_term_sequential_cost();
 }
 
-#ifndef IRESEARCH_DLL
 TEST_P(term_filter_test_case, visit) {
   // add segment
   {
@@ -628,7 +627,6 @@ TEST_P(term_filter_test_case, visit) {
     visitor.reset();
   }
 }
-#endif
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
@@ -682,7 +680,3 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

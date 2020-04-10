@@ -2468,7 +2468,3 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
     ASSERT_FALSE(writer.flush(index_segment));
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

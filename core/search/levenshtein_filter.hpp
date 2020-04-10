@@ -52,7 +52,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     boost_t boost,
     const string_ref& field,
     const bytes_ref& term,
-    size_t scored_terms_limit,
+    size_t terms_limit,
     byte_type max_distance,
     pdp_f provider,
     bool with_transpositions);
@@ -86,7 +86,6 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
                    max_distance_, provider_, with_transpositions_);
   }
 
-
   using by_prefix::scored_terms_limit;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -96,8 +95,6 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     by_prefix::scored_terms_limit(limit);
     return *this;
   }
-
-  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets maximum allowed edit distance

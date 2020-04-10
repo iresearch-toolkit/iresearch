@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "term_query.hpp"
+#include "search/term_query.hpp"
 
 #include "shared.hpp"
-#include "score_doc_iterators.hpp"
-#include "filter_visitor.hpp"
 #include "index/index_reader.hpp"
+#include "search/collectors.hpp"
+#include "search/score_doc_iterators.hpp"
+#include "search/filter_visitor.hpp"
 
 NS_LOCAL
 
@@ -35,16 +36,21 @@ using namespace irs;
 /// @class term_visitor
 /// @brief filter visitor for term queries
 //////////////////////////////////////////////////////////////////////////////
-class term_visitor final : public filter_visitor {
+class term_visitor final : public filter_visitor,
+                           private util::noncopyable {
  public:
   term_visitor(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const fixed_terms_collectors& collectors,
-    term_query::states_t& states,
-    size_t term_offset
-  ) : term_offset_(term_offset), segment_(segment), reader_(reader),
-    collectors_(collectors), states_(states) {}
+      const sub_reader& segment,
+      const term_reader& reader,
+      const term_collectors& term_stats,
+      term_query::states_t& states,
+      size_t term_offset)
+    : term_offset_(term_offset),
+      segment_(segment),
+      reader_(reader),
+      term_stats_(term_stats),
+      states_(states) {
+  }
 
   virtual void prepare(const seek_term_iterator& terms) noexcept override {
     terms_ = &terms;
@@ -53,7 +59,7 @@ class term_visitor final : public filter_visitor {
   virtual void visit() override {
     // collect statistics
     assert(terms_);
-    collectors_.collect(segment_, reader_, term_offset_, terms_->attributes());
+    term_stats_.collect(segment_, reader_, term_offset_, terms_->attributes());
 
     // Cache term state in prepared query attributes.
     // Later, using cached state we could easily "jump" to
@@ -68,7 +74,7 @@ class term_visitor final : public filter_visitor {
   const size_t term_offset_;
   const sub_reader& segment_;
   const term_reader& reader_;
-  const fixed_terms_collectors& collectors_;
+  const term_collectors& term_stats_;
   term_query::states_t& states_;
   const seek_term_iterator* terms_ = nullptr;
 };
@@ -108,7 +114,8 @@ NS_ROOT
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  fixed_terms_collectors collectors(ord, 1);
+  field_collectors field_stats(ord);
+  term_collectors term_stats(ord, 1);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -119,10 +126,10 @@ NS_ROOT
       continue;
     }
 
-    collectors.collect(segment, *reader); // collect field statistics once per segment
+    field_stats.collect(segment, *reader); // collect field statistics once per segment
 
     // term_offset = 0 because only 1 term
-    term_visitor tv(segment, *reader, collectors, states, 0);
+    term_visitor tv(segment, *reader, term_stats, states, 0);
 
     ::visit(*reader, term, tv);
   }
@@ -131,7 +138,7 @@ NS_ROOT
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, index);
+  term_stats.finish(stats_buf, field_stats, index);
 
   return memory::make_shared<term_query>(
     std::move(states), std::move(stats), boost
@@ -192,7 +199,3 @@ doc_iterator::ptr term_query::execute(
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

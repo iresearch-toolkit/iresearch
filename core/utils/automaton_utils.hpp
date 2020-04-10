@@ -23,16 +23,21 @@
 #ifndef IRESEARCH_AUTOMATON_UTILS_H
 #define IRESEARCH_AUTOMATON_UTILS_H
 
-#include "automaton.hpp"
-#include "fst_states_map.hpp"
-#include "hash_utils.hpp"
-#include "utf8_utils.hpp"
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
+#include "utils/automaton.hpp"
+#include "utils/fst_states_map.hpp"
+#include "utils/fst_table_matcher.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 NS_ROOT
 
 struct filter_visitor;
+
+inline automaton_table_matcher make_automaton_matcher(const automaton& a) {
+  return automaton_table_matcher(a, fst::fsa::kRho);
+}
 
 template<typename Char, typename Matcher>
 inline automaton::Weight accept(
@@ -405,7 +410,7 @@ IRESEARCH_API void utf8_emplace_rho_arc(
 /// @brief instantiate compiled filter based on a specified automaton, field
 ///        and other properties
 /// @param field field name
-/// @param acceptor input automaton
+/// @param matcher input matcher
 /// @param scored_terms_limit score as many terms
 /// @param index index reader
 /// @param order compiled order
@@ -414,21 +419,46 @@ IRESEARCH_API void utf8_emplace_rho_arc(
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const string_ref& field,
-  const automaton& acceptor,
+  automaton_table_matcher& acceptor,
   size_t scored_terms_limit,
   const index_reader& index,
   const order::prepared& order,
   boost_t boost);
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief instantiate compiled filter based on a specified automaton, field
+///        and other properties
+/// @param field field name
+/// @param acceptor input automaton
+/// @param scored_terms_limit score as many terms
+/// @param index index reader
+/// @param order compiled order
+/// @param bool query boost
+/// @returns compiled filter
+//////////////////////////////////////////////////////////////////////////////
+inline filter::prepared::ptr prepare_automaton_filter(
+    const string_ref& field,
+    const automaton& acceptor,
+    size_t scored_terms_limit,
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost) {
+  auto matcher = make_automaton_matcher(acceptor);
+
+  return prepare_automaton_filter(field, matcher, scored_terms_limit,
+                                  index, order, boost);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief visit an automaton with a reader using a forwarded visitor
 /// @param reader term reader
 /// @param acceptor input automaton
 /// @param fv visitor
+/// @return false in case of error, true otherwise
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void automaton_visit(
+IRESEARCH_API bool automaton_visit(
   const term_reader& reader,
-  const automaton& acceptor,
+  automaton_table_matcher& matcher,
   filter_visitor& fv);
 
 NS_END

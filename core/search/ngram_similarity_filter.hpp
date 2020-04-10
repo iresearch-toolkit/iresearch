@@ -113,7 +113,6 @@ class IRESEARCH_API by_ngram_similarity : public filter {
   std::string fld_;
   float_t threshold_{1.f};
   IRESEARCH_API_PRIVATE_VARIABLES_END
-
 }; // by_ngram_similarity
 NS_END // ROOT
 

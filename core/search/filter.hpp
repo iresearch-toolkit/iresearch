@@ -36,7 +36,9 @@ NS_ROOT
 
 template<typename State>
 class states_cache : private util::noncopyable {
-public:
+ public:
+  using state_type = State;
+
   explicit states_cache(size_t size) {
     states_.reserve(size);
   }
@@ -65,10 +67,9 @@ public:
   bool empty() const noexcept { return states_.empty(); }
 
 private:
-  typedef std::unordered_map<
-    const sub_reader*, State
-  > states_map_t;
+  typedef std::unordered_map<const sub_reader*, State> states_map_t;
 
+  // FIXME use vector instead?
   states_map_t states_;
 }; // states_cache
 
