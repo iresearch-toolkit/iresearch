@@ -28,18 +28,21 @@
 
 NS_ROOT
 
+class by_edit_distance;
 class parametric_description;
 struct filter_visitor;
 
-class by_edit_distance;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_edit_distance_options
+/// @brief options for levenshtein filter
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_edit_distance_options {
+  using filter_type = by_edit_distance;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
   using pdp_f = const parametric_description&(*)(byte_type, bool);
-
-  using filter_type = by_edit_distance;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief target value
@@ -82,7 +85,7 @@ struct IRESEARCH_API by_edit_distance_options {
                         hash_combine(hash_utils::hash(term),
                                      std::hash<byte_type>()(max_distance)));
   }
-};
+}; // by_edit_distance_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance

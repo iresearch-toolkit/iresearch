@@ -30,9 +30,16 @@ NS_ROOT
 
 class by_column_existence;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_column_existence_options
+/// @brief options for column existence filter
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_column_existence_options {
   using filter_type = by_column_existence;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief match field prefix
+  //////////////////////////////////////////////////////////////////////////////
   bool prefix_match{};
 
   bool operator==(const by_column_existence_options& rhs) const noexcept {
@@ -42,7 +49,7 @@ struct IRESEARCH_API by_column_existence_options {
   size_t hash() const noexcept {
     return std::hash<bool>()(prefix_match);
   }
-};
+}; // by_column_existence_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_column_existence

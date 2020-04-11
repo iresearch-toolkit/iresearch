@@ -23,13 +23,17 @@
 #ifndef IRESEARCH_TERM_FILTER_H
 #define IRESEARCH_TERM_FILTER_H
 
-#include "filter.hpp"
+#include "search/filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
 class by_term;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_term_options
+/// @brief options for term filter
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_term_options : single_term_options<by_term> { };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -50,8 +54,8 @@ class IRESEARCH_API by_term : public filter_with_field<by_term_options> {
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const override;
-};
+}; // by_term
 
 NS_END
 
-#endif
+#endif // IRESEARCH_TERM_FILTER_H

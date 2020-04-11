@@ -23,15 +23,24 @@
 #ifndef IRESEARCH_PREFIX_FILTER_H
 #define IRESEARCH_PREFIX_FILTER_H
 
-#include "term_filter.hpp"
+#include "search/filter.hpp"
+#include "utils/string.hpp"
 
 NS_ROOT
 
 class by_prefix;
 struct filter_visitor;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for prefix filter
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_prefix_options : single_term_options<by_prefix> { };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class by_prefix
+/// @brief user-side prefix filter
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_prefix : public filter_with_field<by_prefix_options> {
  public:
   DECLARE_FILTER_TYPE();

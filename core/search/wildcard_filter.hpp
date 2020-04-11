@@ -23,7 +23,7 @@
 #ifndef IRESEARCH_WILDCARD_FILTER_H
 #define IRESEARCH_WILDCARD_FILTER_H
 
-#include "filter.hpp"
+#include "search/filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
@@ -31,6 +31,10 @@ NS_ROOT
 class by_wildcard;
 struct filter_visitor;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_wildcard_options
+/// @brief options for wildcard filter
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_wildcard_options : single_term_options<by_wildcard> { };
 
 //////////////////////////////////////////////////////////////////////////////
