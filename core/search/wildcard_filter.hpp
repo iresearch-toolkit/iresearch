@@ -24,18 +24,20 @@
 #define IRESEARCH_WILDCARD_FILTER_H
 
 #include "filter.hpp"
-#include "prefix_filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
+class by_wildcard;
 struct filter_visitor;
+
+struct IRESEARCH_API by_wildcard_options : single_term_options<by_wildcard> { };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_wildcard final : public by_prefix {
+class IRESEARCH_API by_wildcard final : public filter_with_field<by_wildcard_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
@@ -53,14 +55,7 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     bytes_ref term,
     filter_visitor& fv);
 
-  explicit by_wildcard() noexcept;
-
-  using by_prefix::field;
-
-  by_wildcard& field(std::string fld) {
-    by_prefix::field(std::move(fld));
-    return *this;
-  }
+  by_wildcard() = default;
 
   using filter::prepare;
 
@@ -70,21 +65,31 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
       boost_t boost,
       const attribute_view& /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,
-                   field(), term(), scored_terms_limit());
+                   field(), options().term, scored_terms_limit());
   }
-
-
-  using by_prefix::scored_terms_limit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
   by_wildcard& scored_terms_limit(size_t limit) noexcept {
-    by_prefix::scored_terms_limit(limit);
+    scored_terms_limit_ = limit;
     return *this;
   }
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit() const noexcept {
+    return scored_terms_limit_;
+  }
+
+  virtual size_t hash() const noexcept override;
+
+ protected:
+  virtual bool equals(const filter& rhs) const noexcept override;
+
+ private:
+  size_t scored_terms_limit_{1024};
 }; // by_wildcard
 
 #endif // IRESEARCH_WILDCARD_FILTER_H

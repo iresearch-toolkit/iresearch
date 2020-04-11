@@ -38,21 +38,6 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_term)
 DEFINE_FACTORY_DEFAULT(by_term)
 
-by_term::by_term() noexcept : by_term(by_term::type()) { }
-
-bool by_term::equals(const filter& rhs) const noexcept {
-  const by_term& trhs = static_cast<const by_term&>(rhs);
-  return filter::equals(rhs) && fld_ == trhs.fld_ && term_ == trhs.term_;
-}
-
-size_t by_term::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, fld_);
-  ::boost::hash_combine(seed, term_);
-  return seed;
-}
-
 filter::prepared::ptr by_term::prepare(
     const index_reader& rdr,
     const order::prepared& ord,

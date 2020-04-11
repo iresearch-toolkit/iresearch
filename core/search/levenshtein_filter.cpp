@@ -56,8 +56,13 @@ FORCE_INLINE boost_t similarity(uint32_t distance, uint32_t size) noexcept {
 
 template<typename Invalid, typename Term, typename Levenshtein>
 inline void executeLevenshtein(byte_type max_distance,
-                               by_edit_distance::pdp_f provider, bool with_transpositions,
+                               by_edit_distance_options::pdp_f provider,
+                               bool with_transpositions,
                                Invalid inv, Term t, Levenshtein lev) {
+  if (!provider) {
+    provider = &default_pdp;
+  }
+
   if (0 == max_distance) {
     t();
     return;
@@ -321,7 +326,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     const bytes_ref& term,
     size_t scored_terms_limit,
     byte_type max_distance,
-    pdp_f provider,
+    options_type::pdp_f provider,
     bool with_transpositions) {
   filter::prepared::ptr res;
   executeLevenshtein(
@@ -343,7 +348,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     const term_reader& reader,
     const bytes_ref& term,
     byte_type max_distance,
-    by_edit_distance::pdp_f provider,
+    options_type::pdp_f provider,
     bool with_transpositions,
     filter_visitor& fv) {
   executeLevenshtein(
@@ -359,36 +364,6 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       automaton_visit(reader, matcher, fv);
     }
   );
-}
-
-by_edit_distance::by_edit_distance() noexcept
-  : by_prefix(by_edit_distance::type()),
-    provider_(&default_pdp) {
-}
-
-by_edit_distance& by_edit_distance::provider(pdp_f provider) noexcept {
-  if (!provider) {
-    provider_ = &default_pdp;
-  } else {
-    provider_ = provider;
-  }
-  return *this;
-}
-
-size_t by_edit_distance::hash() const noexcept {
-  size_t seed = 0;
-  seed = hash_combine(0, by_prefix::hash());
-  seed = hash_combine(seed, max_distance_);
-  seed = hash_combine(seed, with_transpositions_);
-  return seed;
-}
-
-bool by_edit_distance::equals(const filter& rhs) const noexcept {
-  const auto& impl = static_cast<const by_edit_distance&>(rhs);
-
-  return by_prefix::equals(rhs) &&
-    max_distance_ == impl.max_distance_ &&
-    with_transpositions_ == impl.with_transpositions_;
 }
 
 NS_END

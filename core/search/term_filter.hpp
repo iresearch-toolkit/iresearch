@@ -28,39 +28,20 @@
 
 NS_ROOT
 
+class by_term;
+
+struct IRESEARCH_API by_term_options : single_term_options<by_term> { };
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 
 /// @brief user-side term filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_term : public filter {
+class IRESEARCH_API by_term : public filter_with_field<by_term_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_term() noexcept;
-
-  by_term& field(std::string fld) {
-    fld_ = std::move(fld); 
-    return *this;
-  }
-
-  const std::string& field() const noexcept {
-    return fld_; 
-  }
-
-  by_term& term(bstring&& term) {
-    term_ = std::move(term);
-    return *this;
-  }
-
-  by_term& term(const bytes_ref& term) {
-    term_ = term;
-    return *this;
-  }
-
-  by_term& term(const string_ref& term) {
-    return this->term(ref_cast<byte_type>(term));
-  }
+  by_term() = default;
 
   using filter::prepare;
 
@@ -68,20 +49,7 @@ class IRESEARCH_API by_term : public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
-
-  const bstring& term() const noexcept {
-    return term_;
-  }
-
-  virtual size_t hash() const noexcept override;
-
- protected:
-  explicit by_term(const type_id& type) noexcept
-    : filter(type) {
-  }
-  virtual bool equals(const filter& rhs) const noexcept override;
+    const attribute_view& ctx) const override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

@@ -27,9 +27,12 @@
 
 NS_ROOT
 
+class by_prefix;
 struct filter_visitor;
 
-class IRESEARCH_API by_prefix : public by_term {
+struct IRESEARCH_API by_prefix_options : single_term_options<by_prefix> { };
+
+class IRESEARCH_API by_prefix : public filter_with_field<by_prefix_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
@@ -47,14 +50,7 @@ class IRESEARCH_API by_prefix : public by_term {
     const bytes_ref& prefix,
     filter_visitor& visitor);
 
-  by_prefix() noexcept;
-
-  using by_term::field;
-
-  by_prefix& field(std::string fld) {
-    by_term::field(std::move(fld));
-    return *this;
-  }
+  by_prefix() = default;
 
   using filter::prepare;
 
@@ -64,8 +60,7 @@ class IRESEARCH_API by_prefix : public by_term {
       boost_t boost,
       const attribute_view& /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
-                   field(), term(), scored_terms_limit_);
-
+                   field(), options().term, scored_terms_limit_);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -86,10 +81,6 @@ class IRESEARCH_API by_prefix : public by_term {
   virtual size_t hash() const noexcept override;
 
  protected:
-  explicit by_prefix(const type_id& type) noexcept
-    : by_term(type) {
-  }
-
   virtual bool equals(const filter& rhs) const noexcept override;
 
  private:

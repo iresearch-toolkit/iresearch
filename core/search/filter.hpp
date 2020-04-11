@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -30,7 +30,7 @@
 
 #include "shared.hpp"
 #include "index/iterators.hpp"
-
+#include "utils/hash_utils.hpp"
 
 NS_ROOT
 
@@ -141,11 +141,6 @@ class IRESEARCH_API filter {
     return !(*this == rhs);
   }
 
-  // boost::hash_combile support
-  friend size_t hash_value(const filter& q) noexcept {
-    return q.hash();
-  }
-
   // boost - external boost
   virtual filter::prepared::ptr prepare(
       const index_reader& rdr,
@@ -197,6 +192,91 @@ class IRESEARCH_API filter {
   const type_id* type_;
 }; // filter
 
+// boost::hash_combine support
+inline size_t hash_value(const filter& q) noexcept {
+  return q.hash();
+}
+
+template<typename Options>
+class IRESEARCH_API filter_with_options : public filter {
+ public:
+  using options_type = Options;
+  using filter_type = typename options_type::filter_type;
+
+  const options_type& options() const noexcept { return options_; }
+  options_type* mutable_options() noexcept { return &options_; }
+
+  virtual size_t hash() const noexcept override {
+    return hash_combine(filter::hash(), options_.hash());
+  }
+
+ protected:
+  filter_with_options() : filter(filter_type::type()) { }
+
+  virtual bool equals(const filter& rhs) const noexcept override {
+#ifdef IRESEARCH_DEBUG
+    auto& impl = dynamic_cast<const filter_type&>(rhs);
+#else
+    auto& impl = static_cast<const filter_type&>(rhs);
+#endif
+
+    return filter::equals(rhs) && options_ == impl.options_;
+  }
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  options_type options_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+};
+
+template<typename Options>
+class IRESEARCH_API filter_with_field : public filter_with_options<Options> {
+ public:
+  using options_type = Options;
+  using filter_type = typename options_type::filter_type;
+
+  const std::string& field() const noexcept { return field_; }
+  std::string* mutable_field() noexcept { return &field_; }
+
+  virtual size_t hash() const noexcept override {
+    return hash_combine(hash_utils::hash(field_),
+                        filter_with_options<options_type>::hash());
+  }
+
+ protected:
+  filter_with_field() = default;
+
+  virtual bool equals(const filter& rhs) const noexcept override {
+#ifdef IRESEARCH_DEBUG
+    auto& impl = dynamic_cast<const filter_type&>(rhs);
+#else
+    auto& impl = static_cast<const filter_type&>(rhs);
+#endif
+
+    return filter_with_options<options_type>::equals(rhs) && field_ == impl.field_;
+  }
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::string field_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+};
+
+template<typename Filter>
+struct single_term_options {
+  using filter_type = Filter;
+
+  bstring term;
+
+  bool operator==(const single_term_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return hash_utils::hash(term);
+  }
+};
+
 #define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(::iresearch::type_id)
 #define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,::iresearch::type_id) { \
   static ::iresearch::type_id type; \
@@ -223,14 +303,14 @@ class IRESEARCH_API empty: public filter {
 
 NS_END
 
-NS_BEGIN( std )
+NS_BEGIN(std)
 
 template<>
 struct hash<iresearch::filter> {
   typedef iresearch::filter argument_type;
   typedef size_t result_type;
 
-  result_type operator()( const argument_type& key) const {
+  result_type operator()(const argument_type& key) const {
     return key.hash();
   }
 };

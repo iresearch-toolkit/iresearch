@@ -23,39 +23,65 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+
+NS_LOCAL
+
+irs::by_edit_distance make_filter(
+    const irs::string_ref& field,
+    const irs::string_ref term,
+    irs::byte_type max_distance = 0,
+    size_t max_terms = 0,
+    bool with_transpositions = false) {
+  irs::by_edit_distance q;
+  *q.mutable_field() = field;
+  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->max_distance = max_distance;
+  q.mutable_options()->max_terms = max_terms;
+  q.mutable_options()->with_transpositions = with_transpositions;
+  return q;
+}
+
+NS_END
 
 class levenshtein_filter_test_case : public tests::filter_test_case_base { };
 
 TEST(by_edit_distance_test, ctor) {
   irs::by_edit_distance q;
   ASSERT_EQ(irs::by_edit_distance::type(), q.type());
-  ASSERT_EQ(0, q.max_distance());
-  ASSERT_EQ(1024, q.scored_terms_limit());
-  ASSERT_FALSE(q.with_transpositions());
-  ASSERT_TRUE(q.term().empty());
+  auto& opts = q.options();
+  ASSERT_EQ(0, opts.max_distance);
+  ASSERT_EQ(0, opts.max_terms);
+  ASSERT_FALSE(opts.with_transpositions);
+  ASSERT_TRUE(opts.term.empty());
   ASSERT_TRUE(q.field().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
 TEST(by_edit_distance_test, equal) {
-  irs::by_edit_distance q;
-  q.field("field").max_distance(1).with_transpositions(true).term("bar");
+  const irs::by_edit_distance q = make_filter("field", "bar", 1, 0, true);
 
-  ASSERT_EQ(q, irs::by_edit_distance().field("field").max_distance(1).scored_terms_limit(1024).with_transpositions(true).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).scored_terms_limit(0).with_transpositions(true).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field1").max_distance(1).with_transpositions(true).term("bar"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").max_distance(1).with_transpositions(true).term("bar1"));
-  ASSERT_NE(q, irs::by_edit_distance().field("field").with_transpositions(true).term("bar"));
-  ASSERT_NE(q, irs::by_prefix().field("field").term("bar"));
+  ASSERT_EQ(q, make_filter("field", "bar", 1, 0, true));
+  ASSERT_NE(q, make_filter("field1", "bar", 1, 0, true));
+  ASSERT_NE(q, make_filter("field", "baz", 1, 0, true));
+  ASSERT_NE(q, make_filter("field", "bar", 2, 0, true));
+  ASSERT_NE(q, make_filter("field", "bar", 1, 1024, true));
+  ASSERT_NE(q, make_filter("field", "bar", 1, 0, false));
+  {
+    irs::by_prefix rhs;
+    *rhs.mutable_field() = "field";
+    rhs.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    ASSERT_NE(q, rhs);
+  }
 }
 
 TEST(by_edit_distance_test, boost) {
   // no boost
   {
     irs::by_edit_distance q;
-    q.field("field").term("bar*");
+    *q.mutable_field() = "field";
+    q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -66,7 +92,8 @@ TEST(by_edit_distance_test, boost) {
     irs::boost_t boost = 1.5f;
 
     irs::by_edit_distance q;
-    q.field("field").term("bar*");
+    *q.mutable_field() = "field";
+    q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -102,7 +129,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
+  check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
 
   {
     docs_t docs{28, 29};
@@ -134,7 +161,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(0), order, docs, rdr);
+    check_query(make_filter("title", "", 1, 0, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -172,7 +199,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(10), order, docs, rdr);
+    check_query(make_filter("title", "", 1, 10, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -210,7 +237,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(irs::by_edit_distance().max_distance(1).field("title").scored_terms_limit(1), order, docs, rdr);
+    check_query(make_filter("title", "", 1, 1, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -233,19 +260,19 @@ TEST_P(by_edit_distance_test_case, test_filter) {
 
   // empty query
   check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
-  check_query(irs::by_edit_distance().field("title"), docs_t{}, costs_t{0}, rdr);
+  check_query(make_filter("title", "", 0, 0, false), docs_t{}, costs_t{0}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein
   //////////////////////////////////////////////////////////////////////////////
 
   // distance 0 (term query)
-  check_query(irs::by_edit_distance().field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
-  check_query(irs::by_edit_distance().max_distance(0).field("title").term("aa"), docs_t{27}, costs_t{1}, rdr);
-  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(0).term("aa"), docs_t{27}, costs_t{1}, rdr);
-  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(1).term("aa"), docs_t{27}, costs_t{1}, rdr);
-  check_query(irs::by_edit_distance().max_distance(0).field("title").term("ababab"), docs_t{17}, costs_t{1}, rdr);
-  check_query(irs::by_edit_distance().max_distance(0).field("title").scored_terms_limit(0).term("ababab"), docs_t{17}, costs_t{1}, rdr);
+  check_query(make_filter("title", "aa", 0, 1024), docs_t{27}, costs_t{1}, rdr);
+  check_query(make_filter("title", "aa", 0, 0), docs_t{27}, costs_t{1}, rdr);
+  check_query(make_filter("title", "aa", 0, 10), docs_t{27}, costs_t{1}, rdr);
+  check_query(make_filter("title", "aa", 0, 0), docs_t{27}, costs_t{1}, rdr);
+  check_query(make_filter("title", "ababab", 0, 10), docs_t{17}, costs_t{1}, rdr);
+  check_query(make_filter("title", "ababab", 0, 0), docs_t{17}, costs_t{1}, rdr);
 
   // distance 1
   check_query(irs::by_edit_distance().max_distance(1).field("title"), docs_t{28, 29}, costs_t{2}, rdr);

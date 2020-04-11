@@ -22,8 +22,6 @@
 
 #include "prefix_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "shared.hpp"
 #include "limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
@@ -111,18 +109,16 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   ::visit(reader, prefix, visitor);
 }
 
-by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
-
 size_t by_prefix::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, by_term::hash());
-  ::boost::hash_combine(seed, scored_terms_limit_);
-  return seed;
+  return hash_combine(scored_terms_limit_,
+                      filter_with_field<by_prefix_options>::hash());
 }
 
 bool by_prefix::equals(const filter& rhs) const noexcept {
   const auto& impl = static_cast<const by_prefix&>(rhs);
-  return by_term::equals(rhs) && scored_terms_limit_ == impl.scored_terms_limit_;
+
+  return filter_with_field<by_prefix_options>::hash() &&
+      scored_terms_limit_ == impl.scored_terms_limit_;
 }
 
 NS_END // ROOT

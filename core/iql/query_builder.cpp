@@ -172,11 +172,15 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
 
     if (bMinValueNil && bMaxValueNil) {
       // exact equivalence optimization for nil value
-      root.proxy<irs::by_term>().field(field).term(irs::bytes_ref::NIL);
+      auto& filter = root.proxy<irs::by_term>();
+      *filter.mutable_field() = field;
+      filter.mutable_options()->term.clear();
     }
     else if (!bMinValueNil && !bMaxValueNil && minValue == maxValue) {
       // exact equivalence optimization
-      root.proxy<irs::by_term>().field(field).term(std::move(minValue));
+      auto& filter = root.proxy<irs::by_term>();
+      *filter.mutable_field() = field;
+      filter.mutable_options()->term = std::move(minValue);
     }
     else {
       auto& range = root.proxy<irs::by_range>().field(field);

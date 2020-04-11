@@ -92,7 +92,7 @@ class IRESEARCH_API by_phrase : public filter {
     bool with_transpositions{false};
     byte_type max_distance{0};
     size_t scored_terms_limit{1024};
-    by_edit_distance::pdp_f provider{irs::default_pdp};
+    by_edit_distance_options::pdp_f provider{irs::default_pdp};
     bstring term;
   };
 
