@@ -28,6 +28,17 @@
 
 NS_LOCAL
 
+irs::by_prefix make_filter(
+    const irs::string_ref& field,
+    const irs::string_ref term,
+    size_t scored_terms_limit = 1024) {
+  irs::by_prefix q;
+  *q.mutable_field() = field;
+  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.scored_terms_limit(scored_terms_limit);
+  return q;
+}
+
 class prefix_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_prefix_order() {
@@ -70,7 +81,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
-      check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
+      check_query(make_filter("prefix", ""), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
       ASSERT_EQ(9, collect_term_count); // 9 different terms
       ASSERT_EQ(9, finish_count); // 9 unque terms
@@ -83,7 +94,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       irs::order order;
 
       order.add<tests::sort::frequency_sort>(false);
-      check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
+      check_query(make_filter("prefix", ""), order, docs, rdr);
     }
 
     //FIXME
@@ -104,7 +115,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       irs::order order;
 
       order.add<tests::sort::frequency_sort>(false);
-      check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
+      check_query(make_filter("prefix", "a"), order, docs, rdr);
     }
 
     // prefix
@@ -115,7 +126,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
       order.add<tests::sort::frequency_sort>(false);
       order.add<tests::sort::frequency_sort>(true);
-      check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
+      check_query(make_filter("prefix", "a"), order, docs, rdr);
     }
   }
 
@@ -134,13 +145,13 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
     check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
     // empty field
-    check_query(irs::by_prefix().term("xyz"), docs_t{}, costs_t{0}, rdr);
+    check_query(make_filter("", "xyz"), docs_t{}, costs_t{0}, rdr);
 
     // invalid field
-    check_query(irs::by_prefix().field("same1").term("xyz"), docs_t{}, costs_t{0}, rdr);
+    check_query(make_filter("same1", "xyz"), docs_t{}, costs_t{0}, rdr);
 
     // invalid prefix
-    check_query(irs::by_prefix().field("same").term("xyz_invalid"), docs_t{}, costs_t{0}, rdr);
+    check_query(make_filter("same", "xyz_invalid"), docs_t{}, costs_t{0}, rdr);
 
     // valid prefix
     {
@@ -151,7 +162,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
       costs_t costs{ result.size() };
 
-      check_query(irs::by_prefix().field("same").term("xyz"), result, costs, rdr);
+      check_query(make_filter("same", "xyz"), result, costs, rdr);
     }
 
     // empty prefix : get all fields
@@ -159,7 +170,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_prefix().field("duplicated"), docs, costs, rdr);
+      check_query(make_filter("duplicated", ""), docs, costs, rdr);
     }
 
     // single digit prefix
@@ -167,35 +178,35 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 5, 11, 21, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_prefix().field("duplicated").term("a"), docs, costs, rdr);
+      check_query(make_filter("duplicated", "a"), docs, costs, rdr);
     }
 
-    check_query(irs::by_prefix().field("name").term("!"), docs_t{28}, costs_t{1}, rdr);
-    check_query(irs::by_prefix().field("prefix").term("b"), docs_t{9, 24}, costs_t{2}, rdr);
+    check_query(make_filter("name", "!"), docs_t{28}, costs_t{1}, rdr);
+    check_query(make_filter("prefix", "b"), docs_t{9, 24}, costs_t{2}, rdr);
 
     // multiple digit prefix
     {
       docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_prefix().field("duplicated").term("vcz"), docs, costs, rdr);
+      check_query(make_filter("duplicated", "vcz"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
-      check_query(irs::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
+      check_query(make_filter("prefix", "abc"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
+      check_query(make_filter("prefix", "abc"), docs, costs, rdr);
     }
 
     // whole word
-    check_query(irs::by_prefix().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
+    check_query(make_filter("prefix", "bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
   }
 
   void by_prefix_schemas() { 
@@ -225,48 +236,49 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
     auto rdr = open_reader();
 
-    check_query(irs::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
+    check_query(make_filter("Name", "Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
 }; // prefix_filter_test_case
+
+
+TEST(by_prefix_test, options) {
+  irs::by_prefix_options opts;
+  ASSERT_TRUE(opts.term.empty());
+}
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
   ASSERT_EQ(irs::by_prefix::type(), q.type());
+  ASSERT_EQ(irs::by_prefix_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_TRUE(q.term().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ(1024, q.scored_terms_limit());
 }
 
 TEST(by_prefix_test, equal) {
   {
-    irs::by_prefix q;
-    q.field("field").term("term");
+    irs::by_prefix q = make_filter("field", "term");
 
-    ASSERT_EQ(q, irs::by_prefix().field("field").term("term"));
-    ASSERT_EQ(q.hash(), irs::by_prefix().field("field").term("term").hash());
-    ASSERT_NE(q, irs::by_prefix().field("field1").term("term"));
-    ASSERT_NE(q, irs::by_prefix().scored_terms_limit(100).field("field").term("term"));
-    ASSERT_NE(q, irs::by_term().field("field").term("term"));
+    ASSERT_EQ(q, make_filter("field", "term"));
+    ASSERT_EQ(q.hash(), make_filter("field", "term").hash());
+    ASSERT_NE(q, make_filter("field1", "term"));
+    ASSERT_NE(q, make_filter("field", "term", 100));
   }
 
   {
-    irs::by_prefix q;
-    q.scored_terms_limit(100).field("field").term("term");
+    irs::by_prefix q = make_filter("field", "term", 100);
 
-    ASSERT_EQ(q, irs::by_prefix().scored_terms_limit(100).field("field").term("term"));
-    ASSERT_EQ(q.hash(), irs::by_prefix().scored_terms_limit(100).field("field").term("term").hash());
-    ASSERT_NE(q, irs::by_prefix().scored_terms_limit(100).field("field1").term("term"));
-    ASSERT_NE(q, irs::by_prefix().field("field").term("term"));
-    ASSERT_NE(q, irs::by_term().field("field").term("term"));
+    ASSERT_EQ(q, make_filter("field", "term", 100));
+    ASSERT_EQ(q.hash(), make_filter("field", "term", 100).hash());
+    ASSERT_NE(q, make_filter("field1", "term", 100));
+    ASSERT_NE(q, make_filter("field", "term"));
   }
 }
 
 TEST(by_prefix_test, boost) {
   // no boost
   {
-    irs::by_prefix q;
-    q.field("field").term("term");
+    irs::by_prefix q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -275,8 +287,7 @@ TEST(by_prefix_test, boost) {
   // with boost
   {
     irs::boost_t boost = 1.5f;
-    irs::by_prefix q;
-    q.field("field").term("term");
+    irs::by_prefix q = make_filter("field", "term");
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());

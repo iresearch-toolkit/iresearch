@@ -39,6 +39,30 @@
 
 #include <functional>
 
+NS_LOCAL
+
+template<typename Filter>
+Filter make_filter(
+    const irs::string_ref& field,
+    const irs::string_ref term) {
+  Filter q;
+  *q.mutable_field() = field;
+  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  return q;
+}
+
+template<typename Filter>
+Filter& append(irs::boolean_filter& root,
+            const irs::string_ref& name,
+            const irs::string_ref& term) {
+  auto& sub = root.add<Filter>();
+  *sub.mutable_field() = name;
+  sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  return sub;
+}
+
+NS_END
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   Iterator tests
 // ----------------------------------------------------------------------------
@@ -7203,9 +7227,9 @@ TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
   auto rdr = open_reader();
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("B");
-    root.add<irs::by_term>().field("name").term("F");
-    root.add<irs::by_term>().field("name").term("I");
+    append<irs::by_term>(root, "name", "B");
+    append<irs::by_term>(root, "name", "F");
+    append<irs::by_term>(root, "name", "I");
 
     auto prep = root.prepare(rdr);
     auto segment = rdr.begin();
@@ -7253,7 +7277,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=V
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("V"); // 22
+    append<irs::by_term>(root, "name", "V"); // 22
 
     check_query(root, docs_t{ 22 }, rdr);
   }
@@ -7261,8 +7285,8 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=W OR name=Z
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("W"); // 23
-    root.add<irs::by_term>().field("name").term("C"); // 3
+    append<irs::by_term>(root, "name", "W"); // 23
+    append<irs::by_term>(root, "name", "C"); // 3
 
     check_query(root, docs_t{ 3, 23 }, rdr);
   }
@@ -7270,9 +7294,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=A OR name=Q OR name=Z
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
-    root.add<irs::by_term>().field("name").term("Q"); // 17
-    root.add<irs::by_term>().field("name").term("Z"); // 26
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    append<irs::by_term>(root, "name", "Z"); // 26
 
     check_query(root, docs_t{ 1, 17, 26 }, rdr);
   }
@@ -7280,9 +7304,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=A OR name=Q OR same!=xyz
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
-    root.add<irs::by_term>().field("name").term("Q"); // 17
-    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
 
     check_query(root, docs_t{ 1, 17 }, rdr);
   }
@@ -7290,9 +7314,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // (name=A OR name=Q) OR same!=xyz
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
-    root.add<irs::by_term>().field("name").term("Q"); // 17
-    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
 
     check_query(root, docs_t{ 1, 17 }, rdr);
   }
@@ -7300,11 +7324,11 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
-    root.add<irs::by_term>().field("name").term("Q"); // 17
-    root.add<irs::by_term>().field("name").term("Z"); // 26
-    root.add<irs::by_term>().field("same").term("invalid_term");
-    root.add<irs::by_term>().field("invalid_field").term("V");
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    append<irs::by_term>(root, "name", "Z"); // 26
+    append<irs::by_term>(root, "same", "invalid_term");
+    append<irs::by_term>(root, "invalid_field", "V");
 
     check_query(root, docs_t{ 1, 17, 26 }, rdr);
   }
@@ -7312,11 +7336,11 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // search : all terms
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
-    root.add<irs::by_term>().field("name").term("Q"); // 17
-    root.add<irs::by_term>().field("name").term("Z"); // 26
-    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-    root.add<irs::by_term>().field("same").term("invalid_term");
+    append<irs::by_term>(root, "name", "A"); // 1
+    append<irs::by_term>(root, "name", "Q"); // 17
+    append<irs::by_term>(root, "name", "Z"); // 26
+    append<irs::by_term>(root, "same", "xyz"); // 1..32
+    append<irs::by_term>(root, "same", "invalid_term");
 
     check_query(
       root,
@@ -7328,7 +7352,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name=A OR false
   {
     irs::Or root;
-    root.add<irs::by_term>().field("name").term("A"); // 1
+    append<irs::by_term>(root, "name", "A"); // 1
     root.add<irs::empty>();
 
     check_query(root, docs_t{ 1 }, rdr);
@@ -7337,18 +7361,11 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // name!=A OR false
   {
     irs::Or root;
-    root.add<irs::Not>().filter<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A"); // 1
     root.add<irs::empty>();
 
     check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
   }
-
-  // search : empty result
-  check_query(
-    irs::by_term().field( "same" ).term( "invalid_term" ),
-    docs_t{},
-    rdr
-  );
 }
 
 TEST_P(boolean_filter_test_case, and_schemas) {
@@ -7379,8 +7396,8 @@ TEST_P(boolean_filter_test_case, and_schemas) {
   // Name = Product AND source=AdventureWor3ks2014
   {
     irs::And root;
-    root.add<irs::by_term>().field("Name").term("Product");
-    root.add<irs::by_term>().field("source").term("AdventureWor3ks2014");
+    append<irs::by_term>(root, "Name", "Product");
+    append<irs::by_term>(root, "source", "AdventureWor3ks2014");
     check_query(root, docs_t{}, rdr);
   }
 }
@@ -7404,7 +7421,7 @@ TEST_P(boolean_filter_test_case, and_sequential) {
   // name=V
   {
     irs::And root;
-    root.add<irs::by_term>().field("name").term("V"); // 22
+    append<irs::by_term>(root, "name", "V"); // 22
 
     check_query(root, docs_t{ 22 }, rdr);
   }
@@ -7412,26 +7429,26 @@ TEST_P(boolean_filter_test_case, and_sequential) {
   // duplicated=abcd AND same=xyz
   {
     irs::And root;
-    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
+    append<irs::by_term>(root, "duplicated", "abcd"); // 1,5,11,21,27,31
+    append<irs::by_term>(root, "same", "xyz"); // 1..32
     check_query(root, docs_t{ 1, 5, 11, 21, 27, 31 }, rdr);
   }
 
   // duplicated=abcd AND same=xyz AND name=A
   {
     irs::And root;
-    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-    root.add<irs::by_term>().field("name").term("A"); // 1
+    append<irs::by_term>(root, "duplicated", "abcd"); // 1,5,11,21,27,31
+    append<irs::by_term>(root, "same", "xyz"); // 1..32
+    append<irs::by_term>(root, "name", "A"); // 1
     check_query(root, docs_t{ 1 }, rdr);
   }
 
   // duplicated=abcd AND same=xyz AND name=B
   {
     irs::And root;
-    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-    root.add<irs::by_term>().field("name").term("B"); // 2
+    append<irs::by_term>(root, "duplicated", "abcd"); // 1,5,11,21,27,31
+    append<irs::by_term>(root, "same", "xyz"); // 1..32
+    append<irs::by_term>(root, "name", "B"); // 2
     check_query(root, docs_t{}, rdr);
   }
 }
@@ -7454,7 +7471,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
     std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
 
     irs::Not not_node;
-    not_node.filter<irs::by_term>().field(column_name).term("abcd");
+    not_node.filter<irs::by_term>() = make_filter<irs::by_term>(column_name, "abcd");
 
     irs::order order;
     size_t collector_collect_field_count = 0;
@@ -7539,7 +7556,7 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
     std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
 
     irs::And root;
-    root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
+    root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>(column_name, "abcd");
 
     irs::order order;
     size_t collector_collect_field_count = 0;
@@ -7625,25 +7642,25 @@ TEST_P(boolean_filter_test_case, not_sequential) {
 
   // single not statement - empty result
   {
-    irs::Not not_node;
-    not_node.filter<irs::by_term>().field("same").term("xyz"),
+    irs::Not root;
+    root.filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz");
 
-    check_query(not_node, docs_t{}, rdr);
+    check_query(root, docs_t{}, rdr);
   }
 
   // duplicated=abcd AND (NOT ( NOT name=A ))
   {
     irs::And root;
-    root.add<irs::by_term>().field("duplicated").term("abcd");
-    root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+    root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
     check_query(root, docs_t{ 1 }, rdr);
   }
 
   // duplicated=abcd AND (NOT ( NOT (NOT (NOT ( NOT name=A )))))
   {
     irs::And root;
-    root.add<irs::by_term>().field("duplicated").term("abcd");
-    root.add<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+    root.add<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
     check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
   }
 
@@ -7668,15 +7685,15 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   {
     {
       irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
 
     {
       irs::Or root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
   }
@@ -7685,17 +7702,17 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   {
     {
       irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
 
     {
       irs::Or root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
   }
@@ -7704,17 +7721,17 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   {
     {
       irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "E");
       check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
     }
 
     {
       irs::Or root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
+      root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "E");
       check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
     }
   }
@@ -7740,7 +7757,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
   // single not statement - empty result
   {
     irs::Not not_node;
-    not_node.filter<irs::by_term>().field("same").term("xyz"),
+    not_node.filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz"),
 
     check_query(not_node, docs_t{}, rdr);
   }
@@ -7748,7 +7765,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
   // single not statement - all docs
   {
     irs::Not not_node;
-    not_node.filter<irs::by_term>().field("same").term("invalid_term"),
+    not_node.filter<irs::by_term>() = make_filter<irs::by_term>("same", "invalid_term"),
 
     check_query(not_node, docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
   }
@@ -7756,14 +7773,14 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
   // (NOT (NOT name=A))
   {
     irs::Not not_node;
-    not_node.filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    not_node.filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
     check_query(not_node, docs_t{ 1 }, rdr);
   }
 
   // (NOT (NOT (NOT (NOT (NOT name=A)))))
   {
     irs::Not not_node;
-    not_node.filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    not_node.filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
 
     check_query(not_node, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
   }
@@ -7788,15 +7805,15 @@ TEST_P(boolean_filter_test_case, mixed) {
       // same=xyz AND duplicated=abcd
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("abcd");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "abcd");
       }
 
       // same=xyz AND duplicated=vczc
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("vczc");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "vczc");
       }
 
       check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 }, rdr);
@@ -7805,7 +7822,7 @@ TEST_P(boolean_filter_test_case, mixed) {
     // ((same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)) AND name=X
     {
       irs::And root;
-      root.add<irs::by_term>().field("name").term("X");
+      append<irs::by_term>(root, "name", "X");
 
       // ( same = xyz AND duplicated = abcd ) OR( same = xyz AND duplicated = vczc )
       {
@@ -7814,15 +7831,15 @@ TEST_P(boolean_filter_test_case, mixed) {
         // same=xyz AND duplicated=abcd
         {
           irs::And& subchild = child.add<irs::And>();
-          subchild.add<irs::by_term>().field("same").term("xyz");
-          subchild.add<irs::by_term>().field("duplicated").term("abcd");
+          append<irs::by_term>(subchild, "same", "xyz");
+          append<irs::by_term>(subchild, "duplicated", "abcd");
         }
 
         // same=xyz AND duplicated=vczc
         {
           irs::And& subchild = child.add<irs::And>();
-          subchild.add<irs::by_term>().field("same").term("xyz");
-          subchild.add<irs::by_term>().field("duplicated").term("vczc");
+          append<irs::by_term>(subchild, "same", "xyz");
+          append<irs::by_term>(subchild, "duplicated", "vczc");
         }
       }
 
@@ -7842,34 +7859,34 @@ TEST_P(boolean_filter_test_case, mixed) {
         // ( same = xyz AND duplicated = abcd )
         {
           irs::And& subchild = root.add<irs::And>();
-          subchild.add<irs::by_term>().field("same").term("xyz");
-          subchild.add<irs::by_term>().field("duplicated").term("abcd");
+          append<irs::by_term>(subchild, "same", "xyz");
+          append<irs::by_term>(subchild, "duplicated", "abcd");
         }
 
-        child.add<irs::by_term>().field("name").term("A");
-        child.add<irs::by_term>().field("name").term("C");
-        child.add<irs::by_term>().field("name").term("P");
-        child.add<irs::by_term>().field("name").term("X");
+        append<irs::by_term>(child, "name", "A");
+        append<irs::by_term>(child, "name", "C");
+        append<irs::by_term>(child, "name", "P");
+        append<irs::by_term>(child, "name", "X");
       }
 
       // (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X))
       // 1, 2, 3, 8, 14, 16, 17, 19, 21, 24
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
+        append<irs::by_term>(child, "same", "xyz");
 
         // (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)
         {
           irs::Or& subchild = child.add<irs::Or>();
-          subchild.add<irs::by_term>().field("duplicated").term("vczc");
+          append<irs::by_term>(subchild, "duplicated", "vczc");
 
           // name=A OR name=C OR NAME=P OR name=U OR name=X
           {
             irs::Or& subsubchild = subchild.add<irs::Or>();
-            subchild.add<irs::by_term>().field("name").term("A");
-            subchild.add<irs::by_term>().field("name").term("C");
-            subchild.add<irs::by_term>().field("name").term("P");
-            subchild.add<irs::by_term>().field("name").term("X");
+            append<irs::by_term>(subchild, "name", "A");
+            append<irs::by_term>(subchild, "name", "C");
+            append<irs::by_term>(subchild, "name", "P");
+            append<irs::by_term>(subchild, "name", "X");
           }
         }
       }
@@ -7887,15 +7904,15 @@ TEST_P(boolean_filter_test_case, mixed) {
       // same=xyz AND duplicated=abcd
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("abcd");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "abcd");
       }
 
       // same=xyz AND duplicated=vczc
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("vczc");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "vczc");
       }
 
       check_query(
@@ -7915,15 +7932,15 @@ TEST_P(boolean_filter_test_case, mixed) {
       // same=xyz AND duplicated=abcd
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("abcd");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "abcd");
       }
 
       // same=xyz AND duplicated=vczc
       {
         irs::And& child = root.add<irs::And>();
-        child.add<irs::by_term>().field("same").term("xyz");
-        child.add<irs::by_term>().field("duplicated").term("vczc");
+        append<irs::by_term>(child, "same", "xyz");
+        append<irs::by_term>(child, "duplicated", "vczc");
       }
 
       check_query(root, docs_t{}, rdr);
@@ -8018,20 +8035,20 @@ TEST(Not_test, equal) {
 
   {
     irs::Not lhs;
-    lhs.filter<irs::by_term>().field("abc").term("def");
+    lhs.filter<irs::by_term>() = make_filter<irs::by_term>("abc", "def");
 
     irs::Not rhs;
-    rhs.filter<irs::by_term>().field("abc").term("def");
+    rhs.filter<irs::by_term>() = make_filter<irs::by_term>("abc", "def");
     ASSERT_EQ(lhs, rhs);
     ASSERT_EQ(lhs.hash(), rhs.hash());
   }
 
   {
     irs::Not lhs;
-    lhs.filter<irs::by_term>().field("abc").term("def");
+    lhs.filter<irs::by_term>() = make_filter<irs::by_term>("abc", "def");
 
     irs::Not rhs;
-    rhs.filter<irs::by_term>().field("abcd").term("def");
+    rhs.filter<irs::by_term>() = make_filter<irs::by_term>("abcd", "def");
     ASSERT_NE(lhs, rhs);
   }
 }
@@ -8061,22 +8078,22 @@ TEST(And_test, add_clear) {
 
 TEST(And_test, equal) {
   irs::And lhs;
-  lhs.add<irs::by_term>().field("field").term("term");
-  lhs.add<irs::by_term>().field("field1").term("term1");
+  append<irs::by_term>(lhs, "field", "term");
+  append<irs::by_term>(lhs, "field1", "term1");
   {
     irs::And& subq = lhs.add<irs::And>();
-    subq.add<irs::by_term>().field("field123").term("dfterm");
-    subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+    append<irs::by_term>(subq, "field123", "dfterm");
+    append<irs::by_term>(subq, "fieasfdld1", "term1");
   }
 
   {
     irs::And rhs;
-    rhs.add<irs::by_term>().field("field").term("term");
-    rhs.add<irs::by_term>().field("field1").term("term1");
+    append<irs::by_term>(rhs, "field", "term");
+    append<irs::by_term>(rhs, "field1", "term1");
     {
       irs::And& subq = rhs.add<irs::And>();
-      subq.add<irs::by_term>().field("field123").term("dfterm");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+      append<irs::by_term>(subq, "field123", "dfterm");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
     }
 
     ASSERT_EQ(lhs, rhs);
@@ -8085,13 +8102,13 @@ TEST(And_test, equal) {
 
   {
     irs::And rhs;
-    rhs.add<irs::by_term>().field("field").term("term");
-    rhs.add<irs::by_term>().field("field1").term("term1");
+    append<irs::by_term>(rhs, "field", "term");
+    append<irs::by_term>(rhs, "field1", "term1");
     {
       irs::And& subq = rhs.add<irs::And>();
-      subq.add<irs::by_term>().field("field123").term("dfterm");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+      append<irs::by_term>(subq, "field123", "dfterm");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
     }
 
     ASSERT_NE(lhs, rhs);
@@ -8102,8 +8119,7 @@ TEST(And_test, equal) {
 
 TEST(And_test, optimize_double_negation) {
   irs::And root;
-  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
-  term.field("test_field").term("test_term");
+  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare(irs::sub_reader::empty());
   ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
@@ -8120,8 +8136,7 @@ TEST(And_test, optimize_single_node) {
   // simple hierarchy
   {
     irs::And root;
-    auto& term = root.add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    append<irs::by_term>(root, "test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
@@ -8130,8 +8145,7 @@ TEST(And_test, optimize_single_node) {
   // complex hierarchy
   {
     irs::And root;
-    auto& term = root.add<irs::And>().add<irs::And>().add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    auto& term = root.add<irs::And>().add<irs::And>().add<irs::by_term>() = make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
@@ -8164,8 +8178,7 @@ TEST(And_test, optimize_all_filters) {
   // multiple `all` filters + term filter
   {
     irs::And root;
-    auto& term = root.add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
     root.add<irs::all>().boost(2.f);
 
@@ -8177,8 +8190,7 @@ TEST(And_test, optimize_all_filters) {
   // `all` filter + term filter
   {
     irs::And root;
-    auto& term = root.add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
 
     auto prepared = root.prepare(irs::sub_reader::empty());
@@ -8215,22 +8227,22 @@ TEST(Or_test, add_clear) {
 
 TEST(Or_test, equal) {
   irs::Or lhs;
-  lhs.add<irs::by_term>().field("field").term("term");
-  lhs.add<irs::by_term>().field("field1").term("term1");
+  append<irs::by_term>(lhs, "field", "term");
+  append<irs::by_term>(lhs, "field1", "term1");
   {
     irs::And& subq = lhs.add<irs::And>();
-    subq.add<irs::by_term>().field("field123").term("dfterm");
-    subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+    append<irs::by_term>(subq, "field123", "dfterm");
+    append<irs::by_term>(subq, "fieasfdld1", "term1");
   }
 
   {
     irs::Or rhs;
-    rhs.add<irs::by_term>().field("field").term("term");
-    rhs.add<irs::by_term>().field("field1").term("term1");
+    append<irs::by_term>(rhs, "field", "term");
+    append<irs::by_term>(rhs, "field1", "term1");
     {
       irs::And& subq = rhs.add<irs::And>();
-      subq.add<irs::by_term>().field("field123").term("dfterm");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+      append<irs::by_term>(subq, "field123", "dfterm");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
     }
 
     ASSERT_EQ(lhs, rhs);
@@ -8239,13 +8251,13 @@ TEST(Or_test, equal) {
 
   {
     irs::Or rhs;
-    rhs.add<irs::by_term>().field("field").term("term");
-    rhs.add<irs::by_term>().field("field1").term("term1");
+    append<irs::by_term>(rhs, "field", "term");
+    append<irs::by_term>(rhs, "field1", "term1");
     {
       irs::And& subq = rhs.add<irs::And>();
-      subq.add<irs::by_term>().field("field123").term("dfterm");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
-      subq.add<irs::by_term>().field("fieasfdld1").term("term1");
+      append<irs::by_term>(subq, "field123", "dfterm");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
+      append<irs::by_term>(subq, "fieasfdld1", "term1");
     }
 
     ASSERT_NE(lhs, rhs);
@@ -8256,8 +8268,7 @@ TEST(Or_test, equal) {
 
 TEST(Or_test, optimize_double_negation) {
   irs::Or root;
-  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>();
-  term.field("test_field").term("test_term");
+  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare(irs::sub_reader::empty());
   ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
@@ -8267,8 +8278,7 @@ TEST(Or_test, optimize_single_node) {
   // simple hierarchy
   {
     irs::Or root;
-    auto& term = root.add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    append<irs::by_term>(root, "test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
@@ -8277,8 +8287,7 @@ TEST(Or_test, optimize_single_node) {
   // complex hierarchy
   {
     irs::Or root;
-    auto& term = root.add<irs::Or>().add<irs::Or>().add<irs::by_term>();
-    term.field("test_field").term("test_term");
+    auto& term = root.add<irs::Or>().add<irs::Or>().add<irs::by_term>() = make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));

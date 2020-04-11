@@ -364,8 +364,8 @@ TEST_P(bm25_test, test_query) {
   // by_term
   {
     irs::by_term filter;
-
-    filter.field("field").term("7");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
@@ -444,7 +444,8 @@ TEST_P(bm25_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_term filter;
-    filter.field("field").term("6");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -532,8 +533,18 @@ TEST_P(bm25_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::Or filter;
-    filter.add<irs::by_term>().field("field").term("6"); // doc 0, 2, 5
-    filter.add<irs::by_term>().field("field").term("8"); // doc 3, 7
+    {
+      // doc 0, 2, 5
+      auto& sub = filter.add<irs::by_term>();
+      *sub.mutable_field() = "field";
+      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    }
+    {
+      // doc 3, 7
+      auto& sub = filter.add<irs::by_term>();
+      *sub.mutable_field() = "field";
+      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    }
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -621,7 +632,8 @@ TEST_P(bm25_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_prefix filter;
-    filter.field("prefix").term("");
+    *filter.mutable_field() = "prefix";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -1324,8 +1336,8 @@ TEST_P(bm25_test, test_order) {
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
 
-  iresearch::by_term query;
-  query.field("field");
+  irs::by_term query;
+  *query.mutable_field() = "field";
 
   iresearch::order ord;
   ord.add<iresearch::bm25_sort>(true);
@@ -1341,7 +1353,7 @@ TEST_P(bm25_test, test_order) {
   auto values = column->values();
 
   {
-    query.term("7");
+    query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };

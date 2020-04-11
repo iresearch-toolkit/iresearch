@@ -208,7 +208,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       query.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
 
       irs::by_term expected_query;
-      expected_query.field("a").term("100");
+      *expected_query.mutable_field() = "a";
+      expected_query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("100"));
 
       auto prepared = query.prepare(index);
       auto expected_prepared = expected_query.prepare(index);
