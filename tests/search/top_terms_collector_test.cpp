@@ -20,6 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_DLL
+
 #include "tests_shared.hpp"
 
 #include "search/collectors.hpp"
@@ -440,3 +442,5 @@ TEST(top_terms_collector_test, test_top_0) {
 
   collector.visit(visitor);
 }
+
+#endif // IRESEARCH_DLL
