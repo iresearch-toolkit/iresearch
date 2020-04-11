@@ -43,7 +43,8 @@ filter::prepared::ptr by_term::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
-  return term_query::make(rdr, ord, boost*this->boost(), fld_, term_);
+  return term_query::make(rdr, ord, boost*this->boost(),
+                          field(), options().term);
 }
 
 NS_END // ROOT

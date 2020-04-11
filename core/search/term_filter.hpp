@@ -50,12 +50,6 @@ class IRESEARCH_API by_term : public filter_with_field<by_term_options> {
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx) const override;
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string fld_;
-  bstring term_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 NS_END

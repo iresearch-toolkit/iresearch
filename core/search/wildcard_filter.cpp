@@ -188,8 +188,8 @@ size_t by_wildcard::hash() const noexcept {
 bool by_wildcard::equals(const filter& rhs) const noexcept {
   const auto& impl = static_cast<const by_wildcard&>(rhs);
 
-  return filter_with_field<by_wildcard_options>::hash() &&
-      scored_terms_limit_ == impl.scored_terms_limit_;
+  return filter_with_field<by_wildcard_options>::equals(rhs) &&
+    scored_terms_limit_ == impl.scored_terms_limit_;
 }
 
 NS_END

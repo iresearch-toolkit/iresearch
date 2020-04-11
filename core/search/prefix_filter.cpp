@@ -117,7 +117,7 @@ size_t by_prefix::hash() const noexcept {
 bool by_prefix::equals(const filter& rhs) const noexcept {
   const auto& impl = static_cast<const by_prefix&>(rhs);
 
-  return filter_with_field<by_prefix_options>::hash() &&
+  return filter_with_field<by_prefix_options>::equals(rhs) &&
       scored_terms_limit_ == impl.scored_terms_limit_;
 }
 
