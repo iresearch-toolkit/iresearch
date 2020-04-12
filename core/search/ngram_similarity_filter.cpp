@@ -20,8 +20,6 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/functional/hash.hpp>
-
 #include "ngram_similarity_filter.hpp"
 #include "min_match_disjunction.hpp"
 #include "collectors.hpp"

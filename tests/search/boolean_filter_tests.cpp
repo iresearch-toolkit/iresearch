@@ -7965,8 +7965,18 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
   {
     irs::Or root;
     auto& sub = root.add<irs::And>();
-    sub.add<irs::by_range>().field("name").include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("!");
-    sub.add<irs::by_range>().field("name").include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("~");
+    {
+      auto& filter = sub.add<irs::by_range>();
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("!"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = sub.add<irs::by_range>();
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("~"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     irs::order ord;
     ord.add<irs::tfidf_sort>(false);

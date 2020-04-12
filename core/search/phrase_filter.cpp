@@ -538,9 +538,6 @@ void by_phrase::phrase_part::recreate(phrase_part&& other) noexcept {
   allocate(std::move(other));
 }
 
-// defined in a separate unit
-size_t hash_value(const by_range::range_t& rng);
-
 size_t hash_value(const by_phrase::phrase_part& info) {
   auto seed = std::hash<int>()(static_cast<std::underlying_type<by_phrase::PhrasePartType>::type>(info.type));
   switch (info.type) {
@@ -570,8 +567,9 @@ size_t hash_value(const by_phrase::phrase_part& info) {
       });
       break;
     case by_phrase::PhrasePartType::RANGE:
+      //FIXME
       ::boost::hash_combine(seed, info.rt.scored_terms_limit);
-      ::boost::hash_combine(seed, info.rt.rng);
+//      ::boost::hash_combine(seed, info.rt.rng);
       break;
     default:
       assert(false);

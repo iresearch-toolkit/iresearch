@@ -22,8 +22,6 @@
 
 #include "term_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "term_query.hpp"
 #include "cost.hpp"
 #include "analysis/token_attributes.hpp"

@@ -27,6 +27,21 @@
 
 NS_LOCAL
 
+irs::by_range make_filter(
+    const irs::string_ref& field,
+    const irs::bytes_ref& min, irs::BoundType min_type,
+    const irs::bytes_ref& max, irs::BoundType max_type) {
+  irs::by_range filter;
+  *filter.mutable_field() = field;
+
+  auto& range = filter.mutable_options()->range;
+  range.min = min;
+  range.min_type = min_type;
+  range.max = max;
+  range.max_type = max_type;
+  return filter;
+}
+
 class range_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_range_sequential_numeric() {
@@ -108,12 +123,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+        min_term->value(), irs::BoundType::INCLUSIVE,
+        max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -145,12 +158,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -177,12 +188,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& min_term = min_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>((irs::numeric_utils::numeric_traits<int64_t>::max)());
+      irs::by_range query = make_filter(
+        "seq",
+         min_term->value(), irs::BoundType::EXCLUSIVE,
+         (irs::numeric_utils::numeric_traits<int64_t>::max)(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -209,12 +218,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>((irs::numeric_utils::numeric_traits<int64_t>::min)())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+        (irs::numeric_utils::numeric_traits<int64_t>::min)(), irs::BoundType::INCLUSIVE,
+        max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -246,12 +253,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -283,12 +288,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -315,12 +318,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& min_term = min_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>((irs::numeric_utils::numeric_traits<int32_t>::max)());
+      irs::by_range query = make_filter(
+        "seq",
+         min_term->value(), irs::BoundType::EXCLUSIVE,
+         (irs::numeric_utils::numeric_traits<int32_t>::max)(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -347,12 +348,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("seq")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>((irs::numeric_utils::numeric_traits<int32_t>::min)())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "seq",
+         (irs::numeric_utils::numeric_traits<int32_t>::min)(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -384,12 +383,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -421,12 +418,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(false)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -453,12 +448,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<float_t>::ninf())
-           .include<irs::Bound::MAX>(false)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         irs::numeric_utils::numeric_traits<float_t>::ninf(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -485,12 +478,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& min_term = min_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<float_t>::inf());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::EXCLUSIVE,
+         irs::numeric_utils::numeric_traits<float_t>::inf(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -521,12 +512,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(true)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::INCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -557,12 +546,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::EXCLUSIVE,
+         max_term->value(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -589,12 +576,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(max_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-           .include<irs::Bound::MAX>(false)
-           .term<irs::Bound::MAX>(max_term->value());
+      irs::by_range query = make_filter(
+        "value",
+         irs::numeric_utils::numeric_traits<double_t>::ninf(), irs::BoundType::EXCLUSIVE,
+         max_term->value(), irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -621,12 +606,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
       auto& min_term = min_stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(min_stream.next());
 
-      irs::by_range query;
-      query.field("value")
-           .include<irs::Bound::MIN>(false)
-           .term<irs::Bound::MIN>(min_term->value())
-           .include<irs::Bound::MAX>(true)
-           .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf());
+      irs::by_range query = make_filter(
+        "value",
+         min_term->value(), irs::BoundType::EXCLUSIVE,
+         irs::numeric_utils::numeric_traits<double_t>::inf(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -669,12 +652,19 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_range().field("name"), docs, costs, rdr);
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // invalid_name = (..;..)
-    check_query(
-      irs::by_range().field("invalid_name"), docs_t{}, rdr);
+    {
+      irs::by_range filter;
+      *filter.mutable_field() = "invalid_name";
+
+      check_query(filter, docs_t{}, rdr);
+    }
 
     // name = [..;..)
     {
@@ -684,7 +674,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_range().field("name"), docs, costs, rdr);
+
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (..;..]
@@ -695,7 +690,11 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_range().field("name"), docs, costs, rdr);
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [..;..]
@@ -706,7 +705,13 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(irs::by_range().field("name"), docs, costs, rdr);
+
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [A;..)
@@ -718,11 +723,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
       }; 
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (A;..)
@@ -734,25 +740,26 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (..;C)
     // result: A, B, !, @, #, $, %
     {
-
       docs_t docs{ 1, 2, 28, 29, 30, 31, 32 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (..;C]
@@ -761,11 +768,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 2, 3, 28, 29, 30, 31, 32 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [A;C] 
@@ -774,12 +782,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 2, 3 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [A;B]
@@ -788,12 +798,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 2 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MAX>("B").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [A;B)
@@ -802,12 +814,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MAX>("B").include<irs::Bound::MAX>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (A;B]
@@ -816,23 +830,28 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 2 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MAX>("B").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (A;B)
     // result:
-    check_query(
-      irs::by_range().field("name")
-        .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MAX>("B").include<irs::Bound::MAX>(false),
-      docs_t{}, costs_t{0}, rdr
-    );
+    {
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
+      check_query(filter, docs_t{}, costs_t{0}, rdr);
+    }
 
     // name = [A;C)
     // result: A, B
@@ -840,12 +859,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 1, 2 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (A;C]
@@ -854,12 +875,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 2, 3 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (A;C)
@@ -868,22 +891,28 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 2 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("A").include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MAX>("C").include<irs::Bound::MAX>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [C;A]
     // result:
-    check_query(
-      irs::by_range().field("name")
-        .term<irs::Bound::MIN>("C").include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MAX>("A").include<irs::Bound::MAX>(true),
-      docs_t{}, costs_t{0}, rdr
-    );
+    {
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter,  docs_t{}, costs_t{0}, rdr);
+    }
 
     // name = [~;..]
     // result: ~
@@ -891,32 +920,41 @@ class range_filter_test_case : public tests::filter_test_case_base {
       docs_t docs{ 27 };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("~").include<irs::Bound::MIN>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("~"));
+      filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("~"));
+      filter.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = (~;..]
     // result:
-    check_query(
-      irs::by_range().field("name")
-        .term<irs::Bound::MIN>("~").include<irs::Bound::MIN>(false),
-      docs_t{}, costs_t{0}, rdr
-    );
+    {
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("~"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-    // name = [a;..]
+      check_query(filter, docs_t{}, costs_t{0}, rdr);
+    }
+
+    // name = (a;..]
     // result: ~
     {
       docs_t docs{ 27 };
       costs_t costs{ 1 };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MIN>("a").include<irs::Bound::MIN>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+      filter.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [..;a]
@@ -928,11 +966,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MAX>("a").include<irs::Bound::MAX>(true),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+      filter.mutable_options()->range.min_type = irs::BoundType::UNBOUNDED;
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+      check_query(filter,  docs, costs, rdr);
     }
 
     // name = [..;a)
@@ -944,20 +985,24 @@ class range_filter_test_case : public tests::filter_test_case_base {
       };
       costs_t costs{ docs.size() };
 
-      check_query(
-        irs::by_range().field("name")
-          .term<irs::Bound::MAX>("a").include<irs::Bound::MAX>(false),
-        docs, costs, rdr
-      );
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs, costs, rdr);
     }
 
     // name = [DEL;..]
     // result:
-    check_query(
-      irs::by_range().field("name")
-        .term<irs::Bound::MIN>("\x7f").include<irs::Bound::MIN>(false),
-      docs_t{}, costs_t{0}, rdr
-    );
+    {
+      irs::by_range filter;
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f"));
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, docs_t{}, costs_t{0}, rdr);
+    }
   }
 
   void by_range_sequential_order() {
@@ -1001,13 +1046,15 @@ class range_filter_test_case : public tests::filter_test_case_base {
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
-      check_query(
-        irs::by_range()
-          .field("value")
-          .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-        , order, docs, rdr
-      );
+
+      irs::by_range filter;
+      *filter.mutable_field() = "value";
+      filter.mutable_options()->range.min = irs::numeric_utils::numeric_traits<double_t>::ninf();
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::numeric_utils::numeric_traits<double_t>::inf();
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, order, docs, rdr);
       ASSERT_EQ(11, collect_field_count); // 1 field in 1 segment
       ASSERT_EQ(11, collect_term_count); // 11 different terms
       ASSERT_EQ(11, finish_count); // 11 different terms
@@ -1019,14 +1066,11 @@ class range_filter_test_case : public tests::filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
+      irs::by_range filter;
+      *filter.mutable_field() = "value";
+
       order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_range()
-          .field("value")
-          .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-        , order, docs, rdr
-      );
+      check_query(filter, order, docs, rdr);
     }
 
     // value = (..;..) + scored_terms_limit
@@ -1036,14 +1080,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::order order;
 
       order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_range()
-          .field("value")
-          .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-          .scored_terms_limit(2)
-        , order, docs, rdr
-      );
+
+      irs::by_range filter;
+      *filter.mutable_field() = "value";
+      filter.mutable_options()->scored_terms_limit = 2;
+
+      check_query(filter, order, docs, rdr);
     }
 
     // value = (..;100)
@@ -1057,53 +1099,108 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       ASSERT_TRUE(max_stream.next());
       order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_range()
-          .field("value")
-          .term<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .term<irs::Bound::MAX>(max_term->value())
-        , order, docs, rdr
-      );
+
+      irs::by_range filter;
+      *filter.mutable_field() = "value";
+      filter.mutable_options()->range.min = irs::numeric_utils::numeric_traits<double_t>::ninf();
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = max_term;
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+      check_query(filter, order, docs, rdr);
     }
   }
-}; // range_filter_test_case 
+}; // range_filter_test_case
+
+TEST(by_range_test, options) {
+  irs::by_range_options opts;
+  ASSERT_TRUE(opts.range.min.empty());
+  ASSERT_EQ(irs::BoundType::UNBOUNDED, opts.range.min_type);
+  ASSERT_TRUE(opts.range.max.empty());
+  ASSERT_EQ(irs::BoundType::UNBOUNDED, opts.range.max_type);
+  ASSERT_EQ(1024, opts.scored_terms_limit);
+}
 
 TEST(by_range_test, ctor) {
   irs::by_range q;
   ASSERT_EQ(irs::by_range::type(), q.type());
-  ASSERT_TRUE(q.term<irs::Bound::MIN>().empty());
-  ASSERT_TRUE(q.term<irs::Bound::MAX>().empty());
-  ASSERT_FALSE(q.include<irs::Bound::MAX>());
-  ASSERT_FALSE(q.include<irs::Bound::MIN>());
+  ASSERT_EQ(irs::by_range_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
-TEST(by_range_test, equal) { 
-  irs::by_range q;
-  q.field("field")
-    .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
-    .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
+TEST(by_range_test, equal) {
+  irs::by_range q0;
+  *q0.mutable_field() = "field";
+  q0.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q0.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q0.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q0.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-  ASSERT_EQ(
-    q, irs::by_range().field("field")
-         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term")
-  );
-  
-  ASSERT_NE(
-    q, irs::by_range().field("field1")
-         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("min_term")
-         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term")
-  );
+  irs::by_range q1;
+  *q1.mutable_field() = "field";
+  q1.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q1.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q1.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+  ASSERT_EQ(q0, q1);
+  ASSERT_EQ(q0.hash(), q1.hash());
+
+  irs::by_range q2;
+  *q2.mutable_field() = "field1";
+  q2.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q2.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q2.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q2.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+  ASSERT_NE(q0, q2);
+
+  irs::by_range q3;
+  *q3.mutable_field() = "field";
+  q3.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term1"));
+  q3.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q3.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q3.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+  ASSERT_NE(q0, q3);
+
+  irs::by_range q4;
+  *q4.mutable_field() = "field";
+  q4.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q4.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q4.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term1"));
+  q4.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+  ASSERT_NE(q0, q4);
+
+  irs::by_range q5;
+  *q5.mutable_field() = "field";
+  q5.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q5.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+  q5.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q5.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+  ASSERT_NE(q0, q5);
+
+  irs::by_range q6;
+  *q6.mutable_field() = "field";
+  q6.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+  q6.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+  q6.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+  q6.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
+
+  ASSERT_NE(q0, q6);
 }
 
 TEST(by_range_test, boost) {
   // no boost
   {
     irs::by_range q;
-    q.field("field")
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
+    *q.mutable_field() = "field";
+    q.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+    q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    q.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+    q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -1112,10 +1209,13 @@ TEST(by_range_test, boost) {
   // with boost
   {
     irs::boost_t boost = 1.5f;
+
     irs::by_range q;
-    q.field("field")
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
+    *q.mutable_field() = "field";
+    q.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("min_term"));
+    q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    q.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("max_term"));
+    q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -1146,7 +1246,7 @@ TEST_P(range_filter_test_case, visit) {
   tests::empty_filter_visitor visitor;
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
-  irs::by_range::range_t rng;
+  irs::by_range::options_type::range_type rng;
   rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
   rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"));
   rng.min_type = irs::BoundType::INCLUSIVE;

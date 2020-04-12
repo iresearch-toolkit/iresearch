@@ -691,10 +691,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range single
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
@@ -730,10 +731,12 @@ TEST_P(tfidf_test, test_query) {
   // by_range single + scored_terms_limit(1)
   {
     irs::by_range filter;
-
-    filter.field("field").scored_terms_limit(1)
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
-      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("9"));
+    filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->scored_terms_limit = 1;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 3, 7 };
@@ -809,10 +812,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range multiple
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -855,10 +859,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range multiple (3 values)
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{

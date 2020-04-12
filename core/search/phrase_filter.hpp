@@ -115,7 +115,7 @@ class IRESEARCH_API by_phrase : public filter {
     }
 
     size_t scored_terms_limit{1024};
-    by_range::range_t rng;
+    by_range::options_type::range_type rng;
   };
 
  private:

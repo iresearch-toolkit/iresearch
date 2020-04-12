@@ -47,7 +47,7 @@ class IRESEARCH_API by_granular_range: public filter {
   // granularity levels and terms
   typedef bytes_ref::char_type granularity_level_t;
   typedef std::map<granularity_level_t, bstring> terms_t;
-  typedef range<terms_t> range_t;
+  typedef generic_range<terms_t> range_t;
   typedef terms_t::const_iterator const_iterator;
   typedef terms_t::iterator iterator;
   typedef terms_t::key_type level_t;

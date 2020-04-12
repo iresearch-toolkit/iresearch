@@ -22,8 +22,6 @@
 
 #include "range_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "shared.hpp"
 #include "filter_visitor.hpp"
 #include "limited_sample_collector.hpp"
@@ -63,7 +61,7 @@ void collect_terms(
 template<typename Visitor>
 void visit(
     const term_reader& reader,
-    const by_range::range_t& rng,
+    const by_range_options::range_type& rng,
     Visitor& visitor) {
   auto terms = reader.iterator();
 
@@ -128,7 +126,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
     const order::prepared& ord,
     boost_t boost,
     const string_ref& field,
-    const range_t& rng,
+    const options_type::range_type& rng,
     size_t scored_terms_limit) {
   //TODO: optimize unordered case
   // - seek to min
@@ -177,35 +175,9 @@ DEFINE_FACTORY_DEFAULT(by_range)
 
 /*static*/ void by_range::visit(
     const term_reader& reader,
-    const range_t& rng,
+    const options_type::range_type& rng,
     filter_visitor& visitor) {
   ::visit(reader, rng, visitor);
-}
-
-by_range::by_range() noexcept
-  : filter(by_range::type()) {
-}
-
-bool by_range::equals(const filter& rhs) const noexcept {
-  const by_range& trhs = static_cast<const by_range&>(rhs);
-  return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
-}
-
-size_t hash_value(const by_range::range_t& rng) {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, rng.min);
-  ::boost::hash_combine(seed, rng.min_type);
-  ::boost::hash_combine(seed, rng.max);
-  ::boost::hash_combine(seed, rng.max_type);
-  return seed;
-}
-
-size_t by_range::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, fld_);
-  ::boost::hash_combine(seed, rng_);
-  return seed;
 }
 
 NS_END // ROOT
