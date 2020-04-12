@@ -35,7 +35,28 @@ struct filter_visitor;
 /// @struct by_prefix_options
 /// @brief options for prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_prefix_options : single_term_options<by_prefix> { };
+struct IRESEARCH_API by_prefix_options {
+  using filter_type = by_prefix;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search prefix
+  //////////////////////////////////////////////////////////////////////////////
+  bstring term;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit{1024};
+
+  bool operator==(const by_prefix_options& rhs) const noexcept {
+    return term == rhs.term && scored_terms_limit == rhs.scored_terms_limit;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(std::hash<size_t>()(scored_terms_limit),
+                        hash_utils::hash(term));
+  }
+}; // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix
@@ -69,31 +90,9 @@ class IRESEARCH_API by_prefix : public filter_with_field<by_prefix_options> {
       boost_t boost,
       const attribute_view& /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
-                   field(), options().term, scored_terms_limit_);
+                   field(), options().term,
+                   options().scored_terms_limit);
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_prefix& scored_terms_limit(size_t limit) noexcept {
-    scored_terms_limit_ = limit;
-    return *this;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const noexcept {
-    return scored_terms_limit_;
-  }
-
-  virtual size_t hash() const noexcept override;
-
- protected:
-  virtual bool equals(const filter& rhs) const noexcept override;
-
- private:
-  size_t scored_terms_limit_{1024};
 }; // by_prefix
 
 NS_END

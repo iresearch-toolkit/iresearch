@@ -179,17 +179,4 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
   );
 }
 
-
-size_t by_wildcard::hash() const noexcept {
-  return hash_combine(scored_terms_limit_,
-                      filter_with_field<by_wildcard_options>::hash());
-}
-
-bool by_wildcard::equals(const filter& rhs) const noexcept {
-  const auto& impl = static_cast<const by_wildcard&>(rhs);
-
-  return filter_with_field<by_wildcard_options>::equals(rhs) &&
-    scored_terms_limit_ == impl.scored_terms_limit_;
-}
-
 NS_END

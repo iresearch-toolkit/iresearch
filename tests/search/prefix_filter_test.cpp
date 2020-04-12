@@ -35,7 +35,7 @@ irs::by_prefix make_filter(
   irs::by_prefix q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
-  q.scored_terms_limit(scored_terms_limit);
+  q.mutable_options()->scored_terms_limit = scored_terms_limit;
   return q;
 }
 
@@ -244,6 +244,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 TEST(by_prefix_test, options) {
   irs::by_prefix_options opts;
   ASSERT_TRUE(opts.term.empty());
+  ASSERT_EQ(1024, opts.scored_terms_limit);
 }
 
 TEST(by_prefix_test, ctor) {
@@ -252,7 +253,6 @@ TEST(by_prefix_test, ctor) {
   ASSERT_EQ(irs::by_prefix_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());
-  ASSERT_EQ(1024, q.scored_terms_limit());
 }
 
 TEST(by_prefix_test, equal) {

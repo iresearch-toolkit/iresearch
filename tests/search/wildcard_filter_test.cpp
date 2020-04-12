@@ -50,6 +50,7 @@ class wildcard_filter_test_case : public tests::filter_test_case_base { };
 TEST(by_wildcard_test, options) {
   irs::by_wildcard_options opts;
   ASSERT_TRUE(opts.term.empty());
+  ASSERT_EQ(1024, opts.scored_terms_limit);
 }
 
 TEST(by_wildcard_test, ctor) {
@@ -60,12 +61,16 @@ TEST(by_wildcard_test, ctor) {
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
-TEST(by_wildcard_test, equal) { 
+TEST(by_wildcard_test, equal) {
   const irs::by_wildcard q = make_filter("field", "bar*");
 
   ASSERT_EQ(q, make_filter("field", "bar*"));
   ASSERT_NE(q, make_filter("field1", "bar*"));
   ASSERT_NE(q, make_filter("field", "bar"));
+
+  irs::by_wildcard q1 = make_filter("field", "bar*");
+  q1.mutable_options()->scored_terms_limit = 100;
+  ASSERT_NE(q, q1);
 }
 
 TEST(by_wildcard_test, boost) {
