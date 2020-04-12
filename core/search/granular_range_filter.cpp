@@ -23,16 +23,16 @@
 
 #include "granular_range_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
-#include "boolean_filter.hpp"
-#include "range_filter.hpp"
-#include "multiterm_query.hpp"
-#include "term_query.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/range_filter.hpp"
+#include "search/multiterm_query.hpp"
+#include "search/term_query.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
-#include "filter_visitor.hpp"
+#include "search/filter_visitor.hpp"
 
 NS_LOCAL
 
@@ -152,7 +152,7 @@ template<typename Visitor>
 void collect_terms_from(
     irs::seek_term_iterator& terms,
     size_t prefix_size,
-    const irs::by_granular_range::terms_t& min_term,
+    const irs::by_granular_range::options_type::terms& min_term,
     bool min_term_inclusive,
     Visitor& visitor) {
   auto min_term_itr = min_term.rbegin(); // start with least granular
@@ -233,7 +233,7 @@ template<typename Visitor>
 void collect_terms_until(
     irs::seek_term_iterator& terms,
     size_t prefix_size,
-    const irs::by_granular_range::terms_t& max_term,
+    const irs::by_granular_range::options_type::terms& max_term,
     bool max_term_inclusive,
     Visitor& visitor) {
   auto max_term_itr = max_term.rbegin(); // start with least granular
@@ -312,8 +312,8 @@ template<typename Visitor>
 void collect_terms_within(
     irs::seek_term_iterator& terms,
     size_t prefix_size,
-    const irs::by_granular_range::terms_t& min_term,
-    const irs::by_granular_range::terms_t& max_term,
+    const irs::by_granular_range::options_type::terms& min_term,
+    const irs::by_granular_range::options_type::terms& max_term,
     bool min_term_inclusive,
     bool max_term_inclusive,
     Visitor& visitor) {
@@ -450,7 +450,7 @@ void collect_terms_within(
 template<typename Visitor>
 void visit(
     const irs::term_reader& reader,
-    const irs::by_granular_range::range_t& rng,
+    const irs::by_granular_range::options_type::range_type& rng,
     Visitor& visitor) {
 
   auto terms = reader.iterator();
@@ -467,7 +467,7 @@ void visit(
   if (rng.min.empty()) { // open min range
     if (rng.max.empty()) { // open max range
       // collect all terms
-      static const irs::by_granular_range::terms_t empty;
+      static const irs::by_granular_range::options_type::terms empty;
       collect_terms_from(*terms, prefix_size, empty, true, visitor);
       return;
     }
@@ -511,6 +511,17 @@ NS_END // NS_LOCAL
 
 NS_ROOT
 
+// sequential 'granularity_level' value, cannot use 'iresearch::increment' since it can be 0
+void set_granular_term(by_granular_range_options::terms& boundary,
+                       numeric_token_stream& term) {
+  auto& attributes = term.attributes();
+  auto& term_attr = attributes.get<term_attribute>();
+
+  for (auto level = by_granular_range_options::granularity_limits::min(); term.next(); ++level) {
+    boundary[level] = term_attr->value();
+  }
+}
+
 DEFINE_FILTER_TYPE(by_granular_range)
 DEFINE_FACTORY_DEFAULT(by_granular_range)
 
@@ -519,7 +530,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     const order::prepared& ord,
     boost_t boost,
     const string_ref& field,
-    const range_t& rng,
+    const options_type::range_type& rng,
     size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
     const auto& min = rng.min.begin()->second;
@@ -622,70 +633,9 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
 
 /*static*/ void by_granular_range::visit(
     const term_reader& reader,
-    const range_t& rng,
+    const options_type::range_type& rng,
     filter_visitor& visitor) {
   ::visit(reader, rng, visitor);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors & distructors
-// -----------------------------------------------------------------------------
-
-by_granular_range::by_granular_range():
-  filter(by_granular_range::type()) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-by_granular_range& by_granular_range::field(std::string fld) {
-  fld_ = std::move(fld); 
-  return *this;
-}
-
-size_t by_granular_range::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, fld_);
-  ::boost::hash_combine(seed, rng_.min);
-  ::boost::hash_combine(seed, rng_.min_type);
-  ::boost::hash_combine(seed, rng_.max);
-  ::boost::hash_combine(seed, rng_.max_type);
-  return seed;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-bool by_granular_range::equals(const filter& rhs) const noexcept {
-  const by_granular_range& trhs = static_cast<const by_granular_range&>(rhs);
-  return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-bstring& by_granular_range::insert(
-    terms_t& terms,
-    const level_t& granularity_level) {
-  return terms[granularity_level];
-}
-
-bstring& by_granular_range::insert(
-    terms_t& terms,
-    const level_t& granularity_level,
-    bstring&& term) {
-  return terms[granularity_level] = std::move(term);
-}
-
-bstring& by_granular_range::insert(
-    terms_t& terms,
-    const level_t& granularity_level,
-    const bytes_ref& term) {
-  return terms[granularity_level] = term;
 }
 
 NS_END // ROOT

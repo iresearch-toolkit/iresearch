@@ -54,7 +54,7 @@ struct generic_range {
   bool operator!=(const generic_range& rhs) const {
     return !(*this == rhs); 
   }
-}; // range
+}; // generic_range
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -87,7 +87,7 @@ struct IRESEARCH_API by_range_options {
     return hash_combine(std::hash<decltype(scored_terms_limit)>()(scored_terms_limit),
                         hash_combine(hash0, hash1));
   }
-}; // by_prefix_options
+}; // by_range_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
