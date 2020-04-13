@@ -45,8 +45,6 @@ Filter make_filter(
 
 NS_END
 
-class wildcard_filter_test_case : public tests::filter_test_case_base { };
-
 TEST(by_wildcard_test, options) {
   irs::by_wildcard_options opts;
   ASSERT_TRUE(opts.term.empty());
@@ -162,6 +160,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 }
 
 #endif
+
+class wildcard_filter_test_case : public tests::filter_test_case_base { };
 
 TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   // add segment

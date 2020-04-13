@@ -115,6 +115,7 @@ set(IResearch_core_sources
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp

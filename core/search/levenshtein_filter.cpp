@@ -280,6 +280,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
   if (!terms_limit) {
     all_terms_collector<decltype(states)> term_collector(states, field_stats, term_stats);
+    term_collector.stat_index(0); // aggregate stats from different terms
 
     if (!collect_terms(index, field, term, d, term_collector)) {
       return filter::prepared::empty();
