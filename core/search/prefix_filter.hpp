@@ -37,6 +37,7 @@ struct filter_visitor;
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_prefix_options {
   using filter_type = by_prefix;
+  using execution_options = by_prefix_options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search prefix
@@ -57,6 +58,8 @@ struct IRESEARCH_API by_prefix_options {
                         hash_utils::hash(term));
   }
 }; // by_prefix_options
+
+field_visitor visitor(const by_prefix_options::execution_options& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix

@@ -608,22 +608,29 @@ TEST_P(term_filter_test_case, visit) {
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
+
+  irs::by_term_options opts;
+  opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+
   tests::empty_filter_visitor visitor;
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
-  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
   // read segment
   auto index = open_reader();
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-    ASSERT_TRUE(reader != nullptr);
+  ASSERT_EQ(1, index.size());
+  auto& segment = index[0];
 
-    irs::term_query::visit(*reader, term, visitor);
-    ASSERT_EQ(1, visitor.prepare_calls_counter());
-    ASSERT_EQ(1, visitor.visit_calls_counter());
-    visitor.reset();
-  }
+  // get term dictionary for field
+  const auto* reader = segment.field(field);
+  ASSERT_NE(nullptr, reader);
+
+  auto field_visitor = irs::visitor(opts);
+  ASSERT_TRUE(field_visitor);
+  field_visitor(*reader, visitor);
+  ASSERT_EQ(1, visitor.prepare_calls_counter());
+  ASSERT_EQ(1, visitor.visit_calls_counter());
+  ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());
+  visitor.reset();
 }
 
 TEST(by_prefix_test, options) {

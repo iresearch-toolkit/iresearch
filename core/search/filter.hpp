@@ -292,6 +292,9 @@ class IRESEARCH_API empty: public filter {
   ) const override;
 }; // empty
 
+struct filter_visitor;
+using field_visitor = std::function<void(const term_reader&, filter_visitor&)>;
+
 NS_END
 
 NS_BEGIN(std)

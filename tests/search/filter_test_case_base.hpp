@@ -642,11 +642,14 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  virtual void prepare(const irs::seek_term_iterator& /*terms*/) noexcept override {
+  virtual void prepare(const irs::seek_term_iterator& terms) noexcept override {
+    it_ = &terms;
     ++prepare_calls_counter_;
   }
 
   virtual void visit() noexcept override {
+    ASSERT_NE(nullptr, it_);
+    terms_.emplace_back(it_->value());
     ++visit_calls_counter_;
   }
 
@@ -663,7 +666,24 @@ class empty_filter_visitor : public irs::filter_visitor {
     return visit_calls_counter_;
   }
 
+  const std::vector<irs::bstring>& terms() const noexcept {
+    return terms_;
+  }
+
+  template<typename Char>
+  std::vector<irs::basic_string_ref<Char>> term_refs() const {
+    std::vector<irs::basic_string_ref<Char>> refs(terms_.size());
+    auto begin = refs.begin();
+    for (auto& term : terms_) {
+      *begin = irs::ref_cast<Char>(term);
+      ++begin;
+    }
+    return refs;
+  }
+
  private:
+  const irs::seek_term_iterator* it_{};
+  std::vector<irs::bstring> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor

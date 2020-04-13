@@ -21,13 +21,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "term_filter.hpp"
-
 #include "term_query.hpp"
-#include "cost.hpp"
-#include "analysis/token_attributes.hpp"
-#include "index/index_reader.hpp"
 
 NS_ROOT
+
+field_visitor visitor(const by_term_options::execution_options& options) {
+  return [term = bytes_ref(options.term)](
+      const term_reader& field,
+      filter_visitor& visitor) {
+     return term_query::visit(field, term, visitor);
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            by_term implementation

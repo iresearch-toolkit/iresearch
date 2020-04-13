@@ -29,6 +29,7 @@
 NS_ROOT
 
 class by_term;
+struct filter_visitor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_term_options
@@ -36,6 +37,7 @@ class by_term;
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_term_options {
   using filter_type = by_term;
+  using execution_options = by_term_options;
 
   bstring term;
 
@@ -47,6 +49,8 @@ struct IRESEARCH_API by_term_options {
     return hash_utils::hash(term);
   }
 }; // by_term_options
+
+field_visitor visitor(const by_term_options::execution_options& options);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 
