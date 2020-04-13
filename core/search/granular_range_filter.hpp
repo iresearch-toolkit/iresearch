@@ -134,7 +134,7 @@ class IRESEARCH_API by_granular_range
                    field(), options().range,
                    options().scored_terms_limit);
   }
-};
+}; // by_granular_range
 
 NS_END // ROOT
 

@@ -41,10 +41,14 @@ struct search_range {
   BoundType max_type = BoundType::UNBOUNDED;
 
   size_t hash() const noexcept {
-    const auto hash0 = hash_combine(std::hash<decltype(min)>()(min),
-                                    std::hash<decltype(max)>()(max));
-    const auto hash1 = hash_combine(std::hash<decltype(min_type)>()(min_type),
-                                    std::hash<decltype(max_type)>()(max_type));
+    using bound_type = typename std::underlying_type<BoundType>::type;
+
+    const auto hash0 = hash_combine(
+      std::hash<decltype(min)>()(min),
+      std::hash<decltype(max)>()(max));
+    const auto hash1 = hash_combine(
+      std::hash<bound_type>()(static_cast<bound_type>(min_type)),
+      std::hash<bound_type>()(static_cast<bound_type>(max_type)));
     return hash_combine(hash0, hash1);
   }
 
