@@ -184,7 +184,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       max_stream.reset(INT32_C(1000));
 
       irs::by_granular_range query;
-      *query.mutable_field() = "name";
+      *query.mutable_field() = "value";
       irs::set_granular_term(query.mutable_options()->range.min, min_stream);
       irs::set_granular_term(query.mutable_options()->range.max, max_stream);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
@@ -1555,8 +1555,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f")));
-      query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f")));
+      query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
       check_query(query, docs_t{}, costs_t{0}, rdr);
     }
@@ -1717,6 +1717,46 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   // empty query
   check_query(irs::by_granular_range(), docs_t{}, rdr);
 
+  // name = (..;..) test collector call count for field/term/finish
+  {
+    docs_t docs{ };
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      ++collect_field_count;
+    };
+    scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      ++collect_term_count;
+    };
+    scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++finish_count;
+    };
+    scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+    };
+    scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+    };
+
+    irs::by_granular_range q;
+    *q.mutable_field() = "invalid_field";
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
+    q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+
+    check_query(q, order, docs, rdr, false);
+    ASSERT_EQ(0, collect_field_count);
+    ASSERT_EQ(0, collect_term_count);
+    ASSERT_EQ(0, finish_count);
+  }
+
   // value = (..;..) test collector call count for field/term/finish
   {
     docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
@@ -1745,7 +1785,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     };
 
     irs::by_granular_range q;
-    *q.mutable_field() = "field";
+    *q.mutable_field() = "value";
     irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
     irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;

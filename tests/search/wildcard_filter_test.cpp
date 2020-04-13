@@ -209,14 +209,14 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     ASSERT_EQ(9, finish_count); // 9 unque terms
   }
 
-  // empty prefix
+  // match all
   {
     docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
     costs_t costs{ docs.size() };
     irs::order order;
-
     order.add<tests::sort::frequency_sort>(false);
-    check_query(make_filter("prefix", ""), order, docs, rdr);
+
+    check_query(make_filter("prefix", "%"), order, docs, rdr);
   }
 
   // prefix
@@ -224,9 +224,9 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
     costs_t costs{ docs.size() };
     irs::order order;
-
     order.add<tests::sort::frequency_sort>(false);
-    check_query(make_filter("prefix", "a"), order, docs, rdr);
+
+    check_query(make_filter("prefix", "a%"), order, docs, rdr);
   }
 }
 

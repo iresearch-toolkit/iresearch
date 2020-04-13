@@ -120,6 +120,8 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   /// @brief collect current term
   //////////////////////////////////////////////////////////////////////////////
   void collect(const Key& key) {
+    assert(state_.segment && state_.terms && state_.state);
+
     if (!scored_terms_limit_) {
       // state will not be scored
       // add all doc_ids from the doc_iterator to the unscored_docs
@@ -179,8 +181,6 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     if (!scored_terms_limit_) {
       return; // nothing to score (optimization)
     }
-
-    assert(state_.segment && state_.terms && state_.state);
 
     // stats for a specific term
     std::unordered_map<hashed_bytes_ref, stats_state> term_stats;

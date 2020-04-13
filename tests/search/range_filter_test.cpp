@@ -666,7 +666,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       check_query(filter, docs_t{}, rdr);
     }
 
-    // name = [..;..)
+    // name = ["";..)
     {
       docs_t docs{ 
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
@@ -682,7 +682,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       check_query(filter, docs, costs, rdr);
     }
 
-    // name = (..;..]
+    // name = ("";..]
     {
       docs_t docs{ 
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
@@ -692,17 +692,14 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range filter;
       *filter.mutable_field() = "name";
-      filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
       check_query(filter, docs, costs, rdr);
     }
 
-    // name = [..;..]
+    // name = ["";""]
     {
-      docs_t docs{ 
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-      };
+      docs_t docs{ };
       costs_t costs{ docs.size() };
 
 
@@ -718,7 +715,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     // result: A .. Z, ~
     {
       docs_t docs{
-        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
         18, 19, 20, 21, 22, 23, 24, 25, 26, 27
       }; 
       costs_t costs{ docs.size() };
@@ -735,7 +732,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     // result: A .. Z, ~
     {
       docs_t docs{
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
       };
       costs_t costs{ docs.size() };
@@ -1083,6 +1080,10 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range filter;
       *filter.mutable_field() = "value";
+      filter.mutable_options()->range.min = irs::numeric_utils::numeric_traits<double_t>::ninf();
+      filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      filter.mutable_options()->range.max = irs::numeric_utils::numeric_traits<double_t>::inf();
+      filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->scored_terms_limit = 2;
 
       check_query(filter, order, docs, rdr);
@@ -1104,7 +1105,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       *filter.mutable_field() = "value";
       filter.mutable_options()->range.min = irs::numeric_utils::numeric_traits<double_t>::ninf();
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-      filter.mutable_options()->range.max = max_term;
+      filter.mutable_options()->range.max = max_term->value();
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       check_query(filter, order, docs, rdr);
