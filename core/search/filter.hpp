@@ -202,7 +202,7 @@ inline size_t hash_value(const filter& q) noexcept {
 /// @brief convenient base class filters with options
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
-class IRESEARCH_API filter_with_options : public filter {
+class filter_with_options : public filter {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
@@ -238,7 +238,7 @@ class IRESEARCH_API filter_with_options : public filter {
 /// @brief convenient base class for single field filters
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
-class IRESEARCH_API filter_base : public filter_with_options<Options> {
+class filter_base : public filter_with_options<Options> {
  public:
   using options_type = typename filter_with_options<Options>::options_type;
   using filter_type = typename options_type::filter_type;

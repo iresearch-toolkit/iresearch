@@ -23,12 +23,13 @@
 #ifndef IRESEARCH_STRING_H
 #define IRESEARCH_STRING_H
 
-#include "shared.hpp"
-
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cassert>
-#include <algorithm>
+#include <vector>
+
+#include "shared.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
