@@ -62,7 +62,8 @@ struct IRESEARCH_API by_wildcard_options {
 /// @class by_wildcard
 /// @brief user-side wildcard filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_wildcard final : public filter_with_field<by_wildcard_options> {
+class IRESEARCH_API by_wildcard final
+    : public filter_base<by_wildcard_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

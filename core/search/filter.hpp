@@ -197,11 +197,17 @@ inline size_t hash_value(const filter& q) noexcept {
   return q.hash();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class filter_with_options
+/// @brief convenient base class filters with options
+////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
 class IRESEARCH_API filter_with_options : public filter {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
+
+  filter_with_options() : filter(filter_type::type()) { }
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
@@ -211,8 +217,6 @@ class IRESEARCH_API filter_with_options : public filter {
   }
 
  protected:
-  filter_with_options() : filter(filter_type::type()) { }
-
   virtual bool equals(const filter& rhs) const noexcept override {
 #ifdef IRESEARCH_DEBUG
     auto& impl = dynamic_cast<const filter_type&>(rhs);
@@ -227,12 +231,16 @@ class IRESEARCH_API filter_with_options : public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   options_type options_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // filter_with_options
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class filter_base
+/// @brief convenient base class for single field filters
+////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
-class IRESEARCH_API filter_with_field : public filter_with_options<Options> {
+class IRESEARCH_API filter_base : public filter_with_options<Options> {
  public:
-  using options_type = Options;
+  using options_type = typename filter_with_options<Options>::options_type;
   using filter_type = typename options_type::filter_type;
 
   const std::string& field() const noexcept { return field_; }
@@ -244,8 +252,6 @@ class IRESEARCH_API filter_with_field : public filter_with_options<Options> {
   }
 
  protected:
-  filter_with_field() = default;
-
   virtual bool equals(const filter& rhs) const noexcept override {
 #ifdef IRESEARCH_DEBUG
     auto& impl = dynamic_cast<const filter_type&>(rhs);
@@ -260,22 +266,7 @@ class IRESEARCH_API filter_with_field : public filter_with_options<Options> {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string field_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
-
-template<typename Filter>
-struct single_term_options {
-  using filter_type = Filter;
-
-  bstring term;
-
-  bool operator==(const single_term_options& rhs) const noexcept {
-    return term == rhs.term;
-  }
-
-  size_t hash() const noexcept {
-    return hash_utils::hash(term);
-  }
-};
+}; // filter_base
 
 #define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(::iresearch::type_id)
 #define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,::iresearch::type_id) { \
@@ -284,7 +275,7 @@ struct single_term_options {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class empty
-/// @brief filter that returns no documents
+/// @brief filter which returns no documents
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty: public filter {
  public:
@@ -299,7 +290,7 @@ class IRESEARCH_API empty: public filter {
     boost_t boost,
     const attribute_view& ctx
   ) const override;
-};
+}; // empty
 
 NS_END
 

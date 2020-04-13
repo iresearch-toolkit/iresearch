@@ -56,7 +56,7 @@ struct IRESEARCH_API by_column_existence_options {
 /// @brief user-side column existence filter
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_column_existence final
-    : public filter_with_field<by_column_existence_options> {
+    : public filter_base<by_column_existence_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

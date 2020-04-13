@@ -93,8 +93,7 @@ struct IRESEARCH_API by_range_options {
 /// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_range
-    : public filter_with_field<by_range_options> {
+class IRESEARCH_API by_range : public filter_base<by_range_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
@@ -126,38 +125,7 @@ class IRESEARCH_API by_range
                    field(), options().range,
                    options().scored_terms_limit);
   }
-
-//  template<Bound B>
-//  by_range& term(bstring&& term) {
-//    get<B>::term(rng_) = std::move(term);
-//
-//    if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
-//      get<B>::type(rng_) = BoundType::EXCLUSIVE;
-//    }
-//
-//    return *this;
-//  }
-//
-//  template<Bound B>
-//  by_range& term(const bytes_ref& term) {
-//    get<B>::term(rng_) = term;
-//
-//    if (term.null()) {
-//      get<B>::type(rng_) = BoundType::UNBOUNDED;
-//    } else if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
-//      get<B>::type(rng_) = BoundType::EXCLUSIVE;
-//    }
-//
-//    return *this;
-//  }
-
-//  template<Bound B>
-//  by_range& include(bool incl) {
-//    get<B>::type(rng_) = incl ? BoundType::INCLUSIVE : BoundType::EXCLUSIVE;
-//    return *this;
-//  }
 }; // by_range 
-
 
 NS_END // ROOT
 

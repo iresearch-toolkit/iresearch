@@ -57,7 +57,7 @@ struct IRESEARCH_API by_ngram_similarity_options {
 /// @class by_ngram_similarity
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_ngram_similarity
-    : public irs::filter_with_field<by_ngram_similarity_options> {
+    : public filter_base<by_ngram_similarity_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

@@ -92,7 +92,7 @@ struct IRESEARCH_API by_edit_distance_options {
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_edit_distance final
-    : public filter_with_field<by_edit_distance_options> {
+    : public filter_base<by_edit_distance_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

@@ -105,7 +105,7 @@ IRESEARCH_API void set_granular_term(
 ///              termB@0 + termB@2 + termB@6 + termB@10
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_granular_range
-    : public filter_with_field<by_granular_range_options> {
+    : public filter_base<by_granular_range_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

@@ -34,13 +34,25 @@ class by_term;
 /// @struct by_term_options
 /// @brief options for term filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_term_options : single_term_options<by_term> { };
+struct IRESEARCH_API by_term_options {
+  using filter_type = by_term;
+
+  bstring term;
+
+  bool operator==(const by_term_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return hash_utils::hash(term);
+  }
+}; // by_term_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 
 /// @brief user-side term filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_term : public filter_with_field<by_term_options> {
+class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();

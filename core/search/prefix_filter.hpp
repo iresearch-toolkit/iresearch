@@ -62,7 +62,7 @@ struct IRESEARCH_API by_prefix_options {
 /// @class by_prefix
 /// @brief user-side prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_prefix : public filter_with_field<by_prefix_options> {
+class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
