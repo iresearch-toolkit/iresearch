@@ -24,37 +24,13 @@
 #define IRESEARCH_RANGE_FILTER_H
 
 #include "search/filter.hpp"
+#include "search/search_range.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
 class by_range;
 struct filter_visitor;
-
-enum class Bound {
-  MIN, MAX
-};
-
-enum class BoundType {
-  UNBOUNDED, INCLUSIVE, EXCLUSIVE
-};
-
-template<typename T>
-struct generic_range {
-  T min{};
-  T max{};
-  BoundType min_type = BoundType::UNBOUNDED;
-  BoundType max_type = BoundType::UNBOUNDED;
-
-  bool operator==(const generic_range& rhs) const {
-    return min == rhs.min && min_type == rhs.min_type
-      && max == rhs.max && max_type == rhs.max_type;
-  }
-
-  bool operator!=(const generic_range& rhs) const {
-    return !(*this == rhs); 
-  }
-}; // generic_range
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -63,7 +39,7 @@ struct generic_range {
 struct IRESEARCH_API by_range_options {
   using filter_type = by_range;
 
-  using range_type = generic_range<bstring>;
+  using range_type = search_range<bstring>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search range
@@ -80,12 +56,8 @@ struct IRESEARCH_API by_range_options {
   }
 
   size_t hash() const noexcept {
-    const auto hash0 = hash_combine(hash_utils::hash(range.min),
-                                    hash_utils::hash(range.max));
-    const auto hash1 = hash_combine(std::hash<decltype(range.min_type)>()(range.min_type),
-                                    std::hash<decltype(range.max_type)>()(range.max_type));
     return hash_combine(std::hash<decltype(scored_terms_limit)>()(scored_terms_limit),
-                        hash_combine(hash0, hash1));
+                        range.hash());
   }
 }; // by_range_options
 

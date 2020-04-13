@@ -2175,8 +2175,8 @@ TEST_P(granular_range_filter_test_case, visit) {
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
   irs::by_granular_range::options_type::range_type rng;
-  rng.min = {{0, irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))}};
-  rng.max = {{1, irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"))}};
+  rng.min = {irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))};
+  rng.max = {irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"))};
   rng.min_type = irs::BoundType::INCLUSIVE;
   rng.max_type = irs::BoundType::INCLUSIVE;
   // read segment

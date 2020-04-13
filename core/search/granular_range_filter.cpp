@@ -175,14 +175,14 @@ void collect_terms_from(
   // collect the min_term if requested and the least-granular term range
   // ...........................................................................
 
-  auto* exact_min_term = &(min_term.begin()->second);
+  auto* exact_min_term = &(*min_term.begin());
 
   // seek to least-granular term, advance by one and seek to end, (end is when masked next term is < masked current term)
   collect_terms_between(
     terms, prefix_size,
-    min_term_itr->second, // the min term for the current granularity level
+    *min_term_itr, // the min term for the current granularity level
     irs::bytes_ref::NIL, // collect full granularity range
-    min_term_inclusive && exact_min_term == &(min_term_itr->second), true, // add min_term if requested
+    min_term_inclusive && exact_min_term == &(*min_term_itr), true, // add min_term if requested
     visitor
   );
 
@@ -197,7 +197,7 @@ void collect_terms_from(
        ++min_term_itr
   ) {
     // seek to the same term at a lower granularity level than current level
-    auto res = terms.seek_ge(min_term_itr->second);
+    auto res = terms.seek_ge(*min_term_itr);
 
     if (irs::SeekResult::END == res) {
       continue;
@@ -205,11 +205,11 @@ void collect_terms_from(
 
     auto end_term =
       (irs::SeekResult::NOT_FOUND == res || (irs::SeekResult::FOUND == res && terms.next()))     // have next term
-      && mask_granularity(terms.value(), prefix_size) == mask_granularity(min_term_itr->second, prefix_size) // on same level
+      && mask_granularity(terms.value(), prefix_size) == mask_granularity(*min_term_itr, prefix_size) // on same level
       ? terms.value() : irs::bytes_ref::NIL
     ;
     irs::bstring end_term_copy;
-    auto is_most_granular_term = exact_min_term == &(current_min_term_itr->second);
+    auto is_most_granular_term = exact_min_term == &(*current_min_term_itr);
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
     if (!end_term.null()) {
@@ -219,7 +219,7 @@ void collect_terms_from(
 
     collect_terms_between(
       terms, prefix_size,
-      current_min_term_itr->second, // the min term for the current granularity level
+      *current_min_term_itr, // the min term for the current granularity level
       end_term, // the min term for the previous lesser granularity level
       min_term_inclusive && is_most_granular_term, // add min_term if requested
       end_term.null() && is_most_granular_term, // add end term if required (for most granular)
@@ -255,7 +255,7 @@ void collect_terms_until(
   {
     const auto& current_level = mask_granularity(terms.value(), prefix_size);
 
-    for (auto end = max_term.rend(); current_level != mask_granularity(max_term_itr->second, prefix_size);) {
+    for (auto end = max_term.rend(); current_level != mask_granularity(*max_term_itr, prefix_size);) {
       if (++max_term_itr == end) {
         return; // cannot find granularity level in max_term matching current term
       }
@@ -267,14 +267,14 @@ void collect_terms_until(
   // collect the least-granular term range
   // ...........................................................................
 
-  auto* exact_max_term = &(max_term.begin()->second);
+  auto* exact_max_term = &(*max_term.begin());
 
   // advance by one and collect all terms excluding the current max_term
   collect_terms_between(
     terms, prefix_size,
     irs::bytes_ref::NIL, // collect full granularity range
-    max_term_itr->second, // the max term for the current granularity level
-    true, max_term_inclusive && exact_max_term == &(max_term_itr->second), // add max_term if requested
+    *max_term_itr, // the max term for the current granularity level
+    true, max_term_inclusive && exact_max_term == &(*max_term_itr), // add max_term if requested
     visitor
   );
 
@@ -288,20 +288,19 @@ void collect_terms_until(
   // advance by one and collect all terms excluding the current max_term, repeat for all remaining granularity levels
   for (auto current_max_term_itr = max_term_itr, end = max_term.rend();
        ++current_max_term_itr != end;
-       ++max_term_itr
-  ) {
-    tmp_term = max_term_itr->second;
+       ++max_term_itr) {
+    tmp_term = *max_term_itr;
 
     // build starting term from current granularity_level + value of less granular term
-    if (max_term_itr->second.size() > prefix_size) {
-      tmp_term.replace(0, prefix_size, current_max_term_itr->second, 0, prefix_size);
+    if (max_term_itr->size() > prefix_size) {
+      tmp_term.replace(0, prefix_size, *current_max_term_itr, 0, prefix_size);
     }
 
     collect_terms_between(
       terms, prefix_size,
       tmp_term, // the max term for the previous lesser granularity level
-      current_max_term_itr->second, // the max term for the current granularity level
-      true, max_term_inclusive && exact_max_term == &(current_max_term_itr->second), // add max_term if requested
+      *current_max_term_itr, // the max term for the current granularity level
+      true, max_term_inclusive && exact_max_term == &(*current_max_term_itr), // add max_term if requested
       visitor
     );
   }
@@ -334,11 +333,11 @@ void collect_terms_within(
   // ...........................................................................
 
   if (min_term_inclusive && !min_term.empty()) {
-    auto& exact_min_term = min_term.begin()->second;
-    bool single_term = !max_term.empty() && exact_min_term == max_term.begin()->second;
+    auto& exact_min_term = min_term.front();
+    bool single_term = !max_term.empty() && exact_min_term == max_term.front();
 
     if ((!single_term || max_term_inclusive)
-        && exact_min_term > max_term.begin()->second) {
+        && exact_min_term > max_term.front()) {
       return; // empty range because min > max
     }
 
@@ -352,7 +351,7 @@ void collect_terms_within(
   // align the min_term granularity level with max_term granularity level
   // ...........................................................................
 
-  auto* exact_min_term = min_term.empty() ? nullptr : &(min_term.begin()->second);
+  auto* exact_min_term = min_term.empty() ? nullptr : &(min_term.front());
   auto max_term_itr = max_term.rbegin();
 
   // align min_term granularity level to be <= max_term_itr (to ensure min_term term is not a superset of max_term)
@@ -361,8 +360,8 @@ void collect_terms_within(
     auto max_end = max_term.rend();
 
     for(;;) {
-      auto& min_term_value = min_term_itr->second;
-      auto& max_term_value = max_term_itr->second;
+      auto& min_term_value = *min_term_itr;
+      auto& max_term_value = *max_term_itr;
       const auto& min_term_level = mask_granularity(min_term_value, prefix_size);
       const auto& max_term_level = mask_granularity(max_term_value, prefix_size);
 
@@ -389,9 +388,9 @@ void collect_terms_within(
   // seek to least-granular term, advance by one and seek to end, (end is when masked next term is < masked current term)
   collect_terms_between(
     terms, prefix_size,
-    min_term_itr->second, // the min term for the current granularity level
-    max_term.empty() ? irs::bytes_ref::NIL : irs::bytes_ref(max_term_itr->second), // collect up to max term at same granularity range
-    min_term_inclusive && exact_min_term == &(min_term_itr->second), false, // add min_term if requested, end_term already covered by a less-granular range
+    *min_term_itr, // the min term for the current granularity level
+    max_term.empty() ? irs::bytes_ref::NIL : irs::bytes_ref(*max_term_itr), // collect up to max term at same granularity range
+    min_term_inclusive && exact_min_term == &(*min_term_itr), false, // add min_term if requested, end_term already covered by a less-granular range
     visitor
   );
 
@@ -405,7 +404,7 @@ void collect_terms_within(
        ++current_min_term_itr != end;
        ++min_term_itr
   ) {
-    auto res = terms.seek_ge(min_term_itr->second);
+    auto res = terms.seek_ge(*min_term_itr);
 
     if (irs::SeekResult::END == res) {
       continue;
@@ -413,7 +412,7 @@ void collect_terms_within(
 
     auto end_term =
       (irs::SeekResult::NOT_FOUND == res || (irs::SeekResult::FOUND == res && terms.next()))     // have next term
-      && mask_granularity(terms.value(), prefix_size) == mask_granularity(min_term_itr->second, prefix_size) // on same level
+      && mask_granularity(terms.value(), prefix_size) == mask_granularity(*min_term_itr, prefix_size) // on same level
       ? terms.value() : irs::bytes_ref::NIL
     ;
     irs::bstring end_term_copy;
@@ -426,9 +425,9 @@ void collect_terms_within(
 
     collect_terms_between(
       terms, prefix_size,
-      current_min_term_itr->second, // the min term for the current granularity level
+      *current_min_term_itr, // the min term for the current granularity level
       end_term, // the min term for the previous lesser granularity level
-      min_term_inclusive && exact_min_term == &(current_min_term_itr->second), false, // add min_term if requested, end_term already covered by a less-granular range
+      min_term_inclusive && exact_min_term == &(*current_min_term_itr), false, // add min_term if requested, end_term already covered by a less-granular range
       visitor
     );
   }
@@ -440,7 +439,7 @@ void collect_terms_within(
   // ...........................................................................
 
   // if max is a defined range then seek to max_term that was collected above and collect max_term range
-  if (!max_term.empty() && terms.seek(max_term_itr->second)) {
+  if (!max_term.empty() && terms.seek(*max_term_itr)) {
     collect_terms_until(
       terms, prefix_size, max_term, max_term_inclusive, visitor
     );
@@ -472,7 +471,7 @@ void visit(
       return;
     }
 
-    auto& max_term = rng.max.rbegin()->second;
+    auto& max_term = *rng.max.rbegin();
     irs::bytes_ref smallest_term(max_term.c_str(), std::min(max_term.size(), prefix_size)); // smallest least granular term
 
     // collect terms ending with max granularity range, include/exclude max term
@@ -514,11 +513,10 @@ NS_ROOT
 // sequential 'granularity_level' value, cannot use 'iresearch::increment' since it can be 0
 void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
-  auto& attributes = term.attributes();
-  auto& term_attr = attributes.get<term_attribute>();
+  boundary.clear();
 
-  for (auto level = by_granular_range_options::granularity_limits::min(); term.next(); ++level) {
-    boundary[level] = term_attr->value();
+  for (auto& term_attr = term.attributes().get<term_attribute>(); term.next(); ) {
+    boundary.emplace_back(term_attr->value());
   }
 }
 
@@ -533,8 +531,8 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     const options_type::range_type& rng,
     size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
-    const auto& min = rng.min.begin()->second;
-    const auto& max = rng.max.begin()->second;
+    const auto& min = rng.min.front();
+    const auto& max = rng.max.front();
 
     if (min == max) { // compare the most precise terms
       if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {

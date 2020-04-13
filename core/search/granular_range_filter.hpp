@@ -24,12 +24,15 @@
 #ifndef IRESEARCH_GRANULAR_RANGE_FILTER_H
 #define IRESEARCH_GRANULAR_RANGE_FILTER_H
 
-#include "range_filter.hpp"
+#include "search/filter.hpp"
+#include "search/search_range.hpp"
+#include "utils/string.hpp"
 
 NS_ROOT
 
 class by_granular_range;
 class numeric_token_stream;
+struct filter_visitor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_granular_range_options
@@ -38,15 +41,15 @@ class numeric_token_stream;
 struct IRESEARCH_API by_granular_range_options {
   using filter_type = by_granular_range;
 
-  // the lower the value of 'granularity_level' the more precise the term
-  using granularity_level = byte_type;
-  using granularity_limits = std::numeric_limits<granularity_level>;
-  using terms = std::map<granularity_level, bstring>;
-
-  using range_type = generic_range<terms>;
+  using terms = std::vector<bstring>;
+  using range_type = search_range<terms>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search range
+  /// @note terms are expected to be placed by granularity levels from the most
+  ///       precise term to the less precise one, i.e. lower indexes denote more
+  ///       precise term
+  /// @note consider using "set_granular_term" function for convenience
   //////////////////////////////////////////////////////////////////////////////
   range_type range;
 
@@ -61,14 +64,8 @@ struct IRESEARCH_API by_granular_range_options {
 
   size_t hash() const noexcept {
     size_t hash = std::hash<decltype(scored_terms_limit)>()(scored_terms_limit);
-    for (auto& entry : range.min) {
-      hash = hash_combine(hash, entry.first);
-      hash = hash_combine(hash, entry.second);
-    }
-    for (auto& entry : range.max) {
-      hash = hash_combine(hash, entry.first);
-      hash = hash_combine(hash, entry.second);
-    }
+    for (auto& value: range.min) hash = hash_combine(hash, value);
+    for (auto& value: range.max) hash = hash_combine(hash, value);
     hash = hash_combine(hash, std::hash<decltype(range.min_type)>()(range.min_type));
     hash = hash_combine(hash, std::hash<decltype(range.max_type)>()(range.max_type));
     return hash;
@@ -82,7 +79,8 @@ struct IRESEARCH_API by_granular_range_options {
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 void set_granular_term(by_granular_range_options::terms& boundary, T&& value) {
-  boundary[by_granular_range_options::granularity_limits::min()] = std::forward<T>(value);
+  boundary.clear();
+  boundary.emplace_back(std::forward<T>(value));
 }
 
 //////////////////////////////////////////////////////////////////////////////
