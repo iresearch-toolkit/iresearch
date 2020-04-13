@@ -1244,26 +1244,34 @@ TEST_P(range_filter_test_case, visit) {
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
+
+  irs::by_range_options opts;
+  opts.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  opts.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"));
+  opts.range.min_type = irs::BoundType::INCLUSIVE;
+  opts.range.max_type = irs::BoundType::INCLUSIVE;
+
   tests::empty_filter_visitor visitor;
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
   irs::by_range::options_type::range_type rng;
-  rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-  rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"));
-  rng.min_type = irs::BoundType::INCLUSIVE;
-  rng.max_type = irs::BoundType::INCLUSIVE;
   // read segment
   auto index = open_reader();
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-    ASSERT_TRUE(reader != nullptr);
+  ASSERT_EQ(1, index.size());
+  auto& segment = index[0];
 
-    irs::by_range::visit(*reader, rng, visitor);
-    ASSERT_EQ(1, visitor.prepare_calls_counter());
-    ASSERT_EQ(2, visitor.visit_calls_counter());
-    visitor.reset();
-  }
+  // get term dictionary for field
+  const auto* reader = segment.field(field);
+  ASSERT_NE(nullptr, reader);
+
+  auto field_visitor = irs::visitor(opts);
+  ASSERT_TRUE(field_visitor);
+  field_visitor(*reader, visitor);
+  ASSERT_EQ(1, visitor.prepare_calls_counter());
+  ASSERT_EQ(2, visitor.visit_calls_counter());
+  ASSERT_EQ((std::vector<irs::string_ref>{"abc", "abcd"}),
+            visitor.term_refs<char>());
+  visitor.reset();
 }
 
 INSTANTIATE_TEST_CASE_P(

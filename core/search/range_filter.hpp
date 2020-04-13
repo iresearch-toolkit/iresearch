@@ -32,20 +32,30 @@ NS_ROOT
 class by_range;
 struct filter_visitor;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_prefix_options
-/// @brief options for prefix filter
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_range_options {
+struct IRESEARCH_API by_range_filter_options {
   using range_type = search_range<bstring>;
-
-  using filter_type = by_range;
-  using execution_options = range_type;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search range
   //////////////////////////////////////////////////////////////////////////////
   range_type range;
+
+  bool operator==(const by_range_filter_options& rhs) const noexcept {
+    return range == rhs.range;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<range_type>()(range);
+  }
+}; // by_range_filter_options
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for prefix filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_range_options : by_range_filter_options {
+  using filter_type = by_range;
+  using filter_options = by_range_filter_options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -53,14 +63,17 @@ struct IRESEARCH_API by_range_options {
   size_t scored_terms_limit{1024};
 
   bool operator==(const by_range_options& rhs) const noexcept {
-    return range == rhs.range && scored_terms_limit == rhs.scored_terms_limit;
+    return filter_options::operator==(rhs) &&
+      scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(std::hash<decltype(scored_terms_limit)>()(scored_terms_limit),
-                        std::hash<range_type>()(range));
+    return hash_combine(filter_options::hash(),
+                        std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
   }
 }; // by_range_options
+
+IRESEARCH_API field_visitor visitor(const by_range_options::filter_options& options);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
