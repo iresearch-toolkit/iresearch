@@ -218,13 +218,14 @@ class filter_with_options : public filter {
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
+    return filter::equals(rhs) &&
+      options_ ==
 #ifdef IRESEARCH_DEBUG
-    auto& impl = dynamic_cast<const filter_type&>(rhs);
+        dynamic_cast<const filter_type&>(rhs).options_
 #else
-    auto& impl = static_cast<const filter_type&>(rhs);
+        static_cast<const filter_type&>(rhs).options_
 #endif
-
-    return filter::equals(rhs) && options_ == impl.options_;
+      ;
   }
 
  private:
@@ -253,13 +254,14 @@ class filter_base : public filter_with_options<Options> {
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
+    return filter_with_options<options_type>::equals(rhs) &&
+      field_ ==
 #ifdef IRESEARCH_DEBUG
-    auto& impl = dynamic_cast<const filter_type&>(rhs);
+        dynamic_cast<const filter_type&>(rhs).field_
 #else
-    auto& impl = static_cast<const filter_type&>(rhs);
+        static_cast<const filter_type&>(rhs).field_
 #endif
-
-    return filter_with_options<options_type>::equals(rhs) && field_ == impl.field_;
+      ;
   }
 
  private:

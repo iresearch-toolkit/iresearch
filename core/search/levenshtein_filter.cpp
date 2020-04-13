@@ -24,6 +24,7 @@
 
 #include "shared.hpp"
 #include "term_query.hpp"
+#include "term_filter.hpp"
 #include "limited_sample_collector.hpp"
 #include "top_terms_collector.hpp"
 #include "all_terms_collector.hpp"
@@ -310,6 +311,35 @@ filter::prepared::ptr prepare_levenshtein_filter(
 NS_END
 
 NS_ROOT
+
+field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
+ field_visitor res = [](const term_reader&, filter_visitor&){};
+  executeLevenshtein(
+    opts.max_distance, opts.provider, opts.with_transpositions,
+    [](){ },
+    [&res, &opts]() {
+      res = visitor(by_term_options{opts.term});
+    },
+    [&res, &opts](const parametric_description& d) {
+      struct automaton_context : util::noncopyable {
+        automaton_context(const parametric_description& d, const bytes_ref& term)
+          : acceptor(make_levenshtein_automaton(d, term)),
+            matcher(make_automaton_matcher(acceptor)) {
+        }
+
+        automaton acceptor;
+        automaton_table_matcher matcher;
+      };
+
+      // FIXME
+      res = [ctx = memory::make_shared<automaton_context>(d, opts.term)](
+        const term_reader& field, filter_visitor& visitor) mutable {
+          return automaton_visit(field, ctx->matcher, visitor);
+      };
+    }
+  );
+  return res;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   by_edit_distance implementation

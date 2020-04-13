@@ -32,13 +32,7 @@ class by_edit_distance;
 class parametric_description;
 struct filter_visitor;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_edit_distance_options
-/// @brief options for levenshtein filter
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_edit_distance_options {
-  using filter_type = by_edit_distance;
-
+struct IRESEARCH_API by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
@@ -48,11 +42,6 @@ struct IRESEARCH_API by_edit_distance_options {
   /// @brief target value
   //////////////////////////////////////////////////////////////////////////////
   bstring term;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief maximum number of the most relevant terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  size_t max_terms{};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns current parametric description provider, nullptr - use default
@@ -72,20 +61,44 @@ struct IRESEARCH_API by_edit_distance_options {
   //////////////////////////////////////////////////////////////////////////////
   bool with_transpositions{false};
 
-  bool operator==(const by_edit_distance_options& rhs) const noexcept {
+  bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
     return term == rhs.term &&
-      max_terms == rhs.max_terms &&
       max_distance == rhs.max_distance &&
       with_transpositions == rhs.with_transpositions;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(hash_combine(std::hash<bool>()(with_transpositions),
-                                     std::hash<size_t>()(max_terms)),
+    return hash_combine(std::hash<bool>()(with_transpositions),
                         hash_combine(std::hash<bstring>()(term),
                                      std::hash<byte_type>()(max_distance)));
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_edit_distance_options
+/// @brief options for levenshtein filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options {
+  using filter_type = by_edit_distance;
+  using filter_options = by_edit_distance_filter_options;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of the most relevant terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t max_terms{};
+
+  bool operator==(const by_edit_distance_options& rhs) const noexcept {
+    return filter_options::operator==(rhs) &&
+      max_terms == rhs.max_terms;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(filter_options::hash(),
+                        std::hash<size_t>()(max_terms));
+  }
 }; // by_edit_distance_options
+
+IRESEARCH_API field_visitor visitor(const by_edit_distance_options::filter_options& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance

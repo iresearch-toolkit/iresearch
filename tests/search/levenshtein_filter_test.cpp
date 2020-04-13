@@ -372,25 +372,52 @@ TEST_P(by_edit_distance_test_case, visit) {
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
-  tests::empty_filter_visitor visitor;
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
   auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
   // read segment
   auto index = open_reader();
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-    ASSERT_TRUE(reader != nullptr);
+  ASSERT_EQ(1, index.size());
+  auto& segment = index[0];
+  // get term dictionary for field
+  const auto* reader = segment.field(field);
+  ASSERT_NE(nullptr, reader);
 
-    irs::by_edit_distance::visit(*reader, term, 0, irs::default_pdp, false, visitor);
+  {
+    irs::by_edit_distance_filter_options opts;
+    opts.term = term;
+    opts.max_distance = 0;
+    opts.provider = nullptr;
+    opts.with_transpositions = false;
+
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::visitor(opts);
+    ASSERT_TRUE(field_visitor);
+    field_visitor(*reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
+    ASSERT_EQ(
+      (std::vector<irs::string_ref>{"abc"}),
+      visitor.term_refs<char>());
     visitor.reset();
+  }
 
-    irs::by_edit_distance::visit(*reader, term, 1, irs::default_pdp, false, visitor);
+  {
+    irs::by_edit_distance_filter_options opts;
+    opts.term = term;
+    opts.max_distance = 1;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = false;
+
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::visitor(opts);
+    ASSERT_TRUE(field_visitor);
+    field_visitor(*reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
+    ASSERT_EQ(
+      (std::vector<irs::string_ref>{"abc", "abcd", "abcy"}),
+      visitor.term_refs<char>());
     visitor.reset();
   }
 }
