@@ -67,8 +67,8 @@ NS_END
 
 NS_ROOT
 
-field_visitor visitor(const by_prefix_options::execution_options& options) {
-  return [term = bytes_ref(options.term)](
+field_visitor visitor(const by_prefix_options::filter_options& options) {
+  return [term = options.term](
       const term_reader& field,
       filter_visitor& visitor) {
      return ::visit(field, term, visitor);

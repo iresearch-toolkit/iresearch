@@ -609,7 +609,7 @@ TEST_P(term_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  irs::by_term_options opts;
+  irs::by_term_options::filter_options opts;
   opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
 
   tests::empty_filter_visitor visitor;

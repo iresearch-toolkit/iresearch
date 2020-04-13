@@ -31,18 +31,28 @@ NS_ROOT
 class by_prefix;
 struct filter_visitor;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_prefix_options
-/// @brief options for prefix filter
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_prefix_options {
-  using filter_type = by_prefix;
-  using execution_options = by_prefix_options;
-
+struct IRESEARCH_API by_prefix_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search prefix
   //////////////////////////////////////////////////////////////////////////////
   bstring term;
+
+  bool operator==(const by_prefix_filter_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_prefix_options
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for prefix filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
+  using filter_type = by_prefix;
+  using filter_options = by_prefix_filter_options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -50,16 +60,17 @@ struct IRESEARCH_API by_prefix_options {
   size_t scored_terms_limit{1024};
 
   bool operator==(const by_prefix_options& rhs) const noexcept {
-    return term == rhs.term && scored_terms_limit == rhs.scored_terms_limit;
+    return filter_options::operator==(rhs) &&
+        scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(std::hash<size_t>()(scored_terms_limit),
-                        hash_utils::hash(term));
+    return hash_combine(filter_options::hash(),
+                        std::hash<size_t>()(scored_terms_limit));
   }
 }; // by_prefix_options
 
-field_visitor visitor(const by_prefix_options::execution_options& options);
+IRESEARCH_API field_visitor visitor(const by_prefix_options::filter_options& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix

@@ -64,4 +64,15 @@ struct search_range {
 
 NS_END
 
+NS_BEGIN(std)
+
+template<typename T>
+struct hash<::iresearch::search_range<T>> {
+  size_t operator()(const ::iresearch::search_range<T>& value) {
+    return value.hash();
+  }
+};
+
+NS_END
+
 #endif // IRESEARCH_SEARCH_RANGE_H

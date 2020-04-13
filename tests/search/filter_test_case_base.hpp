@@ -656,6 +656,8 @@ class empty_filter_visitor : public irs::filter_visitor {
   void reset() noexcept {
     prepare_calls_counter_ = 0;
     visit_calls_counter_ = 0;
+    terms_.clear();
+    it_ = nullptr;
   }
 
   size_t prepare_calls_counter() const noexcept {

@@ -425,32 +425,55 @@ TEST_P(wildcard_filter_test_case, visit) {
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
-  tests::empty_filter_visitor visitor;
+
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
-  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-  auto prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
-  auto wildcard = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
+
   // read segment
   auto index = open_reader();
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-    ASSERT_TRUE(reader != nullptr);
+  ASSERT_EQ(1, index.size());
+  auto& segment = index[0];
+  // get term dictionary for field
+  const auto* reader = segment.field(field);
+  ASSERT_NE(nullptr, reader);
 
-    irs::by_wildcard::visit(*reader, term, visitor);
+  {
+    irs::by_wildcard_options::filter_options term;
+    term.term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::visitor(term);
+    field_visitor(*reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
+    ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());
     visitor.reset();
+  }
 
-    irs::by_wildcard::visit(*reader, prefix, visitor);
+  {
+    irs::by_wildcard_options::filter_options prefix;
+    prefix.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::visitor(prefix);
+    field_visitor(*reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
+    ASSERT_EQ(
+      (std::vector<irs::string_ref>{"abc", "abcd", "abcde", "abcdrer", "abcy", "abde" }),
+      visitor.term_refs<char>());
     visitor.reset();
+  }
 
-    irs::by_wildcard::visit(*reader, wildcard, visitor);
+  {
+    irs::by_wildcard_options::filter_options wildcard;
+    wildcard.term = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::visitor(wildcard);
+    field_visitor(*reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
+    ASSERT_EQ(
+      (std::vector<irs::string_ref>{"abc", "abcd", "abcde", "abcdrer", "abcy" }),
+      visitor.term_refs<char>());
     visitor.reset();
   }
 }

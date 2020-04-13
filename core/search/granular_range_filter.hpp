@@ -65,7 +65,7 @@ struct IRESEARCH_API by_granular_range_options {
   size_t hash() const noexcept {
     return hash_combine(
       std::hash<decltype(scored_terms_limit)>()(scored_terms_limit),
-      range.hash());
+      std::hash<range_type>()(range));
   }
 }; // by_granular_range_options
 

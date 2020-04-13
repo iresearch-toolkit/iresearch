@@ -26,6 +26,7 @@
 #include "shared.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
+#include "term_filter.hpp"
 #include "prefix_filter.hpp"
 #include "index/index_reader.hpp"
 #include "utils/wildcard_utils.hpp"
@@ -55,7 +56,7 @@ inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
 inline void executeWildcard(
-    bstring& buf, bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
+    bstring& buf, bytes_ref term, Invalid inv, Term t, Prefix p, WildCard w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       inv();
@@ -127,6 +128,48 @@ NS_END
 
 NS_ROOT
 
+field_visitor visitor(const by_wildcard_options::filter_options& options) {
+  bstring buf;
+  field_visitor res;
+  executeWildcard(
+    buf, options.term,
+    [&res]() {
+      res = [](const term_reader&, filter_visitor&) { };
+    },
+    [&res](const bytes_ref& term) {
+      by_term_options opts;
+      opts.term.assign(term.c_str(), term.size()); // FIXME
+
+      res = visitor(opts);
+    },
+    [&res](const bytes_ref& term) {
+      by_prefix_options opts;
+      opts.term.assign(term.c_str(), term.size()); // FIXME
+
+      res = visitor(opts);
+    },
+    [&res](const bytes_ref& term) {
+      struct automaton_context : util::noncopyable {
+        automaton_context(const bytes_ref& term)
+          : acceptor(from_wildcard(term)),
+            matcher(make_automaton_matcher(acceptor)) {
+        }
+
+        automaton acceptor;
+        automaton_table_matcher matcher;
+      };
+
+      // FIXME
+      res = [ctx = memory::make_shared<automaton_context>(term)](
+        const term_reader& field, filter_visitor& visitor) mutable {
+          return automaton_visit(field, ctx->matcher, visitor);
+      };
+    }
+  );
+
+  return res;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        by_wildcard implementation
 // -----------------------------------------------------------------------------
@@ -139,7 +182,7 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    bytes_ref term,
+    const bytes_ref& term,
     size_t scored_terms_limit) {
   bstring buf;
   filter::prepared::ptr res;

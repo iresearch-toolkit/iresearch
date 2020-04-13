@@ -37,9 +37,10 @@ struct filter_visitor;
 /// @brief options for prefix filter
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_range_options {
-  using filter_type = by_range;
-
   using range_type = search_range<bstring>;
+
+  using filter_type = by_range;
+  using execution_options = range_type;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search range
@@ -57,7 +58,7 @@ struct IRESEARCH_API by_range_options {
 
   size_t hash() const noexcept {
     return hash_combine(std::hash<decltype(scored_terms_limit)>()(scored_terms_limit),
-                        range.hash());
+                        std::hash<range_type>()(range));
   }
 }; // by_range_options
 

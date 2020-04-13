@@ -310,7 +310,7 @@ TEST_P(prefix_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  irs::by_prefix_options opts;
+  irs::by_prefix_options::filter_options opts;
   opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
 
   tests::empty_filter_visitor visitor;

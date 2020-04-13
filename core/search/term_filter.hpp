@@ -37,7 +37,7 @@ struct filter_visitor;
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_term_options {
   using filter_type = by_term;
-  using execution_options = by_term_options;
+  using filter_options = by_term_options;
 
   bstring term;
 
@@ -46,11 +46,11 @@ struct IRESEARCH_API by_term_options {
   }
 
   size_t hash() const noexcept {
-    return hash_utils::hash(term);
+    return std::hash<bstring>()(term);
   }
 }; // by_term_options
 
-field_visitor visitor(const by_term_options::execution_options& options);
+IRESEARCH_API field_visitor visitor(const by_term_options::filter_options& options);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 

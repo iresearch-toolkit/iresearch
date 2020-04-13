@@ -82,7 +82,7 @@ struct IRESEARCH_API by_edit_distance_options {
   size_t hash() const noexcept {
     return hash_combine(hash_combine(std::hash<bool>()(with_transpositions),
                                      std::hash<size_t>()(max_terms)),
-                        hash_combine(hash_utils::hash(term),
+                        hash_combine(std::hash<bstring>()(term),
                                      std::hash<byte_type>()(max_distance)));
   }
 }; // by_edit_distance_options

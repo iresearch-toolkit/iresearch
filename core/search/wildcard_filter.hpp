@@ -31,17 +31,28 @@ NS_ROOT
 class by_wildcard;
 struct filter_visitor;
 
+struct IRESEARCH_API by_wildcard_filter_options {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search wildcard
+  //////////////////////////////////////////////////////////////////////////////
+  bstring term;
+
+  bool operator==(const by_wildcard_filter_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_wildcard_filter_options
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
 /// @brief options for wildcard filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_wildcard_options {
+struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
   using filter_type = by_wildcard;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief search pattern
-  //////////////////////////////////////////////////////////////////////////////
-  bstring term;
+  using filter_options = by_wildcard_filter_options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
@@ -49,14 +60,17 @@ struct IRESEARCH_API by_wildcard_options {
   size_t scored_terms_limit{1024};
 
   bool operator==(const by_wildcard_options& rhs) const noexcept {
-    return term == rhs.term && scored_terms_limit == rhs.scored_terms_limit;
+    return filter_options::operator==(rhs) &&
+      scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(std::hash<size_t>()(scored_terms_limit),
-                        hash_utils::hash(term));
+    return hash_combine(filter_options::hash(),
+                        std::hash<size_t>()(scored_terms_limit));
   }
 }; // by_wildcard_options
+
+IRESEARCH_API field_visitor visitor(const by_wildcard_options::filter_options& options);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
@@ -73,7 +87,7 @@ class IRESEARCH_API by_wildcard final
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    bytes_ref term,
+    const bytes_ref& term,
     size_t scored_terms_limit);
 
   static void visit(
