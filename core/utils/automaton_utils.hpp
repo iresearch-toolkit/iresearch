@@ -457,6 +457,7 @@ inline filter::prepared::ptr prepare_automaton_filter(
 /// @return false in case of error, true otherwise
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API bool automaton_visit(
+  const sub_reader& segment,
   const term_reader& reader,
   automaton_table_matcher& matcher,
   filter_visitor& fv);

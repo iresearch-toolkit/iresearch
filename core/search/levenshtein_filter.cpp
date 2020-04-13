@@ -153,11 +153,6 @@ class levenshtein_terms_visitor : public filter_visitor {
       no_distance_(d.max_distance() + 1) {
   }
 
-  void prepare(const sub_reader& segment, const term_reader& field) noexcept {
-    segment_ = &segment;
-    field_ = &field;
-  }
-
   template<typename Visitor>
   void visit(const Visitor& visitor) {
     collector_.visit(visitor);
@@ -166,7 +161,9 @@ class levenshtein_terms_visitor : public filter_visitor {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const seek_term_iterator& terms) final {
+  virtual void prepare(const sub_reader& segment,
+                       const term_reader& field,
+                       const seek_term_iterator& terms) final {
     term_ = &terms.value();
 
     auto& payload = terms.attributes().get<irs::payload>();
@@ -176,7 +173,7 @@ class levenshtein_terms_visitor : public filter_visitor {
       distance_ = &payload->value.front();
     }
 
-    collector_.prepare(*segment_, *field_, terms);
+    collector_.prepare(segment, field, terms);
   }
 
   virtual void visit() final {
@@ -188,8 +185,6 @@ class levenshtein_terms_visitor : public filter_visitor {
 
  private:
   Collector& collector_;
-  const sub_reader* segment_{};
-  const term_reader* field_{};
   const bytes_ref* term_{};
   const uint32_t utf8_term_size_;
   const byte_type no_distance_;
@@ -215,10 +210,8 @@ bool collect_terms(
       continue;
     }
 
-    visitor.prepare(segment, *reader);
-
     // wrong matcher
-    if (!::automaton_visit(*reader, matcher, visitor)) {
+    if (!::automaton_visit(segment, *reader, matcher, visitor)) {
       return false;
     }
   }
@@ -314,7 +307,8 @@ NS_END
 NS_ROOT
 
 field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
- field_visitor res = [](const term_reader&, filter_visitor&){};
+  field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&){};
+
   executeLevenshtein(
     opts.max_distance, opts.provider, opts.with_transpositions,
     [](){ },
@@ -334,8 +328,8 @@ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
 
       // FIXME
       res = [ctx = memory::make_shared<automaton_context>(d, opts.term)](
-        const term_reader& field, filter_visitor& visitor) mutable {
-          return automaton_visit(field, ctx->matcher, visitor);
+        const sub_reader& segment, const term_reader& field, filter_visitor& visitor) mutable {
+          return automaton_visit(segment, field, ctx->matcher, visitor);
       };
     }
   );
@@ -376,6 +370,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
 }
 
 /*static*/ void by_edit_distance::visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
     byte_type max_distance,
@@ -385,14 +380,14 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
   executeLevenshtein(
     max_distance, provider, with_transpositions,
     []() {},
-    [&reader, &term, &fv]() {
-      term_query::visit(reader, term, fv);
+    [&reader, &segment, &term, &fv]() {
+      term_query::visit(segment, reader, term, fv);
     },
-    [&reader, &term, &fv](const parametric_description& d) {
+    [&reader, &segment, &term, &fv](const parametric_description& d) {
       const auto acceptor = make_levenshtein_automaton(d, term);
       auto matcher = make_automaton_matcher(acceptor);
 
-      automaton_visit(reader, matcher, fv);
+      automaton_visit(segment, reader, matcher, fv);
     }
   );
 }

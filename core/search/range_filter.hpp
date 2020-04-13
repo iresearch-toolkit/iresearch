@@ -93,6 +93,7 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
     size_t scored_terms_limit);
 
   static void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const options_type::range_type& rng,
     filter_visitor& visitor);

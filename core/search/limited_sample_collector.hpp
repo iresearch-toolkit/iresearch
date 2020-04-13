@@ -336,15 +336,15 @@ template<typename States>
 class multiterm_visitor final : public filter_visitor {
  public:
   multiterm_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
       limited_sample_collector<term_frequency>& collector,
       States& states)
-    : segment_(segment), reader_(reader),
-      collector_(collector), states_(states) {
+    : collector_(collector), states_(states) {
   }
 
-  virtual void prepare(const seek_term_iterator& terms) override {
+  virtual void prepare(
+      const sub_reader& segment,
+      const term_reader& reader,
+      const seek_term_iterator& terms) override {
     // get term metadata
     auto& meta = terms.attributes().get<term_meta>();
 
@@ -355,10 +355,10 @@ class multiterm_visitor final : public filter_visitor {
     docs_count_ = meta ? &meta->docs_count : &no_docs_;
 
     // get state for current segment
-    auto& state = states_.insert(segment_);
-    state.reader = &reader_;
+    auto& state = states_.insert(segment);
+    state.reader = &reader;
 
-    collector_.prepare(segment_, terms, state);
+    collector_.prepare(segment, terms, state);
     key_.offset = 0;
   }
 
@@ -372,8 +372,6 @@ class multiterm_visitor final : public filter_visitor {
 
  private:
   const decltype(term_meta::docs_count) no_docs_ = 0;
-  const sub_reader& segment_;
-  const term_reader& reader_;
   limited_sample_collector<term_frequency>& collector_;
   States& states_;
   term_frequency key_;

@@ -114,6 +114,7 @@ class IRESEARCH_API by_granular_range
     size_t scored_terms_limit);
 
   static void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const options_type::range_type& rng,
     filter_visitor& visitor);

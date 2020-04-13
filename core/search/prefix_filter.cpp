@@ -34,6 +34,7 @@ using namespace irs;
 
 template<typename Visitor>
 void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
@@ -49,7 +50,7 @@ void visit(
   if (starts_with(value, prefix)) {
     terms->read();
 
-    visitor.prepare(*terms);
+    visitor.prepare(segment, reader, *terms);
 
     do {
       visitor.visit();
@@ -69,9 +70,10 @@ NS_ROOT
 
 field_visitor visitor(const by_prefix_options::filter_options& options) {
   return [term = options.term](
+      const sub_reader& segment,
       const term_reader& field,
       filter_visitor& visitor) {
-     return ::visit(field, term, visitor);
+     return ::visit(segment, field, term, visitor);
   };
 }
 
@@ -87,6 +89,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     size_t scored_terms_limit) {
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
   for (const auto& segment: index) {
@@ -97,9 +100,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::visit(*reader, prefix, mtv);
+    ::visit(segment, *reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;
@@ -111,10 +112,11 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 }
 
 /*static*/ void by_prefix::visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& prefix,
     filter_visitor& visitor) {
-  ::visit(reader, prefix, visitor);
+  ::visit(segment, reader, prefix, visitor);
 }
 
 NS_END // ROOT

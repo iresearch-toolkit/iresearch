@@ -35,6 +35,8 @@ using namespace irs;
 
 template<typename Visitor, typename Comparer>
 void collect_terms(
+    const sub_reader& segment,
+    const term_reader& field,
     seek_term_iterator& terms,
     Visitor& visitor,
     Comparer cmp) {
@@ -44,7 +46,7 @@ void collect_terms(
     // read attributes
     terms.read();
 
-    visitor.prepare(terms);
+    visitor.prepare(segment, field, terms);
 
     do {
       visitor.visit();
@@ -60,6 +62,7 @@ void collect_terms(
 
 template<typename Visitor>
 void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const by_range_options::range_type& rng,
     Visitor& visitor) {
@@ -95,19 +98,19 @@ void visit(
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
       ::collect_terms(
-        *terms, visitor, [](const bytes_ref&) {
+        segment, reader, *terms, visitor, [](const bytes_ref&) {
           return true;
       });
       break;
     case BoundType::INCLUSIVE:
       ::collect_terms(
-        *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
           return term <= max;
       });
       break;
     case BoundType::EXCLUSIVE:
       ::collect_terms(
-        *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
           return term < max;
       });
       break;
@@ -120,9 +123,10 @@ NS_ROOT
 
 field_visitor visitor(const by_range_options::filter_options& options) {
   return [range = options.range](
+      const sub_reader& segment,
       const term_reader& field,
       filter_visitor& visitor) {
-    return visit(field, range, visitor);
+    return visit(segment, field, range, visitor);
   };
 }
 
@@ -157,6 +161,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
 
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -168,9 +173,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::visit(*reader, rng, mtv);
+    ::visit(segment, *reader, rng, mtv);
   }
 
   std::vector<bstring> stats;
@@ -182,10 +185,11 @@ DEFINE_FACTORY_DEFAULT(by_range)
 }
 
 /*static*/ void by_range::visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const options_type::range_type& rng,
     filter_visitor& visitor) {
-  ::visit(reader, rng, visitor);
+  ::visit(segment, reader, rng, visitor);
 }
 
 NS_END // ROOT

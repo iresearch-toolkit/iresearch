@@ -626,7 +626,7 @@ TEST_P(term_filter_test_case, visit) {
 
   auto field_visitor = irs::visitor(opts);
   ASSERT_TRUE(field_visitor);
-  field_visitor(*reader, visitor);
+  field_visitor(segment, *reader, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
   ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());

@@ -1266,7 +1266,7 @@ TEST_P(range_filter_test_case, visit) {
 
   auto field_visitor = irs::visitor(opts);
   ASSERT_TRUE(field_visitor);
-  field_visitor(*reader, visitor);
+  field_visitor(segment, *reader, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(2, visitor.visit_calls_counter());
   ASSERT_EQ((std::vector<irs::string_ref>{"abc", "abcd"}),

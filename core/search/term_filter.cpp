@@ -27,9 +27,10 @@ NS_ROOT
 
 field_visitor visitor(const by_term_options::filter_options& options) {
   return [term = options.term](
+      const sub_reader& segment,
       const term_reader& field,
       filter_visitor& visitor) {
-     return term_query::visit(field, term, visitor);
+     return term_query::visit(segment, field, term, visitor);
   };
 }
 

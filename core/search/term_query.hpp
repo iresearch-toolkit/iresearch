@@ -68,6 +68,7 @@ class term_query : public filter::prepared {
   );
 
   static void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
     filter_visitor& visitor);

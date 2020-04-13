@@ -122,6 +122,7 @@ class IRESEARCH_API by_edit_distance final
     bool with_transpositions);
 
   static void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& term,
     byte_type max_distance,

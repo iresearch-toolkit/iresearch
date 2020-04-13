@@ -102,25 +102,31 @@ inline void executeWildcard(
 
 ////////////////////////////////////////////////////////////////////////////////
 // MSVC2019 does not link inner functions in lambdas directly
-inline void by_prefix_visit(const term_reader& reader,
-                            const bytes_ref& term,
-                            filter_visitor& fv) {
-  by_prefix::visit(reader, term, fv);
+inline void by_prefix_visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& fv) {
+  by_prefix::visit(segment, reader, term, fv);
 }
 
-inline void term_query_visit(const term_reader& reader,
-                             const bytes_ref& term,
-                             filter_visitor& fv) {
-  term_query::visit(reader, term, fv);
+inline void term_query_visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& fv) {
+  term_query::visit(segment, reader, term, fv);
 }
 
-inline void automaton_visit(const term_reader& reader,
-                            const bytes_ref& term,
-                            filter_visitor& fv) {
+inline void automaton_visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& term,
+    filter_visitor& fv) {
   const auto acceptor = from_wildcard(term);
   auto matcher = make_automaton_matcher(acceptor);
 
-  automaton_visit(reader, matcher, fv);
+  automaton_visit(segment, reader, matcher, fv);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,7 +140,7 @@ field_visitor visitor(const by_wildcard_options::filter_options& options) {
   executeWildcard(
     buf, options.term,
     [&res]() {
-      res = [](const term_reader&, filter_visitor&) { };
+      res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
     },
     [&res](const bytes_ref& term) {
       by_term_options opts;
@@ -161,8 +167,8 @@ field_visitor visitor(const by_wildcard_options::filter_options& options) {
 
       // FIXME
       res = [ctx = memory::make_shared<automaton_context>(term)](
-        const term_reader& field, filter_visitor& visitor) mutable {
-          return automaton_visit(field, ctx->matcher, visitor);
+        const sub_reader& segment, const term_reader& field, filter_visitor& visitor) mutable {
+          return automaton_visit(segment, field, ctx->matcher, visitor);
       };
     }
   );
@@ -203,6 +209,7 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
 }
 
 /*static*/ void by_wildcard::visit(
+    const sub_reader& segment,
     const term_reader& reader,
     bytes_ref term,
     filter_visitor& fv) {
@@ -210,14 +217,14 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
   executeWildcard(
     buf, term,
     []() {},
-    [&reader, &fv](const bytes_ref& term) {
-      term_query_visit(reader, term, fv);
+    [&reader, &segment, &fv](const bytes_ref& term) {
+      term_query_visit(segment, reader, term, fv);
     },
-    [&reader, &fv](const bytes_ref& term) {
-      by_prefix_visit(reader, term, fv);
+    [&reader, &segment, &fv](const bytes_ref& term) {
+      by_prefix_visit(segment, reader, term, fv);
     },
-    [&reader, &fv](const bytes_ref& term) {
-      ::automaton_visit(reader, term, fv);
+    [&reader, &segment, &fv](const bytes_ref& term) {
+      ::automaton_visit(segment, reader, term, fv);
     }
   );
 }

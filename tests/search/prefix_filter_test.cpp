@@ -325,7 +325,7 @@ TEST_P(prefix_filter_test_case, visit) {
   ASSERT_NE(nullptr, reader);
   auto field_visitor = irs::visitor(opts);
   ASSERT_TRUE(field_visitor);
-  field_visitor(*reader, visitor);
+  field_visitor(segment, *reader, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(6, visitor.visit_calls_counter());
   ASSERT_EQ(

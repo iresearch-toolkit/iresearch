@@ -91,6 +91,7 @@ class IRESEARCH_API by_wildcard final
     size_t scored_terms_limit);
 
   static void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     bytes_ref term,
     filter_visitor& fv);

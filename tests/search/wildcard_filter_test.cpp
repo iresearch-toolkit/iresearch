@@ -443,7 +443,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::visitor(term);
     ASSERT_TRUE(field_visitor);
-    field_visitor(*reader, visitor);
+    field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());
@@ -456,7 +456,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::visitor(prefix);
     ASSERT_TRUE(field_visitor);
-    field_visitor(*reader, visitor);
+    field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
     ASSERT_EQ(
@@ -471,7 +471,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::visitor(wildcard);
     ASSERT_TRUE(field_visitor);
-    field_visitor(*reader, visitor);
+    field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
     ASSERT_EQ(

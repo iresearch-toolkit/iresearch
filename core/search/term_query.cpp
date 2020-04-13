@@ -40,40 +40,41 @@ class term_visitor final : public filter_visitor,
                            private util::noncopyable {
  public:
   term_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
       const term_collectors& term_stats,
       term_query::states_t& states,
       size_t term_offset)
     : term_offset_(term_offset),
-      segment_(segment),
-      reader_(reader),
       term_stats_(term_stats),
       states_(states) {
   }
 
-  virtual void prepare(const seek_term_iterator& terms) noexcept override {
+  virtual void prepare(
+      const sub_reader& segment,
+      const term_reader& field,
+      const seek_term_iterator& terms) noexcept override {
+    segment_ = &segment;
+    reader_ = &field;
     terms_ = &terms;
   }
 
   virtual void visit() override {
     // collect statistics
-    assert(terms_);
-    term_stats_.collect(segment_, reader_, term_offset_, terms_->attributes());
+    assert(segment_ && reader_ && terms_);
+    term_stats_.collect(*segment_, *reader_, term_offset_, terms_->attributes());
 
     // Cache term state in prepared query attributes.
     // Later, using cached state we could easily "jump" to
     // postings without relatively expensive FST traversal
-    auto& state = states_.insert(segment_);
-    state.reader = &reader_;
+    auto& state = states_.insert(*segment_);
+    state.reader = reader_;
     assert(terms_);
     state.cookie = terms_->cookie();
   }
 
  private:
   const size_t term_offset_;
-  const sub_reader& segment_;
-  const term_reader& reader_;
+  const sub_reader* segment_;
+  const term_reader* reader_;
   const term_collectors& term_stats_;
   term_query::states_t& states_;
   const seek_term_iterator* terms_ = nullptr;
@@ -81,17 +82,18 @@ class term_visitor final : public filter_visitor,
 
 template<typename Visitor>
 void visit(
-    const term_reader& reader,
+    const sub_reader& segment,
+    const term_reader& field,
     const bytes_ref& term,
     Visitor& visitor) {
   // find term
-  auto terms = reader.iterator();
+  auto terms = field.iterator();
 
   if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
     return;
   }
 
-  visitor.prepare(*terms);
+  visitor.prepare(segment, field, *terms);
 
   // read term attributes
   terms->read();
@@ -117,6 +119,9 @@ NS_ROOT
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);
 
+  // term_offset = 0 because only 1 term
+  term_visitor tv(term_stats, states, 0);
+
   // iterate over the segments
   for (const auto& segment : index) {
     // get field
@@ -128,10 +133,7 @@ NS_ROOT
 
     field_stats.collect(segment, *reader); // collect field statistics once per segment
 
-    // term_offset = 0 because only 1 term
-    term_visitor tv(segment, *reader, term_stats, states, 0);
-
-    ::visit(*reader, term, tv);
+    ::visit(segment, *reader, term, tv);
   }
 
   bstring stats(ord.stats_size(), 0);
@@ -146,10 +148,11 @@ NS_ROOT
 }
 
 /*static*/ void term_query::visit(
-    const term_reader& reader,
+    const sub_reader& segment,
+    const term_reader& field,
     const bytes_ref& term,
     filter_visitor& visitor) {
-  ::visit(reader, term, visitor);
+  ::visit(segment, field, term, visitor);
 }
 
 term_query::term_query(

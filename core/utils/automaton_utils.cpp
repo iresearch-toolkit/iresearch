@@ -31,6 +31,7 @@ NS_LOCAL
 using irs::automaton;
 using irs::automaton_table_matcher;
 using irs::term_reader;
+using irs::sub_reader;
 
 // table contains indexes of states in
 // utf8_transitions_builder::rho_states_ table
@@ -60,6 +61,7 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
 
 template<typename Visitor>
 void automaton_visit(
+    const sub_reader& segment,
     const term_reader& reader,
     automaton_table_matcher& matcher,
     Visitor& visitor) {
@@ -70,7 +72,7 @@ void automaton_visit(
   }
 
   if (terms->next()) {
-    visitor.prepare(*terms);
+    visitor.prepare(segment, reader, *terms);
 
     do {
       terms->read(); // read term attributes
@@ -330,6 +332,7 @@ filter::prepared::ptr prepare_automaton_filter(
 
   limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   for (const auto& segment : index) {
     // get term dictionary for field
@@ -339,9 +342,7 @@ filter::prepared::ptr prepare_automaton_filter(
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::automaton_visit(*reader, matcher, mtv);
+    ::automaton_visit(segment, *reader, matcher, mtv);
   }
 
   std::vector<bstring> stats;
@@ -353,6 +354,7 @@ filter::prepared::ptr prepare_automaton_filter(
 }
 
 bool automaton_visit(
+    const sub_reader& segment,
     const term_reader& reader,
     automaton_table_matcher& matcher,
     filter_visitor& fv) {
@@ -364,7 +366,7 @@ bool automaton_visit(
     return false;
   }
 
-  ::automaton_visit(reader, matcher, fv);
+  ::automaton_visit(segment, reader, matcher, fv);
   return true;
 }
 

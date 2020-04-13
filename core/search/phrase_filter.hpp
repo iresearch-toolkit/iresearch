@@ -160,7 +160,7 @@ class IRESEARCH_API by_phrase : public filter {
 
     bool operator==(const phrase_part& other) const noexcept;
 
-    bool collect(const term_reader& reader, phrase_term_visitor& visitor) const;
+    bool collect(const sub_reader& segment, const term_reader& reader, phrase_term_visitor& visitor) const;
 
    private:
     void allocate(const phrase_part& other);

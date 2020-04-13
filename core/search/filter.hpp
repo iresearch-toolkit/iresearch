@@ -295,7 +295,7 @@ class IRESEARCH_API empty: public filter {
 }; // empty
 
 struct filter_visitor;
-using field_visitor = std::function<void(const term_reader&, filter_visitor&)>;
+using field_visitor = std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
 NS_END
 

@@ -74,23 +74,22 @@ NS_ROOT
 class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
  public:
-  phrase_term_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
-      terms_states_t& phrase_terms) noexcept
-    : segment_(segment),
-      reader_(reader),
-      phrase_terms_(phrase_terms) {
+  explicit phrase_term_visitor(terms_states_t& phrase_terms) noexcept
+    : phrase_terms_(phrase_terms) {
   }
 
-  virtual void prepare(const seek_term_iterator& terms) noexcept override {
+  virtual void prepare(const sub_reader& segment,
+                       const term_reader& field,
+                       const seek_term_iterator& terms) noexcept override {
+    segment_ = &segment;
+    reader_ = &field;
     terms_ = &terms;
     attrs_ = &terms.attributes();
     found_ = true;
   }
 
   virtual void visit() override {
-    assert(terms_ && attrs_ && collectors_);
+    assert(terms_ && attrs_ && collectors_ && segment_ && reader_);
 
     if (stats_size_ <= term_offset_) {
       // variadic phrase case
@@ -99,7 +98,7 @@ class phrase_term_visitor final : public filter_visitor,
       ++stats_size_;
     }
 
-    collectors_->collect(segment_, reader_, term_offset_++, *attrs_);
+    collectors_->collect(*segment_, *reader_, term_offset_++, *attrs_);
     phrase_terms_.emplace_back(terms_->cookie());
   }
 
@@ -120,8 +119,8 @@ class phrase_term_visitor final : public filter_visitor,
  private:
   size_t term_offset_ = 0;
   size_t stats_size_ = 0;
-  const sub_reader& segment_;
-  const term_reader& reader_;
+  const sub_reader* segment_{};
+  const term_reader* reader_{};
   terms_states_t& phrase_terms_;
   term_collectors* collectors_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;
@@ -408,37 +407,38 @@ bool by_phrase::phrase_part::operator==(const phrase_part& other) const noexcept
 }
 
 bool by_phrase::phrase_part::collect(
+    const sub_reader& segment,
     const term_reader& reader,
     phrase_term_visitor& ptv) const {
   auto found = false;
   switch (type) {
     case PhrasePartType::TERM:
-      term_query::visit(reader, st.term, ptv);
+      term_query::visit(segment, reader, st.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::PREFIX:
-      by_prefix::visit(reader, pt.term, ptv);
+      by_prefix::visit(segment, reader, pt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::WILDCARD:
-      by_wildcard::visit(reader, wt.term, ptv);
+      by_wildcard::visit(segment, reader, wt.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::LEVENSHTEIN:
       by_edit_distance::visit(
-        reader, lt.term, lt.max_distance, lt.provider,
+        segment, reader, lt.term, lt.max_distance, lt.provider,
         lt.with_transpositions, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::SET:
       for (const auto& term : ct.terms) {
-        term_query::visit(reader, term, ptv);
+        term_query::visit(segment, reader, term, ptv);
         found |= ptv.found();
         ptv.reset();
       }
       break;
     case PhrasePartType::RANGE:
-      by_range::visit(reader, rt.rng, ptv);
+      by_range::visit(segment, reader, rt.rng, ptv);
       found = ptv.found();
       break;
     default:
@@ -657,6 +657,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   // iterate over the segments
   const string_ref field = fld_;
 
+  phrase_term_visitor ptv(phrase_terms);
+
   for (const auto& segment : index) {
     // get term dictionary for field
     const term_reader* reader = segment.field(field);
@@ -674,12 +676,11 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
     auto is_ord_empty = ord.empty();
 
-    phrase_term_visitor ptv(segment, *reader, phrase_terms);
     ptv.reset(term_stats);
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      term_query::visit(*reader, word.second.st.term, ptv);
+      term_query::visit(segment, *reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;
@@ -755,6 +756,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   const string_ref field = fld_;
   const auto is_ord_empty = ord.empty();
 
+  phrase_term_visitor ptv(phrase_terms);
+
   for (const auto& segment : index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
@@ -773,13 +776,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     size_t part_offset = 0;
     size_t found_words_count = 0;
 
-    phrase_term_visitor ptv(segment, *reader, phrase_terms);
-
     for (const auto& word : phrase_) {
       const auto terms_count = phrase_terms.size();
 
       ptv.reset(phrase_part_stats[part_offset]);
-      if (!word.second.collect(*reader, ptv)) {
+      if (!word.second.collect(segment, *reader, ptv)) {
         if (is_ord_empty) {
           break;
         }

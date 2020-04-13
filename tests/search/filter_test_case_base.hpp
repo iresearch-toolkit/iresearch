@@ -642,7 +642,9 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  virtual void prepare(const irs::seek_term_iterator& terms) noexcept override {
+  virtual void prepare(const irs::sub_reader& segment,
+                       const irs::term_reader& field,
+                       const irs::seek_term_iterator& terms) noexcept override {
     it_ = &terms;
     ++prepare_calls_counter_;
   }

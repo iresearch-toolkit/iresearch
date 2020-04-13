@@ -34,9 +34,11 @@ NS_LOCAL
 using namespace irs;
 
 template<typename Visitor>
-void visit(const term_reader& field,
-           const std::vector<std::pair<bstring, boost_t>>& search_terms,
-           Visitor& visitor) {
+void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const std::vector<std::pair<bstring, boost_t>>& search_terms,
+    Visitor& visitor) {
   // find term
   auto terms = field.iterator();
 
@@ -44,7 +46,7 @@ void visit(const term_reader& field,
     return;
   }
 
-  visitor.prepare(*terms);
+  visitor.prepare(segment, field, *terms);
 
   for (auto& term : search_terms) {
     if (!terms->seek(term.first)) {
@@ -67,15 +69,12 @@ class terms_visitor final : public filter_visitor {
       terms_(terms) {
   }
 
-  // FIXME
-  void prepare(const sub_reader& segment, const term_reader& field) noexcept {
-    segment_ = &segment;
-    field_ = &field;
-  }
-
-  virtual void prepare(const seek_term_iterator& terms) override {
+  virtual void prepare(
+      const sub_reader& segment,
+      const term_reader& field,
+      const seek_term_iterator& terms) override {
     term_ = &terms.value();
-    collector_.prepare(*segment_, *field_, terms);
+    collector_.prepare(segment, field, terms);
     collector_.stat_index(0);
   }
 
@@ -109,8 +108,7 @@ void collect_terms(
       continue;
     }
 
-    visitor.prepare(segment, *reader); // FIXME
-    visit(*reader, terms, visitor);
+    visit(segment, *reader, terms, visitor);
   }
 }
 
@@ -121,9 +119,10 @@ NS_ROOT
 field_visitor visitor(const by_terms_options::filter_options& options) {
   // FIXME
   return [terms = options.terms](
+      const sub_reader& segment,
       const term_reader& field,
       filter_visitor& visitor) {
-    visit(field, terms, visitor);
+    visit(segment, field, terms, visitor);
   };
 }
 

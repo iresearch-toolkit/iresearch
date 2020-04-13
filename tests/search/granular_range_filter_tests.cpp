@@ -2186,7 +2186,7 @@ TEST_P(granular_range_filter_test_case, visit) {
     const auto* reader = segment.field(field);
     ASSERT_TRUE(reader != nullptr);
 
-    irs::by_granular_range::visit(*reader, rng, visitor);
+    irs::by_granular_range::visit(segment, *reader, rng, visitor);
     ASSERT_EQ(2, visitor.prepare_calls_counter());
     ASSERT_EQ(2, visitor.visit_calls_counter());
     visitor.reset();

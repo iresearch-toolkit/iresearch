@@ -23,28 +23,33 @@
 #ifndef IRESEARCH_FILTER_VISITOR_H
 #define IRESEARCH_FILTER_VISITOR_H
 
-#include "multiterm_query.hpp"
-#include "formats/formats.hpp"
+#include "shared.hpp"
 
 NS_ROOT
+
+struct sub_reader;
+struct term_reader;
+struct seek_term_iterator;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class filter_visitor
 /// @brief base filter visitor interface
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API filter_visitor {
+  virtual ~filter_visitor() = default;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const seek_term_iterator& terms) = 0;
+  virtual void prepare(const sub_reader& segment,
+                       const term_reader& field,
+                       const seek_term_iterator& terms) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies actions to a current term iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual void visit() = 0;
-
-  virtual ~filter_visitor() = default;
-};
+}; // filter_visitor
 
 NS_END
 
