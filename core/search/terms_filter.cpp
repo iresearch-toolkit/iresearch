@@ -25,7 +25,7 @@
 #include "index/index_reader.hpp"
 #include "search/all_terms_collector.hpp"
 #include "search/collectors.hpp"
-#include "search/term_query.hpp"
+#include "search/term_filter.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
 
@@ -146,7 +146,7 @@ filter::prepared::ptr by_terms::prepare(
 
   if (1 == size) {
     auto& term = terms.front();
-    return term_query::make(index, order, boost*term.second, field(), term.first);
+    return by_term::prepare(index, order, boost*term.second, field(), term.first);
   }
 
   field_collectors field_stats(order);

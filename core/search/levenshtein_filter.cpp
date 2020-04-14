@@ -23,13 +23,12 @@
 #include "levenshtein_filter.hpp"
 
 #include "shared.hpp"
-#include "term_query.hpp"
-#include "term_filter.hpp"
-#include "limited_sample_collector.hpp"
-#include "top_terms_collector.hpp"
-#include "all_terms_collector.hpp"
-#include "filter_visitor.hpp"
-#include "multiterm_query.hpp"
+#include "search/term_filter.hpp"
+#include "search/limited_sample_collector.hpp"
+#include "search/top_terms_collector.hpp"
+#include "search/all_terms_collector.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/multiterm_query.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -360,7 +359,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       res = prepared::empty();
     },
     [&res, &index, &order, boost, &field, &term]() {
-      res = term_query::make(index, order, boost, field, term);
+      res = by_term::prepare(index, order, boost, field, term);
     },
     [&res, &field, &term, scored_terms_limit, &index, &order, boost](const parametric_description& d) {
       res = prepare_levenshtein_filter(index, order, boost, field, term, scored_terms_limit, d);
@@ -381,7 +380,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     max_distance, provider, with_transpositions,
     []() {},
     [&reader, &segment, &term, &fv]() {
-      term_query::visit(segment, reader, term, fv);
+      by_term::visit(segment, reader, term, fv);
     },
     [&reader, &segment, &term, &fv](const parametric_description& d) {
       const auto acceptor = make_levenshtein_automaton(d, term);

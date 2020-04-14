@@ -21,16 +21,98 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "term_filter.hpp"
-#include "term_query.hpp"
+
+#include "index/index_reader.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/collectors.hpp"
+#include "search/term_query.hpp"
+
+NS_LOCAL
+
+using namespace irs;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_visitor
+/// @brief filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
+class term_visitor : private util::noncopyable {
+ public:
+  term_visitor(
+      const term_collectors& term_stats,
+      term_query::states_t& states)
+    : term_stats_(term_stats),
+      states_(states) {
+  }
+
+  void prepare(
+      const sub_reader& segment,
+      const term_reader& field,
+      const seek_term_iterator& terms) noexcept {
+    segment_ = &segment;
+    reader_ = &field;
+    terms_ = &terms;
+  }
+
+  void visit() {
+    // collect statistics
+    assert(segment_ && reader_ && terms_);
+    term_stats_.collect(*segment_, *reader_, 0, terms_->attributes());
+
+    // Cache term state in prepared query attributes.
+    // Later, using cached state we could easily "jump" to
+    // postings without relatively expensive FST traversal
+    auto& state = states_.insert(*segment_);
+    state.reader = reader_;
+    state.cookie = terms_->cookie();
+  }
+
+ private:
+  const term_collectors& term_stats_;
+  term_query::states_t& states_;
+  const sub_reader* segment_{};
+  const term_reader* reader_{};
+  const seek_term_iterator* terms_{};
+};
+
+template<typename Visitor>
+void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    Visitor& visitor) {
+  // find term
+  auto terms = field.iterator();
+
+  if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
+    return;
+  }
+
+  visitor.prepare(segment, field, *terms);
+
+  // read term attributes
+  terms->read();
+
+  visitor.visit();
+}
+
+NS_END
 
 NS_ROOT
+
+/*static*/ void by_term::visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
+  ::visit(segment, field, term, visitor);
+}
 
 field_visitor visitor(const by_term_options::filter_options& options) {
   return [term = options.term](
       const sub_reader& segment,
       const term_reader& field,
       filter_visitor& visitor) {
-     return term_query::visit(segment, field, term, visitor);
+     return ::visit(segment, field, term, visitor);
   };
 }
 
@@ -41,13 +123,49 @@ field_visitor visitor(const by_term_options::filter_options& options) {
 DEFINE_FILTER_TYPE(by_term)
 DEFINE_FACTORY_DEFAULT(by_term)
 
+/*static*/ filter::prepared::ptr by_term::prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term) {
+  term_query::states_t states(index.size());
+  field_collectors field_stats(ord);
+  term_collectors term_stats(ord, 1);
+
+  term_visitor visitor(term_stats, states);
+
+  // iterate over the segments
+  for (const auto& segment : index) {
+    // get field
+    const auto* reader = segment.field(field);
+
+    if (!reader) {
+      continue;
+    }
+
+    field_stats.collect(segment, *reader); // collect field statistics once per segment
+
+    ::visit(segment, *reader, term, visitor);
+  }
+
+  bstring stats(ord.stats_size(), 0);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  ord.prepare_stats(stats_buf);
+  term_stats.finish(stats_buf, field_stats, index);
+
+  return memory::make_shared<term_query>(
+    std::move(states), std::move(stats), boost
+  );
+}
+
 filter::prepared::ptr by_term::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
-  return term_query::make(rdr, ord, boost*this->boost(),
-                          field(), options().term);
+  return prepare(rdr, ord, boost*this->boost(), field(), options().term);
 }
 
 NS_END // ROOT

@@ -23,11 +23,11 @@
 #include "range_filter.hpp"
 
 #include "shared.hpp"
-#include "filter_visitor.hpp"
-#include "limited_sample_collector.hpp"
-#include "term_query.hpp"
-#include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/index_reader.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/limited_sample_collector.hpp"
+#include "search/term_filter.hpp"
 
 NS_LOCAL
 
@@ -152,7 +152,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
 
     if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
       // degenerated case
-      return term_query::make(index, ord, boost, field, rng.min);
+      return by_term::prepare(index, ord, boost, field, rng.min);
     }
 
     // can't satisfy conditon

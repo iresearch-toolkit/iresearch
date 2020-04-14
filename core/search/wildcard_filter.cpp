@@ -20,14 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "wildcard_filter.hpp"
 #include "phrase_filter.hpp"
 
 #include "shared.hpp"
-#include "multiterm_query.hpp"
-#include "term_query.hpp"
-#include "term_filter.hpp"
-#include "prefix_filter.hpp"
+#include "search/multiterm_query.hpp"
+#include "search/term_filter.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/wildcard_filter.hpp"
 #include "index/index_reader.hpp"
 #include "utils/wildcard_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -115,7 +114,7 @@ inline void term_query_visit(
     const term_reader& reader,
     const bytes_ref& term,
     filter_visitor& fv) {
-  term_query::visit(segment, reader, term, fv);
+  by_term::visit(segment, reader, term, fv);
 }
 
 inline void automaton_visit(
@@ -197,7 +196,7 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     [&res]() {
       res = prepared::empty(); },
     [&res, &index, &order, boost, &field](const bytes_ref& term) {
-      res = term_query::make(index, order, boost, field, term);},
+      res = by_term::prepare(index, order, boost, field, term);},
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
       res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {

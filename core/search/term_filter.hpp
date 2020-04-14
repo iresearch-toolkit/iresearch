@@ -65,7 +65,20 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
+  static prepared::ptr prepare(
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term);
+
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    filter_visitor& visitor);
+
+  virtual prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,

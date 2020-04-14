@@ -27,7 +27,7 @@
 #include "index/field_meta.hpp"
 #include "search/collectors.hpp"
 #include "search/phrase_iterator.hpp"
-#include "search/term_query.hpp"
+#include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/wildcard_filter.hpp"
 
@@ -413,7 +413,7 @@ bool by_phrase::phrase_part::collect(
   auto found = false;
   switch (type) {
     case PhrasePartType::TERM:
-      term_query::visit(segment, reader, st.term, ptv);
+      by_term::visit(segment, reader, st.term, ptv);
       found = ptv.found();
       break;
     case PhrasePartType::PREFIX:
@@ -432,7 +432,7 @@ bool by_phrase::phrase_part::collect(
       break;
     case PhrasePartType::SET:
       for (const auto& term : ct.terms) {
-        term_query::visit(segment, reader, term, ptv);
+        by_term::visit(segment, reader, term, ptv);
         found |= ptv.found();
         ptv.reset();
       }
@@ -605,7 +605,7 @@ filter::prepared::ptr by_phrase::prepare(
     boost *= this->boost();
     switch (term_info.type) {
       case PhrasePartType::TERM: // similar to `term_query`
-        return term_query::make(index, ord, boost, fld_, term_info.st.term);
+        return by_term::prepare(index, ord, boost, fld_, term_info.st.term);
       case PhrasePartType::PREFIX:
         return by_prefix::prepare(index, ord, boost, fld_, term_info.pt.term,
                                   term_info.pt.scored_terms_limit);
@@ -680,7 +680,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
     for (const auto& word : phrase_) {
       assert(PhrasePartType::TERM == word.second.type);
-      term_query::visit(segment, *reader, word.second.st.term, ptv);
+      by_term::visit(segment, *reader, word.second.st.term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;

@@ -28,7 +28,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/multiterm_query.hpp"
-#include "search/term_query.hpp"
+#include "search/term_filter.hpp"
 #include "search/limited_sample_collector.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
@@ -556,7 +556,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     if (min == max) { // compare the most precise terms
       if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
         // degenerated case
-        return term_query::make(index, ord, boost, field, min);
+        return by_term::prepare(index, ord, boost, field, min);
       }
 
       // can't satisfy condition

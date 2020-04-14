@@ -108,7 +108,7 @@ class same_position_iterator final : public conjunction_t {
 }; // same_position_iterator
 
 // per segment terms state
-typedef std::vector<reader_term_state> terms_states_t;
+typedef std::vector<term_query::term_state> terms_states_t;
 
 class same_position_query final : public filter::prepared {
  public:

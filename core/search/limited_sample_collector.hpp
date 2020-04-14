@@ -333,7 +333,7 @@ struct term_frequency {
 /// @brief filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
 template<typename States>
-class multiterm_visitor final : public filter_visitor {
+class multiterm_visitor {
  public:
   multiterm_visitor(
       limited_sample_collector<term_frequency>& collector,
@@ -341,10 +341,10 @@ class multiterm_visitor final : public filter_visitor {
     : collector_(collector), states_(states) {
   }
 
-  virtual void prepare(
+  void prepare(
       const sub_reader& segment,
       const term_reader& reader,
-      const seek_term_iterator& terms) override {
+      const seek_term_iterator& terms) {
     // get term metadata
     auto& meta = terms.attributes().get<term_meta>();
 
@@ -362,7 +362,7 @@ class multiterm_visitor final : public filter_visitor {
     key_.offset = 0;
   }
 
-  virtual void visit() override {
+  void visit() {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;
@@ -376,7 +376,7 @@ class multiterm_visitor final : public filter_visitor {
   States& states_;
   term_frequency key_;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-};
+}; // multiterm_visitor
 
 NS_END
 
