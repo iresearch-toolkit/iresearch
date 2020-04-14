@@ -197,10 +197,15 @@ bool collect_terms(
     const bytes_ref& term,
     const parametric_description& d,
     Collector& collector) {
-  levenshtein_terms_visitor<Collector> visitor(collector, d, term);
-
   const auto acceptor = make_levenshtein_automaton(d, term);
+
+  if (!validate(acceptor)) {
+    return false;
+  }
+
   auto matcher = make_automaton_matcher(acceptor);
+
+  levenshtein_terms_visitor<Collector> visitor(collector, d, term);
 
   for (auto& segment : index) {
     auto* reader = segment.field(field);
@@ -210,9 +215,7 @@ bool collect_terms(
     }
 
     // wrong matcher
-    if (!::automaton_visit(segment, *reader, matcher, visitor)) {
-      return false;
-    }
+    visit(segment, *reader, matcher, visitor);
   }
 
   return true;
@@ -332,9 +335,16 @@ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
       };
 
       // FIXME
-      res = [ctx = memory::make_shared<automaton_context>(d, opts.term)](
-        const sub_reader& segment, const term_reader& field, filter_visitor& visitor) mutable {
-          return automaton_visit(segment, field, ctx->matcher, visitor);
+      auto ctx = memory::make_shared<automaton_context>(d, opts.term);
+
+      if (!validate(ctx->acceptor)) {
+        return;
+      }
+
+      res = [ctx](const sub_reader& segment,
+                  const term_reader& field,
+                  filter_visitor& visitor) mutable {
+        return visit(segment, field, ctx->matcher, visitor);
       };
     }
   );
@@ -391,9 +401,14 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     },
     [&reader, &segment, &term, &fv](const parametric_description& d) {
       const auto acceptor = make_levenshtein_automaton(d, term);
+
+      if (!validate(acceptor)) {
+        return;
+      }
+
       auto matcher = make_automaton_matcher(acceptor);
 
-      automaton_visit(segment, reader, matcher, fv);
+      irs::visit(segment, reader, matcher, fv);
     }
   );
 }

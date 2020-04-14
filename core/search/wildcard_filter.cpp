@@ -125,7 +125,7 @@ inline void automaton_visit(
   const auto acceptor = from_wildcard(term);
   auto matcher = make_automaton_matcher(acceptor);
 
-  automaton_visit(segment, reader, matcher, fv);
+  visit(segment, reader, matcher, fv);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,13 +134,12 @@ NS_END
 NS_ROOT
 
 field_visitor visitor(const by_wildcard_options::filter_options& options) {
+  field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
+
   bstring buf;
-  field_visitor res;
   executeWildcard(
     buf, options.term,
-    [&res]() {
-      res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
-    },
+    [](){ },
     [&res](const bytes_ref& term) {
       // must copy term as it may point to temporary string
       res = [term = bstring(term)](
@@ -171,9 +170,17 @@ field_visitor visitor(const by_wildcard_options::filter_options& options) {
       };
 
       // FIXME
-      res = [ctx = memory::make_shared<automaton_context>(term)](
-        const sub_reader& segment, const term_reader& field, filter_visitor& visitor) mutable {
-          return automaton_visit(segment, field, ctx->matcher, visitor);
+      auto ctx = memory::make_shared<automaton_context>(term);
+
+      if (!validate(ctx->acceptor)) {
+        return;
+      }
+
+      res = [ctx](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) mutable {
+        return visit(segment, field, ctx->matcher, visitor);
       };
     }
   );
