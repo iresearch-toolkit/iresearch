@@ -79,10 +79,13 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
     filter_visitor& visitor);
 
   virtual prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx) const override;
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const {
+    return prepare(rdr, ord, boost*this->boost(),
+                   field(), options().term);
+  }
 }; // by_term
 
 NS_END

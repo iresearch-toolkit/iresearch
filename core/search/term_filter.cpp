@@ -160,12 +160,4 @@ DEFINE_FACTORY_DEFAULT(by_term)
   );
 }
 
-filter::prepared::ptr by_term::prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& /*ctx*/) const {
-  return prepare(rdr, ord, boost*this->boost(), field(), options().term);
-}
-
 NS_END // ROOT
