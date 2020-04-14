@@ -23,7 +23,7 @@
 #include "prefix_filter.hpp"
 
 #include "shared.hpp"
-#include "limited_sample_collector.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -67,15 +67,6 @@ void visit(
 NS_END
 
 NS_ROOT
-
-field_visitor visitor(const by_prefix_options::filter_options& options) {
-  return [term = options.term](
-      const sub_reader& segment,
-      const term_reader& field,
-      filter_visitor& visitor) {
-     return ::visit(segment, field, term, visitor);
-  };
-}
 
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)

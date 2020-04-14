@@ -609,12 +609,10 @@ TEST_P(term_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  irs::by_term_options::filter_options opts;
-  opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  const irs::string_ref field = "prefix";
+  const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
 
   tests::empty_filter_visitor visitor;
-  std::string fld = "prefix";
-  irs::string_ref field = irs::string_ref(fld);
   // read segment
   auto index = open_reader();
   ASSERT_EQ(1, index.size());
@@ -623,10 +621,7 @@ TEST_P(term_filter_test_case, visit) {
   // get term dictionary for field
   const auto* reader = segment.field(field);
   ASSERT_NE(nullptr, reader);
-
-  auto field_visitor = irs::visitor(opts);
-  ASSERT_TRUE(field_visitor);
-  field_visitor(segment, *reader, visitor);
+  irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
   ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());
@@ -668,7 +663,7 @@ TEST(by_term_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+
   }
 }
 

@@ -121,15 +121,6 @@ NS_END
 
 NS_ROOT
 
-field_visitor visitor(const by_range_options::filter_options& options) {
-  return [range = options.range](
-      const sub_reader& segment,
-      const term_reader& field,
-      filter_visitor& visitor) {
-    return visit(segment, field, range, visitor);
-  };
-}
-
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 

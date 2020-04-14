@@ -142,16 +142,22 @@ field_visitor visitor(const by_wildcard_options::filter_options& options) {
       res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
     },
     [&res](const bytes_ref& term) {
-      by_term_options opts;
-      opts.term.assign(term.c_str(), term.size()); // FIXME
-
-      res = visitor(opts);
+      // must copy term as it may point to temporary string
+      res = [term = bstring(term)](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) {
+        by_term::visit(segment, field, term, visitor);
+      };
     },
     [&res](const bytes_ref& term) {
-      by_prefix_options opts;
-      opts.term.assign(term.c_str(), term.size()); // FIXME
-
-      res = visitor(opts);
+      // must copy term as it may point to temporary string
+      res = [term = bstring(term)](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) {
+        by_prefix::visit(segment, field, term, visitor);
+      };
     },
     [&res](const bytes_ref& term) {
       struct automaton_context : util::noncopyable {

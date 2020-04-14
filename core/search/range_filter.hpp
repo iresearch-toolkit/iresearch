@@ -73,8 +73,6 @@ struct IRESEARCH_API by_range_options : by_range_filter_options {
   }
 }; // by_range_options
 
-IRESEARCH_API field_visitor visitor(const by_range_options::filter_options& options);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter

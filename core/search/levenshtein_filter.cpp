@@ -312,7 +312,13 @@ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
     opts.max_distance, opts.provider, opts.with_transpositions,
     [](){ },
     [&res, &opts]() {
-      res = visitor(by_term_options{opts.term});
+      // must copy term as it may point to temporary string
+      res = [term = opts.term](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor){
+        return by_term::visit(segment, field, term, visitor);
+      };
     },
     [&res, &opts](const parametric_description& d) {
       struct automaton_context : util::noncopyable {
@@ -332,6 +338,7 @@ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
       };
     }
   );
+
   return res;
 }
 

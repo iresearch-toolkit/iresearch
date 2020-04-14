@@ -70,8 +70,6 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
   }
 }; // by_prefix_options
 
-IRESEARCH_API field_visitor visitor(const by_prefix_options::filter_options& options);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix
 /// @brief user-side prefix filter

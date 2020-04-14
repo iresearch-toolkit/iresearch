@@ -372,9 +372,8 @@ TEST_P(by_edit_distance_test_case, visit) {
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
-  std::string fld = "prefix";
-  irs::string_ref field = irs::string_ref(fld);
-  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  const irs::string_ref field = "prefix";
+  const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
   // read segment
   auto index = open_reader();
   ASSERT_EQ(1, index.size());

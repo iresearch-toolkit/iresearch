@@ -99,6 +99,13 @@ NS_END
 
 NS_ROOT
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            by_term implementation
+// -----------------------------------------------------------------------------
+
+DEFINE_FILTER_TYPE(by_term)
+DEFINE_FACTORY_DEFAULT(by_term)
+
 /*static*/ void by_term::visit(
     const sub_reader& segment,
     const term_reader& field,
@@ -106,22 +113,6 @@ NS_ROOT
     filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
-
-field_visitor visitor(const by_term_options::filter_options& options) {
-  return [term = options.term](
-      const sub_reader& segment,
-      const term_reader& field,
-      filter_visitor& visitor) {
-     return ::visit(segment, field, term, visitor);
-  };
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            by_term implementation
-// -----------------------------------------------------------------------------
-
-DEFINE_FILTER_TYPE(by_term)
-DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ filter::prepared::ptr by_term::prepare(
     const index_reader& index,

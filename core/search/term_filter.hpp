@@ -50,8 +50,6 @@ struct IRESEARCH_API by_term_options {
   }
 }; // by_term_options
 
-IRESEARCH_API field_visitor visitor(const by_term_options::filter_options& options);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 
 /// @brief user-side term filter

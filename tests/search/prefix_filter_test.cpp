@@ -310,12 +310,10 @@ TEST_P(prefix_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  irs::by_prefix_options::filter_options opts;
-  opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
+  const irs::string_ref field = "prefix";
+  const irs::bytes_ref term =  irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
 
   tests::empty_filter_visitor visitor;
-  std::string fld = "prefix";
-  irs::string_ref field = irs::string_ref(fld);
   // read segment
   auto index = open_reader();
   ASSERT_EQ(1, index.size());
@@ -323,9 +321,7 @@ TEST_P(prefix_filter_test_case, visit) {
   // get term dictionary for field
   const auto* reader = segment.field(field);
   ASSERT_NE(nullptr, reader);
-  auto field_visitor = irs::visitor(opts);
-  ASSERT_TRUE(field_visitor);
-  field_visitor(segment, *reader, visitor);
+  irs::by_prefix::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(6, visitor.visit_calls_counter());
   ASSERT_EQ(
