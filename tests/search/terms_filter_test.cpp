@@ -69,9 +69,6 @@ TEST(by_terms_test, equal) {
 
   const irs::by_terms q4 = make_filter("field", { { "bar", 0.5f }, {"baz", 0.5f} });
   ASSERT_NE(q0, q4);
-
-  const irs::by_terms q5 = make_filter("field", { { "bar", 0.5f }, {"baz", 0.25f} });
-  ASSERT_NE(q0, q5);
 }
 
 TEST(by_terms_test, boost) {
