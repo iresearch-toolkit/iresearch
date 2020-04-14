@@ -390,7 +390,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     opts.with_transpositions = false;
 
     tests::empty_filter_visitor visitor;
-    auto field_visitor = irs::visitor(opts);
+    auto field_visitor = irs::by_edit_distance::visitor(opts);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
@@ -409,7 +409,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     opts.with_transpositions = false;
 
     tests::empty_filter_visitor visitor;
-    auto field_visitor = irs::visitor(opts);
+    auto field_visitor = irs::by_edit_distance::visitor(opts);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());

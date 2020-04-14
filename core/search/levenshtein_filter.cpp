@@ -308,7 +308,14 @@ NS_END
 
 NS_ROOT
 
-field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                   by_edit_distance implementation
+// -----------------------------------------------------------------------------
+
+DEFINE_FILTER_TYPE(by_edit_distance)
+DEFINE_FACTORY_DEFAULT(by_edit_distance)
+
+/*static*/ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
   field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&){};
 
   executeLevenshtein(
@@ -352,13 +359,6 @@ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   by_edit_distance implementation
-// -----------------------------------------------------------------------------
-
-DEFINE_FILTER_TYPE(by_edit_distance)
-DEFINE_FACTORY_DEFAULT(by_edit_distance)
-
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,
     const order::prepared& order,
@@ -383,34 +383,6 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     }
   );
   return res;
-}
-
-/*static*/ void by_edit_distance::visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    byte_type max_distance,
-    options_type::pdp_f provider,
-    bool with_transpositions,
-    filter_visitor& fv) {
-  executeLevenshtein(
-    max_distance, provider, with_transpositions,
-    []() {},
-    [&reader, &segment, &term, &fv]() {
-      by_term::visit(segment, reader, term, fv);
-    },
-    [&reader, &segment, &term, &fv](const parametric_description& d) {
-      const auto acceptor = make_levenshtein_automaton(d, term);
-
-      if (!validate(acceptor)) {
-        return;
-      }
-
-      auto matcher = make_automaton_matcher(acceptor);
-
-      irs::visit(segment, reader, matcher, fv);
-    }
-  );
 }
 
 NS_END

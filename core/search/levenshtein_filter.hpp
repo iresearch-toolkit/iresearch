@@ -98,8 +98,6 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
   }
 }; // by_edit_distance_options
 
-IRESEARCH_API field_visitor visitor(const by_edit_distance_options::filter_options& options);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
@@ -121,14 +119,7 @@ class IRESEARCH_API by_edit_distance final
     options_type::pdp_f provider,
     bool with_transpositions);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    byte_type max_distance,
-    options_type::pdp_f provider,
-    bool with_transpositions,
-    filter_visitor& fv);
+  static field_visitor visitor(const by_edit_distance_options::filter_options& options);
 
   using filter::prepare;
 

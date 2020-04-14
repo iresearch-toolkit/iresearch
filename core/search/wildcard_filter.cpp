@@ -20,13 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "phrase_filter.hpp"
+#include "wildcard_filter.hpp"
 
 #include "shared.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
 #include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
-#include "search/wildcard_filter.hpp"
 #include "index/index_reader.hpp"
 #include "utils/wildcard_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -99,46 +99,23 @@ inline void executeWildcard(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// MSVC2019 does not link inner functions in lambdas directly
-inline void by_prefix_visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    filter_visitor& fv) {
-  by_prefix::visit(segment, reader, term, fv);
-}
-
-inline void term_query_visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    filter_visitor& fv) {
-  by_term::visit(segment, reader, term, fv);
-}
-
-inline void automaton_visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const bytes_ref& term,
-    filter_visitor& fv) {
-  const auto acceptor = from_wildcard(term);
-  auto matcher = make_automaton_matcher(acceptor);
-
-  visit(segment, reader, matcher, fv);
-}
-////////////////////////////////////////////////////////////////////////////////
-
 NS_END
 
 NS_ROOT
 
-field_visitor visitor(const by_wildcard_options::filter_options& options) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                        by_wildcard implementation
+// -----------------------------------------------------------------------------
+
+DEFINE_FILTER_TYPE(by_wildcard)
+DEFINE_FACTORY_DEFAULT(by_wildcard)
+
+field_visitor by_wildcard::visitor(const bytes_ref& term) {
   field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
 
   bstring buf;
   executeWildcard(
-    buf, options.term,
+    buf, term,
     [](){ },
     [&res](const bytes_ref& term) {
       // must copy term as it may point to temporary string
@@ -180,20 +157,13 @@ field_visitor visitor(const by_wildcard_options::filter_options& options) {
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) mutable {
-        return visit(segment, field, ctx->matcher, visitor);
+        return irs::visit(segment, field, ctx->matcher, visitor);
       };
     }
   );
 
   return res;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        by_wildcard implementation
-// -----------------------------------------------------------------------------
-
-DEFINE_FILTER_TYPE(by_wildcard)
-DEFINE_FACTORY_DEFAULT(by_wildcard)
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
@@ -218,27 +188,6 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     }
   );
   return res;
-}
-
-/*static*/ void by_wildcard::visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    bytes_ref term,
-    filter_visitor& fv) {
-  bstring buf;
-  executeWildcard(
-    buf, term,
-    []() {},
-    [&reader, &segment, &fv](const bytes_ref& term) {
-      term_query_visit(segment, reader, term, fv);
-    },
-    [&reader, &segment, &fv](const bytes_ref& term) {
-      by_prefix_visit(segment, reader, term, fv);
-    },
-    [&reader, &segment, &fv](const bytes_ref& term) {
-      ::automaton_visit(segment, reader, term, fv);
-    }
-  );
 }
 
 NS_END

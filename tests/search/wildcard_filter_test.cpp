@@ -438,10 +438,9 @@ TEST_P(wildcard_filter_test_case, visit) {
   ASSERT_NE(nullptr, reader);
 
   {
-    irs::by_wildcard_options::filter_options term;
-    term.term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     tests::empty_filter_visitor visitor;
-    auto field_visitor = irs::visitor(term);
+    auto field_visitor = irs::by_wildcard::visitor(term);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
@@ -451,10 +450,9 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    irs::by_wildcard_options::filter_options prefix;
-    prefix.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
+    auto prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
     tests::empty_filter_visitor visitor;
-    auto field_visitor = irs::visitor(prefix);
+    auto field_visitor = irs::by_wildcard::visitor(prefix);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
@@ -466,10 +464,9 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    irs::by_wildcard_options::filter_options wildcard;
-    wildcard.term = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
+    auto wildcard = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
     tests::empty_filter_visitor visitor;
-    auto field_visitor = irs::visitor(wildcard);
+    auto field_visitor = irs::by_wildcard::visitor(wildcard);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());

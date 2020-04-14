@@ -228,10 +228,12 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       return false;
     }
 
-    auto& node = root.proxy<irs::by_phrase>().field(field);
+    auto& node = root.proxy<irs::by_phrase>();
+    *node.mutable_field() = field;
 
     for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
-      node.push_back(irs::by_phrase::simple_term{term->value()});
+      auto& part = node.mutable_options()->push_back(irs::simple_term{});
+      part.term = term->value();
     }
 
     return true;

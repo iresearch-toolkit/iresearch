@@ -70,8 +70,6 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
   }
 }; // by_wildcard_options
 
-IRESEARCH_API field_visitor visitor(const by_wildcard_options::filter_options& options);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
@@ -90,11 +88,7 @@ class IRESEARCH_API by_wildcard final
     const bytes_ref& term,
     size_t scored_terms_limit);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    bytes_ref term,
-    filter_visitor& fv);
+  static field_visitor visitor(const bytes_ref& term);
 
   by_wildcard() = default;
 
@@ -111,6 +105,6 @@ class IRESEARCH_API by_wildcard final
   }
 }; // by_wildcard
 
-#endif // IRESEARCH_WILDCARD_FILTER_H
-
 NS_END
+
+#endif // IRESEARCH_WILDCARD_FILTER_H
