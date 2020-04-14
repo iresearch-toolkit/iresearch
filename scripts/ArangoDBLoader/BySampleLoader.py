@@ -38,3 +38,4 @@ def main():
     collection.insert_many(data)
 if __name__== "__main__":
   main()
+  
