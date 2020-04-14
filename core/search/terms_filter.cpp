@@ -37,9 +37,8 @@ template<typename Visitor>
 void visit(
     const sub_reader& segment,
     const term_reader& field,
-    const std::vector<std::pair<bstring, boost_t>>& search_terms,
+    const by_terms_options::search_terms& search_terms,
     Visitor& visitor) {
-  // find term
   auto terms = field.iterator();
 
   if (IRS_UNLIKELY(!terms)) {
@@ -49,7 +48,7 @@ void visit(
   visitor.prepare(segment, field, *terms);
 
   for (auto& term : search_terms) {
-    if (!terms->seek(term.first)) {
+    if (!terms->seek(term.term)) {
       continue;
     }
 
@@ -60,44 +59,44 @@ void visit(
 }
 
 template<typename Collector>
-class terms_visitor final : public filter_visitor {
+class terms_visitor {
  public:
   terms_visitor(
       Collector& collector,
-      const std::vector<std::pair<bstring, boost_t>>& terms)
+      const by_terms_options::search_terms& terms)
     : collector_(collector),
-      terms_(terms) {
+      terms_(terms), begin_(terms.end()) {
   }
 
-  virtual void prepare(
+  void prepare(
       const sub_reader& segment,
       const term_reader& field,
-      const seek_term_iterator& terms) override {
-    term_ = &terms.value();
+      const seek_term_iterator& terms) {
     collector_.prepare(segment, field, terms);
     collector_.stat_index(0);
+    begin_ = terms_.begin();
   }
 
-  virtual void visit() override {
+  void visit() {
+    assert(begin_ != terms_.end());
     size_t stat_index = collector_.stat_index();
     assert(stat_index < terms_.size());
-    collector_.collect(terms_[stat_index].second);
+    collector_.collect(begin_->boost);
     collector_.stat_index(++stat_index);
+    ++begin_;
   }
 
  private:
   Collector& collector_;
-  const std::vector<std::pair<bstring, boost_t>>& terms_;
-  const sub_reader* segment_{};
-  const term_reader* field_{};
-  const bytes_ref* term_{};
+  const by_terms_options::search_terms& terms_;
+  by_terms_options::search_terms::const_iterator begin_;
 }; // terms_visitor
 
 template<typename Collector>
 void collect_terms(
     const index_reader& index,
     const string_ref& field,
-    const std::vector<std::pair<bstring, boost_t>>& terms,
+    const by_terms_options::search_terms& terms,
     Collector& collector) {
   terms_visitor<Collector> visitor(collector, terms);
 
@@ -116,19 +115,16 @@ NS_END
 
 NS_ROOT
 
-field_visitor visitor(const by_terms_options::filter_options& options) {
-  // FIXME
-  return [terms = options.terms](
-      const sub_reader& segment,
-      const term_reader& field,
-      filter_visitor& visitor) {
-    visit(segment, field, terms, visitor);
-  };
-}
-
-
 DEFINE_FILTER_TYPE(by_terms)
 DEFINE_FACTORY_DEFAULT(by_terms)
+
+/*static*/ void by_terms::visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const by_terms_options::search_terms& terms,
+    filter_visitor& visitor) {
+  ::visit(segment, field, terms, visitor);
+}
 
 filter::prepared::ptr by_terms::prepare(
     const index_reader& index,
@@ -136,17 +132,16 @@ filter::prepared::ptr by_terms::prepare(
     boost_t boost,
     const attribute_view& /*ctx*/) const {
   boost *= this->boost();
-  const size_t num_match = options().num_match;
   const auto& terms = options().terms;
   const size_t size = terms.size();
 
-  if (!num_match || num_match > size) {
+  if (0 == size) {
     return prepared::empty();
   }
 
   if (1 == size) {
-    auto& term = terms.front();
-    return by_term::prepare(index, order, boost*term.second, field(), term.first);
+    const auto term = terms.begin();
+    return by_term::prepare(index, order, boost*term->boost, field(), term->term);
   }
 
   field_collectors field_stats(order);

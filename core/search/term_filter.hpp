@@ -37,7 +37,6 @@ struct filter_visitor;
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_term_options {
   using filter_type = by_term;
-  using filter_options = by_term_options;
 
   bstring term;
 

@@ -36,36 +36,52 @@ struct filter_visitor;
 /// @brief options for terms filter
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API by_terms_options {
-  using filter_type = by_terms;
-  using filter_options = by_terms_options;
+  struct search_term {
+    bstring term;
+    boost_t boost;
 
-  using search_term = std::pair<bstring, boost_t>;
+    search_term() = default;
+
+    explicit search_term(bstring&& term, boost_t boost = no_boost()) noexcept
+      : term(std::move(term)), boost(boost) {
+    }
+
+    explicit search_term(const bytes_ref& term, boost_t boost = no_boost())
+      : term(term.c_str(), term.size()), boost(boost) {
+    }
+
+    bool operator==(const search_term& rhs) const noexcept {
+      return term == rhs.term && boost == rhs.boost;
+    }
+
+    bool operator<(const search_term& rhs) const noexcept {
+      return term < rhs.term;
+    }
+
+    size_t hash() const noexcept {
+      return hash_combine(std::hash<decltype(term)>()(term),
+                          std::hash<decltype(boost)>()(boost));
+    }
+  };
+
+  using filter_type = by_terms;
+  using search_terms = std::set<search_term>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search terms
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<search_term> terms;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief min number of terms to match
-  //////////////////////////////////////////////////////////////////////////////
-  size_t num_match{0};
+  search_terms terms;
 
   bool operator==(const by_terms_options& rhs) const noexcept {
-    return terms == rhs.terms && num_match == rhs.num_match;
+    return terms == rhs.terms;
   }
 
   size_t hash() const noexcept {
-    size_t hash = std::hash<decltype(num_match)>()(num_match);
-    for (auto& term : terms) {
-      hash = hash_combine(hash, std::hash<decltype(term.first)>()(term.first));
-      hash = hash_combine(hash, std::hash<decltype(term.second)>()(term.second));
-    }
+    size_t hash = 0;
+    for (auto& term : terms) hash = hash_combine(hash, term.hash());
     return hash;
   }
 }; // by_terms_options
-
-IRESEARCH_API field_visitor visitor(const by_terms_options::filter_options& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_terms
@@ -76,6 +92,12 @@ class IRESEARCH_API by_terms final
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
+
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const by_terms_options::search_terms& terms,
+    filter_visitor& visitor);
 
   using filter::prepare;
 
