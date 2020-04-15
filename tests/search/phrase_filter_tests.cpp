@@ -6808,9 +6808,33 @@ TEST_P(phrase_filter_test_case, by_phrase) {
 
 TEST(by_phrase_test, options) {
   irs::by_phrase_options opts;
+  ASSERT_TRUE(opts.simple());
   ASSERT_TRUE(opts.empty());
   ASSERT_EQ(0, opts.size());
   ASSERT_EQ(opts.begin(), opts.end());
+}
+
+TEST(by_phrase_test, options_clear) {
+  irs::by_phrase_options opts;
+  ASSERT_TRUE(opts.simple());
+  ASSERT_TRUE(opts.empty());
+  ASSERT_EQ(0, opts.size());
+  opts.push_back<irs::simple_term>();
+  ASSERT_EQ(1, opts.size());
+  ASSERT_FALSE(opts.empty());
+  ASSERT_TRUE(opts.simple());
+  opts.push_back<irs::simple_term>();
+  ASSERT_EQ(2, opts.size());
+  ASSERT_FALSE(opts.empty());
+  ASSERT_TRUE(opts.simple());
+  opts.push_back<irs::prefix_term>();
+  ASSERT_EQ(3, opts.size());
+  ASSERT_FALSE(opts.empty());
+  ASSERT_FALSE(opts.simple());
+  opts.clear();
+  ASSERT_TRUE(opts.simple());
+  ASSERT_TRUE(opts.empty());
+  ASSERT_EQ(0, opts.size());
 }
 
 TEST(by_phrase_test, ctor) {
