@@ -23,8 +23,8 @@
 #include "phrase_filter.hpp"
 
 #include "index/field_meta.hpp"
-#include "search/filter_visitor.hpp"
 #include "search/collectors.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
 
 NS_LOCAL

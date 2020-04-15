@@ -29,11 +29,11 @@
 #include <boost/functional/hash.hpp>
 
 #include "search/levenshtein_filter.hpp"
-#include "search/wildcard_filter.hpp"
-#include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
-#include "search/terms_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/term_filter.hpp"
+#include "search/terms_filter.hpp"
+#include "search/wildcard_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 
 NS_ROOT
