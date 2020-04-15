@@ -35,6 +35,8 @@
 
 NS_ROOT
 
+class by_phrase;
+
 enum class PhrasePartType {
   TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET, RANGE
 };
@@ -115,24 +117,30 @@ struct IRESEARCH_API phrase_part {
   void recreate(phrase_part&& other) noexcept;
 };
 
-class by_phrase;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class by_phrase_options
+/// @brief options for phrase filter
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase_options {
  public:
   using filter_type = by_phrase;
+  using phrase_type = std::map<size_t, phrase_part>;
 
-  using term_t = phrase_part;
-  using terms_t = std::map<size_t, term_t>;
-
-  // inserts term to the specified position
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief insert phrase part into the phrase at a specified position
+  /// @returns reference to the inserted phrase part
+  //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& insert(size_t pos) {
     is_simple_term_only_ &= std::is_same<PhrasePart, simple_term>::value; // constexpr
 
-    return reinterpret_cast<PhrasePart&>(phrase_[pos]);
+    return reinterpret_cast<PhrasePart&>(phrase_[pos].st);
   }
 
-  // inserts term to the specified position
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief insert phrase part into the phrase at a specified position
+  /// @returns reference to the inserted phrase part
+  //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& insert(PhrasePart&& t, size_t pos) {
     is_simple_term_only_ &= std::is_same<PhrasePart, simple_term>::value; // constexpr
@@ -141,16 +149,32 @@ class IRESEARCH_API by_phrase_options {
     return reinterpret_cast<PhrasePart&>(part.st);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief appends phrase part of type "PhrasePart" at a specified offset
+  ///        "offs" from the end of the phrase
+  /// @returns reference to the inserted phrase part
+  //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& push_back(size_t offs = 0) {
     return insert(PhrasePart{}, next_pos() + offs);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief appends phrase part of type "PhrasePart" at a specified offset
+  ///        "offs" from the end of the phrase
+  /// @returns reference to the inserted phrase part
+  //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& push_back(PhrasePart&& t, size_t offs = 0) {
     return insert(std::forward<PhrasePart>(t), next_pos() + offs);
   }
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns pointer to the phrase part of type "PhrasePart" located at a
+  ///          specified position, nullptr if actual type mismatches a requested
+  ///          one
+  //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   const PhrasePart* get(size_t pos) const noexcept {
     const auto it = phrase_.find(pos);
@@ -168,10 +192,16 @@ class IRESEARCH_API by_phrase_options {
     return reinterpret_cast<const PhrasePart*>(&inf.st);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns true is options are equal, false - otherwise
+  //////////////////////////////////////////////////////////////////////////////
   bool operator==(const by_phrase_options& rhs) const noexcept {
     return phrase_ == rhs.phrase_;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns hash value
+  //////////////////////////////////////////////////////////////////////////////
   size_t hash() const noexcept {
     size_t hash = 0;
     for (auto& part : phrase_) {
@@ -181,35 +211,52 @@ class IRESEARCH_API by_phrase_options {
     return hash;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief clear phrase contents
+  //////////////////////////////////////////////////////////////////////////////
   void clear() noexcept {
     phrase_.clear();
     is_simple_term_only_ = true;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns true if phrase composed of simple terms only, false - otherwise
+  //////////////////////////////////////////////////////////////////////////////
   bool simple() const noexcept { return is_simple_term_only_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns true if phrase is empty, false - otherwise
+  //////////////////////////////////////////////////////////////////////////////
   bool empty() const noexcept { return phrase_.empty(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns size of the phrase
+  //////////////////////////////////////////////////////////////////////////////
   size_t size() const noexcept { return phrase_.size(); }
 
-  size_t first_pos() const noexcept {
-    return phrase_.empty() ? 0 : phrase_.begin()->first;
-  }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns iterator referring to the first part of the phrase
+  //////////////////////////////////////////////////////////////////////////////
+  phrase_type::const_iterator begin() const noexcept { return phrase_.begin(); }
 
-  terms_t::const_iterator begin() const noexcept { return phrase_.begin(); }
-  terms_t::const_iterator end() const noexcept { return phrase_.end(); }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns iterator referring to past-the-end element of the phrase
+  //////////////////////////////////////////////////////////////////////////////
+  phrase_type::const_iterator end() const noexcept { return phrase_.end(); }
 
  private:
   size_t next_pos() const {
     return phrase_.empty() ? 0 : 1 + phrase_.rbegin()->first;
   }
 
-  terms_t phrase_;
+  phrase_type phrase_;
   bool is_simple_term_only_{true};
-};
+}; // by_phrase_options
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class by_phrase
 /// @brief user-side phrase filter
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
  public:
   // returns set of features required for filter
@@ -226,8 +273,7 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(

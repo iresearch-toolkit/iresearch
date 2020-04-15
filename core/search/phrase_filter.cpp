@@ -678,7 +678,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   }
 
   // offset of the first term in a phrase
-  size_t base_offset = options().first_pos();
+  assert(!options().empty());
+  const size_t base_offset = options().begin()->first;
 
   // finish stats
   fixed_phrase_query::positions_t positions(phrase_size);
@@ -790,7 +791,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   // offset of the first term in a phrase
-  size_t base_offset = options().first_pos();
+  assert(!options().empty());
+  const size_t base_offset = options().begin()->first;
 
   // finish stats
   variadic_phrase_query::positions_t positions(phrase_size);
