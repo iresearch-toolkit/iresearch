@@ -141,9 +141,9 @@ struct aggregated_stats_visitor : util::noncopyable {
 };
 
 template<typename Collector>
-class levenshtein_terms_visitor : public filter_visitor {
+class by_edit_distance_filter_optionss_visitor : public filter_visitor {
  public:
-  levenshtein_terms_visitor(
+  by_edit_distance_filter_optionss_visitor(
       Collector& collector,
       const parametric_description& d,
       const bytes_ref& term)
@@ -205,7 +205,7 @@ bool collect_terms(
 
   auto matcher = make_automaton_matcher(acceptor);
 
-  levenshtein_terms_visitor<Collector> visitor(collector, d, term);
+  by_edit_distance_filter_optionss_visitor<Collector> visitor(collector, d, term);
 
   for (auto& segment : index) {
     auto* reader = segment.field(field);
@@ -242,7 +242,7 @@ class top_terms_collector : public irs::top_terms_collector<top_term_state<boost
 };
 
 template<typename Visitor>
-void visit_levenshtein_terms(
+void visit_by_edit_distance_filter_optionss(
     const index_reader& index,
     const string_ref& field,
     const bytes_ref& term,

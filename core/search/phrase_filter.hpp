@@ -25,6 +25,8 @@
 
 #include <map>
 
+#include <boost/variant.hpp>
+
 #include "search/levenshtein_filter.hpp"
 #include "search/wildcard_filter.hpp"
 #include "search/term_filter.hpp"
@@ -37,94 +39,22 @@ NS_ROOT
 
 class by_phrase;
 
-enum class PhrasePartType {
-  TERM, PREFIX, WILDCARD, LEVENSHTEIN, SET, RANGE
-};
-
-struct simple_term : by_term_options {
-  static constexpr PhrasePartType type = PhrasePartType::TERM;
-};
-
-struct prefix_term : by_prefix_options {
-  static constexpr PhrasePartType type = PhrasePartType::PREFIX;
-};
-
-struct wildcard_term : by_wildcard_options {
-  static constexpr PhrasePartType type = PhrasePartType::WILDCARD;
-};
-
-struct levenshtein_term : by_edit_distance_filter_options {
-  static constexpr PhrasePartType type = PhrasePartType::LEVENSHTEIN;
-};
-
-struct set_term : by_terms_options {
-  static constexpr PhrasePartType type = PhrasePartType::SET;
-};
-
-struct range_term : by_range_filter_options {
-  static constexpr PhrasePartType type = PhrasePartType::RANGE;
-};
-
-struct IRESEARCH_API phrase_part {
-  ~phrase_part() {
-    destroy();
-  }
-
-  PhrasePartType type;
-
-  union {
-    simple_term st;
-    prefix_term pt;
-    wildcard_term wt;
-    levenshtein_term lt;
-    set_term ct;
-    range_term rt;
-  };
-
-  phrase_part();
-  phrase_part(const phrase_part& other);
-  phrase_part(phrase_part&& other) noexcept;
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wplacement-new="
-#endif
-
-  template<typename PhrasePart>
-  phrase_part(PhrasePart&& other) noexcept(std::is_rvalue_reference<PhrasePart>::value) {
-    type = std::remove_reference<PhrasePart>::type::type;
-    new (reinterpret_cast<typename std::remove_reference<PhrasePart>::type*>(&st))
-      typename std::remove_reference<PhrasePart>::type(std::forward<PhrasePart>(other));
-  }
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-  phrase_part& operator=(const phrase_part& other);
-  phrase_part& operator=(phrase_part&& other) noexcept;
-
-  bool operator==(const phrase_part& other) const noexcept;
-  size_t hash() const noexcept;
-
-  field_visitor visitor() const;
-
- private:
-  void allocate(const phrase_part& other);
-  void allocate(phrase_part&& other) noexcept;
-  void destroy() noexcept;
-  void recreate(const phrase_part& other);
-  void recreate(phrase_part&& other) noexcept;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_phrase_options
 /// @brief options for phrase filter
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase_options {
  public:
-  using filter_type = by_phrase;
+  using phrase_part =  boost::variant<
+    by_term_options,
+    by_prefix_options,
+    by_wildcard_options,
+    by_edit_distance_filter_options,
+    by_terms_options,
+    by_range_filter_options>;
+
   using phrase_type = std::map<size_t, phrase_part>;
+  using filter_type = by_phrase;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert phrase part into the phrase at a specified position
@@ -132,9 +62,9 @@ class IRESEARCH_API by_phrase_options {
   //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& insert(size_t pos) {
-    is_simple_term_only_ &= std::is_same<PhrasePart, simple_term>::value; // constexpr
+    is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
 
-    return reinterpret_cast<PhrasePart&>(phrase_[pos].st);
+    return boost::get<PhrasePart>(phrase_[pos]);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -143,10 +73,10 @@ class IRESEARCH_API by_phrase_options {
   //////////////////////////////////////////////////////////////////////////////
   template<typename PhrasePart>
   PhrasePart& insert(PhrasePart&& t, size_t pos) {
-    is_simple_term_only_ &= std::is_same<PhrasePart, simple_term>::value; // constexpr
+    is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
     auto& part = (phrase_[pos] = std::forward<PhrasePart>(t));
 
-    return reinterpret_cast<PhrasePart&>(part.st);
+    return boost::get<PhrasePart>(part);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -183,13 +113,7 @@ class IRESEARCH_API by_phrase_options {
       return nullptr;
     }
 
-    const auto& inf = it->second;
-
-    if (inf.type != PhrasePart::type) {
-      return nullptr;
-    }
-
-    return reinterpret_cast<const PhrasePart*>(&inf.st);
+    return boost::get<PhrasePart>(&it->second);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -206,7 +130,7 @@ class IRESEARCH_API by_phrase_options {
     size_t hash = 0;
     for (auto& part : phrase_) {
       hash = hash_combine(hash, std::hash<size_t>()(part.first));
-      hash = hash_combine(hash, part.second.hash());
+      //hash = hash_combine(hash, boost::hash_value(part.second)); // FIXME
     }
     return hash;
   }

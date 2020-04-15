@@ -233,8 +233,8 @@ TEST_P(bm25_test, test_phrase) {
   {
     irs::by_phrase filter;
     *filter.mutable_field() = "phrase_anl";
-    filter.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
-    filter.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
@@ -281,13 +281,13 @@ TEST_P(bm25_test, test_phrase) {
     irs::by_phrase filter;
     *filter.mutable_field() = "phrase_anl";
     auto& phrase = *filter.mutable_options();
-    phrase.push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"));
-    phrase.push_back<irs::prefix_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
-    phrase.push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
-    auto& lt = phrase.push_back<irs::levenshtein_term>();
+    phrase.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"));
+    phrase.push_back<irs::by_prefix_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
+    phrase.push_back<irs::by_wildcard_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
+    auto& lt = phrase.push_back<irs::by_edit_distance_filter_options>();
     lt.max_distance = 1;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("biscuit"));
-    auto& ct = phrase.push_back<irs::set_term>();
+    auto& ct = phrase.push_back<irs::by_terms_options>();
     ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")));
     ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows")));
 
@@ -895,7 +895,7 @@ TEST_P(bm25_test, test_query) {
   {
     irs::by_phrase filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<std::pair<float_t, uint64_t>> expected = {

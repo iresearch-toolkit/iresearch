@@ -64,6 +64,115 @@ struct variadic_phrase_state : fixed_phrase_state {
   std::vector<size_t> num_terms; // number of terms per phrase part
 }; // variadic_phrase_state
 
+struct get_visitor {
+  using result_type = field_visitor;
+
+  result_type operator()(const by_term_options& part) const {
+    const bytes_ref term = part.term;
+    return [term](const sub_reader& segment,
+                const term_reader& field,
+                filter_visitor& visitor) {
+      return by_term::visit(segment, field, term, visitor);
+    };
+  }
+
+  result_type operator()(const by_prefix_options& part) const {
+    const bytes_ref term = part.term;
+    return [term](const sub_reader& segment,
+                const term_reader& field,
+                filter_visitor& visitor) {
+      return by_prefix::visit(segment, field, term, visitor);
+    };
+  }
+
+  result_type operator()(const by_wildcard_options& part) const {
+    return by_wildcard::visitor(part.term);
+  }
+
+  result_type operator()(const by_edit_distance_filter_options& part) const {
+    return by_edit_distance::visitor(part);
+  }
+
+  result_type operator()(const by_terms_options& part) const {
+    const auto& terms = part.terms;
+    return [terms](const sub_reader& segment,
+                 const term_reader& field,
+                 filter_visitor& visitor) {
+      return by_terms::visit(segment, field, terms, visitor);
+    };
+  }
+
+  result_type operator()(const by_range_filter_options& part) const {
+    const auto& range = part.range;
+    return [&range](const sub_reader& segment,
+                  const term_reader& field,
+                  filter_visitor& visitor) {
+      return by_range::visit(segment, field, range, visitor);
+    };
+  }
+
+  template<typename T>
+  result_type operator()(const T&) const {
+    return [](const sub_reader&, const term_reader&, filter_visitor&) { };
+  }
+}; // get_visitor
+
+struct prepare : util::noncopyable {
+  using result_type = filter::prepared::ptr;
+
+  result_type operator()(const by_term_options& opts) const {
+    return by_term::prepare(index, order, boost, field, opts.term);
+  }
+
+  result_type operator()(const by_prefix_options& part) const {
+    return by_prefix::prepare(
+      index, order, boost, field,
+      part.term, part.scored_terms_limit);
+  }
+
+  result_type operator()(const by_wildcard_options& part) const {
+    return by_wildcard::prepare(
+      index, order, boost, field,
+      part.term, part.scored_terms_limit);
+  }
+
+  result_type operator()(const by_edit_distance_filter_options& part) const {
+    return by_edit_distance::prepare(
+      index, order, boost, field, part.term, 0, // collect all terms
+      part.max_distance, part.provider,
+      part.with_transpositions);
+  }
+
+  result_type operator()(const by_terms_options& /*part*/) const {
+    return nullptr;
+  }
+
+  result_type operator()(const by_range_filter_options& part) const {
+    return by_range::prepare(
+      index, order, boost, field,
+       part.range, 1024); // FIXME
+  }
+
+  template<typename T>
+  result_type operator()(const T&) const {
+    assert(false);
+    return filter::prepared::empty();
+  }
+
+  prepare(const index_reader& index,
+          const order::prepared& order,
+          const string_ref& field,
+          const boost_t boost) noexcept
+    : index(index), order(order),
+      field(field), boost(boost) {
+  }
+
+  const index_reader& index;
+  const irs::order::prepared& order;
+  const string_ref field;
+  const boost_t boost;
+}; // prepare
+
 NS_END
 
 NS_ROOT
@@ -132,222 +241,6 @@ class phrase_term_visitor final : public filter_visitor,
 NS_END
 
 NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            by_part implementation
-// -----------------------------------------------------------------------------
-
-phrase_part::phrase_part()
-  : type(PhrasePartType::TERM), st() { }
-
-phrase_part::phrase_part(const phrase_part& other) {
-  allocate(other);
-}
-
-phrase_part::phrase_part(phrase_part&& other) noexcept {
-  allocate(std::move(other));
-}
-
-phrase_part& phrase_part::operator=(const phrase_part& other) {
-  if (&other == this) {
-    return *this;
-  }
-  recreate(other);
-  return *this;
-}
-
-phrase_part& phrase_part::operator=(phrase_part&& other) noexcept {
-  if (&other == this) {
-    return *this;
-  }
-  recreate(std::move(other));
-  return *this;
-}
-
-bool phrase_part::operator==(const phrase_part& other) const noexcept {
-  if (type != other.type) {
-    return false;
-  }
-  switch (type) {
-    case PhrasePartType::TERM:
-      return st == other.st;
-    case PhrasePartType::PREFIX:
-      return pt == other.pt;
-    case PhrasePartType::WILDCARD:
-      return wt == other.wt;
-    case PhrasePartType::LEVENSHTEIN:
-      return lt == other.lt;
-    case PhrasePartType::SET:
-      return ct == other.ct;
-    case PhrasePartType::RANGE:
-      return rt == other.rt;
-    default:
-      assert(false);
-  }
-  return false;
-}
-
-field_visitor phrase_part::visitor() const {
-  switch (type) {
-    case PhrasePartType::TERM: {
-      const bytes_ref term = st.term;
-      return [term](const sub_reader& segment,
-                    const term_reader& field,
-                    filter_visitor& visitor) {
-        return by_term::visit(segment, field, term, visitor);
-      };
-    } case PhrasePartType::PREFIX: {
-      const bytes_ref term = pt.term;
-      return [term](const sub_reader& segment,
-                    const term_reader& field,
-                    filter_visitor& visitor) {
-        return by_prefix::visit(segment, field, term, visitor);
-      };
-    } break;
-    case PhrasePartType::WILDCARD: {
-      return by_wildcard::visitor(wt.term);
-    } case PhrasePartType::LEVENSHTEIN: {
-      return by_edit_distance::visitor(lt);
-    } case PhrasePartType::SET: {
-      const auto& terms = ct.terms;
-      return [terms](const sub_reader& segment,
-                    const term_reader& field,
-                    filter_visitor& visitor) {
-        return by_terms::visit(segment, field, terms, visitor);
-      };
-    }
-    case PhrasePartType::RANGE: {
-      const auto& range = rt.range;
-      return [&range](const sub_reader& segment,
-                      const term_reader& field,
-                      filter_visitor& visitor) {
-        return by_range::visit(segment, field, range, visitor);
-      };
-    }
-    default:
-      assert(false);
-      return [](const sub_reader&, const term_reader&, filter_visitor&) { };
-  }
-}
-
-void phrase_part::allocate(const phrase_part& other) {
-  type = other.type;
-  switch (type) {
-    case PhrasePartType::TERM:
-      new (&st) simple_term(other.st);
-      break;
-    case PhrasePartType::PREFIX:
-      new (&pt) prefix_term(other.pt);
-      break;
-    case PhrasePartType::WILDCARD:
-      new (&wt) wildcard_term(other.wt);
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      new (&lt) levenshtein_term(other.lt);
-      break;
-    case PhrasePartType::SET:
-      new (&ct) set_term(other.ct);
-      break;
-    case PhrasePartType::RANGE:
-      new (&rt) range_term(other.rt);
-      break;
-    default:
-      assert(false);
-  }
-}
-
-void phrase_part::allocate(phrase_part&& other) noexcept {
-  type = other.type;
-  switch (type) {
-    case PhrasePartType::TERM:
-      new (&st) simple_term(std::move(other.st));
-      break;
-    case PhrasePartType::PREFIX:
-      new (&pt) prefix_term(std::move(other.pt));
-      break;
-    case PhrasePartType::WILDCARD:
-      new (&wt) wildcard_term(std::move(other.wt));
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      new (&lt) levenshtein_term(std::move(other.lt));
-      break;
-    case PhrasePartType::SET:
-      new (&ct) set_term(std::move(other.ct));
-      break;
-    case PhrasePartType::RANGE:
-      new (&rt) range_term(std::move(other.rt));
-      break;
-    default:
-      assert(false);
-  }
-}
-
-void phrase_part::destroy() noexcept {
-  switch (type) {
-    case PhrasePartType::TERM:
-      st.~simple_term();
-      break;
-    case PhrasePartType::PREFIX:
-      pt.~prefix_term();
-      break;
-    case PhrasePartType::WILDCARD:
-      wt.~wildcard_term();
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      lt.~levenshtein_term();
-      break;
-    case PhrasePartType::SET:
-      ct.~set_term();
-      break;
-    case PhrasePartType::RANGE:
-      rt.~range_term();
-      break;
-    default:
-      assert(false);
-  }
-}
-
-void phrase_part::recreate(const phrase_part& other) {
-  if (type != other.type) {
-    destroy();
-  }
-  allocate(other);
-}
-
-void phrase_part::recreate(phrase_part&& other) noexcept {
-  if (type != other.type) {
-    destroy();
-  }
-  allocate(std::move(other));
-}
-
-size_t phrase_part::hash() const noexcept {
-  using underlying_type = std::underlying_type<PhrasePartType>::type;
-  auto seed = std::hash<underlying_type>()(static_cast<underlying_type>(type));
-  switch (type) {
-    case PhrasePartType::TERM:
-      hash_combine(seed, st.hash());
-      break;
-    case PhrasePartType::PREFIX:
-      hash_combine(seed, pt.hash());
-      break;
-    case PhrasePartType::WILDCARD:
-      hash_combine(seed, wt.hash());
-      break;
-    case PhrasePartType::LEVENSHTEIN:
-      hash_combine(seed, lt.hash());
-      break;
-    case PhrasePartType::SET:
-      hash_combine(seed, ct.hash());
-      break;
-    case PhrasePartType::RANGE:
-      hash_combine(seed, rt.hash());
-      break;
-    default:
-      assert(false);
-  }
-  return seed;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class phrase_query
@@ -575,31 +468,13 @@ filter::prepared::ptr by_phrase::prepare(
     return filter::prepared::empty();
   }
 
-  const auto phrase_size = options().size();
-  if (1 == phrase_size) {
-    const auto& term_info = options().begin()->second;
-    boost *= this->boost();
-    switch (term_info.type) {
-      case PhrasePartType::TERM: // similar to `term_query`
-        return by_term::prepare(index, ord, boost, field(), term_info.st.term);
-      case PhrasePartType::PREFIX:
-        return by_prefix::prepare(index, ord, boost, field(), term_info.pt.term,
-                                  term_info.pt.scored_terms_limit);
-      case PhrasePartType::WILDCARD:
-        return by_wildcard::prepare(index, ord, boost, field(), term_info.wt.term,
-                                    term_info.wt.scored_terms_limit);
-      case PhrasePartType::LEVENSHTEIN:
-        return by_edit_distance::prepare(index, ord, boost, field(), term_info.lt.term,
-                                         0, // collect all terms
-                                         term_info.lt.max_distance, term_info.lt.provider,
-                                         term_info.lt.with_transpositions);
-      case PhrasePartType::SET:
-        break;
-      case PhrasePartType::RANGE:
-        return by_range::prepare(index, ord, boost, field(), term_info.rt.range, 1024); // FIXME
-      default:
-        assert(false);
-        return filter::prepared::empty();
+  if (1 == options().size()) {
+    auto query = boost::apply_visitor(
+      ::prepare{index, ord, field(), this->boost()*boost},
+      options().begin()->second);
+
+    if (query) {
+      return query;
     }
   }
 
@@ -653,8 +528,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ptv.reset(term_stats);
 
     for (const auto& word : options()) {
-      assert(PhrasePartType::TERM == word.second.type);
-      by_term::visit(segment, *reader, word.second.st.term, ptv);
+      assert(boost::get<by_term_options>(&word.second));
+      by_term::visit(segment, *reader, boost::get<by_term_options>(word.second).term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;
@@ -719,7 +594,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_part_stats.reserve(phrase_size);
   for (const auto& word : options()) {
     phrase_part_stats.emplace_back(ord, 0);
-    phrase_part_visitors.emplace_back(word.second.visitor());
+    phrase_part_visitors.emplace_back(boost::apply_visitor(get_visitor{}, word.second));
   }
 
   // per segment phrase states
