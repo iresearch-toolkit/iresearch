@@ -22,15 +22,10 @@
 
 #include "phrase_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "index/field_meta.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/collectors.hpp"
 #include "search/phrase_iterator.hpp"
-#include "search/term_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/wildcard_filter.hpp"
 
 NS_LOCAL
 

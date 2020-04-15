@@ -26,6 +26,7 @@
 #include <map>
 
 #include <boost/variant.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "search/levenshtein_filter.hpp"
 #include "search/wildcard_filter.hpp"
@@ -130,7 +131,7 @@ class IRESEARCH_API by_phrase_options {
     size_t hash = 0;
     for (auto& part : phrase_) {
       hash = hash_combine(hash, std::hash<size_t>()(part.first));
-      //hash = hash_combine(hash, boost::hash_value(part.second)); // FIXME
+      hash = hash_combine(hash, boost::hash_value(part.second));
     }
     return hash;
   }

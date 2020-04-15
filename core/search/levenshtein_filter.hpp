@@ -72,6 +72,11 @@ struct IRESEARCH_API by_edit_distance_filter_options {
                         hash_combine(std::hash<bstring>()(term),
                                      std::hash<byte_type>()(max_distance)));
   }
+
+  // boost support
+  friend size_t hash_value(const by_edit_distance_filter_options& opts) noexcept {
+    return opts.hash();
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

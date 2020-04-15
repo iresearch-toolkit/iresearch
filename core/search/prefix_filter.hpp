@@ -68,6 +68,11 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
     return hash_combine(filter_options::hash(),
                         std::hash<size_t>()(scored_terms_limit));
   }
+
+  // boost support
+  friend size_t hash_value(const by_prefix_options& opts) noexcept {
+    return opts.hash();
+  }
 }; // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////
