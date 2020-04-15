@@ -67,9 +67,6 @@ struct IRESEARCH_API by_terms_options {
   using filter_type = by_terms;
   using search_terms = std::set<search_term>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief search terms
-  //////////////////////////////////////////////////////////////////////////////
   search_terms terms;
 
   bool operator==(const by_terms_options& rhs) const noexcept {

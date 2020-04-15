@@ -34,11 +34,9 @@
 
 NS_LOCAL
 
-typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
+using namespace irs;
 
-NS_END
-
-NS_ROOT
+using conjunction_t = conjunction<irs::doc_iterator::ptr> ;
 
 class same_position_iterator final : public conjunction_t {
  public:
@@ -76,7 +74,7 @@ class same_position_iterator final : public conjunction_t {
     const auto doc = conjunction_t::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
-      return doc; 
+      return doc;
     }
 
     next();
@@ -107,11 +105,10 @@ class same_position_iterator final : public conjunction_t {
   positions_t pos_;
 }; // same_position_iterator
 
-// per segment terms state
-typedef std::vector<term_query::term_state> terms_states_t;
 
 class same_position_query final : public filter::prepared {
  public:
+  typedef std::vector<term_query::term_state> terms_states_t;
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
@@ -135,12 +132,12 @@ class same_position_query final : public filter::prepared {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
-      // invalid state 
+      // invalid state
       return doc_iterator::empty();
     }
 
     // get features required for query & order
-    auto features = ord.features() | by_same_position::features();
+    auto features = ord.features() | by_same_position::required();
 
     same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
@@ -192,59 +189,16 @@ class same_position_query final : public filter::prepared {
   stats_t stats_;
 }; // same_position_query
 
+NS_END
+
+NS_ROOT
+
 DEFINE_FILTER_TYPE(by_same_position)
 DEFINE_FACTORY_DEFAULT(by_same_position)
 
-/* static */ const flags& by_same_position::features() {
+/* static */ const flags& by_same_position::required() {
   static flags features{ frequency::type(), position::type() };
   return features;
-}
-
-by_same_position::by_same_position() 
-  : filter(by_same_position::type()) {
-}
-
-bool by_same_position::equals(const filter& rhs) const noexcept {
-  const auto& trhs = static_cast<const by_same_position&>(rhs);
-  return filter::equals(rhs) && terms_ == trhs.terms_;
-}
-
-size_t by_same_position::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  for (auto& term : terms_) {
-    ::boost::hash_combine(seed, term.first);
-    ::boost::hash_combine(seed, term.second);
-  }
-  return seed;
-}
-  
-by_same_position& by_same_position::push_back(
-    const std::string& field, 
-    const bstring& term) {
-  terms_.emplace_back(field, term);
-  return *this;
-}
-
-by_same_position& by_same_position::push_back(
-    const std::string& field, 
-    bstring&& term) {
-  terms_.emplace_back(field, std::move(term));
-  return *this;
-}
-
-by_same_position& by_same_position::push_back(
-    std::string&& field,
-    const bstring& term) {
-  terms_.emplace_back(std::move(field), term);
-  return *this;
-}
-
-by_same_position& by_same_position::push_back(
-    std::string&& field,
-    bstring&& term) {
-  terms_.emplace_back(std::move(field), std::move(term));
-  return *this;
 }
 
 filter::prepared::ptr by_same_position::prepare(
@@ -252,7 +206,10 @@ filter::prepared::ptr by_same_position::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& /*ctx*/) const {
-  if (terms_.empty()) {
+  auto& terms = options().terms;
+  const auto size = terms.size();
+
+  if (0 == size) {
     // empty field or phrase
     return filter::prepared::empty();
   }
@@ -261,22 +218,22 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::states_t query_states(index.size());
 
   // per segment terms states
-  terms_states_t term_states;
-  term_states.reserve(terms_.size());
+  same_position_query::states_t::state_type term_states;
+  term_states.reserve(size);
 
   // prepare phrase stats (collector for each term)
   field_collectors field_stats(ord);
   std::vector<term_collectors> term_stats;
-  term_stats.reserve(terms_.size());
+  term_stats.reserve(size);
 
-  for(auto size = terms_.size(); size; --size) {
+  for(auto i = size; i; --i) {
     term_stats.emplace_back(ord, 1); // 1 term per bstring because a range is treated as a disjunction
   }
 
   for (const auto& segment : index) {
     auto term_itr = term_stats.begin();
 
-    for (const auto& branch : terms_) {
+    for (const auto& branch : terms) {
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
 
       // get term dictionary for field
@@ -286,7 +243,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (!features().is_subset_of(field->meta().features)) {
+      if (!required().is_subset_of(field->meta().features)) {
         continue;
       }
 
@@ -315,7 +272,7 @@ filter::prepared::ptr by_same_position::prepare(
       state.reader = field;
     }
 
-    if (term_states.size() != terms_.size()) {
+    if (term_states.size() != terms.size()) {
       // we have not found all needed terms
       term_states.clear();
       continue;
@@ -324,16 +281,16 @@ filter::prepared::ptr by_same_position::prepare(
     auto& state = query_states.insert(segment);
     state = std::move(term_states);
 
-    term_states.reserve(terms_.size());
+    term_states.reserve(terms.size());
   }
 
   // finish stats
-  same_position_query::stats_t stats(terms_.size());
+  same_position_query::stats_t stats(size);
   auto stat_itr = stats.begin();
   auto term_itr = term_stats.begin();
-  assert(term_stats.size() == terms_.size()); // initialized above
+  assert(term_stats.size() == size); // initialized above
 
-  for (size_t i = 0, size = terms_.size(); i < size; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     stat_itr->resize(ord.stats_size());
     auto* stats_buf = const_cast<byte_type*>(stat_itr->data());
 

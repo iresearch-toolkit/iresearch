@@ -89,7 +89,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // collector count (single term)
     {
       irs::by_same_position filter;
-      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -123,8 +123,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // collector count (multiple terms)
     {
       irs::by_same_position filter;
-      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -205,7 +205,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // { a: 100 } - equal to 'by_term' 
     {
       irs::by_same_position query;
-      query.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+      query.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
 
       irs::by_term expected_query;
       *expected_query.mutable_field() = "a";
@@ -234,9 +234,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // { a: 300, b:90, c:9 }
     {
       irs::by_same_position q;
-      q.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
-      q.push_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
-      q.push_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
       auto prepared = q.prepare(index);
       auto docs = prepared->execute(segment);
       auto& doc = docs->attributes().get<irs::document>();
@@ -249,9 +249,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // { a: 100, b:30, c:6 }
     {
       irs::by_same_position q;
-      q.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
-      q.push_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("30")));
-      q.push_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("6")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("30")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("6")));
 
       auto prepared = q.prepare(index);
 
@@ -295,9 +295,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // { c: 8, b:80, a:700 }
     {
       irs::by_same_position q;
-      q.push_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("8")));
-      q.push_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("80")));
-      q.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("8")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("80")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
 
       auto prepared = q.prepare(index);
 
@@ -338,8 +338,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // { a: 700, b:*, c: 7 }
     {
       irs::by_same_position q;
-      q.push_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
-      q.push_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("7")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("7")));
 
       auto prepared = q.prepare(index);
 
@@ -449,67 +449,21 @@ TEST_P(same_position_filter_test_case, by_same_position) {
 // --SECTION--                                      by_same_position base tests 
 // ----------------------------------------------------------------------------
 
+TEST(by_same_position_test, options) {
+  irs::by_same_position_options opts;
+  ASSERT_TRUE(opts.terms.empty());
+}
+
 TEST(by_same_position_test, ctor) {
   irs::by_same_position q;
   ASSERT_EQ(irs::by_same_position::type(), q.type());
-  ASSERT_TRUE(q.empty());
-  ASSERT_EQ(0, q.size());
-  ASSERT_EQ(q.begin(), q.end());
+  ASSERT_EQ(irs::by_same_position_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
-  auto& features = irs::by_same_position::features();
+  auto& features = irs::by_same_position::required();
   ASSERT_EQ(2, features.size());
   ASSERT_TRUE(features.check<irs::frequency>());
   ASSERT_TRUE(features.check<irs::position>());
-}
-
-TEST(by_same_position_test, push_back_insert_clear) {
-  irs::by_same_position q;
-
-  // push_back 
-  {
-    q.push_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    const std::string color = "color";
-    q.push_back(color, irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    const irs::bstring fox = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
-    q.push_back("name", fox);
-    const std::string name = "name";
-    const irs::bstring squirrel = irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"));
-    q.push_back(name, squirrel);
-    ASSERT_FALSE(q.empty());
-    ASSERT_EQ(4, q.size());
-
-    // check elements via iterators 
-    {
-      auto it = q.begin();
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ("speed", it->first);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("quick")), it->second);
-
-      ++it;
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ("color", it->first);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), it->second);
-
-      ++it;
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ("name", it->first);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), it->second);
-
-      ++it;
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ("name", it->first);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")), it->second);
-
-      ++it;
-      ASSERT_EQ(q.end(), it);
-    }
-  }
-
-  q.clear();
-  ASSERT_TRUE(q.empty());
-  ASSERT_EQ(0, q.size());
-  ASSERT_EQ(q.begin(), q.end());
 }
 
 TEST(by_same_position_test, boost) {
@@ -526,7 +480,7 @@ TEST(by_same_position_test, boost) {
     // single term
     {
       irs::by_same_position q;
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -535,8 +489,8 @@ TEST(by_same_position_test, boost) {
     // multiple terms
     {
       irs::by_same_position q;
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -545,7 +499,7 @@ TEST(by_same_position_test, boost) {
 
   // with boost
   {
-    iresearch::boost_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     
     // no terms, return empty query
     {
@@ -559,7 +513,7 @@ TEST(by_same_position_test, boost) {
     // single term
     {
       irs::by_same_position q;
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -569,8 +523,8 @@ TEST(by_same_position_test, boost) {
     // single multiple terms 
     {
       irs::by_same_position q;
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-      q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -584,50 +538,50 @@ TEST(by_same_position_test, equal) {
 
   {
     irs::by_same_position q0;
-    q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
     irs::by_same_position q1;
-    q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
     ASSERT_EQ(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    q0.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
     irs::by_same_position q1;
-    q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    q1.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("squirrel")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.push_back("Speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    q0.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
+    q0.mutable_options()->terms.emplace_back("Speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
     irs::by_same_position q1;
-    q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    q1.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
     irs::by_same_position q1;
-    q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
-    q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    q1.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
     ASSERT_NE(q0, q1);
   }
 }
