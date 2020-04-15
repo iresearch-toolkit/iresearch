@@ -315,7 +315,7 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
-/*static*/ field_visitor visitor(const by_edit_distance_options::filter_options& opts) {
+/*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {
   field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&){};
 
   executeLevenshtein(

@@ -98,7 +98,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // empty phrase
     {
       irs::by_phrase q;
-      q.field("phrase_anl");
+      *q.mutable_field() = "phrase_anl";
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -115,8 +115,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -215,9 +215,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
-      pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl").push_back(std::move(pt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::prefix_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -364,9 +363,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -513,9 +511,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("%ox"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("%ox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -614,9 +611,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -715,9 +711,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("_ox"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("_ox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -816,9 +811,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -917,9 +911,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo_"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo_"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1018,9 +1011,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
-      q.field("phrase_anl").push_back(std::move(wt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::wildcard_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1119,10 +1111,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 0;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
-      q.field("phrase_anl").push_back(std::move(lt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1221,10 +1213,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fol"));
-      q.field("phrase_anl").push_back(std::move(lt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1323,7 +1315,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl").push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}});
+      *q.mutable_field() = "phrase_anl";
+      auto& st = q.mutable_options()->push_back<irs::set_term>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1422,7 +1416,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl").push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), irs::ref_cast<irs::byte_type>(irs::string_ref("that"))}});
+      *q.mutable_field() = "phrase_anl";
+      auto& st = q.mutable_options()->push_back<irs::set_term>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1537,12 +1534,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1582,12 +1579,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // range_term "(x0, x0]"
     {
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.min_type = irs::BoundType::EXCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.min_type = irs::BoundType::EXCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1611,12 +1608,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // range_term "[x0, x0)"
     {
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::EXCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1640,12 +1637,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // range_term "(x0, x0)"
     {
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.min_type = irs::BoundType::EXCLUSIVE;
-      rt.rng.max_type = irs::BoundType::EXCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.min_type = irs::BoundType::EXCLUSIVE;
+      rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1671,12 +1668,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1750,12 +1747,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt.rng.min_type = irs::BoundType::EXCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt.range.min_type = irs::BoundType::EXCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1821,12 +1818,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::EXCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1884,12 +1881,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt.rng.min_type = irs::BoundType::EXCLUSIVE;
-      rt.rng.max_type = irs::BoundType::EXCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt.range.min_type = irs::BoundType::EXCLUSIVE;
+      rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -1938,7 +1935,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // which is ok for single word phrases
     {
       irs::by_phrase q;
-      q.field("phrase").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      *q.mutable_field() = "phrase";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -1976,9 +1974,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // which is ok for the first word in phrase
     {
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase").push_back(std::move(pt));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2032,9 +2030,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // which is ok for first word in phrase
     {
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase").push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2088,9 +2086,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // which is ok for first word in phrase
     {
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x%"));
-      q.field("phrase").push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2144,11 +2142,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // which is ok for single word phrases
     {
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.with_transpositions = true;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fxo"));
-      q.field("phrase").push_back(std::move(lt));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2188,12 +2186,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase").push_back(std::move(rt));
+      *q.mutable_field() = "phrase";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2240,8 +2238,8 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, irs::integer_traits<size_t>::const_max);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2337,9 +2335,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>(irs::integer_traits<size_t>::const_max);
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl").push_back(std::move(pt), irs::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2481,9 +2479,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(irs::integer_traits<size_t>::const_max);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl").push_back(std::move(wt), irs::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2625,9 +2623,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(irs::integer_traits<size_t>::const_max);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
-      q.field("phrase_anl").push_back(std::move(wt), irs::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2723,10 +2721,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>(irs::integer_traits<size_t>::const_max);
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fkx"));
-      q.field("phrase_anl").push_back(std::move(lt), irs::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2822,12 +2820,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt), irs::integer_traits<size_t>::const_max);
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>(irs::integer_traits<size_t>::const_max);
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
@@ -2902,10 +2900,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -2952,11 +2950,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl").push_back(std::move(pt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3010,11 +3008,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      q.field("phrase_anl").push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3068,11 +3066,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("q%ck"));
-      q.field("phrase_anl").push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3119,12 +3117,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 0;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
-      q.field("phrase_anl").push_back(std::move(lt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3171,12 +3169,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quck"));
-      q.field("phrase_anl").push_back(std::move(lt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3223,15 +3221,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-
-      q.field("phrase_anl").push_back(std::move(rt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x0"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x2"))});
+      *q.mutable_field() = "phrase_anl";
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3265,12 +3262,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(pt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3324,12 +3320,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& wt = q.mutable_options()->push_back<irs::prefix_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro%"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3383,12 +3378,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& wt = q.mutable_options()->push_back<irs::prefix_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b%w_"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3435,13 +3429,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 2;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brkln"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(lt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3488,14 +3481,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x1"))})
-       .push_back(std::move(rt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x2"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3529,12 +3522,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(pt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3588,12 +3580,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& wt = q.mutable_options()->push_back<irs::prefix_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3647,12 +3638,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& wt = q.mutable_options()->push_back<irs::prefix_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3699,14 +3689,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.with_transpositions = true;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fxo"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(lt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3753,14 +3742,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x1"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x0"))})
-       .push_back(std::move(rt));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3794,12 +3783,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      irs::by_phrase::prefix_term pt2;
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>();
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro"));
-      q.field("phrase_anl").push_back(std::move(pt1)).push_back(std::move(pt2))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3867,12 +3857,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      irs::by_phrase::wildcard_term wt2;
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro%"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3940,12 +3931,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      irs::by_phrase::wildcard_term wt2;
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b%o__"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -3999,15 +3991,15 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& lt1 = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt1.max_distance = 2;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      irs::by_phrase::levenshtein_term lt2;
+      auto& lt2 = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt2.max_distance = 1;
       lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brow"));
-      q.field("phrase_anl")
-       .push_back(std::move(lt1)).push_back(std::move(lt2))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4061,20 +4053,19 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-      irs::by_phrase::range_term rt2;
-      rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl")
-       .push_back(std::move(rt1))
-       .push_back(std::move(rt2))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x2"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& rt1 = q.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+      auto& rt2 = q.mutable_options()->push_back<irs::range_term>();
+      rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt2.range.min_type = irs::BoundType::INCLUSIVE;
+      rt2.range.max_type = irs::BoundType::INCLUSIVE;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4108,13 +4099,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      irs::by_phrase::prefix_term pt2;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>();
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl").push_back(std::move(pt1))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(pt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4182,13 +4173,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      irs::by_phrase::wildcard_term wt2;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl").push_back(std::move(wt1))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(wt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4256,13 +4247,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("q_i%"));
-      irs::by_phrase::wildcard_term wt2;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
-      q.field("phrase_anl").push_back(std::move(wt1))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(std::move(wt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4316,20 +4307,19 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-      irs::by_phrase::range_term rt2;
-      rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl")
-       .push_back(std::move(rt1))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x0"))})
-       .push_back(std::move(rt2));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& rt1 = q.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      auto& rt2 = q.mutable_options()->push_back<irs::range_term>();
+      rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt2.range.min_type = irs::BoundType::INCLUSIVE;
+      rt2.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4363,15 +4353,16 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& lt1 = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt1.max_distance = 1;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qoick"));
-      irs::by_phrase::levenshtein_term lt2;
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
+      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br__n"));
+      auto& lt2 = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt2.max_distance = 1;
       lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fix"));
-      irs::by_phrase::wildcard_term wt;
-      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br__n"));
-      q.field("phrase_anl").push_back(std::move(lt1)).push_back(std::move(wt)).push_back(std::move(lt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4418,13 +4409,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro"));
-      irs::by_phrase::prefix_term pt2;
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>();
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(pt1)).push_back(std::move(pt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4492,13 +4482,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro%"));
-      irs::by_phrase::wildcard_term wt2;
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(wt1)).push_back(std::move(wt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4566,13 +4555,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b_o%"));
-      irs::by_phrase::wildcard_term wt2;
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_%"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(std::move(wt1)).push_back(std::move(wt2));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4640,20 +4628,18 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-      irs::by_phrase::range_term rt2;
-      rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x1"))})
-       .push_back(std::move(rt1))
-       .push_back(std::move(rt2));
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      auto& rt1 = q.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+      auto& rt2 = q.mutable_options()->push_back<irs::range_term>();
+      rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt2.range.min_type = irs::BoundType::INCLUSIVE;
+      rt2.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4687,13 +4673,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>();
+      auto& pt3 = q.mutable_options()->push_back<irs::prefix_term>();
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro"));
-      irs::by_phrase::prefix_term pt3;
       pt3.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl").push_back(std::move(pt1)).push_back(std::move(pt2)).push_back(std::move(pt3));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4789,13 +4775,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt3 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      irs::by_phrase::wildcard_term wt2;
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("bro%"));
-      irs::by_phrase::wildcard_term wt3;
       wt3.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2)).push_back(std::move(wt3));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4891,13 +4877,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt3 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("q%ic_"));
-      irs::by_phrase::wildcard_term wt2;
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-      irs::by_phrase::wildcard_term wt3;
       wt3.term = irs::ref_cast<irs::byte_type>(irs::string_ref("_%x"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2)).push_back(std::move(wt3));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -4943,13 +4929,16 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     {
       irs::bytes_ref actual_value;
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("quick")),
-                                            irs::ref_cast<irs::byte_type>(irs::string_ref("quilt")),
-                                            irs::ref_cast<irs::byte_type>(irs::string_ref("hhh"))}})
-       .push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("brown")),
-                                            irs::ref_cast<irs::byte_type>(irs::string_ref("brother"))}})
-       .push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}});
+      *q.mutable_field() = "phrase_anl";
+      auto& st1 = q.mutable_options()->push_back<irs::set_term>();
+      st1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      st1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("quilt")));
+      st1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("hhh")));
+      auto& st2 = q.mutable_options()->push_back<irs::set_term>();
+      st2.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      st2.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("brother")));
+      auto& st3 = q.mutable_options()->push_back<irs::set_term>();
+      st3.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -5017,22 +5006,22 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-      irs::by_phrase::range_term rt2;
-      rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-      irs::by_phrase::range_term rt3;
-      rt3.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      rt3.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
-      rt3.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt3.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("phrase_anl").push_back(std::move(rt1)).push_back(std::move(rt2)).push_back(std::move(rt3));
+      *q.mutable_field() = "phrase_anl";
+      auto& rt1 = q.mutable_options()->push_back<irs::range_term>();
+      auto& rt2 = q.mutable_options()->push_back<irs::range_term>();
+      auto& rt3 = q.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+      rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
+      rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt2.range.min_type = irs::BoundType::INCLUSIVE;
+      rt2.range.max_type = irs::BoundType::INCLUSIVE;
+      rt3.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
+      rt3.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
+      rt3.range.min_type = irs::BoundType::INCLUSIVE;
+      rt3.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -5066,10 +5055,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -5163,9 +5152,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5205,10 +5194,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl").push_back(std::move(pt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5248,10 +5237,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
-      q.field("phrase_anl").push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5291,11 +5280,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fpx"));
-      q.field("phrase_anl").push_back(std::move(lt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5335,11 +5324,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>(1);
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(std::move(pt), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -5379,11 +5367,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(1);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%ck"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(std::move(wt), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -5423,11 +5410,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>(1);
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl").push_back(std::move(pt1)).push_back(std::move(pt2), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -5467,11 +5455,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>(1);
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f%x"));
-      irs::by_phrase::wildcard_term wt2;
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%ck"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -5511,13 +5499,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt1 = q.mutable_options()->push_back<irs::levenshtein_term>();
+      auto& lt2 = q.mutable_options()->push_back<irs::levenshtein_term>(1);
       lt1.max_distance = 1;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fx"));
-      irs::by_phrase::levenshtein_term lt2;
       lt2.max_distance = 1;
       lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quik"));
-      q.field("phrase_anl").push_back(std::move(lt1)).push_back(std::move(lt2), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -5558,11 +5546,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>(1);
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl").push_back(std::move(pt1)).push_back(std::move(pt2), 1);
 
       irs::order order;
       order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
@@ -5606,9 +5594,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox")),
-                                            irs::ref_cast<irs::byte_type>(irs::string_ref("that"))}});
+      *q.mutable_field() = "phrase_anl";
+      auto& st = q.mutable_options()->push_back<irs::set_term>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
       irs::order order;
       order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
@@ -5727,16 +5716,15 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>();
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("%las"));
-      irs::by_phrase::wildcard_term wt2;
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("%nd"));
-      irs::by_phrase::prefix_term pt1;
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("go"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("like"));
-      q.field("phrase_anl").push_back(std::move(wt1)).push_back(std::move(wt2))
-       .push_back(std::move(pt1)).push_back(std::move(pt2));
 
       irs::order order;
       order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
@@ -5777,9 +5765,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, irs::integer_traits<size_t>::const_max)
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5820,9 +5808,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, irs::integer_traits<size_t>::const_max)
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 0);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>(0).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5857,13 +5845,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>(irs::integer_traits<size_t>::const_max);
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>(0);
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
-      q.field("phrase_anl")
-       .push_back(std::move(pt1), irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(pt2), 0);
 
       auto prepared = q.prepare(rdr);
 
@@ -5898,11 +5884,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>(irs::integer_traits<size_t>::const_max);
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl")
-       .push_back(std::move(pt), irs::integer_traits<size_t>::const_max)
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5943,11 +5928,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(irs::integer_traits<size_t>::const_max);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("f_x"));
-      q.field("phrase_anl")
-       .push_back(std::move(wt), irs::integer_traits<size_t>::const_max)
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 1);
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -5988,11 +5972,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>(1);
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(pt), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -6033,11 +6016,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>(irs::integer_traits<size_t>::const_max).term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& wt = q.mutable_options()->push_back<irs::prefix_term>(1);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%k"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(wt), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -6078,12 +6060,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& pt1 = q.mutable_options()->push_back<irs::prefix_term>(irs::integer_traits<size_t>::const_max);
+      auto& pt2 = q.mutable_options()->push_back<irs::prefix_term>(1);
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      irs::by_phrase::prefix_term pt2;
       pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl").push_back(std::move(pt1), irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(pt2), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -6124,12 +6105,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt1;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>(irs::integer_traits<size_t>::const_max);
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>(1);
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      irs::by_phrase::wildcard_term wt2;
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui%"));
-      q.field("phrase_anl").push_back(std::move(wt1), irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(wt2), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -6170,13 +6150,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(irs::integer_traits<size_t>::const_max);
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>(1);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo%"));
-      irs::by_phrase::levenshtein_term lt;
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quik"));
-      q.field("phrase_anl").push_back(std::move(wt), irs::integer_traits<size_t>::const_max)
-       .push_back(std::move(lt), 1);
 
       auto prepared = q.prepare(rdr);
 
@@ -6214,9 +6193,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // "fox ... ... ... ... ... ... ... ... ... ... quick"
     {
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, 10);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>(10).term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -6233,11 +6212,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // "fox ... ... ... ... ... ... ... ... ... ... qui*"
     {
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>(10);
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(std::move(pt), 10);
 
       auto prepared = q.prepare(rdr);
 
@@ -6254,11 +6232,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // "fox ... ... ... ... ... ... ... ... ... ... qu_ck"
     {
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>(10);
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qu_ck"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(std::move(wt), 10);
 
       auto prepared = q.prepare(rdr);
 
@@ -6275,12 +6252,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
     // "fox ... ... ... ... ... ... ... ... ... ... quc"
     {
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>(10);
       lt.max_distance = 2;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quc"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(std::move(lt), 10);
 
       auto prepared = q.prepare(rdr);
 
@@ -6299,9 +6275,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("eye"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("eye"))}, 1);
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("eye"));
+      q.mutable_options()->push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("eye"));
 
       auto prepared = q.prepare(rdr);
 
@@ -6334,15 +6310,15 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("as"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("in"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("the"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("past"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("we"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("are"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("looking"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("forward"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("as"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("in"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("the"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("past"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("we"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("are"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("looking"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6374,24 +6350,22 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::levenshtein_term lt;
+      *q.mutable_field() = "phrase_anl";
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 2;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ass"));
-      irs::by_phrase::wildcard_term wt1;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("in"));
+      auto& wt1 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("%"));
-      irs::by_phrase::wildcard_term wt2;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("past"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("we"));
+      auto& wt2 = q.mutable_options()->push_back<irs::wildcard_term>();
       wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("___"));
-      irs::by_phrase::prefix_term pt;
+      auto& st = q.mutable_options()->push_back<irs::set_term>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("looking")));
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("searching")));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      q.field("phrase_anl")
-       .push_back(std::move(lt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("in"))})
-       .push_back(std::move(wt1))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("past"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("we"))})
-       .push_back(std::move(wt2))
-       .push_back(irs::by_phrase::set_term{{irs::ref_cast<irs::byte_type>(irs::string_ref("looking")), irs::ref_cast<irs::byte_type>(irs::string_ref("searching"))}})
-       .push_back(std::move(pt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6423,15 +6397,15 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("as"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("in"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("the"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("past"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("we"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("are"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("looking"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("forward"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("as"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("in"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("the"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("past"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("we"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("are"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("looking"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
       irs::order ord;
       auto& sort = ord.add<tests::sort::custom_sort>(false);
@@ -6478,19 +6452,17 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("as"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("in"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("the"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_st"));
-      irs::by_phrase::prefix_term pt;
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("we"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("are"));
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("look"));
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("as"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("in"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("the"))})
-       .push_back(std::move(wt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("we"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("are"))})
-       .push_back(std::move(pt))
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("forward"))});
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
       irs::order ord;
       auto& sort = ord.add<tests::sort::custom_sort>(false);
@@ -6537,9 +6509,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr);
 
@@ -6588,9 +6560,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       auto pord = ord.prepare();
 
       irs::by_phrase q;
-      q.field("phrase_anl")
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(rdr, pord);
 
@@ -6623,9 +6595,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("zo\\_%"));
-      q.field("phrase_anl").push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6659,9 +6631,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("\\_oo"));
-      q.field("phrase_anl").push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6695,9 +6667,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("z\\_o"));
-      q.field("phrase_anl").push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6731,10 +6703,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("giraff\\_%"));
-      q.field("phrase_anl").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"))})
-       .push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6768,10 +6740,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("\\_iraffe"));
-      q.field("phrase_anl").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"))})
-       .push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6805,10 +6777,10 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
-      irs::by_phrase::wildcard_term wt;
+      *q.mutable_field() = "phrase_anl";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("gira\\_fe"));
-      q.field("phrase_anl").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"))})
-       .push_back(std::move(wt));
 
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
@@ -6845,12 +6817,18 @@ TEST_P(phrase_filter_test_case, by_phrase) {
   sequential_several_terms();
 }
 
+TEST(by_phrase_test, options) {
+  irs::by_phrase_options opts;
+  ASSERT_TRUE(opts.empty());
+  ASSERT_EQ(0, opts.size());
+  ASSERT_EQ(opts.begin(), opts.end());
+}
+
 TEST(by_phrase_test, ctor) {
   irs::by_phrase q;
   ASSERT_EQ(irs::by_phrase::type(), q.type());
   ASSERT_EQ("", q.field());
-  ASSERT_TRUE(q.empty());
-  ASSERT_EQ(0, q.size());
+  ASSERT_EQ(irs::by_phrase_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
   auto& features = irs::by_phrase::required();
@@ -6865,7 +6843,7 @@ TEST(by_phrase_test, boost) {
     // no terms
     {
       irs::by_phrase q;
-      q.field("field");
+      *q.mutable_field() = "field";
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -6874,7 +6852,8 @@ TEST(by_phrase_test, boost) {
     // single term
     {
       irs::by_phrase q;
-      q.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -6883,8 +6862,9 @@ TEST(by_phrase_test, boost) {
     // multiple terms
     {
       irs::by_phrase q;
-      q.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -6898,7 +6878,7 @@ TEST(by_phrase_test, boost) {
     // no terms, return empty query
     {
       irs::by_phrase q;
-      q.field("field");
+      *q.mutable_field() = "field";
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -6908,7 +6888,8 @@ TEST(by_phrase_test, boost) {
     // single term
     {
       irs::by_phrase q;
-      q.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -6918,8 +6899,9 @@ TEST(by_phrase_test, boost) {
     // single multiple terms 
     {
       irs::by_phrase q;
-      q.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))})
-       .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -6929,21 +6911,23 @@ TEST(by_phrase_test, boost) {
     // prefix, wildcard, levenshtein, set, range
     {
       irs::by_phrase q;
-      irs::by_phrase::prefix_term pt;
+      *q.mutable_field() = "field";
+      auto& pt = q.mutable_options()->push_back<irs::prefix_term>();
       pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-      irs::by_phrase::wildcard_term wt;
+      auto& wt = q.mutable_options()->push_back<irs::wildcard_term>();
       wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qu__k"));
-      irs::by_phrase::levenshtein_term lt;
+      auto& lt = q.mutable_options()->push_back<irs::levenshtein_term>();
       lt.max_distance = 1;
       lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brwn"));
-      irs::by_phrase::set_term ct{{irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}};
-      irs::by_phrase::range_term rt;
-      rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
-      rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
-      rt.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt.rng.max_type = irs::BoundType::INCLUSIVE;
-      q.field("field").push_back(std::move(pt)).push_back(std::move(wt)).push_back(lt).push_back(rt);
       q.boost(boost);
+      auto& st = q.mutable_options()->push_back<irs::set_term>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dob")));
+      auto& rt = q.mutable_options()->push_back<irs::range_term>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, prepared->boost());
@@ -6952,145 +6936,162 @@ TEST(by_phrase_test, boost) {
 }
 
 TEST(by_phrase_test, push_back_insert) {
-  irs::by_phrase q;
+  irs::by_phrase_options q;
 
   // push_back 
   {
-    q.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))}, 1);
-    q.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))});
+    q.push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q.push_back<irs::simple_term>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+    q.push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     ASSERT_FALSE(q.empty());
     ASSERT_EQ(3, q.size());
 
     // check elements via positions
     {
-      const irs::by_phrase::simple_term* st1 = q.get<irs::by_phrase::simple_term>(0);
+      const irs::simple_term* st1 = q.get<irs::simple_term>(0);
       ASSERT_TRUE(st1);
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))}, *st1);
-      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(2);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("quick")), st1->term);
+      const irs::simple_term* st2 = q.get<irs::simple_term>(2);
       ASSERT_TRUE(st2);
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))}, *st2);
-      const irs::by_phrase::simple_term* st3 = q.get<irs::by_phrase::simple_term>(3);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("brown")), st2->term);
+      const irs::simple_term* st3 = q.get<irs::simple_term>(3);
       ASSERT_TRUE(st3);
-      ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("fox"))}, *st3);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), st3->term);
     }
 
     // push term 
     {
-      irs::by_phrase::simple_term st1{irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"))};
+      irs::simple_term st1;
+      st1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"));
       q.push_back(st1, 0);
-      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(4);
+      const irs::simple_term* st2 = q.get<irs::simple_term>(4);
       ASSERT_TRUE(st2);
       ASSERT_EQ(st1, *st2);
 
-      irs::by_phrase::prefix_term pt1;
+      irs::prefix_term pt1;
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("cat"));
       q.push_back(pt1, 0);
-      const irs::by_phrase::prefix_term* pt2 = q.get<irs::by_phrase::prefix_term>(5);
+      const irs::prefix_term* pt2 = q.get<irs::prefix_term>(5);
       ASSERT_TRUE(pt2);
       ASSERT_EQ(pt1, *pt2);
 
-      irs::by_phrase::wildcard_term wt1;
+      irs::wildcard_term wt1;
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("dog"));
       q.push_back(wt1, 0);
-      const irs::by_phrase::wildcard_term* wt2 = q.get<irs::by_phrase::wildcard_term>(6);
+      const irs::wildcard_term* wt2 = q.get<irs::wildcard_term>(6);
       ASSERT_TRUE(wt2);
       ASSERT_EQ(wt1, *wt2);
 
-      irs::by_phrase::levenshtein_term lt1;
+      irs::levenshtein_term lt1;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("whale"));
       q.push_back(lt1, 0);
-      const irs::by_phrase::levenshtein_term* lt2 = q.get<irs::by_phrase::levenshtein_term>(7);
+      const irs::levenshtein_term* lt2 = q.get<irs::levenshtein_term>(7);
       ASSERT_TRUE(lt2);
       ASSERT_EQ(lt1, *lt2);
 
-      irs::by_phrase::set_term ct1;
-      ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("bird"))};
+      irs::set_term ct1;
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("bird")));
       q.push_back(ct1, 0);
-      const irs::by_phrase::set_term* ct2 = q.get<irs::by_phrase::set_term>(8);
+      const irs::set_term* ct2 = q.get<irs::set_term>(8);
       ASSERT_TRUE(ct2);
       ASSERT_EQ(ct1, *ct2);
 
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
+      irs::range_term rt1;
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
       q.push_back(rt1, 0);
-      const irs::by_phrase::range_term* rt2 = q.get<irs::by_phrase::range_term>(9);
+      const irs::range_term* rt2 = q.get<irs::range_term>(9);
       ASSERT_TRUE(rt2);
       ASSERT_EQ(rt1, *rt2);
     }
     ASSERT_EQ(9, q.size());
   }
 
-  // insert
+  // insert + move
   {
-    q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))}, 3);
-    const irs::by_phrase::simple_term* st1 = q.get<irs::by_phrase::simple_term>(3);
-    ASSERT_TRUE(st1);
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))}, *st1);
-    ASSERT_EQ(9, q.size());
+    {
+      irs::simple_term st;
+      st.term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
 
-    q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"))}, 9);
-    const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(9);
-    ASSERT_TRUE(st2);
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"))}, *st2);
-    ASSERT_EQ(9, q.size());
-
-    q.insert(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, 28);
-    const irs::by_phrase::simple_term* st3 = q.get<irs::by_phrase::simple_term>(28);
-    ASSERT_TRUE(st3);
-    ASSERT_EQ(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("dog"))}, *st3);
-    ASSERT_EQ(10, q.size());
+      q.insert(std::move(st), 3);
+      const irs::simple_term* st1 = q.get<irs::simple_term>(3);
+      ASSERT_TRUE(st1);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("jumps")), st1->term);
+      ASSERT_EQ(9, q.size());
+    }
 
     {
-      irs::by_phrase::simple_term st1{irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"))};
+      irs::simple_term st;
+      st.term = irs::ref_cast<irs::byte_type>(irs::string_ref("lazy"));
+
+      q.insert(std::move(st), 9);
+      const irs::simple_term* st2 = q.get<irs::simple_term>(9);
+      ASSERT_TRUE(st2);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("lazy")), st2->term);
+      ASSERT_EQ(9, q.size());
+    }
+
+    {
+      irs::simple_term st;
+      st.term = irs::ref_cast<irs::byte_type>(irs::string_ref("dob"));
+
+      q.insert(std::move(st), 28);
+      const irs::simple_term* st3 = q.get<irs::simple_term>(28);
+      ASSERT_TRUE(st3);
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("dog")), st3->term);
+      ASSERT_EQ(10, q.size());
+    }
+
+    {
+      irs::simple_term st1;
+      st1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"));
       q.insert(st1, 5);
-      const irs::by_phrase::simple_term* st2 = q.get<irs::by_phrase::simple_term>(5);
+      const irs::simple_term* st2 = q.get<irs::simple_term>(5);
       ASSERT_TRUE(st2);
       ASSERT_EQ(st1, *st2);
       ASSERT_EQ(10, q.size());
 
-      irs::by_phrase::prefix_term pt1;
+      irs::prefix_term pt1;
       pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("cat"));
       q.insert(pt1, 7);
-      const irs::by_phrase::prefix_term* pt2 = q.get<irs::by_phrase::prefix_term>(7);
+      const irs::prefix_term* pt2 = q.get<irs::prefix_term>(7);
       ASSERT_TRUE(pt2);
       ASSERT_EQ(pt1, *pt2);
       ASSERT_EQ(10, q.size());
 
-      irs::by_phrase::wildcard_term wt1;
+      irs::wildcard_term wt1;
       wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("dog"));
       q.insert(wt1, 9);
-      const irs::by_phrase::wildcard_term* wt2 = q.get<irs::by_phrase::wildcard_term>(9);
+      const irs::wildcard_term* wt2 = q.get<irs::wildcard_term>(9);
       ASSERT_TRUE(wt2);
       ASSERT_EQ(wt1, *wt2);
       ASSERT_EQ(10, q.size());
 
-      irs::by_phrase::levenshtein_term lt1;
+      irs::levenshtein_term lt1;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("whale"));
       q.insert(lt1, 29);
-      const irs::by_phrase::levenshtein_term* lt2 = q.get<irs::by_phrase::levenshtein_term>(29);
+      const irs::levenshtein_term* lt2 = q.get<irs::levenshtein_term>(29);
       ASSERT_TRUE(lt2);
       ASSERT_EQ(lt1, *lt2);
       ASSERT_EQ(11, q.size());
 
-      irs::by_phrase::set_term ct1;
-      ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("bird"))};
+      irs::set_term ct1;
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("bird")));
       q.insert(ct1, 29);
-      const irs::by_phrase::set_term* ct2 = q.get<irs::by_phrase::set_term>(29);
+      const irs::set_term* ct2 = q.get<irs::set_term>(29);
       ASSERT_TRUE(ct2);
       ASSERT_EQ(ct1, *ct2);
       ASSERT_EQ(11, q.size());
 
-      irs::by_phrase::range_term rt1;
-      rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-      rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-      rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-      rt1.rng.max_type = irs::BoundType::INCLUSIVE;
+      irs::range_term rt1;
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
       q.insert(rt1, 10);
-      const irs::by_phrase::range_term* rt2 = q.get<irs::by_phrase::range_term>(10);
+      const irs::range_term* rt2 = q.get<irs::range_term>(10);
       ASSERT_TRUE(rt2);
       ASSERT_EQ(rt1, *rt2);
       ASSERT_EQ(12, q.size());
@@ -7103,186 +7104,180 @@ TEST(by_phrase_test, equal) {
 
   {
     irs::by_phrase q0;
-    q0.field("name");
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q0.mutable_field() = "name";
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
 
     irs::by_phrase q1;
-    q1.field("name");
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q1.mutable_field() = "name";
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
     ASSERT_EQ(q0, q1);
     ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
     irs::by_phrase q0;
-    irs::by_phrase::prefix_term pt1;
-    pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-    irs::by_phrase::set_term ct1;
-    ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")),
-                irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
-    irs::by_phrase::wildcard_term wt1;
-    wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-    irs::by_phrase::levenshtein_term lt1;
-    lt1.max_distance = 2;
-    lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_phrase::range_term rt1;
-    rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-    rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-    q0.field("name");
-    q0.push_back(std::move(pt1));
-    q0.push_back(std::move(ct1));
-    q0.push_back(std::move(wt1));
-    q0.push_back(std::move(lt1));
-    q0.push_back(std::move(rt1));
+    {
+      *q0.mutable_field() = "name";
+      auto& pt1 = q0.mutable_options()->push_back<irs::prefix_term>();
+      pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+      auto& ct1 = q0.mutable_options()->push_back<irs::set_term>();
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("light")));
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dark")));
+      auto& wt1 = q0.mutable_options()->push_back<irs::wildcard_term>();
+      wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+      auto& lt1 = q0.mutable_options()->push_back<irs::levenshtein_term>();
+      lt1.max_distance = 2;
+      lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      auto& rt1 = q0.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     irs::by_phrase q1;
-    irs::by_phrase::prefix_term pt2;
-    pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-    irs::by_phrase::set_term ct2;
-    ct2.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")), irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
-    irs::by_phrase::wildcard_term wt2;
-    wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-    irs::by_phrase::levenshtein_term lt2;
-    lt2.max_distance = 2;
-    lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_phrase::range_term rt2;
-    rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-    rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-    q1.field("name");
-    q1.push_back(std::move(pt2));
-    q1.push_back(std::move(ct2));
-    q1.push_back(std::move(wt2));
-    q1.push_back(std::move(lt2));
-    q1.push_back(std::move(rt2));
+    {
+      *q1.mutable_field() = "name";
+      auto& pt1 = q1.mutable_options()->push_back<irs::prefix_term>();
+      pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+      auto& ct1 = q1.mutable_options()->push_back<irs::set_term>();
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("light")));
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dark")));
+      auto& wt1 = q1.mutable_options()->push_back<irs::wildcard_term>();
+      wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+      auto& lt1 = q1.mutable_options()->push_back<irs::levenshtein_term>();
+      lt1.max_distance = 2;
+      lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      auto& rt1 = q1.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+    }
+
     ASSERT_EQ(q0, q1);
     ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
     irs::by_phrase q0;
-    q0.field("name");
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"))});
+    *q0.mutable_field() = "name";
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"));
 
     irs::by_phrase q1;
-    q1.field("name");
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q1.mutable_field() = "name";
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_phrase q0;
-    q0.field("name1");
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q0.mutable_field() = "name1";
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
 
     irs::by_phrase q1;
-    q1.field("name");
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q1.mutable_field() = "name";
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_phrase q0;
-    q0.field("name");
-    q0.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+    *q0.mutable_field() = "name";
+    q0.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
     irs::by_phrase q1;
-    q1.field("name");
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
-    q1.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("brown"))});
+    *q1.mutable_field() = "name";
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    q1.mutable_options()->push_back<irs::simple_term>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_phrase q0;
-    irs::by_phrase::prefix_term pt1;
-    pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quil"));
-    irs::by_phrase::set_term ct1;
-    ct1.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")),
-                irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
-    irs::by_phrase::wildcard_term wt1;
-    wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-    irs::by_phrase::levenshtein_term lt1;
-    lt1.max_distance = 2;
-    lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_phrase::range_term rt1;
-    rt1.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt1.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt1.rng.min_type = irs::BoundType::INCLUSIVE;
-    rt1.rng.max_type = irs::BoundType::INCLUSIVE;
-    q0.field("name");
-    q0.push_back(std::move(pt1));
-    q0.push_back(std::move(ct1));
-    q0.push_back(std::move(wt1));
-    q0.push_back(std::move(lt1));
-    q0.push_back(std::move(rt1));
+    {
+      *q0.mutable_field() = "name";
+      auto& pt1 = q0.mutable_options()->push_back<irs::prefix_term>();
+      pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quil"));
+      auto& ct1 = q0.mutable_options()->push_back<irs::set_term>();
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("light")));
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dark")));
+      auto& wt1 = q0.mutable_options()->push_back<irs::wildcard_term>();
+      wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+      auto& lt1 = q0.mutable_options()->push_back<irs::levenshtein_term>();
+      lt1.max_distance = 2;
+      lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      auto& rt1 = q0.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     irs::by_phrase q1;
-    irs::by_phrase::prefix_term pt2;
-    pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-    irs::by_phrase::set_term ct2;
-    ct2.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")), irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
-    irs::by_phrase::wildcard_term wt2;
-    wt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-    irs::by_phrase::levenshtein_term lt2;
-    lt2.max_distance = 2;
-    lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_phrase::range_term rt2;
-    rt2.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt2.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt2.rng.min_type = irs::BoundType::INCLUSIVE;
-    rt2.rng.max_type = irs::BoundType::INCLUSIVE;
-    q1.field("name");
-    q1.push_back(std::move(pt2));
-    q1.push_back(std::move(ct2));
-    q1.push_back(std::move(wt2));
-    q1.push_back(std::move(lt2));
-    q1.push_back(std::move(rt2));
+    {
+      *q1.mutable_field() = "name";
+      auto& pt1 = q1.mutable_options()->push_back<irs::prefix_term>();
+      pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+      auto& ct1 = q1.mutable_options()->push_back<irs::set_term>();
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("light")));
+      ct1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dark")));
+      auto& wt1 = q1.mutable_options()->push_back<irs::wildcard_term>();
+      wt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
+      auto& lt1 = q1.mutable_options()->push_back<irs::levenshtein_term>();
+      lt1.max_distance = 2;
+      lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+      auto& rt1 = q1.mutable_options()->push_back<irs::range_term>();
+      rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+      rt1.range.min_type = irs::BoundType::INCLUSIVE;
+      rt1.range.max_type = irs::BoundType::INCLUSIVE;
+    }
+
     ASSERT_NE(q0, q1);
   }
 }
 
 TEST(by_phrase_test, copy_move) {
   {
-    irs::by_phrase q0;
-    irs::by_phrase::simple_term st{irs::ref_cast<irs::byte_type>(irs::string_ref("very"))};
-    irs::by_phrase::prefix_term pt;
+    irs::simple_term st;
+    st.term = irs::ref_cast<irs::byte_type>(irs::string_ref("very"));
+    irs::prefix_term pt;
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-    irs::by_phrase::set_term ct;
-    ct.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("light")),
-                irs::ref_cast<irs::byte_type>(irs::string_ref("dark"))};
-    irs::by_phrase::wildcard_term wt;
+    irs::set_term ct;
+    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("light")));
+    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dark")));
+    irs::wildcard_term wt;
     wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("br_wn"));
-    irs::by_phrase::levenshtein_term lt;
+    irs::levenshtein_term lt;
     lt.max_distance = 2;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_phrase::range_term rt;
-    rt.rng.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt.rng.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
-    rt.rng.min_type = irs::BoundType::INCLUSIVE;
-    rt.rng.max_type = irs::BoundType::INCLUSIVE;
-    q0.field("name");
-    q0.push_back(st);
-    q0.push_back(pt);
-    q0.push_back(ct);
-    q0.push_back(wt);
-    q0.push_back(lt);
-    q0.push_back(rt);
-    q0.push_back(std::move(st));
-    q0.push_back(std::move(pt));
-    q0.push_back(std::move(ct));
-    q0.push_back(std::move(wt));
-    q0.push_back(std::move(lt));
-    q0.push_back(std::move(rt));
+    irs::range_term rt;
+    rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+    rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
+    rt.range.min_type = irs::BoundType::INCLUSIVE;
+    rt.range.max_type = irs::BoundType::INCLUSIVE;
+
+    irs::by_phrase q0;
+    *q0.mutable_field() = "name";
+    q0.mutable_options()->push_back(st);
+    q0.mutable_options()->push_back(pt);
+    q0.mutable_options()->push_back(ct);
+    q0.mutable_options()->push_back(wt);
+    q0.mutable_options()->push_back(lt);
+    q0.mutable_options()->push_back(rt);
+    q0.mutable_options()->push_back(std::move(st));
+    q0.mutable_options()->push_back(std::move(pt));
+    q0.mutable_options()->push_back(std::move(ct));
+    q0.mutable_options()->push_back(std::move(wt));
+    q0.mutable_options()->push_back(std::move(lt));
+    q0.mutable_options()->push_back(std::move(rt));
 
     irs::by_phrase q1 = q0;
     ASSERT_EQ(q0, q1);
