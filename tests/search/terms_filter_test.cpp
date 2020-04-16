@@ -100,7 +100,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
-    add_segment( gen );
+    add_segment(gen);
   }
 
   auto rdr = open_reader();
