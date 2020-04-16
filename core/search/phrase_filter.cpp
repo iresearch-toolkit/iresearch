@@ -566,7 +566,9 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  term_stats.finish(stats_buf, field_stats, index);
+  for (size_t term_idx = 0; term_idx < phrase_size; ++term_idx) {
+    term_stats.finish(stats_buf, term_idx, field_stats, index);
+  }
 
   return memory::make_shared<fixed_phrase_query>(
     std::move(phrase_states),
@@ -680,7 +682,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   ord.prepare_stats(stats_buf);
   for (auto& collector: phrase_part_stats) {
-    collector.finish(stats_buf, field_stats, index);
+    collector.finish(stats_buf, 0, field_stats, index);
   }
 
   return memory::make_shared<variadic_phrase_query>(

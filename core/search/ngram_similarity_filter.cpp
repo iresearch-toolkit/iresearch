@@ -528,7 +528,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   ord.prepare_stats(stats_buf);
-  term_stats.finish(stats_buf, field_stats, rdr);
+  term_stats.finish(stats_buf, 0, field_stats, rdr);
 
   return memory::make_shared<ngram_similarity_query>(
       min_match_count,

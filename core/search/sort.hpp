@@ -877,6 +877,16 @@ class IRESEARCH_API order final {
       return prepared_order_t::const_iterator(order_.end());
     }
 
+    const order_bucket& front() const noexcept {
+      assert(!order_.empty());
+      return order_.front();
+    }
+
+    const order_bucket& back() const noexcept {
+      assert(!order_.empty());
+      return order_.back();
+    }
+
     const order_bucket& operator[](size_t i) const noexcept {
       return order_[i];
     }

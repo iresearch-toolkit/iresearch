@@ -129,7 +129,8 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
   auto begin = collectors_.begin();
-  for (size_t i = 0; i < size; ++i) {
+  auto end = collectors_.end();
+  for (; begin != end; ) {
     for (auto& entry: buckets) {
       assert(entry.bucket); // ensured by order::prepare
 
@@ -145,7 +146,6 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
 void term_collectors::collect(
     const sub_reader& segment, const term_reader& field,
     size_t term_idx, const attribute_view& attrs) const {
-  // collector may be null if prepare_term_collector() returned nullptr
   const size_t count = buckets_->size();
 
   switch (count) {
@@ -182,22 +182,23 @@ void term_collectors::collect(
 
 size_t term_collectors::push_back() {
   const size_t size = buckets_->size();
+  assert(0 == collectors_.size() || 0 == collectors_.size() % size);
 
   switch (size) {
     case 0:
       return 0;
     case 1: {
       const auto term_offset = collectors_.size();
-      assert((*buckets_)[0].bucket); // ensured by order::prepare
-      collectors_.emplace_back((*buckets_)[0].bucket->prepare_term_collector());
+      assert(buckets_->front().bucket); // ensured by order::prepare
+      collectors_.emplace_back(buckets_->front().bucket->prepare_term_collector());
       return term_offset;
     }
     case 2: {
       const auto term_offset = collectors_.size() / 2;
-      assert((*buckets_)[0].bucket); // ensured by order::prepare
-      collectors_.emplace_back((*buckets_)[0].bucket->prepare_term_collector());
-      assert((*buckets_)[1].bucket); // ensured by order::prepare
-      collectors_.emplace_back((*buckets_)[1].bucket->prepare_term_collector());
+      assert(buckets_->front().bucket); // ensured by order::prepare
+      collectors_.emplace_back(buckets_->front().bucket->prepare_term_collector());
+      assert(buckets_->back().bucket); // ensured by order::prepare
+      collectors_.emplace_back(buckets_->back().bucket->prepare_term_collector());
       return term_offset;
     }
     default: {
@@ -212,25 +213,49 @@ size_t term_collectors::push_back() {
   }
 }
 
-void term_collectors::finish(byte_type* stats_buf,
-                             const field_collectors& field_collectors,
-                             const index_reader& index) const {
+void term_collectors::finish(
+    byte_type* stats_buf,
+    size_t term_idx,
+    const field_collectors& field_collectors,
+    const index_reader& index) const {
   const auto bucket_count = buckets_->size();
-  const auto count = collectors_.size();
-  assert(0 == count || count % bucket_count == 0); // enforced by allocation in the constructor
 
-  for (size_t i = 0; i < count; ++i) {
-    auto bucket_offset = i % bucket_count;
-    auto& sort = (*buckets_)[bucket_offset];
-    assert(sort.bucket); // ensured by order::prepare
+  switch (bucket_count) {
+    case 0:
+      break;
+    case 1: {
+      assert(field_collectors.front());
+      assert(buckets_->front().bucket);
+      buckets_->front().bucket->collect(
+        stats_buf + buckets_->front().stats_offset,
+        index, field_collectors.front(),
+        collectors_[term_idx].get());
+    } break;
+    case 2: {
+      assert(field_collectors.front());
+      assert(buckets_->front().bucket);
+      buckets_->front().bucket->collect(
+        stats_buf + buckets_->front().stats_offset,
+        index, field_collectors.front(),
+        collectors_[term_idx].get());
 
-    assert(i % bucket_count < field_collectors.size());
-    sort.bucket->collect(
-      stats_buf + sort.stats_offset, // where stats for bucket start
-      index,
-      field_collectors[bucket_offset],
-      collectors_[i].get()
-    );
+      assert(field_collectors.back());
+      assert(buckets_->back().bucket);
+      buckets_->back().bucket->collect(
+        stats_buf + buckets_->back().stats_offset,
+        index, field_collectors.back(),
+        collectors_[term_idx + 1].get());
+    } break;
+    default: {
+      auto begin = field_collectors.begin();
+      for (auto& bucket : (*buckets_)) {
+        bucket.bucket->collect(
+          stats_buf + bucket.stats_offset,
+          index, begin->get(),
+          collectors_[term_idx++].get());
+        ++begin;
+      }
+    } break;
   }
 }
 

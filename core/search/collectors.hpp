@@ -133,6 +133,16 @@ class collectors_base {
     }
   }
 
+  typename Collector::pointer front() const noexcept {
+    assert(!collectors_.empty());
+    return collectors_.front().get();
+  }
+
+  typename Collector::pointer back() const noexcept {
+    assert(!collectors_.empty());
+    return collectors_.back().get();
+  }
+
   typename Collector::pointer operator[](size_t i) const noexcept {
     assert(i < collectors_.size());
     return collectors_[i].get();
@@ -257,26 +267,30 @@ class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrap
   /// @brief collect term related statistics, i.e. term used in the filter
   /// @param segment the segment being processed (e.g. for columnstore)
   /// @param field the field matched by the filter in the 'segment'
-  /// @param term_offset offset of term, value < constructor 'terms_count'
+  /// @param term_index index of term, value < constructor 'terms_count'
   /// @param term_attributes the attributes of the matched term in the field
   /// @note called once for every term matched by a filter in the 'field'
   ///       per each segment
   /// @note only called on a matched 'term' in the 'field' in the 'segment'
   //////////////////////////////////////////////////////////////////////////
-  void collect(const sub_reader& segment, const term_reader& field,
-               size_t term_idx, const attribute_view& attrs) const;
+  void collect(const sub_reader& segment,
+               const term_reader& field,
+               size_t term_idx,
+               const attribute_view& attrs) const;
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief store collected index statistics into 'stats' of the
   ///        current 'filter'
   /// @param stats out-parameter to store statistics for later use in
   ///        calls to score(...)
+  /// @param term_index index of term, value < constructor 'terms_count'
   /// @param index the full index to collect statistics on
   /// @note called once on the 'index' for every term matched by a filter
   ///       calling collect(...) on each of its segments
   /// @note if not matched terms then called exactly once
   //////////////////////////////////////////////////////////////////////////
   void finish(byte_type* stats_buf,
+              size_t term_idx,
               const field_collectors& field_collectors,
               const index_reader& index) const;
 };

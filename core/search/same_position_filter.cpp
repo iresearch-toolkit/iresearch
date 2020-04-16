@@ -105,7 +105,6 @@ class same_position_iterator final : public conjunction_t {
   positions_t pos_;
 }; // same_position_iterator
 
-
 class same_position_query final : public filter::prepared {
  public:
   typedef std::vector<term_query::term_state> terms_states_t;
@@ -221,20 +220,21 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::states_t::state_type term_states;
   term_states.reserve(size);
 
-  // prepare phrase stats (collector for each term)
+  //////////////////////////////////////////////////////////////////////////////
+  /// !!! FIXME !!!
+  /// that's completely wrong, we have to collect stats for each field
+  /// instead of aggregating them using a single collector
+  //////////////////////////////////////////////////////////////////////////////
   field_collectors field_stats(ord);
-  std::vector<term_collectors> term_stats;
-  term_stats.reserve(size);
 
-  for(auto i = size; i; --i) {
-    term_stats.emplace_back(ord, 1); // 1 term per bstring because a range is treated as a disjunction
-  }
+  // prepare phrase stats (collector for each term)
+  term_collectors term_stats(ord, size);
 
   for (const auto& segment : index) {
-    auto term_itr = term_stats.begin();
+    size_t term_idx = 0;
 
     for (const auto& branch : terms) {
-      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
+      auto next_stats = irs::make_finally([&term_idx](){ ++term_idx; });
 
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
@@ -263,7 +263,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       term->read(); // read term attributes
-      term_itr->collect(segment, *field, 0, term->attributes()); // collect statistics, 0 because only 1 term
+      term_stats.collect(segment, *field, term_idx, term->attributes());
       term_states.emplace_back();
 
       auto& state = term_states.back();
@@ -285,26 +285,18 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // finish stats
+  size_t term_idx = 0;
   same_position_query::stats_t stats(size);
-  auto stat_itr = stats.begin();
-  auto term_itr = term_stats.begin();
-  assert(term_stats.size() == size); // initialized above
-
-  for (size_t i = 0; i < size; ++i) {
-    stat_itr->resize(ord.stats_size());
-    auto* stats_buf = const_cast<byte_type*>(stat_itr->data());
-
-    ord.prepare_stats(stats_buf);
-    term_itr->finish(stats_buf, field_stats, index);
-    ++stat_itr;
-    ++term_itr;
+  for (auto& stat : stats) {
+    stat.resize(ord.stats_size());
+    auto* stats_buf = const_cast<byte_type*>(stat.data());
+    term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
   return memory::make_shared<same_position_query>(
     std::move(query_states),
     std::move(stats),
-    this->boost() * boost
-  );
+    this->boost() * boost);
 }
 
 NS_END // ROOT
