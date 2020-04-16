@@ -1535,7 +1535,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -1576,11 +1576,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "(x0, x0]"
+    // by_range_options "(x0, x0]"
     {
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.min_type = irs::BoundType::EXCLUSIVE;
@@ -1605,11 +1605,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "[x0, x0)"
+    // by_range_options "[x0, x0)"
     {
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -1634,11 +1634,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "(x0, x0)"
+    // by_range_options "(x0, x0)"
     {
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.min_type = irs::BoundType::EXCLUSIVE;
@@ -1669,7 +1669,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -1742,13 +1742,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "(x0, x2]"
+    // by_range_options "(x0, x2]"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt.range.min_type = irs::BoundType::EXCLUSIVE;
@@ -1813,13 +1813,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "[x0, x2)"
+    // by_range_options "[x0, x2)"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -1876,13 +1876,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // by_range_filter_options "(x0, x2)"
+    // by_range_options "(x0, x2)"
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt.range.min_type = irs::BoundType::EXCLUSIVE;
@@ -2180,14 +2180,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // search by_range_filter_options "[x0, x1]" on field without positions
+    // search by_range_options "[x0, x1]" on field without positions
     // which is ok for first word in phrase
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -2814,14 +2814,14 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // search by_range_filter_options "[x0, x1]" with phrase offset
+    // search by_range_options "[x0, x1]" with phrase offset
     // which does not matter
     {
       irs::bytes_ref actual_value;
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>(irs::integer_traits<size_t>::const_max);
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>(irs::integer_traits<size_t>::const_max);
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -3222,7 +3222,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -3483,7 +3483,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -3745,7 +3745,7 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       *q.mutable_field() = "phrase_anl";
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -4050,12 +4050,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt1 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
       rt1.range.max_type = irs::BoundType::INCLUSIVE;
-      auto& rt2 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt2 = q.mutable_options()->push_back<irs::by_range_options>();
       rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt2.range.min_type = irs::BoundType::INCLUSIVE;
@@ -4300,13 +4300,13 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt1 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
       rt1.range.max_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
-      auto& rt2 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt2 = q.mutable_options()->push_back<irs::by_range_options>();
       rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt2.range.min_type = irs::BoundType::INCLUSIVE;
@@ -4620,12 +4620,12 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
-      auto& rt1 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
       rt1.range.max_type = irs::BoundType::INCLUSIVE;
-      auto& rt2 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt2 = q.mutable_options()->push_back<irs::by_range_options>();
       rt2.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt2.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x2"));
       rt2.range.min_type = irs::BoundType::INCLUSIVE;
@@ -4997,9 +4997,9 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_phrase q;
       *q.mutable_field() = "phrase_anl";
-      auto& rt1 = q.mutable_options()->push_back<irs::by_range_filter_options>();
-      auto& rt2 = q.mutable_options()->push_back<irs::by_range_filter_options>();
-      auto& rt3 = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q.mutable_options()->push_back<irs::by_range_options>();
+      auto& rt2 = q.mutable_options()->push_back<irs::by_range_options>();
+      auto& rt3 = q.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("x0"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("x1"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
@@ -6936,7 +6936,7 @@ TEST(by_phrase_test, boost) {
       auto& st = q.mutable_options()->push_back<irs::by_terms_options>();
       st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
       st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dob")));
-      auto& rt = q.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
       rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
       rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
       rt.range.min_type = irs::BoundType::INCLUSIVE;
@@ -7009,13 +7009,13 @@ TEST(by_phrase_test, push_back_insert) {
       ASSERT_TRUE(ct2);
       ASSERT_EQ(ct1, *ct2);
 
-      irs::by_range_filter_options rt1;
+      irs::by_range_options rt1;
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
       rt1.range.max_type = irs::BoundType::INCLUSIVE;
       q.push_back(rt1, 0);
-      const irs::by_range_filter_options* rt2 = q.get<irs::by_range_filter_options>(9);
+      const irs::by_range_options* rt2 = q.get<irs::by_range_options>(9);
       ASSERT_TRUE(rt2);
       ASSERT_EQ(rt1, *rt2);
     }
@@ -7098,13 +7098,13 @@ TEST(by_phrase_test, push_back_insert) {
       ASSERT_EQ(ct1, *ct2);
       ASSERT_EQ(11, q.size());
 
-      irs::by_range_filter_options rt1;
+      irs::by_range_options rt1;
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
       rt1.range.max_type = irs::BoundType::INCLUSIVE;
       q.insert(rt1, 10);
-      const irs::by_range_filter_options* rt2 = q.get<irs::by_range_filter_options>(10);
+      const irs::by_range_options* rt2 = q.get<irs::by_range_options>(10);
       ASSERT_TRUE(rt2);
       ASSERT_EQ(rt1, *rt2);
       ASSERT_EQ(12, q.size());
@@ -7143,7 +7143,7 @@ TEST(by_phrase_test, equal) {
       auto& lt1 = q0.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      auto& rt1 = q0.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q0.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
@@ -7163,7 +7163,7 @@ TEST(by_phrase_test, equal) {
       auto& lt1 = q1.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      auto& rt1 = q1.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q1.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
@@ -7226,7 +7226,7 @@ TEST(by_phrase_test, equal) {
       auto& lt1 = q0.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      auto& rt1 = q0.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q0.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
@@ -7246,7 +7246,7 @@ TEST(by_phrase_test, equal) {
       auto& lt1 = q1.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
       lt1.max_distance = 2;
       lt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-      auto& rt1 = q1.mutable_options()->push_back<irs::by_range_filter_options>();
+      auto& rt1 = q1.mutable_options()->push_back<irs::by_range_options>();
       rt1.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
       rt1.range.min_type = irs::BoundType::INCLUSIVE;
@@ -7271,7 +7271,7 @@ TEST(by_phrase_test, copy_move) {
     irs::by_edit_distance_filter_options lt;
     lt.max_distance = 2;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
-    irs::by_range_filter_options rt;
+    irs::by_range_options rt;
     rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
     rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("elephant"));
     rt.range.min_type = irs::BoundType::INCLUSIVE;

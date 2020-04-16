@@ -97,7 +97,7 @@ struct get_visitor {
     };
   }
 
-  result_type operator()(const by_range_filter_options& part) const {
+  result_type operator()(const by_range_options& part) const {
     const auto& range = part.range;
     return [&range](const sub_reader& segment,
                   const term_reader& field,
@@ -108,6 +108,7 @@ struct get_visitor {
 
   template<typename T>
   result_type operator()(const T&) const {
+    assert(false);
     return [](const sub_reader&, const term_reader&, filter_visitor&) { };
   }
 }; // get_visitor
@@ -133,7 +134,8 @@ struct prepare : util::noncopyable {
 
   result_type operator()(const by_edit_distance_filter_options& part) const {
     return by_edit_distance::prepare(
-      index, order, boost, field, part.term, 0, // collect all terms
+      index, order, boost, field, part.term,
+      0, // collect all terms
       part.max_distance, part.provider,
       part.with_transpositions);
   }
@@ -142,10 +144,10 @@ struct prepare : util::noncopyable {
     return nullptr;
   }
 
-  result_type operator()(const by_range_filter_options& part) const {
+  result_type operator()(const by_range_options& part) const {
     return by_range::prepare(
       index, order, boost, field,
-       part.range, 1024); // FIXME
+       part.range, part.scored_terms_limit);
   }
 
   template<typename T>
@@ -156,7 +158,7 @@ struct prepare : util::noncopyable {
 
   prepare(const index_reader& index,
           const order::prepared& order,
-          const string_ref& field,
+          const std::string& field,
           const boost_t boost) noexcept
     : index(index), order(order),
       field(field), boost(boost) {

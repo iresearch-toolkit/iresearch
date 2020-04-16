@@ -53,7 +53,7 @@ class IRESEARCH_API by_phrase_options {
     by_wildcard_options,
     by_edit_distance_filter_options,
     by_terms_options,
-    by_range_filter_options>;
+    by_range_options>;
 
   using phrase_type = std::map<size_t, phrase_part>;
 
