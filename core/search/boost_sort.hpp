@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-struct boost_sort : sort {
+struct boost_sort : public sort {
   DECLARE_SORT_TYPE();
   DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
 

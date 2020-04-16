@@ -503,8 +503,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
@@ -518,8 +517,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
   }
 
@@ -577,11 +575,9 @@ class filter_test_case_base : public index_test_base {
  private:
   void get_query_result(
       const irs::filter::prepared::ptr& q,
-      const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
       std::vector<irs::doc_id_t>& result,
-      std::vector<irs::cost::cost_t>& result_costs
-  ) {
+      std::vector<irs::cost::cost_t>& result_costs) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
 

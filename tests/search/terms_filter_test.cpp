@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 
+#include "search/boost_sort.hpp"
 #include "search/terms_filter.hpp"
 
 NS_LOCAL
@@ -141,25 +142,29 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     ASSERT_EQ(3, finish_count); // 3 unque terms
   }
 
-//  // match all
-//  {
-//    docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
-//    costs_t costs{ docs.size() };
-//    irs::order order;
-//    order.add<tests::sort::frequency_sort>(false);
-//
-//    check_query(make_filter("prefix", "%"), order, docs, rdr);
-//  }
-//
-//  // prefix
-//  {
-//    docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
-//    costs_t costs{ docs.size() };
-//    irs::order order;
-//    order.add<tests::sort::frequency_sort>(false);
-//
-//    check_query(make_filter("prefix", "a%"), order, docs, rdr);
-//  }
+  // check boost
+  {
+    const docs_t docs{ 21, 31, 32, 1 };
+    const costs_t costs{ docs.size() };
+    irs::order order;
+    order.add<irs::boost_sort>(true);
+
+    const auto filter = make_filter("prefix", { {"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
+
+    check_query(filter, order, docs, rdr);
+  }
+
+  // check negative boost
+  {
+    const docs_t docs{ 21, 31, 32, 1 };
+    const costs_t costs{ docs.size() };
+    irs::order order;
+    order.add<irs::boost_sort>(true);
+
+    const auto filter = make_filter("prefix", { {"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f} });
+
+    check_query(filter, order, docs, rdr);
+  }
 }
 
 TEST_P(terms_filter_test_case, simple_sequential) {
