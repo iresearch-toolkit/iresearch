@@ -119,4 +119,15 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
 
 NS_END // ROOT
 
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_range_options> {
+  size_t operator()(const ::iresearch::by_range_options& v) const noexcept {
+    return v.hash();
+  }
+};
+
+NS_END
+
 #endif // IRESEARCH_RANGE_FILTER_H

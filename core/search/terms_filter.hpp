@@ -59,8 +59,7 @@ struct IRESEARCH_API by_terms_options {
     }
 
     size_t hash() const noexcept {
-      return hash_combine(std::hash<decltype(term)>()(term),
-                          std::hash<decltype(boost)>()(boost));
+      return hash_combine(std::hash<decltype(boost)>()(boost), term);
     }
   };
 
@@ -75,7 +74,9 @@ struct IRESEARCH_API by_terms_options {
 
   size_t hash() const noexcept {
     size_t hash = 0;
-    for (auto& term : terms) hash = hash_combine(hash, term.hash());
+    for (auto& term : terms) {
+      hash = hash_combine(hash, term.hash());
+    }
     return hash;
   }
 }; // by_terms_options
@@ -109,6 +110,17 @@ class IRESEARCH_API by_terms final
     boost_t boost,
     const attribute_view& /*ctx*/) const override;
 }; // by_terms
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_terms_options> {
+  size_t operator()(const ::iresearch::by_terms_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
 

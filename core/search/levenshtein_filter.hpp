@@ -98,8 +98,7 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
   }
 
   size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(),
-                        std::hash<size_t>()(max_terms));
+    return hash_combine(filter_options::hash(), max_terms);
   }
 }; // by_edit_distance_options
 

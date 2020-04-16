@@ -65,8 +65,7 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
   }
 
   size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(),
-                        std::hash<size_t>()(scored_terms_limit));
+    return hash_combine(filter_options::hash(), scored_terms_limit);
   }
 }; // by_wildcard_options
 
@@ -109,6 +108,17 @@ class IRESEARCH_API by_wildcard final
                    options().scored_terms_limit);
   }
 }; // by_wildcard
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_wildcard_options> {
+  size_t operator()(const ::iresearch::by_wildcard_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
 

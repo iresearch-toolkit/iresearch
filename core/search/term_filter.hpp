@@ -91,4 +91,15 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
 
 NS_END
 
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_term_options> {
+  size_t operator()(const ::iresearch::by_term_options& v) const noexcept {
+    return v.hash();
+  }
+};
+
+NS_END
+
 #endif // IRESEARCH_TERM_FILTER_H

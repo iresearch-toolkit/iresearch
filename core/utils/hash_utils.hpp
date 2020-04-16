@@ -38,7 +38,7 @@ FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
 }
 
 template<typename T>
-FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
+FORCE_INLINE size_t hash_combine(size_t seed, T const& v) noexcept(noexcept(std::hash<T>()(v))) {
   return hash_combine(seed, std::hash<T>()(v));
 }
 

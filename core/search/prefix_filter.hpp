@@ -65,8 +65,7 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
   }
 
   size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(),
-                        std::hash<size_t>()(scored_terms_limit));
+    return hash_combine(filter_options::hash(), scored_terms_limit);
   }
 
   // boost support
@@ -112,6 +111,17 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
                    options().scored_terms_limit);
   }
 }; // by_prefix
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_prefix_options> {
+  size_t operator()(const ::iresearch::by_prefix_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
 

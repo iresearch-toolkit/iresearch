@@ -45,8 +45,9 @@ class by_phrase;
 /// @brief options for phrase filter
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase_options {
- public:
-  using phrase_part =  boost::variant<
+ private:
+  // switch to std::variant after moving to C++17
+  using phrase_part = boost::variant<
     by_term_options,
     by_prefix_options,
     by_wildcard_options,
@@ -55,6 +56,8 @@ class IRESEARCH_API by_phrase_options {
     by_range_filter_options>;
 
   using phrase_type = std::map<size_t, phrase_part>;
+
+ public:
   using filter_type = by_phrase;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +133,7 @@ class IRESEARCH_API by_phrase_options {
   size_t hash() const noexcept {
     size_t hash = 0;
     for (auto& part : phrase_) {
-      hash = hash_combine(hash, std::hash<size_t>()(part.first));
+      hash = hash_combine(hash, part.first);
       hash = hash_combine(hash, boost::hash_value(part.second));
     }
     return hash;
