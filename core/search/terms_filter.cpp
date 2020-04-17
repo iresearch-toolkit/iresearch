@@ -54,18 +54,15 @@ void visit(
 
     terms->read();
 
-    visitor.visit();
+    visitor.visit(term.boost);
   }
 }
 
 template<typename Collector>
 class terms_visitor {
  public:
-  terms_visitor(
-      Collector& collector,
-      const by_terms_options::search_terms& terms)
-    : collector_(collector),
-      terms_(terms), begin_(terms.end()) {
+  explicit terms_visitor(Collector& collector) noexcept
+    : collector_(collector) {
   }
 
   void prepare(
@@ -74,22 +71,16 @@ class terms_visitor {
       const seek_term_iterator& terms) {
     collector_.prepare(segment, field, terms);
     collector_.stat_index(0);
-    begin_ = terms_.begin();
   }
 
-  void visit() {
-    assert(begin_ != terms_.end());
+  void visit(boost_t boost) {
     size_t stat_index = collector_.stat_index();
-    assert(stat_index < terms_.size());
-    collector_.collect(begin_->boost);
+    collector_.visit(boost);
     collector_.stat_index(++stat_index);
-    ++begin_;
   }
 
  private:
   Collector& collector_;
-  const by_terms_options::search_terms& terms_;
-  by_terms_options::search_terms::const_iterator begin_;
 }; // terms_visitor
 
 template<typename Collector>
@@ -98,7 +89,7 @@ void collect_terms(
     const string_ref& field,
     const by_terms_options::search_terms& terms,
     Collector& collector) {
-  terms_visitor<Collector> visitor(collector, terms);
+  terms_visitor<Collector> visitor(collector);
 
   for (auto& segment : index) {
     auto* reader = segment.field(field);

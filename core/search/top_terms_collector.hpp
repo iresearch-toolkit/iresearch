@@ -181,7 +181,7 @@ template<typename State,
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collect current term
   //////////////////////////////////////////////////////////////////////////////
-  void collect(const key_type& key) {
+  void visit(const key_type& key) {
     const auto& term = *state_.term;
 
     if (terms_.size() < size_) {
@@ -226,8 +226,9 @@ template<typename State,
     }
   }
 
+  //FIXME rename
   template<typename Visitor>
-  void visit(const Visitor& visitor) {
+  void visit(const Visitor& visitor) noexcept {
     for (auto& entry : terms_) {
       visitor(entry.second);
     }

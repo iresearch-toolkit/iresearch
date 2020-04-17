@@ -49,7 +49,7 @@ void collect_terms(
     visitor.prepare(segment, field, terms);
 
     do {
-      visitor.visit();
+      visitor.visit(no_boost());
 
       if (!terms.next()) {
         break;

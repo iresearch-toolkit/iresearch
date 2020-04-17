@@ -86,7 +86,7 @@ void collect_terms(
       break; // terminate traversal
     }
 
-    visitor.visit();
+    visitor.visit(irs::no_boost());
   } while (terms.next());
 }
 

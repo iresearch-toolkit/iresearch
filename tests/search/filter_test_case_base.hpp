@@ -645,7 +645,7 @@ class empty_filter_visitor : public irs::filter_visitor {
     ++prepare_calls_counter_;
   }
 
-  virtual void visit() noexcept override {
+  virtual void visit(irs::boost_t boost) noexcept override {
     ASSERT_NE(nullptr, it_);
     terms_.emplace_back(it_->value());
     ++visit_calls_counter_;

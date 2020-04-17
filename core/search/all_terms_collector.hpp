@@ -68,9 +68,8 @@ class all_terms_collector : util::noncopyable {
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
-  void collect(const boost_t boost = irs::no_boost()) {
+  void visit(const boost_t boost) {
     assert(state_);
-    //assert(stat_index_ < term_stats_.size()); FIXME
     term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.attrs);
 
     auto& state = *state_.state;

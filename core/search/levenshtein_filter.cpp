@@ -79,31 +79,6 @@ inline void executeLevenshtein(byte_type max_distance,
   lev(d);
 }
 
-template<typename Visitor>
-struct top_terms_visitor : util::noncopyable {
-  explicit top_terms_visitor(Visitor& visitor) noexcept
-    : visitor(&visitor) {
-  }
-
-  void operator()(const irs::sub_reader& /*segment*/,
-                  const irs::term_reader& field,
-                  uint32_t /*docs_count*/) const {
-    it = field.iterator();
-    visitor.prepare(*it);
-  }
-
-  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
-    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
-      return;
-    }
-
-    visitor.visit();
-  }
-
-  mutable seek_term_iterator::ptr it;
-  Visitor& visitor;
-};
-
 template<typename StatesType>
 struct aggregated_stats_visitor : util::noncopyable {
   aggregated_stats_visitor(
@@ -140,87 +115,6 @@ struct aggregated_stats_visitor : util::noncopyable {
   boost_t boost{ irs::no_boost() };
 };
 
-template<typename Collector>
-class by_edit_distance_filter_optionss_visitor : public filter_visitor {
- public:
-  by_edit_distance_filter_optionss_visitor(
-      Collector& collector,
-      const parametric_description& d,
-      const bytes_ref& term)
-    : collector_(collector),
-      utf8_term_size_(std::max(1U, uint32_t(utf8_utils::utf8_length(term)))),
-      no_distance_(d.max_distance() + 1) {
-  }
-
-  template<typename Visitor>
-  void visit(const Visitor& visitor) {
-    collector_.visit(visitor);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief makes preparations for a visitor
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const sub_reader& segment,
-                       const term_reader& field,
-                       const seek_term_iterator& terms) final {
-    term_ = &terms.value();
-
-    auto& payload = terms.attributes().get<irs::payload>();
-
-    distance_ = &no_distance_;
-    if (payload && !payload->value.empty()) {
-      distance_ = &payload->value.front();
-    }
-
-    collector_.prepare(segment, field, terms);
-  }
-
-  virtual void visit() final {
-     const auto utf8_value_size = static_cast<uint32_t>(utf8_utils::utf8_length(*term_));
-     const auto key = ::similarity(*distance_, std::min(utf8_value_size, utf8_term_size_));
-
-     collector_.collect(key);
-  }
-
- private:
-  Collector& collector_;
-  const bytes_ref* term_{};
-  const uint32_t utf8_term_size_;
-  const byte_type no_distance_;
-  const byte_type* distance_{&no_distance_};
-};
-
-template<typename Collector>
-bool collect_terms(
-    const index_reader& index,
-    const string_ref& field,
-    const bytes_ref& term,
-    const parametric_description& d,
-    Collector& collector) {
-  const auto acceptor = make_levenshtein_automaton(d, term);
-
-  if (!validate(acceptor)) {
-    return false;
-  }
-
-  auto matcher = make_automaton_matcher(acceptor);
-
-  by_edit_distance_filter_optionss_visitor<Collector> visitor(collector, d, term);
-
-  for (auto& segment : index) {
-    auto* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
-    }
-
-    // wrong matcher
-    visit(segment, *reader, matcher, visitor);
-  }
-
-  return true;
-}
-
 class top_terms_collector : public irs::top_terms_collector<top_term_state<boost_t>> {
  public:
   using base_type = irs::top_terms_collector<top_term_state<boost_t>>;
@@ -241,24 +135,77 @@ class top_terms_collector : public irs::top_terms_collector<top_term_state<boost
   field_collectors& field_stats_;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief visitation logic for levenshtein filter
+/// @param segment segment reader
+/// @param field term reader
+/// @param matcher input matcher
+/// @param visitor visitor
+//////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit_by_edit_distance_filter_optionss(
-    const index_reader& index,
-    const string_ref& field,
-    const bytes_ref& term,
-    size_t terms_limit,
-    const parametric_description& d,
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const byte_type no_distance,
+    const uint32_t utf8_target_size,
+    automaton_table_matcher& matcher,
     Visitor& visitor) {
-  using top_terms_collector = irs::top_terms_collector<top_term<boost_t>>;
+  assert(fst::kError != matcher.Properties(0));
+  auto terms = reader.iterator(matcher);
 
-  top_terms_collector term_collector(terms_limit);
-
-  if (!collect_terms(index, field, term, d, term_collector)) {
+  if (IRS_UNLIKELY(!terms)) {
     return;
   }
 
-  top_terms_visitor<Visitor> visit_terms(visitor);
-  term_collector.visit(visit_terms);
+  if (terms->next()) {
+    auto& payload = terms->attributes().get<irs::payload>();
+
+    const byte_type* distance{&no_distance};
+    if (payload && !payload->value.empty()) {
+      distance = &payload->value.front();
+    }
+
+    visitor.prepare(segment, reader, *terms);
+
+    do {
+      terms->read();
+
+      const auto utf8_value_size = static_cast<uint32_t>(utf8_utils::utf8_length(terms->value()));
+      const auto boost = ::similarity(*distance, std::min(utf8_value_size, utf8_target_size));
+
+      visitor.visit(boost);
+    } while (terms->next());
+  }
+}
+
+template<typename Collector>
+bool collect_terms(
+    const index_reader& index,
+    const string_ref& field,
+    const bytes_ref& term,
+    const parametric_description& d,
+    Collector& collector) {
+  const auto acceptor = make_levenshtein_automaton(d, term);
+
+  if (!validate(acceptor)) {
+    return false;
+  }
+
+  auto matcher = make_automaton_matcher(acceptor);
+  const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(term)));
+  const byte_type max_distance = d.max_distance() + 1;
+
+  for (auto& segment : index) {
+    auto* reader = segment.field(field);
+
+    if (!reader) {
+      continue;
+    }
+
+    visit(segment, *reader, max_distance, utf8_term_size, matcher, collector);
+  }
+
+  return true;
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
@@ -348,10 +295,15 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         return;
       }
 
-      res = [ctx](const sub_reader& segment,
-                  const term_reader& field,
-                  filter_visitor& visitor) mutable {
-        return visit(segment, field, ctx->matcher, visitor);
+      const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(opts.term)));
+      const byte_type max_distance = d.max_distance() + 1;
+
+      res = [ctx, utf8_term_size, max_distance](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) mutable {
+        return ::visit(segment, field, max_distance,
+                       utf8_term_size, ctx->matcher, visitor);
       };
     }
   );

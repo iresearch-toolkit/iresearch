@@ -53,7 +53,7 @@ class term_visitor : private util::noncopyable {
     terms_ = &terms;
   }
 
-  void visit() {
+  void visit(boost_t /*boost*/) {
     // collect statistics
     assert(segment_ && reader_ && terms_);
     term_stats_.collect(*segment_, *reader_, 0, terms_->attributes());
@@ -92,7 +92,7 @@ void visit(
   // read term attributes
   terms->read();
 
-  visitor.visit();
+  visitor.visit(no_boost());
 }
 
 NS_END

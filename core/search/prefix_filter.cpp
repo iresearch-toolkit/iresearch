@@ -53,7 +53,7 @@ void visit(
     visitor.prepare(segment, reader, *terms);
 
     do {
-      visitor.visit();
+      visitor.visit(no_boost());
 
       if (!terms->next()) {
         break;

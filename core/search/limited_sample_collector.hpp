@@ -362,7 +362,7 @@ class multiterm_visitor {
     key_.offset = 0;
   }
 
-  void visit() {
+  void visit(boost_t /*boost*/) {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;

@@ -417,7 +417,7 @@ void visit(
     do {
       terms->read();
 
-      visitor.visit();
+      visitor.visit(no_boost());
     } while (terms->next());
   }
 }

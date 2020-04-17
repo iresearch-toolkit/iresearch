@@ -195,7 +195,7 @@ class phrase_term_visitor final : public filter_visitor,
     found_ = true;
   }
 
-  virtual void visit() override {
+  virtual void visit(boost_t boost) override {
     assert(terms_ && attrs_ && collectors_ && segment_ && reader_);
 
     if (stats_size_ <= term_offset_) {
