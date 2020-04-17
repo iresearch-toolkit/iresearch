@@ -27,6 +27,28 @@
 
 NS_ROOT
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class position_score_iterator_adapter
+/// @brief adapter to use doc_iterator with positions for disjunction
+////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
+struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
+  position_score_iterator_adapter(DocIterator&& it, boost_t boost) noexcept
+    : score_iterator_adapter<DocIterator>(std::move(it)) {
+    position = irs::position::extract(this->it->attributes());
+    this->boost.value = boost;
+  }
+
+  position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
+  position_score_iterator_adapter& operator=(const position_score_iterator_adapter&) = default;
+
+  position_score_iterator_adapter(position_score_iterator_adapter&& rhs) = default;
+  position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) = default;
+
+  irs::position* position;
+  irs::filter_boost boost;
+}; // position_score_iterator_adapter
+
 class fixed_phrase_frequency {
  public:
   typedef std::pair<
@@ -37,8 +59,8 @@ class fixed_phrase_frequency {
 
   fixed_phrase_frequency(
       positions_t&& pos,
-      const order::prepared& ord
-  ) : pos_(std::move(pos)), order_(&ord) {
+      const order::prepared& ord)
+    : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -198,6 +220,7 @@ class variadic_phrase_frequency {
 
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
+  filter_boost boost_;
 }; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
@@ -214,8 +237,9 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
       const term_reader& field,
       const byte_type* stats,
       const order::prepared& ord,
-      boost_t boost
-  ) : Frequency(std::move(pos), ord), approx_(std::move(itrs)) {
+      boost_t boost)
+    : Frequency(std::move(pos), ord),
+      approx_(std::move(itrs)) {
 
     // FIXME find a better estimation
     // estimate iterator

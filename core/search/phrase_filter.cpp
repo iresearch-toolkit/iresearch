@@ -71,6 +71,7 @@ struct variadic_phrase_state : fixed_phrase_state {
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
   const term_reader* reader{};
+  bool volatile_filter{};
 }; // variadic_phrase_state
 
 struct get_visitor {
@@ -419,15 +420,14 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
           continue;
         }
 
-        auto docs = terms->postings(features); // postings
-        auto& pos = docs->attributes().get<irs::position>(); // needed postings attributes
+        disjunction_t::doc_iterator_t docs(terms->postings(features),
+                                           term_state->second);
 
-        if (!pos) {
+        if (!docs.position) {
           // positions not found
           continue;
         }
 
-        // add base iterator
         disj_itrs.emplace_back(std::move(docs));
       }
 
@@ -455,8 +455,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       *phrase_state->reader,
       stats_.c_str(),
       ord,
-      boost()
-    );
+      boost());
   }
 }; // variadic_phrase_query
 

@@ -66,37 +66,6 @@ void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
 
 NS_END // detail
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class position_score_iterator_adapter
-/// @brief adapter to use doc_iterator with positions for disjunction
-////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
-struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
-  position_score_iterator_adapter(DocIterator&& it) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(it)) {
-    auto& attrs = this->it->attributes();
-    position = irs::position::extract(attrs);
-  }
-
-  position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
-  position_score_iterator_adapter& operator=(const position_score_iterator_adapter&) = default;
-
-  position_score_iterator_adapter(position_score_iterator_adapter&& rhs) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(rhs)),
-      position(std::move(rhs.position)) {
-  }
-
-  position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) noexcept {
-    if (this != &rhs) {
-      position = rhs.position;
-      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
-    }
-    return *this;
-  }
-
-  irs::position* position;
-}; // position_score_iterator_adapter
-
 template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) = 0;
