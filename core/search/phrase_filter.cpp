@@ -31,19 +31,29 @@ NS_LOCAL
 
 using namespace irs;
 
-typedef seek_term_iterator::cookie_ptr term_state_t;
-typedef std::vector<term_state_t> terms_states_t;
+template<typename StateType>
+using phrase_state = std::vector<StateType>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fixed_phrase_state
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
 struct fixed_phrase_state {
+  // mimic std::pair interface
+  struct term_state {
+    term_state(seek_term_iterator::cookie_ptr&& first,
+               boost_t /*second*/) noexcept
+      : first(std::move(first)) {
+    }
+
+    seek_term_iterator::cookie_ptr first;
+  };
+
   fixed_phrase_state() = default;
   fixed_phrase_state(fixed_phrase_state&& rhs) = default;
   fixed_phrase_state& operator=(const fixed_phrase_state&) = delete;
 
-  std::vector<term_state_t> terms;
+  phrase_state<term_state> terms;
   const term_reader* reader{};
 }; // fixed_phrase_state
 
@@ -52,11 +62,15 @@ struct fixed_phrase_state {
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
 struct variadic_phrase_state : fixed_phrase_state {
+  using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
+
   variadic_phrase_state() = default;
   variadic_phrase_state(variadic_phrase_state&& rhs) = default;
   variadic_phrase_state& operator=(const variadic_phrase_state&) = delete;
 
   std::vector<size_t> num_terms; // number of terms per phrase part
+  phrase_state<term_state> terms;
+  const term_reader* reader{};
 }; // variadic_phrase_state
 
 struct get_visitor {
@@ -178,11 +192,12 @@ NS_ROOT
 /// @class phrase_term_visitor
 /// @brief filter visitor for phrase queries
 //////////////////////////////////////////////////////////////////////////////
+template<typename PhraseStates>
 class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
  public:
-  explicit phrase_term_visitor(terms_states_t& phrase_terms) noexcept
-    : phrase_terms_(phrase_terms) {
+  explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
+    : phrase_states_(phrase_states) {
   }
 
   virtual void prepare(const sub_reader& segment,
@@ -206,7 +221,7 @@ class phrase_term_visitor final : public filter_visitor,
     }
 
     collectors_->collect(*segment_, *reader_, term_offset_++, *attrs_);
-    phrase_terms_.emplace_back(terms_->cookie());
+    phrase_states_.emplace_back(terms_->cookie(), boost);
   }
 
   void reset() noexcept {
@@ -228,7 +243,7 @@ class phrase_term_visitor final : public filter_visitor,
   size_t stats_size_ = 0;
   const sub_reader* segment_{};
   const term_reader* reader_{};
-  terms_states_t& phrase_terms_;
+  PhraseStates& phrase_states_;
   term_collectors* collectors_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;
   const attribute_view* attrs_ = nullptr;
@@ -307,9 +322,11 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     auto position = positions_.begin();
 
     for (const auto& term_state : phrase_state->terms) {
+      assert(term_state.first);
+
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself
-      if (!terms->seek(bytes_ref::NIL, *term_state)) {
+      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
         return doc_iterator::empty();
       }
 
@@ -395,10 +412,10 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       disjunction_t::doc_iterators_t disj_itrs;
       disj_itrs.reserve(num_terms);
       for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
-        assert(*term_state);
+        assert(term_state->first);
         // use bytes_ref::NIL here since we do not need just to "jump"
         // to cached state, and we are not interested in term value itself
-        if (!terms->seek(bytes_ref::NIL, **term_state)) {
+        if (!terms->seek(bytes_ref::NIL, *term_state->first)) {
           continue;
         }
 
@@ -497,13 +514,13 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   fixed_phrase_query::states_t phrase_states(index.size());
 
   // per segment phrase terms
-  terms_states_t phrase_terms;
+  phrase_state<fixed_phrase_state::term_state> phrase_terms;
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
   const string_ref field = this->field();
 
-  phrase_term_visitor ptv(phrase_terms);
+  phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
   for (const auto& segment : index) {
     // get term dictionary for field
@@ -600,14 +617,14 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // per segment phrase terms
   std::vector<size_t> num_terms(phrase_size); // number of terms per part
-  terms_states_t phrase_terms;
+  phrase_state<variadic_phrase_state::term_state> phrase_terms;
   phrase_terms.reserve(phrase_size); // reserve space for at least 1 term per part
 
   // iterate over the segments
   const string_ref field = this->field();
   const auto is_ord_empty = ord.empty();
 
-  phrase_term_visitor ptv(phrase_terms);
+  phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
   for (const auto& segment : index) {
     // get term dictionary for field
