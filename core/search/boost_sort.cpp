@@ -34,6 +34,18 @@ struct boost_score_ctx : score_ctx {
   boost_t boost;
 };
 
+struct volatile_boost_score_ctx : boost_score_ctx {
+  explicit volatile_boost_score_ctx(
+      const filter_boost* volatile_boost,
+      boost_t boost) noexcept
+    : boost_score_ctx(boost),
+      volatile_boost(volatile_boost) {
+    assert(volatile_boost);
+  }
+
+  const filter_boost* volatile_boost;
+};
+
 struct prepared : prepared_sort_basic<boost_t> {
   const irs::flags& features() const override {
     return irs::flags::empty_instance();
@@ -43,13 +55,26 @@ struct prepared : prepared_sort_basic<boost_t> {
       const irs::sub_reader&,
       const irs::term_reader&,
       const irs::byte_type*,
-      const irs::attribute_view&,
+      const irs::attribute_view& attrs,
       irs::boost_t boost) const override {
+
+    auto* volatile_boost = attrs.get<irs::filter_boost>().get();
+
+    if (!volatile_boost) {
+      return {
+        irs::score_ctx_ptr(new boost_score_ctx(boost)), // FIXME can avoid allocation
+        [](const irs::score_ctx* ctx, irs::byte_type* score) noexcept {
+          auto& state = *reinterpret_cast<const boost_score_ctx*>(ctx);
+          sort::score_cast<boost_t>(score) = state.boost;
+        }
+      };
+    }
+
     return {
-      irs::score_ctx_ptr(new boost_score_ctx(boost)), // FIXME can avoid allocation
+      irs::score_ctx_ptr(new volatile_boost_score_ctx(volatile_boost, boost)), // FIXME can avoid allocation
       [](const irs::score_ctx* ctx, irs::byte_type* score) noexcept {
-        auto& state = *reinterpret_cast<const boost_score_ctx*>(ctx);
-        sort::score_cast<boost_t>(score) = state.boost;
+        auto& state = *reinterpret_cast<const volatile_boost_score_ctx*>(ctx);
+        sort::score_cast<boost_t>(score) = state.volatile_boost->value*state.boost;
       }
     };
   }
