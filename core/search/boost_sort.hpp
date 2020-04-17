@@ -27,13 +27,11 @@
 
 NS_ROOT
 
-struct boost_sort : public sort {
+struct boost_sort final : public sort {
   DECLARE_SORT_TYPE();
   DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
 
   boost_sort() noexcept;
-
-  static void init(); // for trigering registration in a static build
 
   virtual sort::prepared::ptr prepare() const override;
 }; // boost_sort
