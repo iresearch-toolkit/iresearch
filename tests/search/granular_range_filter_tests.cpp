@@ -2181,16 +2181,23 @@ TEST_P(granular_range_filter_test_case, visit) {
   rng.max_type = irs::BoundType::INCLUSIVE;
   // read segment
   auto index = open_reader();
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-    ASSERT_TRUE(reader != nullptr);
+  ASSERT_EQ(1, index.size());
+  auto& segment = index[0];
+  // get term dictionary for field
+  const auto* reader = segment.field(field);
+  ASSERT_TRUE(reader != nullptr);
 
-    irs::by_granular_range::visit(segment, *reader, rng, visitor);
-    ASSERT_EQ(2, visitor.prepare_calls_counter());
-    ASSERT_EQ(2, visitor.visit_calls_counter());
-    visitor.reset();
-  }
+  irs::by_granular_range::visit(segment, *reader, rng, visitor);
+  ASSERT_EQ(2, visitor.prepare_calls_counter());
+  ASSERT_EQ(2, visitor.visit_calls_counter());
+  ASSERT_EQ(
+    (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      {"abc", irs::no_boost()},
+      {"abcd", irs::no_boost()}
+    }),
+    visitor.term_refs<char>());
+
+  visitor.reset();
 }
 
 INSTANTIATE_TEST_CASE_P(

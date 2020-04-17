@@ -396,7 +396,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<irs::string_ref>{"abc"}),
+      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
       visitor.term_refs<char>());
     visitor.reset();
   }
@@ -414,9 +414,22 @@ TEST_P(by_edit_distance_test_case, visit) {
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
-    ASSERT_EQ(
-      (std::vector<irs::string_ref>{"abc", "abcd", "abcy"}),
-      visitor.term_refs<char>());
+
+    const auto actual_terms = visitor.term_refs<char>();
+    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
+      {"abc",  irs::no_boost()},
+      {"abcd", 2.f/3},
+      {"abcy", 2.f/3},
+    };
+    ASSERT_EQ(expected_terms.size(), actual_terms.size());
+
+    auto actual_term = actual_terms.begin();
+    for (auto& expected_term : expected_terms) {
+      ASSERT_EQ(expected_term.first, actual_term->first);
+      ASSERT_FLOAT_EQ(expected_term.second, actual_term->second);
+      ++actual_term;
+    }
+
     visitor.reset();
   }
 }

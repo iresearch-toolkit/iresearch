@@ -647,7 +647,7 @@ class empty_filter_visitor : public irs::filter_visitor {
 
   virtual void visit(irs::boost_t boost) noexcept override {
     ASSERT_NE(nullptr, it_);
-    terms_.emplace_back(it_->value());
+    terms_.emplace_back(it_->value(), boost);
     ++visit_calls_counter_;
   }
 
@@ -666,24 +666,29 @@ class empty_filter_visitor : public irs::filter_visitor {
     return visit_calls_counter_;
   }
 
-  const std::vector<irs::bstring>& terms() const noexcept {
+  const std::vector<std::pair<irs::bstring, irs::boost_t>>& terms() const noexcept {
     return terms_;
   }
 
   template<typename Char>
-  std::vector<irs::basic_string_ref<Char>> term_refs() const {
-    std::vector<irs::basic_string_ref<Char>> refs(terms_.size());
+  std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> term_refs() const {
+    std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> refs(terms_.size());
     auto begin = refs.begin();
     for (auto& term : terms_) {
-      *begin = irs::ref_cast<Char>(term);
+      begin->first = irs::ref_cast<Char>(term.first);
+      begin->second = term.second;
       ++begin;
     }
     return refs;
   }
 
+  virtual void assert_boost(irs::boost_t boost) {
+    ASSERT_EQ(irs::no_boost(), boost);
+  }
+
  private:
   const irs::seek_term_iterator* it_{};
-  std::vector<irs::bstring> terms_;
+  std::vector<std::pair<irs::bstring, irs::boost_t>> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor

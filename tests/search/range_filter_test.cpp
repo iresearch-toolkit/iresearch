@@ -1264,8 +1264,13 @@ TEST_P(range_filter_test_case, visit) {
   irs::by_range::visit(segment, *reader, range, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(2, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<irs::string_ref>{"abc", "abcd"}),
-            visitor.term_refs<char>());
+  ASSERT_EQ(
+    (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      {"abc", irs::no_boost()},
+      {"abcd", irs::no_boost()}
+    }),
+    visitor.term_refs<char>());
+
   visitor.reset();
 }
 

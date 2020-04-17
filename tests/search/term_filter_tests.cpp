@@ -613,6 +613,7 @@ TEST_P(term_filter_test_case, visit) {
   const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
 
   tests::empty_filter_visitor visitor;
+
   // read segment
   auto index = open_reader();
   ASSERT_EQ(1, index.size());
@@ -624,7 +625,8 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ(std::vector<irs::string_ref>{"abc"}, visitor.term_refs<char>());
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+            visitor.term_refs<char>());
   visitor.reset();
 }
 
