@@ -67,13 +67,6 @@ inline void fill(bitset& bs, const term_iterator& term, size_t docs_count) {
   fill(bs, *it);
 }
 
-template<typename Key>
-struct no_boost_converter {
-  boost_t operator()(const Key&) const noexcept {
-    return no_boost();
-  }
-}; // no_boost_converter
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class limited_sample_collector
 /// @brief object to collect and track a limited number of scorers,
@@ -173,11 +166,9 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish collecting and evaluate stats
   //////////////////////////////////////////////////////////////////////////////
-  template<typename KeyToBoost = no_boost_converter<Key>>
   void score(const index_reader& index,
              const order::prepared& order,
-             std::vector<bstring>& stats,
-             const KeyToBoost& key2boost = {}) {
+             std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return; // nothing to score (optimization)
     }
@@ -212,7 +203,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),
         stats_entry.stats_offset,
-        key2boost(scored_state.key));
+        static_cast<boost_t>(scored_state.key));
 
       // update estimation for scored state
       scored_state.state->scored_states_estimation += scored_state.docs_count;
@@ -321,6 +312,11 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 struct term_frequency {
   uint32_t offset;
   uint32_t frequency;
+  boost_t boost;
+
+  explicit operator boost_t() const noexcept {
+    return boost;
+  }
 
   bool operator<(const term_frequency& rhs) const noexcept {
     return frequency < rhs.frequency
@@ -362,10 +358,12 @@ class multiterm_visitor {
     key_.offset = 0;
   }
 
-  void visit(boost_t /*boost*/) {
+  // FIXME can incorporate boost into collecting logic
+  void visit(boost_t boost) {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;
+    key_.boost = boost;
     collector_.collect(key_);
     ++key_.offset;
   }
