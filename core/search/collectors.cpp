@@ -232,6 +232,8 @@ void term_collectors::finish(
         collectors_[term_idx].get());
     } break;
     case 2: {
+      term_idx *= bucket_count;
+
       assert(field_collectors.front());
       assert(buckets_->front().bucket);
       buckets_->front().bucket->collect(
@@ -247,6 +249,8 @@ void term_collectors::finish(
         collectors_[term_idx + 1].get());
     } break;
     default: {
+      term_idx *= bucket_count;
+
       auto begin = field_collectors.begin();
       for (auto& bucket : (*buckets_)) {
         bucket.bucket->collect(

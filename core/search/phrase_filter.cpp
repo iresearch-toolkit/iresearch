@@ -554,20 +554,19 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   const size_t base_offset = options().begin()->first;
 
   // finish stats
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  ord.prepare_stats(stats_buf);
+
   fixed_phrase_query::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
 
+  size_t term_idx = 0;
   for (const auto& term : options()) {
     *pos_itr = position::value_t(term.first - base_offset);
-    ++pos_itr;
-  }
-
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
-
-  ord.prepare_stats(stats_buf);
-  for (size_t term_idx = 0; term_idx < phrase_size; ++term_idx) {
     term_stats.finish(stats_buf, term_idx, field_stats, index);
+    ++pos_itr;
+    ++term_idx;
   }
 
   return memory::make_shared<fixed_phrase_query>(
@@ -669,20 +668,22 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   const size_t base_offset = options().begin()->first;
 
   // finish stats
+  assert(phrase_size == phrase_part_stats.size());
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  ord.prepare_stats(stats_buf);
+  auto collector = phrase_part_stats.begin();
+
   variadic_phrase_query::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
 
   for (const auto& term : options()) {
     *pos_itr = position::value_t(term.first - base_offset);
+    for (size_t term_idx = 0, size = collector->size(); term_idx < size; ++term_idx) {
+      collector->finish(stats_buf, term_idx, field_stats, index);
+    }
     ++pos_itr;
-  }
-
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
-
-  ord.prepare_stats(stats_buf);
-  for (auto& collector: phrase_part_stats) {
-    collector.finish(stats_buf, 0, field_stats, index);
+    ++collector;
   }
 
   return memory::make_shared<variadic_phrase_query>(
