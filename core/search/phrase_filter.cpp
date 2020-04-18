@@ -71,7 +71,7 @@ struct variadic_phrase_state : fixed_phrase_state {
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
   const term_reader* reader{};
-  bool volatile_filter{};
+  bool volatile_boost{};
 }; // variadic_phrase_state
 
 struct get_visitor {
@@ -156,7 +156,7 @@ struct prepare : util::noncopyable {
   }
 
   result_type operator()(const by_terms_options& /*part*/) const {
-    return nullptr;
+    return nullptr; // FIXME
   }
 
   result_type operator()(const by_range_options& part) const {
@@ -219,6 +219,7 @@ class phrase_term_visitor final : public filter_visitor,
       collectors_->push_back();
       assert(stats_size_ == term_offset_);
       ++stats_size_;
+      volatile_boost_ |= (boost != no_boost());
     }
 
     collectors_->collect(*segment_, *reader_, term_offset_++, *attrs_);
@@ -226,6 +227,7 @@ class phrase_term_visitor final : public filter_visitor,
   }
 
   void reset() noexcept {
+    volatile_boost_ = false;
     found_ = false;
     terms_ = nullptr;
   }
@@ -239,6 +241,8 @@ class phrase_term_visitor final : public filter_visitor,
 
   bool found() const noexcept { return found_; }
 
+  bool volatile_boost() const noexcept { return volatile_boost_; }
+
  private:
   size_t term_offset_ = 0;
   size_t stats_size_ = 0;
@@ -249,6 +253,7 @@ class phrase_term_visitor final : public filter_visitor,
   const seek_term_iterator* terms_ = nullptr;
   const attribute_view* attrs_ = nullptr;
   bool found_ = false;
+  bool volatile_boost_ = false;
 };
 
 NS_END
@@ -673,6 +678,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     state.terms = std::move(phrase_terms);
     state.num_terms = std::move(num_terms);
     state.reader = reader;
+    state.volatile_boost = ptv.volatile_boost();
     assert(phrase_size == state.num_terms.size());
 
     phrase_terms.reserve(phrase_size);

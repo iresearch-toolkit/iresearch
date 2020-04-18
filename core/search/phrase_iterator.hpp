@@ -34,9 +34,8 @@ NS_ROOT
 template<typename DocIterator>
 struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
   position_score_iterator_adapter(DocIterator&& it, boost_t boost) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(it)) {
+    : score_iterator_adapter<DocIterator>(std::move(it)), boost(boost) {
     position = irs::position::extract(this->it->attributes());
-    this->boost.value = boost;
   }
 
   position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
@@ -46,7 +45,7 @@ struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
   position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) = default;
 
   irs::position* position;
-  irs::filter_boost boost;
+  boost_t boost;
 }; // position_score_iterator_adapter
 
 class fixed_phrase_frequency {
@@ -126,18 +125,18 @@ class variadic_phrase_frequency {
   typedef std::vector<position_t> positions_t;
 
  private:
-  struct inner_visitor_ctx {
+  struct part_visitor_ctx {
     bool match = false;
     position::value_t term_position = pos_limits::eof();
     uint32_t min_seeked = pos_limits::eof();
+    boost_t boost = no_boost();
   };
 
-  struct visitor_ctx {
+  struct lead_visitor_ctx {
     bool is_order_empty = false;
-    bool (*in_vis)(void*, position_score_iterator_adapter<doc_iterator::ptr>&) = nullptr;
     positions_t* pos = nullptr;
     frequency::value_t freq = 0;
-    inner_visitor_ctx in_vis_ctx;
+    part_visitor_ctx in_vis_ctx;
   };
 
  public:
@@ -152,19 +151,18 @@ class variadic_phrase_frequency {
  protected:
   // returns frequency of the phrase
   frequency::value_t phrase_freq() {
-    visitor_ctx vc;
+    lead_visitor_ctx vc;
     vc.is_order_empty = order_->empty();
-    vc.in_vis = inner_visitor;
     vc.pos = &pos_;
-    pos_.front().first->visit(&vc, visitor);
+    pos_.front().first->visit(&vc, visit_lead);
 
     return vc.freq;
   }
 
  private:
-  static bool inner_visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
+  static bool visit_part(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
     assert(ctx);
-    auto& ivc = *reinterpret_cast<inner_visitor_ctx*>(ctx);
+    auto& ivc = *reinterpret_cast<part_visitor_ctx*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
     const auto seeked = p->seek(ivc.term_position);
@@ -177,17 +175,19 @@ class variadic_phrase_frequency {
       return true;
     }
     ivc.match = true;
+    ivc.boost *= it_adapter.boost;
     return false;
   }
 
-  static bool visitor(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
+  static bool visit_lead(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
     assert(ctx);
-    auto& vc = *reinterpret_cast<visitor_ctx*>(ctx);
+    auto& vc = *reinterpret_cast<lead_visitor_ctx*>(ctx);
     const auto end = vc.pos->end();
     auto* lead = lead_adapter.position;
     lead->next();
     position::value_t base_position = pos_limits::eof();
     while (!pos_limits::eof(base_position = lead->value())) {
+      vc.in_vis_ctx.boost = lead_adapter.boost;
       vc.in_vis_ctx.match = true;
       assert(vc.pos);
       for (auto it = vc.pos->begin() + 1; it != end; ++it) {
@@ -197,8 +197,7 @@ class variadic_phrase_frequency {
           return false; // invalid for all
         }
         vc.in_vis_ctx.min_seeked = pos_limits::eof();
-        assert(vc.in_vis);
-        it->first->visit(&vc.in_vis_ctx, vc.in_vis);
+        it->first->visit(&vc.in_vis_ctx, visit_part);
         if (!vc.in_vis_ctx.match) {
           if (!pos_limits::eof(vc.in_vis_ctx.min_seeked)) {
             lead->seek(vc.in_vis_ctx.min_seeked - it->second);
