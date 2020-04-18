@@ -58,16 +58,21 @@ class fixed_phrase_frequency {
 
   fixed_phrase_frequency(
       positions_t&& pos,
+      attribute_view& attrs,
       const order::prepared& ord)
     : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
+
+    // set attributes
+    if (!ord.empty()) {
+      attrs.emplace(phrase_freq_);
+    }
   }
 
- protected:
   // returns frequency of the phrase
-  frequency::value_t phrase_freq() {
-    frequency::value_t freq = 0;
+  frequency::value_t operator()() {
+    phrase_freq_.value = 0;
     bool match;
 
     position& lead = pos_.front().first;
@@ -82,13 +87,13 @@ class fixed_phrase_frequency {
         position& pos = it->first;
         const auto term_position = base_position + it->second;
         if (!pos_limits::valid(term_position)) {
-          return freq;
+          return phrase_freq_.value;
         }
         const auto seeked = pos.seek(term_position);
 
         if (pos_limits::eof(seeked)) {
           // exhausted
-          return freq;
+          return phrase_freq_.value;
         } else if (seeked != term_position) {
           // seeked too far from the lead
           match = false;
@@ -100,20 +105,21 @@ class fixed_phrase_frequency {
 
       if (match) {
         if (order_->empty()) {
-          return 1;
+          return (phrase_freq_.value = 1);
         }
 
-        ++freq;
+        ++phrase_freq_.value;
         lead.next();
       }
     }
 
-    return freq;
+    return phrase_freq_.value;
   }
 
  private:
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
+  frequency phrase_freq_; // freqency of the phrase in a document
 }; // fixed_phrase_frequency
 
 class variadic_phrase_frequency {
@@ -142,19 +148,27 @@ class variadic_phrase_frequency {
  public:
   variadic_phrase_frequency(
       positions_t&& pos,
+      attribute_view& attrs,
       const order::prepared& ord)
     : pos_(std::move(pos)), order_(&ord) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
+
+    if (!ord.empty()) {
+      attrs.emplace(phrase_freq_);
+      attrs.emplace(phrase_boost_);
+    }
   }
 
- protected:
   // returns frequency of the phrase
-  frequency::value_t phrase_freq() {
+  frequency::value_t operator()() {
     lead_visitor_ctx vc;
     vc.is_order_empty = order_->empty();
     vc.pos = &pos_;
     pos_.front().first->visit(&vc, visit_lead);
+
+    phrase_boost_.value = vc.in_vis_ctx.boost;
+    phrase_freq_.value = vc.freq;
 
     return vc.freq;
   }
@@ -219,13 +233,14 @@ class variadic_phrase_frequency {
 
   positions_t pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
-  filter_boost boost_;
+  frequency phrase_freq_; // freqency of the phrase in a document
+  filter_boost phrase_boost_;
 }; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
 template<typename Conjunction, typename Frequency>
-class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
+class phrase_iterator : public doc_iterator_base<doc_iterator> {
  public:
   typedef typename Frequency::positions_t positions_t;
 
@@ -237,15 +252,14 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
       const byte_type* stats,
       const order::prepared& ord,
       boost_t boost)
-    : Frequency(std::move(pos), ord),
-      approx_(std::move(itrs)) {
+    : approx_(std::move(itrs)),
+      freq_(std::move(pos), attrs_, ord) {
 
     // FIXME find a better estimation
     // estimate iterator
     estimate([this](){ return irs::cost::extract(approx_.attributes()); });
 
     // set attributes
-    attrs_.emplace(phrase_freq_); // phrase frequency
     doc_ = (attrs_.emplace<irs::document>()
              = approx_.attributes().template get<irs::document>()).get(); // document (required by scorers)
     assert(doc_);
@@ -263,7 +277,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
 
   virtual bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {}
+    while ((next = approx_.next()) && !freq_()) {}
 
     return next;
   }
@@ -273,7 +287,7 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
       return target;
     }
 
-    if (doc_limits::eof(value()) || doc_limits::valid(phrase_freq_.value = this->phrase_freq())) {
+    if (doc_limits::eof(value()) || freq_()) {
       return value();
     }
 
@@ -284,8 +298,8 @@ class phrase_iterator : public doc_iterator_base<doc_iterator>, Frequency {
 
  private:
   Conjunction approx_; // first approximation (conjunction over all words in a phrase)
+  Frequency freq_;
   const document* doc_{}; // document itself
-  frequency phrase_freq_; // freqency of the phrase in a document
 }; // phrase_iterator
 
 NS_END // ROOT
