@@ -138,19 +138,12 @@ class variadic_phrase_frequency {
     boost_t boost = no_boost();
   };
 
-  struct lead_visitor_ctx {
-    bool is_order_empty = false;
-    positions_t* pos = nullptr;
-    frequency::value_t freq = 0;
-    part_visitor_ctx in_vis_ctx;
-  };
-
  public:
   variadic_phrase_frequency(
       positions_t&& pos,
       attribute_view& attrs,
       const order::prepared& ord)
-    : pos_(std::move(pos)), order_(&ord) {
+    : pos_(std::move(pos)), order_empty_(ord.empty()) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
 
@@ -162,15 +155,13 @@ class variadic_phrase_frequency {
 
   // returns frequency of the phrase
   frequency::value_t operator()() {
-    lead_visitor_ctx vc;
-    vc.is_order_empty = order_->empty();
-    vc.pos = &pos_;
-    pos_.front().first->visit(&vc, visit_lead);
+    phrase_boost_.value = no_boost();
+    phrase_freq_.value = 0;
+    in_vis_ctx = {};
+    pos_.front().first->visit(this, visit_lead);
+    phrase_boost_.value = in_vis_ctx.boost;
 
-    phrase_boost_.value = vc.in_vis_ctx.boost;
-    phrase_freq_.value = vc.freq;
-
-    return vc.freq;
+    return phrase_freq_.value;
   }
 
  private:
@@ -195,34 +186,33 @@ class variadic_phrase_frequency {
 
   static bool visit_lead(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
     assert(ctx);
-    auto& vc = *reinterpret_cast<lead_visitor_ctx*>(ctx);
-    const auto end = vc.pos->end();
+    auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
+    const auto end = self.pos_.end();
     auto* lead = lead_adapter.position;
     lead->next();
     position::value_t base_position = pos_limits::eof();
     while (!pos_limits::eof(base_position = lead->value())) {
-      vc.in_vis_ctx.boost = lead_adapter.boost;
-      vc.in_vis_ctx.match = true;
-      assert(vc.pos);
-      for (auto it = vc.pos->begin() + 1; it != end; ++it) {
-        vc.in_vis_ctx.match = false;
-        vc.in_vis_ctx.term_position = base_position + it->second;
-        if (!pos_limits::valid(vc.in_vis_ctx.term_position)) {
+      self.in_vis_ctx.boost = lead_adapter.boost;
+      self.in_vis_ctx.match = true;
+      for (auto it = self.pos_.begin() + 1; it != end; ++it) {
+        self.in_vis_ctx.match = false;
+        self.in_vis_ctx.term_position = base_position + it->second;
+        if (!pos_limits::valid(self.in_vis_ctx.term_position)) {
           return false; // invalid for all
         }
-        vc.in_vis_ctx.min_seeked = pos_limits::eof();
-        it->first->visit(&vc.in_vis_ctx, visit_part);
-        if (!vc.in_vis_ctx.match) {
-          if (!pos_limits::eof(vc.in_vis_ctx.min_seeked)) {
-            lead->seek(vc.in_vis_ctx.min_seeked - it->second);
+        self.in_vis_ctx.min_seeked = pos_limits::eof();
+        it->first->visit(&self.in_vis_ctx, visit_part);
+        if (!self.in_vis_ctx.match) {
+          if (!pos_limits::eof(self.in_vis_ctx.min_seeked)) {
+            lead->seek(self.in_vis_ctx.min_seeked - it->second);
             break;
           }
           return true; // eof for all
         }
       }
-      if (vc.in_vis_ctx.match) {
-        ++vc.freq;
-        if (vc.is_order_empty) {
+      if (self.in_vis_ctx.match) {
+        ++self.phrase_freq_.value;
+        if (self.order_empty_) {
           return false;
         }
         lead->next();
@@ -231,10 +221,12 @@ class variadic_phrase_frequency {
     return true;
   }
 
+  part_visitor_ctx in_vis_ctx;
+
   positions_t pos_; // list of desired positions along with corresponding attributes
-  const order::prepared* order_;
   frequency phrase_freq_; // freqency of the phrase in a document
   filter_boost phrase_boost_;
+  bool order_empty_;
 }; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
