@@ -157,30 +157,29 @@ class variadic_phrase_frequency {
   frequency::value_t operator()() {
     phrase_boost_.value = no_boost();
     phrase_freq_.value = 0;
-    in_vis_ctx = {};
+
     pos_.front().first->visit(this, visit_lead);
-    phrase_boost_.value = in_vis_ctx.boost;
 
     return phrase_freq_.value;
   }
 
  private:
-  static bool visit_part(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
+  static bool visit(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
     assert(ctx);
-    auto& ivc = *reinterpret_cast<part_visitor_ctx*>(ctx);
+    auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto seeked = p->seek(ivc.term_position);
+    const auto seeked = p->seek(self.term_position);
     if (pos_limits::eof(seeked)) {
       return true;
-    } else if (seeked != ivc.term_position) {
-      if (seeked < ivc.min_seeked) {
-        ivc.min_seeked = seeked;
+    } else if (seeked != self.term_position) {
+      if (seeked < self.min_seeked) {
+        self.min_seeked = seeked;
       }
       return true;
     }
-    ivc.match = true;
-    ivc.boost *= it_adapter.boost;
+    self.match = true;
+    self.match_boost_ *= it_adapter.boost;
     return false;
   }
 
@@ -192,41 +191,44 @@ class variadic_phrase_frequency {
     lead->next();
     position::value_t base_position = pos_limits::eof();
     while (!pos_limits::eof(base_position = lead->value())) {
-      self.in_vis_ctx.boost = lead_adapter.boost;
-      self.in_vis_ctx.match = true;
+      self.match_boost_ = lead_adapter.boost;
+      self.match = true;
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
-        self.in_vis_ctx.match = false;
-        self.in_vis_ctx.term_position = base_position + it->second;
-        if (!pos_limits::valid(self.in_vis_ctx.term_position)) {
+        self.match = false;
+        self.term_position = base_position + it->second;
+        if (!pos_limits::valid(self.term_position)) {
           return false; // invalid for all
         }
-        self.in_vis_ctx.min_seeked = pos_limits::eof();
-        it->first->visit(&self.in_vis_ctx, visit_part);
-        if (!self.in_vis_ctx.match) {
-          if (!pos_limits::eof(self.in_vis_ctx.min_seeked)) {
-            lead->seek(self.in_vis_ctx.min_seeked - it->second);
+        self.min_seeked = pos_limits::eof();
+        it->first->visit(&self, visit);
+        if (!self.match) {
+          if (!pos_limits::eof(self.min_seeked)) {
+            lead->seek(self.min_seeked - it->second);
             break;
           }
           return true; // eof for all
         }
       }
-      if (self.in_vis_ctx.match) {
+      if (self.match) {
         ++self.phrase_freq_.value;
         if (self.order_empty_) {
           return false;
         }
+        self.phrase_boost_.value *= self.match_boost_;
         lead->next();
       }
     }
     return true;
   }
 
-  part_visitor_ctx in_vis_ctx;
-
   positions_t pos_; // list of desired positions along with corresponding attributes
   frequency phrase_freq_; // freqency of the phrase in a document
   filter_boost phrase_boost_;
-  bool order_empty_;
+  boost_t match_boost_{ no_boost() };
+  position::value_t term_position{ pos_limits::eof() };
+  position::value_t min_seeked{ pos_limits::eof() };
+  bool match{ false };
+  const bool order_empty_;
 }; // variadic_phrase_frequency
 
 // implementation is optimized for frequency based similarity measures
