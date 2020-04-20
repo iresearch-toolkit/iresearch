@@ -177,11 +177,11 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
 
   virtual bool next() override {
     if ( first_ == last_ ) {
-      doc_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::eof();
       return false;
     }
 
-    doc_ = *first_;
+    doc_.value = *first_;
     ++first_;
     return true;
   }
@@ -1657,7 +1657,8 @@ TEST(basic_disjunction, next) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_FALSE(it.next());
+      ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
     }
 

@@ -552,17 +552,17 @@ TEST_P(format_test_case, fields_read_write) {
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto seeked_term = term_reader->iterator();
-           ASSERT_TRUE(seeked_term->seek(*expected_sorted_term, *cookie));
-           ASSERT_EQ(*expected_sorted_term, seeked_term->value());
+           auto sought_term = term_reader->iterator();
+           ASSERT_TRUE(sought_term->seek(*expected_sorted_term, *cookie));
+           ASSERT_EQ(*expected_sorted_term, sought_term->value());
 
-           // iterate to the end with seeked_term
+           // iterate to the end with sought_term
            auto copy_expected_sorted_term = expected_sorted_term;
-           for (++copy_expected_sorted_term; seeked_term->next(); ++copy_expected_sorted_term) {
-             ASSERT_EQ(*copy_expected_sorted_term, seeked_term->value());
+           for (++copy_expected_sorted_term; sought_term->next(); ++copy_expected_sorted_term) {
+             ASSERT_EQ(*copy_expected_sorted_term, sought_term->value());
            }
            ASSERT_EQ(sorted_terms.end(), copy_expected_sorted_term);
-           ASSERT_FALSE(seeked_term->next());
+           ASSERT_FALSE(sought_term->next());
          }
        }
        ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
@@ -581,17 +581,17 @@ TEST_P(format_test_case, fields_read_write) {
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto seeked_term = term_reader->iterator();
-           ASSERT_TRUE(seeked_term->seek(*sorted_term, *cookie));
-           ASSERT_EQ(*sorted_term, seeked_term->value());
+           auto sought_term = term_reader->iterator();
+           ASSERT_TRUE(sought_term->seek(*sorted_term, *cookie));
+           ASSERT_EQ(*sorted_term, sought_term->value());
 
-           // iterate to the end with seeked_term
+           // iterate to the end with sought_term
            auto copy_sorted_term = sorted_term;
-           for (++copy_sorted_term; seeked_term->next(); ++copy_sorted_term) {
-             ASSERT_EQ(*copy_sorted_term, seeked_term->value());
+           for (++copy_sorted_term; sought_term->next(); ++copy_sorted_term) {
+             ASSERT_EQ(*copy_sorted_term, sought_term->value());
            }
            ASSERT_EQ(sorted_terms.end(), copy_sorted_term);
-           ASSERT_FALSE(seeked_term->next());
+           ASSERT_FALSE(sought_term->next());
          }
        }
        ASSERT_EQ(unsorted_terms.end(), expected_term);

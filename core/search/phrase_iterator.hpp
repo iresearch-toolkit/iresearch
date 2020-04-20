@@ -66,16 +66,16 @@ class fixed_phrase_frequency {
         if (!pos_limits::valid(term_position)) {
           return phrase_freq_.value;
         }
-        const auto seeked = pos.seek(term_position);
+        const auto sought = pos.seek(term_position);
 
-        if (pos_limits::eof(seeked)) {
+        if (pos_limits::eof(sought)) {
           // exhausted
           return phrase_freq_.value;
-        } else if (seeked != term_position) {
-          // seeked too far from the lead
+        } else if (sought!= term_position) {
+          // sought too far from the lead
           match = false;
 
-          lead.seek(seeked - it->second);
+          lead.seek(sought- it->second);
           break;
         }
       }
@@ -157,12 +157,12 @@ class variadic_phrase_frequency {
     auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto seeked = p->seek(self.term_position);
-    if (pos_limits::eof(seeked)) {
+    const auto sought = p->seek(self.term_position_);
+    if (pos_limits::eof(sought)) {
       return true;
-    } else if (seeked != self.term_position) {
-      if (seeked < self.min_seeked) {
-        self.min_seeked = seeked;
+    } else if (sought != self.term_position_) {
+      if (sought < self.min_sought_) {
+        self.min_sought_ = sought;
       }
       return true;
     }
@@ -186,15 +186,15 @@ class variadic_phrase_frequency {
       self.match = true;
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
         self.match = false;
-        self.term_position = base_position + it->second;
-        if (!pos_limits::valid(self.term_position)) {
+        self.term_position_ = base_position + it->second;
+        if (!pos_limits::valid(self.term_position_)) {
           return false; // invalid for all
         }
-        self.min_seeked = pos_limits::eof();
+        self.min_sought_ = pos_limits::eof();
         it->first->visit(&self, visit);
         if (!self.match) {
-          if (!pos_limits::eof(self.min_seeked)) {
-            lead->seek(self.min_seeked - it->second);
+          if (!pos_limits::eof(self.min_sought_)) {
+            lead->seek(self.min_sought_ - it->second);
             break;
           }
           return true; // eof for all
@@ -218,8 +218,8 @@ class variadic_phrase_frequency {
   frequency phrase_freq_; // freqency of the phrase in a document
   filter_boost phrase_boost_;
   boost_t match_boost_{ no_boost() };
-  position::value_t term_position{ pos_limits::eof() };
-  position::value_t min_seeked{ pos_limits::eof() };
+  position::value_t term_position_{ pos_limits::eof() };
+  position::value_t min_sought_{ pos_limits::eof() };
   bool match{ false };
   const bool order_empty_;
 }; // variadic_phrase_frequency
@@ -268,17 +268,18 @@ class phrase_iterator : public doc_iterator_base<doc_iterator> {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (approx_.seek(target) == target) {
-      return target;
-    }
+    // important to call freq_() in order
+    // to set attribute values
+    const auto prev = doc_->value;
+    const auto doc = approx_.seek(target);
 
-    if (doc_limits::eof(value()) || freq_()) {
-      return value();
+    if (prev == doc || freq_()) {
+      return doc;
     }
 
     next();
 
-    return value();
+    return doc_->value;
   }
 
  private:
