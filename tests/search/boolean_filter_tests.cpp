@@ -177,7 +177,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
 
   virtual bool next() override {
     if ( first_ == last_ ) {
-      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      doc_.value = irs::doc_limits::eof();
       return false;
     }
 
@@ -191,7 +191,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
-    if (irs::type_limits<irs::type_t::doc_id_t>::eof(doc_.value) || doc <= doc_.value) {
+    if (irs::doc_limits::eof(doc_.value) || doc <= doc_.value) {
       return doc_.value;
     }
 
@@ -1244,12 +1244,12 @@ struct unestimated: public irs::filter {
     }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
-      return irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      return irs::doc_limits::invalid();
     }
     virtual bool next() override { return false; }
     virtual irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
-      return irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      return irs::doc_limits::invalid();
     }
     virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
@@ -1298,12 +1298,12 @@ struct estimated: public irs::filter {
     }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
-      return irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      return irs::doc_limits::invalid();
     }
     virtual bool next() override { return false; }
     virtual irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
-      return irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      return irs::doc_limits::invalid();
     }
     virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs;
@@ -1652,14 +1652,14 @@ TEST(basic_disjunction, next) {
       ASSERT_TRUE(bool(doc));
 
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE(it.next());
       ASSERT_FALSE(it.next());
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ( expected, result );
@@ -1678,13 +1678,13 @@ TEST(basic_disjunction, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ( first, result );
@@ -1703,13 +1703,13 @@ TEST(basic_disjunction, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( last, result );
   }
@@ -1727,13 +1727,13 @@ TEST(basic_disjunction, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( first, result );
   }
@@ -1751,13 +1751,13 @@ TEST(basic_disjunction, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( first, result );
   }
@@ -1776,13 +1776,13 @@ TEST(basic_disjunction, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -1795,16 +1795,16 @@ TEST(basic_disjunction_test, seek) {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
     std::vector<irs::doc_id_t> last{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {9, 9},
         {8, 9},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 9},
+        {irs::doc_limits::invalid(), 9},
         {12, 12},
         {8, 12},
         {13, 29},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
       disjunction it(
@@ -1826,9 +1826,9 @@ TEST(basic_disjunction_test, seek) {
     std::vector<irs::doc_id_t> first{};
     std::vector<irs::doc_id_t> last{};
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     disjunction it(
@@ -1850,13 +1850,13 @@ TEST(basic_disjunction_test, seek) {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
     std::vector<irs::doc_id_t> last{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     disjunction it(
@@ -1878,12 +1878,12 @@ TEST(basic_disjunction_test, seek) {
     std::vector<irs::doc_id_t> first{ 1, 2, 5, 7, 9, 11, 45 };
     std::vector<irs::doc_id_t> last{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {9, 9},
         {12, 12},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+        {irs::doc_limits::invalid(), 12},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(
@@ -1924,7 +1924,7 @@ TEST(basic_disjunction_test, seek_next) {
     // cost
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -1934,9 +1934,9 @@ TEST(basic_disjunction_test, seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -1972,7 +1972,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     ASSERT_EQ(5, it.seek(5));
@@ -1984,9 +1984,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, aggregate scores
@@ -2024,7 +2024,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2048,9 +2048,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, max score
@@ -2088,7 +2088,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2112,9 +2112,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, iterators without order, aggregation
@@ -2144,7 +2144,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2168,9 +2168,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, iterators without order, max
@@ -2200,7 +2200,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2224,9 +2224,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, first iterator with order, aggregation
@@ -2260,7 +2260,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2284,9 +2284,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, first iterator with order, max
@@ -2320,7 +2320,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2344,9 +2344,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, last iterator with order, aggregation
@@ -2379,7 +2379,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2403,9 +2403,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with order, last iterator with order, max
@@ -2438,7 +2438,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -2462,9 +2462,9 @@ TEST(basic_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -2482,9 +2482,9 @@ TEST(small_disjunction_test, next) {
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it.attributes()));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_FALSE(it.next());
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
   // simple case
@@ -2500,12 +2500,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE(it.next());
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ( expected, result );
@@ -2522,12 +2522,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ(docs[0], result);
@@ -2545,12 +2545,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
   }
@@ -2566,12 +2566,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
   }
@@ -2588,12 +2588,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2613,12 +2613,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2640,12 +2640,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2665,12 +2665,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2687,12 +2687,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs.front(), result );
   }
@@ -2711,12 +2711,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( docs[0], result );
   }
@@ -2734,12 +2734,12 @@ TEST(small_disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2757,16 +2757,16 @@ TEST(small_disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {9, 9},
         {8, 9},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 9},
+        {irs::doc_limits::invalid(), 9},
         {12, 12},
         {8, 12},
         {13, 29},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -2785,9 +2785,9 @@ TEST(small_disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -2808,13 +2808,13 @@ TEST(small_disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -2834,12 +2834,12 @@ TEST(small_disjunction_test, seek) {
       { 1, 5, 6, 12, 29 }
     };
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {9, 9},
         {12, 12},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+        {irs::doc_limits::invalid(), 12},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -2858,9 +2858,9 @@ TEST(small_disjunction_test, seek) {
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it.attributes()));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(42));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
   // simple case
@@ -2878,12 +2878,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2905,12 +2905,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2930,12 +2930,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -2952,12 +2952,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs.front(), result );
   }
@@ -2976,12 +2976,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( docs[0], result );
   }
@@ -2999,12 +2999,12 @@ TEST(small_disjunction_test, seek) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3034,7 +3034,7 @@ TEST(small_disjunction_test, seek_next) {
     // cost
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -3044,9 +3044,9 @@ TEST(small_disjunction_test, seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -3086,7 +3086,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -3096,9 +3096,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores AGGREGATED score
@@ -3138,7 +3138,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3162,9 +3162,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores, MAX score
@@ -3204,7 +3204,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3228,9 +3228,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators partially with scores, aggreation
@@ -3269,7 +3269,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3293,9 +3293,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators partially with scores, max scores
@@ -3334,7 +3334,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3358,9 +3358,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators partially without scores, aggregation
@@ -3397,7 +3397,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3421,9 +3421,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators partially without scores, max
@@ -3460,7 +3460,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -3484,9 +3484,9 @@ TEST(small_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -3511,12 +3511,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE(it.next());
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ( expected, result );
@@ -3533,12 +3533,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
     ASSERT_EQ(docs[0], result);
@@ -3556,12 +3556,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
   }
@@ -3577,12 +3577,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
   }
@@ -3599,12 +3599,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3615,9 +3615,9 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it.attributes()));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_FALSE(it.next());
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
   // simple case
@@ -3635,12 +3635,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3662,12 +3662,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3687,12 +3687,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3709,12 +3709,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs.front(), result );
   }
@@ -3733,12 +3733,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( docs[0], result );
   }
@@ -3756,12 +3756,12 @@ TEST(disjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -3777,9 +3777,9 @@ TEST(disjunction_test, seek) {
     auto& doc = it.attributes().get<irs::document>();
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it.attributes()));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.seek(42));
-    ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
   // simple case
@@ -3790,16 +3790,16 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {9, 9},
         {8, 9},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 9},
+        {irs::doc_limits::invalid(), 9},
         {12, 12},
         {8, 12},
         {13, 29},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3818,9 +3818,9 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3841,13 +3841,13 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3867,12 +3867,12 @@ TEST(disjunction_test, seek) {
       { 1, 5, 6, 12, 29 }
     };
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {9, 9},
         {12, 12},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+        {irs::doc_limits::invalid(), 12},
         {45, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3894,7 +3894,7 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {9, 9},
         {8, 9},
@@ -3902,8 +3902,8 @@ TEST(disjunction_test, seek) {
         {13, 29},
         {45, 45},
         {44, 45},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {irs::doc_limits::invalid(), 45},
+        {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3926,7 +3926,7 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {9, 9},
         {8, 9},
@@ -3935,8 +3935,8 @@ TEST(disjunction_test, seek) {
         {80, 101},
         {513, 1025},
         {2, 1025},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 1025},
-        {2001, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {irs::doc_limits::invalid(), 1025},
+        {2001, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3954,9 +3954,9 @@ TEST(disjunction_test, seek) {
       {}, {}, {}, {}
     };
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -3979,13 +3979,13 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -4008,12 +4008,12 @@ TEST(disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {9, 9},
         {12, 12},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+        {irs::doc_limits::invalid(), 12},
         {45, 45},
-        {1201, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {1201, irs::doc_limits::eof()}
     };
 
     disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
@@ -4050,7 +4050,7 @@ TEST(disjunction_test, seek_next) {
     // cost
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -4060,9 +4060,9 @@ TEST(disjunction_test, seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -4102,7 +4102,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -4112,9 +4112,9 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores, aggregate
@@ -4154,7 +4154,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4178,9 +4178,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores, max
@@ -4220,7 +4220,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4244,9 +4244,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores partially, aggregate
@@ -4285,7 +4285,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4309,9 +4309,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores partially, max
@@ -4350,7 +4350,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4374,9 +4374,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators without scores, aggregate
@@ -4413,7 +4413,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4437,9 +4437,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators without scores, max
@@ -4476,7 +4476,7 @@ TEST(disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(1, irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -4500,9 +4500,9 @@ TEST(disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -4528,12 +4528,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4548,12 +4548,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4569,12 +4569,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4590,12 +4590,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4612,12 +4612,12 @@ TEST(min_match_disjunction_test, next) {
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
 
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4643,12 +4643,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4664,12 +4664,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4685,12 +4685,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4706,12 +4706,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4728,12 +4728,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4750,12 +4750,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4772,12 +4772,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4803,12 +4803,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4824,12 +4824,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4845,12 +4845,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4866,12 +4866,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4888,12 +4888,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4910,12 +4910,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4932,12 +4932,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( expected, result );
     }
@@ -4963,12 +4963,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -4984,12 +4984,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5004,12 +5004,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5024,12 +5024,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5045,12 +5045,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5066,12 +5066,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5087,12 +5087,12 @@ TEST(min_match_disjunction_test, next) {
         );
         auto& doc = it.attributes().get<irs::document>();
         ASSERT_TRUE(bool(doc));
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+        ASSERT_EQ(irs::doc_limits::invalid(), it.value());
         for ( ; it.next(); ) {
           result.push_back( it.value() );
         }
         ASSERT_FALSE( it.next() );
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       }
       ASSERT_EQ( docs.front(), result );
     }
@@ -5115,12 +5115,12 @@ TEST(min_match_disjunction_test, next) {
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
-          ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+          ASSERT_EQ(irs::doc_limits::invalid(), it.value());
           for ( ; it.next(); ) {
             result.push_back( it.value() );
           }
           ASSERT_FALSE( it.next() );
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it.value()));
         }
         ASSERT_EQ( docs.front(), result );
       }
@@ -5133,12 +5133,12 @@ TEST(min_match_disjunction_test, next) {
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
-          ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+          ASSERT_EQ(irs::doc_limits::invalid(), it.value());
           for ( ; it.next(); ) {
             result.push_back( it.value() );
           }
           ASSERT_FALSE( it.next() );
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it.value()));
         }
         ASSERT_EQ( docs.front(), result );
       }
@@ -5151,12 +5151,12 @@ TEST(min_match_disjunction_test, next) {
           );
           auto& doc = it.attributes().get<irs::document>();
           ASSERT_TRUE(bool(doc));
-          ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+          ASSERT_EQ(irs::doc_limits::invalid(), it.value());
           for ( ; it.next(); ) {
             result.push_back( it.value() );
           }
           ASSERT_FALSE( it.next() );
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it.value()));
         }
         ASSERT_EQ( docs.front(), result );
       }
@@ -5179,15 +5179,15 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 0;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {9, 9},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 9},
+          {irs::doc_limits::invalid(), 9},
           {12, 12},
           {11, 12},
           {13, 29},
           {45, 45},
-          {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {57, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5205,15 +5205,15 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 1;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {9, 9},
           {8, 9},
           {12, 12},
           {13, 29},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 29},
+          {irs::doc_limits::invalid(), 29},
           {45, 45},
-          {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {57, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5230,14 +5230,14 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 2;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {6, 6},
           {4, 6},
           {7, 12},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+          {irs::doc_limits::invalid(), 12},
           {29, 29},
-          {45, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {45, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5255,9 +5255,9 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 3;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
-          {6, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {6, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5275,9 +5275,9 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = irs::integer_traits<size_t>::const_max;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
-          {6, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {6, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5306,16 +5306,16 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 0;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {9, 9},
           {8, 9},
           {13, 29},
           {45, 45},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 45},
+          {irs::doc_limits::invalid(), 45},
           {80, 101},
           {513, 1025},
-          {2001, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {2001, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5333,16 +5333,16 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 1;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {9, 9},
           {8, 9},
           {13, 29},
           {45, 45},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 45},
+          {irs::doc_limits::invalid(), 45},
           {80, 101},
           {513, 1025},
-          {2001, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {2001, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5359,14 +5359,14 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 2;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
           {6, 6},
           {2, 6},
           {13, 79},
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 79},
+          {irs::doc_limits::invalid(), 79},
           {101, 101},
-          {513, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {513, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5384,9 +5384,9 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = 3;
       std::vector<detail::seek_doc> expected{
-          {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+          {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
-          {6, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+          {6, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5405,9 +5405,9 @@ TEST(min_match_disjunction_test, seek) {
     {
       const size_t min_match_count = irs::integer_traits<size_t>::const_max;
       std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-        {1, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-        {6, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, irs::doc_limits::eof()},
+        {6, irs::doc_limits::eof()}
       };
 
       disjunction it(
@@ -5430,9 +5430,9 @@ TEST(min_match_disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     {
@@ -5480,14 +5480,14 @@ TEST(min_match_disjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     {
@@ -5548,13 +5548,13 @@ TEST(min_match_disjunction_test, seek) {
     // equals to disjunction
     {
       std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {9, 9},
         {12, 12},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 12},
+        {irs::doc_limits::invalid(), 12},
         {45, 45},
         {44, 45},
-        {1201, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {1201, irs::doc_limits::eof()}
       };
 
       {
@@ -5582,10 +5582,10 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {6, 6},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 6},
-        {12, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {irs::doc_limits::invalid(), 6},
+        {12, irs::doc_limits::eof()}
       };
 
       {
@@ -5602,9 +5602,9 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-        {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {6, irs::doc_limits::eof()},
+        {irs::doc_limits::invalid(), irs::doc_limits::eof()},
       };
 
       {
@@ -5622,9 +5622,9 @@ TEST(min_match_disjunction_test, seek) {
     // equals to conjuction
     {
       std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-        {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {6, irs::doc_limits::eof()},
+        {irs::doc_limits::invalid(), irs::doc_limits::eof()},
       };
 
       {
@@ -5673,7 +5673,7 @@ TEST(min_match_disjunction_test, seek_next) {
     ASSERT_TRUE(score.empty());
 
     // cost
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
 
     ASSERT_EQ(5, it.seek(5));
     ASSERT_EQ(it.value(), doc->value);
@@ -5689,11 +5689,11 @@ TEST(min_match_disjunction_test, seek_next) {
     ASSERT_EQ(it.value(), doc->value);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(it.value(), doc->value);
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_EQ(it.value(), doc->value);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(it.value(), doc->value);
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_EQ(it.value(), doc->value);
   }
 }
@@ -5734,7 +5734,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(5, it.seek(5));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
@@ -5742,9 +5742,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(9, it.value());
     ASSERT_EQ(29, it.seek(27));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores, aggregate
@@ -5784,7 +5784,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -5804,9 +5804,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores, max
@@ -5846,7 +5846,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -5866,9 +5866,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2,4)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores partially, aggregate
@@ -5907,7 +5907,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size()+docs[1].first.size()+docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -5927,9 +5927,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators with scores partially, max
@@ -5968,7 +5968,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size()+docs[1].first.size()+docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -5988,9 +5988,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators without scores, aggregate
@@ -6027,7 +6027,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6047,9 +6047,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // disjunction with score, sub-iterators without scores, max
@@ -6086,7 +6086,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6106,9 +6106,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -6138,13 +6138,13 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
         ASSERT_EQ(it.value(), doc->value);
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6163,12 +6163,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6187,12 +6187,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6213,12 +6213,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6238,12 +6238,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( docs.front(), result );
   }
@@ -6260,12 +6260,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back(it.value());
       }
       ASSERT_FALSE(it.next());
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs.front(), result);
   }
@@ -6286,12 +6286,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6309,12 +6309,12 @@ TEST(conjunction_test, next) {
       auto& doc = it.attributes().get<irs::document>();
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it.value());
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6337,15 +6337,15 @@ TEST(conjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
       {1, 1},
       {6, 6},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 6},
+      {irs::doc_limits::invalid(), 6},
       {29, 45},
       {46, 99},
       {68, 99},
       {256, 256},
-      {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {257, irs::doc_limits::eof()}
     };
 
     conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
@@ -6369,15 +6369,15 @@ TEST(conjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 1},
         {6, 6},
         {29, 45},
         {44, 45},
         {46, 99},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 99},
+        {irs::doc_limits::invalid(), 99},
         {256, 256},
-        {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {257, irs::doc_limits::eof()}
     };
 
     conjunction it(detail::execute_all<conjunction ::doc_iterator_t>(docs));
@@ -6395,9 +6395,9 @@ TEST(conjunction_test, seek) {
       {}, {}, {}, {}
     };
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
     conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
@@ -6420,13 +6420,13 @@ TEST(conjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
 
     conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
@@ -6449,12 +6449,12 @@ TEST(conjunction_test, seek) {
     };
 
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
       {6, 6},
       {45, 45},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 45},
+      {irs::doc_limits::invalid(), 45},
       {99, 99},
-      {257, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {257, irs::doc_limits::eof()}
     };
 
     conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
@@ -6493,7 +6493,7 @@ TEST(conjunction_test, seek_next) {
     // cost
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(4, it.seek(3));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
@@ -6501,9 +6501,9 @@ TEST(conjunction_test, seek_next) {
     ASSERT_EQ(8, it.value());
     ASSERT_EQ(14, it.seek(14));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -6543,7 +6543,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_EQ(4, it.seek(3));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
@@ -6551,9 +6551,9 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(8, it.value());
     ASSERT_EQ(14, it.seek(14));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators with scores, aggregation
@@ -6593,7 +6593,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6613,9 +6613,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators with scores, max
@@ -6655,7 +6655,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6675,9 +6675,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators with scores partially, aggregation
@@ -6716,7 +6716,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6736,9 +6736,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators with scores partially, max
@@ -6777,7 +6777,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6797,9 +6797,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators without scores, aggregation
@@ -6836,7 +6836,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6856,9 +6856,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 
   // conjunction with score, sub-iterators without scores, max
@@ -6895,7 +6895,7 @@ TEST(conjunction_test, scored_seek_next) {
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it.attributes()));
 
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it.value());
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     score.evaluate();
@@ -6915,9 +6915,9 @@ TEST(conjunction_test, scored_seek_next) {
     score.evaluate();
     ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it.value());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
 }
 
@@ -6946,12 +6946,12 @@ TEST(exclusion_test, next) {
 
       // cost
       ASSERT_EQ(included.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -6967,12 +6967,12 @@ TEST(exclusion_test, next) {
         irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(included, result);
   }
@@ -6987,12 +6987,12 @@ TEST(exclusion_test, next) {
         irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(included, result);
   }
@@ -7008,12 +7008,12 @@ TEST(exclusion_test, next) {
         irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
         irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -7029,12 +7029,12 @@ TEST(exclusion_test, next) {
         irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( included, result );
   }
@@ -7051,12 +7051,12 @@ TEST(exclusion_test, next) {
         irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it.attributes()));
-      ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
       }
       ASSERT_FALSE( it.next() );
-      ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it.value()));
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
@@ -7069,14 +7069,14 @@ TEST(exclusion_test, seek) {
     std::vector<irs::doc_id_t> included{ 1, 2, 5, 7, 9, 11, 29, 45 };
     std::vector<irs::doc_id_t> excluded{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, 2},
         {5, 7},
-        {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 7},
+        {irs::doc_limits::invalid(), 7},
         {9, 9},
         {45, 45},
         {43, 45},
-        {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+        {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
       irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
@@ -7094,9 +7094,9 @@ TEST(exclusion_test, seek) {
     std::vector<irs::doc_id_t> included{};
     std::vector<irs::doc_id_t> excluded{};
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {6, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
     irs::exclusion it(
       irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
@@ -7115,13 +7115,13 @@ TEST(exclusion_test, seek) {
     std::vector<irs::doc_id_t> included{ 1, 2, 5, 7, 9, 11, 29, 45 };
     std::vector<irs::doc_id_t> excluded{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
-      {irs::type_limits<irs::type_t::doc_id_t>::eof(), irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {9, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {12, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {13, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {45, irs::type_limits<irs::type_t::doc_id_t>::eof()},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
       irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
@@ -7140,12 +7140,12 @@ TEST(exclusion_test, seek) {
     std::vector<irs::doc_id_t> included{ 1, 2, 5, 7, 9, 11, 29, 45 };
     std::vector<irs::doc_id_t> excluded{ 1, 5, 6, 12, 29 };
     std::vector<detail::seek_doc> expected{
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), irs::type_limits<irs::type_t::doc_id_t>::invalid()},
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
       {7, 7},
       {11, 11},
-      {irs::type_limits<irs::type_t::doc_id_t>::invalid(), 11},
+      {irs::doc_limits::invalid(), 11},
       {45, 45},
-      {57, irs::type_limits<irs::type_t::doc_id_t>::eof()}
+      {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
       irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
