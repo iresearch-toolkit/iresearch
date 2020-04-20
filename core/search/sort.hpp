@@ -52,9 +52,8 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  filter_boost() noexcept;
 
-  void clear() noexcept { value = no_boost(); }
+  filter_boost() noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

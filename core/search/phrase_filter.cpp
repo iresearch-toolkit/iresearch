@@ -267,8 +267,8 @@ NS_ROOT
 template<typename State>
 class phrase_query : public filter::prepared {
  public:
-  typedef states_cache<State> states_t;
-  typedef std::vector<position::value_t> positions_t;
+  using states_t = states_cache<State>;
+  using positions_t = std::vector<position::value_t>;
 
   phrase_query(
       states_t&& states,
@@ -303,6 +303,11 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       const sub_reader& rdr,
       const order::prepared& ord,
       const attribute_view& /*ctx*/) const {
+    using conjunction_t = conjunction<doc_iterator::ptr>;
+    using phrase_iterator_t = phrase_iterator<
+      conjunction_t,
+      fixed_phrase_frequency>;
+
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -314,13 +319,10 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     // get features required for query & order
     auto features = ord.features() | by_phrase::required();
 
-    typedef conjunction<doc_iterator::ptr> conjunction_t;
-    typedef phrase_iterator<conjunction_t, fixed_phrase_frequency> phrase_iterator_t;
-
     conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
 
-    phrase_iterator_t::positions_t positions;
+    std::vector<fixed_phrase_frequency::term_position_t> positions;
     positions.reserve(phrase_state->terms.size());
 
     // find term using cached state
@@ -380,6 +382,11 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       const sub_reader& rdr,
       const order::prepared& ord,
       const attribute_view& /*ctx*/) const override {
+    using adapter_t = variadic_phrase_adapter;
+    using conjunction_t = conjunction<doc_iterator::ptr>;
+    using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
+    using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
+
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -391,18 +398,12 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     // get features required for query & order
     const auto features = ord.features() | by_phrase::required();
 
-    typedef conjunction<doc_iterator::ptr> conjunction_t;
-    typedef phrase_iterator<conjunction_t, variadic_phrase_frequency> phrase_iterator_t;
-
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
-    typedef position_score_iterator_adapter<doc_iterator::ptr> adapter_t;
-    typedef disjunction<doc_iterator::ptr, adapter_t, true> disjunction_t;
-
     const auto phrase_size = phrase_state->num_terms.size();
 
-    phrase_iterator_t::positions_t positions;
+    std::vector<variadic_term_position> positions;
     positions.resize(phrase_size);
 
     // find term using cached state
@@ -441,7 +442,6 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       }
 
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
-      typedef irs::compound_doc_iterator<adapter_t> compound_doc_iterator_t;
       #ifdef IRESEARCH_DEBUG
         pos.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
         assert(pos.first);
@@ -452,6 +452,25 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       ++position;
     }
     assert(term_state == phrase_state->terms.end());
+
+    if (phrase_state->volatile_boost) {
+      using phrase_iterator_t = phrase_iterator<
+        conjunction_t,
+        variadic_phrase_frequency<true>>;
+
+      return memory::make_shared<phrase_iterator_t>(
+        std::move(conj_itrs),
+        std::move(positions),
+        rdr,
+        *phrase_state->reader,
+        stats_.c_str(),
+        ord,
+        boost());
+    }
+
+    using phrase_iterator_t = phrase_iterator<
+      conjunction_t,
+      variadic_phrase_frequency<false>>;
 
     return memory::make_shared<phrase_iterator_t>(
       std::move(conj_itrs),
@@ -509,6 +528,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const order::prepared& ord,
     boost_t boost) const {
   const auto phrase_size = options().size();
+  const auto is_ord_empty = ord.empty();
 
   // stats collectors
   field_collectors field_stats(ord);
@@ -540,9 +560,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     field_stats.collect(segment, *reader); // collect field statistics once per segment
-
-    auto is_ord_empty = ord.empty();
-
     ptv.reset(term_stats);
 
     for (const auto& word : options()) {

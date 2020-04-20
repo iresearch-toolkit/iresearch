@@ -27,37 +27,14 @@
 
 NS_ROOT
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class position_score_iterator_adapter
-/// @brief adapter to use doc_iterator with positions for disjunction
-////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
-struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
-  position_score_iterator_adapter(DocIterator&& it, boost_t boost) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(it)), boost(boost) {
-    position = irs::position::extract(this->it->attributes());
-  }
-
-  position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
-  position_score_iterator_adapter& operator=(const position_score_iterator_adapter&) = default;
-
-  position_score_iterator_adapter(position_score_iterator_adapter&& rhs) = default;
-  position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) = default;
-
-  irs::position* position;
-  boost_t boost;
-}; // position_score_iterator_adapter
-
 class fixed_phrase_frequency {
  public:
-  typedef std::pair<
+  using term_position_t = std::pair<
     position::ref, // position attribute
-    position::value_t // desired offset in the phrase
-  > position_t;
-  typedef std::vector<position_t> positions_t;
+    position::value_t>; // desired offset in the phrase
 
   fixed_phrase_frequency(
-      positions_t&& pos,
+      std::vector<term_position_t>&& pos,
       attribute_view& attrs,
       const order::prepared& ord)
     : pos_(std::move(pos)), order_(&ord) {
@@ -117,30 +94,37 @@ class fixed_phrase_frequency {
   }
 
  private:
-  positions_t pos_; // list of desired positions along with corresponding attributes
+  std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
   const order::prepared* order_;
   frequency phrase_freq_; // freqency of the phrase in a document
 }; // fixed_phrase_frequency
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator_adapter
+/// @brief adapter to use doc_iterator with positions for disjunction
+////////////////////////////////////////////////////////////////////////////////
+struct variadic_phrase_adapter: score_iterator_adapter<doc_iterator::ptr> {
+  variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
+    : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
+      position(irs::position::extract(this->it->attributes())),
+      boost(boost) {
+  }
+
+  irs::position* position;
+  boost_t boost;
+}; // variadic_phrase_adapter
+
+using variadic_term_position = std::pair<
+  compound_doc_iterator<variadic_phrase_adapter>*,
+  position::value_t>; // desired offset in the phrase
+
+template<bool VolatileBoost>
 class variadic_phrase_frequency {
  public:
-  typedef std::pair<
-    compound_doc_iterator<position_score_iterator_adapter<doc_iterator::ptr>>*,
-    position::value_t // desired offset in the phrase
-  > position_t;
-  typedef std::vector<position_t> positions_t;
+  using term_position_t = variadic_term_position;
 
- private:
-  struct part_visitor_ctx {
-    bool match = false;
-    position::value_t term_position = pos_limits::eof();
-    uint32_t min_seeked = pos_limits::eof();
-    boost_t boost = no_boost();
-  };
-
- public:
   variadic_phrase_frequency(
-      positions_t&& pos,
+      std::vector<term_position_t>&& pos,
       attribute_view& attrs,
       const order::prepared& ord)
     : pos_(std::move(pos)), order_empty_(ord.empty()) {
@@ -149,13 +133,17 @@ class variadic_phrase_frequency {
 
     if (!ord.empty()) {
       attrs.emplace(phrase_freq_);
-      attrs.emplace(phrase_boost_);
+      if /*constexpr*/ (VolatileBoost) {
+        attrs.emplace(phrase_boost_);
+      }
     }
   }
 
   // returns frequency of the phrase
   frequency::value_t operator()() {
-    phrase_boost_.value = no_boost();
+    if /*constexpr*/ (VolatileBoost) {
+      phrase_boost_.value = no_boost();
+    }
     phrase_freq_.value = 0;
 
     pos_.front().first->visit(this, visit_lead);
@@ -164,7 +152,7 @@ class variadic_phrase_frequency {
   }
 
  private:
-  static bool visit(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& it_adapter) {
+  static bool visit(void* ctx, variadic_phrase_adapter& it_adapter) {
     assert(ctx);
     auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
     auto* p = it_adapter.position;
@@ -179,19 +167,22 @@ class variadic_phrase_frequency {
       return true;
     }
     self.match = true;
-    self.match_boost_ *= it_adapter.boost;
+    if /*constexpr*/ (VolatileBoost) {
+      self.match_boost_ *= it_adapter.boost;
+    }
     return false;
   }
 
-  static bool visit_lead(void* ctx, position_score_iterator_adapter<doc_iterator::ptr>& lead_adapter) {
+  static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
     assert(ctx);
     auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
     const auto end = self.pos_.end();
     auto* lead = lead_adapter.position;
     lead->next();
-    position::value_t base_position = pos_limits::eof();
-    while (!pos_limits::eof(base_position = lead->value())) {
-      self.match_boost_ = lead_adapter.boost;
+    for (position::value_t base_position; !pos_limits::eof(base_position = lead->value()); ) {
+      if /*constexpr*/ (VolatileBoost) {
+        self.match_boost_ = lead_adapter.boost;
+      }
       self.match = true;
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
         self.match = false;
@@ -214,14 +205,16 @@ class variadic_phrase_frequency {
         if (self.order_empty_) {
           return false;
         }
-        self.phrase_boost_.value *= self.match_boost_;
+        if /*constexpr*/ (VolatileBoost) {
+          self.phrase_boost_.value *= self.match_boost_;
+        }
         lead->next();
       }
     }
     return true;
   }
 
-  positions_t pos_; // list of desired positions along with corresponding attributes
+  std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
   frequency phrase_freq_; // freqency of the phrase in a document
   filter_boost phrase_boost_;
   boost_t match_boost_{ no_boost() };
@@ -236,11 +229,9 @@ class variadic_phrase_frequency {
 template<typename Conjunction, typename Frequency>
 class phrase_iterator : public doc_iterator_base<doc_iterator> {
  public:
-  typedef typename Frequency::positions_t positions_t;
-
   phrase_iterator(
       typename Conjunction::doc_iterators_t&& itrs,
-      typename Frequency::positions_t&& pos,
+      std::vector<typename Frequency::term_position_t>&& pos,
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
