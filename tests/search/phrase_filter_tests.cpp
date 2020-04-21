@@ -5834,6 +5834,102 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(irs::doc_limits::eof(docs_seek->seek(irs::doc_limits::eof())));
   }
 
+  // =============================
+  // jumps ... (jumps|hotdog|the) with scorer
+  {
+    irs::bytes_ref actual_value;
+
+    irs::by_phrase q;
+    *q.mutable_field() = "phrase_anl";
+    auto& pos0 = q.mutable_options()->push_back<irs::by_terms_options>();
+    pos0.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("jumps")));
+    auto& pos1 = q.mutable_options()->push_back<irs::by_terms_options>(1);
+    pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("jumps")), 0.25f);
+    pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("hotdog")), 0.5f);
+    pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("the")), 0.75f);
+
+    irs::order order;
+    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    auto prepared_order = order.prepare();
+
+    auto prepared = q.prepare(rdr, prepared_order);
+
+    auto sub = rdr.begin();
+    auto column = sub->column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto docs = prepared->execute(*sub, prepared_order);
+    auto& freq = docs->attributes().get<irs::frequency>();
+    ASSERT_TRUE(freq);
+    auto& boost = docs->attributes().get<irs::filter_boost>();
+    ASSERT_TRUE(boost);
+    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(docs->value(), doc->value);
+    ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
+    auto docs_seek = prepared->execute(*sub, prepared_order);
+    ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
+
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(1, freq->value);
+    ASSERT_FLOAT_EQ((1.f+0.75f)/2, boost->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(2, freq->value);
+    ASSERT_FLOAT_EQ(((1.f+0.25f)/2 + (1.f+0.5f)/2)/2, boost->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("O", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("O", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(4, freq->value);
+    ASSERT_FLOAT_EQ((1.f+0.25f)/2, boost->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("P", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("P", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(3, freq->value);
+    ASSERT_FLOAT_EQ((1.f+0.25f)/2, boost->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("Q", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("Q", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(2, freq->value);
+    ASSERT_FLOAT_EQ((1.f+0.25f)/2, boost->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("R", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_TRUE(values(docs->value(), actual_value));
+    ASSERT_EQ("R", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
+    ASSERT_FALSE(docs->next());
+    ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
+    ASSERT_TRUE(irs::doc_limits::eof(docs_seek->seek(irs::doc_limits::eof())));
+  }
+
   // by_terms_options "fox|that" with scorer
   {
     irs::bytes_ref actual_value;
