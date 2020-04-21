@@ -128,8 +128,9 @@ class variadic_phrase_frequency {
       attribute_view& attrs,
       const order::prepared& ord)
     : pos_(std::move(pos)),
+      phrase_size_(pos_.size()),
       order_empty_(ord.empty()) {
-    assert(!pos_.empty()); // must not be empty
+    assert(!pos_.empty() && phrase_size_); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
 
     if (!ord.empty()) {
@@ -143,16 +144,16 @@ class variadic_phrase_frequency {
   // returns frequency of the phrase
   frequency::value_t operator()() {
     if /*constexpr*/ (VolatileBoost) {
-      lead_match_freq_ = 0;
-      lead_match_boost_ = {};
+      lead_freq_ = 0;
+      lead_boost_ = {};
       phrase_boost_.value = {};
     }
 
     phrase_freq_.value = 0;
     pos_.front().first->visit(this, visit_lead);
 
-    if /*constexpr*/ (VolatileBoost && lead_match_freq_) {
-      phrase_boost_.value = (phrase_boost_.value + (lead_match_boost_ / lead_match_freq_)) / pos_.size();
+    if /*constexpr*/ (VolatileBoost && lead_freq_) {
+      phrase_boost_.value = (phrase_boost_.value + (lead_boost_ / lead_freq_)) / phrase_size_;
     }
 
     return phrase_freq_.value;
@@ -190,12 +191,14 @@ class variadic_phrase_frequency {
     auto* lead = lead_adapter.position;
     lead->next();
 
-    uint32_t phrase_freq = 0; // phrase frequency for current lead_iterator
+    uint32_t phrase_freq = 0;  // phrase frequency for current lead_iterator
     boost_t phrase_boost = {}; // phrase boost for current lead_iterator
+    uint32_t match_freq;
+    boost_t match_boost;
     for (position::value_t base_position; !pos_limits::eof(base_position = lead->value()); ) {
-      self.match_freq_ = 1;
+      match_freq = 1;
       if /*constexpr*/ (VolatileBoost) {
-        self.match_boost_ = {};
+        match_boost = 0.f;
       }
 
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
@@ -203,12 +206,16 @@ class variadic_phrase_frequency {
         if (!pos_limits::valid(self.term_position_)) {
           return false; // invalid for all
         }
-        self.pos_boost_ = 0.f;
+
         self.pos_freq_ = 0;
+        if /*constexpr*/ (VolatileBoost) {
+          self.pos_boost_ = 0.f;
+        }
         self.min_sought_ = pos_limits::eof();
+
         it->first->visit(ctx, visit);
         if (!self.pos_freq_) {
-          self.match_freq_ = 0;
+          match_freq = 0;
 
           if (!pos_limits::eof(self.min_sought_)) {
             lead->seek(self.min_sought_ - it->second);
@@ -216,57 +223,50 @@ class variadic_phrase_frequency {
           }
 
           //FIXME
-          if (phrase_freq) {
-            ++self.lead_match_freq_;
-
-            if /*constexpr*/ (VolatileBoost) {
-              self.lead_match_boost_ += lead_adapter.boost;
-              self.phrase_boost_.value += phrase_boost / phrase_freq;
-            }
+          if /*constexpr*/ (VolatileBoost && phrase_freq) {
+            ++self.lead_freq_;
+            self.lead_boost_ += lead_adapter.boost;
+            self.phrase_boost_.value += phrase_boost / phrase_freq;
           }
 
           return true; // eof for all
         }
-        self.match_freq_ *= self.pos_freq_;
+        match_freq *= self.pos_freq_;
         if /*constexpr*/ (VolatileBoost) {
-          self.match_boost_ += self.pos_boost_ / self.pos_freq_;
+          match_boost += self.pos_boost_ / self.pos_freq_;
         }
       }
 
-      if (self.match_freq_) {
-        self.phrase_freq_.value += self.match_freq_;
+      if (match_freq) {
+        self.phrase_freq_.value += match_freq;
         if (self.order_empty_) {
           return false;
         }
         ++phrase_freq;
         if /*constexpr*/ (VolatileBoost) {
-          phrase_boost += self.match_boost_;
+          phrase_boost += match_boost;
         }
         lead->next();
       }
     }
 
-    if (phrase_freq) {
-      ++self.lead_match_freq_;
-
-      if /*constexpr*/ (VolatileBoost) {
-        self.lead_match_boost_ += lead_adapter.boost;
-        self.phrase_boost_.value += phrase_boost / phrase_freq;
-      }
+    if /*constexpr*/ (VolatileBoost && phrase_freq) {
+      ++self.lead_freq_;
+      self.lead_boost_ += lead_adapter.boost;
+      self.phrase_boost_.value += phrase_boost / phrase_freq;
     }
 
     return true;
   }
 
   std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
-  frequency phrase_freq_; // freqency of the phrase in a document
-  filter_boost phrase_boost_;
-  boost_t lead_match_boost_{ };
-  boost_t match_boost_{ no_boost() };
-  boost_t pos_boost_{ }; // boost from all matched iterators at a certain position
-  uint32_t lead_match_freq_{};
-  uint32_t match_freq_{};
-  uint32_t pos_freq_{}; // number of matched iterators at a certain position
+  const size_t phrase_size_;         // size of the phrase (speedup phrase boost evaluation)
+  frequency phrase_freq_;            // freqency of the phrase in a document
+  filter_boost phrase_boost_;        // boost of the phrase in a document
+  boost_t lead_boost_{0.f}; 				 // boost from all matched lead iterators
+  boost_t pos_boost_{0.f};           // boost from all matched non-lead iterators
+  uint32_t lead_freq_{0};            // number of matched lead iterators
+  uint32_t pos_freq_{0};             // number of matched non-lead iterators
   position::value_t term_position_{ pos_limits::eof() };
   position::value_t min_sought_{ pos_limits::eof() };
   const bool order_empty_;
