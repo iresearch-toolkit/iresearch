@@ -127,7 +127,8 @@ class variadic_phrase_frequency {
       std::vector<term_position_t>&& pos,
       attribute_view& attrs,
       const order::prepared& ord)
-    : pos_(std::move(pos)), order_empty_(ord.empty()) {
+    : pos_(std::move(pos)),
+      order_empty_(ord.empty()) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
 
@@ -142,11 +143,17 @@ class variadic_phrase_frequency {
   // returns frequency of the phrase
   frequency::value_t operator()() {
     if /*constexpr*/ (VolatileBoost) {
-      phrase_boost_.value = no_boost();
+      lead_match_freq_ = 0;
+      lead_match_boost_ = {};
+      phrase_boost_.value = {};
     }
-    phrase_freq_.value = 0;
 
+    phrase_freq_.value = 0;
     pos_.front().first->visit(this, visit_lead);
+
+    if /*constexpr*/ (VolatileBoost && lead_match_freq_) {
+      phrase_boost_.value = (phrase_boost_.value + (lead_match_boost_ / lead_match_freq_)) / pos_.size();
+    }
 
     return phrase_freq_.value;
   }
@@ -166,11 +173,14 @@ class variadic_phrase_frequency {
       }
       return true;
     }
-    self.match = true;
+
+    ++self.pos_freq_;
     if /*constexpr*/ (VolatileBoost) {
-      self.match_boost_ *= it_adapter.boost;
+      self.pos_boost_ += it_adapter.boost;
     }
-    return false;
+
+    // can't break visitation in case if we need score
+    return false; //!self.order_empty_;
   }
 
   static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
@@ -179,48 +189,86 @@ class variadic_phrase_frequency {
     const auto end = self.pos_.end();
     auto* lead = lead_adapter.position;
     lead->next();
+
+    uint32_t phrase_freq = 0; // phrase frequency for current lead_iterator
+    boost_t phrase_boost = {}; // phrase boost for current lead_iterator
     for (position::value_t base_position; !pos_limits::eof(base_position = lead->value()); ) {
+      self.match_freq_ = 1;
       if /*constexpr*/ (VolatileBoost) {
-        self.match_boost_ = lead_adapter.boost;
+        self.match_boost_ = {};
       }
-      self.match = true;
+
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
-        self.match = false;
         self.term_position_ = base_position + it->second;
         if (!pos_limits::valid(self.term_position_)) {
           return false; // invalid for all
         }
+        self.pos_boost_ = 0.f;
+        self.pos_freq_ = 0;
         self.min_sought_ = pos_limits::eof();
-        it->first->visit(&self, visit);
-        if (!self.match) {
+        it->first->visit(ctx, visit);
+        if (!self.pos_freq_) {
+          self.match_freq_ = 0;
+
           if (!pos_limits::eof(self.min_sought_)) {
             lead->seek(self.min_sought_ - it->second);
             break;
           }
+
+          //FIXME
+          if (phrase_freq) {
+            ++self.lead_match_freq_;
+
+            if /*constexpr*/ (VolatileBoost) {
+              self.lead_match_boost_ += lead_adapter.boost;
+              self.phrase_boost_.value += phrase_boost / phrase_freq;
+            }
+          }
+
           return true; // eof for all
         }
+        self.match_freq_ *= self.pos_freq_;
+        if /*constexpr*/ (VolatileBoost) {
+          self.match_boost_ += self.pos_boost_ / self.pos_freq_;
+        }
       }
-      if (self.match) {
-        ++self.phrase_freq_.value;
+
+      if (self.match_freq_) {
+        self.phrase_freq_.value += self.match_freq_;
         if (self.order_empty_) {
           return false;
         }
+        ++phrase_freq;
         if /*constexpr*/ (VolatileBoost) {
-          self.phrase_boost_.value *= self.match_boost_;
+          phrase_boost += self.match_boost_;
         }
         lead->next();
       }
     }
+
+    if (phrase_freq) {
+      ++self.lead_match_freq_;
+
+      if /*constexpr*/ (VolatileBoost) {
+        self.lead_match_boost_ += lead_adapter.boost;
+        self.phrase_boost_.value += phrase_boost / phrase_freq;
+      }
+    }
+
     return true;
   }
 
   std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
   frequency phrase_freq_; // freqency of the phrase in a document
   filter_boost phrase_boost_;
+  boost_t lead_match_boost_{ };
   boost_t match_boost_{ no_boost() };
+  boost_t pos_boost_{ }; // boost from all matched iterators at a certain position
+  uint32_t lead_match_freq_{};
+  uint32_t match_freq_{};
+  uint32_t pos_freq_{}; // number of matched iterators at a certain position
   position::value_t term_position_{ pos_limits::eof() };
   position::value_t min_sought_{ pos_limits::eof() };
-  bool match{ false };
   const bool order_empty_;
 }; // variadic_phrase_frequency
 

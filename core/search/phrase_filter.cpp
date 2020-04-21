@@ -695,7 +695,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     state.terms = std::move(phrase_terms);
     state.num_terms = std::move(num_terms);
     state.reader = reader;
-    state.volatile_boost = ptv.volatile_boost();
+    state.volatile_boost = !is_ord_empty && ptv.volatile_boost();
     assert(phrase_size == state.num_terms.size());
 
     phrase_terms.reserve(phrase_size);

@@ -169,11 +169,12 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
-    if (*lhs_.doc == doc_.value && !visitor(ctx, lhs_)) {
+    assert(lhs_.doc->value >= doc_.value); // assume that seek or next has been called
+    if (lhs_.value() == doc_.value && !visitor(ctx, lhs_)) {
       return;
     }
     seek_iterator_impl(rhs_, doc_.value);
-    if (*rhs_.doc == doc_.value && !visitor(ctx, rhs_)) {
+    if (rhs_.value() == doc_.value && !visitor(ctx, rhs_)) {
       return;
     }
   }
