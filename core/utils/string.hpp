@@ -351,6 +351,11 @@ inline size_t common_prefix_length(
   return common_prefix_length(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
+template<typename Char>
+inline void assign(std::basic_string<Char>& str, const basic_string_ref<Char>& ref) {
+  str.assign(ref.c_str(), ref.size());
+}
+
 template< typename _Elem, typename _Traits >
 inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
                          const _Elem* second ) {

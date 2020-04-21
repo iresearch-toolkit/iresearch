@@ -118,7 +118,16 @@ using variadic_term_position = std::pair<
   compound_doc_iterator<variadic_phrase_adapter>*,
   position::value_t>; // desired offset in the phrase
 
-template<bool VolatileBoost>
+////////////////////////////////////////////////////////////////////////////////
+/// @class variadic_phrase_frequency
+/// @tparam VolatileBoost boost is not a cont
+/// @tparam CheckOverlapped evaluate frequency with the assumption that tow
+///                         different terms may be at the same position in a
+///    								 		  phrase (e.g. synonyms)
+/// @brief helper for variadic phrase frequency evaluation
+////////////////////////////////////////////////////////////////////////////////
+template<bool VolatileBoost,
+         bool CheckOverlapped = false>
 class variadic_phrase_frequency {
  public:
   using term_position_t = variadic_term_position;
@@ -180,8 +189,7 @@ class variadic_phrase_frequency {
       self.pos_boost_ += it_adapter.boost;
     }
 
-    // can't break visitation in case if we need score
-    return false; //!self.order_empty_;
+    return CheckOverlapped;
   }
 
   static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
