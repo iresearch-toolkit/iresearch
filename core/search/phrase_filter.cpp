@@ -506,7 +506,7 @@ filter::prepared::ptr by_phrase::prepare(
   }
 
   if (1 == options().size()) {
-    auto query = boost::apply_visitor(
+    auto query = std::visit(
       ::prepare{index, ord, field(), this->boost()*boost},
       options().begin()->second);
 
@@ -563,8 +563,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ptv.reset(term_stats);
 
     for (const auto& word : options()) {
-      assert(boost::get<by_term_options>(&word.second));
-      by_term::visit(segment, *reader, boost::get<by_term_options>(word.second).term, ptv);
+      assert(std::get_if<by_term_options>(&word.second));
+      by_term::visit(segment, *reader, std::get<by_term_options>(word.second).term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;
@@ -630,7 +630,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_part_stats.reserve(phrase_size);
   for (const auto& word : options()) {
     phrase_part_stats.emplace_back(ord, 0);
-    phrase_part_visitors.emplace_back(boost::apply_visitor(get_visitor{}, word.second));
+    phrase_part_visitors.emplace_back(std::visit(get_visitor{}, word.second));
   }
 
   // per segment phrase states
