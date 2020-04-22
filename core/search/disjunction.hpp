@@ -744,7 +744,7 @@ doc_iterator::ptr make_disjunction(
       // empty or unreachable search criteria
       return doc_iterator::empty();
     case 1:
-      if /*constexpr*/ (Disjunction::ENABLE_UNARY) {
+      if constexpr (Disjunction::ENABLE_UNARY) {
         typedef typename Disjunction::unary_disjunction_t unary_disjunction_t;
         return doc_iterator::make<unary_disjunction_t>(
           std::move(itrs.front())

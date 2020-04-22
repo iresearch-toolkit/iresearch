@@ -310,4 +310,4 @@ namespace irs = ::iresearch;
 
 #include "types.hpp" // iresearch types
 
-#endif // IRESEACH_SHARED_H
+#endif // IRESEARCH_SHARED_H

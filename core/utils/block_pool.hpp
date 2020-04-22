@@ -783,13 +783,13 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
 
     alloc_slice_of_size(size); // reserve next slice
     const size_t slice_start = where_.pool_offset();
-    if /*constexpr*/ (Greedy) {
+    if constexpr (Greedy) {
       *where_ = static_cast<byte_type>(level);
     }
     where_ += size;
     assert(level_info.next);
     assert(level_info.next < detail::LEVEL_MAX);
-    if /*constexpr*/ (Greedy) {
+    if constexpr (Greedy) {
       where_[-sizeof(uint32_t)] = static_cast<byte_type>(level_info.next);
     } else {
       where_[-1] = static_cast<byte_type>(level_info.next);

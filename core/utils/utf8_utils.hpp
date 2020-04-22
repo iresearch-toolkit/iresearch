@@ -186,7 +186,7 @@ inline bool utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator ou
   for (auto end = begin + size; begin < end; ) {
     const auto cp = Checked ? next_checked(begin, end) : next(begin);
 
-    if /*constexpr*/ (Checked) {
+    if constexpr (Checked) {
       if (cp == INVALID_CODE_POINT) {
         return false;
       }
