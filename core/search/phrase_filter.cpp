@@ -368,6 +368,13 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
 class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
+  using conjunction_t = conjunction<doc_iterator::ptr>;
+
+  // FIXME add proper handling of overlapped case
+  template<bool VolatileBoost>
+  using phrase_iterator_t = phrase_iterator<conjunction_t,
+                                            variadic_phrase_frequency<VolatileBoost>>;
+
   variadic_phrase_query(
       states_t&& states, positions_t&& positions,
       bstring&& stats, boost_t boost) noexcept
@@ -383,7 +390,6 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       const order::prepared& ord,
       const attribute_view& /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
-    using conjunction_t = conjunction<doc_iterator::ptr>;
     using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
 
@@ -453,12 +459,9 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
     assert(term_state == phrase_state->terms.end());
 
-    if (phrase_state->volatile_boost) {
-      using phrase_iterator_t = phrase_iterator<
-        conjunction_t,
-        variadic_phrase_frequency<true>>;
 
-      return memory::make_shared<phrase_iterator_t>(
+    if (phrase_state->volatile_boost) {
+      return memory::make_shared<phrase_iterator_t<true>>(
         std::move(conj_itrs),
         std::move(positions),
         rdr,
@@ -468,11 +471,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
         boost());
     }
 
-    using phrase_iterator_t = phrase_iterator<
-      conjunction_t,
-      variadic_phrase_frequency<false>>;
-
-    return memory::make_shared<phrase_iterator_t>(
+    return memory::make_shared<phrase_iterator_t<false>>(
       std::move(conj_itrs),
       std::move(positions),
       rdr,

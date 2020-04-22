@@ -174,8 +174,8 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       return;
     }
     seek_iterator_impl(rhs_, doc_.value);
-    if (rhs_.value() == doc_.value && !visitor(ctx, rhs_)) {
-      return;
+    if (rhs_.value() == doc_.value) {
+      visitor(ctx, rhs_);
     }
   }
 
