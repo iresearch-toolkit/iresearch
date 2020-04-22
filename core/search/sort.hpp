@@ -213,10 +213,7 @@ class IRESEARCH_API sort {
     /// @brief helper function retuns merge function by a specified type
     //////////////////////////////////////////////////////////////////////////////
     template<MergeType type>
-#if IRESEARCH_CXX >= IRESEARCH_CXX_14
-    constexpr
-#endif
-    static merge_f merge_func(const prepared& bucket) noexcept {
+    constexpr static merge_f merge_func(const prepared& bucket) noexcept {
       switch (type) {
         case MergeType::AGGREGATE:
           return bucket.aggregate_func();
