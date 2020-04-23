@@ -78,19 +78,19 @@ struct get_visitor {
   using result_type = field_visitor;
 
   result_type operator()(const by_term_options& part) const {
-    const bytes_ref term = part.term;
-    return [term](const sub_reader& segment,
-                const term_reader& field,
-                filter_visitor& visitor) {
+    return [term = bytes_ref(part.term)](
+        const sub_reader& segment,
+        const term_reader& field,
+        filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
     };
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    const bytes_ref term = part.term;
-    return [term](const sub_reader& segment,
-                const term_reader& field,
-                filter_visitor& visitor) {
+    return [term = bytes_ref(part.term)](
+        const sub_reader& segment,
+        const term_reader& field,
+        filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
     };
   }
@@ -104,20 +104,20 @@ struct get_visitor {
   }
 
   result_type operator()(const by_terms_options& part) const {
-    const auto& terms = part.terms;
-    return [terms](const sub_reader& segment,
-                 const term_reader& field,
-                 filter_visitor& visitor) {
-      return by_terms::visit(segment, field, terms, visitor);
+    return [terms = &part.terms](
+        const sub_reader& segment,
+        const term_reader& field,
+        filter_visitor& visitor) {
+      return by_terms::visit(segment, field, *terms, visitor);
     };
   }
 
   result_type operator()(const by_range_options& part) const {
-    const auto& range = part.range;
-    return [&range](const sub_reader& segment,
-                  const term_reader& field,
-                  filter_visitor& visitor) {
-      return by_range::visit(segment, field, range, visitor);
+    return [range = &part.range](
+        const sub_reader& segment,
+        const term_reader& field,
+        filter_visitor& visitor) {
+      return by_range::visit(segment, field, *range, visitor);
     };
   }
 
