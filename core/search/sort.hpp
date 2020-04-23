@@ -41,10 +41,8 @@ struct sub_reader;
 struct term_reader;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief represents a boost related to the particular query
+/// @brief represents no boost value
 //////////////////////////////////////////////////////////////////////////////
-typedef float_t boost_t;
-
 constexpr boost_t no_boost() noexcept { return 1.f; }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -54,9 +52,8 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  filter_boost() noexcept;
 
-  void clear() noexcept { value = no_boost(); }
+  filter_boost() noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,10 +213,7 @@ class IRESEARCH_API sort {
     /// @brief helper function retuns merge function by a specified type
     //////////////////////////////////////////////////////////////////////////////
     template<MergeType type>
-#if IRESEARCH_CXX >= IRESEARCH_CXX_14
-    constexpr
-#endif
-    static merge_f merge_func(const prepared& bucket) noexcept {
+    constexpr static merge_f merge_func(const prepared& bucket) noexcept {
       switch (type) {
         case MergeType::AGGREGATE:
           return bucket.aggregate_func();
@@ -516,7 +510,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
     static_assert(
-      alignof(score_t) <= alignof(MAX_ALIGN_T),
+      alignof(score_t) <= alignof(std::max_align_t),
       "alignof(score_t) must be <= alignof(std::max_align_t)"
     );
 
@@ -533,7 +527,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
     static_assert(
-      alignof(stats_t) <= alignof(MAX_ALIGN_T),
+      alignof(stats_t) <= alignof(std::max_align_t),
       "alignof(stats_t) must be <= alignof(std::max_align_t)"
     );
 
@@ -875,6 +869,16 @@ class IRESEARCH_API order final {
 
     prepared_order_t::const_iterator end() const noexcept {
       return prepared_order_t::const_iterator(order_.end());
+    }
+
+    const order_bucket& front() const noexcept {
+      assert(!order_.empty());
+      return order_.front();
+    }
+
+    const order_bucket& back() const noexcept {
+      assert(!order_.empty());
+      return order_.back();
     }
 
     const order_bucket& operator[](size_t i) const noexcept {

@@ -68,14 +68,17 @@ class all_terms_collector : util::noncopyable {
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
-  void collect(const boost_t boost = no_boost()) {
-    term_stats_.collect(*state_.segment, *state_.state->reader, 0, *state_.attrs);
+  void visit(const boost_t boost) {
+    assert(state_);
+    term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.attrs);
 
-    assert(state_.state);
     auto& state = *state_.state;
-    state.scored_states.emplace_back(state_.terms->cookie(), 0, boost);
+    state.scored_states.emplace_back(state_.terms->cookie(), stat_index_, boost);
     state.scored_states_estimation += *state_.docs_count;
   }
+
+  uint32_t stat_index() const noexcept { return stat_index_; }
+  void stat_index(uint32_t stat_index) noexcept { stat_index_ = stat_index; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -88,12 +91,17 @@ class all_terms_collector : util::noncopyable {
     const attribute_view* attrs{};
     const uint32_t* docs_count{};
     typename States::state_type* state{};
+
+    operator bool() const noexcept {
+      return segment && field && terms && state;
+    }
   };
 
   collector_state state_;
   States& states_;
   field_collectors& field_stats_;
   term_collectors& term_stats_;
+  uint32_t stat_index_{};
   const decltype(term_meta::docs_count) no_docs_{0};
 };
 

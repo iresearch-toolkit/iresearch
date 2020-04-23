@@ -324,7 +324,7 @@ TEST(top_terms_collector_test, test_top_k) {
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
-      collector.collect(it.value().front());
+      collector.visit(it.value().front());
     }
   }
 
@@ -346,7 +346,7 @@ TEST(top_terms_collector_test, test_top_k) {
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {
-      collector.collect(it.value().front());
+      collector.visit(it.value().front());
     }
   }
 
@@ -399,7 +399,7 @@ TEST(top_terms_collector_test, test_top_0) {
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
-      collector.collect(it.value().front());
+      collector.visit(it.value().front());
     }
   }
 
@@ -421,7 +421,7 @@ TEST(top_terms_collector_test, test_top_0) {
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {
-      collector.collect(it.value().front());
+      collector.visit(it.value().front());
     }
   }
 

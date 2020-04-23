@@ -67,13 +67,6 @@ inline void fill(bitset& bs, const term_iterator& term, size_t docs_count) {
   fill(bs, *it);
 }
 
-template<typename Key>
-struct no_boost_converter {
-  boost_t operator()(const Key&) const noexcept {
-    return no_boost();
-  }
-}; // no_boost_converter
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class limited_sample_collector
 /// @brief object to collect and track a limited number of scorers,
@@ -120,6 +113,8 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   /// @brief collect current term
   //////////////////////////////////////////////////////////////////////////////
   void collect(const Key& key) {
+    assert(state_.segment && state_.terms && state_.state);
+
     if (!scored_terms_limit_) {
       // state will not be scored
       // add all doc_ids from the doc_iterator to the unscored_docs
@@ -171,16 +166,12 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish collecting and evaluate stats
   //////////////////////////////////////////////////////////////////////////////
-  template<typename KeyToBoost = no_boost_converter<Key>>
   void score(const index_reader& index,
              const order::prepared& order,
-             std::vector<bstring>& stats,
-             const KeyToBoost& key2boost = {}) {
+             std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return; // nothing to score (optimization)
     }
-
-    assert(state_.segment && state_.terms && state_.state);
 
     // stats for a specific term
     std::unordered_map<hashed_bytes_ref, stats_state> term_stats;
@@ -194,8 +185,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       assert(term_itr);
 
       // find the stats for the current term
-      const auto res = map_utils::try_emplace(
-        term_stats,
+      const auto res = term_stats.try_emplace(
         make_hashed_ref(bytes_ref(scored_state.term)),
         index, field, order, stats_offset);
 
@@ -212,7 +202,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),
         stats_entry.stats_offset,
-        key2boost(scored_state.key));
+        static_cast<boost_t>(scored_state.key));
 
       // update estimation for scored state
       scored_state.state->scored_states_estimation += scored_state.docs_count;
@@ -226,7 +216,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
 
       order.prepare_stats(stats_buf);
-      entry.second.term_stats.finish(stats_buf, entry.second.field_stats, index);
+      entry.second.term_stats.finish(stats_buf, 0, entry.second.field_stats, index);
     }
   }
 
@@ -321,6 +311,11 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 struct term_frequency {
   uint32_t offset;
   uint32_t frequency;
+  boost_t boost;
+
+  explicit operator boost_t() const noexcept {
+    return boost;
+  }
 
   bool operator<(const term_frequency& rhs) const noexcept {
     return frequency < rhs.frequency
@@ -333,18 +328,18 @@ struct term_frequency {
 /// @brief filter visitor for multiterm queries
 //////////////////////////////////////////////////////////////////////////////
 template<typename States>
-class multiterm_visitor final : public filter_visitor {
+class multiterm_visitor {
  public:
   multiterm_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
       limited_sample_collector<term_frequency>& collector,
       States& states)
-    : segment_(segment), reader_(reader),
-      collector_(collector), states_(states) {
+    : collector_(collector), states_(states) {
   }
 
-  virtual void prepare(const seek_term_iterator& terms) override {
+  void prepare(
+      const sub_reader& segment,
+      const term_reader& reader,
+      const seek_term_iterator& terms) {
     // get term metadata
     auto& meta = terms.attributes().get<term_meta>();
 
@@ -355,30 +350,30 @@ class multiterm_visitor final : public filter_visitor {
     docs_count_ = meta ? &meta->docs_count : &no_docs_;
 
     // get state for current segment
-    auto& state = states_.insert(segment_);
-    state.reader = &reader_;
+    auto& state = states_.insert(segment);
+    state.reader = &reader;
 
-    collector_.prepare(segment_, terms, state);
+    collector_.prepare(segment, terms, state);
     key_.offset = 0;
   }
 
-  virtual void visit() override {
+  // FIXME can incorporate boost into collecting logic
+  void visit(boost_t boost) {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;
+    key_.boost = boost;
     collector_.collect(key_);
     ++key_.offset;
   }
 
  private:
   const decltype(term_meta::docs_count) no_docs_ = 0;
-  const sub_reader& segment_;
-  const term_reader& reader_;
   limited_sample_collector<term_frequency>& collector_;
   States& states_;
   term_frequency key_;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-};
+}; // multiterm_visitor
 
 NS_END
 

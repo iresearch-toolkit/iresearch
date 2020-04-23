@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,25 +15,28 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPES_H
-#define IRESEARCH_TYPES_H
+#ifndef IRESEARCH_BOOST_H
+#define IRESEARCH_BOOST_H
 
-#include "utils/integer.hpp"
+#include "scorers.hpp"
 
 NS_ROOT
 
-typedef uint8_t byte_type;
-typedef uint32_t term_id;
-typedef uint64_t field_id;
-typedef uint32_t doc_id_t;
-typedef float_t boost_t;
+struct boost_sort final : public sort {
+  DECLARE_SORT_TYPE();
+  DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
+
+  boost_sort() noexcept;
+
+  virtual sort::prepared::ptr prepare() const override;
+}; // boost_sort
 
 NS_END
 
-#endif
+#endif // IRESEARCH_BOOST_H
+

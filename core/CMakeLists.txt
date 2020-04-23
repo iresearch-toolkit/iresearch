@@ -18,12 +18,6 @@ if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
 endif()
 
-# set required standard version
-if ("${CMAKE_CXX_STANDARD}" STREQUAL "") 
-  set(CMAKE_CXX_STANDARD 11)
-endif()
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # calculate version
 math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)" )
 set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
@@ -106,6 +100,7 @@ set(IResearch_core_sources
   ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
+  ./search/boost_sort.cpp
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
@@ -115,6 +110,7 @@ set(IResearch_core_sources
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
@@ -196,6 +192,7 @@ set(IResearch_core_headers
   ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
+  ./search/boost_sort.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
   ./search/sort.hpp

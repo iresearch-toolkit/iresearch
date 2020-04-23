@@ -503,8 +503,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
@@ -518,8 +517,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
   }
 
@@ -577,11 +575,9 @@ class filter_test_case_base : public index_test_base {
  private:
   void get_query_result(
       const irs::filter::prepared::ptr& q,
-      const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
       std::vector<irs::doc_id_t>& result,
-      std::vector<irs::cost::cost_t>& result_costs
-  ) {
+      std::vector<irs::cost::cost_t>& result_costs) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
 
@@ -642,17 +638,24 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  virtual void prepare(const irs::seek_term_iterator& /*terms*/) noexcept override {
+  virtual void prepare(const irs::sub_reader& segment,
+                       const irs::term_reader& field,
+                       const irs::seek_term_iterator& terms) noexcept override {
+    it_ = &terms;
     ++prepare_calls_counter_;
   }
 
-  virtual void visit() noexcept override {
+  virtual void visit(irs::boost_t boost) noexcept override {
+    ASSERT_NE(nullptr, it_);
+    terms_.emplace_back(it_->value(), boost);
     ++visit_calls_counter_;
   }
 
   void reset() noexcept {
     prepare_calls_counter_ = 0;
     visit_calls_counter_ = 0;
+    terms_.clear();
+    it_ = nullptr;
   }
 
   size_t prepare_calls_counter() const noexcept {
@@ -663,7 +666,29 @@ class empty_filter_visitor : public irs::filter_visitor {
     return visit_calls_counter_;
   }
 
+  const std::vector<std::pair<irs::bstring, irs::boost_t>>& terms() const noexcept {
+    return terms_;
+  }
+
+  template<typename Char>
+  std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> term_refs() const {
+    std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> refs(terms_.size());
+    auto begin = refs.begin();
+    for (auto& term : terms_) {
+      begin->first = irs::ref_cast<Char>(term.first);
+      begin->second = term.second;
+      ++begin;
+    }
+    return refs;
+  }
+
+  virtual void assert_boost(irs::boost_t boost) {
+    ASSERT_EQ(irs::no_boost(), boost);
+  }
+
  private:
+  const irs::seek_term_iterator* it_{};
+  std::vector<std::pair<irs::bstring, irs::boost_t>> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor

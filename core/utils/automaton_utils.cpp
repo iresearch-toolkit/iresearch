@@ -28,9 +28,7 @@
 
 NS_LOCAL
 
-using irs::automaton;
-using irs::automaton_table_matcher;
-using irs::term_reader;
+using namespace irs;
 
 // table contains indexes of states in
 // utf8_transitions_builder::rho_states_ table
@@ -57,28 +55,6 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
   // 4 bytes sequence (240-255)
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 };
-
-template<typename Visitor>
-void automaton_visit(
-    const term_reader& reader,
-    automaton_table_matcher& matcher,
-    Visitor& visitor) {
-  auto terms = reader.iterator(matcher);
-
-  if (IRS_UNLIKELY(!terms)) {
-    return;
-  }
-
-  if (terms->next()) {
-    visitor.prepare(*terms);
-
-    do {
-      terms->read(); // read term attributes
-
-      visitor.visit();
-    } while (terms->next());
-  }
-}
 
 NS_END
 
@@ -315,11 +291,13 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
 filter::prepared::ptr prepare_automaton_filter(
     const string_ref& field,
-    automaton_table_matcher& matcher,
+    const automaton& acceptor,
     size_t scored_terms_limit,
     const index_reader& index,
     const order::prepared& order,
     boost_t boost) {
+  auto matcher = make_automaton_matcher(acceptor);
+
   if (fst::kError == matcher.Properties(0)) {
     IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                   "got the following properties " IR_UINT64_T_SPECIFIER "",
@@ -330,6 +308,7 @@ filter::prepared::ptr prepare_automaton_filter(
 
   limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   for (const auto& segment : index) {
     // get term dictionary for field
@@ -339,9 +318,7 @@ filter::prepared::ptr prepare_automaton_filter(
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::automaton_visit(*reader, matcher, mtv);
+    visit(segment, *reader, matcher, mtv);
   }
 
   std::vector<bstring> stats;
@@ -350,22 +327,6 @@ filter::prepared::ptr prepare_automaton_filter(
   return memory::make_shared<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
-}
-
-bool automaton_visit(
-    const term_reader& reader,
-    automaton_table_matcher& matcher,
-    filter_visitor& fv) {
-  if (fst::kError == matcher.Properties(0)) {
-    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
-                  "got the following properties " IR_UINT64_T_SPECIFIER "",
-                  matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES, false));
-
-    return false;
-  }
-
-  ::automaton_visit(reader, matcher, fv);
-  return true;
 }
 
 NS_END
