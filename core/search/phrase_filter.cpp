@@ -459,7 +459,6 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
     assert(term_state == phrase_state->terms.end());
 
-
     if (phrase_state->volatile_boost) {
       return memory::make_shared<phrase_iterator_t<true>>(
         std::move(conj_itrs),
