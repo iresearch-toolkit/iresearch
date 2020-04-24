@@ -77,7 +77,7 @@ class IRESEARCH_API by_phrase_options {
     is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
     auto& part = (phrase_[pos] = std::forward<PhrasePart>(t));
 
-    return std::get<std::remove_reference_t<PhrasePart>>(part);
+    return std::get<std::decay_t<PhrasePart>>(part);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +99,6 @@ class IRESEARCH_API by_phrase_options {
   PhrasePart& push_back(PhrasePart&& t, size_t offs = 0) {
     return insert(std::forward<PhrasePart>(t), next_pos() + offs);
   }
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns pointer to the phrase part of type "PhrasePart" located at a
