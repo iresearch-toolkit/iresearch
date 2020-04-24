@@ -157,7 +157,7 @@ struct IRESEARCH_API sub_reader : index_reader {
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, const string_ref& field,
            const flags& required, const FilterVisitor& field_visitor,
-           const Visitor& visitor) {
+           Visitor& visitor) {
   for (auto& segment : index) {
     const auto* reader = segment.field(field);
 
@@ -171,7 +171,7 @@ void visit(const index_reader& index, const string_ref& field,
 
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, const string_ref& field,
-           const FilterVisitor& field_visitor, const Visitor& visitor) {
+           const FilterVisitor& field_visitor, Visitor& visitor) {
   visit(index, field, flags::empty_instance(), field_visitor, visitor);
 }
 
