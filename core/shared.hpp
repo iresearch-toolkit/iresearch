@@ -242,7 +242,9 @@
   #define CURRENT_FUNCTION __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
   #define CURRENT_FUNCTION __FUNCSIG__
-#endif
+#else
+  #define CURRENT_FUNCTION __FUNCTION__
+#endif  #endif
 
 #ifndef __has_feature
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
