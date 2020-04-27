@@ -133,10 +133,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   }
 
   logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
-      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
-    }
-    return *this;
+    return output_le(level, out != nullptr ? fd_log_appender : nullptr, out);
   }
 
   irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
