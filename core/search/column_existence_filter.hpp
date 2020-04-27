@@ -58,7 +58,10 @@ struct IRESEARCH_API by_column_existence_options {
 class IRESEARCH_API by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_column_existence";
+  }
+
   DECLARE_FACTORY();
 
   using filter::prepare;

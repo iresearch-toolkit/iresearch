@@ -637,7 +637,7 @@ TEST(by_prefix_test, options) {
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
-  ASSERT_EQ(irs::by_term::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());

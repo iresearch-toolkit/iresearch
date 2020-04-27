@@ -23,53 +23,77 @@
 #ifndef IRESEARCH_TYPE_ID_H
 #define IRESEARCH_TYPE_ID_H
 
+#include <functional>
+
 #include "shared.hpp"
 #include "string.hpp"
-
-#include <functional>
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 
-struct IRESEARCH_API type_id {
-  type_id() : hash(compute_hash(this)) { }
+class type_info {
+ public:
+  using type_id = type_info(*)() noexcept;
 
-  bool operator==(const type_id& rhs) const noexcept {
-    return this == &rhs;
+  // invalid id
+  constexpr type_info() noexcept
+    : type_info(nullptr, string_ref::NIL) {
   }
 
-  bool operator!=(const type_id& rhs) const noexcept {
+  constexpr explicit operator bool() const noexcept {
+    return nullptr != id_;
+  }
+
+  constexpr bool operator==(const type_info& rhs) const noexcept {
+    return id_ == rhs.id_;
+  }
+
+  constexpr bool operator!=(const type_info& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  /* boost::hash_combile support */
-  friend size_t hash_value(const type_id& type) { return type.hash; }
-    
-  operator const type_id*() const { return this; }
+  constexpr bool operator<(const type_info& rhs) const noexcept {
+    return id_ < rhs.id_;
+  }
 
-  size_t hash;
+  constexpr const string_ref& name() const noexcept { return name_; }
+  constexpr type_id id() const noexcept { return id_; }
 
  private:
-  static size_t compute_hash(const type_id* ptr) {
-    return irs::hash_utils::hash(
-      irs::string_ref(reinterpret_cast<const char*>(ptr), sizeof(ptr))
-    );
+  template<typename T>
+  friend struct type;
+
+  constexpr type_info(type_id id, const string_ref& name) noexcept
+    : id_(id), name_(name) {
   }
+
+  type_id id_;
+  string_ref name_;
 }; // type_id
 
-#define DECLARE_TYPE_ID( type_id_name ) static const type_id_name& type()
-#define DEFINE_TYPE_ID(class_name, type_id_name) const type_id_name& class_name::type() 
+template<typename T>
+struct type {
+  static constexpr type_info get() noexcept {
+    return type_info{id(), name()};
+  }
+
+  static constexpr string_ref name() noexcept {
+    return T::type_name();
+  }
+
+  static constexpr type_info::type_id id() noexcept {
+    return &get;
+  }
+};
 
 NS_END // root 
 
-NS_BEGIN( std )
+NS_BEGIN(std)
 
 template<>
-struct hash<iresearch::type_id> {
-  typedef iresearch::type_id argument_type;
-  typedef size_t result_type;
-
-  result_type operator()( const argument_type& key ) const {
-    return key.hash;
+struct hash<::iresearch::type_info> {
+  size_t operator()(const ::iresearch::type_info& key) const {
+    return std::hash<decltype(key.id())>()(key.id());
   }
 };
 

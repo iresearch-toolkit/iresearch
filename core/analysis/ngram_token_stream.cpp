@@ -278,7 +278,7 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 
 ngram_token_stream_base::ngram_token_stream_base(
     const ngram_token_stream_base::Options& options) 
-  : analyzer(ngram_token_stream_base::type()),
+  : analyzer(irs::type<ngram_token_stream_base>::get()),
     options_(options),
     start_marker_empty_(options.start_marker.empty()),
     end_marker_empty_(options.end_marker.empty()) {
@@ -287,7 +287,7 @@ ngram_token_stream_base::ngram_token_stream_base(
 
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
-  attrs_.emplace(term_);
+  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
 }
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
@@ -384,9 +384,6 @@ bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
   }
   return true;
 }
-
-DEFINE_ANALYZER_TYPE_NAMED(ngram_token_stream_base, "ngram")
-
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noexcept {

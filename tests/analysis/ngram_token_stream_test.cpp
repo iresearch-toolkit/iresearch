@@ -32,7 +32,7 @@
 TEST(ngram_token_stream_test, construct) {
   // load jSON object
   {
-    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":true}");
+    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":1, \"max\":3, \"preserveOriginal\":true}");
     ASSERT_NE(nullptr, stream);
 
     auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>&>(*stream);
@@ -43,7 +43,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // load jSON object
   {
-    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":0, \"max\":1, \"preserveOriginal\":false, \"invalidProperty\":true }");
+    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":0, \"max\":1, \"preserveOriginal\":false, \"invalidProperty\":true }");
     ASSERT_NE(nullptr, stream);
 
     auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>&>(*stream);
@@ -54,7 +54,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // load jSON object
   {
-    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":2, \"max\":1, \"preserveOriginal\":false }");
+    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":2, \"max\":1, \"preserveOriginal\":false }");
     ASSERT_NE(nullptr, stream);
 
     auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>&>(*stream);
@@ -65,22 +65,22 @@ TEST(ngram_token_stream_test, construct) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":\"1\", \"max\":3, \"preserveOriginal\":true}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":\"3\", \"preserveOriginal\":true}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":\"true\"}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":\"true\",\"streamType\":\"unknown\"}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":\"1\", \"max\":3, \"preserveOriginal\":true}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":1, \"max\":\"3\", \"preserveOriginal\":true}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":1, \"max\":3, \"preserveOriginal\":\"true\"}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":1, \"max\":3, \"preserveOriginal\":\"true\",\"streamType\":\"unknown\"}"));
   }
 
   // 2-gram
   {
     auto stream = irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(irs::analysis::ngram_token_stream_base::Options(2, 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::type(), stream->type());
+    ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
     auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
@@ -108,7 +108,7 @@ TEST(ngram_token_stream_test, construct) {
   {
     auto stream = irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(irs::analysis::ngram_token_stream_base::Options(0, 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::type(), stream->type());
+    ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
     auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
@@ -136,7 +136,7 @@ TEST(ngram_token_stream_test, construct) {
   {
     auto stream = irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(irs::analysis::ngram_token_stream_base::Options(std::numeric_limits<size_t>::max(), 2, true));
     ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::type(), stream->type());
+    ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
     auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
     ASSERT_NE(nullptr, impl);
@@ -1169,7 +1169,7 @@ TEST(ngram_token_stream_test, test_make_config_json) {
   {
     std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}", actual);
   }
 
@@ -1177,7 +1177,7 @@ TEST(ngram_token_stream_test, test_make_config_json) {
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$\",\"endMarker\":\"#\",\"streamType\":\"utf8\"}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"utf8\",\"startMarker\":\"$\",\"endMarker\":\"#\"}", actual);
   }
 
@@ -1185,14 +1185,14 @@ TEST(ngram_token_stream_test, test_make_config_json) {
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$123\"}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"startMarker\":\"$123\"}", actual);
   }
   //with only end marker
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"endMarker\":\"#456\"}", actual);
   }
 }
@@ -1204,14 +1204,14 @@ TEST(ngram_token_stream_test, test_make_config_json) {
 TEST(ngram_token_stream_test, test_make_config_invalid_format) {
   std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::text, config));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::csv, config));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::text>::get(), config));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::csv>::get(), config));
 }
 
 
 TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
   auto stream = irs::analysis::analyzers::get(
-      "ngram", irs::text_format::json,
+      "ngram", irs::type<irs::text_format::json>::get(),
       "{\"min\":2,\"max\":3,\"preserveOriginal\":true}");
   ASSERT_NE(nullptr, stream);
   auto& attrs = stream->attributes();
@@ -1316,7 +1316,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 TEST(ngram_token_stream_test, test_load) {
   {
     irs::string_ref data("quick");
-    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}");
+    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -1337,7 +1337,7 @@ TEST(ngram_token_stream_test, test_load) {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
     std::string data;
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"utf8\"}");
+    auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{ \"min\":5,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"utf8\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));

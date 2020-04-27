@@ -51,7 +51,9 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::filter_boost";
+  }
 
   filter_boost() noexcept;
 };
@@ -337,28 +339,15 @@ class IRESEARCH_API sort {
     merge_f max_func_;
   }; // prepared
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-
-  explicit sort(const type_id& id) noexcept;
+  explicit sort(const type_info& type) noexcept;
   virtual ~sort() = default;
 
-  const type_id& type() const { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
   virtual prepared::ptr prepare() const = 0;
 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 }; // sort
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,7 +1024,7 @@ class IRESEARCH_API order final {
     remove(type::type());
   }
 
-  void remove(const type_id& id);
+  void remove(type_info::type_id type);
   void clear() noexcept { order_.clear(); }
 
   size_t size() const noexcept { return order_.size(); }

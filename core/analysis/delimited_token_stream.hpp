@@ -36,16 +36,16 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class delimited_token_stream: public analyzer, util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "delimiter"; }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const string_ref& delimiter);
 
-  delimited_token_stream(const irs::string_ref& delimiter);
+  explicit delimited_token_stream(const irs::string_ref& delimiter);
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 

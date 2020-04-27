@@ -324,18 +324,16 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "norm")
-
 text_token_normalizing_stream::text_token_normalizing_stream(
-    const options_t& options
-): analyzer(text_token_normalizing_stream::type()),
-  attrs_(4), // increment + offset + payload + term
-  state_(memory::make_unique<state_t>(options)),
-  term_eof_(true) {
- attrs_.emplace(inc_);
- attrs_.emplace(offset_);
- attrs_.emplace(payload_);
- attrs_.emplace(term_);
+    const options_t& options)
+  : analyzer(irs::type<text_token_normalizing_stream>::get()),
+    attrs_(4), // increment + offset + payload + term
+    state_(memory::make_unique<state_t>(options)),
+    term_eof_(true) {
+  attrs_.emplace(inc_);
+  attrs_.emplace(offset_);
+  attrs_.emplace(payload_);
+  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
 }
 
 /*static*/ void text_token_normalizing_stream::init() {

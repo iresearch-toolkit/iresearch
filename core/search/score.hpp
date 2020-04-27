@@ -34,7 +34,9 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::score";
+  }
 
   static const irs::score& no_score() noexcept;
 

@@ -68,7 +68,7 @@ class IRESEARCH_API boolean_token_stream final
 
  private:
   void init_attributes() {
-    attrs_.emplace(term_);
+    attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
@@ -114,7 +114,7 @@ class IRESEARCH_API string_token_stream final
   void init_attributes() {
     attrs_.emplace(offset_);
     attrs_.emplace(inc_);
-    attrs_.emplace(term_);
+    attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -265,7 +265,7 @@ class IRESEARCH_API numeric_token_stream final
   }; // numeric_term
 
   void init_attributes() {
-    attrs_.emplace(num_);
+    attrs_.emplace<irs::term_attribute>(num_);
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
@@ -299,7 +299,7 @@ class IRESEARCH_API null_token_stream final
 
  private:
   void init_attributes() {
-    attrs_.emplace(term_);
+    attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 

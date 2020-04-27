@@ -1124,7 +1124,7 @@ TEST(by_range_test, options) {
 
 TEST(by_range_test, ctor) {
   irs::by_range q;
-  ASSERT_EQ(irs::by_range::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_range>::id(), q.type());
   ASSERT_EQ(irs::by_range_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }

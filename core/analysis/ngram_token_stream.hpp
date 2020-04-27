@@ -73,11 +73,11 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
      InputType stream_bytes_type;
      bool preserve_original; // emit input data as a token
    };
-   DECLARE_ANALYZER_TYPE();
 
+   static constexpr string_ref type_name() noexcept { return "ngram"; }
    static void init(); // for trigering registration in a static build
 
-   ngram_token_stream_base(const Options& options);
+   explicit ngram_token_stream_base(const Options& options);
 
    virtual const attribute_view& attributes() const noexcept override {
      return attrs_;

@@ -1545,8 +1545,8 @@ class position final : public irs::position,
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
 struct position<IteratorTraits, false> : attribute {
-  DECLARE_ATTRIBUTE_TYPE () {
-    return irs::position::type();
+  static constexpr string_ref type_name() noexcept {
+    return irs::position::type_name();
   }
 
   void prepare(doc_state&) { }
@@ -1590,8 +1590,14 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     begin_ = end_ = docs_;
 
     // get state attribute
-    assert(attrs.contains<version10::term_meta>());
-    term_state_ = *attrs.get<version10::term_meta>();
+    auto& meta = attrs.get<irs::term_meta>();
+    assert(meta);
+
+#ifdef IRESEARCH_DEBUG
+    term_state_ = dynamic_cast<const version10::term_meta&>(*meta);
+#else
+    term_state_ = static_cast<const version10::term_meta&>(*meta);
+#endif
 
     // init document stream
     if (term_state_.docs_count > 1) {
@@ -1637,7 +1643,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
         pos_.prepare(state);
-        attrs_.emplace(pos_);
+        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
       }
     }
 
@@ -3049,7 +3055,7 @@ class writer final : public irs::columnstore_writer {
  private:
   class column final : public irs::columnstore_writer::column_output {
    public:
-    explicit column(writer& ctx, const compression::type_id& type,
+    explicit column(writer& ctx, const type_info& type,
                     const compression::compressor::ptr& compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
@@ -3093,7 +3099,7 @@ class writer final : public irs::columnstore_writer {
 
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
-        write_string(out, comp_type_->name());
+        write_string(out, comp_type_.name());
         comp_->flush(out); // flush compression dependent data
       }
       out.write_vint(block_index_.total()); // total number of items
@@ -3199,7 +3205,7 @@ class writer final : public irs::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    const compression::type_id* comp_type_;
+    type_info comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
     encryption::stream* cipher_;
     uint64_t length_{}; // size of all data blocks in the column
@@ -3272,7 +3278,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
   encryption::stream* cipher;
-  const compression::type_id* compression;
+  type_info compression;
 
   if (version_ > FORMAT_MIN) {
     compression = info.compression();
@@ -3280,11 +3286,11 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
-    compression = compression::lz4::type();
+    compression = type<compression::lz4>::get();
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(*compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options());
 
   if (!compressor) {
     compressor = noop_compressor::make();
@@ -5137,7 +5143,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     } else {
       // we don't support encryption and custom
       // compression for 'FORMAT_MIN' version
-      decomp = compression::get_decompressor(compression::lz4::type());
+      decomp = compression::get_decompressor(type<compression::lz4>::get());
       assert(decomp);
     }
 
@@ -5393,10 +5399,13 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
 class format10 : public irs::version10::format {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_0";
+  }
+
   DECLARE_FACTORY();
 
-  format10() noexcept : format10(format10::type()) { }
+  format10() noexcept : format10(irs::type<format10>::get()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
@@ -5420,8 +5429,8 @@ class format10 : public irs::version10::format {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format10(const irs::format::type_id& type) noexcept
-    : irs::version10::format(type) {
+  explicit format10(const type_info& type) noexcept
+    : version10::format(type) {
   }
 }; // format10
 
@@ -5521,7 +5530,6 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format10, "1_0")
 REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5530,10 +5538,13 @@ REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 class format11 : public format10 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_1";
+  }
+
   DECLARE_FACTORY();
 
-  format11() noexcept : format10(format11::type()) { }
+  format11() noexcept : format10(irs::type<format11>::get()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
@@ -5544,7 +5555,7 @@ class format11 : public format10 {
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 
  protected:
-  explicit format11(const irs::format::type_id& type) noexcept
+  explicit format11(const type_info& type) noexcept
     : format10(type) {
   }
 }; // format11
@@ -5583,7 +5594,6 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
 REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5592,15 +5602,18 @@ REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 class format12 : public format11 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_2";
+  }
+
   DECLARE_FACTORY();
 
-  format12() noexcept : format11(format12::type()) { }
+  format12() noexcept : format11(irs::type<format12>::get()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 
  protected:
-  explicit format12(const irs::format::type_id& type) noexcept
+  explicit format12(const type_info& type) noexcept
     : format11(type) {
   }
 }; // format12
@@ -5618,7 +5631,6 @@ columnstore_writer::ptr format12::get_columnstore_writer() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
 REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5627,16 +5639,19 @@ REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 class format13 : public format12 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_3";
+  }
+
   DECLARE_FACTORY();
 
-  format13() noexcept : format12(format13::type()) { }
+  format13() noexcept : format12(irs::type<format13>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format13(const irs::format::type_id& type) noexcept
+  explicit format13(const type_info& type) noexcept
     : format12(type) {
   }
 };
@@ -5663,7 +5678,6 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
 }
 
 
-DEFINE_FORMAT_TYPE_NAMED(::format13, "1_3");
 REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5696,10 +5710,13 @@ struct format_traits_simd {
 
 class format12simd final : public format12 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_2simd";
+  }
+
   DECLARE_FACTORY();
 
-  format12simd() noexcept : format12(format12simd::type()) { }
+  format12simd() noexcept : format12(irs::type<format12simd>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
@@ -5726,7 +5743,6 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format12simd, "1_2simd");
 REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 
@@ -5736,10 +5752,13 @@ REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 class format13simd final : public format13 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_3simd";
+  }
+
   DECLARE_FACTORY();
 
-  format13simd() noexcept : format13(format13simd::type()) { }
+  format13simd() noexcept : format13(irs::type<format13simd>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
@@ -5766,7 +5785,6 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format13simd, "1_3simd");
 REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
@@ -5793,7 +5811,7 @@ void init() {
 // --SECTION--                                                           format
 // ----------------------------------------------------------------------------
 
-format::format(const irs::format::type_id& type) noexcept
+format::format(const type_info& type) noexcept
   : irs::format(type) {
 }
 

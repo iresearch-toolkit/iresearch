@@ -60,7 +60,7 @@ TEST(ngram_similarity_base_test, options) {
 
 TEST(ngram_similarity_base_test, ctor) {
   irs::by_ngram_similarity q;
-  ASSERT_EQ(irs::by_ngram_similarity::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_ngram_similarity>::id(), q.type());
   ASSERT_EQ(irs::by_ngram_similarity_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ("", q.field());

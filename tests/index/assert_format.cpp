@@ -164,7 +164,9 @@ void index_segment::add(const ifield& f) {
 
   auto& attrs = stream.attributes();
   auto& term = attrs.get<irs::term_attribute>();
+  assert(term);
   auto& inc = attrs.get<irs::increment>();
+  assert(inc);
   auto& offs = attrs.get<irs::offset>();
 
   bool empty = true;
@@ -187,16 +189,13 @@ void index_segment::add(const ifield& f) {
   }
 }
 
-std::string index_meta_writer::filename(
-  const irs::index_meta& meta
-) const {
+std::string index_meta_writer::filename(const irs::index_meta& meta) const {
   return std::string();
 }
 
 bool index_meta_writer::prepare(
-  irs::directory& dir,
-  irs::index_meta& meta
-) {
+    irs::directory& dir,
+    irs::index_meta& meta) {
   return true;
 }
 
@@ -454,7 +453,7 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   }
 
   if (features.check<irs::position>()) {
-    attrs_.emplace(pos_);
+    attrs_.emplace<irs::position>(pos_); // ensure we use base class type
   }
 }
 
@@ -665,7 +664,6 @@ irs::columnstore_reader::ptr format::get_columnstore_reader() const {
   return nullptr;
 }
 
-DEFINE_FORMAT_TYPE_NAMED(tests::format, "iresearch_format_tests")
 REGISTER_FORMAT(tests::format);
 
 /*static*/ irs::format::ptr format::make() {

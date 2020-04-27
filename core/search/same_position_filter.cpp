@@ -192,11 +192,10 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_same_position)
 DEFINE_FACTORY_DEFAULT(by_same_position)
 
 /* static */ const flags& by_same_position::required() {
-  static flags features{ frequency::type(), position::type() };
+  static const flags features{ irs::type<frequency>::get(), irs::type<position>::get() };
   return features;
 }
 

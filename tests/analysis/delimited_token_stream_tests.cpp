@@ -244,7 +244,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
       testFunc(data, &stream);
     }
     {
-      auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":\",\"}");
+      auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
       testFunc(data, stream.get());
     }
   }
@@ -372,7 +372,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "\",\"");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -402,7 +402,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":\",\"}");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -431,17 +431,17 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":1}"));
   }
 
   // load text
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -474,7 +474,7 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"delimiter\":\",\"}", actual);
   }
 }
@@ -482,12 +482,12 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
 TEST_F(delimited_token_stream_tests, test_make_config_text) {
   std::string config = ",";
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::text, config));
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
 }
 
 TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
   std::string config = ",";
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::csv, config));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::csv>::get(), config));
 }

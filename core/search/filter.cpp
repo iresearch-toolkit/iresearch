@@ -49,8 +49,8 @@ NS_ROOT
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type) noexcept
-  : boost_(irs::no_boost()), type_(&type) {
+filter::filter(const type_info& type) noexcept
+  : boost_(irs::no_boost()), type_(type.id()) {
 }
 
 filter::prepared::ptr filter::prepared::empty() {
@@ -64,11 +64,9 @@ filter::prepared::ptr filter::prepared::empty() {
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty)
 DEFINE_FACTORY_DEFAULT(irs::empty)
 
-empty::empty(): filter(empty::type()) {
-}
+empty::empty() : filter(irs::type<empty>::get()) { }
 
 filter::prepared::ptr empty::prepare(
     const index_reader&,

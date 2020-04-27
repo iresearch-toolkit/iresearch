@@ -42,13 +42,15 @@ struct term_meta : irs::term_meta {
 };
 
 struct sort : irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
+  }
 
   static irs::sort::ptr make() {
     return std::make_shared<sort>();
   }
 
-  sort() noexcept : irs::sort(type()) { }
+  sort() noexcept : irs::sort(irs::type<sort>::get()) { }
 
   struct prepared final : irs::sort::prepared {
     struct field_collector final : irs::sort::field_collector {
@@ -147,8 +149,6 @@ struct sort : irs::sort {
     return irs::memory::make_unique<prepared>();
   }
 };
-
-DEFINE_SORT_TYPE(sort);
 
 class seek_term_iterator final : public irs::seek_term_iterator {
  public:

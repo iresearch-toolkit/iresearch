@@ -188,7 +188,10 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
   //////////////////////////////////////////////////////////////////////////////
   static const flags& required();
 
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_phrase";
+  }
+
   DECLARE_FACTORY();
 
   using filter::prepare;

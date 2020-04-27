@@ -183,18 +183,15 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
-
-text_token_stemming_stream::text_token_stemming_stream(
-    const std::locale& locale
-): analyzer(text_token_stemming_stream::type()),
-   attrs_(4), // increment + offset + payload + term
-   locale_(locale), 
-   term_eof_(true) {
+text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
+  : analyzer(irs::type<text_token_stemming_stream>::get()),
+    attrs_(4), // increment + offset + payload + term
+    locale_(locale),
+    term_eof_(true) {
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
-  attrs_.emplace(term_);
+  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
 }
 
 /*static*/ void text_token_stemming_stream::init() {
@@ -204,9 +201,7 @@ text_token_stemming_stream::text_token_stemming_stream(
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stemming_stream::make(
-    const string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stemming_stream::make(const string_ref& locale) {
   return make_text(locale);
 }
 

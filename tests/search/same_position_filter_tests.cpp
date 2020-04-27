@@ -456,7 +456,7 @@ TEST(by_same_position_test, options) {
 
 TEST(by_same_position_test, ctor) {
   irs::by_same_position q;
-  ASSERT_EQ(irs::by_same_position::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_same_position>::id(), q.type());
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 

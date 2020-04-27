@@ -38,16 +38,16 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class text_token_stemming_stream: public analyzer, util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "stem"; }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const irs::string_ref& locale);
 
-  text_token_stemming_stream(const std::locale& locale);
+  explicit text_token_stemming_stream(const std::locale& locale);
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 

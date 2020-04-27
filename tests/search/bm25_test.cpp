@@ -79,7 +79,7 @@ class bm25_test: public index_test_base { };
 
 TEST_P(bm25_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+  auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
   ASSERT_EQ(1, order.add(true, scorer).size());
@@ -90,7 +90,7 @@ TEST_P(bm25_test, test_load) {
 TEST_P(bm25_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
@@ -99,7 +99,7 @@ TEST_P(bm25_test, make_from_array) {
 
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
@@ -108,7 +108,7 @@ TEST_P(bm25_test, make_from_array) {
 
   // `k` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 1.5 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
@@ -116,17 +116,17 @@ TEST_P(bm25_test, make_from_array) {
   }
 
   // invalid `k` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ \"1.5\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"1.5\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ [] ]"));
 
   // `b` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
@@ -134,13 +134,13 @@ TEST_P(bm25_test, make_from_array) {
   }
 
   // invalid `b` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, \"1.7\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"1.7\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, [] ]"));
 }
 
 #endif // IRESEARCH_DLL
@@ -148,29 +148,29 @@ TEST_P(bm25_test, make_from_array) {
 TEST_P(bm25_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // without norms (bm15)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // without norms (bm15), integer argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 }
 
@@ -188,7 +188,7 @@ TEST_P(bm25_test, test_phrase) {
       }
 
       const irs::flags& features() const {
-        static irs::flags features{ irs::frequency::type() };
+        static irs::flags features{ irs::type<irs::frequency>::get() };
         return features;
       }
     }; // string_field
@@ -217,7 +217,7 @@ TEST_P(bm25_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -349,7 +349,7 @@ TEST_P(bm25_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -968,7 +968,7 @@ TEST_P(bm25_test, test_query_norms) {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        static irs::flags extra_features = { irs::norm::type() };
+        static irs::flags extra_features = { irs::type<irs::norm>::get() };
 
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str, extra_features), true, false);
@@ -982,7 +982,7 @@ TEST_P(bm25_test, test_query_norms) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -1232,7 +1232,7 @@ TEST_P(bm25_test, test_collector_serialization) {
 TEST_P(bm25_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
@@ -1243,7 +1243,7 @@ TEST_P(bm25_test, test_make) {
 
   // custom values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1254,7 +1254,7 @@ TEST_P(bm25_test, test_make) {
 
   // custom values (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1265,7 +1265,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm11
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1.0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1276,7 +1276,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm11 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1287,7 +1287,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm15
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1298,7 +1298,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm15 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1309,19 +1309,19 @@ TEST_P(bm25_test, test_make) {
 
   // invalid args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "\"12345");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "\"12345");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (b)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": false, \"k\": 78.9}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": false, \"k\": 78.9}");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (k)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": true}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": true}");
     ASSERT_EQ(nullptr, scorer);
   }
 }

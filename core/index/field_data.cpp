@@ -57,7 +57,7 @@ using namespace irs;
 const byte_block_pool EMPTY_POOL;
 
 const column_info NORM_COLUMN{
-  compression::lz4::type(),
+  type<compression::lz4>::get(),
   compression::options(),
   false
 };
@@ -305,7 +305,7 @@ class doc_iterator : public irs::doc_iterator {
       if (features.check<position>()) {
         pos_.reset(features, freq_);
 
-        attrs_.emplace(pos_);
+        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
         has_prox_ = true;
         has_cookie_ = field.prox_random_access();
       }
@@ -428,7 +428,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        attrs_.emplace(pos_);
+        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
       }
     }
   }
@@ -1082,7 +1082,7 @@ bool field_data::invert(
   if (!inc) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), increment::type().name().c_str()
+      meta_.name.c_str(), type<increment>::name().c_str()
     );
     return false;
   }
@@ -1090,7 +1090,7 @@ bool field_data::invert(
   if (!term) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), term_attribute::type().name().c_str()
+      meta_.name.c_str(), type<term_attribute>::name().c_str()
     );
     return false;
   }

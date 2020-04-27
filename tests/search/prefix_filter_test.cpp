@@ -249,7 +249,7 @@ TEST(by_prefix_test, options) {
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
-  ASSERT_EQ(irs::by_prefix::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_prefix>::id(), q.type());
   ASSERT_EQ(irs::by_prefix_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());

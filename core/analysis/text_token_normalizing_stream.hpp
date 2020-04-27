@@ -45,16 +45,16 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
 
   struct state_t;
 
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "norm"; }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const string_ref& locale);
 
-  text_token_normalizing_stream(const options_t& options);
+  explicit text_token_normalizing_stream(const options_t& options);
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 

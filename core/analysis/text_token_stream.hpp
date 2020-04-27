@@ -85,7 +85,7 @@ class text_token_stream : public analyzer, util::noncopyable {
 
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "text"; }
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const irs::string_ref& locale);

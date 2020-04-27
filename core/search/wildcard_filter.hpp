@@ -76,7 +76,10 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
 class IRESEARCH_API by_wildcard final
     : public filter_base<by_wildcard_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_wildcard";
+  }
+
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(

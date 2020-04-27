@@ -123,7 +123,7 @@ void read_segment_features(
 
   for (size_t count = feature_map.capacity(); count; --count) {
     const auto name = read_string<std::string>(in); // read feature name
-    const attribute::type_id* feature = attribute::type_id::get(name);
+    const type_info feature = attribute::get(name);
 
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
@@ -132,8 +132,8 @@ void read_segment_features(
       ));
     }
 
-    feature_map.emplace_back(feature);
-    features.add(*feature);
+    feature_map.emplace_back(feature.id());
+    features.add(feature.id());
   }
 }
 
@@ -145,7 +145,7 @@ void read_field_features(
     const size_t id = in.read_vlong(); // feature id
 
     if (id < feature_map.size()) {
-      features.add(*feature_map[id]);
+      features.add(feature_map[id]);
     } else {
       throw irs::index_error(irs::string_utils::to_string(
         "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
@@ -779,7 +779,7 @@ class automaton_term_iterator final : public term_iterator_base {
     : term_iterator_base(owner),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
-    attrs_.emplace(payload_);
+    attrs_.emplace<irs::payload>(payload_); // ensure we use base class type
   }
 
   virtual bool next() override;
@@ -1742,8 +1742,7 @@ seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) 
 void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,
-    field_reader& owner
-) {
+    field_reader& owner) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
   field_.name = read_string<std::string>(meta_in);
@@ -2158,8 +2157,8 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
   out.write_vlong(features.size());
   feature_map_.clear();
   feature_map_.reserve(features.size());
-  for (const attribute::type_id* feature : features) {
-    write_string(out, feature->name());
+  for (const type_info::type_id feature : features) {
+    write_string(out, feature().name());
     feature_map_.emplace(feature, feature_map_.size());
   }
 }
@@ -2167,14 +2166,14 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
 void field_writer::write_field_features(data_output& out, const flags& features) const {
   out.write_vlong(features.size());
   for (auto feature : features) {
-    const auto it = feature_map_.find(*feature);
+    const auto it = feature_map_.find(feature);
     assert(it != feature_map_.end());
 
     if (feature_map_.end() == it) {
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature->name().c_str()
+        feature().name().c_str()
       ));
     }
 

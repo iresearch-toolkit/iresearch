@@ -30,7 +30,7 @@ NS_LOCAL
 class granular_float_field: public tests::float_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -38,7 +38,7 @@ class granular_float_field: public tests::float_field {
 class granular_double_field: public tests::double_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -46,7 +46,7 @@ class granular_double_field: public tests::double_field {
 class granular_int_field: public tests::int_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -54,7 +54,7 @@ class granular_int_field: public tests::int_field {
 class granular_long_field: public tests::long_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -1574,7 +1574,7 @@ TEST(by_granular_range_test, options) {
 
 TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
-  ASSERT_EQ(irs::by_granular_range::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_granular_range>::id(), q.type());
   ASSERT_EQ(irs::by_granular_range_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }

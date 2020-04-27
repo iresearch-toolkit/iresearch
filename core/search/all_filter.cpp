@@ -54,11 +54,10 @@ class all_query: public filter::prepared {
   bstring stats_;
 };
 
-DEFINE_FILTER_TYPE(irs::all)
 DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() noexcept
-  : filter(all::type()) {
+  : filter(irs::type<all>::get()) {
 }
 
 filter::prepared::ptr all::prepare(

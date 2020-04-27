@@ -109,7 +109,7 @@ class format_test_case : public index_test_base {
         attrs_.emplace<irs::frequency>(freq_);
 
         if (features.check<irs::position>()) {
-          attrs_.emplace(pos_);
+          attrs_.emplace<irs::position>(pos_); // ensure we use base class type
         }
       }
     }

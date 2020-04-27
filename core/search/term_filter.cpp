@@ -103,7 +103,6 @@ NS_ROOT
 // --SECTION--                                            by_term implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_term)
 DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ void by_term::visit(

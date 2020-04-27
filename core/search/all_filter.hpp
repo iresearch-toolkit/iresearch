@@ -33,7 +33,10 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API all: public filter {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::all";
+  }
+
   DECLARE_FACTORY();
 
   all() noexcept;

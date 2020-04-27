@@ -912,22 +912,16 @@ NS_BEGIN(analysis)
 char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOPWORD_PATH";
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  static functions
-// -----------------------------------------------------------------------------
-
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text")
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : analyzer(text_token_stream::type()),
+  : analyzer(irs::type<text_token_stream>::get()),
     attrs_(3), // offset + bytes_term + increment
     state_(memory::make_unique<state_t>(options, stopwords)) {
   attrs_.emplace(offs_);
-  attrs_.emplace(term_);
   attrs_.emplace(inc_);
+  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
 }
 
 // -----------------------------------------------------------------------------

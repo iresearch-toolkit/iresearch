@@ -202,18 +202,15 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(token_masking_stream, "mask")
-
-token_masking_stream::token_masking_stream(
-    std::unordered_set<irs::bstring>&& mask
-): analyzer(token_masking_stream::type()),
-   attrs_(4), // increment + offset + payload + term
-   mask_(std::move(mask)),
-   term_eof_(true) {
+token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
+  : analyzer(irs::type<token_masking_stream>::get()),
+    attrs_(4), // increment + offset + payload + term
+    mask_(std::move(mask)),
+    term_eof_(true) {
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
-  attrs_.emplace(term_);
+  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
 }
 
 /*static*/ void token_masking_stream::init() {
