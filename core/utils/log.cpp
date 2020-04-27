@@ -110,6 +110,8 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_.load(std::memory_order_relaxed); }
 
   logger_ctx& output(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
+    static std::mutex mutex;
+    SCOPED_LOCK(mutex); // only log level parallel updates are not thread safe. Using log contexts is safe even while concurrent update is ongoing
     if (appender != nullptr) {
       auto& ctx = out_[level];
       ctx.appender_.store(noop_log_appender, std::memory_order_relaxed); // to play safe - as noop never uses context and noop log never breaks
