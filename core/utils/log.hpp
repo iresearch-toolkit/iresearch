@@ -81,8 +81,8 @@ IRESEARCH_API bool enabled(level_t level);
 IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
 // Custom appender control functions
-IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == log level disabled
-IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == log level disabled
+IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
+IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
 
 IRESEARCH_API void log(const char* function, const char* file, int line,
                        level_t level, const char* message, size_t len);
@@ -97,7 +97,7 @@ struct log_vararg_wrapper {
                             level_t level, const char* format, ...) {
     va_list args;
     va_start(args, format);
-    auto required_len = vsnprintf(nullptr, 0, format, args);
+    const auto required_len = vsnprintf(nullptr, 0, format, args);
     va_end(args);
     if (required_len > 0) {
       std::vector<char> buf(size_t(required_len) + 1);

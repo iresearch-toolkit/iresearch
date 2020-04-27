@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <atomic>
 
 #if defined(_MSC_VER)
   #include <Windows.h> // must be included before DbgHelp.h
@@ -74,7 +75,7 @@ void noop_log_appender(void*, char const*, char const*,
                        char const*, size_t) {}
 
 
-void fd_log_appender_callback(void* context, char const* function, char const* file, int line,
+void fd_log_appender(void* context, char const* function, char const* file, int line,
     irs::logger::level_t level, char const* message,
     size_t) {
   FILE* fd = reinterpret_cast<FILE*>(context);
@@ -102,20 +103,20 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
       stack_trace_level_(irs::logger::level_t::IRL_DEBUG) {
     // set everything up to and including INFO to stderr
     for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
-      out_[i].appender_context_ = stderr;
-      out_[i].appender_ = fd_log_appender_callback;
+      output(static_cast<iresearch::logger::level_t>(i), fd_log_appender, stderr);
     }
   }
 
-  bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_; }
+  bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_.load(std::memory_order_relaxed); }
 
   logger_ctx& output(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
     if (appender != nullptr) {
-      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
-      out_[level].appender_context_ = context;
-      out_[level].appender_ = appender;
+      auto& ctx = out_[level];
+      ctx.appender_.store(noop_log_appender, std::memory_order_relaxed); // to play safe - as noop never uses context and noop log never breaks
+      ctx.appender_context_.store(context, std::memory_order_release);
+      ctx.appender_.store(appender, std::memory_order_relaxed);
     } else {
-      out_[level].appender_ = noop_log_appender;
+      out_[level].appender_.store(noop_log_appender, std::memory_order_relaxed);
     }
     return *this;
   }
@@ -128,14 +129,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   }
 
   logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
-    if (out != nullptr) {
-      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
-      out_[level].appender_context_ = out;
-      out_[level].appender_ = fd_log_appender_callback;
-    } else {
-      out_[level].appender_ = noop_log_appender;
-    }
-    return *this;
+    return output(level, out != nullptr? fd_log_appender: nullptr, out);
   }
 
   logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
@@ -153,13 +147,16 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
 
   void log(const char* function, const char* file, int line,
            iresearch::logger::level_t level, const char* message, size_t len) {
-    out_[level].appender_(out_[level].appender_context_, function, file, line, level, message, len);
+    const auto& log_ctx = out_[level];
+    auto context = log_ctx.appender_context_.load(std::memory_order_acquire);
+    auto appender = log_ctx.appender_.load(std::memory_order_relaxed);
+    appender(context, function, file, line, level, message, len);
   }
 
  private:
   struct level_ctx_t {
-    irs::logger::log_appender_callback_t appender_;
-    void* appender_context_;
+    std::atomic<irs::logger::log_appender_callback_t> appender_;
+    std::atomic<void*> appender_context_;
     level_ctx_t(): appender_(noop_log_appender), appender_context_(nullptr) {}
   };
 
