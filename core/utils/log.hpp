@@ -137,7 +137,7 @@ NS_END
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)
