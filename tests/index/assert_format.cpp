@@ -329,8 +329,6 @@ void field_writer::end() { }
  * field_reader
  * ------------------------------------------------------------------*/
 
-class pos_iterator;
-
 class doc_iterator : public irs::doc_iterator {
  public:
    doc_iterator(const irs::flags& features,
@@ -976,6 +974,6 @@ NS_ROOT
 
 // use base irs::position type for ancestors
 template<>
-struct type<tests::pos_iterator> : type<irs::position> { };
+struct type<tests::doc_iterator::pos_iterator> : type<irs::position> { };
 
 NS_END
