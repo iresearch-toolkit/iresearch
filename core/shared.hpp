@@ -244,7 +244,7 @@
   #define CURRENT_FUNCTION __FUNCSIG__
 #else
   #define CURRENT_FUNCTION __FUNCTION__
-#endif  #endif
+#endif
 
 #ifndef __has_feature
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
