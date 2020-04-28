@@ -338,7 +338,7 @@ const tests::document* csv_doc_generator::next() {
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value()));
+    doc_.value(i, irs::ref_cast<char>(term->value));
   }
 
   return &doc_;

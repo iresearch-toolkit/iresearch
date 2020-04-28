@@ -66,7 +66,7 @@ token_stream_payload::token_stream_payload(irs::token_stream* impl)
 
 bool token_stream_payload::next() {
   if (impl_->next()) {
-    pay_.value = term_->value();
+    pay_.value = term_->value;
     return true;
   }
   pay_.value = irs::bytes_ref::NIL;

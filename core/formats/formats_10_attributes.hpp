@@ -66,6 +66,7 @@ struct term_meta final : irs::term_meta {
 
 NS_END // version10
 
+// use base irs::term_meta type for ancestors
 template<>
 struct type<version10::term_meta> : type<irs::term_meta> { };
 

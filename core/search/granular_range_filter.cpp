@@ -535,7 +535,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   boundary.clear();
 
   for (auto& term_attr = term.attributes().get<term_attribute>(); term.next(); ) {
-    boundary.emplace_back(term_attr->value());
+    boundary.emplace_back(term_attr->value);
   }
 }
 

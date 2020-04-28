@@ -59,18 +59,12 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
   virtual bool reset(const irs::string_ref& data) override;
 
  private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    using irs::term_attribute::value;
-    void value(const irs::bytes_ref& value) { value_ = value; }
-  };
-
   irs::attribute_view attrs_;
   irs::increment inc_;
   irs::offset offset_;
   irs::payload payload_; // raw token value
   std::shared_ptr<state_t> state_;
-  term_attribute term_; // token value with evaluated quotes
+  irs::term_attribute term_; // token value with evaluated quotes
   bool term_eof_;
 };
 

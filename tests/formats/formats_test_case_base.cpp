@@ -382,10 +382,10 @@ TEST_P(format_test_case, fields_seek_ge) {
     for (size_t begin = 74, end = 7000, step = 2; begin < end; begin += step) {
       stream.reset(double_t(begin));
       ASSERT_TRUE(stream.next());
-      ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(term->value()));
+      ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(term->value));
 
       auto expected_it = std::lower_bound(
-        all_terms.begin(), all_terms.end(), term->value(),
+        all_terms.begin(), all_terms.end(), term->value,
         [](const irs::bstring& lhs, const irs::bytes_ref& rhs) {
           return lhs < rhs;
       });

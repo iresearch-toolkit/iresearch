@@ -333,7 +333,7 @@ text_token_normalizing_stream::text_token_normalizing_stream(
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
-  attrs_.emplace<irs::term_attribute>(term_); // ensure we use base class type
+  attrs_.emplace(term_); // ensure we use base class type
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
@@ -459,7 +459,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // use the normalized value
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value(irs::ref_cast<irs::byte_type>(irs::string_ref(state_->term_buf)));
+  term_.value = irs::ref_cast<irs::byte_type>(state_->term_buf);
   offset_.start = 0;
   offset_.end = data.size();
   payload_.value = ref_cast<uint8_t>(data);

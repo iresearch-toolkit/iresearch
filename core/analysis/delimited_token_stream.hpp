@@ -50,20 +50,15 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   virtual bool reset(const string_ref& data) override;
 
  private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    void value(const irs::bytes_ref& value) { value_ = value; }
-  };
-
-  irs::attribute_view attrs_;
-  irs::bytes_ref data_;
-  irs::bytes_ref delim_;
-  irs::bstring delim_buf_;
-  irs::increment inc_;
-  irs::offset offset_;
-  irs::payload payload_; // raw token value
+  attribute_view attrs_;
+  bytes_ref data_;
+  bytes_ref delim_;
+  bstring delim_buf_;
+  increment inc_;
+  offset offset_;
+  payload payload_; // raw token value
   term_attribute term_; // token value with evaluated quotes
-  irs::bstring term_buf_; // buffer for the last evaluated term
+  bstring term_buf_; // buffer for the last evaluated term
 };
 
 NS_END // analysis

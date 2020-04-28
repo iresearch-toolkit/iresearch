@@ -125,8 +125,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-        min_term->value(), irs::BoundType::INCLUSIVE,
-        max_term->value(), irs::BoundType::INCLUSIVE);
+        min_term->value, irs::BoundType::INCLUSIVE,
+        max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -160,8 +160,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -190,7 +190,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-         min_term->value(), irs::BoundType::EXCLUSIVE,
+         min_term->value, irs::BoundType::EXCLUSIVE,
          (irs::numeric_utils::numeric_traits<int64_t>::max)(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
@@ -221,7 +221,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::by_range query = make_filter(
         "seq",
         (irs::numeric_utils::numeric_traits<int64_t>::min)(), irs::BoundType::INCLUSIVE,
-        max_term->value(), irs::BoundType::INCLUSIVE);
+        max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -255,8 +255,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -290,8 +290,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -320,7 +320,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "seq",
-         min_term->value(), irs::BoundType::EXCLUSIVE,
+         min_term->value, irs::BoundType::EXCLUSIVE,
          (irs::numeric_utils::numeric_traits<int32_t>::max)(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
@@ -351,7 +351,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::by_range query = make_filter(
         "seq",
          (irs::numeric_utils::numeric_traits<int32_t>::min)(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -385,8 +385,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -420,8 +420,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::EXCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -451,7 +451,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::by_range query = make_filter(
         "value",
          irs::numeric_utils::numeric_traits<float_t>::ninf(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::EXCLUSIVE);
+         max_term->value, irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -480,7 +480,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::EXCLUSIVE,
+         min_term->value, irs::BoundType::EXCLUSIVE,
          irs::numeric_utils::numeric_traits<float_t>::inf(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
@@ -514,8 +514,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::INCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::INCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -548,8 +548,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::EXCLUSIVE,
-         max_term->value(), irs::BoundType::INCLUSIVE);
+         min_term->value, irs::BoundType::EXCLUSIVE,
+         max_term->value, irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -579,7 +579,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::by_range query = make_filter(
         "value",
          irs::numeric_utils::numeric_traits<double_t>::ninf(), irs::BoundType::EXCLUSIVE,
-         max_term->value(), irs::BoundType::EXCLUSIVE);
+         max_term->value, irs::BoundType::EXCLUSIVE);
 
       auto prepared = query.prepare(rdr);
 
@@ -608,7 +608,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_range query = make_filter(
         "value",
-         min_term->value(), irs::BoundType::EXCLUSIVE,
+         min_term->value, irs::BoundType::EXCLUSIVE,
          irs::numeric_utils::numeric_traits<double_t>::inf(), irs::BoundType::INCLUSIVE);
 
       auto prepared = query.prepare(rdr);
@@ -1105,7 +1105,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       *filter.mutable_field() = "value";
       filter.mutable_options()->range.min = irs::numeric_utils::numeric_traits<double_t>::ninf();
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-      filter.mutable_options()->range.max = max_term->value();
+      filter.mutable_options()->range.max = max_term->value;
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       check_query(filter, order, docs, rdr);

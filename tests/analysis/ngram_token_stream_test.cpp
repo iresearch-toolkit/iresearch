@@ -92,7 +92,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto& term = stream->attributes().get<irs::term_attribute>();
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value().null());
+    ASSERT_TRUE(term->value.null());
 
     auto& increment = stream->attributes().get<irs::increment>();
     ASSERT_TRUE(increment);
@@ -120,7 +120,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto& term = stream->attributes().get<irs::term_attribute>();
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value().null());
+    ASSERT_TRUE(term->value.null());
 
     auto& increment = stream->attributes().get<irs::increment>();
     ASSERT_TRUE(increment);
@@ -148,7 +148,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto& term = stream->attributes().get<irs::term_attribute>();
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value().null());
+    ASSERT_TRUE(term->value.null());
 
     auto& increment = stream->attributes().get<irs::increment>();
     ASSERT_TRUE(increment);
@@ -192,13 +192,13 @@ TEST(ngram_token_stream_test, next_utf8) {
     auto expected_token = expected.begin();
     uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
     while (stream.next()) {
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value());
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value);
       ASSERT_EQ(expected_token->start, offset->start);
       ASSERT_EQ(expected_token->end, offset->end);
       pos += inc->value;
       auto start = reinterpret_cast<const irs::byte_type*>(data.begin());
       utf8::unchecked::advance(start, pos);
-      const auto size = value->value().size() - expected_token->start_marker.size() - expected_token->end_marker.size();
+      const auto size = value->value.size() - expected_token->start_marker.size() - expected_token->end_marker.size();
       ASSERT_GT(size, 0);
       irs::bstring bs;
       if (!expected_token->start_marker.empty()) {
@@ -209,7 +209,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         bs.append(reinterpret_cast<const irs::byte_type*>(expected_token->end_marker.c_str()), expected_token->end_marker.size());
       }
 
-      ASSERT_EQ(bs, value->value());
+      ASSERT_EQ(bs, value->value);
       ++expected_token;
     }
     ASSERT_EQ(expected_token, expected.end());
@@ -618,7 +618,7 @@ TEST(ngram_token_stream_test, reset_too_big) {
 
   auto& term = stream.attributes().get<irs::term_attribute>();
   ASSERT_TRUE(term);
-  ASSERT_TRUE(term->value().null());
+  ASSERT_TRUE(term->value.null());
 
   auto& increment = stream.attributes().get<irs::increment>();
   ASSERT_TRUE(increment);
@@ -663,11 +663,11 @@ TEST(ngram_token_stream_test, next) {
     auto expected_token = expected.begin();
     uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
     while (stream.next()) {
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value());
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value);
       ASSERT_EQ(expected_token->start, offset->start);
       ASSERT_EQ(expected_token->end, offset->end);
       pos += inc->value;
-      const auto size = value->value().size() - expected_token->start_marker.size() - expected_token->end_marker.size();
+      const auto size = value->value.size() - expected_token->start_marker.size() - expected_token->end_marker.size();
       ASSERT_GT(size, 0);
       irs::bstring bs;
       if (!expected_token->start_marker.empty()) {
@@ -677,7 +677,7 @@ TEST(ngram_token_stream_test, next) {
       if (!expected_token->end_marker.empty()) {
         bs.append(reinterpret_cast<const irs::byte_type*>(expected_token->end_marker.c_str()), expected_token->end_marker.size());
       }
-      ASSERT_EQ(bs, value->value());
+      ASSERT_EQ(bs, value->value);
       ++expected_token;
     }
     ASSERT_EQ(expected_token, expected.end());
@@ -1327,7 +1327,7 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("quick", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("quick", irs::ref_cast<char>(term->value));
     ASSERT_EQ(1, inc->value);
     ASSERT_FALSE(stream->next());
   }
@@ -1348,7 +1348,7 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(10, offset->end);
-    ASSERT_EQ("\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", irs::ref_cast<char>(term->value));
     ASSERT_EQ(1, inc->value);
     ASSERT_FALSE(stream->next());
   }

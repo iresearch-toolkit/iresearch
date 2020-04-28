@@ -267,7 +267,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     auto& term = stream.attributes().get<iresearch::term_attribute>();
 
     while (stream.next()) {
-      buf.append(term->value());
+      buf.append(term->value);
     }
 
     return true;

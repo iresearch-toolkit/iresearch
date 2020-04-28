@@ -67,7 +67,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(data, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(data, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -92,7 +92,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -117,7 +117,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -142,7 +142,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -166,7 +166,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -186,7 +186,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -206,7 +206,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -226,7 +226,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -246,7 +246,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -273,7 +273,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
 
     std::basic_string<wchar_t> unicodeTerm;
-    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value()), locale));
+    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value), locale));
     ASSERT_EQ(L"\u006F\u006F", unicodeTerm);
     
     ASSERT_FALSE(stream->next());
@@ -306,7 +306,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }

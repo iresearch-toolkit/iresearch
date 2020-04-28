@@ -439,7 +439,7 @@ TEST_F(segment_writer_tests, index_field) {
     field_t field(stream);
     irs::term_attribute term;
 
-    stream.attrs.emplace<irs::term_attribute>(term);
+    stream.attrs.emplace(term);
     stream.token_count = 10;
 
     writer->begin(ctx);

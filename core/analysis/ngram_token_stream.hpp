@@ -91,11 +91,6 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
  protected:
    void emit_original() noexcept;
 
-   class term_attribute final : public irs::term_attribute {
-   public:
-     void value(const bytes_ref& value) { value_ = value; }
-   };
-
    Options options_;
    attribute_view attrs_;
    bytes_ref data_; // data to process

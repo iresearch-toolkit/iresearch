@@ -289,7 +289,7 @@ class doc_iterator : public irs::doc_iterator {
       if (features.check<position>()) {
         pos_.reset(features, freq_);
 
-        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
+        attrs_.emplace(pos_); // ensure we use base class type
         has_prox_ = true;
         has_cookie_ = field.prox_random_access();
       }
@@ -412,7 +412,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
+        attrs_.emplace(pos_); // ensure we use base class type
       }
     }
   }
@@ -1118,10 +1118,10 @@ bool field_data::invert(
       last_start_offs_ = start_offset;
     }
 
-    const auto res = terms_.emplace(term->value());
+    const auto res = terms_.emplace(term->value);
 
     if (terms_.end() == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value()).c_str());
+      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
 
@@ -1218,5 +1218,9 @@ void fields_data::reset() noexcept {
   fields_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
 }
+
+// use base irs::position type for ancestors
+template<typename Reader>
+struct type<::pos_iterator<Reader>> : type<irs::position> { };
 
 NS_END // ROOT

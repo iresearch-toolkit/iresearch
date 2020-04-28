@@ -225,7 +225,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
       auto& part = node.mutable_options()->push_back(irs::by_term_options{});
-      part.term = term->value();
+      part.term = term->value;
     }
 
     return true;

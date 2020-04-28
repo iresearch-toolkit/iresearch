@@ -1643,7 +1643,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
         pos_.prepare(state);
-        attrs_.emplace<irs::position>(pos_); // ensure we use base class type
+        attrs_.emplace(pos_); // ensure we use base class type
       }
     }
 
@@ -5816,4 +5816,9 @@ format::format(const type_info& type) noexcept
 }
 
 NS_END // version10
+
+// use base irs::position type for ancestors
+template<typename IteratorTraits, bool Position>
+struct type<::position<IteratorTraits, Position>> : type<irs::position> { };
+
 NS_END // root

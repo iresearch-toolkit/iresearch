@@ -61,7 +61,7 @@ TEST_F(token_masking_stream_tests, test_masking) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
 
     ASSERT_TRUE(stream.reset(data1));
@@ -69,7 +69,7 @@ TEST_F(token_masking_stream_tests, test_masking) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -92,7 +92,7 @@ TEST_F(token_masking_stream_tests, test_masking) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -119,7 +119,7 @@ TEST_F(token_masking_stream_tests, test_load) {
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
       ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
     auto stream = irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
@@ -150,7 +150,7 @@ TEST_F(token_masking_stream_tests, test_load) {
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(6, offset->end);
       ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
-      ASSERT_EQ("646566", irs::ref_cast<char>(term->value()));
+      ASSERT_EQ("646566", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
 
@@ -189,7 +189,7 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
 
     ASSERT_TRUE(stream->reset(data1));
@@ -213,7 +213,7 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
 
     ASSERT_TRUE(stream->reset(data1));
@@ -221,7 +221,7 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("mno", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("mno", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("mno", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }
