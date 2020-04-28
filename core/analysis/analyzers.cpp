@@ -42,7 +42,7 @@ using namespace irs;
 
 struct key {
   key(const string_ref& type,
-      const type_info& args_format)
+      const irs::type_info& args_format)
     : type(type),
       args_format(args_format) {
   }
@@ -56,7 +56,7 @@ struct key {
   }
 
   string_ref type;
-  type_info args_format;
+  irs::type_info args_format;
 };
 
 struct value{
