@@ -3055,7 +3055,7 @@ class writer final : public irs::columnstore_writer {
  private:
   class column final : public irs::columnstore_writer::column_output {
    public:
-    explicit column(writer& ctx, const type_info& type,
+    explicit column(writer& ctx, const irs::type_info& type,
                     const compression::compressor::ptr& compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
@@ -3205,7 +3205,7 @@ class writer final : public irs::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    type_info comp_type_;
+    irs::type_info comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
     encryption::stream* cipher_;
     uint64_t length_{}; // size of all data blocks in the column
@@ -3278,7 +3278,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
   encryption::stream* cipher;
-  type_info compression;
+  irs::type_info compression;
 
   if (version_ > FORMAT_MIN) {
     compression = info.compression();
@@ -5429,7 +5429,7 @@ class format10 : public irs::version10::format {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format10(const type_info& type) noexcept
+  explicit format10(const irs::type_info& type) noexcept
     : version10::format(type) {
   }
 }; // format10
@@ -5555,7 +5555,7 @@ class format11 : public format10 {
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 
  protected:
-  explicit format11(const type_info& type) noexcept
+  explicit format11(const irs::type_info& type) noexcept
     : format10(type) {
   }
 }; // format11
@@ -5613,7 +5613,7 @@ class format12 : public format11 {
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 
  protected:
-  explicit format12(const type_info& type) noexcept
+  explicit format12(const irs::type_info& type) noexcept
     : format11(type) {
   }
 }; // format12
@@ -5651,7 +5651,7 @@ class format13 : public format12 {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format13(const type_info& type) noexcept
+  explicit format13(const irs::type_info& type) noexcept
     : format12(type) {
   }
 };
@@ -5811,7 +5811,7 @@ void init() {
 // --SECTION--                                                           format
 // ----------------------------------------------------------------------------
 
-format::format(const type_info& type) noexcept
+format::format(const irs::type_info& type) noexcept
   : irs::format(type) {
 }
 

@@ -123,7 +123,7 @@ void read_segment_features(
 
   for (size_t count = feature_map.capacity(); count; --count) {
     const auto name = read_string<std::string>(in); // read feature name
-    const type_info feature = attribute::get(name);
+    const irs::type_info feature = attribute::get(name);
 
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
