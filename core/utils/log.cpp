@@ -144,8 +144,8 @@ class logger_ctx: public irs::singleton<logger_ctx> {
   struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) level_ctx_t {
     irs::logger::log_appender_callback_t appender_;
     void* appender_context_;
-    level_ctx_t(): appender_(noop_log_appender), appender_context_(nullptr) {}
-    level_ctx_t(irs::logger::log_appender_callback_t appender, void* context)
+    level_ctx_t() noexcept: appender_(noop_log_appender), appender_context_(nullptr) {}
+    level_ctx_t(irs::logger::log_appender_callback_t appender, void* context) noexcept
       : appender_(appender), appender_context_(context) {}
   };
 
