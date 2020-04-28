@@ -297,6 +297,14 @@ struct state_visitor {
 
 NS_END
 
+NS_ROOT
+
+// use base irs::term_meta type for ancestors
+template<>
+struct type<::term_meta> : type<irs::term_meta> { };
+
+NS_END
+
 TEST(top_terms_collector_test, test_top_k) {
   using collector_type = irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
   collector_type collector(5);

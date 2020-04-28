@@ -70,7 +70,7 @@ struct IRESEARCH_API increment final : basic_attribute<uint32_t> {
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute : attribute {
+struct IRESEARCH_API term_attribute : attribute { // FIXME mark final
   static constexpr string_ref type_name() noexcept { return "term_attribute"; }
 
   const bytes_ref& value() const {
@@ -86,7 +86,7 @@ struct IRESEARCH_API term_attribute : attribute {
 /// @brief represents an arbitrary byte sequence associated with
 ///        the particular term position in a field
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API payload : basic_attribute<bytes_ref> { // FIXME mark final
+struct IRESEARCH_API payload final : basic_attribute<bytes_ref> {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "payload"; }
 

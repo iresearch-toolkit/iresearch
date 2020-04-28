@@ -779,7 +779,10 @@ class automaton_term_iterator final : public term_iterator_base {
     : term_iterator_base(owner),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
-    attrs_.emplace<irs::payload>(payload_); // ensure we use base class type
+    // init payload value
+    payload_.value = {&payload_value_, sizeof(payload_value_)};
+
+    attrs_.emplace(payload_); // ensure we use base class type
   }
 
   virtual bool next() override;
@@ -887,14 +890,6 @@ class automaton_term_iterator final : public term_iterator_base {
     automaton::StateId state_;  // state to which current block belongs
   }; // block_iterator
 
-  struct payload : irs::payload {
-    payload() noexcept {
-      irs::payload::value = bytes_ref(&value, sizeof(value));
-    }
-
-    automaton::Weight::PayloadType value;
-  }; // payload
-
   typedef std::deque<block_iterator> block_stack_t;
 
   block_iterator* pop_block() noexcept {
@@ -926,7 +921,8 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
-  payload payload_{}; // payload of the matched automaton state
+  automaton::Weight::PayloadType payload_value_;
+  payload payload_; // payload of the matched automaton state
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -1004,7 +1000,7 @@ bool automaton_term_iterator::next() {
       case ET_TERM: {
         const auto weight = acceptor_->Final(state);
         if (weight) {
-          payload_.value = weight.Payload();
+          payload_value_ = weight.Payload();
           copy(suffix, cur_block_->prefix(), suffix_size);
           match = MATCH;
         }

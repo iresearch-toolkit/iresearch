@@ -149,24 +149,6 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class payload
-////////////////////////////////////////////////////////////////////////////////
-class payload : public irs::payload {
- public:
-  byte_type* data() {
-    return &(value_[0]);
-  }
-
-  void resize(size_t size) {
-    value_.resize(size);
-    value = value_;
-  }
-
- private:
-  bstring value_;
-}; // payload
-
-////////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
@@ -221,8 +203,9 @@ class pos_iterator final: public irs::position {
 
     if (shift_unpack_32(irs::vread<uint32_t>(prox_in_), pos)) {
       const size_t size = irs::vread<size_t>(prox_in_);
-      pay_.resize(size);
-      prox_in_.read(pay_.data(), size);
+      payload_value_.resize(size);
+      prox_in_.read(const_cast<byte_type*>(payload_value_.data()), size);
+      pay_.value = payload_value_;
     }
     
     value_ += pos;
@@ -244,9 +227,10 @@ class pos_iterator final: public irs::position {
 
  private:
   Reader prox_in_;
+  bstring payload_value_;
   const frequency* freq_{}; // number of term positions in a document
-  payload pay_{};
-  offset offs_{};
+  payload pay_;
+  offset offs_;
   uint32_t pos_{}; // current position
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
