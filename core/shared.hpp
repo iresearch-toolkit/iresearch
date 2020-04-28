@@ -310,6 +310,10 @@ namespace irs = ::iresearch;
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+// CMPXCHG16B requires that the destination
+// (memory) operand be 16-byte aligned
+#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+
 #include "types.hpp" // iresearch types
 
 #endif // IRESEARCH_SHARED_H
