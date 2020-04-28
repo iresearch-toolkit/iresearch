@@ -208,8 +208,8 @@ TEST(attributes_tests, store_visit) {
 
   // visit 2 attributes
   {
-    std::unordered_set<type_info::type_id> expected;
-    auto visitor = [&expected](type_info::type_id type_id, const attribute_store::ref<attribute>::type&)->bool {
+    std::unordered_set<irs::type_info::type_id> expected;
+    auto visitor = [&expected](irs::type_info::type_id type_id, const attribute_store::ref<attribute>::type&)->bool {
       return 1 == expected.erase(type_id);
     };
 
@@ -330,8 +330,8 @@ TEST(attributes_tests, view_visit) {
 
   // visit 2 attributes
   {
-    std::unordered_set<type_info::type_id> expected;
-    auto visitor = [&expected](const type_info::type_id type_id, const attribute_view::ref<attribute>::type&)->bool {
+    std::unordered_set<irs::type_info::type_id> expected;
+    auto visitor = [&expected](const irs::type_info::type_id type_id, const attribute_view::ref<attribute>::type&)->bool {
       return 1 == expected.erase(type_id);
     };
 
