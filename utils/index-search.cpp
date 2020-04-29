@@ -260,7 +260,7 @@ irs::filter::prepared::ptr prepareFilter(
     analyzer->reset(terms);
 
     for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
-      irs::assign(opts->push_back<irs::by_term_options>().term, term->value());
+      irs::assign(opts->push_back<irs::by_term_options>().term, term->value);
     }
 
     return query.prepare(reader, order);
@@ -441,8 +441,8 @@ int search(
   irs::default_pdp(1, false); irs::default_pdp(1, true);
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
-  static const std::map<std::string, irs::text_format::type_id> text_formats = {
-    { "csv", irs::type<irs::text_format>::csv },
+  static const std::map<std::string, irs::type_info> text_formats = {
+    { "csv", irs::type<irs::text_format::csv>::get() },
     { "json", irs::type<irs::text_format::json>::get() },
     { "text", irs::type<irs::text_format::text>::get() },
     { "xml", irs::type<irs::text_format::xml>::get() },
