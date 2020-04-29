@@ -612,7 +612,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment0' with all possible streams
   {
     const irs::field_meta field(
-      "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() }
+      "field", irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() }
     );
 
     irs::flush_state state;
@@ -635,7 +635,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment1' with position & offset
   {
     const irs::field_meta field(
-      "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::offset::type() }
+      "field", irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }
     );
 
     irs::flush_state state;
@@ -658,7 +658,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment2' with position & payload
   {
     const irs::field_meta field(
-      "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::payload::type() }
+      "field", irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }
     );
 
     irs::flush_state state;
@@ -681,7 +681,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment3' with position
   {
     const irs::field_meta field(
-      "field", irs::flags{ irs::frequency::type(), irs::position::type() }
+      "field", irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }
     );
 
     irs::flush_state state;
@@ -704,7 +704,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment3' with frequency
   {
     const irs::field_meta field(
-      "field", irs::flags{ irs::frequency::type() }
+      "field", irs::flags{ irs::type<irs::frequency>::get() }
     );
 
     irs::flush_state state;
@@ -845,11 +845,11 @@ TEST_P(format_10_test_case, postings_seek) {
       auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
-    postings_seek(docs, { irs::frequency::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::payload::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() });
+    postings_seek(docs, { irs::type<irs::frequency>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() });
   }
 
   // equals to postings_writer::BLOCK_SIZE
@@ -862,10 +862,10 @@ TEST_P(format_10_test_case, postings_seek) {
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
     postings_seek(docs, {});
-    postings_seek(docs, { irs::frequency::type(), irs::position::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::payload::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() });
   }
 
   // long list
@@ -878,10 +878,10 @@ TEST_P(format_10_test_case, postings_seek) {
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
     postings_seek(docs, {});
-    postings_seek(docs, { irs::frequency::type(), irs::position::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::payload::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() });
   }
 
   // 2^15
@@ -894,10 +894,10 @@ TEST_P(format_10_test_case, postings_seek) {
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i+=2;});
     }
     postings_seek(docs, {});
-    postings_seek(docs, { irs::frequency::type(), irs::position::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::payload::type() });
-    postings_seek(docs, { irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
+    postings_seek(docs, { irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() });
   }
 }
 

@@ -67,7 +67,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(data, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(data, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -92,7 +92,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -117,7 +117,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -142,7 +142,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -153,7 +153,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // load jSON string
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "\"en\"");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "\"en\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -166,14 +166,14 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // load jSON object
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -186,14 +186,14 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with UPPER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"upper\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"upper\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -206,14 +206,14 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with LOWER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"lower\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"lower\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -226,14 +226,14 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with NONE case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"none\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"none\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -246,7 +246,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("ruNNing", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -258,7 +258,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); 
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
     
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
    
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -273,7 +273,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
 
     std::basic_string<wchar_t> unicodeTerm;
-    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value()), locale));
+    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value), locale));
     ASSERT_EQ(L"\u006F\u006F", unicodeTerm);
     
     ASSERT_FALSE(stream->next());
@@ -281,19 +281,19 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":42}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"accent\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"accent\":42}"));
   }
 
   // load text
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::text, "en");
+    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::text>::get(), "en");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -306,7 +306,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }
@@ -316,7 +316,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
   }
 
@@ -324,7 +324,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"accent\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}", actual);
   }
 
@@ -332,7 +332,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\"}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
   }
 
@@ -341,7 +341,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(config, actual);
   }
 }
@@ -349,18 +349,18 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
 TEST_F(text_token_normalizing_stream_tests, test_make_config_text) {
   std::string config = "RU";
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::text, config));
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
 }
 
 TEST_F(text_token_normalizing_stream_tests, test_make_config_invalid_format) {
   std::string config = "ru_RU.UTF-8";
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::csv, config));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::csv>::get(), config));
 }
 
 TEST_F(text_token_normalizing_stream_tests, test_invalid_locale) {
   auto stream = irs::analysis::analyzers::get(
-      "norm", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\"}");
+      "norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"invalid12345.UTF-8\"}");
   ASSERT_EQ(nullptr, stream);
 }

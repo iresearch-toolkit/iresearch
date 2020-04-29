@@ -257,7 +257,6 @@ NS_ROOT
 // --SECTION--                                   by_edit_distance implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {

@@ -408,9 +408,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
   }
 
   virtual const flags& features() const override {
+
+
     static const irs::flags FEATURES[] = {
-      irs::flags({ irs::frequency::type() }), // without normalization
-      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+
+      irs::flags({ type<frequency>::get() }), // without normalization
+      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
     };
 
     return FEATURES[b_ != 0.f];
@@ -520,14 +523,13 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
 NS_END // bm25
 
-DEFINE_SORT_TYPE_NAMED(irs::bm25_sort, "bm25")
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/
 ) noexcept
-  : sort(bm25_sort::type()),
+  : sort(irs::type<bm25_sort>::get()),
     k_(k),
     b_(b) {
 }

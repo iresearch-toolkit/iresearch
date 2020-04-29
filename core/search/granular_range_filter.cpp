@@ -535,11 +535,10 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   boundary.clear();
 
   for (auto& term_attr = term.attributes().get<term_attribute>(); term.next(); ) {
-    boundary.emplace_back(term_attr->value());
+    boundary.emplace_back(term_attr->value);
   }
 }
 
-DEFINE_FILTER_TYPE(by_granular_range)
 DEFINE_FACTORY_DEFAULT(by_granular_range)
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
@@ -625,7 +624,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     static ptr make() { return memory::make_unique<multiterm_filter_proxy>(); }
 
     multiterm_filter_proxy()
-      : filter(by_range::type()) {
+      : filter(irs::type<by_range>::get()) {
     }
 
     virtual filter::prepared::ptr prepare(

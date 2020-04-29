@@ -53,7 +53,7 @@ TEST(by_wildcard_test, options) {
 
 TEST(by_wildcard_test, ctor) {
   irs::by_wildcard q;
-  ASSERT_EQ(irs::by_wildcard::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_wildcard>::id(), q.type());
   ASSERT_EQ(irs::by_wildcard_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());

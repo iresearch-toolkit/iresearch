@@ -214,8 +214,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     const irs::string_ref value_ref(bValueNil ? irs::string_ref::NIL : irs::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
-      "text", irs::text_format::text, irs::locale_utils::name(locale)
-    );
+      "text", irs::type<irs::text_format::text>::get(), irs::locale_utils::name(locale));
 
     if (!tokens || !tokens->reset(value_ref)) {
       return false;
@@ -226,7 +225,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
       auto& part = node.mutable_options()->push_back(irs::by_term_options{});
-      part.term = term->value();
+      part.term = term->value;
     }
 
     return true;
@@ -240,7 +239,11 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class ErrorNode: public irs::filter {
    public:
-    ErrorNode(): filter(ErrorNode::type()) {}
+    static constexpr irs::string_ref type_name() noexcept {
+      return "iresearch::iql::ErrorNode";
+    }
+
+    ErrorNode(): filter(irs::type<ErrorNode>::get()) {}
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
         const irs::order::prepared&,
@@ -252,21 +255,22 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
    private:
     friend class parse_context;
     std::string sError;
-    DECLARE_FILTER_TYPE();
   };
-
-  DEFINE_FILTER_TYPE(ErrorNode)
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief proxy_filter specialized for irs::filter::ptr
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    LinkNode(irs::filter* link): proxy_filter_t(LinkNode::type()) {
+    static constexpr irs::string_ref type_name() noexcept {
+      return "iresearch::iql::LinkNode";
+    }
+
+    LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = ptr(link);
     }
 
-    LinkNode(const LinkNode& other): proxy_filter_t(LinkNode::type()) {
+    LinkNode(const LinkNode& other): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = other.filter_;
     }
 
@@ -274,12 +278,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     static ptr make(Args&&... args) {
       return irs::memory::make_unique<LinkNode>(std::forward<Args>(args)...);
     }
-
-   private:
-    DECLARE_FILTER_TYPE();
   };
-
-  DEFINE_FILTER_TYPE(LinkNode)
 
   class RootNode: public irs::Or {
    public:
@@ -962,7 +961,6 @@ query query_builder::build(
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(proxy_filter)
 DEFINE_FACTORY_DEFAULT(proxy_filter)
 
 NS_END // iql

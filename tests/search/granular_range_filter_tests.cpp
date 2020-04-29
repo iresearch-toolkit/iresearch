@@ -30,7 +30,7 @@ NS_LOCAL
 class granular_float_field: public tests::float_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -38,7 +38,7 @@ class granular_float_field: public tests::float_field {
 class granular_double_field: public tests::double_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -46,7 +46,7 @@ class granular_double_field: public tests::double_field {
 class granular_int_field: public tests::int_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -54,7 +54,7 @@ class granular_int_field: public tests::int_field {
 class granular_long_field: public tests::long_field {
  public:
   const irs::flags& features() const {
-    static const irs::flags features{ irs::granularity_prefix::type() };
+    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
     return features;
   }
 };
@@ -465,8 +465,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -501,8 +501,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -564,7 +564,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int64_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -595,7 +595,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int64_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -627,7 +627,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
       irs::set_granular_term(query.mutable_options()->range.min, (irs::numeric_utils::numeric_traits<int64_t>::min)());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -662,8 +662,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -698,8 +698,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -761,7 +761,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int32_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -793,7 +793,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int32_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -825,7 +825,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
       irs::set_granular_term(query.mutable_options()->range.min, (irs::numeric_utils::numeric_traits<int32_t>::min)());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -860,8 +860,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -896,8 +896,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
@@ -960,7 +960,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::by_granular_range query;
       *query.mutable_field() = "value";
       irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<float_t>::ninf());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
@@ -990,7 +990,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<float_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -1021,7 +1021,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<float_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -1056,8 +1056,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1091,8 +1091,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1155,7 +1155,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::by_granular_range query;
       *query.mutable_field() = "value";
       irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
-      irs::set_granular_term(query.mutable_options()->range.max, max_term->value());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
@@ -1185,7 +1185,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -1216,7 +1216,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min, min_term->value());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
       irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
@@ -1574,7 +1574,7 @@ TEST(by_granular_range_test, options) {
 
 TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
-  ASSERT_EQ(irs::by_granular_range::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_granular_range>::id(), q.type());
   ASSERT_EQ(irs::by_granular_range_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
@@ -1847,7 +1847,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     irs::by_granular_range q;
     *q.mutable_field() = "value";
     irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
-    irs::set_granular_term(q.mutable_options()->range.max, max_term->value());
+    irs::set_granular_term(q.mutable_options()->range.max, max_term->value);
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 

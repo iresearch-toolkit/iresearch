@@ -88,7 +88,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_SORT_TYPE_NAMED(irs::boost_sort, "boostscore");
 DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 
 /*static*/ void boost_sort::init() {
@@ -96,7 +95,7 @@ DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 }
 
 boost_sort::boost_sort() noexcept
-  : sort(boost_sort::type()) {
+  : sort(irs::type<boost_sort>::get()) {
 }
 
 sort::prepared::ptr boost_sort::prepare() const {

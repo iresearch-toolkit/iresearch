@@ -53,7 +53,10 @@ class IRESEARCH_API cost : public attribute {
     return est;
   }
 
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::cost";
+  }
+
   cost() = default;
 
   //////////////////////////////////////////////////////////////////////////////

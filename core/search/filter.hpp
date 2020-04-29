@@ -128,11 +128,11 @@ class IRESEARCH_API filter {
   DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter)
 
-  explicit filter(const type_id& type) noexcept;
+  explicit filter(const type_info& type) noexcept;
   virtual ~filter() = default;
 
   virtual size_t hash() const noexcept {
-    return std::hash<const type_id*>()(type_);
+    return std::hash<type_info::type_id>()(type_);
   }
 
   bool operator==(const filter& rhs) const noexcept {
@@ -182,7 +182,7 @@ class IRESEARCH_API filter {
     return *this;
   }
 
-  const type_id& type() const noexcept { return *type_; }
+  type_info::type_id type() const noexcept { return type_; }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept {
@@ -191,7 +191,7 @@ class IRESEARCH_API filter {
 
  private:
   boost_t boost_;
-  const type_id* type_;
+  type_info::type_id type_;
 }; // filter
 
 // boost::hash_combine support
@@ -209,7 +209,7 @@ class filter_with_options : public filter {
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
-  filter_with_options() : filter(filter_type::type()) { }
+  filter_with_options() : filter(irs::type<filter_type>::get()) { }
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
@@ -272,18 +272,16 @@ class filter_base : public filter_with_options<Options> {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // filter_base
 
-#define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(::iresearch::type_id)
-#define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,::iresearch::type_id) { \
-  static ::iresearch::type_id type; \
-  return type; }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class empty
 /// @brief filter which returns no documents
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty: public filter {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::empty";
+  }
+
   DECLARE_FACTORY();
 
   empty();

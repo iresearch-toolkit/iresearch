@@ -71,14 +71,16 @@ NS_BEGIN(tests)
 NS_BEGIN(detail)
 
 struct basic_sort : irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
+  }
 
   static irs::sort::ptr make(size_t i) {
     return irs::sort::ptr(new basic_sort(i));
   }
 
   explicit basic_sort(size_t idx)
-    : irs::sort(basic_sort::type()), idx(idx) {
+    : irs::sort(irs::type<basic_sort>::get()), idx(idx) {
   }
 
   struct basic_scorer final : irs::score_ctx {
@@ -119,8 +121,6 @@ struct basic_sort : irs::sort {
 
   size_t idx;
 };
-
-DEFINE_SORT_TYPE(::tests::detail::basic_sort)
 
 class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  public:
@@ -314,13 +314,15 @@ struct boosted: public irs::filter {
     return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
   }
 
-  DECLARE_FILTER_TYPE();
-  boosted(): filter(boosted::type()) { }
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
+  }
+
+  boosted(): filter(irs::type<boosted>::get()) { }
 
   basic_doc_iterator::docids_t docs;
 }; // boosted
 
-DEFINE_FILTER_TYPE(boosted)
 DEFINE_FACTORY_DEFAULT(boosted)
 
 NS_END // detail
@@ -1277,13 +1279,15 @@ struct unestimated: public irs::filter {
     return filter::prepared::make<unestimated::prepared>();
   }
 
-  DECLARE_FILTER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
+  }
+
   DECLARE_FACTORY();
 
-  unestimated() : filter(unestimated::type()) {}
+  unestimated() : filter(irs::type<unestimated>::get()) {}
 }; // unestimated
 
-DEFINE_FILTER_TYPE(unestimated)
 DEFINE_FACTORY_DEFAULT(unestimated)
 
 struct estimated: public irs::filter {
@@ -1341,18 +1345,19 @@ struct estimated: public irs::filter {
     return filter::prepared::make<estimated::prepared>(est,&evaluated);
   }
 
-  DECLARE_FILTER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
+  }
   DECLARE_FACTORY();
 
   explicit estimated()
-    : filter(estimated::type()) {
+    : filter(irs::type<estimated>::get()) {
   }
 
   mutable bool evaluated = false;
   irs::cost::cost_t est{};
 }; // estimated
 
-DEFINE_FILTER_TYPE(estimated)
 DEFINE_FACTORY_DEFAULT(estimated)
 
 NS_END // detail
@@ -8068,7 +8073,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
 
 TEST(Not_test, ctor) {
   irs::Not q;
-  ASSERT_EQ(irs::Not::type(), q.type());
+  ASSERT_EQ(irs::type<irs::Not>::id(), q.type());
   ASSERT_EQ(nullptr, q.filter());
   ASSERT_EQ(irs::no_boost(), q.boost());
 }
@@ -8106,7 +8111,7 @@ TEST(Not_test, equal) {
 
 TEST(And_test, ctor) {
   irs::And q;
-  ASSERT_EQ(irs::And::type(), q.type());
+  ASSERT_EQ(irs::type<irs::And>::id(), q.type());
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
   ASSERT_EQ(irs::no_boost(), q.boost());
@@ -8254,7 +8259,7 @@ TEST(And_test, optimize_all_filters) {
 
 TEST(Or_test, ctor) {
   irs::Or q;
-  ASSERT_EQ(irs::Or::type(), q.type());
+  ASSERT_EQ(irs::type<irs::Or>::id(), q.type());
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
   ASSERT_EQ(1, q.min_match_count());

@@ -201,16 +201,14 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimiter")
-
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
-  : analyzer(delimited_token_stream::type()),
+  : analyzer(irs::type<delimited_token_stream>::get()),
     attrs_(4), // increment + offset + payload + term
     delim_(ref_cast<byte_type>(delimiter)) {
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
-  attrs_.emplace(term_);
+  attrs_.emplace(term_); // ensure we use base class type
 
   if (!delim_.null()) {
     delim_buf_ = delim_; // keep a local copy of the delimiter
@@ -218,9 +216,7 @@ delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(
-    const string_ref& delimiter
-) {
+/*static*/ analyzer::ptr delimited_token_stream::make(const string_ref& delimiter) {
   return make_text(delimiter);
 }
 
@@ -246,15 +242,10 @@ bool delimited_token_stream::next() {
   offset_.start = start;
   offset_.end = uint32_t(end);
   payload_.value = bytes_ref(data_.c_str(), size);
-  term_.value(
-    delim_.null()
-    ? payload_.value // identity
-    : eval_term(term_buf_, payload_.value)
-  );
-  data_ = size >= data_.size()
-        ? bytes_ref::NIL
-        : bytes_ref(data_.c_str() + next, data_.size() - next)
-        ;
+  term_.value =  delim_.null() ? payload_.value
+                               : eval_term(term_buf_, payload_.value);
+  data_ = size >= data_.size() ? bytes_ref::NIL
+                               : bytes_ref(data_.c_str() + next, data_.size() - next);
 
   return true;
 }

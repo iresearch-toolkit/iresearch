@@ -331,8 +331,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
   virtual const flags& features() const override {
     static const irs::flags FEATURES[] = {
-      irs::flags({ irs::frequency::type() }), // without normalization
-      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+      irs::flags({ type<frequency>::get() }), // without normalization
+      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
     };
 
     return FEATURES[normalize_];
@@ -436,11 +436,10 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
 NS_END // tfidf 
 
-DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf")
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
 
 tfidf_sort::tfidf_sort(bool normalize) noexcept
-  : sort(tfidf_sort::type()),
+  : sort(irs::type<tfidf_sort>::get()),
     normalize_(normalize) {
 }
 

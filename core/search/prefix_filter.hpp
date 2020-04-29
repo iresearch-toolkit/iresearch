@@ -75,7 +75,10 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_prefix";
+  }
+
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(

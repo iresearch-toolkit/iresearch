@@ -57,7 +57,7 @@ using namespace irs;
 const byte_block_pool EMPTY_POOL;
 
 const column_info NORM_COLUMN{
-  compression::lz4::type(),
+  type<compression::lz4>::get(),
   compression::options(),
   false
 };
@@ -149,24 +149,6 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class payload
-////////////////////////////////////////////////////////////////////////////////
-class payload : public irs::payload {
- public:
-  byte_type* data() {
-    return &(value_[0]);
-  }
-
-  void resize(size_t size) {
-    value_.resize(size);
-    value = value_;
-  }
-
- private:
-  bstring value_;
-}; // payload
-
-////////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
@@ -221,8 +203,9 @@ class pos_iterator final: public irs::position {
 
     if (shift_unpack_32(irs::vread<uint32_t>(prox_in_), pos)) {
       const size_t size = irs::vread<size_t>(prox_in_);
-      pay_.resize(size);
-      prox_in_.read(pay_.data(), size);
+      payload_value_.resize(size);
+      prox_in_.read(const_cast<byte_type*>(payload_value_.data()), size);
+      pay_.value = payload_value_;
     }
     
     value_ += pos;
@@ -244,9 +227,10 @@ class pos_iterator final: public irs::position {
 
  private:
   Reader prox_in_;
+  bstring payload_value_;
   const frequency* freq_{}; // number of term positions in a document
-  payload pay_{};
-  offset offs_{};
+  payload pay_;
+  offset offs_;
   uint32_t pos_{}; // current position
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
@@ -305,7 +289,7 @@ class doc_iterator : public irs::doc_iterator {
       if (features.check<position>()) {
         pos_.reset(features, freq_);
 
-        attrs_.emplace(pos_);
+        attrs_.emplace(pos_); // ensure we use base class type
         has_prox_ = true;
         has_cookie_ = field.prox_random_access();
       }
@@ -428,7 +412,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        attrs_.emplace(pos_);
+        attrs_.emplace(pos_); // ensure we use base class type
       }
     }
   }
@@ -1082,7 +1066,7 @@ bool field_data::invert(
   if (!inc) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), increment::type().name().c_str()
+      meta_.name.c_str(), type<increment>::name().c_str()
     );
     return false;
   }
@@ -1090,7 +1074,7 @@ bool field_data::invert(
   if (!term) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), term_attribute::type().name().c_str()
+      meta_.name.c_str(), type<term_attribute>::name().c_str()
     );
     return false;
   }
@@ -1134,10 +1118,10 @@ bool field_data::invert(
       last_start_offs_ = start_offset;
     }
 
-    const auto res = terms_.emplace(term->value());
+    const auto res = terms_.emplace(term->value);
 
     if (terms_.end() == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value()).c_str());
+      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
 
@@ -1234,5 +1218,9 @@ void fields_data::reset() noexcept {
   fields_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
 }
+
+// use base irs::position type for ancestors
+template<typename Reader>
+struct type<::pos_iterator<Reader>> : type<irs::position> { };
 
 NS_END // ROOT

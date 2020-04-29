@@ -30,17 +30,6 @@
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class basic_term
-/// @brief basic term_attribute implementation for string_token_stream
-//////////////////////////////////////////////////////////////////////////////
-class basic_term final : public term_attribute {
- public:
-  void value(const bytes_ref& value) {
-    value_ = value;
-  }
-}; // basic_term
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
@@ -68,13 +57,13 @@ class IRESEARCH_API boolean_token_stream final
 
  private:
   void init_attributes() {
-    attrs_.emplace(term_);
+    attrs_.emplace(term_); // ensure we use base class type
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
-  basic_term term_;
+  term_attribute term_;
   increment inc_;
   bool in_use_;
   bool value_;
@@ -114,14 +103,14 @@ class IRESEARCH_API string_token_stream final
   void init_attributes() {
     attrs_.emplace(offset_);
     attrs_.emplace(inc_);
-    attrs_.emplace(term_);
+    attrs_.emplace(term_); // ensure we use base class type
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   offset offset_;
   increment inc_;
-  basic_term term_;
+  term_attribute term_;
   bytes_ref value_;
   bool in_use_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
@@ -173,7 +162,7 @@ class IRESEARCH_API numeric_token_stream final
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API numeric_term final: public term_attribute {
+  class IRESEARCH_API numeric_term final {
    public:
     static bytes_ref value(bstring& buf, int32_t value) {
       decltype(val_) val;
@@ -209,7 +198,7 @@ class IRESEARCH_API numeric_token_stream final
       return numeric_term::value(buf, NT_DBL, val, 0);
     }
 
-    bool next(increment& inc);
+    bool next(increment& inc, bytes_ref& out);
 
     void reset(int32_t value, uint32_t step) {
       val_.i32 = value;
@@ -243,6 +232,7 @@ class IRESEARCH_API numeric_token_stream final
 
    private:
     enum NumericType { NT_LONG = 0, NT_DBL, NT_INT, NT_FLOAT };
+
     union value_t {
       uint64_t i64;
       uint32_t i32;
@@ -265,12 +255,13 @@ class IRESEARCH_API numeric_token_stream final
   }; // numeric_term
 
   void init_attributes() {
-    attrs_.emplace(num_);
+    attrs_.emplace(term_);
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
   attribute_view attrs_;
   numeric_term num_;
+  term_attribute term_;
   increment inc_;
 }; // numeric_token_stream 
 
@@ -299,13 +290,13 @@ class IRESEARCH_API null_token_stream final
 
  private:
   void init_attributes() {
-    attrs_.emplace(term_);
+    attrs_.emplace(term_); // ensure we use base class type
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
-  basic_term term_;
+  term_attribute term_;
   increment inc_;
   bool in_use_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

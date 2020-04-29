@@ -83,14 +83,14 @@ const std::string n_timesecnum = "timesecnum";
 const std::string n_body = "body";
 
 const irs::flags text_features{
-  irs::frequency::type(),
-  irs::position::type(),
-  irs::offset::type(),
-  irs::norm::type()
+  irs::type<irs::frequency>::get(),
+  irs::type<irs::position>::get(),
+  irs::type<irs::offset>::get(),
+  irs::type<irs::norm>::type()
 };
 
 const irs::flags numeric_features{
-  irs::granularity_prefix::type()
+  irs::type<irs::granularity_prefix>::type()
 };
 
 NS_END
@@ -175,7 +175,7 @@ struct Doc {
     }
 
     bool write(irs::data_output& out) const override {
-      irs::write_string(out, f.c_str(), f.length());
+      //irs::write_string(out, f.c_str(), f.length());
       return true;
     }
   };
@@ -185,7 +185,7 @@ struct Doc {
     mutable irs::analysis::analyzer::ptr stream;
     static const std::string& aname;
     static const std::string& aignore;
-    static const irs::text_format::type_id& aignore_format;
+    static const irs::text_format::type_id aignore_format;
 
     TextField(const std::string& n, const irs::flags& flags)
       : Field(n, flags) {
@@ -226,7 +226,7 @@ struct Doc {
     }
 
     bool write(irs::data_output& out) const override {
-      irs::write_zvlong(out, value);
+      //irs::write_zvlong(out, value);
       return true;
     }
   };
@@ -252,7 +252,7 @@ struct Doc {
     snprintf(str2, sizeof (str2), "%6s", str);
     std::string s(str2);
     std::replace(s.begin(), s.end(), ' ', '0');
-    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::granularity_prefix::type()}, s));
+    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::type<irs::granularity_prefix>::type()}, s));
     store.emplace_back(elements.back());
 
     // title: string
@@ -267,21 +267,21 @@ struct Doc {
     // +date: uint64_t
     uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
     elements.emplace_back(
-      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::granularity_prefix::type()}, t)
+      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::type<irs::granularity_prefix>::type()}, t)
     );
 
     // body: text
     std::getline(lineStream, cell, '\t');
     elements.emplace_back(
-      std::make_shared<TextField>(n_body, irs::flags{irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::norm::type()}, cell)
+      std::make_shared<TextField>(n_body, irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::norm>::type()}, cell)
     );
   }
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}");
-const irs::text_format::type_id& Doc::TextField::aignore_format = irs::text_format::json;
+const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stemming\":false, \"stopwords\":[]}");
+constexpr irs::text_format::type_id Doc::TextField::aignore_format = irs::type<irs::text_format::json>::get();
 
 struct WikiDoc : Doc {
   WikiDoc() {

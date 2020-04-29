@@ -236,7 +236,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -259,7 +259,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -286,7 +286,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -313,7 +313,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -340,7 +340,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -367,7 +367,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -394,7 +394,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -421,7 +421,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -637,7 +637,7 @@ TEST(by_prefix_test, options) {
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
-  ASSERT_EQ(irs::by_term::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());

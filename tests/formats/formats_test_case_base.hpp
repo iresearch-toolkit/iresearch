@@ -106,10 +106,10 @@ class format_test_case : public index_test_base {
       : next_(begin), end_(end), pos_(features) {
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
-        attrs_.emplace<irs::frequency>(freq_);
+        attrs_.emplace(freq_);
 
         if (features.check<irs::position>()) {
-          attrs_.emplace(pos_);
+          attrs_.emplace(pos_); // ensure we use base class type
         }
       }
     }
@@ -241,5 +241,13 @@ class format_test_case : public index_test_base {
 }; // format_test_case
 
 } // tests
+
+NS_ROOT
+
+// use base irs::position type for ancestors
+template<>
+struct type<tests::format_test_case::position> : type<irs::position> { };
+
+NS_END
 
 #endif // IRESEARCH_FORMAT_TEST_CASE_BASE

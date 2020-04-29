@@ -67,7 +67,7 @@ TEST(by_edit_distance_test, options) {
 
 TEST(by_edit_distance_test, ctor) {
   irs::by_edit_distance q;
-  ASSERT_EQ(irs::by_edit_distance::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_edit_distance>::id(), q.type());
   ASSERT_EQ(irs::by_edit_distance_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());

@@ -61,31 +61,9 @@ class text_token_stream : public analyzer, util::noncopyable {
 
   struct state_t;
 
-  class bytes_term : public irs::term_attribute {
-   public:
-    void clear() {
-      buf_.clear();
-      value_ = irs::bytes_ref::NIL;
-    }
-
-    using irs::term_attribute::value;
-
-    void value(irs::bstring&& data) {
-      buf_ = std::move(data);
-      value(buf_);
-    }
-
-    void value(const irs::bytes_ref& data) {
-      value_ = data;
-    }
-
-   private:
-    irs::bstring buf_; // buffer for value if value cannot be referenced directly
-  };
-
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "text"; }
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const irs::string_ref& locale);
@@ -103,11 +81,12 @@ class text_token_stream : public analyzer, util::noncopyable {
   bool next_ngram();
 
  private:
-  irs::attribute_view attrs_;
+  attribute_view attrs_;
   std::shared_ptr<state_t> state_;
-  irs::offset offs_;
-  irs::increment inc_;
-  bytes_term term_;
+  bstring term_buf_; // buffer for value if value cannot be referenced directly
+  offset offs_;
+  increment inc_;
+  term_attribute term_;
 };
 
 NS_END // analysis

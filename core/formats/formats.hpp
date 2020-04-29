@@ -56,7 +56,9 @@ typedef std::vector<doc_id_t> doc_map;
 /// @brief represents metadata associated with the term
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_meta : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::term_meta";
+  }
 
   term_meta() = default;
   virtual ~term_meta() = default;
@@ -464,20 +466,7 @@ class IRESEARCH_API format {
  public:
   typedef std::shared_ptr<const format> ptr;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  };
-
-  format(const type_id& type) noexcept : type_(&type) {}
+  explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
@@ -498,10 +487,10 @@ class IRESEARCH_API format {
   virtual columnstore_writer::ptr get_columnstore_writer() const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
-  const type_id& type() const { return *type_; }
+  const type_info& type() const { return type_; }
 
  private:
-  const type_id* type_;
+  type_info type_;
 }; // format
 
 NS_END
@@ -567,24 +556,13 @@ class IRESEARCH_API formats {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 format definition
-// -----------------------------------------------------------------------------
-
-#define DECLARE_FORMAT_TYPE() DECLARE_TYPE_ID(iresearch::format::type_id)
-#define DEFINE_FORMAT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, iresearch::format::type_id) { \
-  static iresearch::format::type_id type(class_name); \
-  return type; \
-}
-#define DEFINE_FORMAT_TYPE(class_type) DEFINE_FORMAT_TYPE_NAMED(class_type, #class_type)
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
 class IRESEARCH_API format_registrar {
  public:
   format_registrar(
-    const format::type_id& type,
+    const type_info& type,
     const string_ref& module,
     format::ptr(*factory)(),
     const char* source = nullptr);
@@ -595,7 +573,8 @@ class IRESEARCH_API format_registrar {
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, mudule_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), mudule_name, &format_name::make, source)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source) \
+  static ::iresearch::format_registrar format_registrar ## _ ## line(::iresearch::type<format_name>::get(), mudule_name, &format_name::make, source)
 #define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
 #define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)

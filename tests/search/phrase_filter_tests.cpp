@@ -45,7 +45,7 @@ void analyzed_json_field_factory(
     }
 
     const irs::flags& features() const {
-      static irs::flags features{ irs::frequency::type() };
+      static irs::flags features{ irs::type<irs::frequency>::get() };
       return features;
     }
   }; // string_field
@@ -5730,7 +5730,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quik"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5791,7 +5791,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5849,7 +5849,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("the")), 0.75f);
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5941,7 +5941,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -6088,7 +6088,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -6261,7 +6261,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("like"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -7397,7 +7397,7 @@ TEST(by_phrase_test, options_clear) {
 
 TEST(by_phrase_test, ctor) {
   irs::by_phrase q;
-  ASSERT_EQ(irs::by_phrase::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_phrase>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::by_phrase_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());

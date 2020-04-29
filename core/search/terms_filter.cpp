@@ -106,7 +106,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_terms)
 DEFINE_FACTORY_DEFAULT(by_terms)
 
 /*static*/ void by_terms::visit(

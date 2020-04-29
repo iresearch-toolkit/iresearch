@@ -36,32 +36,26 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class token_masking_stream: public analyzer, util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "mask"; }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const string_ref& mask);
 
-  token_masking_stream(std::unordered_set<irs::bstring>&& mask);
+  explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
   private:
-   class term_attribute final: public irs::term_attribute {
-    public:
-     using irs::term_attribute::value;
-     void value(const irs::bytes_ref& value) { value_ = value; }
-   };
-
    irs::attribute_view attrs_;
    irs::increment inc_;
    std::unordered_set<irs::bstring> mask_;
    irs::offset offset_;
    irs::payload payload_; // raw token value
-   term_attribute term_; // token value with evaluated quotes
+   irs::term_attribute term_; // token value with evaluated quotes
    bool term_eof_;
 };
 

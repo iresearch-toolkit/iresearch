@@ -40,10 +40,10 @@ NS_ROOT
 /// @class offset 
 /// @brief represents token offset in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API offset : attribute {
-  static const uint32_t INVALID_OFFSET = integer_traits< uint32_t >::const_max;
+struct IRESEARCH_API offset final : attribute {
+  static constexpr string_ref type_name() noexcept { return "offset"; }
 
-  DECLARE_ATTRIBUTE_TYPE();   
+  static const uint32_t INVALID_OFFSET = integer_traits< uint32_t >::const_max;
 
   void clear() {
     start = 0;
@@ -58,8 +58,8 @@ struct IRESEARCH_API offset : attribute {
 /// @class increment 
 /// @brief represents token increment in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API increment : basic_attribute<uint32_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API increment final : basic_attribute<uint32_t> {
+  static constexpr string_ref type_name() noexcept { return "increment"; }
 
   increment() noexcept;
 
@@ -70,24 +70,18 @@ struct IRESEARCH_API increment : basic_attribute<uint32_t> {
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  const bytes_ref& value() const {
-    return value_;
-  }
-
- protected:
-  bytes_ref value_;
+struct IRESEARCH_API term_attribute final : basic_attribute<bytes_ref> {
+  static constexpr string_ref type_name() noexcept { return "term_attribute"; }
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class term_attribute 
+/// @class payload
 /// @brief represents an arbitrary byte sequence associated with
 ///        the particular term position in a field
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API payload final : basic_attribute<bytes_ref> {
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept { return "payload"; }
 
   void clear() {
     value = bytes_ref::NIL;
@@ -98,8 +92,9 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document: basic_attribute<doc_id_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API document final : basic_attribute<doc_id_t> {
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept { return "document"; }
 
   explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
     : basic_attribute<doc_id_t>(doc) {
@@ -110,8 +105,9 @@ struct IRESEARCH_API document: basic_attribute<doc_id_t> {
 /// @class frequency 
 /// @brief how many times term appears in a document
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API frequency : basic_attribute<uint32_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API frequency final : basic_attribute<uint32_t> {
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept { return "frequency"; }
 
   frequency() = default;
 }; // frequency
@@ -123,8 +119,12 @@ struct IRESEARCH_API frequency : basic_attribute<uint32_t> {
 ///        exact values are prefixed with 0
 ///        the less precise the token the greater its granularity prefix value
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API granularity_prefix : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API granularity_prefix final : attribute {
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::granularity_prefix";
+  }
+
   granularity_prefix() = default;
 }; // granularity_prefix
 
@@ -133,8 +133,12 @@ struct IRESEARCH_API granularity_prefix : attribute {
 /// @brief this marker attribute is only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API norm : stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API norm final : stored_attribute {
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept {
+    return "norm";
+  }
+
   DECLARE_FACTORY();
 
   FORCE_INLINE static constexpr float_t DEFAULT() {
@@ -171,7 +175,9 @@ class IRESEARCH_API position
   typedef uint32_t value_t;
 
   DECLARE_REFERENCE(position);
-  DECLARE_TYPE_ID(attribute::type_id);
+
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept { return "position"; }
 
   static irs::position* extract(const attribute_view& attrs) noexcept {
     return attrs.get<irs::position>().get();

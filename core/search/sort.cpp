@@ -39,14 +39,13 @@ filter_boost::filter_boost() noexcept
 }
 
 REGISTER_ATTRIBUTE(filter_boost);
-DEFINE_ATTRIBUTE_TYPE(filter_boost);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
-sort::sort(const type_id& type) noexcept
-  : type_(&type) {
+sort::sort(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
 // ----------------------------------------------------------------------------
@@ -58,7 +57,7 @@ const order& order::unordered() {
   return ord;
 }
 
-void order::remove(const type_id& type) {
+void order::remove(type_info::type_id type) {
   order_.erase(
     std::remove_if(
       order_.begin(), order_.end(),

@@ -317,10 +317,11 @@ void delim_doc_generator::reset() {
 // -----------------------------------------------------------------------------
 
 csv_doc_generator::csv_doc_generator(
-    const irs::utf8_path& file, doc_template& doc
-): doc_(doc),
-   ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   stream_(irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",")) {
+    const irs::utf8_path& file,
+    doc_template& doc)
+  : doc_(doc),
+    ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+    stream_(irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",")) {
   doc_.init();
   doc_.reset();
 }
@@ -337,7 +338,7 @@ const tests::document* csv_doc_generator::next() {
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value()));
+    doc_.value(i, irs::ref_cast<char>(term->value));
   }
 
   return &doc_;

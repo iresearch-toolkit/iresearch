@@ -184,7 +184,6 @@ NS_ROOT
 // --SECTION--                                by_column_existence implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_column_existence)
 DEFINE_FACTORY_DEFAULT(by_column_existence)
 
 filter::prepared::ptr by_column_existence::prepare(

@@ -447,11 +447,10 @@ class ngram_similarity_query : public filter::prepared {
 // -----------------------------------------------------------------------------
 
 /* static */ const flags& by_ngram_similarity::features() {
-  static flags req{ frequency::type(), position::type() };
+  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_ngram_similarity)
 DEFINE_FACTORY_DEFAULT(by_ngram_similarity)
 
 filter::prepared::ptr by_ngram_similarity::prepare(

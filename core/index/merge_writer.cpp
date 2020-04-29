@@ -45,7 +45,7 @@
 NS_LOCAL
 
 const irs::column_info NORM_COLUMN{
-  irs::compression::lz4::type(),
+  irs::type<irs::compression::lz4>::get(),
   irs::compression::options(),
   false
 };
@@ -175,7 +175,7 @@ class compound_attributes: public irs::attribute_view {
  public:
   void add(const irs::attribute_view& attributes) {
     auto visitor = [this](
-        const irs::attribute::type_id& type_id,
+        irs::type_info::type_id type_id,
         const irs::attribute_view::ref<irs::attribute>::type&) ->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id);
@@ -187,14 +187,14 @@ class compound_attributes: public irs::attribute_view {
 
   void set(const irs::attribute_view& attributes) {
     auto visitor_unset = [](
-        const irs::attribute::type_id&,
+        irs::type_info::type_id /*type_id*/,
         irs::attribute_view::ref<irs::attribute>::type& value)->bool {
       value = nullptr;
       return true;
     };
 
     auto visitor_update = [this](
-        const irs::attribute::type_id& type_id,
+        irs::type_info::type_id type_id,
         const irs::attribute_view::ref<irs::attribute>::type& value)->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;

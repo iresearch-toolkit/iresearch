@@ -50,7 +50,7 @@ TEST(by_terms_test, options) {
 
 TEST(by_terms_test, ctor) {
   irs::by_terms q;
-  ASSERT_EQ(irs::by_terms::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_terms>::id(), q.type());
   ASSERT_EQ(irs::by_terms_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
   ASSERT_EQ(irs::no_boost(), q.boost());

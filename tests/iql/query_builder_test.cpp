@@ -41,7 +41,9 @@
 namespace tests {
   class test_sort: public iresearch::sort {
    public:
-    DECLARE_SORT_TYPE();
+    static constexpr irs::string_ref type_name() noexcept {
+      return __FILE__ ":" STRINGIFY(__LINE__);
+    }
     DECLARE_FACTORY();
 
     class prepared : sort::prepared {
@@ -85,11 +87,10 @@ namespace tests {
       }
     };
 
-    test_sort():sort(test_sort::type()) {}
+    test_sort():sort(irs::type<test_sort>::get()) {}
     virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
-  DEFINE_SORT_TYPE(test_sort)
   DEFINE_FACTORY_DEFAULT(test_sort)
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
@@ -110,7 +111,7 @@ namespace tests {
         auto locale = irs::locale_utils::locale("en");
         const std::string tmp_str;
 
-        irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
+        irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en"); // stream needed only to load stopwords
 
         if (czOldStopwordPath) {
           iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -127,7 +128,7 @@ namespace tests {
    public:
     analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
-        token_stream_(irs::analysis::analyzers::get("text", irs::text_format::text, "en")) {
+        token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }
@@ -266,7 +267,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     auto& term = stream.attributes().get<iresearch::term_attribute>();
 
     while (stream.next()) {
-      buf.append(term->value());
+      buf.append(term->value);
     }
 
     return true;

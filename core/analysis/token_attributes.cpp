@@ -37,14 +37,12 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(offset);
-DEFINE_ATTRIBUTE_TYPE(offset)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         increment
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(increment);
-DEFINE_ATTRIBUTE_TYPE(increment)
 
 increment::increment() noexcept
   : basic_attribute<uint32_t>(1U) {
@@ -55,43 +53,36 @@ increment::increment() noexcept
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(term_attribute);
-DEFINE_ATTRIBUTE_TYPE(term_attribute)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           payload
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(payload);
-DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          document
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(document);
-DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(frequency);
-DEFINE_ATTRIBUTE_TYPE(frequency) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                granularity_prefix
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
-DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(norm);
-DEFINE_ATTRIBUTE_TYPE(norm) // DO NOT CHANGE NAME
-DEFINE_FACTORY_DEFAULT(norm)
 
 const document INVALID_DOCUMENT;
 
@@ -151,7 +142,6 @@ float_t norm::read() const {
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(position);
-DEFINE_ATTRIBUTE_TYPE(position) // DO NOT CHANGE NAME
 
 position::position(size_t reserve_attrs) noexcept
   : attrs_(reserve_attrs) {

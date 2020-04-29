@@ -76,7 +76,7 @@ bool boolean_token_stream::next() {
 
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value(BOOL_VALUES[value_]);
+  term_.value = BOOL_VALUES[value_];
   return !in_use;
 }
 
@@ -113,7 +113,7 @@ string_token_stream::string_token_stream(string_token_stream&& other) noexcept
 
 bool string_token_stream::next() {
   const auto in_use = in_use_;
-  term_.value(value_);
+  term_.value = value_;
   offset_.start = 0;
   offset_.end = static_cast<uint32_t>(value_.size());
   value_ = irs::bytes_ref::NIL;
@@ -126,11 +126,8 @@ bool string_token_stream::next() {
 // -----------------------------------------------------------------------------
 
 bytes_ref numeric_token_stream::numeric_term::value(
-    bstring& buf,
-    NumericType type,
-    value_t val,
-    uint32_t shift
-) {
+    bstring& buf, NumericType type,
+    value_t val, uint32_t shift) {
   switch (type) {
     case NT_LONG: {
       typedef numeric_utils::numeric_traits<int64_t> traits_t;
@@ -162,7 +159,7 @@ bytes_ref numeric_token_stream::numeric_term::value(
 }
 
 
-bool numeric_token_stream::numeric_term::next(increment& inc) {
+bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
   static const uint32_t INCREMENT_VALUE[] { 
     0, 1
   };
@@ -176,7 +173,7 @@ bool numeric_token_stream::numeric_term::next(increment& inc) {
     return false;
   }
 
-  value_ = value(data_, type_, val_, shift_);
+  out = value(data_, type_, val_, shift_);
   shift_ += step_;
   inc.value = INCREMENT_VALUE[step_ == shift_];
 
@@ -200,7 +197,7 @@ numeric_token_stream::numeric_token_stream(
 }
 
 bool numeric_token_stream::next() {
-  return num_.next(inc_);
+  return num_.next(inc_, term_.value);
 }
 
 void numeric_token_stream::reset(
@@ -266,7 +263,7 @@ null_token_stream::null_token_stream(null_token_stream&& other) noexcept
 bool null_token_stream::next() {
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value(value_null());
+  term_.value = value_null();
   return !in_use;
 }
 

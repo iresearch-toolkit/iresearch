@@ -80,10 +80,13 @@ struct boost : public irs::sort {
     const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::boostsort";
+  }
+
   DECLARE_FACTORY();
   typedef irs::boost_t score_t;
-  boost() : sort(boost::type()) {}
+  boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
     return boost::prepared::make<boost::prepared>();
   }
@@ -93,7 +96,9 @@ struct boost : public irs::sort {
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
 struct custom_sort: public irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::custom_sort";
+  }
 
   class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
@@ -295,7 +300,7 @@ struct custom_sort: public irs::sort {
   std::function<void()> field_reset_;
 
   DECLARE_FACTORY();
-  custom_sort(): sort(custom_sort::type()) {}
+  custom_sort(): sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
@@ -305,7 +310,9 @@ struct custom_sort: public irs::sort {
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
 struct frequency_sort: public irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::frequency_sort";
+  }
 
   struct score_t {
     irs::doc_id_t id;
@@ -480,7 +487,7 @@ struct frequency_sort: public irs::sort {
   };
 
   DECLARE_FACTORY();
-  frequency_sort(): sort(frequency_sort::type()) {}
+  frequency_sort(): sort(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return frequency_sort::prepared::make<frequency_sort::prepared>();
   }

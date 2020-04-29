@@ -73,7 +73,7 @@ class term_iterator_base;
 // --SECTION--                                                          typedefs
 // -----------------------------------------------------------------------------
 
-typedef std::vector<const attribute::type_id*> feature_map_t;
+typedef std::vector<type_info::type_id> feature_map_t;
 
 template<typename Char>
 class volatile_ref : util::noncopyable {
@@ -359,7 +359,7 @@ class field_writer final : public irs::field_writer {
 
   void push(const irs::bytes_ref& term);
 
-  std::unordered_map<const attribute::type_id*, size_t> feature_map_;
+  std::unordered_map<type_info::type_id, size_t> feature_map_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
   encryption::stream::ptr terms_out_cipher_;

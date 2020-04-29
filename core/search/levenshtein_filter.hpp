@@ -104,7 +104,10 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
 class IRESEARCH_API by_edit_distance final
     : public filter_base<by_edit_distance_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_edit_distance";
+  }
+
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(

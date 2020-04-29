@@ -58,7 +58,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     ASSERT_TRUE(stream.next());
-    ASSERT_EQ("abc,def\"\",\"\"ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc,def\"\",\"\"ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -77,27 +77,27 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(1, offset->end);
     ASSERT_EQ("a", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("a", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("a", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(1, offset->start);
     ASSERT_EQ(2, offset->end);
     ASSERT_EQ("b", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("b", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("b", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(2, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("c", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("c", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("c", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(3, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ(",", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ(",", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ(",", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -116,12 +116,12 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(10, offset->end);
     ASSERT_EQ("\"def,\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def,", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def,", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -140,12 +140,12 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("\"def\t\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -164,22 +164,22 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(5, offset->end);
     ASSERT_EQ("", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(6, offset->start);
     ASSERT_EQ(10, offset->end);
     ASSERT_EQ("def\t", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(11, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -198,12 +198,12 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ("abc,", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(7, offset->start);
     ASSERT_EQ(15, offset->end);
     ASSERT_EQ("\"def123\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def123", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def123", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -225,17 +225,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
       ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-      ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+      ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(4, offset->start);
       ASSERT_EQ(9, offset->end);
       ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
-      ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+      ASSERT_EQ("def", irs::ref_cast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(10, offset->start);
       ASSERT_EQ(15, offset->end);
       ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(payload->value));
-      ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value()));
+      ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -244,7 +244,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
       testFunc(data, &stream);
     }
     {
-      auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":\",\"}");
+      auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
       testFunc(data, stream.get());
     }
   }
@@ -264,17 +264,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
     ASSERT_EQ("\"ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("\"ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("\"ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -293,17 +293,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("\"", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("\"", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -322,17 +322,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("\"\"\"def\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("\"def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("\"def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(12, offset->start);
     ASSERT_EQ(17, offset->end);
     ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -351,17 +351,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
     ASSERT_EQ("\"def\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
     ASSERT_EQ("ghi\"", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi\"", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi\"", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -372,7 +372,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "\",\"");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -385,24 +385,24 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // load jSON object
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":\",\"}");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -415,33 +415,33 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::text_format::json, "{\"delimiter\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":1}"));
   }
 
   // load text
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",");
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -454,17 +454,17 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
     ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
     ASSERT_EQ("def", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
     ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }
@@ -474,7 +474,7 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
   {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::json, config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\"delimiter\":\",\"}", actual);
   }
 }
@@ -482,12 +482,12 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
 TEST_F(delimited_token_stream_tests, test_make_config_text) {
   std::string config = ",";
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::text, config));
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
 }
 
 TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
   std::string config = ",";
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::csv, config));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::csv>::get(), config));
 }

@@ -1002,7 +1002,7 @@ TEST(by_column_existence, options) {
 
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
-  ASSERT_EQ(irs::by_column_existence::type(), filter.type());
+  ASSERT_EQ(irs::type<irs::by_column_existence>::id(), filter.type());
   ASSERT_EQ(irs::by_column_existence_options{}, filter.options());
   ASSERT_TRUE(filter.field().empty());
   ASSERT_EQ(irs::no_boost(), filter.boost());

@@ -488,11 +488,10 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 // -----------------------------------------------------------------------------
 
 /* static */ const flags& by_phrase::required() {
-  static flags req{ frequency::type(), position::type() };
+  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_phrase)
 DEFINE_FACTORY_DEFAULT(by_phrase)
 
 filter::prepared::ptr by_phrase::prepare(

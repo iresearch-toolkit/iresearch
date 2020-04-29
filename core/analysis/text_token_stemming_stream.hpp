@@ -38,31 +38,25 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class text_token_stemming_stream: public analyzer, util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr string_ref type_name() noexcept { return "stem"; }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const irs::string_ref& locale);
 
-  text_token_stemming_stream(const std::locale& locale);
+  explicit text_token_stemming_stream(const std::locale& locale);
   virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 
   private:
-   class term_attribute final: public irs::term_attribute {
-    public:
-     using irs::term_attribute::value;
-     void value(const irs::bytes_ref& value) { value_ = value; }
-   };
-
-   irs::attribute_view attrs_;
-   irs::increment inc_;
+   attribute_view attrs_;
+   increment inc_;
    std::locale locale_;
-   irs::offset offset_;
-   irs::payload payload_; // raw token value
+   offset offset_;
+   payload payload_; // raw token value
    std::shared_ptr<sb_stemmer> stemmer_;
    term_attribute term_; // token value with evaluated quotes
    std::string term_buf_; // buffer for the last evaluated term
