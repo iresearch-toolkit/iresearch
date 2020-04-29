@@ -36,23 +36,19 @@ NS_BEGIN(analysis)
 /// @brief an analyser capable of stemming the text, treated as a single token,
 ///        for supported languages
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stemming_stream: public analyzer, util::noncopyable {
+class text_token_stemming_stream final
+  : public frozen_attributes<analyzer, 4>,
+    private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "stem"; }
   static void init(); // for trigering registration in a static build
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const irs::string_ref& locale);
+  static ptr make(const irs::string_ref& locale);
 
   explicit text_token_stemming_stream(const std::locale& locale);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 
   private:
-   attribute_view attrs_;
    increment inc_;
    std::locale locale_;
    offset offset_;

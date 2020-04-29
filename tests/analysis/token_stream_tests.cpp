@@ -28,18 +28,22 @@
 using namespace iresearch;
 
 TEST(token_streams_tests, boolean_stream) {
+  ASSERT_EQ(1, boolean_token_stream::value_false().size());
+  ASSERT_EQ(0, boolean_token_stream::value_false().front());
+  ASSERT_EQ(1, boolean_token_stream::value_true().size());
+  ASSERT_EQ(irs::byte_type(0xFF), irs::byte_type(boolean_token_stream::value_true().front()));
+
   ASSERT_NE(boolean_token_stream::value_false(), boolean_token_stream::value_true());
 
   // 'false' stream
   {
-    auto& expected = boolean_token_stream::value_false();
+    const auto expected = irs::ref_cast<irs::byte_type>(boolean_token_stream::value_false());
     boolean_token_stream stream(false);
 
-    ASSERT_EQ(2, stream.attributes().size());
-    auto& inc = stream.attributes().get<increment>();
+    auto* inc = irs::get<increment>(stream);
     ASSERT_FALSE(!inc);
     ASSERT_EQ(1, inc->value);
-    auto& value = stream.attributes().get<term_attribute>();
+    auto* value = irs::get<term_attribute>(stream);
     ASSERT_FALSE(!value);
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(expected, value->value);
@@ -54,13 +58,12 @@ TEST(token_streams_tests, boolean_stream) {
 
   // 'true' stream
   {
-    auto& expected = boolean_token_stream::value_true();
+    auto expected = irs::ref_cast<irs::byte_type>(boolean_token_stream::value_true());
     boolean_token_stream stream(true);
-    ASSERT_EQ(2, stream.attributes().size());
-    auto& inc = stream.attributes().get<increment>();
+    auto* inc = irs::get<increment>(stream);
     ASSERT_FALSE(!inc);
     ASSERT_EQ(1, inc->value);
-    auto& value = stream.attributes().get<term_attribute>();
+    auto* value = irs::get<term_attribute>(stream);
     ASSERT_FALSE(!value);
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(expected, value->value);
@@ -75,13 +78,15 @@ TEST(token_streams_tests, boolean_stream) {
 }
 
 TEST(token_streams_tests, null_stream) {
+  ASSERT_EQ(0, null_token_stream::value_null().size());
+  ASSERT_NE(nullptr, null_token_stream::value_null().c_str());
+
   auto& expected = bytes_ref::NIL;
   null_token_stream stream;
-  ASSERT_EQ(2, stream.attributes().size());
-  auto& inc = stream.attributes().get<increment>();
+  auto* inc = irs::get<increment>(stream);
   ASSERT_FALSE(!inc);
-    ASSERT_EQ(1, inc->value);
-  auto& value = stream.attributes().get<term_attribute>();
+  ASSERT_EQ(1, inc->value);
+  auto* value = irs::get<term_attribute>(stream);
   ASSERT_FALSE(!value);
   ASSERT_TRUE(stream.next());
   ASSERT_EQ(expected, value->value);
@@ -94,26 +99,6 @@ TEST(token_streams_tests, null_stream) {
   ASSERT_FALSE(stream.next());
 }
 
-TEST( string_token_stream_tests, ctor ) {
-  {
-    iresearch::string_token_stream ts;
-    ts.reset(string_ref::NIL);
-    ASSERT_EQ(3U, ts.attributes().size() );
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-    ASSERT_FALSE(!ts.attributes().get<offset>());
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-  }
-
-  {
-    iresearch::string_token_stream ts;
-    ts.reset(bytes_ref::NIL);
-    ASSERT_EQ(3, ts.attributes().size() );
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-    ASSERT_FALSE(!ts.attributes().get<offset>());
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-  }
-}
-
 TEST( string_token_stream_tests, next_end) {
   const std::string str("QBVnCx4NCizekHA");
   const bytes_ref ref = bytes_ref(reinterpret_cast<const byte_type*>( str.c_str()),
@@ -122,74 +107,32 @@ TEST( string_token_stream_tests, next_end) {
   ts.reset(str);
 
   // check attributes
-  auto& term = ts.attributes().get<term_attribute>();
+  auto* term = irs::get<term_attribute>(ts);
   ASSERT_FALSE(!term);
   ASSERT_TRUE( term->value.null());
-  auto& offs = ts.attributes().get<offset>();
+  auto* offs = irs::get<offset>(ts);
   ASSERT_FALSE(!offs);
-  ASSERT_EQ( 0, offs->start);
-  ASSERT_EQ( 0, offs->end);
+  ASSERT_EQ(0, offs->start);
+  ASSERT_EQ(0, offs->end);
 
-  /* perform step */
-  ASSERT_TRUE( ts.next());
-  ASSERT_EQ( ref, term->value);
-  ASSERT_EQ( 0, offs->start);
-  ASSERT_EQ( ref.size(), offs->end);
-  ASSERT_FALSE( ts.next());
-  ASSERT_FALSE( ts.next());
-  ASSERT_EQ( irs::bytes_ref::NIL, term->value);
-  ASSERT_EQ( 0, offs->start);
-  ASSERT_EQ( 0, offs->end);
+  ASSERT_TRUE(ts.next());
+  ASSERT_EQ(ref, term->value);
+  ASSERT_EQ(0, offs->start);
+  ASSERT_EQ(ref.size(), offs->end);
+  ASSERT_FALSE(ts.next());
+  ASSERT_FALSE(ts.next());
+  ASSERT_EQ(irs::bytes_ref::NIL, term->value);
+  ASSERT_EQ(0, offs->start);
+  ASSERT_EQ(0, offs->end);
 
-  /* reset stream */
   ts.reset(str);
-  ASSERT_TRUE( ts.next());
-  ASSERT_EQ( ref, term->value);
-  ASSERT_EQ( 0, offs->start);
-  ASSERT_EQ( ref.size(), offs->end);
+  ASSERT_TRUE(ts.next());
+  ASSERT_EQ(ref, term->value);
+  ASSERT_EQ(0, offs->start);
+  ASSERT_EQ(ref.size(), offs->end);
 
-  ASSERT_FALSE( ts.next());
-  ASSERT_FALSE( ts.next());
-}
-
-TEST( numeric_token_stream_tests, ctor) {
-  {
-    numeric_token_stream ts;
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-  }
-
-  /* int */
-  {
-    numeric_token_stream ts;
-    ts.reset(35);
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-  }
-
-  /* long */
-  {
-    numeric_token_stream ts;
-    ts.reset(int64_t(75));
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-  }
-
-  /* float */
-  {
-    numeric_token_stream ts;
-    ts.reset((float_t)35.f);
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-  }
-
-  /* double */
-  {
-    numeric_token_stream ts;
-    ts.reset((double_t)35.);
-    ASSERT_FALSE(!ts.attributes().get<term_attribute>());
-    ASSERT_FALSE(!ts.attributes().get<increment>());
-  }
+  ASSERT_FALSE(ts.next());
+  ASSERT_FALSE(ts.next());
 }
 
 TEST(numeric_token_stream_tests, value) {
@@ -197,7 +140,7 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto& term = ts.attributes().get<term_attribute>();
+    auto* term = irs::get<term_attribute>(ts);
     ASSERT_FALSE(!term);
     ts.reset(35);
 
@@ -213,7 +156,7 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto& term = ts.attributes().get<term_attribute>();
+    auto* term = irs::get<term_attribute>(ts);
     ASSERT_FALSE(!term);
     ts.reset(int64_t(75));
 
@@ -233,7 +176,7 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto& term = ts.attributes().get<term_attribute>();
+    auto* term = irs::get<term_attribute>(ts);
     ASSERT_FALSE(!term);
     ts.reset((float_t)35.f);
 
@@ -249,7 +192,7 @@ TEST(numeric_token_stream_tests, value) {
   {
     bstring buf;
     numeric_token_stream ts;
-    auto& term = ts.attributes().get<term_attribute>();
+    auto* term = irs::get<term_attribute>(ts);
     ASSERT_FALSE(!term);
     ts.reset((double_t)35.);
 

@@ -25,90 +25,43 @@
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
 
-NS_LOCAL
-
-irs::bstring const& value_empty() {
-  static const irs::bstring value(0, irs::byte_type(0));
-  return value;
-}
-
-irs::bstring const& value_false() {
-  static const irs::bstring value(1, irs::byte_type(0));
-  return value;
-}
-
-irs::bstring const& value_true() {
-  static const irs::bstring value(1, irs::byte_type(~0));
-  return value;
-}
-
-const irs::bytes_ref BOOLEAN_VALUES[] {
-  value_false(), value_true()
-};
-
-NS_END
-
 NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               boolean_token_stream implementation
 // -----------------------------------------------------------------------------
 
-boolean_token_stream::boolean_token_stream(bool value /*= false*/) 
-  : attrs_(2), // increment + term
+boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
+  : frozen_attributes<token_stream, 2>{{
+      { type<increment>::id(), &inc_ },
+      { type<term_attribute>::id(), &term_ }
+    }},
     in_use_(false),
     value_(value) {
-  init_attributes();
-}
-
-boolean_token_stream::boolean_token_stream(
-    boolean_token_stream&& other) noexcept
-  : term_(std::move(other.term_)),
-    in_use_(std::move(other.in_use_)),
-    value_(std::move(other.value_)) {
-  init_attributes();
 }
 
 bool boolean_token_stream::next() {
-  static const bytes_ref BOOL_VALUES[] {
-    value_false(), value_true()
-  };
+//  constexpr bytes_ref BOOL_VALUES[] {
+//    value_false(), value_true()
+//  };
 
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value = BOOL_VALUES[value_];
+  term_.value = ref_cast<byte_type>(value_ ? value_true() : value_false());
   return !in_use;
-}
-
-/*static*/ const bytes_ref& boolean_token_stream::value_false() {
-  return BOOLEAN_VALUES[0];
-}
-
-/*static*/ const bytes_ref& boolean_token_stream::value_true() {
-  return BOOLEAN_VALUES[1];
-}
-
-/*static*/ const bytes_ref& boolean_token_stream::value(bool val) {
-  return BOOLEAN_VALUES[val];
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                string_token_stream implementation
 // -----------------------------------------------------------------------------
 
-string_token_stream::string_token_stream()
-  : attrs_(3), // offset + basic_term + increment
+string_token_stream::string_token_stream() noexcept
+  : frozen_attributes<token_stream, 3>{{
+      { type<increment>::id(), &inc_ },
+      { type<term_attribute>::id(), &term_ },
+      { type<offset>::id(), &offset_}
+    }},
     in_use_(false) {
-  init_attributes();
-}
-
-string_token_stream::string_token_stream(string_token_stream&& other) noexcept
-  : offset_(std::move(other.offset_)),
-    inc_(std::move(other.inc_)),
-    term_(std::move(other.term_)),
-    value_(std::move(other.value_)),
-    in_use_(std::move(other.in_use_)) {
-  init_attributes();
 }
 
 bool string_token_stream::next() {
@@ -160,14 +113,10 @@ bytes_ref numeric_token_stream::numeric_term::value(
 
 
 bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
-  static const uint32_t INCREMENT_VALUE[] { 
-    0, 1
-  };
-
-  static const uint32_t BITS_REQUIRED[] {
+  constexpr uint32_t INCREMENT_VALUE[] { 0, 1 };
+  constexpr uint32_t BITS_REQUIRED[] {
     bits_required<int64_t>(),
-    bits_required<int32_t>()
-  };
+    bits_required<int32_t>() };
 
   if (shift_ >= BITS_REQUIRED[type_ > NT_DBL]) {
     return false;
@@ -185,15 +134,10 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
 // -----------------------------------------------------------------------------
 
 numeric_token_stream::numeric_token_stream() 
-  : attrs_(2) { // numeric_term + increment
-  init_attributes();
-}
-
-numeric_token_stream::numeric_token_stream(
-  numeric_token_stream&& other) noexcept
-  : num_(std::move(other.num_)),
-    inc_(std::move(other.inc_)) {
-  init_attributes();
+  : frozen_attributes<token_stream, 2>{{
+      { type<increment>::id(), &inc_ },
+      { type<term_attribute>::id(), &term_ }
+    }} {
 }
 
 bool numeric_token_stream::next() {
@@ -248,30 +192,19 @@ void numeric_token_stream::reset(
 // --SECTION--                                  null_token_stream implementation
 // -----------------------------------------------------------------------------
 
-null_token_stream::null_token_stream()
-  : attrs_(2), // basic_term + increment
+null_token_stream::null_token_stream() noexcept
+  : frozen_attributes<token_stream, 2>{{
+      { type<increment>::id(), &inc_ },
+      { type<term_attribute>::id(), &term_ }
+    }},
     in_use_(false) {
-  init_attributes();
-}
-
-null_token_stream::null_token_stream(null_token_stream&& other) noexcept
-  : term_(std::move(other.term_)),
-    in_use_(std::move(other.in_use_)) {
-  init_attributes();
 }
 
 bool null_token_stream::next() {
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value = value_null();
+  term_.value = irs::ref_cast<byte_type>(value_null());
   return !in_use;
-}
-
-/*static*/ const bytes_ref& null_token_stream::value_null() {
-  // data pointer != nullptr or assert failure in bytes_hash::insert(...)
-  static const bytes_ref value(::value_empty());
-
-  return value;
 }
 
 NS_END

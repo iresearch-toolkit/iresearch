@@ -58,10 +58,16 @@ NS_BEGIN(templates)
 token_stream_payload::token_stream_payload(irs::token_stream* impl)
   : impl_(impl) {
     assert(impl_);
-    auto& attrs = const_cast<irs::attribute_view&>(impl_->attributes());
-    term_ = const_cast<const irs::attribute_view&>(attrs).get<irs::term_attribute>().get();
+    term_ = irs::get<irs::term_attribute>(*impl_);
     assert(term_);
-    attrs.emplace(pay_);
+}
+
+const irs::attribute* token_stream_payload::get(irs::type_info::type_id type) const {
+  if (irs::type<irs::payload>::id() == type) {
+    return &pay_;
+  }
+
+  return impl_->get(type);
 }
 
 bool token_stream_payload::next() {
@@ -246,17 +252,17 @@ void generic_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -295,17 +301,17 @@ void payloaded_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_false());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -1874,8 +1880,9 @@ class index_test_case : public tests::index_test_base {
     class field {
       public:
       field(std::string&& name, const irs::string_ref& value)
-        : name_(std::move(name)),
-        value_(value) {}
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value) {}
       field(field&& other) noexcept
         : stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
@@ -1884,15 +1891,15 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return irs::flags::empty_instance();
       }
 
       private:
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // field
@@ -1961,7 +1968,10 @@ class index_test_case : public tests::index_test_base {
     class indexed_and_stored_field {
      public:
       indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
-        : name_(std::move(name)), value_(value), stored_valid_(stored_valid) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value),
+          stored_valid_(stored_valid) {
         if (!indexed_valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -1976,8 +1986,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -1989,7 +1999,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
       bool stored_valid_;
@@ -1998,7 +2008,8 @@ class index_test_case : public tests::index_test_base {
     class indexed_field {
      public:
       indexed_field(std::string&& name, const irs::string_ref& value, bool valid = true)
-        : name_(std::move(name)), value_(value) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)), value_(value) {
         if (!valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -2012,8 +2023,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -2021,7 +2032,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // indexed_field

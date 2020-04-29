@@ -223,7 +223,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     auto& node = root.proxy<irs::by_phrase>();
     *node.mutable_field() = field;
 
-    for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
+    for (auto* term = irs::get<irs::term_attribute>(*tokens); tokens->next();) {
       auto& part = node.mutable_options()->push_back(irs::by_term_options{});
       part.term = term->value;
     }

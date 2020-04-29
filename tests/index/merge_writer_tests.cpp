@@ -1167,13 +1167,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 1));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
         irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 2));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_double"));
@@ -1186,8 +1186,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         8,
         features,
         expected_terms
@@ -1209,13 +1209,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 1));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
         irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 2));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_float"));
@@ -1228,8 +1228,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1251,13 +1251,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset(42 * 1);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
         irs::numeric_token_stream itr;
         itr.reset(42 * 2);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_int"));
@@ -1270,8 +1270,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         3,
         features,
         expected_terms
@@ -1293,13 +1293,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 1);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
         irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 2);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_long"));
@@ -1311,8 +1311,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         5,
         features,
         expected_terms
@@ -1531,7 +1531,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 3));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_double"));
@@ -1544,8 +1544,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1567,7 +1567,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 3));
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_float"));
@@ -1580,8 +1580,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         2,
         features,
         expected_terms
@@ -1603,7 +1603,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset(42 * 3);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_int"));
@@ -1616,8 +1616,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         2,
         features,
         expected_terms
@@ -1639,7 +1639,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       {
         irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 3);
-        for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_long"));
@@ -1652,8 +1652,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<irs::term_attribute>()->value,
-        max.attributes().get<irs::term_attribute>()->value,
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1882,19 +1882,19 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     {
       irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 1));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 2));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 3));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_double"));
@@ -1907,8 +1907,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<irs::term_attribute>()->value,
-      max.attributes().get<irs::term_attribute>()->value,
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       12,
       features,
       expected_terms
@@ -1930,19 +1930,19 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     {
       irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 1));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 2));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 3));
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_float"));
@@ -1955,8 +1955,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<irs::term_attribute>()->value,
-      max.attributes().get<irs::term_attribute>()->value,
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       6,
       features,
       expected_terms
@@ -1978,19 +1978,19 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     {
       irs::numeric_token_stream itr;
       itr.reset(42 * 1);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset(42 * 2);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset(42 * 3);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_int"));
@@ -2003,8 +2003,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<irs::term_attribute>()->value,
-      max.attributes().get<irs::term_attribute>()->value,
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       4,
       features,
       expected_terms
@@ -2026,19 +2026,19 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     {
       irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 1);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 2);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
       irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 3);
-      for (; itr.next(); expected_terms[irs::bstring(itr.attributes().get<irs::term_attribute>()->value)].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_long"));
@@ -2051,8 +2051,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<irs::term_attribute>()->value,
-      max.attributes().get<irs::term_attribute>()->value,
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       6,
       features,
       expected_terms

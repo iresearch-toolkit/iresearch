@@ -86,9 +86,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 
   ASSERT_NE(nullptr, pStream);
 
-  auto& pOffset = pStream->attributes().get<iresearch::offset>();
-  auto& pPayload = pStream->attributes().get<iresearch::payload>();
-  auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+  auto* pOffset = irs::get<irs::offset>(*pStream);
+  auto* pPayload = irs::get<irs::payload>(*pStream);
+  auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
   ASSERT_TRUE(pStream->next());
   ASSERT_EQ("1,24", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -113,9 +113,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("a", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -169,7 +169,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& value = pStream->attributes().get<irs::term_attribute>();
+      auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("a", irs::ref_cast<char>(value->value));
@@ -204,7 +204,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& value = pStream->attributes().get<irs::term_attribute>();
+      auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("A", irs::ref_cast<char>(value->value));
@@ -240,7 +240,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& value = pStream->attributes().get<irs::term_attribute>();
+      auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("A", irs::ref_cast<char>(value->value));
@@ -277,9 +277,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
      
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("thing", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -320,9 +320,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u043F\u043E", utf_to_utf(pValue->value));
@@ -369,7 +369,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& value = pStream->attributes().get<iresearch::term_attribute>();
+      auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u043F\u043E", utf_to_utf(value->value));
@@ -417,7 +417,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& value = pStream->attributes().get<iresearch::term_attribute>();
+      auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u043F\u043E", utf_to_utf(value->value));
@@ -466,9 +466,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"i\u0131", utf_to_utf(pValue->value));
@@ -501,9 +501,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u4ECA\u5929", utf_to_utf(pValue->value));
@@ -563,9 +563,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
 
     auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
       ASSERT_TRUE(pStream->reset(data));
-      auto& pOffset = pStream->attributes().get<iresearch::offset>();
-      auto& pPayload = pStream->attributes().get<iresearch::payload>();
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pOffset = irs::get<irs::offset>(*pStream);
+      auto* pPayload = irs::get<irs::payload>(*pStream);
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -625,9 +625,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
   auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
     ASSERT_TRUE(pStream->reset(data));
-    auto& pOffset = pStream->attributes().get<iresearch::offset>();
-    auto& pPayload = pStream->attributes().get<iresearch::payload>();
-    auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+    auto* pOffset = irs::get<irs::offset>(*pStream);
+    auto* pPayload = irs::get<irs::payload>(*pStream);
+    auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ("e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -668,9 +668,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath)
   // Checking that default stowords are loaded
   std::string sDataASCII = "A E I O U";
   ASSERT_TRUE(stream->reset(sDataASCII));
-  auto& pOffset = stream->attributes().get<iresearch::offset>();
-  auto& pPayload = stream->attributes().get<iresearch::payload>();
-  auto& pValue = stream->attributes().get<iresearch::term_attribute>();
+  auto* pOffset = irs::get<iresearch::offset>(*stream);
+  auto* pPayload = irs::get<iresearch::payload>(*stream);
+  auto* pValue = irs::get<iresearch::term_attribute>(*stream);
 
   ASSERT_TRUE(stream->next());
   ASSERT_EQ("e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
@@ -843,7 +843,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
@@ -872,7 +872,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -911,7 +911,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
@@ -944,7 +944,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
@@ -967,7 +967,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_FALSE(pStream->next());
     };
@@ -994,7 +994,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
@@ -1027,7 +1027,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_FALSE(pStream->next());
     };
@@ -1046,7 +1046,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -1069,7 +1069,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -1096,7 +1096,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -1127,7 +1127,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -1158,7 +1158,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
@@ -1192,7 +1192,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+      auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(L"\u043F", utf_to_utf(pValue->value));

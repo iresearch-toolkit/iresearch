@@ -534,7 +534,8 @@ void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
   boundary.clear();
 
-  for (auto& term_attr = term.attributes().get<term_attribute>(); term.next(); ) {
+  for (auto* term_attr = get<term_attribute>(term); term.next(); ) {
+    assert(term_attr);
     boundary.emplace_back(term_attr->value);
   }
 }

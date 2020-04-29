@@ -373,7 +373,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   // seek_ge before every term
   {
     irs::numeric_token_stream stream;
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
     ASSERT_NE(nullptr, term);
 
     auto it = field->iterator();
@@ -1745,19 +1745,19 @@ TEST_P(format_test_case, columns_rw_typed) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::null_token_stream::value_null());
+      field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::boolean_token_stream::value_true());
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::boolean_token_stream::value_true());
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_number()) {
       const double dValue = data.as_number<double_t>();

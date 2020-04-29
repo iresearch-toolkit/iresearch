@@ -278,16 +278,16 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 
 ngram_token_stream_base::ngram_token_stream_base(
     const ngram_token_stream_base::Options& options) 
-  : analyzer(irs::type<ngram_token_stream_base>::get()),
+  : frozen_attributes<analyzer, 3>{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<ngram_token_stream_base>::get()},
     options_(options),
     start_marker_empty_(options.start_marker.empty()),
     end_marker_empty_(options.end_marker.empty()) {
   options_.min_gram = std::max(options_.min_gram, size_t(1));
   options_.max_gram = std::max(options_.max_gram, options_.min_gram);
-
-  attrs_.emplace(offset_);
-  attrs_.emplace(inc_);
-  attrs_.emplace(term_); // ensure we use base class type
 }
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>

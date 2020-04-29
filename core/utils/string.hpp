@@ -405,8 +405,12 @@ NS_END // hash_utils
 
 NS_BEGIN(literals)
 
-FORCE_INLINE irs::string_ref operator "" _sr(const char* src, size_t size) noexcept {
+FORCE_INLINE constexpr irs::string_ref operator "" _sr(const char* src, size_t size) noexcept {
   return irs::string_ref(src, size);
+}
+
+FORCE_INLINE constexpr irs::bytes_ref operator "" _bsr(const char* src, size_t size) noexcept {
+  return irs::ref_cast<irs::byte_type>(irs::string_ref(src, size));
 }
 
 NS_END // literars

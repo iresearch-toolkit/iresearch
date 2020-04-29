@@ -1057,9 +1057,8 @@ bool field_data::invert(
 
   meta_.features |= features; // accumulate field features
 
-  auto& attrs = stream.attributes();
-  auto& term = attrs.get<term_attribute>();
-  auto& inc = attrs.get<increment>();
+  const auto* term = get<term_attribute>(stream);
+  const auto* inc = get<increment>(stream);
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
@@ -1080,10 +1079,10 @@ bool field_data::invert(
   }
 
   if (meta_.features.check<offset>()) {
-    offs = attrs.get<offset>().get();
+    offs = get<offset>(stream);
 
     if (offs) {
-      pay = attrs.get<payload>().get();
+      pay = get<payload>(stream);
     }
   } 
 

@@ -134,7 +134,7 @@ field_base::field_base(field_base&& rhs) noexcept
 
 field_base& field_base::operator=(field_base&& rhs) noexcept {
   if (this != &rhs) {
-    features_ = std::move(features_);
+    features_ = std::move(rhs.features_);
     name_ = std::move(rhs.name_);
   }
 
@@ -160,8 +160,8 @@ bool long_field::write(irs::data_output& out) const {
 // -----------------------------------------------------------------------------
 
 irs::token_stream& int_field::get_tokens() const {
-  stream_.reset(value_);
-  return stream_;
+  stream_->reset(value_);
+  return *stream_;
 }
 
 bool int_field::write(irs::data_output& out) const {
@@ -331,7 +331,7 @@ const tests::document* csv_doc_generator::next() {
     return nullptr;
   }
 
-  auto& term = stream_->attributes().get<irs::term_attribute>();
+  auto* term = irs::get<irs::term_attribute>(*stream_);
 
   if (!term || !stream_->reset(line_)) {
     return nullptr;

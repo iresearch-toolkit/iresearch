@@ -64,7 +64,6 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer: public irs::analysis::analyzer {
-    irs::attribute_view attrs_;
     static constexpr irs::string_ref type_name() noexcept {
       return "dummy_analyzer";
     }
@@ -72,7 +71,7 @@ TEST_F(analyzer_test, duplicate_register) {
     static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
     static bool normalize(const irs::string_ref&, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) { }
-    virtual const irs::attribute_view& attributes() const noexcept override { return attrs_; }
+    virtual const irs::attribute* get(irs::type_info::type_id) const { return nullptr;}
     virtual bool next() override { return false; }
     virtual bool reset(const irs::string_ref&) override { return false; }
   };

@@ -24,14 +24,19 @@
 #ifndef IRESEARCH_ATTRIBUTES_PROVIDER_H
 #define IRESEARCH_ATTRIBUTES_PROVIDER_H
 
-#include "shared.hpp"
+#include "type_id.hpp"
 
 NS_ROOT
 
 class attribute_store;
 class attribute_view;
+struct attribute;
 
 NS_BEGIN(util)
+
+struct IRESEARCH_API attributes_provider {
+  virtual const attribute* get(type_info::type_id type) const = 0;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class const_attribute_store_provider
@@ -78,6 +83,13 @@ class IRESEARCH_API attribute_view_provider: public const_attribute_view_provide
 };
 
 NS_END
+
+template<typename T,
+         typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
+const T* get(const util::attributes_provider& attrs) {
+  return static_cast<const T*>(attrs.get(type<T>::id()));
+}
+
 NS_END
 
 #endif

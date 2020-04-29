@@ -35,7 +35,9 @@ NS_BEGIN(analysis)
 /// @brief produces ngram from a specified input in a range of 
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
-class ngram_token_stream_base : public analyzer, util::noncopyable {
+class ngram_token_stream_base
+  : public frozen_attributes<analyzer, 3>,
+    private util::noncopyable {
  public:
    enum class InputType {
      Binary, // input is treaten as generic bytes 
@@ -78,10 +80,6 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
 
    explicit ngram_token_stream_base(const Options& options);
 
-   virtual const attribute_view& attributes() const noexcept override {
-     return attrs_;
-   }
-
    virtual bool reset(const string_ref& data) noexcept override;
 
    size_t min_gram() const noexcept { return options_.min_gram; }
@@ -92,7 +90,6 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
    void emit_original() noexcept;
 
    Options options_;
-   attribute_view attrs_;
    bytes_ref data_; // data to process
    increment inc_;
    offset offset_;

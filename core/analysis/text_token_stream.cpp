@@ -894,8 +894,6 @@ bool normalize_text_config(const irs::string_ref& args,
   return false;
 }
 
-
-
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
@@ -905,8 +903,6 @@ NS_END
 
 NS_ROOT
 NS_BEGIN(analysis)
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
@@ -919,12 +915,12 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : analyzer(irs::type<text_token_stream>::get()),
-    attrs_(3), // offset + bytes_term + increment
+  : frozen_attributes<analyzer, 3>{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offs_         },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stream>::get()},
     state_(memory::make_unique<state_t>(options, stopwords)) {
-  attrs_.emplace(offs_);
-  attrs_.emplace(inc_);
-  attrs_.emplace(term_); // ensure we use base class type
 }
 
 // -----------------------------------------------------------------------------
@@ -938,9 +934,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(
-    const irs::string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stream::make(const irs::string_ref& locale) {
   return make_text(locale);
 }
 

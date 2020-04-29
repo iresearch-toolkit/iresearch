@@ -381,6 +381,26 @@ template<
     return reinterpret_cast<const typename ref<A>::type&>(value);
   }
 
+  typename ref<T>::type& get(
+      type_info::type_id type,
+      typename ref<T>::type& fallback) noexcept {
+    const auto itr = map_.find(type);
+
+    return map_.end() == itr ? fallback : itr->second;
+  }
+
+  typename ref<T>::type* get(type_info::type_id type) noexcept {
+    const auto itr = map_.find(type);
+
+    return map_.end() == itr ? nullptr : &(itr->second);
+  }
+
+  const typename ref<T>::type& get(
+      type_info::type_id type,
+      const typename ref<T>::type& fallback = ref<T>::NIL) const noexcept {
+    return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
+  }
+
   bool remove(type_info::type_id type) {
     return map_.erase(type) > 0;
   }
@@ -413,26 +433,6 @@ template<
     inserted = res.second;
 
     return res.first->second;
-  }
-
-  typename ref<T>::type* get(type_info::type_id type) noexcept {
-    const auto itr = map_.find(type);
-
-    return map_.end() == itr ? nullptr : &(itr->second);
-  }
-
-  typename ref<T>::type& get(
-      type_info::type_id type,
-      typename ref<T>::type& fallback) noexcept {
-    const auto itr = map_.find(type);
-
-    return map_.end() == itr ? fallback : itr->second;
-  }
-
-  const typename ref<T>::type& get(
-      type_info::type_id type,
-      const typename ref<T>::type& fallback = ref<T>::NIL) const noexcept {
-    return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
   }
 
  private:

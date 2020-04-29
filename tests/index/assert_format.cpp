@@ -61,9 +61,9 @@ posting::posting(irs::doc_id_t id)
   : id_(id) {
 }
 
-void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
-  auto& offs = attrs.get<irs::offset>();
-  auto& pay = attrs.get<irs::payload>();
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::util::attributes_provider& attrs) {
+  auto* offs = irs::get<irs::offset>(attrs);
+  auto* pay = irs::get<irs::payload>(attrs);
 
   uint32_t start = irs::offset::INVALID_OFFSET;
   uint32_t end = irs::offset::INVALID_OFFSET;
@@ -162,12 +162,11 @@ void index_segment::add(const ifield& f) {
 
   auto& stream = f.get_tokens();
 
-  auto& attrs = stream.attributes();
-  auto& term = attrs.get<irs::term_attribute>();
+  auto* term = irs::get<irs::term_attribute>(stream);
   assert(term);
-  auto& inc = attrs.get<irs::increment>();
+  auto* inc = irs::get<irs::increment>(stream);
   assert(inc);
-  auto& offs = attrs.get<irs::offset>();
+  auto* offs = irs::get<irs::offset>(stream);
 
   bool empty = true;
   auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
@@ -176,7 +175,7 @@ void index_segment::add(const ifield& f) {
     tests::term& trm = fld.add(term->value);
     tests::posting& pst = trm.add(doc_id);
     fld.pos += inc->value;
-    pst.add(fld.pos, fld.offs, attrs);
+    pst.add(fld.pos, fld.offs, stream);
     empty = false;
   }
 

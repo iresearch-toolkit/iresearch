@@ -34,7 +34,9 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-class text_token_stream : public analyzer, util::noncopyable {
+class text_token_stream final
+  : public frozen_attributes<analyzer, 3>,
+    private util::noncopyable {
  public:
   typedef std::unordered_set<std::string> stopwords_t;
   struct options_t {
@@ -64,14 +66,9 @@ class text_token_stream : public analyzer, util::noncopyable {
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
   static constexpr string_ref type_name() noexcept { return "text"; }
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const irs::string_ref& locale);
+  static ptr make(const irs::string_ref& locale);
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
   static void init(); // for triggering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
@@ -81,7 +78,6 @@ class text_token_stream : public analyzer, util::noncopyable {
   bool next_ngram();
 
  private:
-  attribute_view attrs_;
   std::shared_ptr<state_t> state_;
   bstring term_buf_; // buffer for value if value cannot be referenced directly
   offset offs_;
