@@ -60,7 +60,6 @@ struct IRESEARCH_API term_meta : attribute {
     return "iresearch::term_meta";
   }
 
-  term_meta() = default;
   virtual ~term_meta() = default;
 
   virtual void clear() {

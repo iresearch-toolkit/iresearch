@@ -55,13 +55,13 @@ struct IRESEARCH_API attribute_view_provider {
   virtual const irs::attribute_view& attributes() const noexcept = 0;
 };
 
-struct IRESEARCH_API attributes_provider {
+struct IRESEARCH_API attribute_provider {
   virtual const attribute* get(type_info::type_id type) const = 0;
 };
 
 template<typename T,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
-const T* get(const attributes_provider& attrs) {
+const T* get(const attribute_provider& attrs) {
   return static_cast<const T*>(attrs.get(type<T>::id()));
 }
 
