@@ -23,7 +23,6 @@
 #include "shared.hpp"
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
-
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
@@ -92,7 +91,7 @@ norm::norm() noexcept {
 
 norm::norm(norm&& rhs) noexcept
   : column_it_(std::move(rhs.column_it_)),
-    payload_(std::move(rhs.payload_)),
+    payload_(rhs.payload_),
     doc_(rhs.doc_) {
   rhs.doc_ = nullptr;
   rhs.payload_ = nullptr;
@@ -127,18 +126,17 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
   }
 
   column_it_ = column_reader->iterator();
-  payload_ = column_it_->attributes().get<irs::payload>();
+  payload_ = column_it_->attributes().get<irs::payload>().get();
   if (!payload_) {
     return false;
   }
-
   doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
   assert(column_it_);
-  if (!doc_->value != column_it_->seek(doc_->value)) {
+  if (doc_->value != column_it_->seek(doc_->value)) {
     return DEFAULT();
   }
   assert(payload_);
