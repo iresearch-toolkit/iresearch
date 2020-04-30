@@ -160,7 +160,9 @@ struct IRESEARCH_API norm final : stored_attribute {
  private:
   void reset();
 
-  columnstore_reader::values_reader_f column_;
+  //columnstore_reader::values_reader_f column_;
+  doc_iterator::ptr column_it_;
+  irs::pointer_wrapper<payload> payload_{ nullptr };
   const document* doc_;
 }; // norm
 
