@@ -74,7 +74,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_writer : attribute_view_provider {
+struct IRESEARCH_API postings_writer : attribute_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer)
 
@@ -100,10 +100,6 @@ struct IRESEARCH_API postings_writer : attribute_view_provider {
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual void end() = 0;
-
-  virtual const attribute_view& attributes() const noexcept override {
-    return attribute_view::empty_instance();
-  }
 
  protected:
   friend struct term_meta;
@@ -169,7 +165,7 @@ struct IRESEARCH_API postings_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API basic_term_reader: public attribute_view_provider {
+struct IRESEARCH_API basic_term_reader : public attribute_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -187,7 +183,7 @@ struct IRESEARCH_API basic_term_reader: public attribute_view_provider {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_reader: public attribute_view_provider {
+struct IRESEARCH_API term_reader: public attribute_provider {
   DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 

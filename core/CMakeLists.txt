@@ -275,6 +275,7 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
+  ${FROZEN_INCLUDE_DIR}
 )
 
 
@@ -418,14 +419,12 @@ endif()
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  PRIVATE ${FROZEN_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  PRIVATE ${FROZEN_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
@@ -434,14 +433,12 @@ if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
-    PRIVATE ${FROZEN_INCLUDE_DIR}
     PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
-    PRIVATE ${FROZEN_INCLUDE_DIR}
     PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 endif()
@@ -885,25 +882,6 @@ if(MSVC)
   )
 endif()
 
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-delimiter-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-delimiter-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-shared
 )
@@ -962,13 +940,11 @@ endif()
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 # setup CRT
@@ -976,13 +952,11 @@ if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 endif()
 
@@ -1104,24 +1078,20 @@ endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-static
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
     PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
     PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 endif()
 
@@ -1240,13 +1210,11 @@ endif()
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR} 
-  PRIVATE ${FROZEN_INCLUDE_DIR}
 )
 
 # setup CRT
@@ -1254,13 +1222,11 @@ if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
     PRIVATE ${Snowball_INCLUDE_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
     PRIVATE ${Snowball_INCLUDE_DIR}
     PRIVATE ${ICU_INCLUDE_DIR} 
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 endif()
 
@@ -1437,25 +1403,6 @@ if(MSVC)
   )
 endif()
 
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-mask-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-mask-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-shared
 )
@@ -1565,25 +1512,6 @@ if(MSVC)
     IMPORT_PREFIX lib
     OUTPUT_NAME analyzer-ngram-scrt-s
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-ngram-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-analyzer-ngram-static
-  PRIVATE ${FROZEN_INCLUDE_DIR}
-)
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    PRIVATE ${FROZEN_INCLUDE_DIR}
   )
 endif()
 

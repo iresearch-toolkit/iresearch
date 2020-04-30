@@ -746,8 +746,8 @@ class compound_field_iterator : public irs::basic_term_reader {
     return *max_;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+    return nullptr;
   }
 
   virtual irs::term_iterator::ptr iterator() const override;

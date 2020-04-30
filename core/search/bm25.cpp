@@ -204,7 +204,7 @@ struct field_collector final: public irs::sort::field_collector {
       const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
-    auto& freq = field.attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(field);
 
     if (freq) {
       total_term_freq += freq->value;

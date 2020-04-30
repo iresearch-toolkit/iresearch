@@ -934,17 +934,20 @@ void assert_index(
       ASSERT_EQ(expected_term_reader->docs_count(), actual_term_reader->docs_count());
       ASSERT_EQ(expected_term_reader->meta(), actual_term_reader->meta());
 
-      auto& expected_attributes = expected_term_reader->attributes();
-      auto& actual_attributes = actual_term_reader->attributes();
-      auto expected_features = expected_term_reader->attributes().features();
-      auto actual_features = actual_term_reader->attributes().features();
-      ASSERT_EQ(expected_features, actual_features);
+// FIXME should we be able to get all features???
+//      auto& expected_attributes = expected_term_reader->attributes();
+//      auto& actual_attributes = actual_term_reader->attributes();
+//      auto expected_features = expected_term_reader->attributes().features();
+//      auto actual_features = actual_term_reader->attributes().features();
+//      ASSERT_EQ(expected_features, actual_features);
 
-      if (expected_attributes.contains<irs::frequency>()) {
-        auto& expected_freq = expected_attributes.get<irs::frequency>();
-        auto& actual_freq = actual_attributes.get<irs::frequency>();
-        ASSERT_TRUE(bool(actual_freq));
+      auto* expected_freq = irs::get<irs::frequency>(*expected_term_reader);
+      auto* actual_freq = irs::get<irs::frequency>(*actual_term_reader);
+      if (expected_freq) {
+        ASSERT_NE(nullptr, actual_freq);
         ASSERT_EQ(expected_freq->value, actual_freq->value);
+      } else {
+        ASSERT_EQ(nullptr, actual_freq);
       }
 
       assert_terms_next(*expected_term_reader, *actual_term_reader, features, matcher);

@@ -717,8 +717,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return attribute_view::empty_instance();
+  virtual const attribute* get(type_info::type_id) const noexcept override {
+    return nullptr;
   }
 
  private:

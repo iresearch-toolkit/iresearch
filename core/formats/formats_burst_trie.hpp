@@ -244,13 +244,8 @@ class term_reader : public irs::term_reader,
  public:
   term_reader() = default;
   term_reader(term_reader&& rhs) noexcept;
-  virtual ~term_reader();
 
-  void prepare(
-    std::istream& in,
-    const feature_map_t& features,
-    field_reader& owner
-  );
+  void prepare(std::istream& in, const feature_map_t& features, field_reader& owner);
 
   virtual seek_term_iterator::ptr iterator() const override;
   virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
@@ -259,15 +254,12 @@ class term_reader : public irs::term_reader,
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
   virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
   virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_; 
-  }
+  virtual const attribute* get(type_info::type_id type) const noexcept override;
 
  private:
   typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator_base;
 
-  irs::attribute_view attrs_;
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;
@@ -277,8 +269,9 @@ class term_reader : public irs::term_reader,
   uint64_t doc_freq_;
   uint64_t term_freq_;
   frequency freq_; // total term freq
+  const frequency* pfreq_{};
   field_meta field_;
-  fst_t* fst_; // TODO: use compact fst here!!!
+  std::unique_ptr<fst_t> fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
 }; // term_reader
 

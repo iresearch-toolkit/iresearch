@@ -622,8 +622,8 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept {
-    return irs::attribute_view::empty_instance();
+  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept {
+    return nullptr;
   }
 
   // total number of terms

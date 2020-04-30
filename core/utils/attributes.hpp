@@ -25,7 +25,11 @@
 #define IRESEARCH_ATTRIBUTES_H
 
 #include <map>
+#include <set>
 
+#include "frozen/map.h"
+
+#include "attributes_provider.hpp"
 #include "map_utils.hpp"
 #include "noncopyable.hpp"
 #include "memory.hpp"
@@ -35,8 +39,6 @@
 #include "type_id.hpp"
 #include "noncopyable.hpp"
 #include "string.hpp"
-
-#include <set>
 
 NS_ROOT
 
@@ -618,6 +620,32 @@ class IRESEARCH_API attribute_view
     return reinterpret_cast<typename ref<T>::type&>(attr);
   }
 }; // attribute_view
+
+template<
+  typename Base,
+  size_t Size,
+  typename = std::enable_if_t<std::is_base_of_v<attribute_provider, Base>>
+> class frozen_attributes : public Base {
+ public:
+  virtual const attribute* get(type_info::type_id type) const noexcept final {
+    const auto it = attrs_.find(type);
+    return it == attrs_.end() ? nullptr : it->second;
+  }
+
+ protected:
+  using attributes_map = frozen::map<type_info::type_id, const attribute*, Size>;
+  using value_type = typename attributes_map::value_type;
+
+  template<typename... Args>
+  constexpr explicit frozen_attributes(
+      std::initializer_list<value_type> values,
+      Args&&... args)
+    : Base(std::forward<Args>(args)...),
+      attrs_(values) {
+  }
+
+  attributes_map attrs_;
+}; // frozen_token_stream
 
 NS_END
 

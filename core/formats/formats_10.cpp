@@ -293,21 +293,12 @@ class postings_writer_base : public irs::postings_writer {
                pos_limits::invalid(): pos_limits::min()) {
     assert(postings_format_version >= FORMAT_MIN && postings_format_version <= FORMAT_MAX);
     assert(terms_format_version >= TERMS_FORMAT_MIN && terms_format_version <= TERMS_FORMAT_MAX);
-    attrs_.emplace(docs_);
   }
 
  public:
-  // ------------------------------------------
-  // const_attributes_provider
-  // ------------------------------------------
-
-  virtual const irs::attribute_view& attributes() const noexcept override final {
-    return attrs_;
+  virtual const attribute* get(irs::type_info::type_id type) const noexcept final {
+    return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
-
-  // ------------------------------------------
-  // postings_writer
-  // ------------------------------------------
 
   virtual void begin_field(const irs::flags& field) final {
     features_ = ::features(field);
@@ -450,7 +441,6 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
-  irs::attribute_view attrs_;
   version10::term_meta last_state_; // last final term state
   version10::documents docs_;       // bit set of all processed documents
   features features_;               // features supported by current field

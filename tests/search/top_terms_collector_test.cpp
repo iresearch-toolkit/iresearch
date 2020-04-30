@@ -61,7 +61,7 @@ struct sort : irs::sort {
                            const irs::term_reader& field) {
         docs_with_field += field.docs_count();
 
-        auto& freq = field.attributes().get<irs::frequency>();
+        auto* freq = irs::get<irs::frequency>(field);
 
         if (freq) {
           total_term_freq += freq->value;

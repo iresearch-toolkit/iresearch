@@ -1705,7 +1705,7 @@ term_reader::term_reader(term_reader&& rhs) noexcept
     doc_freq_(rhs.doc_freq_),
     term_freq_(rhs.term_freq_),
     field_(std::move(rhs.field_)),
-    fst_(rhs.fst_),
+    fst_(std::move(rhs.fst_)),
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
@@ -1717,10 +1717,6 @@ term_reader::term_reader(term_reader&& rhs) noexcept
   rhs.term_freq_ = 0;
   rhs.fst_ = nullptr;
   rhs.owner_ = nullptr;
-}
-
-term_reader::~term_reader() {
-  delete fst_;
 }
 
 seek_term_iterator::ptr term_reader::iterator() const {
@@ -1756,14 +1752,18 @@ void term_reader::prepare(
 
   if (field_.features.check<frequency>()) {
     freq_.value = meta_in.read_vlong();
-    attrs_.emplace(freq_);
+    pfreq_ = &freq_;
   }
 
   // read FST
-  fst_ = fst_t::Read(in, fst_read_options());
+  fst_.reset(fst_t::Read(in, fst_read_options()));
   assert(fst_);
 
   owner_ = &owner;
+}
+
+const attribute* term_reader::get(type_info::type_id type) const noexcept {
+  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
 NS_END // detail
@@ -2097,7 +2097,7 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists = features.check<frequency>();
-  auto& docs = pw_->attributes().get<version10::documents>();
+  auto* docs = irs::get<version10::documents>(*pw_);
   assert(docs);
 
   for (; terms.next();) {

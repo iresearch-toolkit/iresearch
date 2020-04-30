@@ -28,8 +28,8 @@
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
-#include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/iterator.hpp"
