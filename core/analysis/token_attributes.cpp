@@ -23,6 +23,7 @@
 #include "shared.hpp"
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
@@ -126,6 +127,10 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
   }
 
   column_it_ = column_reader->iterator();
+  if (!column_it_) {
+    return false;
+  }
+
   payload_ = column_it_->attributes().get<irs::payload>().get();
   if (!payload_) {
     return false;
