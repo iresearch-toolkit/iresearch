@@ -32,7 +32,7 @@
 
 NS_ROOT
 
-class IRESEARCH_API token_stream: public util::attributes_provider {
+class IRESEARCH_API token_stream : public attributes_provider {
  public:
   using ptr = std::unique_ptr<token_stream>;
 

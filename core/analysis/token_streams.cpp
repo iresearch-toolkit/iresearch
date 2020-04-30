@@ -41,13 +41,9 @@ boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
 }
 
 bool boolean_token_stream::next() {
-//  constexpr bytes_ref BOOL_VALUES[] {
-//    value_false(), value_true()
-//  };
-
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value = ref_cast<byte_type>(value_ ? value_true() : value_false());
+  term_.value = ref_cast<byte_type>(value(value_));
   return !in_use;
 }
 

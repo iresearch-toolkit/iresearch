@@ -126,7 +126,7 @@ ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
 /// @brief represents a flat directory of write once/read many files
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API directory 
-  : public util::attribute_store_provider,
+  : public attribute_store_provider,
     private util::noncopyable {
   typedef std::function<bool(std::string& name)> visitor_f;
 

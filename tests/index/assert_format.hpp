@@ -65,7 +65,7 @@ class posting {
     return *this;
   }
 
-  void add(uint32_t pos, uint32_t offs_start, const irs::util::attributes_provider& attrs);
+  void add(uint32_t pos, uint32_t offs_start, const irs::attributes_provider& attrs);
 
   bool operator<(const posting& rhs) const {
     return id_ < rhs.id_;

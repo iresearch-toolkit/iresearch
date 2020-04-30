@@ -61,7 +61,7 @@ posting::posting(irs::doc_id_t id)
   : id_(id) {
 }
 
-void posting::add(uint32_t pos, uint32_t offs_start, const irs::util::attributes_provider& attrs) {
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::attributes_provider& attrs) {
   auto* offs = irs::get<irs::offset>(attrs);
   auto* pay = irs::get<irs::payload>(attrs);
 

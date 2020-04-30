@@ -32,30 +32,16 @@ class attribute_store;
 class attribute_view;
 struct attribute;
 
-NS_BEGIN(util)
-
-struct IRESEARCH_API attributes_provider {
-  virtual const attribute* get(type_info::type_id type) const = 0;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class const_attribute_store_provider
-/// @brief base class for all objects with externally visible attribute_store
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API const_attribute_store_provider {
- public:
-  virtual ~const_attribute_store_provider() = default;
-  virtual const irs::attribute_store& attributes() const noexcept = 0;
-};
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class attribute_store_provider
 /// @brief base class for all objects with externally visible attribute-store
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_store_provider: public const_attribute_store_provider {
- public:
+struct IRESEARCH_API attribute_store_provider {
+  virtual ~attribute_store_provider() = default;
+
   virtual irs::attribute_store& attributes() noexcept = 0;
-  virtual const irs::attribute_store& attributes() const noexcept override final {
+
+  const irs::attribute_store& attributes() const noexcept {
     return const_cast<attribute_store_provider*>(this)->attributes();
   };
 };
@@ -64,29 +50,18 @@ class IRESEARCH_API attribute_store_provider: public const_attribute_store_provi
 /// @class const_attribute_view_provider
 /// @brief base class for all objects with externally visible attribute_view
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API const_attribute_view_provider {
- public:
-  virtual ~const_attribute_view_provider() = default;
+struct IRESEARCH_API attribute_view_provider {
+  virtual ~attribute_view_provider() = default;
   virtual const irs::attribute_view& attributes() const noexcept = 0;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class attributes_provider
-/// @brief base class for all objects with externally visible attribute_view
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_view_provider: public const_attribute_view_provider {
- public:
-  virtual irs::attribute_view& attributes() noexcept = 0;
-  virtual const irs::attribute_view& attributes() const noexcept override final {
-    return const_cast<attribute_view_provider*>(this)->attributes();
-  };
+struct IRESEARCH_API attributes_provider {
+  virtual const attribute* get(type_info::type_id type) const = 0;
 };
-
-NS_END
 
 template<typename T,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
-const T* get(const util::attributes_provider& attrs) {
+const T* get(const attributes_provider& attrs) {
   return static_cast<const T*>(attrs.get(type<T>::id()));
 }
 

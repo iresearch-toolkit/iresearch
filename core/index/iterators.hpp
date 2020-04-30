@@ -58,7 +58,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
-      util::const_attribute_view_provider {
+      attribute_view_provider {
   DECLARE_SHARED_PTR(doc_iterator);
   DEFINE_FACTORY_INLINE(doc_iterator)
 
@@ -105,7 +105,7 @@ struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
 
 struct IRESEARCH_API term_iterator
     : iterator<const bytes_ref&>,
-      public util::const_attribute_view_provider {
+      public attribute_view_provider {
   DECLARE_MANAGED_PTR(term_iterator);
 
   static term_iterator::ptr empty();

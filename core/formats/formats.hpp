@@ -75,7 +75,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
+struct IRESEARCH_API postings_writer : attribute_view_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer)
 
@@ -170,7 +170,7 @@ struct IRESEARCH_API postings_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API basic_term_reader: public attribute_view_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -188,7 +188,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API term_reader: public attribute_view_provider {
   DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 

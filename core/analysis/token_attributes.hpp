@@ -170,7 +170,7 @@ struct IRESEARCH_API norm final : stored_attribute {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API position
   : public attribute,
-    public util::const_attribute_view_provider {
+    public attribute_view_provider {
  public:
   typedef uint32_t value_t;
 
