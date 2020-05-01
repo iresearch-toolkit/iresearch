@@ -175,7 +175,7 @@ struct Doc {
     }
 
     bool write(irs::data_output& out) const override {
-      //irs::write_string(out, f.c_str(), f.length());
+      irs::write_string(out, f.c_str(), f.length());
       return true;
     }
   };
@@ -226,7 +226,7 @@ struct Doc {
     }
 
     bool write(irs::data_output& out) const override {
-      //irs::write_zvlong(out, value);
+      irs::write_zvlong(out, value);
       return true;
     }
   };
@@ -280,7 +280,7 @@ struct Doc {
 
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stemming\":false, \"stopwords\":[]}");
+const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"] }");
 
 
 struct WikiDoc : Doc {
