@@ -91,22 +91,27 @@ norm::norm() noexcept {
 }
 
 norm::norm(norm&& rhs) noexcept
-  : column_(std::move(rhs.column_)),
+  : column_it_(std::move(rhs.column_it_)),
+    payload_(rhs.payload_),
     doc_(rhs.doc_) {
   rhs.doc_ = nullptr;
+  rhs.payload_ = nullptr;
 }
 
 norm& norm::operator=(norm&& rhs) noexcept {
   if (this != &rhs) {
-    column_ = std::move(rhs.column_);
+    column_it_ = std::move(rhs.column_it_);
+    payload_ = rhs.payload_;
     doc_ = rhs.doc_;
     rhs.doc_ = nullptr;
+    rhs.payload_ = nullptr;
   }
   return *this;
 }
 
 void norm::reset() {
-  column_ = [](doc_id_t, bytes_ref&){ return false; };
+  column_it_.reset();
+  payload_ = nullptr;
   doc_ = &INVALID_DOCUMENT;
 }
 
@@ -121,19 +126,27 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
     return false;
   }
 
-  column_ = column_reader->values();
+  column_it_ = column_reader->iterator();
+  if (!column_it_) {
+    return false;
+  }
+
+  payload_ = column_it_->attributes().get<irs::payload>().get();
+  if (!payload_) {
+    return false;
+  }
   doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
-  bytes_ref value;
-  if (!column_(doc_->value, value)) {
+  assert(column_it_);
+  if (doc_->value != column_it_->seek(doc_->value)) {
     return DEFAULT();
   }
-
+  assert(payload_);
   // TODO: create set of helpers to decode float from buffer directly
-  bytes_ref_input in(value);
+  bytes_ref_input in(payload_->value);
   return read_zvfloat(in);
 }
 
