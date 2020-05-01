@@ -207,12 +207,11 @@ class phrase_term_visitor final : public filter_visitor,
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
-    attrs_ = &terms.attributes();
     found_ = true;
   }
 
   virtual void visit(boost_t boost) override {
-    assert(terms_ && attrs_ && collectors_ && segment_ && reader_);
+    assert(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost
     boost = std::max(0.f, boost);
@@ -225,7 +224,7 @@ class phrase_term_visitor final : public filter_visitor,
       volatile_boost_ |= (boost != no_boost());
     }
 
-    collectors_->collect(*segment_, *reader_, term_offset_++, *attrs_);
+    collectors_->collect(*segment_, *reader_, term_offset_++, *terms_);
     phrase_states_.emplace_back(terms_->cookie(), boost);
   }
 
@@ -253,7 +252,6 @@ class phrase_term_visitor final : public filter_visitor,
   PhraseStates& phrase_states_;
   term_collectors* collectors_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;
-  const attribute_view* attrs_ = nullptr;
   bool found_ = false;
   bool volatile_boost_ = false;
 };

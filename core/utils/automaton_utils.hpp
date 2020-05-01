@@ -97,8 +97,8 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return it_->attributes();
+  virtual const attribute* get(type_info::type_id type) const noexcept override {
+    return it_->get(type);
   }
 
   virtual SeekResult seek_ge(const bytes_ref& target) override {

@@ -1163,7 +1163,7 @@ TEST_P(bm25_test, test_collector_serialization) {
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
-    collector->collect(reader[0], *field, term->attributes());
+    collector->collect(reader[0], *field, *term);
     bstring_data_output out1;
     collector->write(out1);
     tcollector_out = out1.out_;

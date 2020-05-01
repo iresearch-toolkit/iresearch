@@ -188,8 +188,8 @@ class format_test_case : public index_test_base {
 
     void read() { }
 
-    const irs::attribute_view& attributes() const noexcept {
-      return irs::attribute_view::empty_instance();
+    const irs::attribute* get(irs::type_info::type_id) const noexcept {
+      return nullptr;
     }
 
    private:

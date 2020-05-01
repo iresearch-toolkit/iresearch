@@ -210,8 +210,8 @@ struct term_collector final: public irs::sort::term_collector {
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& /*field*/,
-                       const irs::attribute_view& term_attrs) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
+                       const irs::attribute_provider& term_attrs) override {
+    auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
       docs_with_term += meta->docs_count;
@@ -306,8 +306,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       byte_type* stats_buf,
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
-      const irs::sort::term_collector* term
-  ) const override {
+      const irs::sort::term_collector* term) const override {
     auto& idf = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG

@@ -239,11 +239,10 @@ struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
 
   virtual void collect(
-    const irs::sub_reader& /*segment*/,
-    const irs::term_reader& /*field*/,
-    const irs::attribute_view& term_attrs
-  ) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& /*field*/,
+      const irs::attribute_provider& term_attrs) override {
+    auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
       docs_with_term += meta->docs_count;

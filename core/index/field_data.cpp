@@ -600,8 +600,8 @@ class term_iterator : public irs::term_iterator {
     return it_->first;
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return attribute_view::empty_instance();
+  virtual const attribute* get(type_info::type_id) const noexcept override {
+    return nullptr;
   }
 
   virtual void read() noexcept override {

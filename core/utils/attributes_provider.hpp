@@ -60,8 +60,9 @@ struct IRESEARCH_API attribute_provider {
 };
 
 template<typename T,
+         typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
-const T* get(const attribute_provider& attrs) {
+const T* get(const Provider& attrs) noexcept(noexcept(attrs.get(type<T>::id()))) {
   return static_cast<const T*>(attrs.get(type<T>::id()));
 }
 

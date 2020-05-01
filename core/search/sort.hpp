@@ -159,7 +159,7 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs) = 0;
+      const attribute_provider& term_attrs) = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief clear collected stats

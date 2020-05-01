@@ -505,7 +505,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       auto& state = term_states.back();
       if (term->seek(ngram)) {
         term->read(); // read term attributes
-        term_stats.collect(segment, *field, term_idx, term->attributes()); // collect statistics
+        term_stats.collect(segment, *field, term_idx, *term); // collect statistics
         state = term->cookie();
         ++count_terms;
       }

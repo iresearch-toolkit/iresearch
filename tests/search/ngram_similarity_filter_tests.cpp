@@ -874,13 +874,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   std::vector<size_t> frequency;
   std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
-  scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+  scorer.collector_collect_field = [&collect_field_count](
+      const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
   };
-  scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+  scorer.collector_collect_term = [&collect_term_count](
+      const irs::sub_reader&,
+      const irs::term_reader&,
+      const irs::attribute_provider&)->void{
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+  scorer.collectors_collect_ = [&finish_count](
+      irs::byte_type*,
+      const irs::index_reader&,
+      const irs::sort::field_collector*,
+      const irs::sort::term_collector*)->void {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -889,8 +897,6 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
-
-
   scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
     const irs::term_reader& term,
     const irs::byte_type* data,
@@ -940,13 +946,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   std::vector<size_t> frequency;
   std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
-  scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+  scorer.collector_collect_field = [&collect_field_count](
+      const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
   };
-  scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+  scorer.collector_collect_term = [&collect_term_count](
+      const irs::sub_reader&,
+      const irs::term_reader&,
+      const irs::attribute_provider&)->void{
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+  scorer.collectors_collect_ = [&finish_count](
+      irs::byte_type*,
+      const irs::index_reader&,
+      const irs::sort::field_collector*,
+      const irs::sort::term_collector*)->void {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -955,8 +969,6 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
-
-
   scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
     const irs::term_reader& term,
     const irs::byte_type* data,
@@ -964,12 +976,12 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       auto& freq = attr.get<irs::frequency>();
       auto& boost = attr.get<irs::filter_boost>();
       return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
-        [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
-        auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
-        freq.freq->push_back(freq.freq_from_filter->value);
-        freq.filter_boost->push_back(freq.boost_from_filter->value);
-      }
+          irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
+          [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
+          auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
+          freq.freq->push_back(freq.freq_from_filter->value);
+          freq.filter_boost->push_back(freq.boost_from_filter->value);
+        }
       };
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};

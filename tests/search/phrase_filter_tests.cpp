@@ -4882,13 +4882,21 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     irs::order ord;
     auto& sort = ord.add<tests::sort::custom_sort>(false);
 
-    sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+    sort.collector_collect_field = [&collect_field_count](
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+    sort.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+    sort.collectors_collect_ = [&finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
     sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
@@ -5224,13 +5232,21 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     irs::order ord;
     auto& sort = ord.add<tests::sort::custom_sort>(false);
 
-    sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+    sort.collector_collect_field = [&collect_field_count](
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+    sort.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+    sort.collectors_collect_ = [&finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
     sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {

@@ -39,6 +39,18 @@ class format_10_test_case : public tests::format_test_case {
  protected:
   const size_t VERSION10_POSTINGS_WRITER_BLOCK_SIZE = 128;
 
+  struct basic_attribute_provider : irs::attribute_provider {
+    explicit basic_attribute_provider(const irs::attribute_view& attrs)
+      : attrs(attrs) {
+    }
+
+    const irs::attribute* get(irs::type_info::type_id type) const noexcept {
+      return attrs.get(type).get();
+    }
+
+    const irs::attribute_view& attrs;
+  };
+
   void assert_positions(const irs::doc_iterator& expected, const irs::doc_iterator& actual) {
     auto& expected_pos = expected.attributes().get<irs::position>();
     auto& actual_pos = actual.attributes().get<irs::position>();
@@ -154,15 +166,16 @@ class format_10_test_case : public tests::format_test_case {
       irs::frequency freq;
       freq.value = 10;
 
-      irs::attribute_view read_attrs;
+      irs::attribute_view attrs;
       if (field.features.check<irs::frequency>()) {
-        read_attrs.emplace(freq);
+        attrs.emplace(freq);
       }
+      const basic_attribute_provider read_attrs(attrs);
 
       // read term attributes
       {
         irs::version10::term_meta read_meta;
-        read_attrs.emplace(read_meta);
+        attrs.emplace(read_meta);
         begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
         // check term_meta
@@ -402,8 +415,10 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // read term0 attributes & postings
     {
       irs::version10::term_meta read_meta;
-      irs::attribute_view read_attrs;
-      read_attrs.emplace(read_meta);
+      irs::attribute_view attrs;
+      attrs.emplace(read_meta);
+      const basic_attribute_provider read_attrs(attrs);
+
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       // check term_meta for term0
@@ -428,20 +443,22 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // check term_meta for term1
     {
       irs::version10::term_meta read_meta;
-      irs::attribute_view read_attrs;
-      read_attrs.emplace(read_meta);
+      irs::attribute_view attrs;
+      attrs.emplace(read_meta);
+      const basic_attribute_provider read_attrs(attrs);
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       {
         auto& typed_meta1 = dynamic_cast<const irs::version10::term_meta&>(*meta1);
-        auto& read_meta = **read_attrs.get<irs::version10::term_meta>();
-        ASSERT_EQ(typed_meta1.docs_count, read_meta.docs_count);
-        ASSERT_EQ(0, read_meta.doc_start); /* we don't read doc start in case of singleton */
-        ASSERT_EQ(typed_meta1.pos_start, read_meta.pos_start);
-        ASSERT_EQ(typed_meta1.pos_end, read_meta.pos_end);
-        ASSERT_EQ(typed_meta1.pay_start, read_meta.pay_start);
-        ASSERT_EQ(typed_meta1.e_single_doc, read_meta.e_single_doc);
-        ASSERT_EQ(typed_meta1.e_skip_start, read_meta.e_skip_start);
+        auto* read_meta = irs::get<irs::version10::term_meta>(read_attrs);
+        ASSERT_NE(nullptr, read_meta);
+        ASSERT_EQ(typed_meta1.docs_count, read_meta->docs_count);
+        ASSERT_EQ(0, read_meta->doc_start); /* we don't read doc start in case of singleton */
+        ASSERT_EQ(typed_meta1.pos_start, read_meta->pos_start);
+        ASSERT_EQ(typed_meta1.pos_end, read_meta->pos_end);
+        ASSERT_EQ(typed_meta1.pay_start, read_meta->pay_start);
+        ASSERT_EQ(typed_meta1.e_single_doc, read_meta->e_single_doc);
+        ASSERT_EQ(typed_meta1.e_skip_start, read_meta->e_skip_start);
       }
 
       // read documents
@@ -538,8 +555,9 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // cumulative attribute
     irs::version10::term_meta read_meta;
-    irs::attribute_view read_attrs;
-    read_attrs.emplace(read_meta);
+    irs::attribute_view attrs;
+    attrs.emplace(read_meta);
+    const basic_attribute_provider read_attrs(attrs);
 
     // read term0 attributes
     {

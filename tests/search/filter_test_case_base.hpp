@@ -137,10 +137,9 @@ struct custom_sort: public irs::sort {
       term_collector(const custom_sort& sort): sort_(sort) {}
 
       virtual void collect(
-        const irs::sub_reader& segment,
-        const irs::term_reader& field,
-        const irs::attribute_view& term_attrs
-      ) override {
+          const irs::sub_reader& segment,
+          const irs::term_reader& field,
+          const irs::attribute_provider& term_attrs) override {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
         }
@@ -287,7 +286,7 @@ struct custom_sort: public irs::sort {
   };
 
   std::function<void(const irs::sub_reader&, const irs::term_reader&)> collector_collect_field;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
@@ -383,13 +382,14 @@ struct frequency_sort: public irs::sort {
    public:
     struct term_collector: public irs::sort::term_collector {
       size_t docs_count{};
-      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
+      const irs::term_meta* meta_attr;
 
       virtual void collect(
           const irs::sub_reader& segment,
           const irs::term_reader& field,
-          const irs::attribute_view& term_attrs) override {
-        meta_attr = term_attrs.get<irs::term_meta>();
+          const irs::attribute_provider& term_attrs) override {
+        meta_attr = irs::get<irs::term_meta>(term_attrs);
+        ASSERT_NE(nullptr, meta_attr);
         docs_count += meta_attr->docs_count;
       }
 

@@ -1564,7 +1564,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
   void prepare(
       const features& field,
-      const attribute_view& attrs,
+      const attribute_provider& attrs,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
@@ -1580,7 +1580,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     begin_ = end_ = docs_;
 
     // get state attribute
-    auto& meta = attrs.get<irs::term_meta>();
+    auto* meta = irs::get<irs::term_meta>(attrs);
     assert(meta);
 
 #ifdef IRESEARCH_DEBUG
@@ -1610,9 +1610,9 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     attrs_.emplace(scr_); // make score accessible from outside
 
     if constexpr (IteratorTraits::frequency()) {
-      assert(attrs.contains<frequency>());
+      assert(irs::get<frequency>(attrs));
       attrs_.emplace(freq_);
-      term_freq_ = attrs.get<frequency>()->value;
+      term_freq_ = irs::get<frequency>(attrs)->value;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
@@ -5173,15 +5173,13 @@ class postings_reader_base : public irs::postings_reader {
   virtual void prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features
-  ) final;
+    const flags& features) final;
 
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
-    const attribute_view& attrs,
-    irs::term_meta& state
-  ) final;
+    const attribute_provider& attrs,
+    irs::term_meta& state) final;
 
  protected:
   index_input::ptr doc_in_;
@@ -5267,7 +5265,7 @@ void postings_reader_base::prepare(
 size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
-    const attribute_view& attrs,
+    const attribute_provider& attrs,
     irs::term_meta& state) {
 #ifdef IRESEARCH_DEBUG
   auto& term_meta = dynamic_cast<version10::term_meta&>(state);
@@ -5275,12 +5273,13 @@ size_t postings_reader_base::decode(
   auto& term_meta = static_cast<version10::term_meta&>(state);
 #endif // IRESEARCH_DEBUG
 
-  auto& term_freq = attrs.get<frequency>();
+  auto* term_freq = irs::get<frequency>(attrs);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
   if (term_freq) {
-    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
+    //FIXME drop const_cast
+    const_cast<frequency*>(term_freq)->value = term_meta.docs_count + vread<uint32_t>(p);
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
@@ -5318,9 +5317,8 @@ class postings_reader final: public postings_reader_base {
 
   virtual irs::doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) override;
+    const attribute_provider& attrs,
+    const flags& features) override;
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -5332,7 +5330,7 @@ class postings_reader final: public postings_reader_base {
 template<typename FormatTraits, bool OneBasedPositionStorage>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
     const flags& field,
-    const attribute_view& attrs,
+    const attribute_provider& attrs,
     const flags& req) {
 
   // compile field features

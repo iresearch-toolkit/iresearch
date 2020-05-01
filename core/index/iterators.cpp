@@ -78,8 +78,8 @@ struct empty_term_iterator : irs::term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return irs::attribute_view::empty_instance();
+  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept final {
+    return nullptr;
   }
 }; // empty_term_iterator
 
@@ -96,8 +96,8 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return irs::attribute_view::empty_instance();
+  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept final {
+    return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
     return irs::SeekResult::END;

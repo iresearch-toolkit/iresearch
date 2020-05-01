@@ -570,11 +570,11 @@ class compound_term_iterator : public irs::term_iterator {
 
   const irs::field_meta& meta() const noexcept { return *meta_; }
   void add(const irs::term_reader& reader, const doc_map_f& doc_map);
-  virtual const irs::attribute_view& attributes() const noexcept override {
+  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
     assert(false);
-    return irs::attribute_view::empty_instance();
+    return nullptr;
   }
   virtual bool next() override;
   virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
@@ -594,9 +594,9 @@ class compound_term_iterator : public irs::term_iterator {
     const doc_map_f* second;
 
     term_iterator_t(
-      irs::seek_term_iterator::ptr&& term_itr,
-      const doc_map_f* doc_map
-    ): first(std::move(term_itr)), second(doc_map) {
+        irs::seek_term_iterator::ptr&& term_itr,
+        const doc_map_f* doc_map)
+      : first(std::move(term_itr)), second(doc_map) {
     }
 
     // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept non-inlined

@@ -487,7 +487,7 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, const attribute_view& attrs,
+  void load_data(const field_meta& meta, const attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
@@ -542,30 +542,25 @@ class block_iterator : util::noncopyable {
 /// @class term_iterator_base
 /// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator_base : public seek_term_iterator {
+class term_iterator_base : public frozen_attributes<seek_term_iterator, 3> {
  public:
-  explicit term_iterator_base(const term_reader& owner)
-    : owner_(&owner),
-      attrs_(2) { // version10::term_meta + frequency
+  explicit term_iterator_base(const term_reader& owner, const payload* pay = nullptr)
+    : frozen_attributes<seek_term_iterator, 3> {{
+        { type<version10::term_meta>::id(), &state_ },
+        { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
+        { type<payload>::id(), pay }
+      }},
+      owner_(&owner) {
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (owner_->field_.features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   // read attributes
   void read(block_iterator& it) {
-    it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
+    it.load_data(owner_->field_, *this, state_, *owner_->owner_->pr_);
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
     return ::cookie::make(state_, freq_.value);
-  }
-
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return attrs_;
   }
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
@@ -594,9 +589,9 @@ class term_iterator_base : public seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (it) {
-      it->load_data(field, attrs_, state_, pr); // read attributes
+      it->load_data(field, *this, state_, pr); // read attributes
     }
-    return pr.iterator(field.features, attrs_, features);
+    return pr.iterator(field.features, *this, features);
   }
 
   index_input& terms_input() const;
@@ -626,7 +621,6 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   const term_reader* owner_;
-  irs::attribute_view attrs_;
   mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
@@ -655,14 +649,9 @@ index_input& term_iterator_base::terms_input() const {
 class term_iterator final : public term_iterator_base {
  public:
   explicit term_iterator(const term_reader& owner)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, nullptr),
       matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (field().features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   virtual bool next() override;
@@ -776,13 +765,11 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner,
                                    automaton_table_matcher& matcher)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, &payload_),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
     // init payload value
     payload_.value = {&payload_value_, sizeof(payload_value_)};
-
-    attrs_.emplace(payload_); // ensure we use base class type
   }
 
   virtual bool next() override;
@@ -1370,7 +1357,7 @@ void block_iterator::scan_to_block(uint64_t start) {
 }
 
 void block_iterator::load_data(const field_meta& meta,
-                               const attribute_view& attrs,
+                               const attribute_provider& attrs,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);

@@ -143,23 +143,20 @@ struct IRESEARCH_API postings_reader {
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
-    const flags& features
-  ) = 0;
+    const flags& features) = 0;
 
   // parses input block "in" and populate "attrs" collection with attributes
   // returns number of bytes read from in
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    const attribute_view& attrs,
-    term_meta& state
-  ) = 0;
+    const attribute_provider& attrs,
+    term_meta& state) = 0;
 
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) = 0;
+    const attribute_provider& attrs,
+    const flags& features) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////

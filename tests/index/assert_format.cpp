@@ -454,15 +454,15 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   }
 }
 
-class term_iterator : public irs::seek_term_iterator {
+class term_iterator final : public irs::seek_term_iterator {
  public:
-  term_iterator( const tests::field& data ) 
-    : data_( data ) {
+  explicit term_iterator(const tests::field& data) noexcept
+    : data_(data) {
     next_ = data_.terms.begin();
   }
 
-  const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
+  const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+    return nullptr;
   }
 
   const irs::bytes_ref& value() const override {
@@ -534,10 +534,9 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
  private:
-  irs::attribute_view attrs_;
   const tests::field& data_;
-  std::set< tests::term >::const_iterator prev_;
-  std::set< tests::term >::const_iterator next_;
+  std::set<tests::term>::const_iterator prev_;
+  std::set<tests::term>::const_iterator next_;
   irs::bytes_ref value_;
 };
 

@@ -262,7 +262,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       term->read(); // read term attributes
-      term_stats.collect(segment, *field, term_idx, term->attributes());
+      term_stats.collect(segment, *field, term_idx, *term);
       term_states.emplace_back();
 
       auto& state = term_states.back();
