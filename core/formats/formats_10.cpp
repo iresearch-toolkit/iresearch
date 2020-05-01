@@ -883,9 +883,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
 
   if (freq) {
     if (pos && !VolatileAttributes) {
-      auto& attrs = pos->attributes();
-      offs = attrs.get<offset>().get();
-      pay = attrs.get<payload>().get();
+      offs = irs::get<irs::offset>(*pos);
+      pay = irs::get<irs::payload>(*pos);
     }
 
     tfreq = &meta->freq;
@@ -901,9 +900,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     docs_.value.set(did - doc_limits::min());
     if (pos) {
       if (VolatileAttributes) {
-        auto& attrs = pos->attributes();
-        offs = attrs.get<offset>().get();
-        pay = attrs.get<payload>().get();
+        offs = irs::get<offset>(*pos);
+        pay = irs::get<payload>(*pos);
       }
       while (pos->next()) {
         assert(pos_limits::valid(pos->value()));
@@ -973,6 +971,14 @@ struct position_impl<IteratorTraits, true, true>
   void prepare(attribute_view& attrs) {
     attrs.emplace(offs_);
     attrs.emplace(pay_);
+  }
+
+  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+    if (irs::type<payload>::id() == type) {
+      return &pay_;
+    }
+
+    return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1109,8 +1115,8 @@ struct position_impl<IteratorTraits, false, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(pay_);
+  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+    return irs::type<payload>::id() == type ? &pay_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1243,8 +1249,8 @@ struct position_impl<IteratorTraits, true, false>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(offs_);
+  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+    return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1346,7 +1352,10 @@ struct position_impl<IteratorTraits, false, false> {
     IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
   }
 
-  void prepare(attribute_view&) noexcept { }
+  const irs::attribute* attribute(type_info::type_id) const noexcept {
+    // implementation has no additional attributes
+    return nullptr;
+  }
 
   void prepare(const doc_state& state) {
     pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
@@ -1423,6 +1432,11 @@ struct position_impl<IteratorTraits, false, false> {
     buf_pos_ += count;
   }
 
+  struct cookie {
+    uint32_t pend_pos_{};
+    size_t file_pointer_ = std::numeric_limits<size_t>::max();
+  };
+
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
@@ -1430,13 +1444,9 @@ struct position_impl<IteratorTraits, false, false> {
   uint64_t tail_start_; // file pointer where the last (vInt encoded) pos delta block is
   size_t tail_length_; // number of positions in the last (vInt encoded) pos delta block
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
+  cookie cookie_;
   index_input::ptr pos_in_;
   features features_;
-
-  struct cookie {
-    uint32_t pend_pos_{};
-    size_t file_pointer_ = std::numeric_limits<size_t>::max();
-  } cookie_;
 }; // position_impl
 
 template<typename IteratorTraits, bool Position = IteratorTraits::position()>
@@ -1445,9 +1455,8 @@ class position final : public irs::position,
  public:
   typedef position_impl<IteratorTraits> impl;
 
-  position()
-    : irs::position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
-    impl::prepare(attrs_); // prepare attributes
+  virtual const attribute* get(type_info::type_id type) const override {
+    return impl::attribute(type);
   }
 
   virtual bool next() override {

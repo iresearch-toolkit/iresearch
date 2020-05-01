@@ -91,8 +91,8 @@ TEST(attributes_tests, duplicate_register) {
 
   // check required for tests with repeat (static maps are not cleared between runs)
   if (initial_expected) {
-    ASSERT_FALSE(irs::attribute::exists(irs::type<dummy_attribute>::name()));
-    ASSERT_FALSE(irs::attribute::get(irs::type<dummy_attribute>::get().name()));
+    ASSERT_FALSE(irs::attributes::exists(irs::type<dummy_attribute>::name()));
+    ASSERT_FALSE(irs::attributes::get(irs::type<dummy_attribute>::get().name()));
 
     irs::attribute_registrar initial(irs::type<dummy_attribute>::get());
     ASSERT_EQ(!initial_expected, !initial);
@@ -102,8 +102,8 @@ TEST(attributes_tests, duplicate_register) {
   irs::attribute_registrar duplicate(irs::type<dummy_attribute>::get());
   ASSERT_TRUE(!duplicate);
 
-  ASSERT_TRUE(irs::attribute::exists(irs::type<dummy_attribute>::get().name()));
-  ASSERT_TRUE(irs::attribute::get(irs::type<dummy_attribute>::name()));
+  ASSERT_TRUE(irs::attributes::exists(irs::type<dummy_attribute>::get().name()));
+  ASSERT_TRUE(irs::attributes::get(irs::type<dummy_attribute>::name()));
 }
 
 TEST(attributes_tests, store_ctor) {

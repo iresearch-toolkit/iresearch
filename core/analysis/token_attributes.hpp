@@ -170,7 +170,7 @@ struct IRESEARCH_API norm final : stored_attribute {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API position
   : public attribute,
-    public attribute_view_provider {
+    public attribute_provider {
  public:
   typedef uint32_t value_t;
 
@@ -181,10 +181,6 @@ class IRESEARCH_API position
 
   static irs::position* extract(const attribute_view& attrs) noexcept {
     return attrs.get<irs::position>().get();
-  }
-
-  const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
   }
 
   value_t seek(value_t target) {
@@ -201,10 +197,7 @@ class IRESEARCH_API position
   virtual bool next() = 0;
 
  protected:
-  position(size_t reserve_attrs) noexcept;
-
   value_t value_{ pos_limits::invalid() };
-  attribute_view attrs_;
 }; // position
 
 NS_END // ROOT

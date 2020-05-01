@@ -143,8 +143,4 @@ float_t norm::read() const {
 
 REGISTER_ATTRIBUTE(position);
 
-position::position(size_t reserve_attrs) noexcept
-  : attrs_(reserve_attrs) {
-}
-
 NS_END

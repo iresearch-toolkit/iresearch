@@ -42,6 +42,18 @@
 
 NS_ROOT
 
+struct IRESEARCH_API attributes {
+  static bool exists(
+    const string_ref& name,
+    bool load_library = true);
+
+  static type_info get(
+    const string_ref& name,
+    bool load_library = true) noexcept;
+
+  attributes() = delete;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class attribute 
 /// @brief base class for all attributes that can be used with attribute_map
@@ -50,15 +62,7 @@ NS_ROOT
 ///        static const attribute::type_id type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API attribute {
-  static bool exists(
-    const string_ref& name,
-    bool load_library = true);
-
-  static type_info get(
-    const string_ref& name,
-    bool load_library = true) noexcept;
-};
+struct IRESEARCH_API attribute { };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief base class for all attributes that can be deallocated via a ptr of
@@ -635,6 +639,14 @@ template<
  protected:
   using attributes_map = frozen::map<type_info::type_id, const attribute*, Size>;
   using value_type = typename attributes_map::value_type;
+
+  constexpr attribute** ref(type_info::type_id type) noexcept {
+    const auto it = attrs_.find(type);
+
+    return it == attrs_.end()
+      ? nullptr
+      : const_cast<attribute**>(&it->second);
+  }
 
   template<typename... Args>
   constexpr explicit frozen_attributes(

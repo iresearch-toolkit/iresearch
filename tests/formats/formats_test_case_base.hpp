@@ -46,16 +46,28 @@ class format_test_case : public index_test_base {
  public:  
   class postings;
 
-  class position: public irs::position {
+  class position final : public irs::position {
    public:
-    position(const irs::flags& features): irs::position(2) {
+    position(const irs::flags& features) {
       if (features.check<irs::offset>()) {
-        attrs_.emplace(offs_);
+        poffs_ = &offs_;
       }
 
       if (features.check<irs::payload>()) {
-        attrs_.emplace(pay_);
+        ppay_ = &pay_;
       }
+    }
+
+    const attribute* get(irs::type_info::type_id type) const noexcept override {
+      if (irs::type<irs::offset>::id() == type) {
+        return poffs_;
+      }
+
+      if (irs::type<irs::payload>::id() == type) {
+        return ppay_;
+      }
+
+      return nullptr;
     }
 
     bool next() override {
@@ -90,6 +102,8 @@ class format_test_case : public index_test_base {
     uint32_t end_;
     irs::offset offs_;
     irs::payload pay_;
+    const irs::offset* poffs_{};
+    const irs::payload* ppay_{};
     char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 
@@ -148,7 +162,7 @@ class format_test_case : public index_test_base {
     docs_t::const_iterator end_;
     irs::frequency freq_;
     tests::format_test_case::position pos_;
-    irs::doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t doc_{ irs::doc_limits::invalid() };
   }; // postings 
 
   template<typename Iterator>

@@ -41,16 +41,16 @@ NS_END
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                attribute::type_id
+// --SECTION--                                                        attributes
 // -----------------------------------------------------------------------------
 
-/*static*/ bool attribute::exists(
+/*static*/ bool attributes::exists(
     const string_ref& name,
     bool load_library /*= true*/) {
   return static_cast<bool>(attribute_register::instance().get(name, load_library));
 }
 
-/*static*/ type_info attribute::get(
+/*static*/ type_info attributes::get(
     const string_ref& name,
     bool load_library /*= true*/) noexcept {
   try {

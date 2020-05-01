@@ -372,18 +372,29 @@ class doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  class pos_iterator: public irs::position {
+  class pos_iterator final : public irs::position {
    public:
     pos_iterator(const doc_iterator& owner, const irs::flags& features)
-      : irs::position(2), // offset + payload
-        owner_(owner) {
+      : owner_(owner) {
       if (features.check<irs::offset>()) {
-        attrs_.emplace(offs_);
+        poffs_ = &offs_;
       }
 
       if (features.check<irs::payload>()) {
-        attrs_.emplace(pay_);
+        ppay_ = &pay_;
       }
+    }
+
+    const attribute* get(irs::type_info::type_id type) const noexcept override {
+      if (irs::type<irs::offset>::id() == type) {
+        return poffs_;
+      }
+
+      if (irs::type<irs::payload>::id() == type) {
+        return ppay_;
+      }
+
+      return nullptr;
     }
 
     void clear() {
@@ -416,6 +427,8 @@ class doc_iterator : public irs::doc_iterator {
     std::set<tests::position>::const_iterator next_;
     irs::offset offs_;
     irs::payload pay_;
+    const irs::offset* poffs_{};
+    const irs::payload* ppay_{};
     const doc_iterator& owner_;
   };
 
@@ -704,12 +717,12 @@ void assert_term(
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
 
-        auto& expected_offs = expected_pos->attributes().get<irs::offset>();
-        auto& actual_offs = actual_pos->attributes().get<irs::offset>();
+        auto* expected_offs = irs::get<irs::offset>(*expected_pos);
+        auto* actual_offs = irs::get<irs::offset>(*actual_pos);
         if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        auto& expected_pay = expected_pos->attributes().get<irs::payload>();
-        auto& actual_pay = actual_pos->attributes().get<irs::payload>();
+        auto* expected_pay = irs::get<irs::payload>(*expected_pos);
+        auto* actual_pay = irs::get<irs::payload>(*actual_pos);
         if (expected_pay) ASSERT_FALSE(!actual_pay);
         ASSERT_TRUE(!irs::pos_limits::valid(expected_pos->value()));
         ASSERT_TRUE(!irs::pos_limits::valid(actual_pos->value()));

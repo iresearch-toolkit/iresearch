@@ -152,11 +152,17 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
-class pos_iterator final: public irs::position {
+class pos_iterator final
+    : public frozen_attributes<irs::position, 2> {
  public:
   pos_iterator()
-    : irs::position(2), // offset + payload
-      prox_in_(EMPTY_POOL) {
+    : frozen_attributes<irs::position, 2>{{
+        { type<offset>::id(), nullptr },
+        { type<payload>::id(), nullptr },
+      }},
+      prox_in_(EMPTY_POOL),
+      ppay_(frozen_attributes<position, 2>::ref(type<payload>::id())),
+      poffs_(frozen_attributes<position, 2>::ref(type<offset>::id())) {
   }
 
   void clear() noexcept {
@@ -170,17 +176,16 @@ class pos_iterator final: public irs::position {
   void reset(const flags& features, const frequency& freq) {
     assert(features.check<frequency>());
 
-    attrs_.clear();
     freq_ = &freq;
-    has_offs_ = false;
+    *poffs_ = nullptr;
+    *ppay_ = nullptr;
 
     if (features.check<offset>()) {
-      attrs_.emplace(offs_);
-      has_offs_ = true;
+      *poffs_ = &offs_;
     }
 
     if (features.check<payload>()) {
-      attrs_.emplace(pay_);
+      *ppay_ = &pay_;
     }
   }
 
@@ -211,7 +216,7 @@ class pos_iterator final: public irs::position {
     value_ += pos;
     assert(pos_limits::valid(value_));
 
-    if (has_offs_) {
+    if (*poffs_) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
       offs_.end = offs_.start + irs::vread<uint32_t>(prox_in_);
     }
@@ -231,8 +236,9 @@ class pos_iterator final: public irs::position {
   const frequency* freq_{}; // number of term positions in a document
   payload pay_;
   offset offs_;
+  attribute** ppay_{};
+  attribute** poffs_{};
   uint32_t pos_{}; // current position
-  bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
 
 NS_END
@@ -241,8 +247,7 @@ NS_ROOT
 
 bool memcmp_less(
     const byte_type* lhs, size_t lhs_size,
-    const byte_type* rhs, size_t rhs_size
-) noexcept {
+    const byte_type* rhs, size_t rhs_size) noexcept {
   assert(lhs && rhs);
 
   const size_t size = std::min(lhs_size, rhs_size);
