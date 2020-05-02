@@ -518,7 +518,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   out.write_vint(BLOCK_SIZE); // write postings block size
 
   // prepare documents bitset
-  docs_.value.reset(state.doc_count);
+  docs_.value.reset(doc_limits::min() + state.doc_count);
 }
 
 void postings_writer_base::encode(
@@ -856,6 +856,27 @@ class postings_writer final: public postings_writer_base {
   }
 
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
+
+ private:
+  void refresh(const attribute_view& attrs) noexcept {
+    pos_ = position::empty();
+    offs_ = nullptr;
+    pay_ = nullptr;
+
+    freq_ = attrs.get<frequency>().get();
+    if (freq_) {
+      pos_ = attrs.get<position>().get();
+      if (pos_) {
+        offs_ = irs::get<irs::offset>(*pos_);
+        pay_ = irs::get<irs::payload>(*pos_);
+      }
+    }
+  }
+
+  const frequency* freq_{};
+  position* pos_{};
+  const offset* offs_{};
+  const payload* pay_{};
 }; // postings_writer
 
 #if defined(_MSC_VER)
@@ -868,56 +889,44 @@ class postings_writer final: public postings_writer_base {
 template<typename FormatTraits, bool VolatileAttributes>
 irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
-  auto& freq = docs.attributes().get<frequency>();
 
-  auto& pos = freq
-    ? docs.attributes().get<irs::position>()
-    : irs::attribute_view::ref<irs::position>::NIL;
+  if constexpr (VolatileAttributes) {
+    auto* subscription = docs.attributes().get<attribute_provider_change>().get();
+    assert(subscription);
 
-  const offset* offs = nullptr;
-  const payload* pay = nullptr;
-
-  uint32_t* tfreq = nullptr;
+    subscription->subscribe([this](const attribute_view& attrs) {
+      refresh(attrs);
+    });
+  } else {
+    refresh(docs.attributes());
+  }
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
-
-  if (freq) {
-    if (pos && !VolatileAttributes) {
-      offs = irs::get<irs::offset>(*pos);
-      pay = irs::get<irs::payload>(*pos);
-    }
-
-    tfreq = &meta->freq;
-  }
 
   begin_term();
 
   while (docs.next()) {
     const auto did = docs.value();
-
     assert(doc_limits::valid(did));
-    begin_doc<FormatTraits>(did, freq.get());
-    docs_.value.set(did - doc_limits::min());
-    if (pos) {
-      if (VolatileAttributes) {
-        offs = irs::get<offset>(*pos);
-        pay = irs::get<payload>(*pos);
-      }
-      while (pos->next()) {
-        assert(pos_limits::valid(pos->value()));
-        add_position<FormatTraits>(pos->value(), offs, pay);
-      }
+
+    begin_doc<FormatTraits>(did, freq_);
+    docs_.value.set(did);
+
+    assert(pos_);
+    while (pos_->next()) {
+      assert(pos_limits::valid(pos_->value()));
+      add_position<FormatTraits>(pos_->value(), offs_, pay_);
     }
 
     ++meta->docs_count;
-    if (tfreq) {
-      (*tfreq) += freq->value;
+    if (freq_) {
+      meta->freq += freq_->value;
     }
 
     end_doc();
   }
 
-  end_term(*meta, tfreq);
+  end_term(*meta, freq_ ? &meta->freq : nullptr);
 
   return make_state(*meta.release());
 }

@@ -24,6 +24,21 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
+NS_LOCAL
+
+struct empty_position final : irs::position {
+  virtual void reset() override { }
+  virtual bool next() override { return false; }
+  virtual const attribute* get(
+      irs::type_info::type_id) const noexcept override {
+    return nullptr;
+  }
+};
+
+empty_position NO_POSITION;
+
+NS_END
+
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
@@ -153,6 +168,8 @@ float_t norm::read() const {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          position
 // -----------------------------------------------------------------------------
+
+/*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
 
 REGISTER_ATTRIBUTE(position);
 

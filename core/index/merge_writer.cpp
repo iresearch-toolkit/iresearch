@@ -168,45 +168,6 @@ class progress_tracker {
 }; // progress_tracker
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class compound_attributes
-/// @brief compound view of multiple attributes as a single object
-//////////////////////////////////////////////////////////////////////////////
-class compound_attributes: public irs::attribute_view {
- public:
-  void add(const irs::attribute_view& attributes) {
-    auto visitor = [this](
-        irs::type_info::type_id type_id,
-        const irs::attribute_view::ref<irs::attribute>::type&) ->bool {
-      bool inserted;
-      attribute_map::emplace(inserted, type_id);
-      return true;
-    };
-
-    attributes.visit(visitor); // add
-  }
-
-  void set(const irs::attribute_view& attributes) {
-    auto visitor_unset = [](
-        irs::type_info::type_id /*type_id*/,
-        irs::attribute_view::ref<irs::attribute>::type& value)->bool {
-      value = nullptr;
-      return true;
-    };
-
-    auto visitor_update = [this](
-        irs::type_info::type_id type_id,
-        const irs::attribute_view::ref<irs::attribute>::type& value)->bool {
-      bool inserted;
-      attribute_map::emplace(inserted, type_id) = value;
-      return true;
-    };
-
-    visit(visitor_unset); // unset
-    attributes.visit(visitor_update); // set
-  }
-}; // compound_attributes
-
-//////////////////////////////////////////////////////////////////////////////
 /// @struct compound_doc_iterator
 /// @brief iterator over doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
@@ -217,27 +178,15 @@ struct compound_doc_iterator : public irs::doc_iterator {
   static constexpr const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
 
   explicit compound_doc_iterator(
-      const irs::merge_writer::flush_progress_t& progress
-  ) noexcept
+      const irs::merge_writer::flush_progress_t& progress) noexcept
     : progress(progress, PROGRESS_STEP_DOCS) {
+    attrs.emplace(attribute_change);
   }
 
   template<typename Func>
   bool reset(Func func) {
     if (!func(iterators)) {
       return false;
-    }
-
-    auto begin = iterators.begin();
-    auto end = iterators.end();
-
-    if (begin != end) {
-      attrs.set(begin->first->attributes()); // add keys and set values
-      ++begin;
-    }
-
-    for (; begin != end; ++begin) {
-      attrs.add(begin->first->attributes()); // only add missing keys
     }
 
     current_id = irs::doc_limits::invalid();
@@ -265,7 +214,8 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return current_id;
   }
 
-  compound_attributes attrs;
+  irs::attribute_view attrs;
+  irs::attribute_provider_change attribute_change;
   std::vector<doc_iterator_t> iterators;
   irs::doc_id_t current_id{ irs::doc_limits::invalid() };
   size_t current_itr{ 0 };
@@ -281,11 +231,9 @@ bool compound_doc_iterator::next() {
     return false;
   }
 
-  for (
-    bool update_attributes = false;
-    current_itr < iterators.size();
-    update_attributes = true, ++current_itr
-  ) {
+  for (bool notify = !irs::doc_limits::valid(current_id);
+       current_itr < iterators.size();
+       notify = true, ++current_itr) {
     auto& itr_entry = iterators[current_itr];
     auto& itr = itr_entry.first;
     auto& id_map = itr_entry.second;
@@ -294,8 +242,8 @@ bool compound_doc_iterator::next() {
       continue;
     }
 
-    if (update_attributes) {
-      attrs.set(itr->attributes());
+    if (notify) {
+      attribute_change(itr->attributes());
     }
 
     while (itr->next()) {
@@ -312,7 +260,6 @@ bool compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -400,7 +347,6 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
 bool sorting_compound_doc_iterator::next() {
   auto& iterators = doc_it_->iterators;
   auto& current_id = doc_it_->current_id;
-  auto& attrs = doc_it_->attrs;
 
   doc_it_->progress();
 
@@ -417,7 +363,7 @@ bool sorting_compound_doc_iterator::next() {
 
     if (&new_lead != lead_) {
       // update attributes
-      attrs.set(it->attributes());
+      doc_it_->attribute_change(it->attributes());
       lead_ = &new_lead;
     }
 
@@ -431,7 +377,6 @@ bool sorting_compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -974,7 +919,17 @@ class columnstore {
 
   // inserts live values from the specified 'iterator' into column
   bool insert(irs::doc_iterator& it) {
-    auto& payload = it.attributes().get<irs::payload>();
+    irs::payload* payload = nullptr;
+
+    auto& callback = it.attributes().get<irs::attribute_provider_change>();
+
+    if (callback) {
+      callback->subscribe([&payload](const irs::attribute_view& attrs) {
+        payload = attrs.get<irs::payload>().get();
+      });
+    } else {
+      payload = it.attributes().get<irs::payload>().get();
+    }
 
     while (it.next()) {
       if (!progress_()) {

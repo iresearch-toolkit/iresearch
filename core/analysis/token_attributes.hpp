@@ -108,8 +108,6 @@ struct IRESEARCH_API document final : basic_attribute<doc_id_t> {
 struct IRESEARCH_API frequency final : basic_attribute<uint32_t> {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "frequency"; }
-
-  frequency() = default;
 }; // frequency
 
 //////////////////////////////////////////////////////////////////////////////
@@ -180,6 +178,8 @@ class IRESEARCH_API position
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "position"; }
 
+  static irs::position* empty() noexcept;
+
   static irs::position* extract(const attribute_view& attrs) noexcept {
     return attrs.get<irs::position>().get();
   }
@@ -200,6 +200,37 @@ class IRESEARCH_API position
  protected:
   value_t value_{ pos_limits::invalid() };
 }; // position
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class attribute_provider_change
+/// @brief subscription for attribute provider change
+//////////////////////////////////////////////////////////////////////////////
+class attribute_provider_change final : public irs::attribute {
+ public:
+  using callback_f = std::function<void(const irs::attribute_view&)>;
+
+  static constexpr string_ref type_name() noexcept {
+    return "attribute_provider_change";
+  }
+
+  void subscribe(callback_f&& callback) const {
+    callback_ = std::move(callback);
+
+    if (IRS_UNLIKELY(!callback_)) {
+      callback_ = &noop;
+    }
+  }
+
+  void operator()(const irs::attribute_view& attrs) const {
+    assert(callback_);
+    callback_(attrs);
+  }
+
+ private:
+  static void noop(const irs::attribute_view&) noexcept { }
+
+  mutable callback_f callback_{&noop};
+}; // attribute_provider_change
 
 NS_END // ROOT
 
