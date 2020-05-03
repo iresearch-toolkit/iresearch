@@ -55,7 +55,7 @@ struct IRESEARCH_API attributes {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class attribute 
+/// @class attribute
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
 ///        all derived classes must implement the following function:
@@ -101,7 +101,7 @@ class IRESEARCH_API attribute_registrar {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_attribute
-/// @brief represents simple attribute holds a single value 
+/// @brief represents simple attribute holds a single value
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
@@ -147,10 +147,10 @@ struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class flags
-/// @brief represents a set of features enabled for the particular field 
+/// @brief represents a set of features enabled for the particular field
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API flags {
- public:  
+ public:
   // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
   typedef std::set<type_info::type_id> type_map;
 
@@ -169,8 +169,8 @@ class IRESEARCH_API flags {
 
   template< typename T >
   flags& add() {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
     return add(type<attribute_t>::id());
@@ -180,10 +180,10 @@ class IRESEARCH_API flags {
     map_.insert(type);
     return *this;
   }
-  
+
   template<typename T>
   flags& remove() {
-    typedef typename std::enable_if< 
+    typedef typename std::enable_if<
       std::is_base_of<attribute, T>::value, T
     >::type attribute_t;
 
@@ -194,7 +194,7 @@ class IRESEARCH_API flags {
     map_.erase(type);
     return *this;
   }
-  
+
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
   void clear() noexcept { map_.clear(); }
@@ -204,8 +204,8 @@ class IRESEARCH_API flags {
 
   template<typename T>
   bool check() const noexcept {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
     return check(type<attribute_t>::id());
@@ -236,7 +236,7 @@ class IRESEARCH_API flags {
     if (lhs_map->size() > rhs_map->size()) {
       std::swap(lhs_map, rhs_map);
     }
-    
+
     flags out;
     out.reserve(lhs_map->size());
 
@@ -265,9 +265,9 @@ class IRESEARCH_API flags {
       if (rhs_map.end() == rhs_map.find(entry)) {
         return false;
       }
-    } 
+    }
     return true;
-  } 
+  }
 
  private:
   template<
@@ -626,27 +626,14 @@ class IRESEARCH_API attribute_view
 }; // attribute_view
 
 template<
-  typename Base,
   size_t Size,
+  typename Base,
   typename = std::enable_if_t<std::is_base_of_v<attribute_provider, Base>>
 > class frozen_attributes : public Base {
  public:
-  virtual const attribute* get(type_info::type_id type) const noexcept final {
-    const auto it = attrs_.find(type);
-    return it == attrs_.end() ? nullptr : it->second;
-  }
-
- protected:
-  using attributes_map = frozen::map<type_info::type_id, const attribute*, Size>;
-  using value_type = typename attributes_map::value_type;
-
-  constexpr attribute** ref(type_info::type_id type) noexcept {
-    const auto it = attrs_.find(type);
-
-    return it == attrs_.end()
-      ? nullptr
-      : const_cast<attribute**>(&it->second);
-  }
+  using attribute_mapping = frozen_attributes;
+  using attribute_map = frozen::map<type_info::type_id, const attribute*, Size>;
+  using value_type = typename attribute_map::value_type;
 
   template<typename... Args>
   constexpr explicit frozen_attributes(
@@ -656,7 +643,29 @@ template<
       attrs_(values) {
   }
 
-  attributes_map attrs_;
+  virtual const attribute* get(type_info::type_id type) const noexcept final {
+    const auto it = attrs_.find(type);
+    return it == attrs_.end() ? nullptr : it->second;
+  }
+
+ protected:
+  constexpr attribute** ref(type_info::type_id type) noexcept {
+    const auto it = attrs_.find(type);
+
+    return it == attrs_.end()
+      ? nullptr
+      : const_cast<attribute**>(&it->second);
+  }
+
+  constexpr void set(type_info::type_id type, const attribute* attr) noexcept {
+    const auto it = attrs_.find(type);
+
+    if (it != attrs_.end()) {
+      const_cast<value_type*>(it)->second = attr;
+    }
+  }
+
+  attribute_map attrs_;
 }; // frozen_token_stream
 
 NS_END

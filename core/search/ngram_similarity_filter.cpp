@@ -52,14 +52,16 @@ NS_ROOT
 ///@brief adapter for min_match_disjunction with honor of terms orderings
 //////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, score_ctx {
+class ngram_similarity_doc_iterator
+    : public frozen_attributes<5, doc_iterator>,
+      private score_ctx {
  public:
   struct position_t {
-    position_t(position* p, document* d, score* s)
+    position_t(position* p, const document* d, const score* s)
       : pos(p), doc(d), scr(s) {}
     position* pos;
-    document* doc;
-    score* scr;
+    const document* doc;
+    const score* scr;
   };
 
   using positions_t = std::vector<position_t>;
@@ -69,37 +71,47 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
     positions_t pos;
     pos.reserve(itrs.size());
     for (const auto& itr : itrs) {
-      auto& attrs = itr->attributes();
-      // get needed positions for iterators
-      auto p = attrs.template get<position>().get();
-      auto d = attrs.template get<document>().get();
-      auto s = attrs.template get<score>().get();
-      pos.emplace_back(p, d, s);
+      // FIXME const_cast
+      pos.emplace_back(const_cast<position*>(irs::get<position>(itr)),
+                       irs::get<document>(itr),
+                       irs::get<score>(itr));
     }
     return pos;
   }
 
-  ngram_similarity_doc_iterator(doc_iterators_t&& itrs,
-    const states_t& states,
-    const sub_reader& segment,
-    const term_reader& field,
-    boost_t boost,
-    const byte_type* stats,
-    size_t total_terms_count,
-    size_t min_match_count = 1,
-    const order::prepared& ord = order::prepared::unordered())
-    : pos_(extract_positions(itrs)),
+  ngram_similarity_doc_iterator(
+      doc_iterators_t&& itrs,
+      const states_t& states,
+      const sub_reader& segment,
+      const term_reader& field,
+      boost_t boost,
+      const byte_type* stats,
+      size_t total_terms_count,
+      size_t min_match_count = 1,
+      const order::prepared& ord = order::prepared::unordered())
+    : attribute_mapping{{
+        { type<document>::id(), nullptr },
+        { type<frequency>::id(), &seq_freq_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &score_ },
+        { type<filter_boost>::id(), &filter_boost_},
+      }},
+      pos_(extract_positions(itrs)),
       min_match_count_(min_match_count),
-      disjunction_(std::forward<doc_iterators_t>(itrs), min_match_count,
-      order::prepared::unordered()),// we are not interested in disjunction`s scoring
-      states_(states), total_terms_count_(total_terms_count) {
+      disjunction_(std::forward<doc_iterators_t>(itrs),
+                   min_match_count,
+                   order::prepared::unordered()), // we are not interested in disjunction`s scoring
+      states_(states),
+      total_terms_count_(total_terms_count) {
     scores_vals_.resize(pos_.size());
 
-    attrs_.emplace(seq_freq_);
-    doc_ = (attrs_.emplace<document>() = disjunction_.attributes().template get<document>()).get();
-    attrs_.emplace<filter_boost>(filter_boost_);
+    doc_ = irs::get<document>(disjunction_);
+    attribute_mapping::set(type<document>::id(), doc_);
+    assert(doc_);
 
-    prepare_score(ord, ord.prepare_scorers(segment, field, stats, attrs_, boost));
+    attribute_mapping::set(type<cost>::id(), irs::get<cost>(disjunction_));
+
+    score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
     empty_order_ = ord.empty();
   }
 
@@ -324,7 +336,9 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
     return longest_sequence_len >= min_match_count_;
   }
 
+  std::set<size_t> used_pos_; // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;
+  std::vector<size_t> pos_sequence_;
   positions_t pos_;
   frequency seq_freq_; // longest sequence frequency
   filter_boost filter_boost_;
@@ -333,11 +347,11 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
   mutable std::vector<const irs::byte_type*> scores_vals_;
   search_states_t search_buf_;
   const states_t& states_;
-  std::vector<size_t> pos_sequence_;
   size_t total_terms_count_;
   const document* doc_;
+  cost cost_;
+  score score_;
   bool empty_order_;
-  std::set<size_t> used_pos_; // longest sequence positions overlaping detector
 };
 
 //////////////////////////////////////////////////////////////////////////////

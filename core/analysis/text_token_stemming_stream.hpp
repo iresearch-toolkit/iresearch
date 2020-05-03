@@ -37,7 +37,7 @@ NS_BEGIN(analysis)
 ///        for supported languages
 ////////////////////////////////////////////////////////////////////////////////
 class text_token_stemming_stream final
-  : public frozen_attributes<analyzer, 4>,
+  : public frozen_attributes<4, analyzer>,
     private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "stem"; }

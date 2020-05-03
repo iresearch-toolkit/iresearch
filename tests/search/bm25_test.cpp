@@ -247,7 +247,7 @@ TEST_P(bm25_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
@@ -302,7 +302,7 @@ TEST_P(bm25_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
@@ -375,7 +375,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -463,7 +463,7 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -562,7 +562,7 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -652,7 +652,7 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -693,7 +693,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -733,7 +733,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -773,7 +773,7 @@ TEST_P(bm25_test, test_query) {
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
-//    auto& score = docs->attributes().get<irs::score>();
+//    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
 //    // ensure that we avoid COW for pre c++11 std::basic_string
@@ -820,7 +820,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -867,7 +867,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -909,7 +909,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -945,7 +945,7 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -1018,7 +1018,7 @@ TEST_P(bm25_test, test_query_norms) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -1066,7 +1066,7 @@ TEST_P(bm25_test, test_query_norms) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -1370,7 +1370,7 @@ TEST_P(bm25_test, test_order) {
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<iresearch::score>();
+    auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string

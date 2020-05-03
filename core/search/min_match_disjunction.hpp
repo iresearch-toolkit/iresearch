@@ -42,12 +42,14 @@ NS_ROOT
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx {
+class min_match_disjunction
+    : public frozen_attributes<3, doc_iterator>,
+      private score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
       : score_iterator_adapter<DocIterator>(std::move(it)) {
-      est = cost::extract(this->it->attributes(), cost::MAX);
+      est = cost::extract(*this->it, cost::MAX);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
@@ -73,7 +75,12 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : itrs_(std::move(itrs)),
+    : attribute_mapping{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &score_ }
+      }},
+      itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(doc_limits::invalid()),
@@ -85,19 +92,16 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
     std::sort(
       itrs_.begin(), itrs_.end(),
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-        return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0);
+        return cost::extract(lhs, 0) < cost::extract(rhs, 0);
     });
 
-    // make 'document' attribute accessible from outside
-    attrs_.emplace(doc_);
-
     // estimate disjunction
-    estimate([this](){
+    cost_.rule([this](){
       return std::accumulate(
         // estimate only first min_match_count_ subnodes
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs->attributes(), 0);
+          return lhs + cost::extract(rhs, 0);
         });
       });
 
@@ -105,8 +109,8 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
     scores_vals_.resize(itrs_.size());
-    // prepare score
-    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+
+    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<min_match_disjunction&>(
         *static_cast<const min_match_disjunction*>(ctx)
       );
@@ -439,6 +443,8 @@ class min_match_disjunction : public doc_iterator_base<doc_iterator>, score_ctx 
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   document doc_; // current doc
+  score score_;
+  cost cost_;
   order::prepared::merger merger_;
 }; // min_match_disjunction
 

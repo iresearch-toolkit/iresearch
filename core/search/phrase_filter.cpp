@@ -339,7 +339,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       }
 
       auto docs = terms->postings(features); // postings
-      auto& pos = docs->attributes().get<irs::position>(); // needed postings attributes
+
+      // FIXME const_cast
+      auto* pos = const_cast<irs::position*>(irs::get<irs::position>(*docs)); // needed postings attributes
 
       if (!pos) {
         // positions not found
@@ -361,8 +363,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       *phrase_state->reader,
       stats_.c_str(),
       ord,
-      boost()
-    );
+      boost());
   }
 }; // fixed_phrase_query
 

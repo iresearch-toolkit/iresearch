@@ -30,7 +30,9 @@
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base<doc_iterator>, util::noncopyable {
+class bitset_doc_iterator final
+  : public frozen_attributes<3, doc_iterator>,
+    private util::noncopyable {
  public:
   explicit bitset_doc_iterator(const bitset& set);
 
@@ -48,6 +50,8 @@ class bitset_doc_iterator final: public doc_iterator_base<doc_iterator>, util::n
 
  private:
   document doc_;
+  cost cost_;
+  score score_;
   const bitset::word_t* begin_;
   const bitset::word_t* end_;
   size_t size_;

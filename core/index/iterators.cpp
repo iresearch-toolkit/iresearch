@@ -30,28 +30,16 @@
 
 NS_LOCAL
 
-irs::cost empty_cost() noexcept {
-  irs::cost cost;
-  cost.value(0);
-  return cost;
-}
-
-irs::attribute_view empty_doc_iterator_attributes() {
-  static irs::cost COST = empty_cost();
-  static irs::document DOC(irs::doc_limits::eof());
-
-  irs::attribute_view attrs(2); // document+cost
-  attrs.emplace(COST);
-  attrs.emplace(DOC);
-
-  return attrs;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_doc_iterator
 /// @brief represents an iterator with no documents 
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
+  empty_doc_iterator() noexcept
+    : doc{irs::doc_limits::eof()} {
+    cost.value(0);
+  }
+
   virtual irs::doc_id_t value() const override {
     return irs::doc_limits::eof();
   }
@@ -59,10 +47,18 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();
-    return INSTANCE;
+  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+    if (irs::type<irs::document>::id() == type) {
+      return &doc;
+    }
+
+    return irs::type<irs::cost>::id() == type
+      ? &cost
+      : nullptr;
   }
+
+  irs::cost cost;
+  irs::document doc{irs::doc_limits::eof()};
 }; // empty_doc_iterator
 
 //////////////////////////////////////////////////////////////////////////////

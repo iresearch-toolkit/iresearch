@@ -40,7 +40,7 @@ struct index_reader;
 
 template<typename DocIterator>
 void fill(bitset& bs, DocIterator& it) {
-  auto* doc = it.attributes().template get<irs::document>().get();
+  auto* doc = irs::get<irs::document>(it);
 
   if (!doc) {
     return; // no doc value

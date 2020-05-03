@@ -35,7 +35,7 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 class text_token_stream final
-  : public frozen_attributes<analyzer, 3>,
+  : public frozen_attributes<3, analyzer>,
     private util::noncopyable {
  public:
   typedef std::unordered_set<std::string> stopwords_t;

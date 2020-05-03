@@ -118,7 +118,13 @@ TEST(cost_attribute_test, lazy_estimation) {
 }
 
 TEST(cost_attribute_test, extract) {
-  irs::attribute_view attrs;
+  struct basic_attribute_provider : irs::attribute_provider {
+    const irs::attribute* get(irs::type_info::type_id type) const noexcept {
+      return attrs.get(type).get();
+    }
+
+    irs::attribute_view attrs;
+  } attrs;
 
   ASSERT_EQ(
     irs::cost::cost_t(irs::cost::MAX),
@@ -128,7 +134,7 @@ TEST(cost_attribute_test, extract) {
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
-  attrs.emplace(cost);
+  attrs.attrs.emplace(cost);
   ASSERT_FALSE(bool(cost.rule()));
 
   auto est = 7;

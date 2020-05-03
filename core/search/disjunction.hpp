@@ -75,7 +75,7 @@ struct compound_doc_iterator : doc_iterator {
 /// @class unary_disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class unary_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>> {
+class unary_disjunction final : public compound_doc_iterator<Adapter> {
  public:
   typedef Adapter doc_iterator_t;
 
@@ -83,8 +83,8 @@ class unary_disjunction final : public doc_iterator_base<compound_doc_iterator<A
     : it_(std::move(it)) {
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return it_->attributes();
+  virtual const attribute* get(type_info::type_id type) const noexcept override {
+    return it_->get(type);
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -113,8 +113,11 @@ class unary_disjunction final : public doc_iterator_base<compound_doc_iterator<A
 /// @class basic_disjunction
 /// @brief use for special adapters only
 ////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
+template<typename DocIterator,
+         typename Adapter = score_iterator_adapter<DocIterator>>
+class basic_disjunction final
+    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+      private score_ctx {
  public:
   typedef Adapter doc_iterator_t;
 
@@ -124,11 +127,10 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate([this](){
+    cost_.rule([this](){
       cost::cost_t est = 0;
-      est += cost::extract(lhs_->attributes(), 0);
-      est += cost::extract(rhs_->attributes(), 0);
+      est += cost::extract(lhs_, 0);
+      est += cost::extract(rhs_, 0);
       return est;
     });
   }
@@ -140,8 +142,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       sort::MergeType merge_type,
       cost::cost_t est)
     : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate(est);
+    cost_.value(est);
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -188,19 +189,22 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       const order::prepared& ord,
       sort::MergeType merge_type,
       resolve_overload_tag)
-    : lhs_(std::move(lhs)),
+    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &score_ },
+      }},
+      lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
       merger_(ord.prepare_merger(merge_type)) {
-    // make 'document' attribute accessible from outside
-    this->attrs_.emplace(doc_);
     // prepare score
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
       scores_vals_[0] = lhs.score->c_str();
       scores_vals_[1] = rhs.score->c_str();
-      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
 
         const irs::byte_type** pVal = self.scores_vals_;
@@ -214,7 +218,7 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
       scores_vals_[0] = lhs.score->c_str();
-      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
@@ -222,14 +226,14 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       // only right sub-iterator has score
       scores_vals_[0] = rhs.score->c_str();
       assert(lhs_.score == &irs::score::no_score());
-      this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      this->prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
+      score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
     }
   }
 
@@ -266,6 +270,8 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   mutable doc_iterator_t rhs_;
   mutable const irs::byte_type* scores_vals_[2];
   document doc_;
+  score score_;
+  cost cost_;
   order::prepared::merger merger_;
 }; // basic_disjunction
 
@@ -274,7 +280,9 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
 /// @brief linear search based disjunction
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
-class small_disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
+class small_disjunction final
+    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+      private score_ctx {
  public:
   typedef Adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -285,8 +293,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       sort::MergeType merge_type,
       cost::cost_t est)
     : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate(est);
+    cost_.value(est);
   }
 
   explicit small_disjunction(
@@ -294,12 +301,11 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate([this](){
+    cost_.rule([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs->attributes(), 0);
+          return lhs + cost::extract(rhs, 0);
       });
     });
   }
@@ -402,7 +408,12 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       const order::prepared& ord,
       sort::MergeType merge_type,
       resolve_overload_tag)
-    : itrs_(std::move(itrs)),
+    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &score_ },
+      }},
+      itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
@@ -416,14 +427,12 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       }
     }
     scores_vals_.resize(scored_itrs_.size());
-    // make 'document' attribute accessible from outside
-    this->attrs_.emplace(doc_);
 
     // prepare score
     if (scored_itrs_.empty()) {
-      this->prepare_score(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
+      score_.prepare(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
     } else {
-      this->prepare_score(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
+      score_.prepare(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const small_disjunction*>(ctx);
         const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto& it : self.scored_itrs_) {
@@ -471,6 +480,8 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
   document doc_;
+  score score_;
+  cost cost_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   order::prepared::merger merger_;
 }; // small_disjunction
@@ -488,7 +499,9 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
 /// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>, bool EnableUnary = false>
-class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter>>, score_ctx {
+class disjunction final
+    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+      private score_ctx {
  public:
   typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
   typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
@@ -507,8 +520,7 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
       sort::MergeType merge_type,
       cost::cost_t est)
     : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate(est);
+    cost_.value(est);
   }
 
   explicit disjunction(
@@ -516,12 +528,11 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    // estimate disjunction
-    this->estimate([this](){
+    cost_.rule([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs->attributes(), 0);
+          return lhs + cost::extract(rhs, 0);
       });
     });
   }
@@ -601,7 +612,12 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
       const order::prepared& ord,
       sort::MergeType merge_type,
       resolve_overload_tag)
-    : itrs_(std::move(itrs)),
+    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &score_ },
+      }},
+      itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
@@ -611,16 +627,13 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
-    // make 'document' attribute accessible from outside
-    this->attrs_.emplace(doc_);
-
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
     scores_vals_.resize(itrs_.size(), nullptr);
 
     // prepare score
-    this->prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
       self.score_impl(score);
     });
@@ -727,6 +740,8 @@ class disjunction final : public doc_iterator_base<compound_doc_iterator<Adapter
   heap_container heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   document doc_;
+  score score_;
+  cost cost_;
   order::prepared::merger merger_;
 }; // disjunction
 

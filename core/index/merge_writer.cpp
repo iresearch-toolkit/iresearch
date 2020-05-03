@@ -180,7 +180,6 @@ struct compound_doc_iterator : public irs::doc_iterator {
   explicit compound_doc_iterator(
       const irs::merge_writer::flush_progress_t& progress) noexcept
     : progress(progress, PROGRESS_STEP_DOCS) {
-    attrs.emplace(attribute_change);
   }
 
   template<typename Func>
@@ -199,8 +198,10 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return !static_cast<bool>(progress);
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs;
+  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+    return irs::type<irs::attribute_provider_change>::id() == type
+      ? &attribute_change
+      : nullptr;
   }
 
   virtual bool next() override;
@@ -214,7 +215,6 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return current_id;
   }
 
-  irs::attribute_view attrs;
   irs::attribute_provider_change attribute_change;
   std::vector<doc_iterator_t> iterators;
   irs::doc_id_t current_id{ irs::doc_limits::invalid() };
@@ -243,7 +243,7 @@ bool compound_doc_iterator::next() {
     }
 
     if (notify) {
-      attribute_change(itr->attributes());
+      attribute_change(*itr);
     }
 
     while (itr->next()) {
@@ -289,8 +289,8 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return doc_it_->attrs;
+  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+    return doc_it_->get(type);
   }
 
   virtual bool next() override;
@@ -363,7 +363,7 @@ bool sorting_compound_doc_iterator::next() {
 
     if (&new_lead != lead_) {
       // update attributes
-      doc_it_->attribute_change(it->attributes());
+      doc_it_->attribute_change(*it);
       lead_ = &new_lead;
     }
 
@@ -919,16 +919,16 @@ class columnstore {
 
   // inserts live values from the specified 'iterator' into column
   bool insert(irs::doc_iterator& it) {
-    irs::payload* payload = nullptr;
+    const irs::payload* payload = nullptr;
 
-    auto& callback = it.attributes().get<irs::attribute_provider_change>();
+    auto* callback = irs::get<irs::attribute_provider_change>(it);
 
     if (callback) {
-      callback->subscribe([&payload](const irs::attribute_view& attrs) {
-        payload = attrs.get<irs::payload>().get();
+      callback->subscribe([&payload](const irs::attribute_provider& attrs) {
+        payload = irs::get<irs::payload>(attrs);
       });
     } else {
-      payload = it.attributes().get<irs::payload>().get();
+      payload = irs::get<irs::payload>(it);
     }
 
     while (it.next()) {
@@ -998,7 +998,7 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
       return false;
     }
 
-    irs::payload* payload = it->attributes().get<irs::payload>().get();
+    const irs::payload* payload = irs::get<irs::payload>(*it);
 
     if (!payload) {
       return false;

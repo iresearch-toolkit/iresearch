@@ -152,8 +152,8 @@ class format_test_case : public index_test_base {
       return value();
     }
 
-    const irs::attribute_view& attributes() const noexcept override {
-      return attrs_;
+    const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+      return attrs_.get(type).get();
     }
 
    private:

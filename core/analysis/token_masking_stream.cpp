@@ -203,7 +203,7 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
-  : frozen_attributes<analyzer, 4>{{
+  : attribute_mapping{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
       { irs::type<payload>::id(), &payload_     },

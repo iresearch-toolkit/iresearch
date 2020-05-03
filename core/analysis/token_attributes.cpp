@@ -146,7 +146,7 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
     return false;
   }
 
-  payload_ = column_it_->attributes().get<irs::payload>().get();
+  payload_ = irs::get<irs::payload>(*column_it_);
   if (!payload_) {
     return false;
   }

@@ -1065,7 +1065,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1100,7 +1100,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1138,7 +1138,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1189,7 +1189,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1447,7 +1447,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1479,7 +1479,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1894,14 +1894,14 @@ TEST_P(format_test_case, columns_rw_typed) {
           auto& it = res.first->second;
           it = column->iterator();
 
-          auto& payload = it->attributes().get<irs::payload>();
+          auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         }
 
         auto& it = res.first->second;
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
 
         it->next();
@@ -1930,7 +1930,7 @@ TEST_P(format_test_case, columns_rw_typed) {
     for (auto& entry : readers) {
       auto& it = entry.second;
       ASSERT_FALSE(it->next());
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -1968,14 +1968,14 @@ TEST_P(format_test_case, columns_rw_typed) {
 
           auto& it = res.first->second;
           it = column->iterator();
-          auto& payload = it->attributes().get<irs::payload>();
+          auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         }
 
         auto& it = res.first->second;
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
 
         ASSERT_EQ(i, it->seek(i));
@@ -2004,7 +2004,7 @@ TEST_P(format_test_case, columns_rw_typed) {
     for (auto& entry : readers) {
       auto& it = entry.second;
       ASSERT_FALSE(it->next());
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2092,7 +2092,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     // check iterator
     {
       auto it = column->iterator();
-      auto payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
         ASSERT_TRUE(it->next());
@@ -2154,7 +2154,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     // check iterator
     {
       auto it = column->iterator();
-      auto payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
         ASSERT_TRUE(it->next());
@@ -2553,7 +2553,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2586,7 +2586,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2618,7 +2618,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2654,7 +2654,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2733,7 +2733,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      ASSERT_TRUE(!it->attributes().get<irs::payload>());
+      ASSERT_TRUE(!irs::get<irs::payload>(*it));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
 
       ASSERT_FALSE(it->next());
@@ -2780,7 +2780,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2811,7 +2811,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2853,7 +2853,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2885,7 +2885,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
@@ -2933,7 +2933,7 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);

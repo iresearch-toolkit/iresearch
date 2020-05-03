@@ -72,7 +72,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
       auto docs0 = prepared->execute(*sub);
-      auto& doc = docs0->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs0);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs0->value(), doc->value);
       auto docs1 = prepared->execute(*sub);
@@ -117,11 +117,11 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
-      auto& doc = docs->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs->value(), doc->value);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       // first hit
@@ -145,7 +145,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       // first hit
@@ -268,7 +268,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -295,7 +295,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -322,7 +322,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -349,7 +349,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -376,7 +376,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -403,7 +403,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -430,7 +430,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -494,7 +494,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {

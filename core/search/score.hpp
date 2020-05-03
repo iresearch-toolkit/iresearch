@@ -40,8 +40,8 @@ class IRESEARCH_API score : public attribute {
 
   static const irs::score& no_score() noexcept;
 
-  static const irs::score& extract(const attribute_view& attrs) noexcept {
-    const irs::score* score = attrs.get<irs::score>().get();
+  static const irs::score& extract(const attribute_provider& attrs) noexcept {
+    const irs::score* score = irs::get<irs::score>(attrs);
     return score ? *score : no_score();
   }
 

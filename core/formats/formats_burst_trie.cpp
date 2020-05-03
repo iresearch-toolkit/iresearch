@@ -542,10 +542,11 @@ class block_iterator : util::noncopyable {
 /// @class term_iterator_base
 /// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator_base : public frozen_attributes<seek_term_iterator, 3> {
+class term_iterator_base
+    : public frozen_attributes<3, seek_term_iterator> {
  public:
   explicit term_iterator_base(const term_reader& owner, const payload* pay = nullptr)
-    : frozen_attributes<seek_term_iterator, 3> {{
+    : attribute_mapping {{
         { type<version10::term_meta>::id(), &state_ },
         { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
         { type<payload>::id(), pay }

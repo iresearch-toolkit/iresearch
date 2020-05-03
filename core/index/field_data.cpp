@@ -153,16 +153,16 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
 class pos_iterator final
-    : public frozen_attributes<irs::position, 2> {
+    : public frozen_attributes<2, irs::position> {
  public:
   pos_iterator()
-    : frozen_attributes<irs::position, 2>{{
+    : attribute_mapping{{
         { type<offset>::id(), nullptr },
         { type<payload>::id(), nullptr },
       }},
       prox_in_(EMPTY_POOL),
-      ppay_(frozen_attributes<position, 2>::ref(type<payload>::id())),
-      poffs_(frozen_attributes<position, 2>::ref(type<offset>::id())) {
+      ppay_(attribute_mapping::ref(type<payload>::id())),
+      poffs_(attribute_mapping::ref(type<offset>::id())) {
   }
 
   void clear() noexcept {
@@ -265,37 +265,34 @@ NS_BEGIN(detail)
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class doc_iterator : public irs::doc_iterator {
+class doc_iterator final
+  : public frozen_attributes<3, irs::doc_iterator> {
  public:
-  doc_iterator()
-    : attrs_(3), // document + frequency + position
-      freq_in_(EMPTY_POOL) {
-  }
-
-  virtual const attribute_view& attributes() const noexcept override {
-    return attrs_;
+  doc_iterator() noexcept
+   : attribute_mapping{{
+       { type<document>::id(), &doc_ },
+       { type<frequency>::id(), nullptr },
+       { type<position>::id(), nullptr },
+     }},
+     freq_in_(EMPTY_POOL),
+     pfreq_(attribute_mapping::ref(type<frequency>::id())),
+     ppos_(attribute_mapping::ref(type<position>::id())) {
   }
 
   // reset field
   void reset(const field_data& field) {
-    attrs_.clear();
-    attrs_.emplace(doc_);
-
     field_ = &field;
-    has_freq_ = false;
-    has_prox_ = false;
+    *pfreq_ = nullptr;
+    *ppos_ = nullptr;
     has_cookie_ = false;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      attrs_.emplace(freq_);
-      has_freq_ = true;
+      *pfreq_ = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-
-        attrs_.emplace(pos_); // ensure we use base class type
-        has_prox_ = true;
+        *ppos_ = &pos_;
         has_cookie_ = field.prox_random_access();
       }
     }
@@ -305,15 +302,14 @@ class doc_iterator : public irs::doc_iterator {
   void reset(
       const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
-      const byte_block_pool::sliced_reader* prox
-  ) {
+      const byte_block_pool::sliced_reader* prox) {
     doc_.value = 0;
     freq_.value = 0;
     cookie_ = 0;
     freq_in_ = freq;
     posting_ = &posting;
 
-    if (has_prox_ && prox) {
+    if (*ppos_ && prox) {
       // reset positions only once,
       // as we need iterator for sequential reads
       pos_.reset(*prox);
@@ -353,7 +349,7 @@ class doc_iterator : public irs::doc_iterator {
 
       posting_ = nullptr;
     } else {
-      if (has_freq_) {
+      if (*pfreq_) {
         uint64_t delta;
 
         if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
@@ -386,21 +382,27 @@ class doc_iterator : public irs::doc_iterator {
   document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_reader> pos_;
-  attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_{};
-  bool has_freq_{false}; // FIXME remove
-  bool has_prox_{false}; // FIXME remove
+  attribute** pfreq_{};
+  attribute** ppos_{};
   bool has_cookie_{false}; // FIXME remove
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sorting_doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sorting_doc_iterator : public irs::doc_iterator {
+class sorting_doc_iterator final
+    : public frozen_attributes<3, irs::doc_iterator> {
  public:
-  sorting_doc_iterator()
-    : attrs_(3) { // document + frequency + position
+  sorting_doc_iterator() noexcept
+   : attribute_mapping{{
+       { type<document>::id(), &doc_ },
+       { type<frequency>::id(), nullptr },
+       { type<position>::id(), nullptr },
+     }},
+     pfreq_(attribute_mapping::ref(type<frequency>::id())),
+     ppos_(attribute_mapping::ref(type<position>::id())) {
   }
 
   // reset field
@@ -408,16 +410,16 @@ class sorting_doc_iterator : public irs::doc_iterator {
     assert(field.prox_random_access());
     byte_pool_ = &field.byte_writer_->parent();
 
-    attrs_.clear();
-    attrs_.emplace(doc_);
+    *pfreq_ = nullptr;
+    *ppos_ = nullptr;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      attrs_.emplace(freq_);
+      *pfreq_ = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        attrs_.emplace(pos_); // ensure we use base class type
+        *ppos_ = &pos_;
       }
     }
   }
@@ -428,9 +430,9 @@ class sorting_doc_iterator : public irs::doc_iterator {
     const frequency no_frequency;
     const frequency* freq = &no_frequency;
 
-    const auto freq_attr = it.attributes().get<frequency>();
+    const auto* freq_attr = irs::get<frequency>(it);
     if (freq_attr) {
-      freq = freq_attr.get();
+      freq = freq_attr;
     }
 
     docs_.reserve(it.cost());
@@ -447,10 +449,6 @@ class sorting_doc_iterator : public irs::doc_iterator {
     doc_.value = irs::doc_limits::invalid();
     freq_.value = 0;
     it_ = docs_.begin();
-  }
-
-  virtual const attribute_view& attributes() const noexcept override {
-    return attrs_;
   }
 
   virtual doc_id_t seek(doc_id_t doc) noexcept override {
@@ -564,7 +562,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
   document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
-  attribute_view attrs_;
+  attribute** pfreq_{};
+  attribute** ppos_{};
 }; // sorting_doc_iterator
 
 ////////////////////////////////////////////////////////////////////////////////

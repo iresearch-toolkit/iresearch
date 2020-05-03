@@ -40,9 +40,8 @@ struct score_iterator_adapter {
 
   score_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)) {
-    auto& attrs = this->it->attributes();
-    score = &irs::score::extract(attrs);
-    doc = attrs.template get<irs::document>().get();
+    score = &irs::score::extract(*this->it);
+    doc = irs::get<irs::document>(*this->it);
     assert(doc);
   }
 
@@ -66,6 +65,10 @@ struct score_iterator_adapter {
 
   typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
+  }
+
+  const attribute* get(type_info::type_id type) const noexcept {
+    return it->get(type);
   }
 
   operator doc_iterator_t&() noexcept {
@@ -93,7 +96,8 @@ struct score_iterator_adapter {
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
+class conjunction
+    : public frozen_attributes<3, doc_iterator>, score_ctx {
  public:
   typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -103,25 +107,31 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : itrs_(std::move(itrs)),
+    : attribute_mapping{{
+        { type<document>::id(), nullptr },
+        { type<cost>::id(), nullptr },
+        { type<score>::id(), &score_ },
+      }},
+      itrs_(std::move(itrs)),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost
     std::sort(itrs_.begin(), itrs_.end(),
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-        return cost::extract(lhs->attributes(), cost::MAX) < cost::extract(rhs->attributes(), cost::MAX);
+        return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
     });
 
     // set front iterator
     front_ = itrs_.front().it.get();
     assert(front_);
-    front_doc_ = (attrs_.emplace<irs::document>()
-                    = front_->attributes().get<irs::document>()).get();
+
+    front_doc_ = irs::get<document>(*front_);
+    attribute_mapping::set(type<document>::id(), front_doc_);
     assert(front_doc_);
 
     // estimate iterator (front's cost is already cached)
-    estimate(cost::extract(front_->attributes(), cost::MAX));
+    attribute_mapping::set(type<cost>::id(), irs::get<cost>(*front_));
 
     // copy scores into separate container
     // to avoid extra checks
@@ -138,17 +148,17 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
     // prepare score
     switch (scores_.size()) {
       case 0:
-        prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
+        score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
         break;
       case 1:
-        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           self.scores_[0]->evaluate();
           self.merger_(score, &self.scores_vals_[0], 1);
         });
         break;
       case 2:
-        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           self.scores_[0]->evaluate();
           self.scores_[1]->evaluate();
@@ -156,7 +166,7 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
         });
         break;
       case 3:
-        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           self.scores_[0]->evaluate();
           self.scores_[1]->evaluate();
@@ -165,7 +175,7 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
         });
         break;
       default:
-        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
           auto& self = *static_cast<const conjunction*>(ctx);
           for (auto* it_score : self.scores_) {
             it_score->evaluate();
@@ -234,6 +244,7 @@ class conjunction : public doc_iterator_base<doc_iterator>, score_ctx {
     return target;
   }
 
+  score score_;
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
   mutable std::vector<const irs::byte_type*> scores_vals_;

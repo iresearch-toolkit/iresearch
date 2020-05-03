@@ -156,20 +156,21 @@ class same_position_query final : public filter::prepared {
 
       // get postings
       auto docs = term->postings(features);
-      auto& attrs = docs->attributes();
 
+      //FIXME const_cast
       // get needed postings attributes
-      auto& pos = attrs.get<position>();
+      auto* pos = const_cast<irs::position*>(irs::get<position>(*docs));
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
       positions.emplace_back(std::ref(*pos));
 
+      // FIXME const_cast
       // set score
-      auto& score = attrs.get<irs::score>();
-      if (score) {
-        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), attrs, boost()));
+      auto* score = const_cast<irs::score*>(irs::get<irs::score>(*docs));
+      if (score) { // FIXME score != score::no_score()
+        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), *docs, boost()));
       }
 
       // add iterator

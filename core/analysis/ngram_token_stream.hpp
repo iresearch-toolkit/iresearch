@@ -36,7 +36,7 @@ NS_BEGIN(analysis)
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream_base
-  : public frozen_attributes<analyzer, 3>,
+  : public frozen_attributes<3, analyzer>,
     private util::noncopyable {
  public:
    enum class InputType {

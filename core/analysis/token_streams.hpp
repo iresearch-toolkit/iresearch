@@ -34,7 +34,7 @@ NS_ROOT
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API boolean_token_stream final
-    : public frozen_attributes<token_stream, 2>,
+    : public frozen_attributes<2, token_stream>,
       private util::noncopyable {
  public:
   static constexpr string_ref value_true() noexcept {
@@ -72,7 +72,7 @@ class IRESEARCH_API boolean_token_stream final
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API string_token_stream final
-    : public frozen_attributes<token_stream, 3>,
+    : public frozen_attributes<3, token_stream>,
       private util::noncopyable {
  public:
   string_token_stream() noexcept;
@@ -110,7 +110,7 @@ const uint32_t PRECISION_STEP_32 = 8;
 ///        term
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API numeric_token_stream final
-    : public frozen_attributes<token_stream, 2>,
+    : public frozen_attributes<2, token_stream>,
       private util::noncopyable { // attrs_ non-copyable
  public:
   numeric_token_stream();
@@ -240,7 +240,7 @@ class IRESEARCH_API numeric_token_stream final
 /// @brief token_stream implementation for null field, a single null term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API null_token_stream final
-    : public frozen_attributes<token_stream, 2>,
+    : public frozen_attributes<2, token_stream>,
       private util::noncopyable {
  public:
   static constexpr string_ref value_null() noexcept {

@@ -35,7 +35,7 @@ NS_BEGIN(analysis)
 ///        token, i.e. case conversion and accent removal
 ////////////////////////////////////////////////////////////////////////////////
 class text_token_normalizing_stream
-  : public frozen_attributes<analyzer, 4>,
+  : public frozen_attributes<4, analyzer>,
     util::noncopyable {
  public:
   struct options_t {

@@ -43,8 +43,7 @@ class all_query: public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& order,
-      const attribute_view& /*ctx*/
-  ) const override {
+      const attribute_view& /*ctx*/) const override {
     return doc_iterator::make<all_iterator>(
       rdr, stats_.c_str(), order, rdr.docs_count(), boost()
     );
@@ -64,8 +63,7 @@ filter::prepared::ptr all::prepare(
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& /*ctx*/
-) const {
+    const attribute_view& /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match

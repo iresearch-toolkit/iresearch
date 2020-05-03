@@ -67,9 +67,8 @@ struct aligned_scorer : public irs::sort {
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::byte_type* stats,
-        const irs::attribute_view& doc_attrs,
-        irs::boost_t boost
-    ) const override {
+        const irs::attribute_provider& doc_attrs,
+        irs::boost_t boost) const override {
       return { nullptr, nullptr };
     }
     virtual const irs::flags& features() const override {

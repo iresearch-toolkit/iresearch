@@ -65,13 +65,18 @@ doc_iterator::ptr term_query::execute(
   }
 
   auto docs = terms->postings(ord.features());
-  auto& attrs = docs->attributes();
+  assert(docs);
 
+  // FIXME check if empty score
+  // FIXME const cast
   // set score
-  auto& score = attrs.get<irs::score>();
+  auto* score = const_cast<irs::score*>(irs::get<irs::score>(*docs));
 
   if (score) {
-    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
+    score->prepare(
+      ord,
+      ord.prepare_scorers(rdr, *state->reader,
+                          stats_.c_str(), *docs, boost()));
   }
 
   return docs;

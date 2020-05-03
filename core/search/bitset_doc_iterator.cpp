@@ -28,19 +28,23 @@
 NS_ROOT
 
 bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
-  : begin_(set.begin()),
+  : attribute_mapping{{
+      { type<document>::id(), &doc_ },
+      { type<cost>::id(), &cost_},
+      { type<score>::id(), nullptr },
+    }},
+    begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
   auto docs_count = set.count();
 
   // make doc_id accessible via attribute
-  attrs_.emplace(doc_);
   doc_.value = docs_count
     ? doc_limits::invalid()
     : doc_limits::eof(); // seal iterator
 
   // set estimation value
-  estimate(docs_count);
+  cost_.value(docs_count);
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
@@ -50,13 +54,16 @@ bitset_doc_iterator::bitset_doc_iterator(
       const order::prepared& order,
       boost_t boost)
   : bitset_doc_iterator(set) {
-  prepare_score(order, order.prepare_scorers(
+
+  // FIXME make score accessible from outstide
+
+  // set score
+  score_.prepare(order, order.prepare_scorers(
     reader,
     empty_term_reader(cost_.estimate()),
     stats,
-    attributes(), // doc_iterator attributes
-    boost
-  ));
+    *this, // doc_iterator attributes
+    boost));
 }
 
 bool bitset_doc_iterator::next() noexcept {

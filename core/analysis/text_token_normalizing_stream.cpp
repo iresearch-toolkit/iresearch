@@ -326,7 +326,7 @@ NS_BEGIN(analysis)
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
-  : frozen_attributes<analyzer, 4>{{
+  : attribute_mapping{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
       { irs::type<payload>::id(), &payload_     },

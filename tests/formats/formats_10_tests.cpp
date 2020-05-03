@@ -52,8 +52,9 @@ class format_10_test_case : public tests::format_test_case {
   };
 
   void assert_positions(const irs::doc_iterator& expected, const irs::doc_iterator& actual) {
-    auto& expected_pos = expected.attributes().get<irs::position>();
-    auto& actual_pos = actual.attributes().get<irs::position>();
+    // FIXME const_cast
+    auto* expected_pos = const_cast<irs::position*>(irs::get<irs::position>(expected));
+    auto* actual_pos = const_cast<irs::position*>(irs::get<irs::position>(actual));
     ASSERT_EQ(!expected_pos, !actual_pos);
 
     if (!expected_pos) {

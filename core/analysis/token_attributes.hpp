@@ -178,10 +178,11 @@ class IRESEARCH_API position
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "position"; }
 
-  static irs::position* empty() noexcept;
+  static position* empty() noexcept;
 
-  static irs::position* extract(const attribute_view& attrs) noexcept {
-    return attrs.get<irs::position>().get();
+  static position* extract(const attribute_provider& attrs) noexcept {
+    // FIXME remove const_cast
+    return const_cast<position*>(irs::get<irs::position>(attrs));
   }
 
   value_t seek(value_t target) {
@@ -205,9 +206,9 @@ class IRESEARCH_API position
 /// @class attribute_provider_change
 /// @brief subscription for attribute provider change
 //////////////////////////////////////////////////////////////////////////////
-class attribute_provider_change final : public irs::attribute {
+class attribute_provider_change final : public attribute {
  public:
-  using callback_f = std::function<void(const irs::attribute_view&)>;
+  using callback_f = std::function<void(const attribute_provider&)>;
 
   static constexpr string_ref type_name() noexcept {
     return "attribute_provider_change";
@@ -221,13 +222,13 @@ class attribute_provider_change final : public irs::attribute {
     }
   }
 
-  void operator()(const irs::attribute_view& attrs) const {
+  void operator()(const attribute_provider& attrs) const {
     assert(callback_);
     callback_(attrs);
   }
 
  private:
-  static void noop(const irs::attribute_view&) noexcept { }
+  static void noop(const attribute_provider&) noexcept { }
 
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change

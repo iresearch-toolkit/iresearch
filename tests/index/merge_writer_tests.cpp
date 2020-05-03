@@ -44,17 +44,16 @@ namespace tests {
 
   template<typename T>
   void validate_terms(
-    const irs::sub_reader& segment,
-    const irs::term_reader& terms,
-    uint64_t doc_count,
-    const irs::bytes_ref& min,
-    const irs::bytes_ref& max,
-    size_t term_size,
-    const irs::flags& term_features,
-    std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
-    size_t* frequency = nullptr,
-    std::vector<uint32_t>* position = nullptr
-  ) {
+      const irs::sub_reader& segment,
+      const irs::term_reader& terms,
+      uint64_t doc_count,
+      const irs::bytes_ref& min,
+      const irs::bytes_ref& max,
+      size_t term_size,
+      const irs::flags& term_features,
+      std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
+      size_t* frequency = nullptr,
+      std::vector<uint32_t>* position = nullptr) {
     ASSERT_EQ(doc_count, terms.docs_count());
     ASSERT_EQ((max), (terms.max)());
     ASSERT_EQ((min), (terms.min)());
@@ -67,26 +66,27 @@ namespace tests {
       ASSERT_NE(expected_terms.end(), itr);
 
       for (auto docs_itr = segment.mask(term_itr->postings(term_features)); docs_itr->next();) {
-        auto& attrs = docs_itr->attributes();
-
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        ASSERT_EQ(3 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
-        ASSERT_TRUE(attrs.contains(irs::type<irs::document>::id()));
+        // FIXME
+        //ASSERT_EQ(3 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
+        ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
 
         if (frequency) {
-          ASSERT_TRUE(attrs.contains(irs::type<irs::frequency>::id()));
-          ASSERT_EQ(*frequency, attrs.get<irs::frequency>()->value);
+          ASSERT_TRUE(docs_itr->get(irs::type<irs::frequency>::id()));
+          ASSERT_EQ(*frequency, irs::get<irs::frequency>(*docs_itr)->value);
         }
 
         if (position) {
-          ASSERT_TRUE(attrs.contains(irs::type<irs::position>::id()));
+          //FIXME const_cast
+          auto* docs_itr_pos = const_cast<irs::position*>(irs::get<irs::position>(*docs_itr));
+          ASSERT_TRUE(docs_itr_pos);
 
           for (auto pos: *position) {
-            ASSERT_TRUE(attrs.get<irs::position>()->next());
-            ASSERT_EQ(pos, attrs.get<irs::position>()->value());
+            ASSERT_TRUE(docs_itr_pos->next());
+            ASSERT_EQ(pos, docs_itr_pos->value());
           }
 
-          ASSERT_FALSE(attrs.get<irs::position>()->next());
+          ASSERT_FALSE(docs_itr_pos->next());
         }
       }
 

@@ -208,7 +208,7 @@ TEST(sorted_column_test, insert_duplicates) {
     ASSERT_NE(nullptr, column);
 
     auto it = column->iterator();
-    auto& payload = it->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(payload);
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
@@ -330,7 +330,7 @@ TEST(sorted_column_test, sort) {
     ASSERT_NE(nullptr, column);
 
     auto it = column->iterator();
-    auto& payload = it->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(payload);
 
     auto begin = sorted_values.begin();

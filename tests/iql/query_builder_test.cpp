@@ -65,9 +65,8 @@ namespace tests {
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
           const irs::byte_type* query_attrs,
-          const irs::attribute_view& doc_attrs,
-          irs::boost_t
-      ) const override {
+          const irs::attribute_provider& doc_attrs,
+          irs::boost_t) const override {
         return { nullptr, nullptr };
       }
       virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

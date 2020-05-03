@@ -29,7 +29,8 @@
 
 NS_LOCAL
 
-class column_existence_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
+class column_existence_iterator final
+    : public irs::frozen_attributes<4, irs::doc_iterator> {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
@@ -38,27 +39,25 @@ class column_existence_iterator final : public irs::doc_iterator_base<irs::doc_i
       const irs::order::prepared& ord,
       uint64_t docs_count,
       irs::boost_t boost)
-    : it_(std::move(it)) {
+    : attribute_mapping{{
+        { irs::type<irs::document>::id(), doc_ = irs::get<irs::document>(*it) },
+        { irs::type<irs::cost>::id(), nullptr },
+        { irs::type<irs::score>::id(), &score_ },
+        { irs::type<irs::payload>::id(), irs::get<irs::payload>(*it) },
+      }},
+      it_(std::move(it)) {
     assert(it_);
-
-    // make doc_id accessible via attribute
-    doc_ = (attrs_.emplace<irs::document>()
-              = it_->attributes().get<irs::document>()).get();
     assert(doc_);
 
-    // make doc_payload accessible via attribute
-    attrs_.emplace<irs::payload>() =
-      it_->attributes().get<irs::payload>();
-
     // set estimation value
-    estimate(docs_count);
+    cost_.value(docs_count);
 
     // set scorers
-    prepare_score(ord, ord.prepare_scorers(
+    score_.prepare(ord, ord.prepare_scorers(
       reader,
       irs::empty_term_reader(docs_count),
       stats,
-      attributes(), // doc_iterator attributes
+      *this, // doc_iterator attributes
       boost
     ));
   }
@@ -79,6 +78,8 @@ class column_existence_iterator final : public irs::doc_iterator_base<irs::doc_i
 
  private:
   const irs::document* doc_{};
+  irs::cost cost_;
+  irs::score score_;
   irs::doc_iterator::ptr it_;
 }; // column_existence_iterator
 
@@ -96,8 +97,7 @@ class column_existence_query final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
-      const irs::attribute_view& /*ctx*/
-  ) const override {
+      const irs::attribute_view& /*ctx*/) const override {
     const auto* column = rdr.column_reader(field_);
 
     if (!column) {
@@ -110,8 +110,7 @@ class column_existence_query final : public irs::filter::prepared {
       column->iterator(),
       ord,
       column->size(),
-      boost()
-    );
+      boost());
   }
 
  private:
@@ -133,8 +132,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
-      const irs::attribute_view& /*ctx*/
-  ) const override {
+      const irs::attribute_view& /*ctx*/) const override {
     auto it = rdr.columns();
 
     if (!it->seek(prefix_)) {
@@ -158,8 +156,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
         column->iterator(),
         ord,
         column->size(),
-        boost()
-      );
+        boost());
 
       itrs.emplace_back(std::move(column_it));
 
@@ -190,8 +187,7 @@ filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& /*ctx*/
-) const {
+    const attribute_view& /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match

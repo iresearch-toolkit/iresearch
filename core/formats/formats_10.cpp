@@ -858,14 +858,15 @@ class postings_writer final: public postings_writer_base {
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
 
  private:
-  void refresh(const attribute_view& attrs) noexcept {
+  void refresh(const attribute_provider& attrs) noexcept {
     pos_ = position::empty();
     offs_ = nullptr;
     pay_ = nullptr;
 
-    freq_ = attrs.get<frequency>().get();
+    freq_ = irs::get<frequency>(attrs);
     if (freq_) {
-      pos_ = attrs.get<position>().get();
+      // FIXME
+      pos_ = const_cast<position*>(irs::get<position>(attrs));
       if (pos_) {
         offs_ = irs::get<irs::offset>(*pos_);
         pay_ = irs::get<irs::payload>(*pos_);
@@ -891,14 +892,14 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
   REGISTER_TIMER_DETAILED();
 
   if constexpr (VolatileAttributes) {
-    auto* subscription = docs.attributes().get<attribute_provider_change>().get();
+    auto* subscription = irs::get<attribute_provider_change>(docs);
     assert(subscription);
 
-    subscription->subscribe([this](const attribute_view& attrs) {
+    subscription->subscribe([this](const attribute_provider& attrs) {
       refresh(attrs);
     });
   } else {
-    refresh(docs.attributes());
+    refresh(docs);
   }
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
@@ -976,11 +977,6 @@ template<typename IteratorTraits>
 struct position_impl<IteratorTraits, true, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
-
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(offs_);
-    attrs.emplace(pay_);
-  }
 
   const irs::attribute* attribute(type_info::type_id type) const noexcept {
     if (irs::type<payload>::id() == type) {
@@ -1567,12 +1563,20 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
+class doc_iterator final
+    : public frozen_attributes<5, irs::doc_iterator> {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() noexcept
-    : skip_levels_(1),
+    : attribute_mapping{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_ },
+        { type<score>::id(), &scr_ },
+        { type<frequency>::id(), IteratorTraits::frequency() ? &freq_ : nullptr },
+        { type<irs::position>::id(), IteratorTraits::position() ? &pos_ : nullptr  },
+      }},
+      skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
@@ -1594,7 +1598,6 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     assert(!IteratorTraits::payload() || IteratorTraits::payload() == features_.payload());
 
     // add mandatory attributes
-    attrs_.emplace(doc_);
     begin_ = end_ = docs_;
 
     // get state attribute
@@ -1624,12 +1627,10 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
       assert(!doc_in_->eof());
     }
 
-    estimate(term_state_.docs_count); // estimate iterator
-    attrs_.emplace(scr_); // make score accessible from outside
+    cost_.value(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
       assert(irs::get<frequency>(attrs));
-      attrs_.emplace(freq_);
       term_freq_ = irs::get<frequency>(attrs)->value;
 
       if constexpr (IteratorTraits::position()) {
@@ -1651,7 +1652,6 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
         pos_.prepare(state);
-        attrs_.emplace(pos_); // ensure we use base class type
       }
     }
 
@@ -1848,6 +1848,8 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     doc_freq_ = doc_freqs_;
   }
 
+  irs::cost cost_;
+  irs::score scr_;
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
@@ -4373,18 +4375,20 @@ class column_iterator final: public irs::doc_iterator {
   explicit column_iterator(
       const column_t& column,
       const typename column_t::block_ref* begin,
-      const typename column_t::block_ref* end
-  ): attrs_(2), // document+payload
-     begin_(begin),
-     seek_origin_(begin),
-     end_(end),
-     column_(&column) {
-    attrs_.emplace(doc_);
-    attrs_.emplace(payload_);
+      const typename column_t::block_ref* end)
+    : begin_(begin),
+      seek_origin_(begin),
+      end_(end),
+      column_(&column) {
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
+  virtual const irs::attribute* get(
+      irs::type_info::type_id type) const noexcept override {
+    if (irs::type<payload>::id() == type) {
+      return &payload_;
+    }
+
+    return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -4454,7 +4458,6 @@ class column_iterator final: public irs::doc_iterator {
     return true;
   }
 
-  irs::attribute_view attrs_;
   block_iterator_t block_;
   irs::payload payload_;
   irs::document doc_;
@@ -4925,17 +4928,15 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final: public irs::doc_iterator {
+  class column_iterator final : public irs::doc_iterator {
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : attrs_(1), // document
-        min_(1 + column.min_),
+      : min_(1 + column.min_),
         max_(column.max()) {
-      attrs_.emplace(value_);
     }
 
-    virtual const irs::attribute_view& attributes() const noexcept override {
-      return attrs_;
+    virtual const irs::attribute* get(type_info::type_id type) const noexcept override {
+      return irs::type<document>::id() == type ? &value_ : nullptr;
     }
 
     virtual irs::doc_id_t value() const noexcept override {
@@ -4971,7 +4972,6 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
    private:
-    attribute_view attrs_;
     document value_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };

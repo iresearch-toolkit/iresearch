@@ -67,8 +67,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override final;
+    const attribute_view& ctx) const override final;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
@@ -87,8 +86,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const = 0;
+    const attribute_view& ctx) const = 0;
 
  private:
   void group_filters(
@@ -129,8 +127,7 @@ class IRESEARCH_API And: public boolean_filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 }; // And
 
 //////////////////////////////////////////////////////////////////////////////
@@ -165,8 +162,7 @@ class IRESEARCH_API Or : public boolean_filter {
   virtual void remove_excess(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    boost_t& boost
-  ) const override;
+    boost_t& boost) const override;
 
   virtual filter::prepared::ptr prepare(
     const std::vector<const filter*>& incl,
@@ -174,8 +170,7 @@ class IRESEARCH_API Or : public boolean_filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 
  private:
   size_t min_match_count_;
@@ -226,8 +221,7 @@ class IRESEARCH_API Not: public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 
   virtual size_t hash() const noexcept override;
 

@@ -35,7 +35,7 @@ NS_BEGIN(analysis)
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
 class token_masking_stream
-  : public frozen_attributes<analyzer, 4>,
+  : public frozen_attributes<4, analyzer>,
     util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "mask"; }

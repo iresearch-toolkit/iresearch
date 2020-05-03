@@ -169,7 +169,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -234,7 +234,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
@@ -353,7 +353,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         auto sorted_column_it = sorted_column.iterator();
         ASSERT_NE(nullptr, sorted_column_it);
 
-        auto& payload = sorted_column_it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*sorted_column_it);
         ASSERT_TRUE(payload);
 
         auto expected_doc = irs::doc_limits::min();
@@ -418,7 +418,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         auto column_it = column->iterator();
         ASSERT_NE(nullptr, column_it);
 
-        auto& payload = column_it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*column_it);
         ASSERT_TRUE(payload);
 
         irs::doc_id_t doc = 0;
@@ -506,7 +506,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -571,7 +571,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
@@ -665,7 +665,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -730,7 +730,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;

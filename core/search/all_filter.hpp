@@ -47,8 +47,7 @@ class IRESEARCH_API all: public filter {
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 }; // all
 
 NS_END // ROOT

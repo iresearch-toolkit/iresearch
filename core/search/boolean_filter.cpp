@@ -217,8 +217,7 @@ protected:
     const order::prepared& ord,
     const attribute_view& ctx,
     iterator begin,
-    iterator end
-  ) const = 0;
+    iterator end) const = 0;
 
  private:
   // 0..excl_-1 - included queries
