@@ -110,7 +110,7 @@ class conjunction
       assert(!this->itrs.empty());
 
       // sort subnodes in ascending order by their cost
-      std::sort(itrs.begin(), itrs.end(),
+      std::sort(this->itrs.begin(), this->itrs.end(),
         [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
           return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
       });

@@ -103,8 +103,6 @@ class ngram_similarity_doc_iterator
                    order::prepared::unordered()), // we are not interested in disjunction`s scoring
       states_(states),
       total_terms_count_(total_terms_count) {
-    scores_vals_.resize(pos_.size());
-
     doc_ = irs::get<document>(disjunction_);
     attributes::set(type<document>::id(), doc_);
     assert(doc_);
@@ -346,7 +344,6 @@ class ngram_similarity_doc_iterator
   filter_boost filter_boost_;
   size_t min_match_count_;
   min_match_disjunction<DocIterator> disjunction_;
-  mutable std::vector<const irs::byte_type*> scores_vals_;
   search_states_t search_buf_;
   const states_t& states_;
   size_t total_terms_count_;
