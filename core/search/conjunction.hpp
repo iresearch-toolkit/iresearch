@@ -110,7 +110,7 @@ class conjunction
     : attribute_mapping{{
         { type<document>::id(), nullptr },
         { type<cost>::id(), nullptr },
-        { type<score>::id(), &score_ },
+        { type<score>::id(), ord.empty() ? nullptr : &score_ },
       }},
       itrs_(std::move(itrs)),
       merger_(ord.prepare_merger(merge_type)) {

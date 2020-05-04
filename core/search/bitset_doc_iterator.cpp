@@ -27,11 +27,12 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
+                                         const order::prepared& order)
   : attribute_mapping{{
       { type<document>::id(), &doc_ },
-      { type<cost>::id(), &cost_},
-      { type<score>::id(), nullptr },
+      { type<cost>::id(), &cost_    },
+      { type<score>::id(), order.empty() ? nullptr : &score_ },
     }},
     begin_(set.begin()),
     end_(set.end()),
@@ -53,17 +54,16 @@ bitset_doc_iterator::bitset_doc_iterator(
       const bitset& set,
       const order::prepared& order,
       boost_t boost)
-  : bitset_doc_iterator(set) {
-
-  // FIXME make score accessible from outstide
-
+  : bitset_doc_iterator(set, order) {
   // set score
-  score_.prepare(order, order.prepare_scorers(
-    reader,
-    empty_term_reader(cost_.estimate()),
-    stats,
-    *this, // doc_iterator attributes
-    boost));
+  if (!order.empty()) {
+    score_.prepare(order, order.prepare_scorers(
+      reader,
+      empty_term_reader(cost_.estimate()),
+      stats,
+      *this, // doc_iterator attributes
+      boost));
+  }
 }
 
 bool bitset_doc_iterator::next() noexcept {
@@ -82,7 +82,6 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   }
 
   auto word = ((*pword) >> bitset::bit(target));
-
   typedef decltype(word) word_t;
 
   if (word) {

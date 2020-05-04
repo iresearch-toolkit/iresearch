@@ -48,7 +48,7 @@ class format_test_case : public index_test_base {
 
   class position final : public irs::position {
    public:
-    position(const irs::flags& features) {
+    explicit position(const irs::flags& features) {
       if (features.check<irs::offset>()) {
         poffs_ = &offs_;
       }
@@ -115,9 +115,9 @@ class format_test_case : public index_test_base {
     postings(
         const docs_t::const_iterator& begin,
         const docs_t::const_iterator& end,
-        const irs::flags& features = irs::flags::empty_instance()
-    )
+        const irs::flags& features = irs::flags::empty_instance())
       : next_(begin), end_(end), pos_(features) {
+      attrs_.emplace(callback_);
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
         attrs_.emplace(freq_);
@@ -129,8 +129,12 @@ class format_test_case : public index_test_base {
     }
 
     bool next() override {
+      if (!irs::doc_limits::valid(doc_)) {
+        callback_(*this);
+      }
+
       if (next_ == end_) {
-        doc_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+        doc_ = irs::doc_limits::eof();
         return false;
       }
 
@@ -161,6 +165,7 @@ class format_test_case : public index_test_base {
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
     irs::frequency freq_;
+    irs::attribute_provider_change callback_;
     tests::format_test_case::position pos_;
     irs::doc_id_t doc_{ irs::doc_limits::invalid() };
   }; // postings 
@@ -175,8 +180,7 @@ class format_test_case : public index_test_base {
 
     terms(const Iterator& begin, const Iterator& end,
         std::vector<irs::doc_id_t>::const_iterator doc_begin,
-        std::vector<irs::doc_id_t>::const_iterator doc_end
-    )
+        std::vector<irs::doc_id_t>::const_iterator doc_end)
       : docs_(doc_begin, doc_end), next_(begin), end_(end) {
     }
 
@@ -194,10 +198,9 @@ class format_test_case : public index_test_base {
       return val_;
     }
 
-    irs::doc_iterator::ptr postings(const irs::flags& features) const {
+    irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const {
       return irs::doc_iterator::make<format_test_case::postings>(
-        docs_.begin(), docs_.end()
-      );
+        docs_.begin(), docs_.end());
     }
 
     void read() { }
@@ -214,10 +217,9 @@ class format_test_case : public index_test_base {
   }; // terms
 
   void assert_no_directory_artifacts(
-    const iresearch::directory& dir,
-    const iresearch::format& codec,
-    const std::unordered_set<std::string>& expect_additional = std::unordered_set<std::string> ()
-  ) {
+      const iresearch::directory& dir,
+      const iresearch::format& codec,
+      const std::unordered_set<std::string>& expect_additional = {}) {
     std::vector<std::string> dir_files;
     auto visitor = [&dir_files] (std::string& file) {
       // ignore lock file present in fs_directory

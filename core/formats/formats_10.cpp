@@ -866,8 +866,9 @@ class postings_writer final: public postings_writer_base {
     freq_ = irs::get<frequency>(attrs);
     if (freq_) {
       // FIXME
-      pos_ = const_cast<position*>(irs::get<position>(attrs));
-      if (pos_) {
+      auto* pos = const_cast<position*>(irs::get<position>(attrs));
+      if (pos) {
+        pos_ = pos;
         offs_ = irs::get<irs::offset>(*pos_);
         pay_ = irs::get<irs::payload>(*pos_);
       }

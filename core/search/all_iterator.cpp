@@ -33,9 +33,9 @@ all_iterator::all_iterator(
     uint64_t docs_count,
     boost_t boost)
   : attribute_mapping{{
-      { type<document>::id(), &doc_ },
-      { type<cost>::id(), &cost_    },
-      { type<score>::id(), &score_  },
+      { type<document>::id(), &doc_   },
+      { type<cost>::id(),     &cost_  },
+      { type<score>::id(), order.empty() ? nullptr : &score_ },
     }},
     max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
 
@@ -43,11 +43,13 @@ all_iterator::all_iterator(
   cost_.value(max_doc_);
 
   // set score
-  score_.prepare(
-    order,
-    order.prepare_scorers(reader, irs::empty_term_reader(docs_count),
-                          query_stats, *this, boost)
-  );
+  if (!order.empty()) {
+    score_.prepare(
+      order,
+      order.prepare_scorers(reader, irs::empty_term_reader(docs_count),
+                            query_stats, *this, boost)
+    );
+  }
 }
 
 NS_END // ROOT

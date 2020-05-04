@@ -108,7 +108,7 @@ class fixed_phrase_frequency {
 struct variadic_phrase_adapter: score_iterator_adapter<doc_iterator::ptr> {
   variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
     : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
-      position(irs::position::extract(*it)),
+      position(irs::position::extract(*this->it)),
       boost(boost) {
   }
 
@@ -440,12 +440,12 @@ class phrase_iterator final : public doc_iterator {
       const order::prepared& ord,
       boost_t boost)
     : approx_(std::move(itrs)),
-      doc_(irs::get<document>(approx_)),
       freq_(std::move(pos), ord),
+      doc_(irs::get<document>(approx_)),
       attrs_{{
         { type<document>::id(), doc_ },
         { type<cost>::id(), &cost_},
-        { type<score>::id(), &score_ },
+        { type<score>::id(), ord.empty() ? nullptr : &score_ },
         { type<frequency>::id(), freq_.freq() },
         { type<filter_boost>::id(), freq_.boost() },
       }} {
@@ -455,7 +455,9 @@ class phrase_iterator final : public doc_iterator {
     // estimate iterator
     cost_.rule([this](){ return cost::extract(approx_); });
 
-    score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
+    if (!ord.empty()) {
+      score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
+    }
   }
 
   virtual const attribute* get(type_info::type_id type) const noexcept {

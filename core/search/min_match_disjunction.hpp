@@ -78,7 +78,7 @@ class min_match_disjunction
     : attribute_mapping{{
         { type<document>::id(), &doc_ },
         { type<cost>::id(), &cost_ },
-        { type<score>::id(), &score_ }
+        { type<score>::id(), ord.empty() ? nullptr : &score_ }
       }},
       itrs_(std::move(itrs)),
       min_match_count_(
@@ -108,14 +108,16 @@ class min_match_disjunction
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
-    scores_vals_.resize(itrs_.size());
 
-    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-      auto& self = const_cast<min_match_disjunction&>(
-        *static_cast<const min_match_disjunction*>(ctx)
-      );
-      self.score_impl(score);
-    });
+    if (!ord.empty()) {
+      scores_vals_.resize(itrs_.size());
+      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        auto& self = const_cast<min_match_disjunction&>(
+          *static_cast<const min_match_disjunction*>(ctx)
+        );
+        self.score_impl(score);
+      });
+    }
   }
 
   virtual doc_id_t value() const override {

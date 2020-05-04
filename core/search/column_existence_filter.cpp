@@ -40,26 +40,29 @@ class column_existence_iterator final
       uint64_t docs_count,
       irs::boost_t boost)
     : attribute_mapping{{
-        { irs::type<irs::document>::id(), doc_ = irs::get<irs::document>(*it) },
-        { irs::type<irs::cost>::id(), nullptr },
-        { irs::type<irs::score>::id(), &score_ },
+        { irs::type<irs::document>::id(), irs::get<irs::document>(*it) },
+        { irs::type<irs::cost>::id(), &cost_ },
+        { irs::type<irs::score>::id(), ord.empty() ? nullptr : &score_ },
         { irs::type<irs::payload>::id(), irs::get<irs::payload>(*it) },
       }},
       it_(std::move(it)) {
     assert(it_);
+    doc_ = irs::get<irs::document>(*it_);
     assert(doc_);
 
     // set estimation value
     cost_.value(docs_count);
 
     // set scorers
-    score_.prepare(ord, ord.prepare_scorers(
-      reader,
-      irs::empty_term_reader(docs_count),
-      stats,
-      *this, // doc_iterator attributes
-      boost
-    ));
+    if (!ord.empty()) {
+      score_.prepare(ord, ord.prepare_scorers(
+        reader,
+        irs::empty_term_reader(docs_count),
+        stats,
+        *this, // doc_iterator attributes
+        boost
+      ));
+    }
   }
 
   virtual bool next() override {

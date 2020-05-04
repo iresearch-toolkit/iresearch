@@ -192,7 +192,7 @@ class basic_disjunction final
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_ },
         { type<cost>::id(), &cost_ },
-        { type<score>::id(), &score_ },
+        { type<score>::id(), ord.empty() ? nullptr : &score_ },
       }},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
@@ -411,7 +411,7 @@ class small_disjunction final
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_ },
         { type<cost>::id(), &cost_ },
-        { type<score>::id(), &score_ },
+        { type<score>::id(), ord.empty() ? nullptr : &score_ },
       }},
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
@@ -426,12 +426,12 @@ class small_disjunction final
         scored_itrs_.emplace_back(it);
       }
     }
-    scores_vals_.resize(scored_itrs_.size());
 
     // prepare score
     if (scored_itrs_.empty()) {
       score_.prepare(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
     } else {
+      scores_vals_.resize(scored_itrs_.size());
       score_.prepare(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const small_disjunction*>(ctx);
         const irs::byte_type** pVal = self.scores_vals_.data();
@@ -615,7 +615,7 @@ class disjunction final
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_ },
         { type<cost>::id(), &cost_ },
-        { type<score>::id(), &score_ },
+        { type<score>::id(), ord.empty() ? nullptr : &score_ },
       }},
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
@@ -630,13 +630,15 @@ class disjunction final
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
-    scores_vals_.resize(itrs_.size(), nullptr);
 
     // prepare score
-    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-      auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
-      self.score_impl(score);
-    });
+    if (!ord.empty()) {
+      scores_vals_.resize(itrs_.size(), nullptr);
+      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
+        self.score_impl(score);
+      });
+    }
   }
 
   template<typename Iterator>

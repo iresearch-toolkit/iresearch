@@ -111,8 +111,10 @@ class ngram_similarity_doc_iterator
 
     attribute_mapping::set(type<cost>::id(), irs::get<cost>(disjunction_));
 
-    score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
     empty_order_ = ord.empty();
+    if (!empty_order_) {
+      score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
+    }
   }
 
   virtual bool next() override {
