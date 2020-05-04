@@ -443,11 +443,11 @@ class phrase_iterator final : public doc_iterator {
       freq_(std::move(pos), ord),
       doc_(irs::get<document>(approx_)),
       attrs_{{
-        { type<document>::id(), doc_ },
-        { type<cost>::id(), &cost_},
+        { type<document>::id(), doc_                         },
+        { type<cost>::id(), &cost_                           },
         { type<score>::id(), ord.empty() ? nullptr : &score_ },
-        { type<frequency>::id(), freq_.freq() },
-        { type<filter_boost>::id(), freq_.boost() },
+        { type<frequency>::id(), freq_.freq()                },
+        { type<filter_boost>::id(), freq_.boost()            },
       }} {
     assert(doc_);
 
@@ -456,7 +456,8 @@ class phrase_iterator final : public doc_iterator {
     cost_.rule([this](){ return cost::extract(approx_); });
 
     if (!ord.empty()) {
-      score_.prepare(ord, ord.prepare_scorers(segment, field, stats, *this, boost));
+      score_.prepare(ord, ord.prepare_scorers(segment, field, stats,
+                                              *this, boost));
     }
   }
 

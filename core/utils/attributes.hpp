@@ -611,14 +611,6 @@ template<
       : const_cast<attribute**>(&it->second);
   }
 
-  constexpr void set(type_info::type_id type, const attribute* attr) noexcept {
-    const auto it = attrs_.find(type);
-
-    if (it != attrs_.end()) {
-      const_cast<value_type*>(it)->second = attr;
-    }
-  }
-
   attribute_map attrs_;
 }; // frozen_token_stream
 
