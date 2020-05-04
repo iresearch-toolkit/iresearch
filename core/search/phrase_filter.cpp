@@ -302,7 +302,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const {
     using conjunction_t = conjunction<doc_iterator::ptr>;
     using phrase_iterator_t = phrase_iterator<
       conjunction_t,
@@ -389,7 +389,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
     using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
@@ -497,7 +497,7 @@ filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
     return filter::prepared::empty();

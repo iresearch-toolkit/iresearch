@@ -105,7 +105,7 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
       const index_reader& index,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
                    field(), options().range,
                    options().scored_terms_limit);

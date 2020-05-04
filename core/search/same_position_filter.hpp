@@ -82,8 +82,7 @@ class IRESEARCH_API by_same_position
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // by_same_position
 
 NS_END // ROOT

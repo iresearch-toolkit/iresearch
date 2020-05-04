@@ -98,7 +98,7 @@ class IRESEARCH_API by_wildcard final
       const index_reader& index,
       const order::prepared& order,
       boost_t boost,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,
                    field(), options().term,
                    options().scored_terms_limit);

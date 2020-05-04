@@ -70,7 +70,7 @@ class IRESEARCH_API by_column_existence final
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const override;
+    const attribute_provider* ctx) const override;
 }; // by_column_existence
 
 NS_END // ROOT

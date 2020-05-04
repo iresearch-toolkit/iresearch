@@ -630,7 +630,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
 
     virtual filter::prepared::ptr prepare(
         const index_reader&, const order::prepared&,
-        boost_t, const attribute_view&) const override {
+        boost_t, const attribute_provider*) const override {
       return query_;
     }
 

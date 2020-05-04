@@ -52,7 +52,7 @@ template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(
     const irs::sub_reader& rdr,
     const irs::order::prepared& ord,
-    const irs::attribute_view& ctx,
+    const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
@@ -92,7 +92,7 @@ template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_conjunction(
     const irs::sub_reader& rdr,
     const irs::order::prepared& ord,
-    const irs::attribute_view& ctx,
+    const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
@@ -149,7 +149,7 @@ class boolean_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx) const override {
+      const attribute_provider* ctx) const override {
     if (empty()) {
       return doc_iterator::empty();
     }
@@ -158,9 +158,8 @@ class boolean_query : public filter::prepared {
     auto incl = execute(rdr, ord, ctx, begin(), begin() + excl_);
 
     // exclusion part does not affect scoring at all
-    auto excl = ::make_disjunction(
-      rdr, order::prepared::unordered(), ctx, begin() + excl_, end()
-    );
+    auto excl = ::make_disjunction(rdr, order::prepared::unordered(), ctx,
+                                   begin() + excl_, end());
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -177,7 +176,7 @@ class boolean_query : public filter::prepared {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx,
+      const attribute_provider* ctx,
       const std::vector<const filter*>& incl,
       const std::vector<const filter*>& excl) {
     boolean_query::queries_t queries;
@@ -215,7 +214,7 @@ protected:
   virtual doc_iterator::ptr execute(
     const sub_reader& rdr,
     const order::prepared& ord,
-    const attribute_view& ctx,
+    const attribute_provider* ctx,
     iterator begin,
     iterator end) const = 0;
 
@@ -236,7 +235,7 @@ public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx,
+      const attribute_provider* ctx,
       iterator begin,
       iterator end) const override {
     return ::make_conjunction(rdr, ord, ctx, begin, end);
@@ -252,7 +251,7 @@ class or_query final : public boolean_query {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx,
+      const attribute_provider* ctx,
       iterator begin,
       iterator end) const override {
     return ::make_disjunction(rdr, ord, ctx, begin, end);
@@ -274,7 +273,7 @@ class min_match_query final : public boolean_query {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx,
+      const attribute_provider* ctx,
       iterator begin,
       iterator end) const override {
     assert(std::distance(begin, end) >= 0);
@@ -384,7 +383,7 @@ filter::prepared::ptr boolean_filter::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_provider* ctx) const {
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
@@ -484,7 +483,7 @@ filter::prepared::ptr And::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_provider* ctx) const {
   boost *= this->boost();
 
   if (incl.empty()) {
@@ -537,7 +536,7 @@ filter::prepared::ptr Or::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_provider* ctx) const {
   boost *= this->boost();
 
   if (0 == min_match_count_) {
@@ -588,7 +587,7 @@ filter::prepared::ptr Not::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_provider* ctx) const {
   const auto res = optimize_not(*this);
 
   if (!res.first) {

@@ -292,8 +292,7 @@ struct boosted: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
-      const irs::attribute_view& /*ctx*/
-    ) const override {
+      const irs::attribute_provider* /*ctx*/) const override {
       return irs::doc_iterator::make<basic_doc_iterator>(
         docs.begin(), docs.end(), stats.c_str(), ord, boost()
       );
@@ -309,7 +308,7 @@ struct boosted: public irs::filter {
       const irs::index_reader&,
       const irs::order::prepared&,
       irs::boost_t boost,
-      const irs::attribute_view& /*ctx*/) const override {
+      const irs::attribute_provider* /*ctx*/) const override {
     return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
   }
 
@@ -1264,8 +1263,7 @@ struct unestimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
-      const irs::attribute_view&
-    ) const override {
+      const irs::attribute_provider*) const override {
       return irs::doc_iterator::make<unestimated::doc_iterator>();
     }
   }; // prepared
@@ -1274,7 +1272,7 @@ struct unestimated: public irs::filter {
       const irs::index_reader&,
       const irs::order::prepared&,
       irs::boost_t,
-      const irs::attribute_view& ) const override {
+      const irs::attribute_provider*) const override {
     return filter::prepared::make<unestimated::prepared>();
   }
 
@@ -1325,8 +1323,7 @@ struct estimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
-      const irs::attribute_view&
-    ) const override {
+      const irs::attribute_provider*) const override {
       return irs::doc_iterator::make<estimated::doc_iterator>(
         est, evaluated
       );
@@ -1340,7 +1337,7 @@ struct estimated: public irs::filter {
       const irs::index_reader&,
       const irs::order::prepared&,
       irs::boost_t,
-      const irs::attribute_view&) const override {
+      const irs::attribute_provider*) const override {
     return filter::prepared::make<estimated::prepared>(est,&evaluated);
   }
 

@@ -31,7 +31,7 @@ NS_ROOT
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   typedef disjunction<doc_iterator::ptr> disjunction_t;
 
   // get term state for the specified reader

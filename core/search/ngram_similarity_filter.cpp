@@ -375,7 +375,7 @@ class ngram_similarity_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view&) const override {
+      const attribute_provider*) const override {
     auto query_state = states_.find(rdr);
     if (!query_state || !query_state->field) {
       // invalid state
@@ -476,7 +476,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
 

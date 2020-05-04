@@ -74,7 +74,7 @@ class IRESEARCH_API by_ngram_similarity
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const override;
+    const attribute_provider* ctx) const override;
 }; // by_ngram_similarity
 
 NS_END // ROOT

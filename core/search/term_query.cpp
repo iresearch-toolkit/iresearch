@@ -43,7 +43,7 @@ term_query::term_query(
 doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
   if (!state) {

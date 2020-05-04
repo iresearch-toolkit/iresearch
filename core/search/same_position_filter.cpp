@@ -127,7 +127,7 @@ class same_position_query final : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
@@ -204,7 +204,7 @@ filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 

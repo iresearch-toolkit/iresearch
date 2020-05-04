@@ -99,7 +99,7 @@ class column_existence_query final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
-      const irs::attribute_view& /*ctx*/) const override {
+      const irs::attribute_provider* /*ctx*/) const override {
     const auto* column = rdr.column_reader(field_);
 
     if (!column) {
@@ -134,7 +134,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
-      const irs::attribute_view& /*ctx*/) const override {
+      const irs::attribute_provider* /*ctx*/) const override {
     auto it = rdr.columns();
 
     if (!it->seek(prefix_)) {
@@ -189,7 +189,7 @@ filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
