@@ -39,7 +39,7 @@ class column_existence_iterator final
       const irs::order::prepared& ord,
       uint64_t docs_count,
       irs::boost_t boost)
-    : attribute_mapping{{
+    : attributes{{
         { irs::type<irs::document>::id(), irs::get<irs::document>(*it) },
         { irs::type<irs::cost>::id(), &cost_ },
         { irs::type<irs::score>::id(), ord.empty() ? nullptr : &score_ },

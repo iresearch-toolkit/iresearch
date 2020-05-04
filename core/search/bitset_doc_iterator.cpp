@@ -29,7 +29,7 @@ NS_ROOT
 
 bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
                                          const order::prepared& order)
-  : attribute_mapping{{
+  : attributes{{
       { type<document>::id(), &doc_ },
       { type<cost>::id(), &cost_    },
       { type<score>::id(), order.empty() ? nullptr : &score_ },

@@ -546,7 +546,7 @@ class term_iterator_base
     : public frozen_attributes<3, seek_term_iterator> {
  public:
   explicit term_iterator_base(const term_reader& owner, const payload* pay = nullptr)
-    : attribute_mapping {{
+    : attributes{{
         { type<version10::term_meta>::id(), &state_ },
         { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
         { type<payload>::id(), pay }

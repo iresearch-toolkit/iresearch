@@ -32,7 +32,7 @@ all_iterator::all_iterator(
     const order::prepared& order,
     uint64_t docs_count,
     boost_t boost)
-  : attribute_mapping{{
+  : attributes{{
       { type<document>::id(), &doc_ },
       { type<cost>::id(), &cost_ },
       { type<score>::id(), order.empty() ? nullptr : &score_ },

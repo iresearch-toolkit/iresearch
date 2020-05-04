@@ -915,7 +915,7 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : attribute_mapping{{
+  : attributes{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offs_         },
       { irs::type<term_attribute>::id(), &term_ }},

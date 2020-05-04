@@ -107,7 +107,7 @@ class conjunction
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : attribute_mapping{{
+    : attributes{{
         { type<document>::id(), nullptr },
         { type<cost>::id(), nullptr },
         { type<score>::id(), ord.empty() ? nullptr : &score_ },
@@ -127,11 +127,11 @@ class conjunction
     assert(front_);
 
     front_doc_ = irs::get<document>(*front_);
-    attribute_mapping::set(type<document>::id(), front_doc_);
+    attributes::set(type<document>::id(), front_doc_);
     assert(front_doc_);
 
     // estimate iterator (front's cost is already cached)
-    attribute_mapping::set(type<cost>::id(), irs::get<cost>(*front_));
+    attributes::set(type<cost>::id(), irs::get<cost>(*front_));
 
     // copy scores into separate container
     // to avoid extra checks

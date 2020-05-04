@@ -1570,7 +1570,7 @@ class doc_iterator final
   DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() noexcept
-    : attribute_mapping{{
+    : attributes{{
         { type<document>::id(), &doc_ },
         { type<cost>::id(), &cost_ },
         { type<score>::id(), &scr_ },

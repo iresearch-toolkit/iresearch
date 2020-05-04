@@ -202,7 +202,7 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
-  : attribute_mapping{{
+  : attributes{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
       { irs::type<payload>::id(), &payload_     },

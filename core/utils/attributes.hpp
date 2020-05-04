@@ -585,7 +585,7 @@ template<
   typename = std::enable_if_t<std::is_base_of_v<attribute_provider, Base>>
 > class frozen_attributes : public Base {
  public:
-  using attribute_mapping = frozen_attributes;
+  using attributes = frozen_attributes;
   using attribute_map = frozen::map<type_info::type_id, const attribute*, Size>;
   using value_type = typename attribute_map::value_type;
 

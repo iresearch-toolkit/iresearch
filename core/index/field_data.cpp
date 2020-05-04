@@ -156,13 +156,13 @@ class pos_iterator final
     : public frozen_attributes<2, irs::position> {
  public:
   pos_iterator()
-    : attribute_mapping{{
+    : attributes{{
         { type<offset>::id(), nullptr },
         { type<payload>::id(), nullptr },
       }},
       prox_in_(EMPTY_POOL),
-      ppay_(attribute_mapping::ref(type<payload>::id())),
-      poffs_(attribute_mapping::ref(type<offset>::id())) {
+      ppay_(attributes::ref(type<payload>::id())),
+      poffs_(attributes::ref(type<offset>::id())) {
   }
 
   void clear() noexcept {
@@ -269,14 +269,14 @@ class doc_iterator final
   : public frozen_attributes<3, irs::doc_iterator> {
  public:
   doc_iterator() noexcept
-   : attribute_mapping{{
+   : attributes{{
        { type<document>::id(), &doc_ },
        { type<frequency>::id(), nullptr },
        { type<position>::id(), nullptr },
      }},
      freq_in_(EMPTY_POOL),
-     pfreq_(attribute_mapping::ref(type<frequency>::id())),
-     ppos_(attribute_mapping::ref(type<position>::id())) {
+     pfreq_(attributes::ref(type<frequency>::id())),
+     ppos_(attributes::ref(type<position>::id())) {
   }
 
   // reset field
@@ -396,13 +396,13 @@ class sorting_doc_iterator final
     : public frozen_attributes<3, irs::doc_iterator> {
  public:
   sorting_doc_iterator() noexcept
-   : attribute_mapping{{
+   : attributes{{
        { type<document>::id(), &doc_ },
        { type<frequency>::id(), nullptr },
        { type<position>::id(), nullptr },
      }},
-     pfreq_(attribute_mapping::ref(type<frequency>::id())),
-     ppos_(attribute_mapping::ref(type<position>::id())) {
+     pfreq_(attributes::ref(type<frequency>::id())),
+     ppos_(attributes::ref(type<position>::id())) {
   }
 
   // reset field

@@ -169,9 +169,8 @@ class IRESEARCH_API position
   : public attribute,
     public attribute_provider {
  public:
-  typedef uint32_t value_t;
-
-  DECLARE_REFERENCE(position);
+  using value_t = uint32_t;
+  using ref = std::reference_wrapper<position>;
 
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "position"; }

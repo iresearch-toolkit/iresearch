@@ -32,7 +32,7 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : attribute_mapping{{
+  : attributes{{
       { type<increment>::id(), &inc_ },
       { type<term_attribute>::id(), &term_ }
     }},
@@ -52,7 +52,7 @@ bool boolean_token_stream::next() {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream() noexcept
-  : attribute_mapping{{
+  : attributes{{
       { type<increment>::id(), &inc_ },
       { type<term_attribute>::id(), &term_ },
       { type<offset>::id(), &offset_}
@@ -130,7 +130,7 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
 // -----------------------------------------------------------------------------
 
 numeric_token_stream::numeric_token_stream() 
-  : attribute_mapping{{
+  : attributes{{
       { type<increment>::id(), &inc_ },
       { type<term_attribute>::id(), &term_ }
     }} {
@@ -189,7 +189,7 @@ void numeric_token_stream::reset(
 // -----------------------------------------------------------------------------
 
 null_token_stream::null_token_stream() noexcept
-  : attribute_mapping{{
+  : attributes{{
       { type<increment>::id(), &inc_ },
       { type<term_attribute>::id(), &term_ }
     }},

@@ -278,7 +278,7 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 
 ngram_token_stream_base::ngram_token_stream_base(
     const ngram_token_stream_base::Options& options) 
-  : attribute_mapping{{
+  : attributes{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
       { irs::type<term_attribute>::id(), &term_ }},

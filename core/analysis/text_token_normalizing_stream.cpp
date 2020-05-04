@@ -326,7 +326,7 @@ NS_BEGIN(analysis)
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
-  : attribute_mapping{{
+  : attributes{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
       { irs::type<payload>::id(), &payload_     },

@@ -89,7 +89,7 @@ class ngram_similarity_doc_iterator
       size_t total_terms_count,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : attribute_mapping{{
+    : attributes{{
         { type<document>::id(), nullptr },
         { type<frequency>::id(), &seq_freq_ },
         { type<cost>::id(), &cost_ },
@@ -106,10 +106,10 @@ class ngram_similarity_doc_iterator
     scores_vals_.resize(pos_.size());
 
     doc_ = irs::get<document>(disjunction_);
-    attribute_mapping::set(type<document>::id(), doc_);
+    attributes::set(type<document>::id(), doc_);
     assert(doc_);
 
-    attribute_mapping::set(type<cost>::id(), irs::get<cost>(disjunction_));
+    attributes::set(type<cost>::id(), irs::get<cost>(disjunction_));
 
     empty_order_ = ord.empty();
     if (!empty_order_) {
