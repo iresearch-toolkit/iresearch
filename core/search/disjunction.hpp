@@ -126,12 +126,10 @@ class basic_disjunction final
       doc_iterator_t&& rhs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
+    : basic_disjunction(std::move(lhs), std::move(rhs),
+                        ord, merge_type, resolve_overload_tag()) {
     cost_.rule([this](){
-      cost::cost_t est = 0;
-      est += cost::extract(lhs_, 0);
-      est += cost::extract(rhs_, 0);
-      return est;
+      return cost::extract(lhs_, 0) + cost::extract(rhs_, 0);
     });
   }
 
@@ -141,7 +139,8 @@ class basic_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : basic_disjunction(std::move(lhs), std::move(rhs), ord, merge_type, resolve_overload_tag()) {
+    : basic_disjunction(std::move(lhs), std::move(rhs),
+                        ord, merge_type, resolve_overload_tag()) {
     cost_.value(est);
   }
 
@@ -191,19 +190,26 @@ class basic_disjunction final
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_ },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
+        { type<cost>::id(),     &cost_ },
+        { type<score>::id(),    ord.empty() ? nullptr : &score_ },
       }},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()),
       merger_(ord.prepare_merger(merge_type)) {
-    // prepare score
+    prepare_score(ord);
+  }
+
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
+    }
+
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
-      scores_vals_[0] = lhs.score->c_str();
-      scores_vals_[1] = rhs.score->c_str();
+      scores_vals_[0] = lhs_.score->c_str();
+      scores_vals_[1] = rhs_.score->c_str();
       score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
 
@@ -217,14 +223,14 @@ class basic_disjunction final
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
-      scores_vals_[0] = lhs.score->c_str();
+      scores_vals_[0] = lhs_.score->c_str();
       score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
-      scores_vals_[0] = rhs.score->c_str();
+      scores_vals_[0] = rhs_.score->c_str();
       assert(lhs_.score == &irs::score::no_score());
       score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
@@ -418,6 +424,14 @@ class small_disjunction final
         ? doc_limits::eof()
         : doc_limits::invalid()),
       merger_(ord.prepare_merger(merge_type)) {
+    prepare_score(ord);
+  }
+
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
+    }
+
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -447,7 +461,8 @@ class small_disjunction final
             *pVal++ = it.score->c_str();
           }
         }
-        self.merger_(score, self.scores_vals_.data(), std::distance(self.scores_vals_.data(), pVal));
+        self.merger_(score, self.scores_vals_.data(),
+                     std::distance(self.scores_vals_.data(), pVal));
       });
     }
   }
@@ -631,14 +646,19 @@ class disjunction final
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    // prepare score
-    if (!ord.empty()) {
-      scores_vals_.resize(itrs_.size(), nullptr);
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
-        self.score_impl(score);
-      });
+    prepare_score(ord);
+  }
+
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
     }
+
+    scores_vals_.resize(itrs_.size(), nullptr);
+    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
+      self.score_impl(score);
+    });
   }
 
   template<typename Iterator>
@@ -780,25 +800,24 @@ doc_iterator::ptr make_disjunction(
       return doc_iterator::make<basic_disjunction_t>(
         std::move(*first),
         std::move(*second),
-        std::forward<Args>(args)...
-      );
+        std::forward<Args>(args)...);
     }
   }
 
-  const size_t LINEAR_MERGE_UPPER_BOUND = 5;
+  constexpr size_t LINEAR_MERGE_UPPER_BOUND = 5;
   if (size <= LINEAR_MERGE_UPPER_BOUND) {
     typedef typename Disjunction::small_disjunction_t small_disjunction_t;
 
     // small disjunction
     return doc_iterator::make<small_disjunction_t>(
-      std::move(itrs), std::forward<Args>(args)...
-    );
+      std::move(itrs),
+      std::forward<Args>(args)...);
   }
 
   // disjunction
   return doc_iterator::make<Disjunction>(
-    std::move(itrs), std::forward<Args>(args)...
-  );
+    std::move(itrs),
+    std::forward<Args>(args)...);
 }
 
 NS_END // ROOT

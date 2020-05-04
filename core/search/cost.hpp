@@ -33,12 +33,16 @@ NS_ROOT
 /// @class cost
 /// @brief represents an estimated cost of the query execution
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API cost : public attribute {
+class IRESEARCH_API cost final : public attribute {
  public:
-  typedef uint64_t cost_t;
-  typedef std::function<cost_t()> cost_f;
+  using cost_t = uint64_t;
+  using cost_f = std::function<cost_t()> ;
 
-  static const cost_t MAX = integer_traits<cost_t>::const_max;
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::cost";
+  }
+
+  static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a value of the "cost" attribute in the specified "src"
@@ -53,12 +57,6 @@ class IRESEARCH_API cost : public attribute {
     }
     return est;
   }
-
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::cost";
-  }
-
-  cost() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the estimation rule 
@@ -80,8 +78,8 @@ class IRESEARCH_API cost : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation rule
   //////////////////////////////////////////////////////////////////////////////
-  cost& rule(const cost_f& eval) {
-    func_ = eval;
+  cost& rule(cost_f&& eval) {
+    func_ = std::move(eval);
     init_ = false;
     return *this;
   }
@@ -94,7 +92,7 @@ class IRESEARCH_API cost : public attribute {
     return const_cast<cost*>(this)->estimate_impl();
   }
 
-  void clear() {
+  void clear() noexcept {
     init_ = false;
   }
 
@@ -109,8 +107,7 @@ class IRESEARCH_API cost : public attribute {
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  /* evaluation function */
-  cost_f func_;
+  cost_f func_; // evaluation function
   cost_t value_ { 0 };
   bool init_{ false };
   IRESEARCH_API_PRIVATE_VARIABLES_END
