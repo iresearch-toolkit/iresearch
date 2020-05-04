@@ -48,7 +48,7 @@
 #include "store/store_utils.hpp"
 
 #include "search/cost.hpp"
-#include "search/score_doc_iterators.hpp"
+#include "search/score.hpp"
 
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"

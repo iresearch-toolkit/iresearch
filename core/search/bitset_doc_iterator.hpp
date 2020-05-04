@@ -23,8 +23,10 @@
 #ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
 #define IRESEARCH_BITSET_DOC_ITERATOR_H
 
-#include "cost.hpp"
-#include "search/score_doc_iterators.hpp"
+#include "analysis/token_attributes.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "utils/attributes.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 

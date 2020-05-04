@@ -23,7 +23,12 @@
 #ifndef IRESEARCH_ALL_ITERATOR_H
 #define IRESEARCH_ALL_ITERATOR_H
 
-#include "search/score_doc_iterators.hpp"
+#include "analysis/token_attributes.hpp"
+#include "index/iterators.hpp"
+#include "index/index_reader.hpp"
+#include "search/sort.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
 
 NS_ROOT
 

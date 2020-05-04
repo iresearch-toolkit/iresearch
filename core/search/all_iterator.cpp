@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_iterator.hpp"
-#include "search/score_doc_iterators.hpp"
 #include "formats/empty_term_reader.hpp"
 
 NS_ROOT

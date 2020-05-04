@@ -47,18 +47,16 @@ struct IRESEARCH_API attribute_store_provider {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class const_attribute_view_provider
-/// @brief base class for all objects with externally visible attribute_view
+/// @class attribute_provider
+/// @brief base class for all objects with externally visible attributes
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API attribute_view_provider {
-  virtual ~attribute_view_provider() = default;
-  virtual const irs::attribute_view& attributes() const noexcept = 0;
-};
-
 struct IRESEARCH_API attribute_provider {
   virtual const attribute* get(type_info::type_id type) const = 0;
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for getting attributes of a specific type
+//////////////////////////////////////////////////////////////////////////////
 template<typename T,
          typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>

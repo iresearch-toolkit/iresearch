@@ -197,7 +197,6 @@ set(IResearch_core_headers
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
-  ./search/score_doc_iterators.hpp
   ./search/term_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp

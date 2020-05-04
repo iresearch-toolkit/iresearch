@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_CONJUNCTION_H
 #define IRESEARCH_CONJUNCTION_H
 
-#include "cost.hpp"
-#include "score_doc_iterators.hpp"
 #include "analysis/token_attributes.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
 #include "utils/type_limits.hpp"
 
 NS_ROOT
