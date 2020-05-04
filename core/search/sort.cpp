@@ -34,10 +34,6 @@ NS_ROOT
 // --SECTION--                                                      filter_boost
 // -----------------------------------------------------------------------------
 
-filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(no_boost()) {
-}
-
 REGISTER_ATTRIBUTE(filter_boost);
 
 // ----------------------------------------------------------------------------

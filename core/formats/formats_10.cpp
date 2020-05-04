@@ -1021,7 +1021,7 @@ struct position_impl<IteratorTraits, true, true>
 
   void clear_attributes() noexcept {
     offs_.clear();
-    pay_.clear();
+    pay_.value = bytes_ref::NIL;
   }
 
   void read_block() {
@@ -1155,7 +1155,7 @@ struct position_impl<IteratorTraits, false, true>
   }
 
   void clear_attributes() noexcept {
-    pay_.clear();
+    pay_.value = bytes_ref::NIL;
   }
 
   void read_block() {
@@ -3456,7 +3456,7 @@ class sparse_block : util::noncopyable {
 
     void reset(const sparse_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -3633,7 +3633,7 @@ class dense_block : util::noncopyable {
 
     void reset(const dense_block& block, irs::payload& payload) noexcept {
       value_ = block.base_;
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -3824,7 +3824,7 @@ class dense_fixed_offset_block : util::noncopyable {
     void reset(const dense_fixed_offset_block& block, irs::payload& payload) noexcept {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
@@ -3966,7 +3966,7 @@ class sparse_mask_block : util::noncopyable {
 
     void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.clear(); // mask block doesn't have payload
+      payload.value = bytes_ref::NIL; // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -4090,7 +4090,7 @@ class dense_mask_block {
 
     void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
       block_ = &block;
-      payload.clear(); // mask block doesn't have payload
+      payload.value = bytes_ref::NIL; // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -4432,7 +4432,7 @@ class column_iterator final: public irs::doc_iterator {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.clear();
+      payload_.value = bytes_ref::NIL;
       doc_.value = irs::doc_limits::eof();
 
       return false;
@@ -4448,7 +4448,7 @@ class column_iterator final: public irs::doc_iterator {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.clear();
+      payload_.value = bytes_ref::NIL;
       doc_.value = irs::doc_limits::eof();
 
       throw;

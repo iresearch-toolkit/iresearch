@@ -50,7 +50,7 @@ class fixed_phrase_frequency {
   }
 
   // returns frequency of the phrase
-  frequency::value_t operator()() {
+  uint32_t operator()() {
     phrase_freq_.value = 0;
     bool match;
 
@@ -151,7 +151,7 @@ class variadic_phrase_frequency {
   }
 
   // returns frequency of the phrase
-  frequency::value_t operator()() {
+  uint32_t operator()() {
     if constexpr (VolatileBoost) {
       phrase_boost_.value = {};
     }
@@ -286,7 +286,7 @@ class variadic_phrase_frequency_overlapped {
   }
 
   // returns frequency of the phrase
-  frequency::value_t operator()() {
+  uint32_t operator()() {
     if constexpr (VolatileBoost) {
       lead_freq_ = 0;
       lead_boost_ = {};

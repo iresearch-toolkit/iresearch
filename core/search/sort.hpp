@@ -50,13 +50,13 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 /// @brief represents an addition to score from filter specific to a particular
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
+struct IRESEARCH_API filter_boost final : attribute {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::filter_boost";
   }
 
-  filter_boost() noexcept;
-};
+  boost_t value{no_boost()};
+}; // filter_boost
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stateful object used for computing the document score based on the

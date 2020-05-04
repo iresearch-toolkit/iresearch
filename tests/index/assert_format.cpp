@@ -65,8 +65,8 @@ void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_provid
   auto* offs = irs::get<irs::offset>(attrs);
   auto* pay = irs::get<irs::payload>(attrs);
 
-  uint32_t start = irs::offset::INVALID_OFFSET;
-  uint32_t end = irs::offset::INVALID_OFFSET;
+  uint32_t start = std::numeric_limits<uint32_t>::max();
+  uint32_t end = std::numeric_limits<uint32_t>::max();
   if (offs) {
     start = offs_start + offs->start;
     end = offs_start + offs->end;
@@ -330,8 +330,7 @@ void field_writer::end() { }
 
 class doc_iterator : public irs::doc_iterator {
  public:
-   doc_iterator(const irs::flags& features,
-                      const tests::term& data );
+  doc_iterator(const irs::flags& features, const tests::term& data);
 
   irs::doc_id_t value() const override {
     return doc_.value;
@@ -401,7 +400,7 @@ class doc_iterator : public irs::doc_iterator {
       next_ = owner_.prev_->positions().begin();
       value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       offs_.clear();
-      pay_.clear();
+      pay_.value = irs::bytes_ref::NIL;
     }
 
     bool next() override {
@@ -432,21 +431,19 @@ class doc_iterator : public irs::doc_iterator {
     const doc_iterator& owner_;
   };
 
+  const tests::term& data_;
   irs::attribute_view attrs_;
   irs::document doc_;
   irs::frequency freq_;
   irs::cost cost_;
   irs::score score_;
   pos_iterator pos_;
-  const irs::flags& features_;
-  const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
 };
 
 doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
-  : features_( features ),
-    data_(data),
+  : data_(data),
     pos_(*this, features) {
   next_ = data_.postings.begin();
 

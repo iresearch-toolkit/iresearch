@@ -100,52 +100,6 @@ class IRESEARCH_API attribute_registrar {
 #define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class basic_attribute
-/// @brief represents simple attribute holds a single value
-//////////////////////////////////////////////////////////////////////////////
-template<typename T>
-struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
-  typedef T value_t;
-
-  explicit basic_attribute(const T& value = T())
-    : value(value) {
-  }
-
-  bool operator==(const basic_attribute& rhs) const {
-    return value == rhs.value;
-  }
-
-  bool operator==(const T& rhs) const {
-    return value == rhs;
-  }
-
-  T value;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class basic_stored_attribute
-/// @brief represents simple attribute holds a single value
-//////////////////////////////////////////////////////////////////////////////
-template<typename T>
-struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
-  typedef T value_t;
-
-  explicit basic_stored_attribute(const T& value = T())
-    : value(value) {
-  }
-
-  bool operator==(const basic_stored_attribute& rhs) const {
-    return value == rhs.value;
-  }
-
-  bool operator==(const T& rhs) const {
-    return value == rhs;
-  }
-
-  T value;
-};
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class flags
 /// @brief represents a set of features enabled for the particular field
 //////////////////////////////////////////////////////////////////////////////

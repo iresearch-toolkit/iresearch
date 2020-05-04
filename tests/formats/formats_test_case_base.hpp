@@ -88,7 +88,7 @@ class format_test_case : public index_test_base {
     }
 
     void clear() {
-      pay_.clear();
+      pay_.value = irs::bytes_ref::NIL;
       offs_.clear();
     }
 

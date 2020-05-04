@@ -169,7 +169,7 @@ class pos_iterator final
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();
-    pay_.clear();
+    pay_.value = bytes_ref::NIL;
   }
 
   // reset field

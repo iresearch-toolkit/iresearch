@@ -43,35 +43,33 @@ NS_ROOT
 struct IRESEARCH_API offset final : attribute {
   static constexpr string_ref type_name() noexcept { return "offset"; }
 
-  static const uint32_t INVALID_OFFSET = integer_traits< uint32_t >::const_max;
-
-  void clear() {
+  void clear() noexcept {
     start = 0;
     end = 0;
   }
 
-  uint32_t start{ 0 };
-  uint32_t end{ 0 };
+  uint32_t start{0};
+  uint32_t end{0};
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class increment 
 /// @brief represents token increment in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API increment final : basic_attribute<uint32_t> {
+struct IRESEARCH_API increment final : attribute {
   static constexpr string_ref type_name() noexcept { return "increment"; }
 
-  increment() noexcept;
-
-  void clear() { value = 1U; }
+  uint32_t value{1};
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute final : basic_attribute<bytes_ref> {
+struct IRESEARCH_API term_attribute final : attribute {
   static constexpr string_ref type_name() noexcept { return "term_attribute"; }
+
+  bytes_ref value;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -79,35 +77,37 @@ struct IRESEARCH_API term_attribute final : basic_attribute<bytes_ref> {
 /// @brief represents an arbitrary byte sequence associated with
 ///        the particular term position in a field
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API payload final : basic_attribute<bytes_ref> {
+struct IRESEARCH_API payload final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "payload"; }
 
-  void clear() {
-    value = bytes_ref::NIL;
-  }
+  bytes_ref value;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document final : basic_attribute<doc_id_t> {
+struct IRESEARCH_API document final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "document"; }
 
   explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
-    : basic_attribute<doc_id_t>(doc) {
+    : value(doc) {
   }
+
+  doc_id_t value;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class frequency 
 /// @brief how many times term appears in a document
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API frequency final : basic_attribute<uint32_t> {
+struct IRESEARCH_API frequency final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "frequency"; }
+
+  uint32_t value{0};
 }; // frequency
 
 //////////////////////////////////////////////////////////////////////////////
@@ -122,8 +122,6 @@ struct IRESEARCH_API granularity_prefix final : attribute {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::granularity_prefix";
   }
-
-  granularity_prefix() = default;
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////

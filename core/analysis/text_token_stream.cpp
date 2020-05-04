@@ -1046,7 +1046,7 @@ bool text_token_stream::reset(const string_ref& data) {
   state_->start = integer_traits<uint32_t>::const_max;
   state_->end = integer_traits<uint32_t>::const_max;
   state_->set_ngram_finished();
-  inc_.clear();
+  inc_.value = 1;
 
   return true;
 }
@@ -1106,7 +1106,7 @@ bool text_token_stream::next_ngram() {
   // if there are no ngrams yet then a new word started
   if (state_->is_ngram_finished()) {
     state_->ngram.it = begin;
-    inc_.clear();
+    inc_.value = 1;
     // find the first ngram > min
     do {
       state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);

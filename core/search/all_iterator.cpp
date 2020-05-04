@@ -33,8 +33,8 @@ all_iterator::all_iterator(
     uint64_t docs_count,
     boost_t boost)
   : attribute_mapping{{
-      { type<document>::id(), &doc_   },
-      { type<cost>::id(),     &cost_  },
+      { type<document>::id(), &doc_ },
+      { type<cost>::id(), &cost_ },
       { type<score>::id(), order.empty() ? nullptr : &score_ },
     }},
     max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
