@@ -37,7 +37,7 @@ bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
     begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
-  auto docs_count = set.count();
+  const auto docs_count = set.count();
 
   // make doc_id accessible via attribute
   doc_.value = docs_count

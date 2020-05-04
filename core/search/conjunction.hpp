@@ -99,39 +99,84 @@ template<typename DocIterator>
 class conjunction
     : public frozen_attributes<3, doc_iterator>, score_ctx {
  public:
-  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
-  typedef typename doc_iterators_t::const_iterator iterator;
+  using doc_iterator_t = score_iterator_adapter<DocIterator>;
+  using doc_iterators_t = std::vector<doc_iterator_t>;
+  using iterator = typename doc_iterators_t::const_iterator;
+
+  struct doc_iterators {
+    // intentionally implicit
+    doc_iterators(doc_iterators_t&& itrs) noexcept
+      : itrs(std::move(itrs)) {
+      assert(!this->itrs.empty());
+
+      // sort subnodes in ascending order by their cost
+      std::sort(itrs.begin(), itrs.end(),
+        [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
+          return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
+      });
+
+      front = this->itrs.front().it.get();
+      assert(front);
+      front_doc = irs::get<document>(*front);
+      assert(front_doc);
+    }
+
+    doc_iterator* front;
+    const document* front_doc;
+    doc_iterators_t itrs;
+  }; // doc_iterators
 
   conjunction(
-      doc_iterators_t&& itrs,
+      doc_iterators&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : attributes{{
-        { type<document>::id(), nullptr },
-        { type<cost>::id(), nullptr },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
+        { type<document>::id(), itrs.front_doc                  },
+        { type<cost>::id(),     irs::get<cost>(*itrs.front)     },
+        { type<score>::id(),    ord.empty() ? nullptr : &score_ },
       }},
-      itrs_(std::move(itrs)),
+      itrs_(std::move(itrs.itrs)),
+      front_(itrs.front),
+      front_doc_(itrs.front_doc),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
-
-    // sort subnodes in ascending order by their cost
-    std::sort(itrs_.begin(), itrs_.end(),
-      [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-        return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
-    });
-
-    // set front iterator
-    front_ = itrs_.front().it.get();
     assert(front_);
-
-    front_doc_ = irs::get<document>(*front_);
-    attributes::set(type<document>::id(), front_doc_);
     assert(front_doc_);
 
-    // estimate iterator (front's cost is already cached)
-    attributes::set(type<cost>::id(), irs::get<cost>(*front_));
+    prepare_score(ord);
+  }
+
+  iterator begin() const noexcept { return itrs_.begin(); }
+  iterator end() const noexcept { return itrs_.end(); }
+
+  // size of conjunction
+  size_t size() const noexcept { return itrs_.size(); }
+
+  virtual doc_id_t value() const override final {
+    return front_doc_->value;
+  }
+
+  virtual bool next() override {
+    if (!front_->next()) {
+      return false;
+    }
+
+    return !doc_limits::eof(converge(front_doc_->value));
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    if (doc_limits::eof(target = front_->seek(target))) {
+      return doc_limits::eof();
+    }
+
+    return converge(target);
+  }
+
+ private:
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
+    }
 
     // copy scores into separate container
     // to avoid extra checks
@@ -144,7 +189,7 @@ class conjunction
         scores_vals_.push_back(score->c_str());
       }
     }
-   
+
     // prepare score
     switch (scores_.size()) {
       case 0:
@@ -186,33 +231,6 @@ class conjunction
     }
   }
 
-  iterator begin() const noexcept { return itrs_.begin(); }
-  iterator end() const noexcept { return itrs_.end(); }
-
-  // size of conjunction
-  size_t size() const noexcept { return itrs_.size(); }
-
-  virtual doc_id_t value() const override final {
-    return front_doc_->value;
-  }
-
-  virtual bool next() override {
-    if (!front_->next()) {
-      return false;
-    }
-
-    return !doc_limits::eof(converge(front_doc_->value));
-  }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(target = front_->seek(target))) {
-      return doc_limits::eof();
-    }
-
-    return converge(target);
-  }
-
- private:
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
@@ -248,8 +266,8 @@ class conjunction
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
   mutable std::vector<const irs::byte_type*> scores_vals_;
-  const irs::document* front_doc_{};
   irs::doc_iterator* front_;
+  const irs::document* front_doc_{};
   order::prepared::merger merger_;
 }; // conjunction
 
