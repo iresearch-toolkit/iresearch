@@ -55,7 +55,7 @@ bitset_doc_iterator::bitset_doc_iterator(
       const order::prepared& order,
       boost_t boost)
   : bitset_doc_iterator(set, order) {
-  // set score
+  // prepare score
   if (!order.empty()) {
     score_.prepare(order, order.prepare_scorers(
       reader,

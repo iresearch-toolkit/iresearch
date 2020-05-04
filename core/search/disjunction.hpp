@@ -657,7 +657,26 @@ class disjunction final
     scores_vals_.resize(itrs_.size(), nullptr);
     score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
-      self.score_impl(score);
+      assert(!self.heap_.empty());
+
+      const auto its = self.hitch_all_iterators();
+      const irs::byte_type** pVal = self.scores_vals_.data();
+      detail::evaluate_score_iter(pVal, self.lead());
+      if (self.top().value() == self.doc_.value) {
+        irstd::heap::for_each_if(
+          its.first, its.second,
+          [&self](const size_t it) {
+            assert(it < self.itrs_.size());
+            return self.itrs_[it].value() == self.doc_.value;
+          },
+          [&self, &pVal](size_t it) {
+            assert(it < self.itrs_.size());
+            detail::evaluate_score_iter(pVal, self.itrs_[it]);
+        });
+      }
+
+      self.merger_(score, self.scores_vals_.data(),
+              std::distance(self.scores_vals_.data(), pVal));
     });
   }
 
@@ -734,28 +753,6 @@ class disjunction final
       }
     }
     return {begin, end};
-  }
-
-  void score_impl(byte_type* lhs) {
-    assert(!heap_.empty());
-
-    auto its = hitch_all_iterators();
-    const irs::byte_type** pVal = scores_vals_.data();
-    detail::evaluate_score_iter(pVal, lead());
-    if (top().value() == doc_.value) {
-      irstd::heap::for_each_if(
-        its.first, its.second,
-        [this](const size_t it) {
-          assert(it < itrs_.size());
-          return itrs_[it].value() == doc_.value;
-        },
-        [this, &pVal](size_t it) {
-          assert(it < itrs_.size());
-          detail::evaluate_score_iter(pVal, itrs_[it]);
-      });
-    }
-
-    merger_(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_;

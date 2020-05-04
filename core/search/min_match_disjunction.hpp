@@ -109,15 +109,7 @@ class min_match_disjunction
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    if (!ord.empty()) {
-      scores_vals_.resize(itrs_.size());
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        auto& self = const_cast<min_match_disjunction&>(
-          *static_cast<const min_match_disjunction*>(ctx)
-        );
-        self.score_impl(score);
-      });
-    }
+    prepare_score(ord);
   }
 
   virtual doc_id_t value() const override {
@@ -258,6 +250,33 @@ class min_match_disjunction
   }
 
  private:
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
+    }
+
+    scores_vals_.resize(itrs_.size());
+    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      auto& self = const_cast<min_match_disjunction&>(
+        *static_cast<const min_match_disjunction*>(ctx));
+      assert(!self.heap_.empty());
+
+      self.push_valid_to_lead();
+
+      // score lead iterators
+      const irs::byte_type** pVal = self.scores_vals_.data();
+      std::for_each(
+        self.lead(), self.heap_.end(),
+        [&self, &pVal](size_t it) {
+          assert(it < self.itrs_.size());
+          detail::evaluate_score_iter(pVal, self.itrs_[it]);
+      });
+
+      self.merger_(score, self.scores_vals_.data(),
+                   std::distance(self.scores_vals_.data(), pVal));
+    });
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief push all valid iterators to lead
   //////////////////////////////////////////////////////////////////////////////
@@ -421,22 +440,6 @@ class min_match_disjunction
   inline void add_lead() {
     pop(heap_.begin(), lead());
     ++lead_;
-  }
-
-  inline void score_impl(byte_type* lhs) {
-    assert(!heap_.empty());
-
-    push_valid_to_lead();
-
-    // score lead iterators
-    const irs::byte_type** pVal = scores_vals_.data();
-    std::for_each(
-      lead(), heap_.end(),
-      [this, &pVal](size_t it) {
-        assert(it < itrs_.size());
-        detail::evaluate_score_iter(pVal, itrs_[it]);
-    });
-    merger_(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_; // sub iterators
