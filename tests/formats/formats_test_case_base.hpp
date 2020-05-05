@@ -157,7 +157,7 @@ class format_test_case : public index_test_base {
     }
 
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs_.get(type)->get();
+      return attrs_.get(type, {}).get();
     }
 
    private:

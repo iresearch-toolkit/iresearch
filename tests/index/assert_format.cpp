@@ -337,7 +337,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type)->get();
+    return attrs_.get(type, {}).get();
   }
 
   virtual bool next() override {

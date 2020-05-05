@@ -128,7 +128,7 @@ TEST(cost_attribute_test, lazy_estimation) {
 TEST(cost_attribute_test, extract) {
   struct basic_attribute_provider : irs::attribute_provider {
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
 
     irs::attribute_view attrs;

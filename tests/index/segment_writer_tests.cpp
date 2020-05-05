@@ -54,8 +54,8 @@ TEST_F(segment_writer_tests, invalid_actions) {
   struct token_stream_t: public irs::token_stream {
     irs::attribute_view attrs;
     size_t token_count;
-    virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-      return attrs.get(type).get();
+    virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      return attrs.get(type, {}).get();
     }
     virtual bool next() override { return --token_count; }
   };
@@ -371,7 +371,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
     irs::attribute_view attrs;
     size_t token_count;
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
     virtual bool next() override { return --token_count; }
   };
@@ -418,7 +418,7 @@ TEST_F(segment_writer_tests, index_field) {
     irs::attribute_view attrs;
     size_t token_count;
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
     virtual bool next() override { return --token_count; }
   };

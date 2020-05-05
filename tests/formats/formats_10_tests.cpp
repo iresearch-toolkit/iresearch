@@ -45,7 +45,7 @@ class format_10_test_case : public tests::format_test_case {
     }
 
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
 
     irs::attribute_view& attrs;

@@ -186,7 +186,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type)->get();
+    return attrs_.get(type, {}).get();
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
@@ -1252,7 +1252,7 @@ struct unestimated: public irs::filter {
       return irs::doc_limits::invalid();
     }
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
 
     irs::document doc;
@@ -1307,7 +1307,7 @@ struct estimated: public irs::filter {
       return irs::doc_limits::invalid();
     }
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type)->get();
+      return attrs.get(type, {}).get();
     }
 
     irs::document doc;

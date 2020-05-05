@@ -252,7 +252,7 @@ class term_reader : public irs::term_reader {
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type)->get();
+    return attrs_.get(type, {}).get();
   }
 
  private:
