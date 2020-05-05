@@ -23,144 +23,98 @@
 #include "column_existence_filter.hpp"
 
 #include "formats/empty_term_reader.hpp"
-#include "index/field_meta.hpp"
 #include "search/disjunction.hpp"
 
 NS_LOCAL
 
-class column_existence_iterator final
-    : public irs::frozen_attributes<4, irs::doc_iterator> {
- public:
-  explicit column_existence_iterator(
-      const irs::sub_reader& reader,
-      const irs::byte_type* stats,
-      irs::doc_iterator::ptr&& it,
-      const irs::order::prepared& ord,
-      uint64_t docs_count,
-      irs::boost_t boost)
-    : attributes{{
-        { irs::type<irs::document>::id(), irs::get<irs::document>(*it) },
-        { irs::type<irs::cost>::id(), &cost_ },
-        { irs::type<irs::score>::id(), ord.empty() ? nullptr : &score_ },
-        { irs::type<irs::payload>::id(), irs::get<irs::payload>(*it) },
-      }},
-      it_(std::move(it)) {
-    assert(it_);
-    doc_ = irs::get<irs::document>(*it_);
-    assert(doc_);
+using namespace irs;
 
-    // set estimation value
-    cost_.value(docs_count);
-
-    // set scorers
-    if (!ord.empty()) {
-      score_.prepare(ord, ord.prepare_scorers(
-        reader,
-        irs::empty_term_reader(docs_count),
-        stats,
-        *this, // doc_iterator attributes
-        boost
-      ));
-    }
-  }
-
-  virtual bool next() override {
-    return it_->next();
-  }
-
-  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    it_->seek(target);
-
-    return value();
-  }
-
-  virtual irs::doc_id_t value() const noexcept override {
-    return doc_->value;
-  }
-
- private:
-  const irs::document* doc_{};
-  irs::cost cost_;
-  irs::score score_;
-  irs::doc_iterator::ptr it_;
-}; // column_existence_iterator
-
-class column_existence_query final : public irs::filter::prepared {
+class column_existence_query : public irs::filter::prepared {
  public:
   explicit column_existence_query(
       const std::string& field,
-      irs::bstring&& stats,
-      irs::boost_t boost)
-    : irs::filter::prepared(boost),
+      bstring&& stats,
+      boost_t boost)
+    : filter::prepared(boost),
       field_(field),
       stats_(std::move(stats)) {
   }
 
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr,
-      const irs::order::prepared& ord,
-      const irs::attribute_provider* /*ctx*/) const override {
-    const auto* column = rdr.column_reader(field_);
+  virtual doc_iterator::ptr execute(
+      const sub_reader& segment,
+      const order::prepared& ord,
+      const attribute_provider* /*ctx*/) const override {
+    const auto* column = segment.column_reader(field_);
 
     if (!column) {
-      return irs::doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
-    return irs::doc_iterator::make<column_existence_iterator>(
-      rdr,
-      stats_.c_str(),
-      column->iterator(),
-      ord,
-      column->size(),
-      boost());
+    return iterator(segment, *column, ord);
   }
 
- private:
+ protected:
+  doc_iterator::ptr iterator(
+      const sub_reader& segment,
+      const columnstore_reader::column_reader& column,
+      const order::prepared& ord) const {
+    auto it = column.iterator();
+
+    if (IRS_UNLIKELY(!it)) {
+      return doc_iterator::empty();
+    }
+
+    if (!ord.empty()) {
+      // FIXME const_cast
+      auto* score = const_cast<irs::score*>(irs::get<irs::score>(*it));
+
+      if (score) {
+        score->prepare(ord, ord.prepare_scorers(
+          segment, empty_term_reader(column.size()),
+          stats_.c_str(), *it, boost()));
+      }
+    }
+
+    return it;
+  }
+
   std::string field_;
-  irs::bstring stats_;
+  bstring stats_;
 }; // column_existence_query
 
-class column_prefix_existence_query final : public irs::filter::prepared {
+class column_prefix_existence_query final : public column_existence_query {
  public:
   explicit column_prefix_existence_query(
       const std::string& prefix,
-      irs::bstring&& stats,
-      irs::boost_t boost)
-    : irs::filter::prepared(boost),
-      prefix_(prefix),
-      stats_(std::move(stats)) {
+      bstring&& stats,
+      boost_t boost)
+    : column_existence_query(prefix, std::move(stats), boost) {
   }
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr,
+      const irs::sub_reader& segment,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
-    auto it = rdr.columns();
+    const string_ref prefix = field_;
 
-    if (!it->seek(prefix_)) {
+    auto it = segment.columns();
+
+    if (!it->seek(prefix)) {
       // reached the end
       return irs::doc_iterator::empty();
     }
 
-    typedef irs::disjunction<column_existence_iterator::ptr> disjunction_t;
+    typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
     disjunction_t::doc_iterators_t itrs;
 
-    while (irs::starts_with(it->value().name, prefix_)) {
-      const auto* column = rdr.column_reader(it->value().id);
+    while (irs::starts_with(it->value().name, prefix)) {
+      const auto* column = segment.column_reader(it->value().id);
 
       if (!column) {
         continue;
       }
 
-      auto column_it = irs::memory::make_shared<column_existence_iterator>(
-        rdr,
-        stats_.c_str(),
-        column->iterator(),
-        ord,
-        column->size(),
-        boost());
-
-      itrs.emplace_back(std::move(column_it));
+      itrs.emplace_back(iterator(segment, *column, ord));
 
       if (!it->next()) {
         break;
@@ -169,10 +123,6 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
     return irs::make_disjunction<disjunction_t>(std::move(itrs), ord);
   }
-
- private:
-  std::string prefix_;
-  irs::bstring stats_;
 }; // column_prefix_existence_query
 
 NS_END
