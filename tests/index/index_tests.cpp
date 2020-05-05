@@ -62,12 +62,12 @@ token_stream_payload::token_stream_payload(irs::token_stream* impl)
     assert(term_);
 }
 
-const irs::attribute* token_stream_payload::get(irs::type_info::type_id type) const {
+irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
   if (irs::type<irs::payload>::id() == type) {
     return &pay_;
   }
 
-  return impl_->get(type);
+  return impl_->get_mutable(type);
 }
 
 bool token_stream_payload::next() {

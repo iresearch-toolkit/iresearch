@@ -604,7 +604,7 @@ class term_iterator : public irs::term_iterator {
     return it_->first;
   }
 
-  virtual const attribute* get(type_info::type_id) const noexcept override {
+  virtual attribute* get_mutable(type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -699,7 +699,8 @@ class term_iterator : public irs::term_iterator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class term_reader
 ////////////////////////////////////////////////////////////////////////////////
-class term_reader final : public irs::basic_term_reader, util::noncopyable {
+class term_reader final : public irs::basic_term_reader,
+                          private util::noncopyable {
  public:
   void reset(const field_data& field, const doc_map* docmap) {
     it_.reset(field, docmap, min_, max_);
@@ -721,7 +722,7 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const attribute* get(type_info::type_id) const noexcept override {
+  virtual attribute* get_mutable(type_info::type_id) noexcept override {
     return nullptr;
   }
 

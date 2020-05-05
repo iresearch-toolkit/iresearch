@@ -31,7 +31,7 @@ NS_ROOT
 // --SECTION--                                 basic_token_stream implementation
 // -----------------------------------------------------------------------------
 
-const attribute* basic_token_stream::get(type_info::type_id type) const noexcept {
+attribute* basic_token_stream::get_mutable(type_info::type_id type) noexcept {
   if (irs::type<increment>::id() == type) {
     return &inc_;
   }

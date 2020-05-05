@@ -178,16 +178,14 @@ class IRESEARCH_API position
   static position* empty() noexcept;
 
   template<typename Provider>
-  static position& get_mutable(Provider& attrs) noexcept {
-    // FIXME const_cast
-    auto* pos = const_cast<position*>(irs::get<irs::position>(const_cast<const Provider&>(attrs)));
+  static position& get_mutable(Provider& attrs) {
+    auto* pos = irs::get_mutable<position>(&attrs);
     return pos ? *pos : *empty();
   }
 
   template<typename Provider>
-  static position* get_mutable(Provider* attrs) noexcept {
-    // FIXME const_cast
-    return const_cast<position*>(irs::get<irs::position>(const_cast<const Provider&>(*attrs)));
+  static position* get_mutable(Provider* attrs) {
+    return irs::get_mutable<position>(attrs);
   }
 
   value_t seek(value_t target) {
@@ -213,7 +211,7 @@ class IRESEARCH_API position
 //////////////////////////////////////////////////////////////////////////////
 class attribute_provider_change final : public attribute {
  public:
-  using callback_f = std::function<void(const attribute_provider&)>;
+  using callback_f = std::function<void(attribute_provider&)>;
 
   static constexpr string_ref type_name() noexcept {
     return "attribute_provider_change";
@@ -227,13 +225,13 @@ class attribute_provider_change final : public attribute {
     }
   }
 
-  void operator()(const attribute_provider& attrs) const {
+  void operator()(attribute_provider& attrs) const {
     assert(callback_);
     callback_(attrs);
   }
 
  private:
-  static void noop(const attribute_provider&) noexcept { }
+  static void noop(attribute_provider&) noexcept { }
 
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change

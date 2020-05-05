@@ -40,15 +40,15 @@ class format_10_test_case : public tests::format_test_case {
   const size_t VERSION10_POSTINGS_WRITER_BLOCK_SIZE = 128;
 
   struct basic_attribute_provider : irs::attribute_provider {
-    explicit basic_attribute_provider(const irs::attribute_view& attrs)
+    explicit basic_attribute_provider(irs::attribute_view& attrs)
       : attrs(attrs) {
     }
 
-    const irs::attribute* get(irs::type_info::type_id type) const noexcept {
-      return attrs.get(type).get();
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+      return attrs.get(type)->get();
     }
 
-    const irs::attribute_view& attrs;
+    irs::attribute_view& attrs;
   };
 
   void assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual) {

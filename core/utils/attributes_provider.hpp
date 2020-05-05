@@ -24,6 +24,7 @@
 #define IRESEARCH_ATTRIBUTES_PROVIDER_H
 
 #include "type_id.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 
@@ -34,8 +35,12 @@ struct attribute;
 /// @brief base class for all objects with externally visible attributes
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute_provider {
-  virtual const attribute* get(type_info::type_id type) const = 0;
-};
+  virtual attribute* get_mutable(type_info::type_id type) = 0;
+
+  const attribute* get(type_info::type_id type) const {
+    return const_cast<attribute_provider*>(this)->get_mutable(type);
+  }
+}; // attribute_provider
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for getting attributes of a specific type
@@ -45,6 +50,13 @@ template<typename T,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
 inline const T* get(const Provider& attrs) noexcept {
   return static_cast<const T*>(attrs.get(type<T>::id()));
+}
+
+template<typename T,
+         typename Provider,
+         typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
+inline T* get_mutable(Provider* attrs) noexcept {
+  return static_cast<T*>(attrs->get_mutable(type<T>::id()));
 }
 
 NS_END

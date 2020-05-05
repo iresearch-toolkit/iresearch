@@ -67,8 +67,8 @@ class exclusion final : public doc_iterator {
     return next(target);
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept override {
-    return incl_->get(type);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return incl_->get_mutable(type);
   }
 
  private:

@@ -70,7 +70,7 @@ class ngram_similarity_doc_iterator final
     : pos_{ itrs.begin(), itrs.end() },
       approx_(std::move(itrs), min_match_count,
               order::prepared::unordered()), // we are not interested in disjunction`s scoring
-      doc_(irs::get<document>(approx_)),
+      doc_(irs::get_mutable<document>(&approx_)),
       attrs_{{
         { type<document>::id(),     doc_           },
         { type<frequency>::id(),    &seq_freq_     },
@@ -93,8 +93,8 @@ class ngram_similarity_doc_iterator final
     }
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept override {
-    return attrs_.get(type);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return attrs_.get_mutable(type);
   }
 
   virtual bool next() override {
@@ -158,7 +158,7 @@ class ngram_similarity_doc_iterator final
 
   std::vector<position_t> pos_;
   min_match_disjunction<DocIterator> approx_;
-  const document* doc_;
+  document* doc_;
   frozen_attributes<5, attribute_provider> attrs_;
   std::set<size_t> used_pos_; // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;

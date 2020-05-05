@@ -545,7 +545,7 @@ class block_iterator : util::noncopyable {
 class term_iterator_base
     : public frozen_attributes<3, seek_term_iterator> {
  public:
-  explicit term_iterator_base(const term_reader& owner, const payload* pay = nullptr)
+  explicit term_iterator_base(const term_reader& owner, payload* pay = nullptr)
     : attributes{{
         { type<version10::term_meta>::id(), &state_ },
         { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
@@ -1750,7 +1750,7 @@ void term_reader::prepare(
   owner_ = &owner;
 }
 
-const attribute* term_reader::get(type_info::type_id type) const noexcept {
+attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
   return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 

@@ -198,7 +198,7 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return !static_cast<bool>(progress);
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<irs::attribute_provider_change>::id() == type
       ? &attribute_change
       : nullptr;
@@ -289,8 +289,8 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-    return doc_it_->get(type);
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return doc_it_->get_mutable(type);
   }
 
   virtual bool next() override;
@@ -515,7 +515,7 @@ class compound_term_iterator : public irs::term_iterator {
 
   const irs::field_meta& meta() const noexcept { return *meta_; }
   void add(const irs::term_reader& reader, const doc_map_f& doc_map);
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
     assert(false);
@@ -691,7 +691,7 @@ class compound_field_iterator : public irs::basic_term_reader {
     return *max_;
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 

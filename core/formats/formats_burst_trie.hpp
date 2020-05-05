@@ -254,7 +254,7 @@ class term_reader : public irs::term_reader,
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
   virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
   virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
-  virtual const attribute* get(type_info::type_id type) const noexcept override;
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override;
 
  private:
   typedef fst::VectorFst<byte_arc> fst_t;
@@ -269,7 +269,7 @@ class term_reader : public irs::term_reader,
   uint64_t doc_freq_;
   uint64_t term_freq_;
   frequency freq_; // total term freq
-  const frequency* pfreq_{};
+  frequency* pfreq_{};
   field_meta field_;
   std::unique_ptr<fst_t> fst_; // TODO: use compact fst here!!!
   field_reader* owner_;

@@ -616,7 +616,7 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return EMPTY;
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
     return nullptr;
   }
 

@@ -71,6 +71,10 @@ struct score_iterator_adapter {
     return it->get(type);
   }
 
+  attribute* get_mutable(type_info::type_id type) noexcept {
+    return it->get_mutable(type);
+  }
+
   operator doc_iterator_t&() noexcept {
     return it;
   }
@@ -97,7 +101,8 @@ struct score_iterator_adapter {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 class conjunction
-    : public frozen_attributes<3, doc_iterator>, score_ctx {
+    : public frozen_attributes<3, doc_iterator>,
+      private score_ctx {
  public:
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
@@ -117,12 +122,12 @@ class conjunction
 
       front = this->itrs.front().it.get();
       assert(front);
-      front_doc = irs::get<document>(*front);
+      front_doc = irs::get_mutable<document>(front);
       assert(front_doc);
     }
 
     doc_iterator* front;
-    const document* front_doc;
+    document* front_doc;
     doc_iterators_t itrs;
   }; // doc_iterators
 
@@ -131,9 +136,9 @@ class conjunction
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : attributes{{
-        { type<document>::id(), itrs.front_doc              },
-        { type<cost>::id(),     irs::get<cost>(*itrs.front) },
-        { type<score>::id(),    &score_                     },
+        { type<document>::id(), itrs.front_doc                     },
+        { type<cost>::id(),     irs::get_mutable<cost>(itrs.front) },
+        { type<score>::id(),    &score_                            },
       }},
       itrs_(std::move(itrs.itrs)),
       front_(itrs.front),

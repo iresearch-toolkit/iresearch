@@ -58,7 +58,7 @@ class format_test_case : public index_test_base {
       }
     }
 
-    const attribute* get(irs::type_info::type_id type) const noexcept override {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       if (irs::type<irs::offset>::id() == type) {
         return poffs_;
       }
@@ -102,8 +102,8 @@ class format_test_case : public index_test_base {
     uint32_t end_;
     irs::offset offs_;
     irs::payload pay_;
-    const irs::offset* poffs_{};
-    const irs::payload* ppay_{};
+    irs::offset* poffs_{};
+    irs::payload* ppay_{};
     char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 
@@ -156,8 +156,8 @@ class format_test_case : public index_test_base {
       return value();
     }
 
-    const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-      return attrs_.get(type).get();
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      return attrs_.get(type)->get();
     }
 
    private:
@@ -205,7 +205,7 @@ class format_test_case : public index_test_base {
 
     void read() { }
 
-    const irs::attribute* get(irs::type_info::type_id) const noexcept {
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
       return nullptr;
     }
 

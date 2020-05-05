@@ -47,7 +47,7 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::document>::id() == type) {
       return &doc;
     }
@@ -74,7 +74,7 @@ struct empty_term_iterator : irs::term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept final {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 }; // empty_term_iterator
@@ -92,7 +92,7 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept final {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
@@ -126,7 +126,7 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 

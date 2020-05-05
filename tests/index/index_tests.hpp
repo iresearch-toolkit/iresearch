@@ -297,7 +297,7 @@ class token_stream_payload final : public irs::token_stream {
   explicit token_stream_payload(irs::token_stream* impl);
   bool next();
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
 
  private:
   const irs::term_attribute* term_;

@@ -41,11 +41,11 @@ class fixed_phrase_frequency {
     assert(0 == pos_.front().second); // lead offset is always 0
   }
 
-  const frequency* freq() const noexcept {
+  frequency* freq() noexcept {
     return &phrase_freq_;
   }
 
-  const filter_boost* boost() const noexcept {
+  filter_boost* boost() noexcept {
     return nullptr;
   }
 
@@ -141,11 +141,11 @@ class variadic_phrase_frequency {
     assert(0 == pos_.front().second); // lead offset is always 0
   }
 
-  const frequency* freq() const noexcept {
+  frequency* freq() noexcept {
     return &phrase_freq_;
   }
 
-  const filter_boost* boost() const noexcept {
+  filter_boost* boost() noexcept {
     return !VolatileBoost ? nullptr : &phrase_boost_;
   }
 
@@ -276,11 +276,11 @@ class variadic_phrase_frequency_overlapped {
     assert(0 == pos_.front().second); // lead offset is always 0
   }
 
-  const frequency* freq() const noexcept {
+  frequency* freq() noexcept {
     return &phrase_freq_;
   }
 
-  const filter_boost* boost() const noexcept {
+  filter_boost* boost() noexcept {
     return !VolatileBoost ? nullptr : &phrase_boost_;
   }
 
@@ -440,7 +440,7 @@ class phrase_iterator final : public doc_iterator {
       boost_t boost)
     : approx_(std::move(itrs)),
       freq_(std::move(pos), ord),
-      doc_(irs::get<document>(approx_)),
+      doc_(irs::get_mutable<document>(&approx_)),
       attrs_{{
         { type<document>::id(),     doc_          },
         { type<cost>::id(),         &cost_        },
@@ -460,8 +460,8 @@ class phrase_iterator final : public doc_iterator {
     }
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept {
-    return attrs_.get(type);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept {
+    return attrs_.get_mutable(type);
   }
 
   virtual doc_id_t value() const override final {
@@ -493,7 +493,7 @@ class phrase_iterator final : public doc_iterator {
  private:
   Conjunction approx_; // first approximation (conjunction over all words in a phrase)
   Frequency freq_;
-  const document* doc_{}; // document itself
+  document* doc_{}; // document itself
   frozen_attributes<5, attribute_provider> attrs_; // FIXME can store only 4 attrbiutes for non-volatile boost case
   score score_;
   cost cost_;

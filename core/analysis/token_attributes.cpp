@@ -29,8 +29,7 @@ NS_LOCAL
 struct empty_position final : irs::position {
   virtual void reset() override { }
   virtual bool next() override { return false; }
-  virtual const attribute* get(
-      irs::type_info::type_id) const noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 };

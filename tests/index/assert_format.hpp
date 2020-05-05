@@ -251,8 +251,8 @@ class term_reader : public irs::term_reader {
   virtual uint64_t docs_count() const override { return data_.docs.size(); }
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-    return attrs_.get(type).get();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return attrs_.get(type)->get();
   }
 
  private:

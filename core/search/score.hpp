@@ -41,15 +41,14 @@ class IRESEARCH_API score : public attribute {
   static const irs::score& no_score() noexcept;
 
   template<typename Provider>
-  static const irs::score& get(const Provider& attrs) {
-    const irs::score* score = irs::get<irs::score>(attrs);
+  static const score& get(const Provider& attrs) {
+    const auto* score = irs::get<irs::score>(attrs);
     return score ? *score : no_score();
   }
 
   template<typename Provider>
-  static irs::score* get_mutable(Provider* attrs) {
-    // FIXME const_cast
-    return const_cast<irs::score*>(irs::get<irs::score>(const_cast<const Provider&>(*attrs)));
+  static score* get_mutable(Provider* attrs) {
+    return irs::get_mutable<score>(attrs);
   }
 
   const byte_type* c_str() const noexcept {

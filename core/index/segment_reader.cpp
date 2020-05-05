@@ -59,7 +59,7 @@ class all_iterator final : public irs::doc_iterator {
     return doc_.value;
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<irs::document>::id() == type ? &doc_ : nullptr;
   }
 
@@ -102,8 +102,8 @@ class mask_doc_iterator final : public irs::doc_iterator {
     return it_->value();
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-    return it_->get(type);
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
   }
 
  private:
@@ -145,7 +145,7 @@ class masked_docs_iterator
     return value();
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<irs::document>::id() == type ? &current_ : nullptr;
   }
 
@@ -166,8 +166,7 @@ bool read_columns_meta(
     const irs::segment_meta& meta,
     std::vector<irs::column_meta>& columns,
     std::vector<irs::column_meta*>& id_to_column,
-    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column
-) {
+    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column) {
   size_t count = 0;
   irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();

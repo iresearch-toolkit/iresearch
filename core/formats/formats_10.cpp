@@ -296,7 +296,7 @@ class postings_writer_base : public irs::postings_writer {
   }
 
  public:
-  virtual const attribute* get(irs::type_info::type_id type) const noexcept final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
@@ -858,15 +858,14 @@ class postings_writer final: public postings_writer_base {
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
 
  private:
-  void refresh(const attribute_provider& attrs) noexcept {
+  void refresh(attribute_provider& attrs) noexcept {
     pos_ = position::empty();
     offs_ = nullptr;
     pay_ = nullptr;
 
     freq_ = irs::get<frequency>(attrs);
     if (freq_) {
-      // FIXME const_cast
-      auto* pos = irs::position::get_mutable(const_cast<attribute_provider*>(&attrs));
+      auto* pos = irs::position::get_mutable(&attrs);
       if (pos) {
         pos_ = pos;
         offs_ = irs::get<irs::offset>(*pos_);
@@ -896,7 +895,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     auto* subscription = irs::get<attribute_provider_change>(docs);
     assert(subscription);
 
-    subscription->subscribe([this](const attribute_provider& attrs) {
+    subscription->subscribe([this](attribute_provider& attrs) {
       refresh(attrs);
     });
   } else {
@@ -979,7 +978,7 @@ struct position_impl<IteratorTraits, true, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+  irs::attribute* attribute(type_info::type_id type) noexcept {
     if (irs::type<payload>::id() == type) {
       return &pay_;
     }
@@ -1121,7 +1120,7 @@ struct position_impl<IteratorTraits, false, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+  irs::attribute* attribute(type_info::type_id type) noexcept {
     return irs::type<payload>::id() == type ? &pay_ : nullptr;
   }
 
@@ -1255,7 +1254,7 @@ struct position_impl<IteratorTraits, true, false>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  const irs::attribute* attribute(type_info::type_id type) const noexcept {
+  irs::attribute* attribute(type_info::type_id type) noexcept {
     return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
@@ -1358,7 +1357,7 @@ struct position_impl<IteratorTraits, false, false> {
     IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
   }
 
-  const irs::attribute* attribute(type_info::type_id) const noexcept {
+  irs::attribute* attribute(type_info::type_id) noexcept {
     // implementation has no additional attributes
     return nullptr;
   }
@@ -1461,7 +1460,7 @@ class position final : public irs::position,
  public:
   typedef position_impl<IteratorTraits> impl;
 
-  virtual const attribute* get(type_info::type_id type) const override {
+  virtual attribute* get_mutable(type_info::type_id type) override {
     return impl::attribute(type);
   }
 

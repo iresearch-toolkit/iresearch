@@ -189,7 +189,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
-  virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }

@@ -586,7 +586,7 @@ template<
 > class frozen_attributes : public Base {
  public:
   using attributes = frozen_attributes;
-  using attribute_map = frozen::map<type_info::type_id, const attribute*, Size>;
+  using attribute_map = frozen::map<type_info::type_id, attribute*, Size>;
   using value_type = typename attribute_map::value_type;
 
   template<typename... Args>
@@ -597,7 +597,7 @@ template<
       attrs_(values) {
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept final {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }

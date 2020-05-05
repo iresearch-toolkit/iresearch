@@ -336,8 +336,8 @@ class doc_iterator : public irs::doc_iterator {
     return doc_.value;
   }
 
-  const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-    return attrs_.get(type).get();
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return attrs_.get(type)->get();
   }
 
   virtual bool next() override {
@@ -384,7 +384,7 @@ class doc_iterator : public irs::doc_iterator {
       }
     }
 
-    const attribute* get(irs::type_info::type_id type) const noexcept override {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       if (irs::type<irs::offset>::id() == type) {
         return poffs_;
       }
@@ -426,8 +426,8 @@ class doc_iterator : public irs::doc_iterator {
     std::set<tests::position>::const_iterator next_;
     irs::offset offs_;
     irs::payload pay_;
-    const irs::offset* poffs_{};
-    const irs::payload* ppay_{};
+    irs::offset* poffs_{};
+    irs::payload* ppay_{};
     const doc_iterator& owner_;
   };
 
@@ -471,7 +471,7 @@ class term_iterator final : public irs::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const irs::attribute* get(irs::type_info::type_id) const noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -534,8 +534,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
   virtual bool seek(
       const irs::bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie
-  ) override {
+      const irs::seek_term_iterator::seek_cookie& cookie) override {
     return false;
   }
 

@@ -82,8 +82,8 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
     : it_(std::move(it)) {
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept override {
-    return it_->get(type);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
   }
 
   virtual doc_id_t value() const noexcept override {

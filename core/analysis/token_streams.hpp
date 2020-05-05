@@ -36,7 +36,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API basic_token_stream : public token_stream {
  public:
-  virtual const attribute* get(type_info::type_id type) const noexcept final;
+  virtual attribute* get_mutable(type_info::type_id type) noexcept final;
 
  protected:
   term_attribute term_;
