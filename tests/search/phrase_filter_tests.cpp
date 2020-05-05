@@ -2983,6 +2983,8 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto docs = prepared->execute(*sub);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);

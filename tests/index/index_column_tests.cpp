@@ -239,7 +239,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -325,7 +325,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -418,7 +418,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -505,16 +505,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         ++docs;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -553,16 +553,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         ++docs;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -614,7 +614,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -666,7 +666,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -696,7 +696,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -724,7 +724,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -740,15 +740,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -773,7 +773,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       for (;;) {
         it->seek(expected_doc);
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -816,7 +816,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -962,7 +962,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       }
 
       expected_doc -= 2;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
     }
 
     // seek over column (cached)
@@ -996,16 +996,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         ++docs;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -1096,7 +1096,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         ++docs;
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(inserted, docs);
     }
@@ -1303,7 +1303,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -1382,7 +1382,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1470,7 +1470,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -1547,12 +1547,12 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -1586,7 +1586,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -1620,7 +1620,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -1639,7 +1639,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek to before the end + next
@@ -1663,7 +1663,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value); // mask block has no data
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek to after the end + next + seek before end
@@ -1678,13 +1678,13 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
       it->seek(MAX_DOCS+2);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek to gap + next(x5)
@@ -1713,7 +1713,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek + next(x5)
@@ -1738,13 +1738,13 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
           ++expected_doc; // gap
         } else {
           if (expected_doc > MAX_DOCS+1) {
-            ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+            ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
         }
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -1774,7 +1774,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -1959,7 +1959,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -2221,7 +2221,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2317,7 +2317,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2433,7 +2433,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2530,16 +2530,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2596,7 +2596,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2653,7 +2653,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2684,7 +2684,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2725,7 +2725,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2741,15 +2741,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 2));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 2));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2778,13 +2778,13 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
           ++expected_value;
         } else {
           if (expected_doc > MAX_DOCS+1) {
-            ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+            ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
         }
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -2832,7 +2832,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -2993,7 +2993,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       }
 
       --expected_doc;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
     }
 
     // read values
@@ -3106,7 +3106,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         }
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
@@ -3372,7 +3372,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         }
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, count);
     }
@@ -3587,7 +3587,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         }
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, count);
     }
@@ -3816,7 +3816,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
     }
@@ -3901,7 +3901,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
     }
@@ -3995,7 +3995,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
     }
@@ -4079,16 +4079,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         ++expected_value;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(1+MAX_DOCS, expected_value);
     }
@@ -4131,7 +4131,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(1+MAX_DOCS, expected_value);
     }
@@ -4173,7 +4173,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         ++expected_value;
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(1+MAX_DOCS, expected_value);
     }
@@ -4198,7 +4198,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -4229,7 +4229,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -4245,15 +4245,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 2));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 2));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -4287,7 +4287,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek + next(x5)
@@ -4314,13 +4314,13 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
           ++expected_value;
         } else {
           if (expected_doc > MAX_DOCS+1) {
-            ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+            ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
         }
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -4354,7 +4354,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(1+MAX_DOCS, expected_value);
     }
@@ -4385,7 +4385,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
           expected_value++;
         } else {
           if (expected_doc > MAX_DOCS+1) {
-            ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+            ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
           } else {
             ASSERT_EQ(expected_doc, it->seek(expected_doc));
           }
@@ -4500,7 +4500,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       --expected_doc;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
     }
 
     // read values
@@ -4592,7 +4592,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), expected_value);
     }
@@ -4753,7 +4753,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -4823,7 +4823,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -4891,7 +4891,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -4960,16 +4960,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -4999,16 +4999,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5038,16 +5038,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5082,7 +5082,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5116,7 +5116,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5137,7 +5137,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -5157,7 +5157,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -5173,15 +5173,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -5205,7 +5205,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       for (;;) {
         it->seek(expected_doc);
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -5231,7 +5231,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS/2, docs_count);
     }
@@ -5325,7 +5325,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       expected_doc -= 2;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -5351,16 +5351,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5428,7 +5428,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
@@ -5585,7 +5585,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -5650,7 +5650,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -5713,7 +5713,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -5777,12 +5777,12 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         ++docs_count;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -5810,7 +5810,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -5838,7 +5838,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -5855,7 +5855,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek to before the end + next
@@ -5874,7 +5874,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(MAX_DOCS, it->value());
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek to after the end + next + seek before end
@@ -5888,13 +5888,13 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
 
       it->seek(MAX_DOCS+1);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // seek + next(x5)
@@ -5915,7 +5915,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       for (;;) {
         it->seek(expected_doc);
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -5937,7 +5937,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -6075,7 +6075,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
   }
@@ -6245,7 +6245,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
@@ -6317,7 +6317,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
@@ -6388,7 +6388,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
@@ -6458,16 +6458,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         ++expected_value;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -6505,7 +6505,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -6542,7 +6542,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         ++expected_value;
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -6567,7 +6567,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -6598,7 +6598,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -6614,15 +6614,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -6646,7 +6646,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       for (;;) {
         it->seek(expected_doc);
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -6675,7 +6675,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -6788,7 +6788,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       --expected_doc;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
     }
 
     // read values
@@ -6857,7 +6857,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
@@ -7055,7 +7055,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7138,7 +7138,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7224,7 +7224,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7306,16 +7306,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         ++expected_value;
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7364,7 +7364,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7413,7 +7413,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7444,7 +7444,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -7485,7 +7485,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       ASSERT_EQ(expected_value_str, irs::to_string<irs::string_ref>(payload->value.c_str()));
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -7501,15 +7501,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS + 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       // can't seek backwards
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(MAX_DOCS - 1));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -7533,7 +7533,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       for (;;) {
         it->seek(expected_doc);
 
-        if (irs::type_limits<irs::type_t::doc_id_t>::eof(it->value())) {
+        if (irs::doc_limits::eof(it->value())) {
           break;
         }
 
@@ -7573,7 +7573,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7718,7 +7718,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       }
 
       --expected_doc;
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(expected_doc));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
     }
 
     // read values
@@ -7801,7 +7801,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         ++expected_value;
       }
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
@@ -7985,7 +7985,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8102,7 +8102,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8194,7 +8194,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8278,7 +8278,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8347,7 +8347,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8428,7 +8428,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         }
 
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::doc_limits::eof(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
@@ -8529,7 +8529,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
@@ -8578,7 +8578,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
@@ -8624,7 +8624,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
@@ -8673,7 +8673,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
@@ -8704,7 +8704,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
@@ -8753,7 +8753,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }

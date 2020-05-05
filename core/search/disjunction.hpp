@@ -39,7 +39,7 @@ NS_BEGIN(detail)
 // It is quite difficult to disable check since it managed by _ITERATOR_DEBUG_LEVEL
 // macros which affects ABI (it must be the same for all libs and objs).
 template<typename Iterator, typename Pred>
-inline void pop_heap(Iterator first, Iterator last, Pred comp) {
+FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
   assert(first != last); // pop requires non-empty range
 
   #ifndef _MSC_VER
@@ -54,15 +54,14 @@ inline void pop_heap(Iterator first, Iterator last, Pred comp) {
 }
 
 template<typename DocIterator>
-void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
+FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator& src) {
   const auto* score = src.score;
-  assert(score);
-  if (&irs::score::no_score() != score) {
+  assert(score); // must be ensure by the adapter
+  if (!score->empty()) {
     score->evaluate();
     *pVal++ = score->c_str();
   }
-}
-
+};
 
 NS_END // detail
 
@@ -189,9 +188,9 @@ class basic_disjunction final
       sort::MergeType merge_type,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(),     &cost_ },
-        { type<score>::id(),    ord.empty() ? nullptr : &score_ },
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ },
       }},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
@@ -205,8 +204,12 @@ class basic_disjunction final
       return;
     }
 
-    if (lhs_.score != &irs::score::no_score()
-        && rhs_.score != &irs::score::no_score()) {
+    assert(lhs_.score && rhs_.score); // must be ensure by the adapter
+
+    const bool lhs_score_empty = lhs_.score->empty();
+    const bool rhs_score_empty = rhs_.score->empty();
+
+    if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators has score
       scores_vals_[0] = lhs_.score->c_str();
       scores_vals_[1] = rhs_.score->c_str();
@@ -220,25 +223,21 @@ class basic_disjunction final
         // always call merge. even if zero matched - we need to reset last accumulated score at least.
         self.merger_(score, pVal, matched_iterators);
       });
-    } else if (lhs_.score != &irs::score::no_score()) {
+    } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      assert(rhs_.score == &irs::score::no_score());
       scores_vals_[0] = lhs_.score->c_str();
       score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
       });
-    } else if (rhs_.score != &irs::score::no_score()) {
+    } else if (!rhs_score_empty) {
       // only right sub-iterator has score
       scores_vals_[0] = rhs_.score->c_str();
-      assert(lhs_.score == &irs::score::no_score());
       score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
         self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
       });
     } else {
-      assert(lhs_.score == &irs::score::no_score());
-      assert(rhs_.score == &irs::score::no_score());
       score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
     }
   }
@@ -415,9 +414,9 @@ class small_disjunction final
       sort::MergeType merge_type,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_ },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ },
       }},
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
@@ -436,7 +435,7 @@ class small_disjunction final
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
     for (auto& it : itrs_) {
-      if (&irs::score::no_score() != it.score) {
+      if (!it.score->empty()) {
         scored_itrs_.emplace_back(it);
       }
     }
@@ -628,9 +627,9 @@ class disjunction final
       sort::MergeType merge_type,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_ },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ },
       }},
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
@@ -674,9 +673,8 @@ class disjunction final
             detail::evaluate_score_iter(pVal, self.itrs_[it]);
         });
       }
-
       self.merger_(score, self.scores_vals_.data(),
-              std::distance(self.scores_vals_.data(), pVal));
+                   std::distance(self.scores_vals_.data(), pVal));
     });
   }
 

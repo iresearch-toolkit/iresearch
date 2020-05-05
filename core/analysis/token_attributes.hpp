@@ -177,9 +177,17 @@ class IRESEARCH_API position
 
   static position* empty() noexcept;
 
-  static position* extract(const attribute_provider& attrs) noexcept {
-    // FIXME remove const_cast
-    return const_cast<position*>(irs::get<irs::position>(attrs));
+  template<typename Provider>
+  static position& get_mutable(Provider& attrs) noexcept {
+    // FIXME const_cast
+    auto* pos = const_cast<position*>(irs::get<irs::position>(const_cast<const Provider&>(attrs)));
+    return pos ? *pos : *empty();
+  }
+
+  template<typename Provider>
+  static position* get_mutable(Provider* attrs) noexcept {
+    // FIXME const_cast
+    return const_cast<position*>(irs::get<irs::position>(const_cast<const Provider&>(*attrs)));
   }
 
   value_t seek(value_t target) {

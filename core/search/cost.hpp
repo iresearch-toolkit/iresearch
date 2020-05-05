@@ -68,20 +68,18 @@ class IRESEARCH_API cost final : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation value 
   //////////////////////////////////////////////////////////////////////////////
-  cost& value(cost_t value) {
-    func_ = [value](){ return value; };
+  void value(cost_t value) noexcept {
     value_ = value;
     init_ = true;
-    return *this;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation rule
   //////////////////////////////////////////////////////////////////////////////
-  cost& rule(cost_f&& eval) {
+  void rule(cost_f&& eval) {
+    assert(eval);
     func_ = std::move(eval);
     init_ = false;
-    return *this;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -89,15 +87,6 @@ class IRESEARCH_API cost final : public attribute {
   /// @return estimated cost
   //////////////////////////////////////////////////////////////////////////////
   cost_t estimate() const {
-    return const_cast<cost*>(this)->estimate_impl();
-  }
-
-  void clear() noexcept {
-    init_ = false;
-  }
-
- private:
-  cost_t estimate_impl() {
     if (!init_) {
       assert(func_);
       value_ = func_();
@@ -106,10 +95,15 @@ class IRESEARCH_API cost final : public attribute {
     return value_;
   }
 
+  void clear() noexcept {
+    init_ = false;
+  }
+
+ private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  cost_f func_; // evaluation function
-  cost_t value_ { 0 };
-  bool init_{ false };
+  cost_f func_{[]{ return 0; }}; // evaluation function
+  mutable cost_t value_{ 0 };
+  mutable bool init_{ true };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 

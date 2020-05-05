@@ -67,6 +67,7 @@ doc_iterator::ptr multiterm_query::execute(
   auto& stats = this->stats();
 
   // add an iterator for each of the scored states
+  const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
     if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
@@ -75,17 +76,18 @@ doc_iterator::ptr multiterm_query::execute(
 
     auto docs = terms->postings(features);
 
-    // FIXME const_cast
-    // set score
-    auto* score = const_cast<irs::score*>(irs::get<irs::score>(*docs));
-    if (score) { // FIXME compare with no_score
-      assert(entry.stat_offset < stats.size());
-      auto* stat = stats[entry.stat_offset].c_str();
+    if (!no_score) {
+      auto* score = irs::score::get_mutable(docs.get());
 
-      score->prepare(
-        ord,
-        ord.prepare_scorers(segment, *state->reader,
-                            stat, *docs, entry.boost*boost()));
+      if (score) {
+        assert(entry.stat_offset < stats.size());
+        auto* stat = stats[entry.stat_offset].c_str();
+
+        score->prepare(
+          ord,
+          ord.prepare_scorers(segment, *state->reader,
+                              stat, *docs, entry.boost*boost()));
+      }
     }
 
     itrs.emplace_back(std::move(docs));

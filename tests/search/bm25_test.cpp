@@ -959,7 +959,7 @@ TEST_P(bm25_test, test_query) {
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
 }
 

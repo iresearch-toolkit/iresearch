@@ -34,9 +34,16 @@ TEST(cost_attribute_test, consts) {
   );
 }
 
+TEST(cost_attribute_test, ctor) {
+  irs::cost cost;
+  ASSERT_TRUE(bool(cost.rule()));
+  ASSERT_EQ(0, cost.estimate());
+}
+
 TEST(cost_attribute_test, estimation) {
   irs::cost cost;
-  ASSERT_FALSE(bool(cost.rule()));
+  ASSERT_TRUE(bool(cost.rule()));
+  ASSERT_EQ(0, cost.estimate());
 
   // explicit estimation
   {
@@ -77,7 +84,8 @@ TEST(cost_attribute_test, estimation) {
 
 TEST(cost_attribute_test, lazy_estimation) {
   irs::cost cost;
-  ASSERT_FALSE(bool(cost.rule()));
+  ASSERT_TRUE(bool(cost.rule()));
+  ASSERT_EQ(0, cost.estimate());
 
   auto evaluated = false;
   auto est = 7;
@@ -134,8 +142,8 @@ TEST(cost_attribute_test, extract) {
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
+  ASSERT_TRUE(bool(cost.rule()));
   attrs.attrs.emplace(cost);
-  ASSERT_FALSE(bool(cost.rule()));
 
   auto est = 7;
   auto evaluated = false;

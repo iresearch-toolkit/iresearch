@@ -46,6 +46,7 @@ doc_iterator::ptr term_query::execute(
     const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
+
   if (!state) {
     // invalid state
     return doc_iterator::empty();
@@ -67,16 +68,15 @@ doc_iterator::ptr term_query::execute(
   auto docs = terms->postings(ord.features());
   assert(docs);
 
-  // FIXME check if empty score
-  // FIXME const cast
-  // set score
-  auto* score = const_cast<irs::score*>(irs::get<irs::score>(*docs));
+  if (!ord.empty()) {
+    auto* score = irs::score::get_mutable(docs.get());
 
-  if (score) {
-    score->prepare(
-      ord,
-      ord.prepare_scorers(rdr, *state->reader,
-                          stats_.c_str(), *docs, boost()));
+    if (score) {
+      score->prepare(
+        ord,
+        ord.prepare_scorers(rdr, *state->reader,
+                            stats_.c_str(), *docs, boost()));
+    }
   }
 
   return docs;

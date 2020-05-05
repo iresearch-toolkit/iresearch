@@ -251,7 +251,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(docs->value(), doc->value);
       }
       ASSERT_FALSE(docs->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+      ASSERT_EQ(irs::doc_limits::eof(), docs->value());
     }
 
     // check document with first position
@@ -293,7 +293,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
         ASSERT_EQ(27, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
 
       // seek
@@ -312,7 +312,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(8)); // seek backwards
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
     }
 
@@ -339,7 +339,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
         ASSERT_EQ(91, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
 
       // seek
@@ -355,7 +355,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(8)); // seek backwards
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
     }
 
@@ -414,7 +414,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
 
       // seek + next
@@ -446,7 +446,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
 
       // seek to the end
@@ -456,9 +456,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->seek(irs::type_limits<irs::type_t::doc_id_t>::eof()));
+        ASSERT_EQ(irs::doc_limits::eof(), docs->seek(irs::doc_limits::eof()));
         ASSERT_FALSE(docs->next());
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+        ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
     }
   }

@@ -865,8 +865,8 @@ class postings_writer final: public postings_writer_base {
 
     freq_ = irs::get<frequency>(attrs);
     if (freq_) {
-      // FIXME
-      auto* pos = const_cast<position*>(irs::get<position>(attrs));
+      // FIXME const_cast
+      auto* pos = irs::position::get_mutable(const_cast<attribute_provider*>(&attrs));
       if (pos) {
         pos_ = pos;
         offs_ = irs::get<irs::offset>(*pos_);
@@ -4367,7 +4367,8 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final: public irs::doc_iterator {
+class column_iterator final
+    : public irs::frozen_attributes<4, irs::doc_iterator> {
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
@@ -4377,19 +4378,17 @@ class column_iterator final: public irs::doc_iterator {
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end)
-    : begin_(begin),
+    : attributes{{
+        { irs::type<irs::document>::id(), &doc_    },
+        { irs::type<irs::cost>::id(),     &cost_   },
+        { irs::type<irs::score>::id(),    &score_  },
+        { irs::type<irs::payload>::id(),  &payload_ },
+      }},
+      begin_(begin),
       seek_origin_(begin),
       end_(end),
       column_(&column) {
-  }
-
-  virtual const irs::attribute* get(
-      irs::type_info::type_id type) const noexcept override {
-    if (irs::type<payload>::id() == type) {
-      return &payload_;
-    }
-
-    return irs::type<document>::id() == type ? &doc_ : nullptr;
+    cost_.value(column.size());
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -4462,6 +4461,8 @@ class column_iterator final: public irs::doc_iterator {
   block_iterator_t block_;
   irs::payload payload_;
   irs::document doc_;
+  irs::cost cost_;
+  irs::score score_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4929,15 +4930,18 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final : public irs::doc_iterator {
+  class column_iterator final :
+      public irs::frozen_attributes<3, irs::doc_iterator> {
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : min_(1 + column.min_),
+      : attributes{{
+          { irs::type<irs::document>::id(), &value_  },
+          { irs::type<irs::cost>::id(),     &cost_   },
+          { irs::type<irs::score>::id(),    &score_  },
+        }},
+        min_(1 + column.min_),
         max_(column.max()) {
-    }
-
-    virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
-      return irs::type<document>::id() == type ? &value_ : nullptr;
+      cost_.value(column.size());
     }
 
     virtual irs::doc_id_t value() const noexcept override {
@@ -4974,6 +4978,8 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
    private:
     document value_;
+    irs::cost cost_;
+    irs::score score_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
@@ -5297,7 +5303,7 @@ size_t postings_reader_base::decode(
 
   term_meta.docs_count = vread<uint32_t>(p);
   if (term_freq) {
-    //FIXME drop const_cast
+    //FIXME const_cast
     const_cast<frequency*>(term_freq)->value = term_meta.docs_count + vread<uint32_t>(p);
   }
 

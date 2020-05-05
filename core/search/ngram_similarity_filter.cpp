@@ -67,16 +67,16 @@ class ngram_similarity_doc_iterator final
       size_t total_terms_count,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : pos_(extract_positions(itrs)),
+    : pos_{ itrs.begin(), itrs.end() },
       approx_(std::move(itrs), min_match_count,
               order::prepared::unordered()), // we are not interested in disjunction`s scoring
       doc_(irs::get<document>(approx_)),
       attrs_{{
-        { type<document>::id(), doc_                         },
-        { type<frequency>::id(), &seq_freq_                  },
-        { type<cost>::id(), &cost_                           },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
-        { type<filter_boost>::id(), &filter_boost_           },
+        { type<document>::id(),     doc_           },
+        { type<frequency>::id(),    &seq_freq_     },
+        { type<cost>::id(),         &cost_         },
+        { type<score>::id(),        &score_        },
+        { type<filter_boost>::id(), &filter_boost_ },
       }},
       min_match_count_(min_match_count),
       states_(states),
@@ -120,8 +120,16 @@ class ngram_similarity_doc_iterator final
 
  private:
   struct position_t {
-    position_t(position* p, const document* d, const score* s)
-      : pos(p), doc(d), scr(s) {}
+    template<typename Iterator>
+    position_t(Iterator& itr)
+      : pos(&position::get_mutable(itr)),
+        doc(irs::get<document>(itr)),
+        scr(&irs::score::get(itr)) {
+      assert(pos);
+      assert(doc);
+      assert(scr);
+    }
+
     position* pos;
     const document* doc;
     const score* scr;
@@ -145,18 +153,6 @@ class ngram_similarity_doc_iterator final
 
   using search_states_t = std::map<uint32_t, std::shared_ptr<search_state>, std::greater<uint32_t>>;
   using pos_temp_t = std::vector<std::pair<uint32_t, std::shared_ptr<search_state>>>;
-
-  static std::vector<position_t> extract_positions(const doc_iterators_t& itrs) {
-    std::vector<position_t> pos;
-    pos.reserve(itrs.size());
-    for (const auto& itr : itrs) {
-      // FIXME const_cast
-      pos.emplace_back(const_cast<position*>(irs::get<position>(itr)),
-                       irs::get<document>(itr),
-                       irs::get<score>(itr));
-    }
-    return pos;
-  }
 
   bool check_serial_positions();
 

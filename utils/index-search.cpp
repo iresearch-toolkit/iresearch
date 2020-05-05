@@ -615,7 +615,7 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score& score = irs::score::extract(*docs);
+            const irs::score& score = irs::score::get(*docs);
             const irs::document* doc = irs::get<irs::document>(*docs);
 
             const auto& score_value = &score != &irs::score::no_score()

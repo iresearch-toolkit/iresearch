@@ -342,7 +342,7 @@ class doc_iterator : public irs::doc_iterator {
 
   virtual bool next() override {
     if (next_ == data_.postings.end()) {
-      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      doc_.value = irs::doc_limits::eof();
       return false;
     }
 
@@ -359,7 +359,7 @@ class doc_iterator : public irs::doc_iterator {
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
-      return irs::type_limits<irs::type_t::doc_id_t>::eof();
+      return irs::doc_limits::eof();
     }
 
     prev_ = it;

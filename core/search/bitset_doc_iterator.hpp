@@ -36,9 +36,7 @@ class bitset_doc_iterator final
   : public frozen_attributes<3, doc_iterator>,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set)
-    : bitset_doc_iterator(set, order::prepared::unordered()) {
-  }
+  explicit bitset_doc_iterator(const bitset& set);
 
   bitset_doc_iterator(
     const sub_reader& reader,
@@ -52,8 +50,6 @@ class bitset_doc_iterator final
   virtual doc_id_t value() const noexcept override { return doc_.value; }
 
  private:
-  bitset_doc_iterator(const bitset& set, const order::prepared& order);
-
   document doc_;
   cost cost_;
   score score_;

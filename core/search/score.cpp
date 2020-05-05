@@ -39,11 +39,6 @@ NS_ROOT
   return EMPTY_SCORE;
 }
 
-score::score() noexcept
-  : func_([](const score_ctx*, byte_type*){}) {
-}
-
-
 bool score::prepare(const order::prepared& ord,
                     order::prepared::scorers&& scorers) {
   if (ord.empty()) {

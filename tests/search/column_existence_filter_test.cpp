@@ -276,7 +276,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto* doc = irs::get<irs::document>(*filter_it);
       ASSERT_TRUE(bool(doc));
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
     }
   }
@@ -497,7 +497,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto* doc = irs::get<irs::document>(*filter_it);
       ASSERT_TRUE(bool(doc));
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
     }
   }
@@ -725,7 +725,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto* doc = irs::get<irs::document>(*filter_it);
       ASSERT_TRUE(bool(doc));
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
     }
   }

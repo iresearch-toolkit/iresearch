@@ -144,6 +144,7 @@ class same_position_query final : public filter::prepared {
     same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
+    const bool no_score = ord.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto term = term_state.reader->iterator();
@@ -157,20 +158,25 @@ class same_position_query final : public filter::prepared {
       // get postings
       auto docs = term->postings(features);
 
-      //FIXME const_cast
       // get needed postings attributes
-      auto* pos = const_cast<irs::position*>(irs::get<position>(*docs));
+      auto* pos = irs::position::get_mutable(docs.get());
+
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
+
       positions.emplace_back(std::ref(*pos));
 
-      // FIXME const_cast
-      // set score
-      auto* score = const_cast<irs::score*>(irs::get<irs::score>(*docs));
-      if (score) { // FIXME score != score::no_score()
-        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), *docs, boost()));
+      if (!no_score) {
+        auto* score = irs::score::get_mutable(docs.get());
+
+        if (score) {
+          score->prepare(
+            ord,
+            ord.prepare_scorers(segment, *term_state.reader,
+                                term_stats->c_str(), *docs, boost()));
+        }
       }
 
       // add iterator

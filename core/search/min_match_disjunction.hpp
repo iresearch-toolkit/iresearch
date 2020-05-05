@@ -76,9 +76,9 @@ class min_match_disjunction
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : attributes{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_ },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ }
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ }
       }},
       itrs_(std::move(itrs)),
       min_match_count_(

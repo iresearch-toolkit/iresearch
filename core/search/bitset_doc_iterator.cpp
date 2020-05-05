@@ -27,12 +27,11 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
-                                         const order::prepared& order)
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
   : attributes{{
-      { type<document>::id(), &doc_ },
-      { type<cost>::id(), &cost_    },
-      { type<score>::id(), order.empty() ? nullptr : &score_ },
+      { type<document>::id(), &doc_   },
+      { type<cost>::id(),     &cost_  },
+      { type<score>::id(),    &score_ },
     }},
     begin_(set.begin()),
     end_(set.end()),
@@ -54,7 +53,7 @@ bitset_doc_iterator::bitset_doc_iterator(
       const bitset& set,
       const order::prepared& order,
       boost_t boost)
-  : bitset_doc_iterator(set, order) {
+  : bitset_doc_iterator(set) {
   // prepare score
   if (!order.empty()) {
     score_.prepare(order, order.prepare_scorers(

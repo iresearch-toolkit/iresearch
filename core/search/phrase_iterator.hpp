@@ -42,7 +42,7 @@ class fixed_phrase_frequency {
   }
 
   const frequency* freq() const noexcept {
-    return order_->empty() ? nullptr : &phrase_freq_;
+    return &phrase_freq_;
   }
 
   const filter_boost* boost() const noexcept {
@@ -105,10 +105,10 @@ class fixed_phrase_frequency {
 /// @class doc_iterator_adapter
 /// @brief adapter to use doc_iterator with positions for disjunction
 ////////////////////////////////////////////////////////////////////////////////
-struct variadic_phrase_adapter: score_iterator_adapter<doc_iterator::ptr> {
+struct variadic_phrase_adapter final : score_iterator_adapter<doc_iterator::ptr> {
   variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
     : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
-      position(irs::position::extract(*this->it)),
+      position(irs::position::get_mutable(this->it.get())),
       boost(boost) {
   }
 
@@ -119,7 +119,6 @@ struct variadic_phrase_adapter: score_iterator_adapter<doc_iterator::ptr> {
 using variadic_term_position = std::pair<
   compound_doc_iterator<variadic_phrase_adapter>*,
   position::value_t>; // desired offset in the phrase
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class variadic_phrase_frequency
@@ -143,11 +142,11 @@ class variadic_phrase_frequency {
   }
 
   const frequency* freq() const noexcept {
-    return order_empty_ ? nullptr : &phrase_freq_;
+    return &phrase_freq_;
   }
 
   const filter_boost* boost() const noexcept {
-    return order_empty_ || !VolatileBoost ? nullptr : &phrase_boost_;
+    return !VolatileBoost ? nullptr : &phrase_boost_;
   }
 
   // returns frequency of the phrase
@@ -278,11 +277,11 @@ class variadic_phrase_frequency_overlapped {
   }
 
   const frequency* freq() const noexcept {
-    return order_empty_ ? nullptr : &phrase_freq_;
+    return &phrase_freq_;
   }
 
   const filter_boost* boost() const noexcept {
-    return order_empty_ || !VolatileBoost ? nullptr : &phrase_boost_;
+    return !VolatileBoost ? nullptr : &phrase_boost_;
   }
 
   // returns frequency of the phrase
@@ -443,11 +442,11 @@ class phrase_iterator final : public doc_iterator {
       freq_(std::move(pos), ord),
       doc_(irs::get<document>(approx_)),
       attrs_{{
-        { type<document>::id(), doc_                         },
-        { type<cost>::id(), &cost_                           },
-        { type<score>::id(), ord.empty() ? nullptr : &score_ },
-        { type<frequency>::id(), freq_.freq()                },
-        { type<filter_boost>::id(), freq_.boost()            },
+        { type<document>::id(),     doc_          },
+        { type<cost>::id(),         &cost_        },
+        { type<score>::id(),        &score_       },
+        { type<frequency>::id(),    freq_.freq()  },
+        { type<filter_boost>::id(), freq_.boost() },
       }} {
     assert(doc_);
 

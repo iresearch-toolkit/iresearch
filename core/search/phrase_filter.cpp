@@ -340,8 +340,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
       auto docs = terms->postings(features); // postings
 
-      // FIXME const_cast
-      auto* pos = const_cast<irs::position*>(irs::get<irs::position>(*docs)); // needed postings attributes
+      auto* pos = irs::position::get_mutable(docs.get());
 
       if (!pos) {
         // positions not found

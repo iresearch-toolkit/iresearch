@@ -65,13 +65,13 @@ class column_existence_query : public irs::filter::prepared {
     }
 
     if (!ord.empty()) {
-      // FIXME const_cast
-      auto* score = const_cast<irs::score*>(irs::get<irs::score>(*it));
+      auto* score = irs::score::get_mutable(it.get());
 
       if (score) {
-        score->prepare(ord, ord.prepare_scorers(
-          segment, empty_term_reader(column.size()),
-          stats_.c_str(), *it, boost()));
+        score->prepare(
+          ord,
+          ord.prepare_scorers(segment, empty_term_reader(column.size()),
+                              stats_.c_str(), *it, boost()));
       }
     }
 

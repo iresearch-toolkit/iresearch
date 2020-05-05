@@ -2730,7 +2730,7 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, columnstore_reopen_fail) {
@@ -2823,7 +2823,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, postings_reopen_fail) {
@@ -2981,5 +2981,5 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }

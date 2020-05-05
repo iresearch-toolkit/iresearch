@@ -40,7 +40,7 @@ struct score_iterator_adapter {
 
   score_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)) {
-    score = &irs::score::extract(*this->it);
+    score = &irs::score::get(*this->it);
     doc = irs::get<irs::document>(*this->it);
     assert(doc);
   }
@@ -131,8 +131,8 @@ class conjunction
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : attributes{{
-        { type<document>::id(), itrs.front_doc                  },
-        { type<cost>::id(),     irs::get<cost>(*itrs.front)     },
+        { type<document>::id(), itrs.front_doc              },
+        { type<cost>::id(),     irs::get<cost>(*itrs.front) },
         { type<score>::id(),    ord.empty() ? nullptr : &score_ },
       }},
       itrs_(std::move(itrs.itrs)),
@@ -184,7 +184,8 @@ class conjunction
     scores_vals_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       const auto* score = it.score;
-      if (&irs::score::no_score() != score) {
+      assert(score); // ensured by score_iterator_adapter
+      if (!score->empty()) {
         scores_.push_back(score);
         scores_vals_.push_back(score->c_str());
       }
