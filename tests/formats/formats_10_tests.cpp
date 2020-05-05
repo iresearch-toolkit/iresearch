@@ -52,8 +52,8 @@ class format_10_test_case : public tests::format_test_case {
   };
 
   void assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual) {
-    auto* expected_pos = irs::position::get_mutable(&expected);
-    auto* actual_pos = irs::position::get_mutable(&actual);
+    auto* expected_pos = irs::get_mutable<irs::position>(&expected);
+    auto* actual_pos = irs::get_mutable<irs::position>(&actual);
     ASSERT_EQ(!expected_pos, !actual_pos);
 
     if (!expected_pos) {

@@ -340,7 +340,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
       auto docs = terms->postings(features); // postings
 
-      auto* pos = irs::position::get_mutable(docs.get());
+      auto* pos = irs::get_mutable<irs::position>(docs.get());
 
       if (!pos) {
         // positions not found

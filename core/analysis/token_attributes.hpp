@@ -183,11 +183,6 @@ class IRESEARCH_API position
     return pos ? *pos : *empty();
   }
 
-  template<typename Provider>
-  static position* get_mutable(Provider* attrs) {
-    return irs::get_mutable<position>(attrs);
-  }
-
   value_t seek(value_t target) {
     while ((value_< target) && next());
     return value_;

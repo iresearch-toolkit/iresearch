@@ -865,7 +865,7 @@ class postings_writer final: public postings_writer_base {
 
     freq_ = irs::get<frequency>(attrs);
     if (freq_) {
-      auto* pos = irs::position::get_mutable(&attrs);
+      auto* pos = irs::get_mutable<position>(&attrs);
       if (pos) {
         pos_ = pos;
         offs_ = irs::get<irs::offset>(*pos_);

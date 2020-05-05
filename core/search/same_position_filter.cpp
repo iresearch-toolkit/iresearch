@@ -159,7 +159,7 @@ class same_position_query final : public filter::prepared {
       auto docs = term->postings(features);
 
       // get needed postings attributes
-      auto* pos = irs::position::get_mutable(docs.get());
+      auto* pos = irs::get_mutable<position>(docs.get());
 
       if (!pos) {
         // positions not found

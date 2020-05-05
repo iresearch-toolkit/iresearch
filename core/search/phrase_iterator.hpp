@@ -108,7 +108,7 @@ class fixed_phrase_frequency {
 struct variadic_phrase_adapter final : score_iterator_adapter<doc_iterator::ptr> {
   variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
     : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
-      position(irs::position::get_mutable(this->it.get())),
+      position(irs::get_mutable<irs::position>(this->it.get())),
       boost(boost) {
   }
 
