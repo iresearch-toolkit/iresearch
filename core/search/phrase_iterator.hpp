@@ -36,13 +36,13 @@ class fixed_phrase_frequency {
   fixed_phrase_frequency(
       std::vector<term_position_t>&& pos,
       const order::prepared& ord)
-    : pos_(std::move(pos)), order_(&ord) {
+    : pos_(std::move(pos)), order_empty_(ord.empty()) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
 
   frequency* freq() noexcept {
-    return &phrase_freq_;
+    return order_empty_ ? nullptr : &phrase_freq_;
   }
 
   filter_boost* boost() noexcept {
@@ -83,7 +83,7 @@ class fixed_phrase_frequency {
       }
 
       if (match) {
-        if (order_->empty()) {
+        if (order_empty_) {
           return (phrase_freq_.value = 1);
         }
 
@@ -97,8 +97,8 @@ class fixed_phrase_frequency {
 
  private:
   std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
-  const order::prepared* order_;
   frequency phrase_freq_; // freqency of the phrase in a document
+  bool order_empty_;
 }; // fixed_phrase_frequency
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,11 +142,11 @@ class variadic_phrase_frequency {
   }
 
   frequency* freq() noexcept {
-    return &phrase_freq_;
+    return order_empty_ ? nullptr : &phrase_freq_;
   }
 
   filter_boost* boost() noexcept {
-    return !VolatileBoost ? nullptr : &phrase_boost_;
+    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
   }
 
   // returns frequency of the phrase
@@ -277,11 +277,11 @@ class variadic_phrase_frequency_overlapped {
   }
 
   frequency* freq() noexcept {
-    return &phrase_freq_;
+    return order_empty_ ? nullptr : &phrase_freq_;
   }
 
   filter_boost* boost() noexcept {
-    return !VolatileBoost ? nullptr : &phrase_boost_;
+    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
   }
 
   // returns frequency of the phrase
