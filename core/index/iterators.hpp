@@ -40,17 +40,15 @@ NS_ROOT
 /// @class doc_iterator 
 /// @brief base iterator for document collections.
 ///
-/// After creation iterator is in uninitialized state:
+/// @note After creation iterator is in uninitialized state:
 ///   - 'value()' returns 'type_limits<type_t>::invalid()' or
 ///     'type_limits<type_t>::eof()'
-///
-/// 'seek()' to:
+/// @note 'seek()' to:
 ///   - 'type_limits<type_t>::invalid()' is undefined
 ///      and implementation dependent
 ///   - 'type_limits<type_t>::eof()' must always return
 ///     'type_limits<type_t>::eof()'
-///
-/// Once iterator is exhausted:
+/// @note Once iterator is exhausted:
 ///   - 'next()' must constantly return 'false'
 ///   - 'seek()' to any value must return 'type_limits<type_t>::eof()'
 ///   - 'value()' must return 'type_limits<type_t>::eof()'
