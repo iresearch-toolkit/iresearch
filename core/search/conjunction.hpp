@@ -133,7 +133,7 @@ class conjunction
     : attributes{{
         { type<document>::id(), itrs.front_doc              },
         { type<cost>::id(),     irs::get<cost>(*itrs.front) },
-        { type<score>::id(),    ord.empty() ? nullptr : &score_ },
+        { type<score>::id(),    &score_                     },
       }},
       itrs_(std::move(itrs.itrs)),
       front_(itrs.front),

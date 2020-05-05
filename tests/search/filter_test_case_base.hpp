@@ -515,8 +515,7 @@ class filter_test_case_base : public index_test_base {
   void check_query(
       const irs::filter& filter,
       const std::vector<irs::doc_id_t>& expected,
-      const irs::index_reader& rdr
-  ) {
+      const irs::index_reader& rdr) {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
@@ -530,14 +529,12 @@ class filter_test_case_base : public index_test_base {
       const irs::order& order,
       const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
-      bool score_must_be_present = true
-  ) {
-    typedef std::pair<irs::string_ref, irs::doc_id_t> result_item_t;
+      bool score_must_be_present = true) {
     auto prepared_order = order.prepare();
     auto prepared_filter = filter.prepare(rdr, prepared_order);
     auto score_less = [&prepared_order](
-      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-    )->bool {
+        const irs::bytes_ref& lhs,
+        const irs::bytes_ref& rhs)->bool {
       return prepared_order.less(lhs.c_str(), rhs.c_str());
     };
     std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
