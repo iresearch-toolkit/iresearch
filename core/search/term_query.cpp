@@ -69,7 +69,7 @@ doc_iterator::ptr term_query::execute(
   assert(docs);
 
   if (!ord.empty()) {
-    auto* score = irs::score::get_mutable(docs.get());
+    auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
       score->prepare(

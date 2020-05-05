@@ -77,7 +77,7 @@ doc_iterator::ptr multiterm_query::execute(
     auto docs = terms->postings(features);
 
     if (!no_score) {
-      auto* score = irs::score::get_mutable(docs.get());
+      auto* score = irs::get_mutable<irs::score>(docs.get());
 
       if (score) {
         assert(entry.stat_offset < stats.size());

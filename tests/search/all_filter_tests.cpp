@@ -61,7 +61,7 @@ TEST_P(all_filter_test_case, all_sequential) {
   ASSERT_EQ(docs.size(), it_cost->estimate());
   auto& score = irs::score::get(*it);
   ASSERT_TRUE(score.empty());
-  ASSERT_EQ(&score, irs::score::get_mutable(it.get()));
+  ASSERT_EQ(&score, irs::get_mutable<irs::score>(it.get()));
 }
 
 TEST_P(all_filter_test_case, all_order) {

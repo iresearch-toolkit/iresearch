@@ -1571,10 +1571,10 @@ class doc_iterator final
   doc_iterator() noexcept
     : attributes{{
         { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_ },
-        { type<score>::id(), &scr_ },
-        { type<frequency>::id(), IteratorTraits::frequency() ? &freq_ : nullptr },
-        { type<irs::position>::id(), IteratorTraits::position() ? &pos_ : nullptr  },
+        { type<cost>::id(), &cost_    },
+        { type<score>::id(), &scr_    },
+        { type<frequency>::id(),     IteratorTraits::frequency() ? &freq_ : nullptr  },
+        { type<irs::position>::id(), IteratorTraits::position()  ? &pos_  : nullptr  },
       }},
       skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
@@ -5202,7 +5202,7 @@ class postings_reader_base : public irs::postings_reader {
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
-    const attribute_provider& attrs,
+    attribute_provider& attrs,
     irs::term_meta& state) final;
 
  protected:
@@ -5289,7 +5289,7 @@ void postings_reader_base::prepare(
 size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
-    const attribute_provider& attrs,
+    attribute_provider& attrs,
     irs::term_meta& state) {
 #ifdef IRESEARCH_DEBUG
   auto& term_meta = dynamic_cast<version10::term_meta&>(state);
@@ -5297,13 +5297,12 @@ size_t postings_reader_base::decode(
   auto& term_meta = static_cast<version10::term_meta&>(state);
 #endif // IRESEARCH_DEBUG
 
-  auto* term_freq = irs::get<frequency>(attrs);
+  auto* term_freq = irs::get_mutable<frequency>(&attrs);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
   if (term_freq) {
-    //FIXME const_cast
-    const_cast<frequency*>(term_freq)->value = term_meta.docs_count + vread<uint32_t>(p);
+    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
   }
 
   term_meta.doc_start += vread<uint64_t>(p);

@@ -487,7 +487,7 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, const attribute_provider& attrs,
+  void load_data(const field_meta& meta, attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
@@ -590,7 +590,7 @@ class term_iterator_base
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (it) {
-      it->load_data(field, *this, state_, pr); // read attributes
+      it->load_data(field, const_cast<term_iterator_base&>(*this), state_, pr); // read attributes
     }
     return pr.iterator(field.features, *this, features);
   }
@@ -1358,7 +1358,7 @@ void block_iterator::scan_to_block(uint64_t start) {
 }
 
 void block_iterator::load_data(const field_meta& meta,
-                               const attribute_provider& attrs,
+                               attribute_provider& attrs,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);

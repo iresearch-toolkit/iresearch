@@ -63,9 +63,9 @@ bool boolean_token_stream::next() noexcept {
 
 string_token_stream::string_token_stream() noexcept
   : attributes{{
-      { type<increment>::id(), &inc_ },
-      { type<term_attribute>::id(), &term_ },
-      { type<offset>::id(), &offset_}
+      { type<increment>::id(),      &inc_   },
+      { type<term_attribute>::id(), &term_  },
+      { type<offset>::id(),         &offset_}
     }},
     in_use_(false) {
 }

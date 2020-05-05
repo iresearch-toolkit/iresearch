@@ -46,11 +46,6 @@ class IRESEARCH_API score : public attribute {
     return score ? *score : no_score();
   }
 
-  template<typename Provider>
-  static score* get_mutable(Provider* attrs) {
-    return irs::get_mutable<score>(attrs);
-  }
-
   const byte_type* c_str() const noexcept {
     return value_.c_str();
   }

@@ -150,7 +150,7 @@ struct IRESEARCH_API postings_reader {
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    const attribute_provider& attrs,
+    attribute_provider& attrs,
     term_meta& state) = 0;
 
   virtual doc_iterator::ptr iterator(

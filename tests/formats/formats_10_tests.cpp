@@ -170,7 +170,7 @@ class format_10_test_case : public tests::format_test_case {
       if (field.features.check<irs::frequency>()) {
         attrs.emplace(freq);
       }
-      const basic_attribute_provider read_attrs(attrs);
+      basic_attribute_provider read_attrs(attrs);
 
       // read term attributes
       {
@@ -417,7 +417,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       irs::version10::term_meta read_meta;
       irs::attribute_view attrs;
       attrs.emplace(read_meta);
-      const basic_attribute_provider read_attrs(attrs);
+      basic_attribute_provider read_attrs(attrs);
 
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
@@ -445,7 +445,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       irs::version10::term_meta read_meta;
       irs::attribute_view attrs;
       attrs.emplace(read_meta);
-      const basic_attribute_provider read_attrs(attrs);
+      basic_attribute_provider read_attrs(attrs);
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       {
@@ -557,7 +557,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     irs::version10::term_meta read_meta;
     irs::attribute_view attrs;
     attrs.emplace(read_meta);
-    const basic_attribute_provider read_attrs(attrs);
+    basic_attribute_provider read_attrs(attrs);
 
     // read term0 attributes
     {

@@ -169,7 +169,7 @@ class same_position_query final : public filter::prepared {
       positions.emplace_back(std::ref(*pos));
 
       if (!no_score) {
-        auto* score = irs::score::get_mutable(docs.get());
+        auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
           score->prepare(

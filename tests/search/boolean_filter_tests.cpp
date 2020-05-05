@@ -1919,7 +1919,7 @@ TEST(basic_disjunction_test, seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -1966,7 +1966,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -3027,7 +3027,7 @@ TEST(small_disjunction_test, seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -3078,7 +3078,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3129,7 +3129,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3194,7 +3194,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3258,7 +3258,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3322,7 +3322,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3384,7 +3384,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3446,7 +3446,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4035,7 +4035,7 @@ TEST(disjunction_test, seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -4086,7 +4086,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4137,7 +4137,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4202,7 +4202,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4266,7 +4266,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4330,7 +4330,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4392,7 +4392,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -4454,7 +4454,7 @@ TEST(disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -5652,7 +5652,7 @@ TEST(min_match_disjunction_test, seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -5710,7 +5710,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it));
@@ -5759,7 +5759,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(), irs::cost::extract(it));
@@ -5820,7 +5820,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(), irs::cost::extract(it));
@@ -5880,7 +5880,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size()+docs[1].first.size()+docs[2].first.size(), irs::cost::extract(it));
@@ -5940,7 +5940,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size()+docs[1].first.size()+docs[2].first.size(), irs::cost::extract(it));
@@ -5998,7 +5998,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it));
@@ -6056,7 +6056,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[0].first.size() + docs[1].first.size() + docs[2].first.size(),  irs::cost::extract(it));
@@ -6462,7 +6462,7 @@ TEST(conjunction_test, seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(), irs::cost::extract(it));
@@ -6511,7 +6511,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score, no order set
     auto& score = irs::score::get(it);
     ASSERT_TRUE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6560,7 +6560,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6621,7 +6621,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6681,7 +6681,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6741,7 +6741,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6799,7 +6799,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6857,7 +6857,7 @@ TEST(conjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.empty());
-    ASSERT_EQ(&score, irs::score::get_mutable(&it));
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
     ASSERT_EQ(docs[2].first.size(), irs::cost::extract(it));
@@ -6908,7 +6908,7 @@ TEST(exclusion_test, next) {
       // score, no order set
       auto& score = irs::score::get(it);
       ASSERT_TRUE(score.empty());
-      ASSERT_FALSE(irs::score::get_mutable(&it));
+      ASSERT_FALSE(irs::get_mutable<irs::score>(&it));
       ASSERT_EQ(&score, &irs::score::no_score());
 
       // cost

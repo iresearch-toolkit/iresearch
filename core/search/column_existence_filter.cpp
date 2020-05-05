@@ -65,7 +65,7 @@ class column_existence_query : public irs::filter::prepared {
     }
 
     if (!ord.empty()) {
-      auto* score = irs::score::get_mutable(it.get());
+      auto* score = irs::get_mutable<irs::score>(it.get());
 
       if (score) {
         score->prepare(
