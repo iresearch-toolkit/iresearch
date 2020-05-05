@@ -6908,7 +6908,8 @@ TEST(exclusion_test, next) {
       // score, no order set
       auto& score = irs::score::get(it);
       ASSERT_TRUE(score.empty());
-      ASSERT_EQ(&score, irs::score::get_mutable(&it));
+      ASSERT_FALSE(irs::score::get_mutable(&it));
+      ASSERT_EQ(&score, &irs::score::no_score());
 
       // cost
       ASSERT_EQ(included.size(), irs::cost::extract(it));
