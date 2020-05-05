@@ -30,11 +30,25 @@
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
+/// @class basic_token_stream
+/// @brief convenient helper implementation providing access to "increment"
+///        and "term_attributes" attributes
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API basic_token_stream : public token_stream {
+ public:
+  virtual const attribute* get(type_info::type_id type) const noexcept final;
+
+ protected:
+  term_attribute term_;
+  increment inc_;
+}; // basic_token_stream
+
+//////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API boolean_token_stream final
-    : public frozen_attributes<2, token_stream>,
+    : public basic_token_stream,
       private util::noncopyable {
  public:
   static constexpr string_ref value_true() noexcept {
@@ -51,19 +65,17 @@ class IRESEARCH_API boolean_token_stream final
 
   explicit boolean_token_stream(bool value = false) noexcept;
 
-  virtual bool next() override;
+  virtual bool next() noexcept override;
 
-  void reset(bool value) {
+  void reset(bool value) noexcept {
     value_ = value;
     in_use_ = false;
   }
 
  private:
-  term_attribute term_;
-  increment inc_;
   bool in_use_;
   bool value_;
-};
+}; // boolean_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class string_token_stream 
@@ -77,14 +89,14 @@ class IRESEARCH_API string_token_stream final
  public:
   string_token_stream() noexcept;
 
-  virtual bool next() override;
+  virtual bool next() noexcept override;
 
-  void reset(const bytes_ref& value) { 
+  void reset(const bytes_ref& value) noexcept {
     value_ = value;
     in_use_ = false; 
   }
 
-  void reset(const string_ref& value) {
+  void reset(const string_ref& value) noexcept {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
   }
@@ -97,12 +109,6 @@ class IRESEARCH_API string_token_stream final
   bool in_use_;
 }; // string_token_stream 
 
-struct increment;
-class numeric_term;
-
-const uint32_t PRECISION_STEP_DEF = 16;
-const uint32_t PRECISION_STEP_32 = 8;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class numeric_token_stream
 /// @brief token_stream implementation for numeric field. based on precision
@@ -110,10 +116,11 @@ const uint32_t PRECISION_STEP_32 = 8;
 ///        term
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API numeric_token_stream final
-    : public frozen_attributes<2, token_stream>,
-      private util::noncopyable { // attrs_ non-copyable
+    : public basic_token_stream,
+      private util::noncopyable {
  public:
-  numeric_token_stream();
+  static constexpr uint32_t PRECISION_STEP_DEF = 16;
+  static constexpr uint32_t PRECISION_STEP_32 = 8;
 
   virtual bool next() override;
 
@@ -231,8 +238,6 @@ class IRESEARCH_API numeric_token_stream final
   }; // numeric_term
 
   numeric_term num_;
-  term_attribute term_;
-  increment inc_;
 }; // numeric_token_stream 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -240,7 +245,7 @@ class IRESEARCH_API numeric_token_stream final
 /// @brief token_stream implementation for null field, a single null term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API null_token_stream final
-    : public frozen_attributes<2, token_stream>,
+    : public basic_token_stream,
       private util::noncopyable {
  public:
   static constexpr string_ref value_null() noexcept {
@@ -248,19 +253,15 @@ class IRESEARCH_API null_token_stream final
     return { "\x00", 0 };
   }
 
-  null_token_stream() noexcept;
+  virtual bool next() noexcept override;
 
-  virtual bool next() override;
-
-  void reset() { 
+  void reset() noexcept {
     in_use_ = false; 
   }
 
  private:
-  term_attribute term_;
-  increment inc_;
-  bool in_use_;
-};
+  bool in_use_{false};
+}; // null_token_stream
 
 NS_END
 

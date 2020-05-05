@@ -4936,7 +4936,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
         max_(column.max()) {
     }
 
-    virtual const irs::attribute* get(type_info::type_id type) const noexcept override {
+    virtual const irs::attribute* get(irs::type_info::type_id type) const noexcept override {
       return irs::type<document>::id() == type ? &value_ : nullptr;
     }
 

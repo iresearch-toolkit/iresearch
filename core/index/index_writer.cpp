@@ -714,7 +714,9 @@ index_writer::documents_context::document::~document() noexcept {
 }
 
 index_writer::documents_context::~documents_context() noexcept {
-  assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
+  // failure may indicate a dangling 'document' instance
+  assert(segment_.ctx().use_count() >= 0 &&
+         static_cast<uint64_t>(segment_.ctx().use_count()) == segment_use_count_);
 
   if (segment_.ctx()) {
     auto& writer = *segment_.ctx()->writer_;

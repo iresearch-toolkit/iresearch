@@ -28,19 +28,29 @@
 NS_ROOT
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                 basic_token_stream implementation
+// -----------------------------------------------------------------------------
+
+const attribute* basic_token_stream::get(type_info::type_id type) const noexcept {
+  if (irs::type<increment>::id() == type) {
+    return &inc_;
+  }
+
+  return irs::type<term_attribute>::id() == type
+    ? &term_
+    : nullptr;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                               boolean_token_stream implementation
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : attributes{{
-      { type<increment>::id(), &inc_ },
-      { type<term_attribute>::id(), &term_ }
-    }},
-    in_use_(false),
+  : in_use_(false),
     value_(value) {
 }
 
-bool boolean_token_stream::next() {
+bool boolean_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
   term_.value = ref_cast<byte_type>(value(value_));
@@ -60,7 +70,7 @@ string_token_stream::string_token_stream() noexcept
     in_use_(false) {
 }
 
-bool string_token_stream::next() {
+bool string_token_stream::next() noexcept {
   const auto in_use = in_use_;
   term_.value = value_;
   offset_.start = 0;
@@ -107,7 +117,6 @@ bytes_ref numeric_token_stream::numeric_term::value(
   return bytes_ref::NIL;
 }
 
-
 bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
   constexpr uint32_t INCREMENT_VALUE[] { 0, 1 };
   constexpr uint32_t BITS_REQUIRED[] {
@@ -128,13 +137,6 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
 // -----------------------------------------------------------------------------
 // --SECTION--                               numeric_token_stream implementation
 // -----------------------------------------------------------------------------
-
-numeric_token_stream::numeric_token_stream() 
-  : attributes{{
-      { type<increment>::id(), &inc_ },
-      { type<term_attribute>::id(), &term_ }
-    }} {
-}
 
 bool numeric_token_stream::next() {
   return num_.next(inc_, term_.value);
@@ -188,15 +190,7 @@ void numeric_token_stream::reset(
 // --SECTION--                                  null_token_stream implementation
 // -----------------------------------------------------------------------------
 
-null_token_stream::null_token_stream() noexcept
-  : attributes{{
-      { type<increment>::id(), &inc_ },
-      { type<term_attribute>::id(), &term_ }
-    }},
-    in_use_(false) {
-}
-
-bool null_token_stream::next() {
+bool null_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
   term_.value = irs::ref_cast<byte_type>(value_null());
