@@ -860,7 +860,7 @@ class postings_writer final: public postings_writer_base {
 
  private:
   void refresh(attribute_provider& attrs) noexcept {
-    pos_ = position::empty();
+    pos_ = irs::position::empty();
     offs_ = nullptr;
     pay_ = nullptr;
 
