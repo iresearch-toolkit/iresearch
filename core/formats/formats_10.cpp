@@ -297,7 +297,7 @@ class postings_writer_base : public irs::postings_writer {
   }
 
  public:
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
@@ -1461,7 +1461,7 @@ class position final : public irs::position,
  public:
   typedef position_impl<IteratorTraits> impl;
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) override {
     return impl::attribute(type);
   }
 
