@@ -36,13 +36,11 @@ TEST(cost_attribute_test, consts) {
 
 TEST(cost_attribute_test, ctor) {
   irs::cost cost;
-  ASSERT_TRUE(bool(cost.rule()));
   ASSERT_EQ(0, cost.estimate());
 }
 
 TEST(cost_attribute_test, estimation) {
   irs::cost cost;
-  ASSERT_TRUE(bool(cost.rule()));
   ASSERT_EQ(0, cost.estimate());
 
   // explicit estimation
@@ -52,17 +50,7 @@ TEST(cost_attribute_test, estimation) {
     // set estimation value and check
     {
       cost.value(est);
-      ASSERT_TRUE(bool(cost.rule()));
       ASSERT_EQ(est, cost.estimate());
-      ASSERT_EQ(est, cost.rule()());
-    }
-
-    // clear
-    {
-      cost.clear();
-      ASSERT_TRUE(bool(cost.rule()));
-      ASSERT_EQ(est, cost.estimate());
-      ASSERT_EQ(est, cost.rule()());
     }
   }
   
@@ -75,7 +63,6 @@ TEST(cost_attribute_test, estimation) {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
@@ -84,44 +71,49 @@ TEST(cost_attribute_test, estimation) {
 
 TEST(cost_attribute_test, lazy_estimation) {
   irs::cost cost;
-  ASSERT_TRUE(bool(cost.rule()));
   ASSERT_EQ(0, cost.estimate());
 
   auto evaluated = false;
   auto est = 7;
 
-  /* set estimation function and evaluate */
+  // set estimation function and evaluate
   {
+    evaluated = false;
     cost.rule([&evaluated, est]() {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
-  /* change estimation func */
+  // ensure value is cached
+  {
+    evaluated = false;
+    ASSERT_EQ(est, cost.estimate());
+    ASSERT_FALSE(evaluated);
+  }
+
+  // change estimation func
   {
     evaluated = false;
     cost.rule([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+1, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
-  /* clear */
+  // set value directly
   {
     evaluated = false;
-    cost.clear();
-    ASSERT_EQ(est+1, cost.estimate());
-    /* evaluate again */
-    ASSERT_TRUE(evaluated);
+    cost.value(est+2);
+    ASSERT_FALSE(evaluated);
+    ASSERT_EQ(est+2, cost.estimate());
+    ASSERT_FALSE(evaluated);
   }
 }
 
@@ -142,7 +134,6 @@ TEST(cost_attribute_test, extract) {
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
-  ASSERT_TRUE(bool(cost.rule()));
   attrs.attrs.emplace(cost);
 
   auto est = 7;
@@ -154,7 +145,6 @@ TEST(cost_attribute_test, extract) {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, irs::cost::extract(attrs));
     ASSERT_TRUE(evaluated);
@@ -167,7 +157,6 @@ TEST(cost_attribute_test, extract) {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     ASSERT_TRUE(evaluated);
@@ -176,9 +165,7 @@ TEST(cost_attribute_test, extract) {
   // clear
   {
     evaluated = false;
-    cost.clear();
     ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
-    /* evaluate again */
-    ASSERT_TRUE(evaluated);
+    ASSERT_FALSE(evaluated);
   }
 }
