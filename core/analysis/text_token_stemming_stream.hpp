@@ -26,6 +26,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 struct sb_stemmer; // forward declaration
 

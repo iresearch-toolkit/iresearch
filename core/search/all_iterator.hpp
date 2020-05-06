@@ -29,6 +29,7 @@
 #include "search/sort.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 

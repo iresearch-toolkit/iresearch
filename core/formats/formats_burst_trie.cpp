@@ -68,7 +68,7 @@
 #include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 #include "utils/fst_matcher.hpp"

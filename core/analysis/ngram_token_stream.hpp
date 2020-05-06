@@ -25,6 +25,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)

@@ -55,6 +55,7 @@
 #include "utils/bitset.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/encryption.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
@@ -865,7 +866,7 @@ class postings_writer final: public postings_writer_base {
 
     freq_ = irs::get<frequency>(attrs);
     if (freq_) {
-      auto* pos = irs::get_mutable<position>(&attrs);
+      auto* pos = irs::get_mutable<irs::position>(&attrs);
       if (pos) {
         pos_ = pos;
         offs_ = irs::get<irs::offset>(*pos_);
@@ -875,7 +876,7 @@ class postings_writer final: public postings_writer_base {
   }
 
   const frequency* freq_{};
-  position* pos_{};
+  irs::position* pos_{};
   const offset* offs_{};
   const payload* pay_{};
 }; // postings_writer

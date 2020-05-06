@@ -25,6 +25,7 @@
 
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
 
 NS_ROOT

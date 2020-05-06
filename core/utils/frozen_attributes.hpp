@@ -20,38 +20,50 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FROZEN_ATTRIBUTES_PROVIDER_H
-#define IRESEARCH_FROZEN_ATTRIBUTES_PROVIDER_H
+#ifndef IRESEARCH_FROZEN_ATTRIBUTES_H
+#define IRESEARCH_FROZEN_ATTRIBUTES_H
 
 #include "frozen/map.h"
 
 #include "attributes_provider.hpp"
 
-
 NS_ROOT
-NS_BEGIN(util)
 
-template<size_t Size>
-class frozen_attributes_provider : public attributes_provider {
+template<
+  size_t Size,
+  typename Base,
+  typename = std::enable_if_t<std::is_base_of_v<attribute_provider, Base>>
+> class frozen_attributes : public Base {
  public:
-  using attributes_map = frozen::map<type_info::type_id, const attribute*, Size>;
+  using attributes = frozen_attributes;
+  using attribute_map = frozen::map<type_info::type_id, attribute*, Size>;
+  using value_type = typename attribute_map::value_type;
 
-  constexpr frozen_attribute_provider(
-    typename attributes_map::value_type const (&value)[Size] values) noexcept
-    : attrs_(values) {
+  template<typename... Args>
+  constexpr explicit frozen_attributes(
+      std::initializer_list<value_type> values,
+      Args&&... args)
+    : Base(std::forward<Args>(args)...),
+      attrs_(values) {
   }
 
-  virtual const attribute* get(type_info::type_id type) const noexcept override {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }
 
+ protected:
+  constexpr attribute** ref(type_info::type_id type) noexcept {
+    const auto it = attrs_.find(type);
 
- private:
-  attributes_map attrs_;
-}; // frozen_attributes_provider
+    return it == attrs_.end()
+      ? nullptr
+      : const_cast<attribute**>(&it->second);
+  }
 
-NS_END // util
+  attribute_map attrs_;
+}; // frozen_token_stream
+
 NS_END
 
-#endif // IRESEARCH_FROZEN_ATTRIBUTES_PROVIDER_H
+#endif // IRESEARCH_FROZEN_ATTRIBUTES_H

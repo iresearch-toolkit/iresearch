@@ -26,7 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "utils/attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 

@@ -26,10 +26,11 @@
 #ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
 #define IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
 
-#include "analyzers.hpp"
 #include "shared.hpp"
+#include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
