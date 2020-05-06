@@ -67,7 +67,7 @@ class ngram_similarity_doc_iterator final
       size_t total_terms_count,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : pos_{ itrs.begin(), itrs.end() },
+    : pos_(itrs.begin(), itrs.end()),
       approx_(std::move(itrs), min_match_count,
               order::prepared::unordered()), // we are not interested in disjunction`s scoring
       doc_(irs::get_mutable<document>(&approx_)),
