@@ -35,6 +35,8 @@ struct attribute;
 /// @brief base class for all objects with externally visible attributes
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute_provider {
+  virtual ~attribute_provider() = default;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @return pointer to attribute of a specified type
   /// @note external users should prefer using const version
