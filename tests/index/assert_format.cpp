@@ -685,9 +685,6 @@ void assert_term(
   const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
   const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
 
-  // FIXME???
-  //ASSERT_EQ(expected_docs->attributes().features() & requested_features, actual_docs->attributes().features() & requested_features);
-
   ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
   ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
   // check docs
@@ -705,9 +702,8 @@ void assert_term(
         ASSERT_EQ(expected_freq->value, actual_freq->value);
       }
 
-      //FIXME const_cast
-      auto* expected_pos = const_cast<irs::position*>(irs::get<irs::position>(*expected_docs));
-      auto* actual_pos = const_cast<irs::position*>(irs::get<irs::position>(*actual_docs));
+      auto* expected_pos = irs::get_mutable<irs::position>(expected_docs.get());
+      auto* actual_pos = irs::get_mutable<irs::position>(actual_docs.get());
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
@@ -940,13 +936,6 @@ void assert_index(
       ASSERT_EQ(expected_term_reader->size(), actual_term_reader->size());
       ASSERT_EQ(expected_term_reader->docs_count(), actual_term_reader->docs_count());
       ASSERT_EQ(expected_term_reader->meta(), actual_term_reader->meta());
-
-// FIXME should we be able to get all features???
-//      auto& expected_attributes = expected_term_reader->attributes();
-//      auto& actual_attributes = actual_term_reader->attributes();
-//      auto expected_features = expected_term_reader->attributes().features();
-//      auto actual_features = actual_term_reader->attributes().features();
-//      ASSERT_EQ(expected_features, actual_features);
 
       auto* expected_freq = irs::get<irs::frequency>(*expected_term_reader);
       auto* actual_freq = irs::get<irs::frequency>(*actual_term_reader);

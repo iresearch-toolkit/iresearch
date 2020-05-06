@@ -67,8 +67,6 @@ namespace tests {
 
       for (auto docs_itr = segment.mask(term_itr->postings(term_features)); docs_itr->next();) {
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        // FIXME
-        //ASSERT_EQ(3 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
         ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
 
         if (frequency) {
@@ -77,8 +75,7 @@ namespace tests {
         }
 
         if (position) {
-          //FIXME const_cast
-          auto* docs_itr_pos = const_cast<irs::position*>(irs::get<irs::position>(*docs_itr));
+          auto* docs_itr_pos = irs::get_mutable<irs::position>(docs_itr.get());
           ASSERT_TRUE(docs_itr_pos);
 
           for (auto pos: *position) {
