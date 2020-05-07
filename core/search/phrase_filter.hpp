@@ -200,7 +200,7 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const override;
+    const attribute_provider* ctx) const override;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(

@@ -107,14 +107,13 @@ class IRESEARCH_API filter {
     doc_iterator::ptr execute(
         const sub_reader& rdr,
         const order::prepared& ord) const {
-      return execute(rdr, ord, attribute_view::empty_instance());
+      return execute(rdr, ord, nullptr);
     }
 
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx
-    ) const = 0;
+      const attribute_provider* ctx) const = 0;
 
     boost_t boost() const noexcept { return boost_; }
 
@@ -148,13 +147,12 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx
-  ) const = 0;
+      const attribute_provider* ctx) const = 0;
 
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx) const {
+      const attribute_provider* ctx) const {
     return prepare(rdr, ord, irs::no_boost(), ctx);
   }
 
@@ -162,7 +160,7 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost) const {
-    return prepare(rdr, ord, boost, attribute_view::empty_instance());
+    return prepare(rdr, ord, boost, nullptr);
   }
 
   filter::prepared::ptr prepare(
@@ -276,7 +274,7 @@ class filter_base : public filter_with_options<Options> {
 /// @class empty
 /// @brief filter which returns no documents
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API empty: public filter {
+class IRESEARCH_API empty final : public filter {
  public:
   static constexpr string_ref type_name() noexcept {
     return "iresearch::empty";
@@ -290,8 +288,7 @@ class IRESEARCH_API empty: public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // empty
 
 struct filter_visitor;

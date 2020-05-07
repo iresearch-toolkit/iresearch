@@ -53,9 +53,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ("abc,def\"\",\"\"ghi", irs::ref_cast<char>(term->value));
@@ -69,9 +69,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -108,9 +108,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -132,9 +132,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -156,9 +156,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -190,9 +190,9 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -217,9 +217,9 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     auto testFunc = [](const irs::string_ref& data, irs::analysis::analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
-      auto& offset = pStream->attributes().get<irs::offset>();
-      auto& payload = pStream->attributes().get<irs::payload>();
-      auto& term = pStream->attributes().get<irs::term_attribute>();
+      auto* offset = irs::get<irs::offset>(*pStream);
+      auto* payload = irs::get<irs::payload>(*pStream);
+      auto* term = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(0, offset->start);
@@ -256,9 +256,9 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -285,9 +285,9 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -314,9 +314,9 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -343,9 +343,9 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
     ASSERT_TRUE(stream.reset(data));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
@@ -377,9 +377,9 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
@@ -407,9 +407,9 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
@@ -446,9 +446,9 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);

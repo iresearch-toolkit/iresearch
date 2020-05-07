@@ -34,7 +34,7 @@
 // -----------------------------------------------------------------------------
 
 #define REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, source) \
-  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(type<compression_name>::get(), compressor_factory, decompressor_factory, source)
+  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(::iresearch::type<compression_name>::get(), compressor_factory, decompressor_factory, source)
 #define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, file, line) \
   REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, file ":" TOSTRING(line))
 #define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) \

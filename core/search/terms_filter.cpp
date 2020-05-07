@@ -120,7 +120,7 @@ filter::prepared::ptr by_terms::prepare(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   boost *= this->boost();
   const auto& terms = options().terms;
   const size_t size = terms.size();

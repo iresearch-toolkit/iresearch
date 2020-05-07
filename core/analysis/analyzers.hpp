@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_ANALYZERS_H
 #define IRESEARCH_ANALYZERS_H
 
+#include <functional>
+
 #include "shared.hpp"
 #include "analyzer.hpp"
 #include "utils/text_format.hpp"

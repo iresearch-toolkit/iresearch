@@ -36,7 +36,7 @@ struct empty_query final
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
-      const irs::attribute_view&) const override {
+      const irs::attribute_provider*) const override {
     return irs::doc_iterator::empty();
   }
 }; // empty_query
@@ -72,8 +72,7 @@ filter::prepared::ptr empty::prepare(
     const index_reader&,
     const order::prepared&,
     boost_t,
-    const attribute_view&
-) const {
+    const attribute_provider*) const {
   // aliasing ctor
   return filter::prepared::ptr(
     filter::prepared::ptr(), &empty_query::instance()

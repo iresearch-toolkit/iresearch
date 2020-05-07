@@ -26,6 +26,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -34,23 +35,20 @@ NS_BEGIN(analysis)
 /// @brief an analyzer capable of masking the input, treated as a single token,
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class token_masking_stream: public analyzer, util::noncopyable {
+class token_masking_stream
+  : public frozen_attributes<4, analyzer>,
+    util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "mask"; }
-  static void init(); // for trigering registration in a static build
 
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& mask);
+  static void init(); // for trigering registration in a static build
+  static ptr make(const string_ref& mask);
 
   explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
   private:
-   irs::attribute_view attrs_;
    irs::increment inc_;
    std::unordered_set<irs::bstring> mask_;
    irs::offset offset_;

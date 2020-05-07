@@ -184,14 +184,14 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
-  : analyzer(irs::type<text_token_stemming_stream>::get()),
-    attrs_(4), // increment + offset + payload + term
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<payload>::id(), &payload_     },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stemming_stream>::get()},
     locale_(locale),
     term_eof_(true) {
-  attrs_.emplace(inc_);
-  attrs_.emplace(offset_);
-  attrs_.emplace(payload_);
-  attrs_.emplace(term_);
 }
 
 /*static*/ void text_token_stemming_stream::init() {

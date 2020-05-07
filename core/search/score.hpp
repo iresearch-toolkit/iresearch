@@ -40,12 +40,11 @@ class IRESEARCH_API score : public attribute {
 
   static const irs::score& no_score() noexcept;
 
-  static const irs::score& extract(const attribute_view& attrs) noexcept {
-    const irs::score* score = attrs.get<irs::score>().get();
+  template<typename Provider>
+  static const score& get(const Provider& attrs) {
+    const auto* score = irs::get<irs::score>(attrs);
     return score ? *score : no_score();
   }
-
-  score() noexcept;
 
   const byte_type* c_str() const noexcept {
     return value_.c_str();
@@ -92,7 +91,7 @@ class IRESEARCH_API score : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring value_;     // score buffer
   memory::managed_ptr<const score_ctx> ctx_{}; // arbitrary scoring context
-  score_f func_{};    // scoring function
+  score_f func_{[](const score_ctx*, byte_type*){}};    // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 

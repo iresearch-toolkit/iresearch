@@ -24,6 +24,21 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
+NS_LOCAL
+
+struct empty_position final : irs::position {
+  virtual void reset() override { }
+  virtual bool next() override { return false; }
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
+  }
+};
+
+empty_position NO_POSITION;
+const irs::document INVALID_DOCUMENT;
+
+NS_END
+
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
@@ -32,50 +47,12 @@
 
 NS_ROOT
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            offset
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(offset);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         increment
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(increment);
-
-increment::increment() noexcept
-  : basic_attribute<uint32_t>(1U) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    term_attribute
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(term_attribute);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           payload
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(payload);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          document
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(document);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         frequency
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(frequency);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                granularity_prefix
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
 
 // -----------------------------------------------------------------------------
@@ -83,8 +60,6 @@ REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(norm);
-
-const document INVALID_DOCUMENT;
 
 norm::norm() noexcept {
   reset();
@@ -131,7 +106,7 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
     return false;
   }
 
-  payload_ = column_it_->attributes().get<irs::payload>().get();
+  payload_ = irs::get<irs::payload>(*column_it_);
   if (!payload_) {
     return false;
   }
@@ -154,10 +129,8 @@ float_t norm::read() const {
 // --SECTION--                                                          position
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(position);
+/*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
 
-position::position(size_t reserve_attrs) noexcept
-  : attrs_(reserve_attrs) {
-}
+REGISTER_ATTRIBUTE(position);
 
 NS_END

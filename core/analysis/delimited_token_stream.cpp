@@ -202,14 +202,13 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
-  : analyzer(irs::type<delimited_token_stream>::get()),
-    attrs_(4), // increment + offset + payload + term
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<payload>::id(), &payload_     },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<delimited_token_stream>::get()},
     delim_(ref_cast<byte_type>(delimiter)) {
-  attrs_.emplace(inc_);
-  attrs_.emplace(offset_);
-  attrs_.emplace(payload_);
-  attrs_.emplace(term_); // ensure we use base class type
-
   if (!delim_.null()) {
     delim_buf_ = delim_; // keep a local copy of the delimiter
     delim_ = delim_buf_; // update the delimter to point at the local copy

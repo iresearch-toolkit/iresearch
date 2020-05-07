@@ -88,17 +88,15 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_EQ(2, impl->max_gram());
     ASSERT_EQ(true, impl->preserve_original());
 
-    ASSERT_EQ(3, stream->attributes().size());
-
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
     ASSERT_TRUE(term->value.null());
 
-    auto& increment = stream->attributes().get<irs::increment>();
+    auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
     ASSERT_EQ(1, increment->value);
 
-    auto& offset = stream->attributes().get<irs::offset>();
+    auto* offset = irs::get<irs::offset>(*stream);
     ASSERT_TRUE(offset);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(0, offset->end);
@@ -116,17 +114,15 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_EQ(2, impl->max_gram());
     ASSERT_EQ(true, impl->preserve_original());
 
-    ASSERT_EQ(3, stream->attributes().size());
-
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
     ASSERT_TRUE(term->value.null());
 
-    auto& increment = stream->attributes().get<irs::increment>();
+    auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
     ASSERT_EQ(1, increment->value);
 
-    auto& offset = stream->attributes().get<irs::offset>();
+    auto* offset = irs::get<irs::offset>(*stream);
     ASSERT_TRUE(offset);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(0, offset->end);
@@ -144,17 +140,15 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->max_gram());
     ASSERT_EQ(true, impl->preserve_original());
 
-    ASSERT_EQ(3, stream->attributes().size());
-
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
     ASSERT_TRUE(term->value.null());
 
-    auto& increment = stream->attributes().get<irs::increment>();
+    auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
     ASSERT_EQ(1, increment->value);
 
-    auto& offset = stream->attributes().get<irs::offset>();
+    auto* offset = irs::get<irs::offset>(*stream);
     ASSERT_TRUE(offset);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(0, offset->end);
@@ -183,12 +177,12 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>& stream) {
     ASSERT_TRUE(stream.reset(data));
 
-    auto& value = stream.attributes().get<irs::term_attribute>();
+    auto* value = irs::get<irs::term_attribute>(stream);
     ASSERT_TRUE(value);
 
-    auto& offset = stream.attributes().get<irs::offset>();
+    auto* offset = irs::get<irs::offset>(stream);
     ASSERT_TRUE(offset);
-    auto& inc = stream.attributes().get<irs::increment>();
+    auto* inc = irs::get<irs::increment>(stream);
     auto expected_token = expected.begin();
     uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
     while (stream.next()) {
@@ -614,17 +608,16 @@ TEST(ngram_token_stream_test, reset_too_big) {
     size_t(std::numeric_limits<uint32_t>::max()) + 1);
 
   ASSERT_FALSE(stream.reset(input));
-  ASSERT_EQ(3, stream.attributes().size());
 
-  auto& term = stream.attributes().get<irs::term_attribute>();
+  auto* term = irs::get<irs::term_attribute>(stream);
   ASSERT_TRUE(term);
   ASSERT_TRUE(term->value.null());
 
-  auto& increment = stream.attributes().get<irs::increment>();
+  auto* increment = irs::get<irs::increment>(stream);
   ASSERT_TRUE(increment);
   ASSERT_EQ(1, increment->value);
 
-  auto& offset = stream.attributes().get<irs::offset>();
+  auto* offset = irs::get<irs::offset>(stream);
   ASSERT_TRUE(offset);
   ASSERT_EQ(0, offset->start);
   ASSERT_EQ(0, offset->end);
@@ -654,12 +647,12 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>& stream) {
     ASSERT_TRUE(stream.reset(data));
 
-    auto& value = stream.attributes().get<irs::term_attribute>();
+    auto* value = irs::get<irs::term_attribute>(stream);
     ASSERT_TRUE(value);
 
-    auto& offset = stream.attributes().get<irs::offset>();
+    auto* offset = irs::get<irs::offset>(stream);
     ASSERT_TRUE(offset);
-    auto& inc = stream.attributes().get<irs::increment>();
+    auto* inc = irs::get<irs::increment>(stream);
     auto expected_token = expected.begin();
     uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
     while (stream.next()) {
@@ -1214,8 +1207,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
       "ngram", irs::type<irs::text_format::json>::get(),
       "{\"min\":2,\"max\":3,\"preserveOriginal\":true}");
   ASSERT_NE(nullptr, stream);
-  auto& attrs = stream->attributes();
-  auto& inc = attrs.get<irs::increment>();
+  auto* inc = irs::get<irs::increment>(*stream);
   for (size_t i = 0; i < 10000; ++i) {
     std::basic_stringstream<char> ss;
     ss << "test_" << i;
@@ -1321,9 +1313,9 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
-    auto& inc = stream->attributes().get<irs::increment>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    auto* inc = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
@@ -1342,9 +1334,9 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
-    auto& inc = stream->attributes().get<irs::increment>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    auto* inc = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(10, offset->end);

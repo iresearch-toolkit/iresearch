@@ -46,18 +46,22 @@ class segment_writer_tests: public test_base {
   }
 };
 
+
+struct token_stream_mock final : public irs::token_stream {
+  std::map<irs::type_info::type_id, irs::attribute*> attrs;
+  size_t token_count;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    const auto it = attrs.find(type);
+    return it == attrs.end() ? nullptr : it->second;
+  }
+  virtual bool next() override { return --token_count; }
+};
+
 NS_END
 
 #ifndef IRESEARCH_DEBUG
 
 TEST_F(segment_writer_tests, invalid_actions) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -365,13 +369,6 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
 }
 
 TEST_F(segment_writer_tests, memory_index_field) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -410,13 +407,6 @@ TEST_F(segment_writer_tests, memory_index_field) {
 }
 
 TEST_F(segment_writer_tests, index_field) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -435,11 +425,11 @@ TEST_F(segment_writer_tests, index_field) {
     irs::memory_directory dir;
     auto writer = irs::segment_writer::make(dir, column_info, nullptr);
     irs::segment_writer::update_context ctx;
-    token_stream_t stream;
+    token_stream_mock stream;
     field_t field(stream);
     irs::term_attribute term;
 
-    stream.attrs.emplace(term);
+    stream.attrs[irs::type<irs::term_attribute>::id()] = &term;
     stream.token_count = 10;
 
     writer->begin(ctx);
@@ -458,11 +448,11 @@ TEST_F(segment_writer_tests, index_field) {
     irs::memory_directory dir;
     auto writer = irs::segment_writer::make(dir, column_info, nullptr);
     irs::segment_writer::update_context ctx;
-    token_stream_t stream;
+    token_stream_mock stream;
     field_t field(stream);
     irs::increment inc;
 
-    stream.attrs.emplace<irs::increment>(inc);
+    stream.attrs[irs::type<irs::increment>::id()] = &inc;
     stream.token_count = 10;
 
     writer->begin(ctx);

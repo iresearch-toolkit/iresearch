@@ -52,11 +52,10 @@ namespace iresearch {
         return !filter_ ? 0 : filter_->hash();
       }
       virtual irs::filter::prepared::ptr prepare(
-        const index_reader& rdr,
-        const order::prepared& ord,
-        boost_t boost,
-        const attribute_view& ctx
-      ) const override {
+          const index_reader& rdr,
+          const order::prepared& ord,
+          boost_t boost,
+          const attribute_provider* ctx) const override {
         return filter_->prepare(rdr, ord, boost, ctx);
       };
 

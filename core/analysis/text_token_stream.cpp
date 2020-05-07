@@ -61,6 +61,7 @@
 #include "utils/json_utils.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
@@ -894,8 +895,6 @@ bool normalize_text_config(const irs::string_ref& args,
   return false;
 }
 
-
-
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
@@ -905,8 +904,6 @@ NS_END
 
 NS_ROOT
 NS_BEGIN(analysis)
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
@@ -919,12 +916,12 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : analyzer(irs::type<text_token_stream>::get()),
-    attrs_(3), // offset + bytes_term + increment
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offs_         },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stream>::get()},
     state_(memory::make_unique<state_t>(options, stopwords)) {
-  attrs_.emplace(offs_);
-  attrs_.emplace(inc_);
-  attrs_.emplace(term_); // ensure we use base class type
 }
 
 // -----------------------------------------------------------------------------
@@ -938,9 +935,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(
-    const irs::string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stream::make(const irs::string_ref& locale) {
   return make_text(locale);
 }
 
@@ -1052,7 +1047,7 @@ bool text_token_stream::reset(const string_ref& data) {
   state_->start = integer_traits<uint32_t>::const_max;
   state_->end = integer_traits<uint32_t>::const_max;
   state_->set_ngram_finished();
-  inc_.clear();
+  inc_.value = 1;
 
   return true;
 }
@@ -1112,7 +1107,7 @@ bool text_token_stream::next_ngram() {
   // if there are no ngrams yet then a new word started
   if (state_->is_ngram_finished()) {
     state_->ngram.it = begin;
-    inc_.clear();
+    inc_.value = 1;
     // find the first ngram > min
     do {
       state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);

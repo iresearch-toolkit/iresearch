@@ -32,7 +32,7 @@ NS_BEGIN(analysis)
 
 class IRESEARCH_API analyzer : public token_stream {
  public:
-  DECLARE_SHARED_PTR(analyzer);
+  using ptr = std::shared_ptr<analyzer>;
 
   explicit analyzer(const type_info& type) noexcept;
 

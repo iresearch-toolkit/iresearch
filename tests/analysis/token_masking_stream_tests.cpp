@@ -52,9 +52,9 @@ TEST_F(token_masking_stream_tests, test_masking) {
     std::unordered_set<irs::bstring> mask;
     irs::analysis::token_masking_stream stream(std::move(mask));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data0));
     ASSERT_TRUE(stream.next());
@@ -80,9 +80,9 @@ TEST_F(token_masking_stream_tests, test_masking) {
     std::unordered_set<irs::bstring> mask = { irs::ref_cast<irs::byte_type>(irs::string_ref("abc")) };
     irs::analysis::token_masking_stream stream(std::move(mask));
 
-    auto& offset = stream.attributes().get<irs::offset>();
-    auto& payload = stream.attributes().get<irs::payload>();
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(stream);
+    auto* payload = irs::get<irs::payload>(stream);
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data0));
     ASSERT_FALSE(stream.next());
@@ -111,9 +111,9 @@ TEST_F(token_masking_stream_tests, test_load) {
       ASSERT_FALSE(stream->next());
       ASSERT_TRUE(stream->reset(data1));
 
-      auto& offset = stream->attributes().get<irs::offset>();
-      auto& payload = stream->attributes().get<irs::payload>();
-      auto& term = stream->attributes().get<irs::term_attribute>();
+      auto* offset = irs::get<irs::offset>(*stream);
+      auto* payload = irs::get<irs::payload>(*stream);
+      auto* term = irs::get<irs::term_attribute>(*stream);
 
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -142,9 +142,9 @@ TEST_F(token_masking_stream_tests, test_load) {
       ASSERT_FALSE(stream->next());
       ASSERT_TRUE(stream->reset(data1));
 
-      auto& offset = stream->attributes().get<irs::offset>();
-      auto& payload = stream->attributes().get<irs::payload>();
-      auto& term = stream->attributes().get<irs::term_attribute>();
+      auto* offset = irs::get<irs::offset>(*stream);
+      auto* payload = irs::get<irs::payload>(*stream);
+      auto* term = irs::get<irs::term_attribute>(*stream);
 
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -181,9 +181,9 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data0));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
@@ -205,9 +205,9 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data0));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);

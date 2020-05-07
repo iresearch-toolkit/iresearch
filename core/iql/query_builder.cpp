@@ -223,7 +223,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     auto& node = root.proxy<irs::by_phrase>();
     *node.mutable_field() = field;
 
-    for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
+    for (auto* term = irs::get<irs::term_attribute>(*tokens); tokens->next();) {
       auto& part = node.mutable_options()->push_back(irs::by_term_options{});
       part.term = term->value;
     }
@@ -248,7 +248,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         const irs::index_reader&,
         const irs::order::prepared&,
         irs::boost_t,
-        const irs::attribute_view&) const override {
+        const irs::attribute_provider*) const override {
       irs::filter::prepared::ptr result; // null-ptr result
       return result;
     }

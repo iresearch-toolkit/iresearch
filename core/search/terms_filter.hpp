@@ -106,7 +106,7 @@ class IRESEARCH_API by_terms final
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const attribute_view& /*ctx*/) const override;
+    const attribute_provider* /*ctx*/) const override;
 }; // by_terms
 
 NS_END

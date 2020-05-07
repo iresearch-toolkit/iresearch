@@ -61,17 +61,17 @@ class range_filter_test_case : public tests::filter_test_case_base {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::null_token_stream::value_null());
+            field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::boolean_token_stream::value_true());
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::boolean_token_stream::value_true());
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_number()){
             const double dValue = data.as_number<double_t>();
             // 'value' can be interpreted as a double
@@ -115,12 +115,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(7));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT64_C(7));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -135,7 +135,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -150,12 +150,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(1));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT64_C(7));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -170,7 +170,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -185,7 +185,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(28));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::by_range query = make_filter(
@@ -200,7 +200,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -215,7 +215,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT64_C(5));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -230,7 +230,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -245,12 +245,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(7));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT32_C(7));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -265,7 +265,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -280,12 +280,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(1));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT32_C(7));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -300,7 +300,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -315,7 +315,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(28));
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::by_range query = make_filter(
@@ -330,7 +330,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -345,7 +345,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream max_stream;
       max_stream.reset(INT32_C(5));
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -360,7 +360,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -375,12 +375,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((float_t)123.f);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset((float_t)123.f);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -395,7 +395,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -410,12 +410,12 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((float_t)91.524f);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::numeric_token_stream max_stream;
       max_stream.reset((float_t)123.f);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -430,7 +430,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -445,7 +445,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream max_stream;
       max_stream.reset((float_t)90.565f);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -460,7 +460,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -475,7 +475,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((float_t)90.565f);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::by_range query = make_filter(
@@ -490,7 +490,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -505,11 +505,11 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((double_t)123.);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
       irs::numeric_token_stream max_stream;
       max_stream.reset((double_t)123.);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -524,7 +524,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -539,11 +539,11 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((double_t)-40.);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
       irs::numeric_token_stream max_stream;
       max_stream.reset((double_t)90.564);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -558,7 +558,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -573,7 +573,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream max_stream;
       max_stream.reset((double_t)5.);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
       ASSERT_TRUE(max_stream.next());
 
       irs::by_range query = make_filter(
@@ -588,7 +588,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -603,7 +603,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((double_t)90.543);
-      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      auto* min_term = irs::get<irs::term_attribute>(min_stream);
       ASSERT_TRUE(min_stream.next());
 
       irs::by_range query = make_filter(
@@ -618,7 +618,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -1028,13 +1028,21 @@ class range_filter_test_case : public tests::filter_test_case_base {
       size_t finish_count = 0;
       auto& scorer = order.add<tests::sort::custom_sort>(false);
 
-      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      scorer.collector_collect_field = [&collect_field_count](
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      scorer.collectors_collect_ = [&finish_count](
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -1096,7 +1104,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       irs::order order;
       irs::numeric_token_stream max_stream;
       max_stream.reset((double_t)100.);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      auto* max_term = irs::get<irs::term_attribute>(max_stream);
 
       ASSERT_TRUE(max_stream.next());
       order.add<tests::sort::frequency_sort>(false);

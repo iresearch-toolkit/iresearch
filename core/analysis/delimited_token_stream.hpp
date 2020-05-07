@@ -26,6 +26,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -34,23 +35,19 @@ NS_BEGIN(analysis)
 /// @brief an analyzer capable of breaking up delimited text into tokens as per
 ///        RFC4180 (without starting new records on newlines)
 ////////////////////////////////////////////////////////////////////////////////
-class delimited_token_stream: public analyzer, util::noncopyable {
+class delimited_token_stream final
+    : public frozen_attributes<4, analyzer>,
+      private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "delimiter"; }
   static void init(); // for trigering registration in a static build
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& delimiter);
+  static ptr make(const string_ref& delimiter);
 
   explicit delimited_token_stream(const irs::string_ref& delimiter);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
-  attribute_view attrs_;
   bytes_ref data_;
   bytes_ref delim_;
   bstring delim_buf_;

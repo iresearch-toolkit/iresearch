@@ -292,14 +292,12 @@ NS_BEGIN(templates)
 /// @class token_stream_payload
 /// @brief token stream wrapper which sets payload equal to term value
 //////////////////////////////////////////////////////////////////////////////
-class token_stream_payload: public irs::token_stream {
+class token_stream_payload final : public irs::token_stream {
  public:
   explicit token_stream_payload(irs::token_stream* impl);
-  bool next(); 
+  bool next();
 
-  const irs::attribute_view& attributes() const noexcept {
-    return impl_->attributes();
-  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
 
  private:
   const irs::term_attribute* term_;

@@ -26,6 +26,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -34,7 +35,9 @@ NS_BEGIN(analysis)
 /// @brief an analyser capable of normalizing the text, treated as a single
 ///        token, i.e. case conversion and accent removal
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_normalizing_stream: public analyzer, util::noncopyable {
+class text_token_normalizing_stream
+  : public frozen_attributes<4, analyzer>,
+    util::noncopyable {
  public:
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
@@ -47,19 +50,13 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
 
   static constexpr string_ref type_name() noexcept { return "norm"; }
   static void init(); // for trigering registration in a static build
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& locale);
+  static ptr make(const string_ref& locale);
 
   explicit text_token_normalizing_stream(const options_t& options);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 
  private:
-  irs::attribute_view attrs_;
   irs::increment inc_;
   irs::offset offset_;
   irs::payload payload_; // raw token value

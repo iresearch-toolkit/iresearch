@@ -34,7 +34,7 @@
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
 
 NS_ROOT
@@ -60,7 +60,6 @@ struct IRESEARCH_API term_meta : attribute {
     return "iresearch::term_meta";
   }
 
-  term_meta() = default;
   virtual ~term_meta() = default;
 
   virtual void clear() {
@@ -75,7 +74,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
+struct IRESEARCH_API postings_writer : attribute_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer)
 
@@ -101,10 +100,6 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual void end() = 0;
-
-  virtual const attribute_view& attributes() const noexcept override {
-    return attribute_view::empty_instance();
-  }
 
  protected:
   friend struct term_meta;
@@ -148,29 +143,26 @@ struct IRESEARCH_API postings_reader {
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
-    const flags& features
-  ) = 0;
+    const flags& features) = 0;
 
   // parses input block "in" and populate "attrs" collection with attributes
   // returns number of bytes read from in
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    const attribute_view& attrs,
-    term_meta& state
-  ) = 0;
+    attribute_provider& attrs,
+    term_meta& state) = 0;
 
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) = 0;
+    const attribute_provider& attrs,
+    const flags& features) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API basic_term_reader : public attribute_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -188,7 +180,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API term_reader: public attribute_provider {
   DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 

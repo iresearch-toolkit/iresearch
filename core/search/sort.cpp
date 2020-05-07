@@ -34,10 +34,6 @@ NS_ROOT
 // --SECTION--                                                      filter_boost
 // -----------------------------------------------------------------------------
 
-filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(no_boost()) {
-}
-
 REGISTER_ATTRIBUTE(filter_boost);
 
 // ----------------------------------------------------------------------------
@@ -180,7 +176,7 @@ order::prepared::scorers::scorers(
     const sub_reader& segment,
     const term_reader& field,
     const byte_type* stats_buf,
-    const attribute_view& doc,
+    const attribute_provider& doc,
     boost_t boost) {
   scorers_.reserve(buckets.size());
 
