@@ -554,7 +554,8 @@ class term_iterator_base
         { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
         { type<payload>::id(), pay }
       }},
-      owner_(&owner) {
+      owner_(&owner),
+      terms_cipher_(owner.owner_->terms_in_cipher_.get()) {
     assert(owner_);
   }
 
@@ -601,7 +602,7 @@ class term_iterator_base
   index_input& terms_input() const;
 
   irs::encryption::stream* terms_cipher() const noexcept {
-    return owner_->owner_->terms_in_cipher_.get();
+    return terms_cipher_;
   }
 
  protected:
@@ -625,6 +626,7 @@ class term_iterator_base
   }
 
   const term_reader* owner_;
+  irs::encryption::stream* terms_cipher_;
   mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
