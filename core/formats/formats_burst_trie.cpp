@@ -1187,21 +1187,20 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
     suffix_begin_ += suffix_length_; // skip to the next term
     assert(suffix_begin_ <= suffix_end_);
 
-    const size_t term_len = prefix_ + suffix_length_;
-    const byte_type* max = term.c_str() + std::min(term.size(), term_len); // max limit of comparison
+    const byte_type* suffix = suffix_;
+    const byte_type* target = term.c_str() + prefix_;
+    const size_t target_len = prefix_ + suffix_length_;
+    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
 
     ptrdiff_t cmp;
-    const byte_type* suffix = suffix_;
-    const byte_type* tpos = term.c_str() + prefix_;
-
     for (bool stop = false;;) {
-      if (tpos < max) {
-        cmp = *suffix - *tpos;
-        ++tpos;
+      if (target < target_end) {
+        cmp = *suffix - *target;
+        ++target;
         ++suffix;
       } else {
-        assert(tpos == max);
-        cmp = term_len - term.size();
+        assert(target == target_end);
+        cmp = target_len - term.size();
         stop = true;
       }
 
@@ -1242,21 +1241,20 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
       default: assert(false); break;
     }
 
-    const size_t term_len = prefix_ + suffix_length_;
-    const byte_type* max = term.c_str() + std::min(term.size(), term_len); // max limit of comparison
+    const byte_type* suffix = suffix_;
+    const size_t target_len = prefix_ + suffix_length_;
+    const byte_type* target = term.c_str() + prefix_;
+    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
 
     ptrdiff_t cmp;
-    const byte_type* suffix = suffix_;
-    const byte_type* tpos = term.c_str() + prefix_;
-
     for (bool stop = false;;) {
-      if (tpos < max) {
-        cmp = *suffix - *tpos;
-        ++tpos;
+      if (target < target_end) {
+        cmp = *suffix - *target;
+        ++target;
         ++suffix;
       } else {
-        assert(tpos == max);
-        cmp = term_len - term.size();
+        assert(target == target_end);
+        cmp = target_len - term.size();
         stop = true;
       }
 
