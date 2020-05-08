@@ -467,15 +467,15 @@ class block_iterator : util::noncopyable {
 
     if (cur_ent_ == ent_count_) {
       // have reached the end of the block
+      reader(suffix_, suffix_length_);
       return SeekResult::END;
     }
 
-    uint64_t suffix, start;
     const SeekResult res = leaf_
-      ? scan_to_term_leaf(term, suffix, start)
-      : scan_to_term_nonleaf(term, suffix, start);
+      ? scan_to_term_leaf(term)
+      : scan_to_term_nonleaf(term);
 
-    reader(suffix_block_.c_str() + start, suffix);
+    reader(suffix_, suffix_length_);
 
     return res;
   }
@@ -496,17 +496,18 @@ class block_iterator : util::noncopyable {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
-    const auto suffix = vread<uint64_t>(suffix_begin_);
-    reader(suffix_begin_, suffix);
-    suffix_begin_ += suffix;
+    suffix_length_ = vread<uint64_t>(suffix_begin_);
+    suffix_ = suffix_begin_;
+    reader(suffix_, suffix_length_);
+    suffix_begin_ += suffix_length_;
     assert(suffix_begin_ <= suffix_end_);
   }
 
   template<typename Reader>
   void read_entry_nonleaf(Reader& reader);
 
-  SeekResult scan_to_term_nonleaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
-  SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
+  SeekResult scan_to_term_nonleaf(const bytes_ref& term);
+  SeekResult scan_to_term_leaf(const bytes_ref& term);
 
   byte_weight header_; // block header
   bstring suffix_block_; // suffix data block
@@ -519,6 +520,8 @@ class block_iterator : util::noncopyable {
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
+  const byte_type* suffix_{}; // current suffix
+  size_t suffix_length_{}; // current suffix length
   version10::term_meta state_;
   uint64_t cur_ent_{}; // current entry in a block
   uint64_t ent_count_{}; // number of entries in a current block
@@ -1149,13 +1152,12 @@ template<typename Reader>
 void block_iterator::read_entry_nonleaf(Reader& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
-  uint64_t suffix;
-  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix)
+  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
     ? ET_BLOCK 
     : ET_TERM;
 
-  const byte_type* begin = suffix_begin_;
-  suffix_begin_ += suffix;
+  suffix_ = suffix_begin_;
+  suffix_begin_ += suffix_length_;
   assert(suffix_begin_ <= suffix_end_);
 
   switch (cur_type_) {
@@ -1165,15 +1167,12 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
   }
 
   // read after state is updated
-  reader(begin, suffix);
+  reader(suffix_, suffix_length_);
 
   assert(suffix_begin_ <= suffix_end_);
 }
 
-SeekResult block_iterator::scan_to_term_leaf(
-    const bytes_ref& term, 
-    uint64_t& suffix, 
-    uint64_t& start) {
+SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
   assert(leaf_);
   assert(!dirty_);
 
@@ -1181,23 +1180,25 @@ SeekResult block_iterator::scan_to_term_leaf(
     ++cur_ent_;
     ++term_count_;
     cur_type_ = ET_TERM;
-    suffix = vread<uint64_t>(suffix_begin_);
+    suffix_length_ = vread<uint64_t>(suffix_begin_);
     assert(suffix_begin_ <= suffix_end_);
     assert(suffix_begin_ >= suffix_block_.c_str());
-    start = uint64_t(suffix_begin_ - suffix_block_.c_str()); // start of the current suffix
-    suffix_begin_ += suffix; // skip to the next term
+    suffix_ = suffix_begin_; // start of the current suffix
+    suffix_begin_ += suffix_length_; // skip to the next term
     assert(suffix_begin_ <= suffix_end_);
 
-    const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); // max limit of comparison
+    const size_t term_len = prefix_ + suffix_length_;
+    const byte_type* max = term.c_str() + std::min(term.size(), term_len); // max limit of comparison
 
     ptrdiff_t cmp;
-    bool stop = false;
-    for (size_t tpos = prefix_, spos = start;;) {
+    const byte_type* suffix = suffix_;
+    const byte_type* tpos = term.c_str() + prefix_;
+
+    for (bool stop = false;;) {
       if (tpos < max) {
-        cmp = suffix_block_[spos] - term[tpos];
+        cmp = *suffix - *tpos;
         ++tpos;
-        ++spos;
+        ++suffix;
       } else {
         assert(tpos == max);
         cmp = term_len - term.size();
@@ -1221,24 +1222,19 @@ SeekResult block_iterator::scan_to_term_leaf(
   return SeekResult::END;
 }
 
-SeekResult block_iterator::scan_to_term_nonleaf(
-    const bytes_ref& term, 
-    uint64_t& suffix, 
-    uint64_t& start) {
+SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
   assert(!leaf_);
   assert(!dirty_);
 
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix) ? ET_BLOCK : ET_TERM;
+    cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+        ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
     assert(suffix_begin_ >= suffix_block_.c_str());
-    start = uint64_t(suffix_begin_ - suffix_block_.c_str());
-    suffix_begin_ += suffix; // skip to the next entry
+    suffix_ = suffix_begin_;
+    suffix_begin_ += suffix_length_; // skip to the next entry
     assert(suffix_begin_ <= suffix_end_);
-
-    const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); // max limit of comparison
 
     switch (cur_type_) {
       case ET_TERM: ++term_count_; break;
@@ -1246,13 +1242,18 @@ SeekResult block_iterator::scan_to_term_nonleaf(
       default: assert(false); break;
     }
 
+    const size_t term_len = prefix_ + suffix_length_;
+    const byte_type* max = term.c_str() + std::min(term.size(), term_len); // max limit of comparison
+
     ptrdiff_t cmp;
-    for (size_t tpos = prefix_, spos = start;;) {
-      bool stop = false;
+    const byte_type* suffix = suffix_;
+    const byte_type* tpos = term.c_str() + prefix_;
+
+    for (bool stop = false;;) {
       if (tpos < max) {
-        cmp = suffix_block_[spos] - term[tpos];
+        cmp = *suffix - *tpos;
         ++tpos;
-        ++spos;
+        ++suffix;
       } else {
         assert(tpos == max);
         cmp = term_len - term.size();
@@ -1331,10 +1332,11 @@ void block_iterator::scan_to_block(uint64_t start) {
   const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    uint64_t suffix;
-    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix) ? ET_BLOCK : ET_TERM;
+    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+        ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
-    suffix_begin_ += suffix;
+    suffix_ = suffix_begin_;
+    suffix_begin_ += suffix_length_;
     assert(suffix_begin_ <= suffix_end_);
 
     switch (type) {
