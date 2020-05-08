@@ -1711,14 +1711,12 @@ term_reader::term_reader(term_reader&& rhs) noexcept
 
 seek_term_iterator::ptr term_reader::iterator() const {
   return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::term_iterator>(*this)
-  );
+    memory::make_unique<detail::term_iterator>(*this));
 }
 
 seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
   return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::automaton_term_iterator>(*this, matcher)
-  );
+    memory::make_unique<detail::automaton_term_iterator>(*this, matcher));
 }
 
 void term_reader::prepare(
@@ -1747,7 +1745,12 @@ void term_reader::prepare(
 
   // read FST
   fst_.reset(fst_t::Read(in, fst_read_options()));
-  assert(fst_);
+
+  if (!fst_) {
+    throw irs::index_error(string_utils::to_string(
+      "failed to read term index for field '%s'",
+      field_.name));
+  }
 
   owner_ = &owner;
 }
@@ -2250,8 +2253,7 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
 void field_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& /*mask*/
-) {
+    const document_mask& /*mask*/) {
   std::string filename;
 
   //-----------------------------------------------------------------
