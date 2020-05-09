@@ -328,8 +328,7 @@ class field_writer final : public irs::field_writer {
     const irs::flags& features,
     uint64_t total_doc_freq, 
     uint64_t total_term_freq, 
-    size_t doc_count
-  );
+    size_t doc_count);
 
   void write_term_entry(const detail::entry& e, size_t prefix, bool leaf);
 
@@ -344,8 +343,7 @@ class field_writer final : public irs::field_writer {
     std::list<detail::entry>& blocks,
     size_t prefix, size_t begin,
     size_t end, byte_type meta,
-    int16_t label
-  );
+    int16_t label);
 
   // prefix - prefix length ( in last_term
   // count - number of entries to write into block

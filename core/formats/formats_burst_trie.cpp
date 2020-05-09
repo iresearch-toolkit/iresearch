@@ -720,8 +720,7 @@ class term_iterator final : public term_iterator_base {
 
   ptrdiff_t seek_cached(
     size_t& prefix, arc::stateid_t& state,
-    byte_weight& weight, const bytes_ref& term
-  );
+    byte_weight& weight, const bytes_ref& term);
 
   /// @brief Seek to the closest block which contain a specified term
   /// @param prefix size of the common term/block prefix
@@ -2309,8 +2308,7 @@ void field_writer::write_field_features(data_output& out, const flags& features)
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature().name().c_str()
-      ));
+        feature().name().c_str()));
     }
 
     out.write_vlong(it->second);
@@ -2426,8 +2424,7 @@ void field_reader::prepare(
     field_writer::FORMAT_TERMS_INDEX,
     field_writer::FORMAT_MIN,
     field_writer::FORMAT_MAX,
-    &checksum
-  );
+    &checksum);
 
   constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // fields count
@@ -2457,15 +2454,13 @@ void field_reader::prepare(
 
       const auto blocks_in_buffer = math::div_ceil64(
         buffered_index_input::DEFAULT_BUFFER_SIZE,
-        index_in_cipher->block_size()
-      );
+        index_in_cipher->block_size());
 
       index_in = index_input::make<encrypted_input>(
         std::move(index_in),
         *index_in_cipher,
         blocks_in_buffer,
-        FOOTER_LEN
-      );
+        FOOTER_LEN);
     }
   }
 
@@ -2492,8 +2487,7 @@ void field_reader::prepare(
       throw irs::index_error(string_utils::to_string(
         "duplicated field: '%s' found in segment: '%s'",
         name.c_str(),
-        meta.name.c_str()
-      ));
+        meta.name.c_str()));
     }
 
     --fields_count;
@@ -2507,8 +2501,7 @@ void field_reader::prepare(
   if (!std::is_sorted(fields_.begin(), fields_.end(), less)) {
     throw index_error(string_utils::to_string(
       "invalid field order in segment '%s'",
-      meta.name.c_str()
-    ));
+      meta.name.c_str()));
   }
 
   //-----------------------------------------------------------------
@@ -2521,16 +2514,14 @@ void field_reader::prepare(
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
     field_writer::FORMAT_MIN,
-    field_writer::FORMAT_MAX
-  );
+    field_writer::FORMAT_MAX);
 
   if (term_index_version != term_dict_version) {
     throw index_error(string_utils::to_string(
       "term index version '%d' mismatches term dictionary version '%d' in segment '%s'",
       term_index_version,
       meta.name.c_str(),
-      term_dict_version
-    ));
+      term_dict_version));
   }
 
   if (term_dict_version > field_writer::FORMAT_MIN) {
