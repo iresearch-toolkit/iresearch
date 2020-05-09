@@ -62,18 +62,11 @@ class field_reader;
 
 NS_BEGIN(detail)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              Forward declarations
-// -----------------------------------------------------------------------------
-
 class fst_buffer;
 class term_iterator_base;
+class term_reader_visitor;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          typedefs
-// -----------------------------------------------------------------------------
-
-typedef std::vector<type_info::type_id> feature_map_t;
+using feature_map_t = std::vector<type_info::type_id>;
 
 template<typename Char>
 class volatile_ref : util::noncopyable {
@@ -242,6 +235,8 @@ class entry : private util::noncopyable {
 class term_reader : public irs::term_reader,
                     private util::noncopyable {
  public:
+  using fst_t = fst::VectorFst<byte_arc>;
+
   term_reader() = default;
   term_reader(term_reader&& rhs) noexcept;
 
@@ -257,8 +252,8 @@ class term_reader : public irs::term_reader,
   virtual attribute* get_mutable(type_info::type_id type) noexcept override;
 
  private:
-  typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator_base;
+  friend class term_reader_visitor;
 
   bstring min_term_;
   bstring max_term_;
@@ -274,6 +269,14 @@ class term_reader : public irs::term_reader,
   std::unique_ptr<fst_t> fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
 }; // term_reader
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump term dictionary of a specified field to a provided stream in
+///        a human readable format
+/// @param field field to dump
+/// @param out output stream
+////////////////////////////////////////////////////////////////////////////////
+[[maybe_unused]] void dump(const term_reader& field, std::ostream& out);
 
 NS_END // detail
 
@@ -298,8 +301,7 @@ class field_writer final : public irs::field_writer {
     bool volatile_state,
     int32_t version = FORMAT_MAX,
     uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
-    uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE
-  );
+    uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
 
   virtual void prepare(const irs::flush_state& state) override;
 
@@ -309,8 +311,7 @@ class field_writer final : public irs::field_writer {
     const std::string& name,
     irs::field_id norm,
     const irs::flags& features,
-    irs::term_iterator& terms
-  ) override;
+    irs::term_iterator& terms) override;
 
  private:
   static const size_t DEFAULT_SIZE = 8;
@@ -384,8 +385,7 @@ class field_reader final : public irs::field_reader {
   virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& mask
-  ) override;
+    const document_mask& mask) override;
 
   virtual const irs::term_reader* field(const string_ref& field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
@@ -393,6 +393,7 @@ class field_reader final : public irs::field_reader {
 
  private:
   friend class detail::term_iterator_base;
+  friend class detail::term_reader_visitor;
 
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;

@@ -460,6 +460,7 @@ class block_iterator : util::noncopyable {
   uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
+  uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
@@ -1757,6 +1758,152 @@ void term_reader::prepare(
 
 attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
   return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_reader_visitor
+/// @brief implements generalized visitation logic for term dictionary
+////////////////////////////////////////////////////////////////////////////////
+class term_reader_visitor {
+ public:
+  explicit term_reader_visitor(const term_reader& field)
+    : fst_(field.fst_.get()),
+      terms_in_(field.owner_->terms_in_->reopen()),
+      terms_in_cipher_(field.owner_->terms_in_cipher_.get()) {
+  }
+
+  template<typename Visitor>
+  void operator()(Visitor& visitor) {
+    block_iterator* cur_block = push_block(fst_->Final(fst_->Start()), 0);
+    cur_block->load(*terms_in_, terms_in_cipher_);
+    visitor.push_block(term_, *cur_block);
+
+    auto copy_suffix = [&cur_block, this](const byte_type* suffix, size_t suffix_size) {
+      copy(suffix, cur_block->prefix(), suffix_size);
+    };
+
+    while (true) {
+      while (cur_block->end()) {
+        if (cur_block->next_sub_block()) {
+          cur_block->load(*terms_in_, terms_in_cipher_);
+          visitor.sub_block(*cur_block);
+        } else if (&block_stack_.front() == cur_block) { // root
+          cur_block->reset();
+          return;
+        } else {
+          visitor.pop_block(*cur_block);
+          cur_block = pop_block();
+        }
+      }
+
+      while (!cur_block->end()) {
+        cur_block->next(copy_suffix);
+        switch (cur_block->type()) {
+          case ET_TERM:
+            visitor.push_term(term_);
+            break;
+          case ET_BLOCK:
+            cur_block = push_block(cur_block->block_start(), term_.size());
+            cur_block->load(*terms_in_, terms_in_cipher_);
+            visitor.push_block(term_, *cur_block);
+            break;
+          default:
+            assert(false);
+            break;
+        }
+      }
+    }
+  }
+
+ private:
+  void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
+    const auto size = prefix_size + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
+  }
+
+  block_iterator* pop_block() noexcept {
+    block_stack_.pop_back();
+    assert(!block_stack_.empty());
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(byte_weight&& out, size_t prefix) {
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
+    block_stack_.emplace_back(std::move(out), prefix);
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(uint64_t start, size_t prefix) {
+    block_stack_.emplace_back(start, prefix);
+    return &block_stack_.back();
+  }
+
+  const term_reader::fst_t* fst_;
+  std::deque<block_iterator> block_stack_;
+  bytes_builder term_;
+  index_input::ptr terms_in_;
+  encryption::stream* terms_in_cipher_;
+}; // term_reader_visitor
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump term dictionary of a specified field to a provided stream in
+///        a human readable format
+////////////////////////////////////////////////////////////////////////////////
+void dump(const term_reader& field, std::ostream& out) {
+  class dumper : util::noncopyable {
+   public:
+    explicit dumper(std::ostream& out)
+      : out_(out) {
+    }
+
+    void push_term(const bytes_ref& term) {
+      indent();
+      out_ << "TERM|" << suffix(term) << "\n";
+    }
+
+    void push_block(const bytes_ref& term, const block_iterator& block) {
+      indent();
+      out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
+      indent_ += 2;
+      prefix_ = block.prefix();
+    }
+
+    void sub_block(const block_iterator& /*block*/){
+      indent();
+      out_ << "|\n";
+      indent();
+      out_ << "V\n";
+    };
+
+    void pop_block(const block_iterator& block) {
+      indent_ -= 2;
+      prefix_ -= block.prefix();
+    }
+
+   private:
+    void indent() {
+      for (size_t i = 0; i < indent_; ++i) {
+        out_ << " ";
+      }
+    }
+
+    string_ref suffix(const bytes_ref& term) {
+      return ref_cast<char>(bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
+    }
+
+    std::ostream& out_;
+    size_t indent_ = 0;
+    size_t prefix_ = 0;
+  };
+
+
+  dumper dump(out);
+  term_reader_visitor visitor(field);
+  visitor(dump);
 }
 
 NS_END // detail
