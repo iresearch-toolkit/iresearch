@@ -5704,7 +5704,7 @@ struct format_traits_simd {
       const uint32_t* in,
       size_t size,
       uint32_t* buf) {
-    encode::bitpack::write_block_simd(out, in, size, buf);
+    encode::bitpack::write_block_simd(out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
@@ -5712,7 +5712,7 @@ struct format_traits_simd {
       size_t size,
       uint32_t* buf,
       uint32_t* out) {
-    encode::bitpack::read_block_simd(in, size, buf, out);
+    encode::bitpack::read_block_simd(in, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in, size_t size) {

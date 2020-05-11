@@ -210,6 +210,9 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     ptr dup() const override;
     uint8_t read_byte() override;
     size_t read_bytes(byte_type* b, size_t count) override;
+    const byte_type* read_buffer(size_t size) override {
+      return stream->read_buffer(size);
+    }
     ptr reopen() const override;
     size_t file_pointer() const override;
     size_t length() const override;

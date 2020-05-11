@@ -312,17 +312,6 @@ StringType vread_string(const byte_type*& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                     skip helpers
-// ----------------------------------------------------------------------------
-
-const uint64_t SKIP_BUFFER_SIZE = 1024U;
-
-IRESEARCH_API void skip(
-  data_input& in, size_t to_skip,
-  byte_type* skip_buf, size_t skip_buf_size
-);
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
@@ -408,6 +397,17 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   virtual byte_type read_byte() override final {
     assert(pos_ < data_.end());
     return *pos_++;
+  }
+
+  virtual const byte_type* read_buffer(size_t size) noexcept final {
+    const auto* pos = pos_ + size;
+
+    if (pos > data_.end()) {
+      return nullptr;
+    }
+
+    std::swap(pos, pos_);
+    return pos;
   }
 
   virtual size_t read_bytes(byte_type* b, size_t size) override final;

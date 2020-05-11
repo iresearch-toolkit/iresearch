@@ -54,6 +54,8 @@ struct IRESEARCH_API data_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
+  virtual const byte_type* read_buffer(size_t count) = 0;
+
   virtual size_t file_pointer() const = 0;
 
   virtual size_t length() const = 0;
@@ -142,6 +144,8 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
+
+  virtual const byte_type* read_buffer(size_t size) noexcept final;
 
   virtual size_t file_pointer() const override final {
     return start_ + offset();

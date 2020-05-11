@@ -115,29 +115,6 @@ double_t read_zvdouble(data_input& in) {
   );
 }
 
-/* -------------------------------------------------------------------
-* skip helpers 
-* ------------------------------------------------------------------*/
-
-void skip(data_input& in, size_t to_skip,
-          byte_type* skip_buf, size_t skip_buf_size) {
-  assert(skip_buf);
-
-  while (to_skip) {
-    const auto step = std::min(skip_buf_size, to_skip);
-
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(skip_buf, step);
-    assert(read == step);
-    UNUSED(read);
-#else
-    in.read_bytes(skip_buf, step);
-#endif // IRESEARCH_DEBUG
-
-    to_skip -= step;
-  }
-}
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
@@ -307,12 +284,11 @@ bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
 }
 
 size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) {
-    size = std::min(size, size_t(std::distance(pos_, data_.end())));
-    std::memcpy(b, pos_, sizeof(byte_type) * size);
-    pos_ += size;
-    return size;
-    //assert( pos_ + size <= data_.size() );
-  }
+  size = std::min(size, size_t(std::distance(pos_, data_.end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
+}
 
 // append to buf
 void bytes_ref_input::read_bytes(bstring& buf, size_t size) {

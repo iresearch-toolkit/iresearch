@@ -183,6 +183,18 @@ void memory_index_input::seek(size_t pos) {
   switch_buffer(pos);
 }
 
+
+const byte_type* memory_index_input::read_buffer(size_t size) noexcept {
+  const auto* begin = begin_ + size;
+
+  if (begin > end_) {
+    return nullptr;
+  }
+
+  std::swap(begin, begin_);
+  return begin;
+}
+
 byte_type memory_index_input::read_byte() {
   if (begin_ >= end_) {
     switch_buffer(file_pointer());
