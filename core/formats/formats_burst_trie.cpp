@@ -516,7 +516,7 @@ class block_iterator : util::noncopyable {
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
   const byte_type* suffix_{}; // current suffix
-  size_t suffix_length_{}; // current suffix length
+  uint64_t suffix_length_{}; // current suffix length
   version10::term_meta state_;
   uint64_t cur_ent_{}; // current entry in a block
   uint64_t ent_count_{}; // number of entries in a current block
@@ -1743,7 +1743,7 @@ void term_reader::prepare(
   if (!fst_) {
     throw irs::index_error(string_utils::to_string(
       "failed to read term index for field '%s'",
-      field_.name));
+      field_.name.c_str()));
   }
 
   owner_ = &owner;
