@@ -185,7 +185,6 @@ void read_block_simd(
   }
 }
 
-
 uint32_t write_block_simd(
     data_output& out,
     const uint32_t* RESTRICT decoded,

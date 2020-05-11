@@ -26,12 +26,6 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
-if (USE_SIMDCOMP)
-  set(IReSearch_tests_optimized_sources
-    ./store/store_utils_optimized_tests.cpp
-  )
-endif()
-
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
