@@ -466,12 +466,6 @@ class block_iterator : util::noncopyable {
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
     assert(!dirty_);
 
-    if (cur_ent_ == ent_count_) {
-      // have reached the end of the block
-      reader(suffix_, suffix_length_);
-      return SeekResult::END;
-    }
-
     const SeekResult res = leaf_
       ? scan_to_term_leaf(term)
       : scan_to_term_nonleaf(term);
@@ -1178,7 +1172,7 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
   assert(leaf_);
   assert(!dirty_);
 
-  for (; cur_ent_ < ent_count_;) {
+  while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     ++term_count_;
     cur_type_ = ET_TERM;
@@ -1227,7 +1221,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
   assert(!leaf_);
   assert(!dirty_);
 
-  for (; cur_ent_ < ent_count_;) {
+  while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
         ? ET_BLOCK : ET_TERM;
