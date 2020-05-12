@@ -1119,14 +1119,14 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
     in.read_bytes(&(suffix_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
     suffix_begin_ = suffix_block_.c_str();
+
+    if (cipher) {
+      cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
+    }
   }
 #ifdef IRESEARCH_DEBUG
   suffix_end_ = suffix_begin_ + block_size;
 #endif // IRESEARCH_DEBUG
-
-  if (cipher) {
-    cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
-  }
 
   // read stats block
   block_size = in.read_vlong();

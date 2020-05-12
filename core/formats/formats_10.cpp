@@ -2842,22 +2842,23 @@ void read_compact(
     return;
   }
 
-  size_t buf_size = std::abs(size);
+  const size_t buf_size = std::abs(size);
 
   // -ve to mark uncompressed
   if (size < 0) {
     decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
 
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
+    const auto read = in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
     assert(read == buf_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(decode_buf[0]), buf_size);
+    in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
 #endif // IRESEARCH_DEBUG
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size, &(decode_buf[0]), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size,
+                      const_cast<byte_type*>(decode_buf.c_str()), buf_size);
     }
 
     return;
@@ -2866,31 +2867,37 @@ void read_compact(
   if (IRS_UNLIKELY(!decompressor)) {
     throw irs::index_error(string_utils::to_string(
       "while reading compact, error: can't decompress block of size %d for whithout decompressor",
-      size
-    ));
+      size));
   }
 
-  irs::string_utils::oversize(encode_buf, buf_size);
+  // try direct buffer access
+  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
+
+  if (!buf) {
+    irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
-  const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
-  assert(read == buf_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+    assert(read == buf_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(encode_buf[0]), buf_size);
+    in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
 #endif // IRESEARCH_DEBUG
 
-  if (cipher) {
-    cipher->decrypt(in.file_pointer() - buf_size, &(encode_buf[0]), buf_size);
+    if (cipher) {
+      cipher->decrypt(in.file_pointer() - buf_size,
+                      const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+    }
+
+    buf = encode_buf.c_str();
   }
 
   // ensure that we have enough space to store decompressed data
   decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
-    &encode_buf[0], buf_size,
-    &decode_buf[0], decode_buf.size()
-  );
+    buf, buf_size,
+    &decode_buf[0], decode_buf.size());
 
   if (decoded.null()) {
     throw irs::index_error("error while reading compact");
