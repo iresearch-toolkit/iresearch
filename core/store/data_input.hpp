@@ -37,6 +37,11 @@
 
 NS_ROOT
 
+enum class BufferHint {
+  NORMAL = 0,
+  PERSISTENT
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct data_input
 /// @brief base interface for all low-level input data streams
@@ -54,7 +59,7 @@ struct IRESEARCH_API data_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
-  virtual const byte_type* read_buffer(size_t count) = 0;
+  virtual const byte_type* read_buffer(size_t count, BufferHint hint) = 0;
 
   virtual size_t file_pointer() const = 0;
 
@@ -145,7 +150,7 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
-  virtual const byte_type* read_buffer(size_t size) noexcept final;
+  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
 
   virtual size_t file_pointer() const override final {
     return start_ + offset();

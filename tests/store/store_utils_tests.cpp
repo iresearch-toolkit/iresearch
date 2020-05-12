@@ -66,7 +66,7 @@ class bytes_input final: public data_input, public bytes_ref {
     return pos_ >= this->end();
   }
 
-  virtual const byte_type* read_buffer(size_t count) override {
+  virtual const byte_type* read_buffer(size_t /*count*/, BufferHint /*hint*/) override {
     return nullptr;
   }
 

@@ -135,7 +135,7 @@ void read_block_simd(
     fill_block(decoded, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(SIMDBlockSize, bits);
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       ::simdunpack(reinterpret_cast<const __m128i*>(buf), decoded, bits);
@@ -172,7 +172,7 @@ void read_block_simd(
     fill(decoded, decoded + size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(size, bits);
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       ::unpack(reinterpret_cast<const uint32_t*>(buf), size, bits, decoded);
@@ -191,7 +191,6 @@ void read_block_simd(
       reinterpret_cast<byte_type*>(encoded),
       required);
 #endif // IRESEARCH_DEBUG
-
 
     ::unpack(encoded, size, bits, decoded);
   }

@@ -184,7 +184,9 @@ void memory_index_input::seek(size_t pos) {
 }
 
 
-const byte_type* memory_index_input::read_buffer(size_t size) noexcept {
+const byte_type* memory_index_input::read_buffer(
+    size_t size,
+    BufferHint /*hint*/) noexcept {
   const auto* begin = begin_ + size;
 
   if (begin > end_) {

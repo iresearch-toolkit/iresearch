@@ -118,7 +118,12 @@ uint64_t buffered_index_input::read_vlong() {
     : irs::vread<uint64_t>(begin_);
 }
 
-const byte_type* buffered_index_input::read_buffer(size_t size) noexcept {
+const byte_type* buffered_index_input::read_buffer(size_t size, BufferHint hint) noexcept {
+  if (hint == BufferHint::PERSISTENT) {
+    // don't support persistent buffers
+    return nullptr;
+  }
+
   auto* begin = begin_ + size;
 
   if (begin > end_) {

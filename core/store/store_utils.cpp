@@ -215,7 +215,7 @@ void read_block(
   } else {
     const size_t required = packed::bytes_required_32(size, bits);
 
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       packed::unpack(
@@ -255,7 +255,7 @@ void read_block(
   } else {
     const size_t required = packed::bytes_required_32(BLOCK_SIZE, bits);
 
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       ::unpack_block(decoded, reinterpret_cast<const uint32_t*>(buf), bits);
@@ -294,7 +294,7 @@ void read_block(
   } else {
     const auto required = packed::bytes_required_64(size, bits);
 
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       packed::unpack(decoded, decoded + size,
@@ -332,7 +332,7 @@ void read_block(
   } else {
     const auto required = packed::bytes_required_64(BLOCK_SIZE, bits);
 
-    const auto* buf = in.read_buffer(required);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
       ::unpack_block(decoded, reinterpret_cast<const uint64_t*>(buf), bits);

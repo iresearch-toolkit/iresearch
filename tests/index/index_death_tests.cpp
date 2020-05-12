@@ -59,8 +59,8 @@ class failing_directory : public tests::directory_mock {
         dir_(&dir),
         name_(name) {
     }
-    virtual const irs::byte_type* read_buffer(size_t size) override {
-      return impl_->read_buffer(size);
+    virtual const irs::byte_type* read_buffer(size_t size, irs::BufferHint hint) override {
+      return impl_->read_buffer(size, hint);
     }
     virtual irs::byte_type read_byte() override {
       return impl_->read_byte();
