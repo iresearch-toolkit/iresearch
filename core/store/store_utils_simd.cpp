@@ -203,8 +203,7 @@ uint32_t write_block_simd(
   ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
 
   out.write_vint(bits);
-  out.write_bytes(reinterpret_cast<const byte_type*>(encoded),
-                  sizeof(uint32_t) * SIMDBlockSize);
+  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), 16*bits);
 
   return bits;
 }
