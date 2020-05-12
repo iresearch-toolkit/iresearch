@@ -81,8 +81,11 @@ void fill(
 
   const auto mmvalue = _mm_set1_epi32(value);
 
-  for (; mmbegin != mmend; ++mmbegin) {
+  for (; mmbegin != mmend; mmbegin += 4) {
     _mm_storeu_si128(mmbegin, mmvalue);
+    _mm_storeu_si128(mmbegin + 1, mmvalue);
+    _mm_storeu_si128(mmbegin + 2, mmvalue);
+    _mm_storeu_si128(mmbegin + 3, mmvalue);
   }
 }
 
@@ -97,6 +100,20 @@ void fill_block(
     _mm_storeu_si128(mmbegin + 1, mmvalue);
     _mm_storeu_si128(mmbegin + 2, mmvalue);
     _mm_storeu_si128(mmbegin + 3, mmvalue);
+  }
+}
+
+void unpack(const uint32_t* RESTRICT encoded,
+            const size_t size,
+            const uint32_t bits,
+            uint32_t* decoded) noexcept {
+  const auto* decoded_end = decoded + size;
+  const size_t step = 4*bits;
+
+  while (decoded != decoded_end) {
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+    decoded += SIMDBlockSize;
+    encoded += step;
   }
 }
 
@@ -158,30 +175,25 @@ void read_block_simd(
     const auto* buf = in.read_buffer(required);
 
     if (buf) {
-      // FIXME
-      encoded = const_cast<uint32_t*>(reinterpret_cast<const uint32_t*>(buf));
-    } else {
+      ::unpack(reinterpret_cast<const uint32_t*>(buf), size, bits, decoded);
+
+      return;
+    }
+
 #ifdef IRESEARCH_DEBUG
-      const auto read = in.read_bytes(
-        reinterpret_cast<byte_type*>(encoded),
-        required);
-      assert(read == required);
-      UNUSED(read);
+    const auto read = in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+    assert(read == required);
+    UNUSED(read);
 #else
-      in.read_bytes(
-        reinterpret_cast<byte_type*>(encoded),
-        required);
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
 #endif // IRESEARCH_DEBUG
-    }
 
-    const auto* decoded_end = decoded + size;
-    const size_t step = 4*bits;
 
-    while (decoded != decoded_end) {
-      ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
-      decoded += SIMDBlockSize;
-      encoded += step;
-    }
+    ::unpack(encoded, size, bits, decoded);
   }
 }
 
@@ -239,8 +251,7 @@ uint32_t write_block_simd(
   out.write_vint(bits);
   out.write_bytes(
     reinterpret_cast<const byte_type*>(encoded),
-    size/SIMDBlockSize*4*step
-  );
+    size/SIMDBlockSize*4*step);
 
   return bits;
 }
