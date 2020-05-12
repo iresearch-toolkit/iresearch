@@ -54,10 +54,13 @@ class failing_directory : public tests::directory_mock {
     explicit failing_index_input(
         index_input::ptr&& impl,
         const std::string name,
-        const failing_directory& dir
-    ) : impl_(std::move(impl)),
+        const failing_directory& dir)
+      : impl_(std::move(impl)),
         dir_(&dir),
         name_(name) {
+    }
+    virtual const irs::byte_type* read_buffer(size_t size, irs::BufferHint hint) override {
+      return impl_->read_buffer(size, hint);
     }
     virtual irs::byte_type read_byte() override {
       return impl_->read_byte();

@@ -83,23 +83,20 @@ using namespace irs;
 const string_ref MODULE_NAME = "10";
 
 struct format_traits {
+  static constexpr uint32_t BLOCK_SIZE = 128;
+
   FORCE_INLINE static void write_block(
-      index_output& out,
-      const uint32_t* in,
-      uint32_t size,
-      uint32_t* buf) {
-    encode::bitpack::write_block(out, in, size, buf);
+      index_output& out, const uint32_t* in, uint32_t* buf) {
+    encode::bitpack::write_block(out, in, buf);
   }
 
-  FORCE_INLINE static void read_block( index_input& in,
-      uint32_t size,
-      uint32_t* buf,
-      uint32_t* out) {
-    encode::bitpack::read_block(in, size, buf, out);
+  FORCE_INLINE static void read_block(
+      index_input& in, uint32_t* buf,  uint32_t* out) {
+    encode::bitpack::read_block(in, buf, out);
   }
 
-  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
-    encode::bitpack::skip_block32(in, size);
+  FORCE_INLINE static void skip_block(index_input& in) {
+    encode::bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits
 
@@ -788,10 +785,10 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
   doc_.push(id, freq ? freq->value : 0);
 
   if (doc_.full()) {
-    FormatTraits::write_block(*doc_out_, doc_.deltas, BLOCK_SIZE, buf_);
+    FormatTraits::write_block(*doc_out_, doc_.deltas, buf_);
 
     if (freq) {
-      FormatTraits::write_block(*doc_out_, doc_.freqs, BLOCK_SIZE, buf_);
+      FormatTraits::write_block(*doc_out_, doc_.freqs, buf_);
     }
   }
   if (pos_) {
@@ -823,7 +820,7 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
   pos_->next(pos);
 
   if (pos_->full()) {
-    FormatTraits::write_block(*pos_out_, pos_->buf, BLOCK_SIZE, buf_);
+    FormatTraits::write_block(*pos_out_, pos_->buf, buf_);
     pos_->size = 0;
 
     if (pay) {
@@ -832,7 +829,7 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
 
       pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
       if (!pay_buf.empty()) {
-        FormatTraits::write_block(*pay_out_, pay_->pay_sizes, BLOCK_SIZE, buf_);
+        FormatTraits::write_block(*pay_out_, pay_->pay_sizes, buf_);
         pay_out_->write_bytes(pay_buf.c_str(), pay_buf.size());
         pay_buf.clear();
       }
@@ -840,8 +837,8 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
 
     if (offs) {
       assert(features_.offset() && pay_ && pay_out_);
-      FormatTraits::write_block(*pay_out_, pay_->offs_start_buf, BLOCK_SIZE, buf_);
-      FormatTraits::write_block(*pay_out_, pay_->offs_len_buf, BLOCK_SIZE, buf_);
+      FormatTraits::write_block(*pay_out_, pay_->offs_start_buf, buf_);
+      FormatTraits::write_block(*pay_out_, pay_->offs_len_buf, buf_);
     }
   }
 }
@@ -1030,7 +1027,7 @@ struct position_impl<IteratorTraits, true, true>
     // read payload
     const uint32_t size = pay_in_->read_vint();
     if (size) {
-      IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, pay_lengths_);
+      IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
       string_utils::oversize(pay_data_, size);
 
       #ifdef IRESEARCH_DEBUG
@@ -1043,8 +1040,8 @@ struct position_impl<IteratorTraits, true, true>
     }
 
     // read offsets
-    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_start_deltas_);
-    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_lengts_);
+    IteratorTraits::read_block(*pay_in_, this->enc_buf_, offs_start_deltas_);
+    IteratorTraits::read_block(*pay_in_, this->enc_buf_, offs_lengts_);
 
     pay_data_pos_ = 0;
   }
@@ -1164,7 +1161,7 @@ struct position_impl<IteratorTraits, false, true>
     // read payload
     const uint32_t size = pay_in_->read_vint();
     if (size) {
-      IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, pay_lengths_);
+      IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
       string_utils::oversize(pay_data_, size);
 
       #ifdef IRESEARCH_DEBUG
@@ -1297,8 +1294,8 @@ struct position_impl<IteratorTraits, true, false>
     }
 
     // read offsets
-    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_start_deltas_);
-    IteratorTraits::read_block(*pay_in_, postings_writer_base::BLOCK_SIZE, this->enc_buf_, offs_lengts_);
+    IteratorTraits::read_block(*pay_in_, this->enc_buf_, offs_start_deltas_);
+    IteratorTraits::read_block(*pay_in_, this->enc_buf_, offs_lengts_);
   }
 
   void read_tail_block() {
@@ -1348,14 +1345,14 @@ struct position_impl<IteratorTraits, false, false> {
   static void skip_payload(index_input& in) {
     const size_t size = in.read_vint();
     if (size) {
-      IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+      IteratorTraits::skip_block(in);
       in.seek(in.file_pointer() + size);
     }
   }
 
   static void skip_offsets(index_input& in) {
-    IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
-    IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
+    IteratorTraits::skip_block(in);
+    IteratorTraits::skip_block(in);
   }
 
   irs::attribute* attribute(irs::type_info::type_id) noexcept {
@@ -1426,11 +1423,11 @@ struct position_impl<IteratorTraits, false, false> {
   }
 
   void read_block() {
-    IteratorTraits::read_block(*pos_in_, postings_writer_base::BLOCK_SIZE, enc_buf_, pos_deltas_);
+    IteratorTraits::read_block(*pos_in_, enc_buf_, pos_deltas_);
   }
 
   void skip_block() {
-    IteratorTraits::skip_block(*pos_in_, postings_writer_base::BLOCK_SIZE);
+    IteratorTraits::skip_block(*pos_in_);
   }
 
   // skip within a block
@@ -1815,23 +1812,16 @@ class doc_iterator final
       // read doc deltas
       IteratorTraits::read_block(
         *doc_in_,
-        postings_writer_base::BLOCK_SIZE,
         enc_buf_,
-        docs_
-      );
+        docs_);
 
       if constexpr (IteratorTraits::frequency()) {
         IteratorTraits::read_block(
           *doc_in_,
-          postings_writer_base::BLOCK_SIZE,
           enc_buf_,
-          doc_freqs_
-        );
+          doc_freqs_);
       } else if (features_.freq()) {
-        IteratorTraits::skip_block(
-          *doc_in_,
-          postings_writer_base::BLOCK_SIZE
-        );
+        IteratorTraits::skip_block(*doc_in_);
       }
 
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
@@ -2852,22 +2842,23 @@ void read_compact(
     return;
   }
 
-  size_t buf_size = std::abs(size);
+  const size_t buf_size = std::abs(size);
 
   // -ve to mark uncompressed
   if (size < 0) {
     decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
 
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
+    const auto read = in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
     assert(read == buf_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(decode_buf[0]), buf_size);
+    in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
 #endif // IRESEARCH_DEBUG
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size, &(decode_buf[0]), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size,
+                      const_cast<byte_type*>(decode_buf.c_str()), buf_size);
     }
 
     return;
@@ -2876,31 +2867,37 @@ void read_compact(
   if (IRS_UNLIKELY(!decompressor)) {
     throw irs::index_error(string_utils::to_string(
       "while reading compact, error: can't decompress block of size %d for whithout decompressor",
-      size
-    ));
+      size));
   }
 
-  irs::string_utils::oversize(encode_buf, buf_size);
+  // try direct buffer access
+  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
+
+  if (!buf) {
+    irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
-  const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
-  assert(read == buf_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+    assert(read == buf_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(encode_buf[0]), buf_size);
+    in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
 #endif // IRESEARCH_DEBUG
 
-  if (cipher) {
-    cipher->decrypt(in.file_pointer() - buf_size, &(encode_buf[0]), buf_size);
+    if (cipher) {
+      cipher->decrypt(in.file_pointer() - buf_size,
+                      const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+    }
+
+    buf = encode_buf.c_str();
   }
 
   // ensure that we have enough space to store decompressed data
   decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
-    &encode_buf[0], buf_size,
-    &decode_buf[0], decode_buf.size()
-  );
+    buf, buf_size,
+    &decode_buf[0], decode_buf.size());
 
   if (decoded.null()) {
     throw irs::index_error("error while reading compact");
@@ -5699,24 +5696,20 @@ REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
 #ifdef IRESEARCH_SSE2
 
 struct format_traits_simd {
+  static constexpr uint32_t BLOCK_SIZE = 128;
+
   FORCE_INLINE static void write_block(
-      index_output& out,
-      const uint32_t* in,
-      size_t size,
-      uint32_t* buf) {
-    encode::bitpack::write_block_simd(out, in, size, buf);
+      index_output& out, const uint32_t* in, uint32_t* buf) {
+    encode::bitpack::write_block_simd(out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
-      index_input& in,
-      size_t size,
-      uint32_t* buf,
-      uint32_t* out) {
-    encode::bitpack::read_block_simd(in, size, buf, out);
+      index_input& in, uint32_t* buf, uint32_t* out) {
+    encode::bitpack::read_block_simd(in, buf, out);
   }
 
-  FORCE_INLINE static void skip_block(index_input& in, size_t size) {
-    encode::bitpack::skip_block32(in, size);
+  FORCE_INLINE static void skip_block(index_input& in) {
+    encode::bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits_simd
 

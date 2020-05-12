@@ -1104,34 +1104,46 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
   // read suffix block
   uint64_t block_size;
   leaf_ = shift_unpack_64(in.read_vlong(), block_size);
-  string_utils::oversize(suffix_block_, block_size);
+
+  // for non-encrypted index try direct buffer access first
+  suffix_begin_ = cipher ? nullptr : in.read_buffer(block_size, BufferHint::PERSISTENT);
+
+  if (!suffix_begin_) {
+    string_utils::oversize(suffix_block_, block_size);
 #ifdef IRESEARCH_DEBUG
-  auto read = in.read_bytes(&(suffix_block_[0]), block_size);
-  assert(read == block_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(&(suffix_block_[0]), block_size);
+    assert(read == block_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(suffix_block_[0]), block_size);
+    in.read_bytes(&(suffix_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
-  suffix_begin_ = suffix_block_.c_str();
+    suffix_begin_ = suffix_block_.c_str();
+
+    if (cipher) {
+      cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
+    }
+  }
 #ifdef IRESEARCH_DEBUG
   suffix_end_ = suffix_begin_ + block_size;
 #endif // IRESEARCH_DEBUG
 
-  if (cipher) {
-    cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
-  }
-
   // read stats block
   block_size = in.read_vlong();
-  string_utils::oversize(stats_block_, block_size);
+
+  // try direct buffer access first
+  stats_begin_ = in.read_buffer(block_size, BufferHint::PERSISTENT);
+
+  if (!stats_begin_) {
+    string_utils::oversize(stats_block_, block_size);
 #ifdef IRESEARCH_DEBUG
-  read = in.read_bytes(&(stats_block_[0]), block_size);
-  assert(read == block_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(&(stats_block_[0]), block_size);
+    assert(read == block_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(stats_block_[0]), block_size);
+    in.read_bytes(&(stats_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
-  stats_begin_ = stats_block_.c_str();
+    stats_begin_ = stats_block_.c_str();
+  }
 #ifdef IRESEARCH_DEBUG
   stats_end_ = stats_begin_ + block_size;
 #endif // IRESEARCH_DEBUG
