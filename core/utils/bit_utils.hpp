@@ -104,6 +104,7 @@ inline constexpr T ror(T value) noexcept{
 }
 
 #if defined(_MSC_VER)
+  #pragma warning( push )
   #pragma warning(disable : 4146)
 #endif
 
