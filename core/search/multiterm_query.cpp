@@ -59,9 +59,12 @@ doc_iterator::ptr multiterm_query::execute(
 
   // add an iterator for the unscored docs
   if (has_bit_set) {
+    // ensure first bit isn't set,
+    // since we don't want to emit doc_limits::invalid()
+    assert(state->unscored_docs.any() && !state->unscored_docs.test(0));
+
     itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      state->unscored_docs
-    ));
+      state->unscored_docs));
   }
 
   auto& stats = this->stats();
