@@ -50,12 +50,16 @@ class bitset_doc_iterator final
   virtual doc_id_t value() const noexcept override { return doc_.value; }
 
  private:
+  using word_t = bitset::word_t;
+
   document doc_;
   cost cost_;
   score score_;
-  const bitset::word_t* begin_;
-  const bitset::word_t* end_;
-  size_t size_;
+  const word_t* begin_;
+  const word_t* end_;
+  const word_t* next_;
+  word_t word_{};
+  doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
 }; // bitset_doc_iterator
 
 NS_END // ROOT

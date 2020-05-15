@@ -35,7 +35,7 @@ bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
     }},
     begin_(set.begin()),
     end_(set.end()),
-    size_(set.size()) {
+    next_(begin_) {
   const auto docs_count = set.count();
 
   // make doc_id accessible via attribute
@@ -66,39 +66,39 @@ bitset_doc_iterator::bitset_doc_iterator(
 }
 
 bool bitset_doc_iterator::next() noexcept {
-  return !doc_limits::eof(
-    seek(doc_.value + irs::doc_id_t(doc_.value < size_))
-  );
+  while (!word_) {
+    if (next_ >= end_) {
+      doc_.value = doc_limits::eof();
+      word_ = 0;
+
+      return false;
+    }
+
+    word_ = *next_++;
+    base_ += bits_required<word_t>();
+  }
+
+  const doc_id_t delta = math::math_traits<word_t>::ctz(word_);
+  irs::unset_bit(word_, delta);
+  doc_.value = base_ + delta;
+
+  return true;
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
-  const auto* pword = begin_ + bitset::word(target);
+  next_ = begin_ + bitset::word(target);
 
-  if (pword >= end_) {
+  if (next_ >= end_) {
     doc_.value = doc_limits::eof();
+    word_ = 0;
 
     return doc_.value;
   }
 
-  auto word = ((*pword) >> bitset::bit(target));
-  typedef decltype(word) word_t;
+  base_ = doc_id_t(std::distance(begin_, next_) * bits_required<word_t>());
+  word_ = (*next_++) & ((~word_t(0)) << bitset::bit(target));
 
-  if (word) {
-    // current word contains the specified 'target'
-    doc_.value = target + math::math_traits<word_t>::ctz(word);
-
-    return doc_.value;
-  }
-
-  while (!word && ++pword < end_) {
-    word = *pword;
-  }
-
-  assert(pword >= begin_);
-
-  doc_.value = word
-    ? bitset::bit_offset(std::distance(begin_, pword)) + math::math_traits<word_t>::ctz(word)
-    : doc_limits::eof();
+  next();
 
   return doc_.value;
 }
