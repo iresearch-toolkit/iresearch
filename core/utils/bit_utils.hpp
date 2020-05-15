@@ -124,7 +124,7 @@ inline constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
 }
 
 #if defined(_MSC_VER)
-  #pragma warning(default : 4146)
+  #pragma warning( pop )
 #endif
 
 template<typename T>
