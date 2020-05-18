@@ -830,7 +830,7 @@ class block_disjunction final
     } else if (target < max_) {
       target -= doc_.value;
       begin_ = mask_ + target / BLOCK_SIZE;
-      cur_ = (*begin_++) & ((~uint64_t(0)) << target % BLOCK_SIZE);
+      cur_ = (*begin_++) & ((~UINT64_C(0)) << target % BLOCK_SIZE);
       base_ = doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
 
       next();
@@ -870,7 +870,7 @@ class block_disjunction final
 
  private:
   static constexpr doc_id_t BLOCK_SIZE = bits_required<uint64_t>();
-  static constexpr doc_id_t NUM_BLOCKS = NumBlocks;
+  static constexpr doc_id_t NUM_BLOCKS = std::max(size_t(1), NumBlocks);
   static constexpr size_t WINDOW = BLOCK_SIZE*NUM_BLOCKS;
 
   struct resolve_overload_tag{};
@@ -901,7 +901,7 @@ class block_disjunction final
       if (!visitor(*begin)) {
         std::swap(*begin, itrs_.back());
         itrs_.pop_back();
-        end = itrs_.data() + itrs_.size();
+        --end;
       } else {
         ++begin;
       }
@@ -913,7 +913,7 @@ class block_disjunction final
       return false;
     }
 
-    std::memset(mask_, 0, sizeof mask_); 
+    std::memset(mask_, 0, sizeof mask_);
     max_ = doc_.value + WINDOW;
 
     for_each_remove_if([this](auto& it) mutable {

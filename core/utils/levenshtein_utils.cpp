@@ -133,7 +133,7 @@ class parametric_state {
         if (subsumes(new_pos, *begin)) {
           std::swap(*begin, positions_.back());
           positions_.pop_back(); // removed positions subsumed by new_pos
-          end = positions_.data() + positions_.size();
+          --end;
         } else {
           ++begin;
         }
