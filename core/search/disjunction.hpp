@@ -762,6 +762,195 @@ class disjunction final
   order::prepared::merger merger_;
 }; // disjunction
 
+template<typename DocIterator,
+         typename Adapter = score_iterator_adapter<DocIterator>,
+         size_t NumBlocks = 64,
+         bool EnableUnary = false>
+class block_disjunction final
+    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+      private score_ctx {
+ public:
+  typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
+  typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
+  typedef unary_disjunction<DocIterator, Adapter> unary_disjunction_t;
+  typedef Adapter doc_iterator_t;
+  typedef std::vector<doc_iterator_t> doc_iterators_t;
+
+  static constexpr bool ENABLE_UNARY = EnableUnary;
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      cost::cost_t est)
+    : block_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
+    cost_.value(est);
+  }
+
+  explicit block_disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : block_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
+    cost_.rule([this](){
+      return std::accumulate(
+        itrs_.begin(), itrs_.end(), cost::cost_t(0),
+        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+          return lhs + cost::extract(rhs, 0);
+      });
+    });
+  }
+
+  virtual doc_id_t value() const noexcept override {
+    return doc_.value;
+  }
+
+  virtual bool next() override {
+    while (!cur_) {
+      if (begin_ >= std::end(mask_) && !refill()) {
+        doc_.value = doc_limits::eof();
+
+        return false;
+      }
+
+      cur_ = *begin_++;
+      base_ += bits_required<uint64_t>();
+    }
+
+    const doc_id_t delta = math::math_traits<uint64_t>::ctz(cur_);
+    irs::unset_bit(cur_, delta);
+    doc_.value = base_ + delta;
+
+    return true;
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    if (target < doc_.value) {
+      return doc_.value;
+    } else if (target < max_) {
+      target -= doc_.value;
+      begin_ = mask_ + target / BLOCK_SIZE;
+      cur_ = (*begin_++) & ((~uint64_t(0)) << target % BLOCK_SIZE);
+      base_ = doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
+
+      next();
+    } else {
+      doc_.value = doc_limits::eof();
+      cur_ = 0;
+      begin_ = mask_;
+
+      for_each_remove_if([this, target](auto& it) mutable {
+        const auto doc = it->seek(target);
+
+        if (doc_limits::eof(doc)) {
+          // exhausted
+          return false;
+        }
+         
+        doc_.value = std::min(doc_.value, doc);
+
+        return true;
+      });
+
+      if (itrs_.empty()) {
+        doc_.value = doc_limits::eof();
+
+        return doc_limits::eof();
+      }
+
+      base_ = 0;
+      max_ = doc_.value;
+    }
+
+    return doc_.value;
+  }
+
+  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+  }
+
+ private:
+  static constexpr doc_id_t BLOCK_SIZE = bits_required<uint64_t>();
+  static constexpr doc_id_t NUM_BLOCKS = NumBlocks;
+  static constexpr size_t WINDOW = BLOCK_SIZE*NUM_BLOCKS;
+
+  struct resolve_overload_tag{};
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      resolve_overload_tag)
+    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ },
+      }},
+      itrs_(std::move(itrs)),
+      doc_(itrs_.empty()
+        ? doc_limits::eof()
+        : doc_limits::invalid()),
+      merger_(ord.prepare_merger(merge_type)) {
+  }
+
+  template<typename Visitor>
+  void for_each_remove_if(Visitor visitor) {
+    auto* begin = itrs_.data();
+    auto* end = itrs_.data() + itrs_.size();
+
+    while (begin != end) {
+      if (!visitor(*begin)) {
+        std::swap(*begin, itrs_.back());
+        itrs_.pop_back();
+        end = itrs_.data() + itrs_.size();
+      } else {
+        ++begin;
+      }
+    }
+  }
+
+  bool refill() {
+    if (itrs_.empty()) {
+      return false;
+    }
+
+    std::memset(mask_, 0, sizeof mask_); 
+    max_ = doc_.value + WINDOW;
+
+    for_each_remove_if([this](auto& it) mutable {
+      assert(it.doc);
+      const auto* doc = &it.doc->value;
+
+      while (*doc < max_) {
+        if (!it->next()) {
+          // exhausted
+          return false;
+        }
+
+        const auto delta = *doc - doc_.value;
+
+        irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
+      }
+
+      return true;
+    });
+
+    begin_ = mask_;
+
+    return true;
+  }
+
+  doc_iterators_t itrs_;
+  uint64_t mask_[NUM_BLOCKS]{};
+  uint64_t* begin_{std::end(mask_)};
+  uint64_t cur_{};
+  document doc_;
+  doc_id_t base_{doc_limits::invalid() - bits_required<uint64_t>()};
+  doc_id_t max_{doc_limits::invalid()};
+  score score_;
+  cost cost_;
+  order::prepared::merger merger_;
+}; // bulk_disjunction
+
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified sub iterators
 //////////////////////////////////////////////////////////////////////////////

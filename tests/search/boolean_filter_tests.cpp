@@ -3482,6 +3482,542 @@ TEST(small_disjunction_test, scored_seek_next) {
 }
 
 // ----------------------------------------------------------------------------
+// --SECTION--         block_disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
+// ----------------------------------------------------------------------------
+
+TEST(block_disjunction_test, next) {
+  using disjunction = irs::block_disjunction<irs::doc_iterator::ptr>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // basic case : single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // basic case : same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // basic case : single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // empty
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // no iterators provided
+  {
+    disjunction it({});
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1 ,5, 6 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1 },
+      { 2 },
+      { 3 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front(), result );
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( docs[0], result );
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { }, { }, { }
+    };
+
+    std::vector<irs::doc_id_t> expected{ };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+}
+
+TEST(block_disjunction_test, seek) {
+  using disjunction = irs::block_disjunction<irs::doc_iterator::ptr>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {irs::doc_limits::invalid(), 9},
+        {12, 12},
+        {8, 12},
+        {13, 29},
+        {45, 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // NO_MORE_DOCS
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // INVALID_DOC
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {9, 9},
+        {12, 12},
+        {irs::doc_limits::invalid(), 12},
+        {45, 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {12, 12},
+        {13, 29},
+        {45, 45},
+        {44, 45},
+        {irs::doc_limits::invalid(), 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {13, 29},
+        {45, 45},
+        {80, 101},
+        {513, 1025},
+        {2, 1025},
+        {irs::doc_limits::invalid(), 1025},
+        {2001, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}, {}, {}
+    };
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // NO_MORE_DOCS
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // INVALID_DOC
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {9, 9},
+        {12, 12},
+        {irs::doc_limits::invalid(), 12},
+        {45, 45},
+        {1201, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
 // --SECTION--         disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
 // ----------------------------------------------------------------------------
 
