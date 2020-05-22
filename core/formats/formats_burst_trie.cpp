@@ -1190,7 +1190,6 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
     cur_type_ = ET_TERM;
     suffix_length_ = vread<uint64_t>(suffix_begin_);
     assert(suffix_begin_ <= suffix_end_);
-    assert(suffix_begin_ >= suffix_block_.c_str());
     suffix_ = suffix_begin_; // start of the current suffix
     suffix_begin_ += suffix_length_; // skip to the next term
     assert(suffix_begin_ <= suffix_end_);
@@ -1238,7 +1237,6 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
     cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
         ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
-    assert(suffix_begin_ >= suffix_block_.c_str());
     suffix_ = suffix_begin_;
     suffix_begin_ += suffix_length_; // skip to the next entry
     assert(suffix_begin_ <= suffix_end_);

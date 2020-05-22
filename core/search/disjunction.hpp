@@ -828,16 +828,15 @@ class block_disjunction final
     if (target < doc_.value) {
       return doc_.value;
     } else if (target < max_) {
-      target -= doc_.value;
+      target -= (max_ - WINDOW);
       begin_ = mask_ + target / BLOCK_SIZE;
+      base_ += doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
       cur_ = (*begin_++) & ((~UINT64_C(0)) << target % BLOCK_SIZE);
-      base_ = doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
 
       next();
     } else {
       doc_.value = doc_limits::eof();
       cur_ = 0;
-      begin_ = mask_;
 
       for_each_remove_if([this, target](auto& it) mutable {
         const auto doc = it->seek(target);
@@ -858,8 +857,10 @@ class block_disjunction final
         return doc_limits::eof();
       }
 
-      base_ = 0;
+      assert(!doc_limits::eof(doc_.value));
+      min_ = doc_.value + 1;
       max_ = doc_.value;
+      begin_ = std::end(mask_); // enforce "refill()" for upcoming "next()"
     }
 
     return doc_.value;
@@ -914,27 +915,49 @@ class block_disjunction final
     }
 
     std::memset(mask_, 0, sizeof mask_);
-    max_ = doc_.value + WINDOW;
+    bool empty = true;
 
-    for_each_remove_if([this](auto& it) mutable {
-      assert(it.doc);
-      const auto* doc = &it.doc->value;
+    do {
+      base_ = min_;
+      max_ = min_ + WINDOW;
+      min_ = doc_limits::eof();
 
-      while (*doc < max_) {
-        if (!it->next()) {
+      for_each_remove_if([this, &empty](auto& it) mutable {
+        assert(it.doc);
+        const auto* doc = &it.doc->value;
+        assert(!doc_limits::eof(*doc));
+
+        if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
           // exhausted
           return false;
         }
 
-        const auto delta = *doc - doc_.value;
+        for (;;) {
+          if (*doc >= max_) {
+            min_ = std::min(*doc, min_);
+            return true;
+          }
 
-        irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
-      }
+          const auto delta = *doc - base_;
 
-      return true;
-    });
+          irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
+          empty = false;
 
+          if (!it->next()) {
+            // exhausted
+            return false;
+          }
+        }
+      });
+    } while (empty);
+
+    // FIXME set to the first filled block
     begin_ = mask_;
+    base_ -= bits_required<uint64_t>();
+
+    if (!doc_limits::valid(doc_.value)) { // FIXME
+      irs::unset_bit<0>(mask_[0]);
+    }
 
     return true;
   }
@@ -945,11 +968,12 @@ class block_disjunction final
   uint64_t cur_{};
   document doc_;
   doc_id_t base_{doc_limits::invalid() - bits_required<uint64_t>()};
-  doc_id_t max_{doc_limits::invalid()};
+  doc_id_t min_{doc_limits::invalid()}; // base doc id for the next mask
+  doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
   score score_;
   cost cost_;
   order::prepared::merger merger_;
-}; // bulk_disjunction
+}; // block_disjunction
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified sub iterators
