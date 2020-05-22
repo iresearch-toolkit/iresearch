@@ -767,7 +767,7 @@ template<typename DocIterator,
          size_t NumBlocks = 64,
          bool EnableUnary = false>
 class block_disjunction final
-    : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
+    : public frozen_attributes<3, doc_iterator>,
       private score_ctx {
  public:
   typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
@@ -866,9 +866,6 @@ class block_disjunction final
     return doc_.value;
   }
 
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
-  }
-
  private:
   static constexpr doc_id_t BLOCK_SIZE = bits_required<uint64_t>();
   static constexpr doc_id_t NUM_BLOCKS = std::max(size_t(1), NumBlocks);
@@ -881,7 +878,7 @@ class block_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       resolve_overload_tag)
-    : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
+    : frozen_attributes<3, doc_iterator>{{
         { type<document>::id(), &doc_   },
         { type<cost>::id(),     &cost_  },
         { type<score>::id(),    &score_ },
