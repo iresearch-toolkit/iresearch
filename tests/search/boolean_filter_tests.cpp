@@ -7820,7 +7820,10 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       irs::Or root;
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
     }
   }
 
@@ -7839,7 +7842,10 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
     }
   }
 
@@ -7857,8 +7863,11 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       irs::Or root;
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "E");
-      check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("prefix", "abcd");
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
     }
   }
 }
