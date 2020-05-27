@@ -99,7 +99,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
   all all_docs_;
-  all all_docs_zero_;
+  all all_docs_zero_boost_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
