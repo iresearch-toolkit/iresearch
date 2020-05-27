@@ -8350,8 +8350,8 @@ TEST(And_test, not_boosted) {
   auto pord = ord.prepare();
   irs::And root;
   {
-    auto& not = root.add<irs::Not>();
-    auto& node = not.filter<detail::boosted>();
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
     node.docs = { 5 , 6 };
     node.boost(4);
   }
@@ -8690,8 +8690,8 @@ TEST(Or_test, not_boosted) {
   auto pord = ord.prepare();
   irs::Or root;
   {
-    auto & not = root.add<irs::Not>();
-    auto& node = not.filter<detail::boosted>();
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
     node.docs = { 5 , 6 };
     node.boost(4);
   }
