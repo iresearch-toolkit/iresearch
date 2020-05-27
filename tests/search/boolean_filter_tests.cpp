@@ -1557,9 +1557,14 @@ TEST( boolean_query_estimation, or ) {
     root.add<irs::Not>().filter<detail::estimated>().est = 0;
     root.add<detail::unestimated>();
 
+    // we need order to suppress optimization
+    // which will clean include group and leave only 'all' filter
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      pord
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
