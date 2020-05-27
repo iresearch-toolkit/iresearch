@@ -48,8 +48,9 @@ bool score::prepare(const order::prepared& ord,
     return false;
   }
 
+  // ensure buffer is empty
+  value_.clear();
   value_.resize(ord.score_size());
-  ord.prepare_score(leak());
 
   switch (scorers.size()) {
     case 0: {

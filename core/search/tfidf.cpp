@@ -250,8 +250,8 @@ NS_BEGIN(tfidf)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-struct idf final : attribute {
-  float_t value{ 0.f };
+struct idf final {
+  float_t value;
 };
 
 typedef tfidf_sort::score_t score_t;

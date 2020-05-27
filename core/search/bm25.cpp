@@ -295,9 +295,9 @@ NS_BEGIN(bm25)
 const frequency EMPTY_FREQ;
 
 struct stats final {
-  float_t idf{ 0.f }; // precomputed idf value
-  float_t norm_const{ 1.f }; // precomputed k*(1-b)
-  float_t norm_length{ 0.f }; // precomputed k*b/avgD
+  float_t idf; // precomputed idf value
+  float_t norm_const; // precomputed k*(1-b)
+  float_t norm_length; // precomputed k*b/avgD
 }; // stats
 
 typedef bm25_sort::score_t score_t;
@@ -392,6 +392,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     // - stats were already initialized
     // - BM15 without norms
     if (b_ == 0.f) {
+      stats.norm_const = 1.f;
       return;
     }
 

@@ -28,6 +28,13 @@
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"
 
+NS_LOCAL
+
+const irs::order UNORDERED;
+const irs::order::prepared PREPARED_UNORDERED;
+
+NS_END
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -48,9 +55,8 @@ sort::sort(const type_info& type) noexcept
 // --SECTION--                                                            order 
 // ----------------------------------------------------------------------------
 
-const order& order::unordered() {
-  static order ord;
-  return ord;
+const order& order::unordered() noexcept {
+  return UNORDERED;
 }
 
 void order::remove(type_info::type_id type) {
@@ -61,31 +67,8 @@ void order::remove(type_info::type_id type) {
   ));
 }
 
-const order::prepared& order::prepared::unordered() {
-  static order::prepared ord;
-  return ord;
-}
-
-order::prepared::prepared(order::prepared&& rhs) noexcept
-  : order_(std::move(rhs.order_)),
-    features_(std::move(rhs.features_)),
-    score_size_(rhs.score_size_),
-    stats_size_(rhs.stats_size_) {
-  rhs.score_size_ = 0;
-  rhs.stats_size_ = 0;
-}
-
-order::prepared& order::prepared::operator=(order::prepared&& rhs) noexcept {
-  if (this != &rhs) {
-    order_ = std::move(rhs.order_);
-    features_ = std::move(rhs.features_);
-    score_size_ = rhs.score_size_;
-    rhs.score_size_ = 0;
-    stats_size_ = rhs.stats_size_;
-    rhs.stats_size_ = 0;
-  }
-
-  return *this;
+const order::prepared& order::prepared::unordered() noexcept {
+  return PREPARED_UNORDERED;
 }
 
 bool order::operator==(const order& other) const {
@@ -196,20 +179,6 @@ order::prepared::scorers::scorers(
   }
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& other) noexcept
-  : scorers_(std::move(other.scorers_)) {
-}
-
-order::prepared::scorers& order::prepared::scorers::operator=(
-    order::prepared::scorers&& other
-) noexcept {
-  if (this != &other) {
-    scorers_ = std::move(other.scorers_);
-  }
-
-  return *this;
-}
-
 void order::prepared::scorers::score(byte_type* scr) const {
   for (auto& scorer : scorers_) {
     assert(scorer.func);
@@ -219,25 +188,10 @@ void order::prepared::scorers::score(byte_type* scr) const {
 
 void order::prepared::prepare_collectors(
     byte_type* stats_buf,
-    const index_reader& index
-) const {
+    const index_reader& index) const {
   for (auto& entry: order_) {
     assert(entry.bucket); // ensured by order::prepared
     entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr, nullptr);
-  }
-}
-
-void order::prepared::prepare_score(byte_type* score) const {
-  for (auto& sort : order_) {
-    assert(sort.bucket);
-    sort.bucket->prepare_score(score + sort.score_offset);
-  }
-}
-
-void order::prepared::prepare_stats(byte_type* stats) const {
-  for (auto& sort : order_) {
-    assert(sort.bucket);
-    sort.bucket->prepare_stats(stats + sort.stats_offset);
   }
 }
 

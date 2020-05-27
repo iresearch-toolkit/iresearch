@@ -80,6 +80,8 @@ typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
 /// @brief base class for all user-side sort entries
+/// @note score and stats are meant to be trivially constructible and will be
+///       zero initialized before usage
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API sort {
  public:
@@ -291,16 +293,6 @@ class IRESEARCH_API sort {
     virtual term_collector::ptr prepare_term_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the score buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_score(byte_type* score) const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the stats buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_stats(byte_type* stats) const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
     virtual bool less(const byte_type* lhs, const byte_type* rhs) const = 0;
@@ -477,6 +469,12 @@ template<typename ScoreType,
          typename TraitsType = score_traits<ScoreType>
 > class prepared_sort_base : public sort::prepared {
  public:
+  static_assert(std::is_trivially_constructible_v<ScoreType>,
+                "ScoreType must be trivially constructible");
+
+  static_assert(std::is_trivially_constructible_v<StatsType>,
+                "StatsTypemust be trivially constructible");
+
   typedef TraitsType traits_t;
   typedef typename traits_t::score_type score_t;
   typedef StatsType stats_t;
@@ -527,13 +525,6 @@ template<typename ScoreType,
 
     return std::make_pair(sizeof(stats_t), alignof(stats_t));
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the stats buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void prepare_stats(byte_type* stats) const override final {
-    stats_cast(stats) = StatsType();
-  }
 }; // prepared_sort_base
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,13 +557,6 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   ////////////////////////////////////////////////////////////////////////////
   virtual sort::term_collector::ptr prepare_term_collector() const override {
     return nullptr;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the stats buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void prepare_stats(byte_type* /*stats*/) const override {
-    // NOOP
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -626,13 +610,6 @@ template<typename ScoreType,
 > class prepared_sort_basic : public prepared_sort_base<ScoreType, StatsType> {
   typedef TraitsType traits_t;
   typedef prepared_sort_base<ScoreType, StatsType> base_t;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the score buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual inline void prepare_score(byte_type* score) const override final {
-    traits_t::score_cast(score) = ScoreType();
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -756,9 +733,8 @@ class IRESEARCH_API order final {
         const byte_type* stats,
         const attribute_provider& doc,
         boost_t boost);
-      scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
-
-      scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
+      scorers(scorers&& other) noexcept = default;
+      scorers& operator=(scorers&& other) noexcept = default;
 
       void score(byte_type* score) const;
 
@@ -822,12 +798,11 @@ class IRESEARCH_API order final {
       merge_f merge_func_{&sort::prepared::noop_merge};
     }; // merger
 
-    static const prepared& unordered();
+    static const prepared& unordered() noexcept;
 
     prepared() = default;
-    prepared(prepared&& rhs) noexcept;
-
-    prepared& operator=(prepared&& rhs) noexcept;
+    prepared(prepared&& rhs) noexcept = default;
+    prepared& operator=(prepared&& rhs) noexcept = default;
 
     const flags& features() const noexcept { return features_; }
 
@@ -909,8 +884,6 @@ class IRESEARCH_API order final {
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;
     void add(byte_type* lhs, const byte_type* rhs) const;
-    void prepare_score(byte_type* score) const;
-    void prepare_stats(byte_type* stats) const;
 
     template<typename T>
     constexpr const T& get(const byte_type* score, size_t i) const noexcept {
@@ -979,7 +952,7 @@ class IRESEARCH_API order final {
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
-  static const order& unordered();
+  static const order& unordered() noexcept;
 
   order() = default;
   order(order&& rhs) noexcept

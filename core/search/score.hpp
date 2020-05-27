@@ -72,8 +72,9 @@ class IRESEARCH_API score : public attribute {
       return false;
     }
 
+    // ensure buffer is empty
+    value_.clear();
     value_.resize(ord.score_size());
-    ord.prepare_score(leak());
 
     ctx_ = memory::managed_ptr<const score_ctx>(ctx, nullptr);
     func_ = func;
@@ -89,7 +90,7 @@ class IRESEARCH_API score : public attribute {
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring value_;     // score buffer
+  bstring value_;  // score buffer
   memory::managed_ptr<const score_ctx> ctx_{}; // arbitrary scoring context
   score_f func_{[](const score_ctx*, byte_type*){}};    // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END

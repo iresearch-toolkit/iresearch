@@ -146,7 +146,6 @@ filter::prepared::ptr by_column_existence::prepare(
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_stats(stats_buf);
   order.prepare_collectors(stats_buf, reader);
 
   filter_boost *= boost();

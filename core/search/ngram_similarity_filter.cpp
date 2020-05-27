@@ -80,7 +80,7 @@ class ngram_similarity_doc_iterator final
       }},
       min_match_count_(min_match_count),
       states_(states),
-      total_terms_count_(total_terms_count) {
+      total_terms_count_(static_cast<boost_t>(total_terms_count)) { // avoid runtime conversion
     assert(doc_);
 
     // FIXME find a better estimation
@@ -168,7 +168,7 @@ class ngram_similarity_doc_iterator final
   size_t min_match_count_;
   search_states_t search_buf_;
   const states_t& states_;
-  size_t total_terms_count_;
+  boost_t total_terms_count_;
   cost cost_;
   score score_;
   bool empty_order_;
@@ -350,7 +350,7 @@ bool ngram_similarity_doc_iterator<DocIterator>::check_serial_positions() {
     }
     seq_freq_.value = freq;
     assert(!pos_.empty());
-    filter_boost_.value = (boost_t)longest_sequence_len / (boost_t)total_terms_count_;
+    filter_boost_.value = static_cast<boost_t>(longest_sequence_len) / total_terms_count_;
   }
   return longest_sequence_len >= min_match_count_;
 }
@@ -543,7 +543,6 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   bstring stats(ord.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  ord.prepare_stats(stats_buf);
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {
     term_stats.finish(stats_buf, term_idx, field_stats, rdr);
   }

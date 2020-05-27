@@ -70,7 +70,6 @@ filter::prepared::ptr all::prepare(
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_stats(stats_buf);
   order.prepare_collectors(stats_buf, reader);
 
   return filter::prepared::make<all_query>(std::move(stats), this->boost()*filter_boost);

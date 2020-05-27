@@ -138,11 +138,6 @@ struct sort : irs::sort {
       return { nullptr, nullptr };
     }
 
-    virtual void prepare_score(irs::byte_type* score) const {  }
-
-    virtual void prepare_stats(irs::byte_type* stats) const {  }
-
-
     virtual bool less(const irs::byte_type* lhs,
                       const irs::byte_type* rhs) const {
       return false;

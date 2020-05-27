@@ -591,7 +591,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   // finish stats
   bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
-  ord.prepare_stats(stats_buf);
 
   fixed_phrase_query::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
@@ -708,7 +707,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   assert(phrase_size == phrase_part_stats.size());
   bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
-  ord.prepare_stats(stats_buf);
   auto collector = phrase_part_stats.begin();
 
   variadic_phrase_query::positions_t positions(phrase_size);

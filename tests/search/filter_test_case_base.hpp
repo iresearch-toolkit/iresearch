@@ -263,10 +263,6 @@ struct custom_sort: public irs::sort {
       };
     }
 
-    virtual void prepare_score(irs::byte_type* score) const override {
-      traits_t::score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-    }
-
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       if (sort_.prepare_term_collector_) {
         return sort_.prepare_term_collector_();
@@ -314,11 +310,11 @@ struct frequency_sort: public irs::sort {
   struct score_t {
     irs::doc_id_t id;
     double value;
-    bool prepared{}; // initialized to false
+    bool prepared;
   };
 
   struct stats_t {
-    size_t count{};
+    size_t count;
   };
 
   struct score_traits {
@@ -452,6 +448,13 @@ struct frequency_sort: public irs::sort {
         [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           auto& state = *reinterpret_cast<const scorer*>(ctx);
           auto& buf = irs::sort::score_cast<score_t>(score_buf);
+
+          if (!buf.prepared) {
+            buf.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+            buf.value = std::numeric_limits<double>::infinity();
+            buf.prepared = true;
+          }
+
           buf.id = state.doc_id_attr->value;
 
           // docs_count may be nullptr if no collector called, e.g. by range_query for bitset_doc_iterator
@@ -460,13 +463,6 @@ struct frequency_sort: public irs::sort {
           }
         }
       };
-    }
-
-    virtual void prepare_score(irs::byte_type* score_buf) const override {
-      auto& score = traits_t::score_cast(score_buf);
-      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      score.value = std::numeric_limits<double>::infinity();
-      score.prepared = true;
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
