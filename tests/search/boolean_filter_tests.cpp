@@ -328,101 +328,6 @@ DEFINE_FACTORY_DEFAULT(boosted)
 
 unsigned boosted::execute_count{ 0 };
 
-// same as boosted but equal to all filter by type
-struct test_all : public irs::filter {
-  struct prepared : irs::filter::prepared {
-    explicit prepared(
-      const basic_doc_iterator::docids_t& docs,
-      irs::boost_t boost)
-      : irs::filter::prepared(boost), docs(docs) {
-    }
-
-    virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr,
-      const irs::order::prepared& ord,
-      const irs::attribute_provider* /*ctx*/) const override {
-      test_all::execute_count++;
-      return irs::doc_iterator::make<basic_doc_iterator>(
-        docs.begin(), docs.end(), stats.c_str(), ord, boost()
-        );
-    }
-
-    basic_doc_iterator::docids_t docs;
-    irs::bstring stats;
-
-  }; // prepared
-
-  DECLARE_FACTORY();
-
-  virtual irs::filter::prepared::ptr prepare(
-    const irs::index_reader&,
-    const irs::order::prepared&,
-    irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const override {
-    return filter::prepared::make<test_all::prepared>(docs, this->boost() * boost);
-  }
-
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
-  test_all() : filter(irs::type<irs::all>::get()) { }
-
-  basic_doc_iterator::docids_t docs;
-
-  static unsigned execute_count;
-}; // test_all
-
-DEFINE_FACTORY_DEFAULT(test_all)
-
-unsigned test_all::execute_count{ 0 };
-
-// same as boosted but equal to all filter by type
-struct test_empty : public irs::filter {
-  struct prepared : irs::filter::prepared {
-    explicit prepared(
-      const basic_doc_iterator::docids_t& docs,
-      irs::boost_t boost)
-      : irs::filter::prepared(boost), docs(docs) {
-    }
-
-    virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr,
-      const irs::order::prepared& ord,
-      const irs::attribute_provider* /*ctx*/) const override {
-      test_empty::execute_count++;
-      return irs::doc_iterator::make<basic_doc_iterator>(
-        docs.begin(), docs.end(), stats.c_str(), ord, boost()
-        );
-    }
-
-    basic_doc_iterator::docids_t docs;
-    irs::bstring stats;
-  }; // prepared
-
-  DECLARE_FACTORY();
-
-  virtual irs::filter::prepared::ptr prepare(
-    const irs::index_reader&,
-    const irs::order::prepared&,
-    irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const override {
-    return filter::prepared::make<test_empty::prepared>(docs, boost);
-  }
-
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
-  test_empty() : filter(irs::type<irs::empty>::get()) { }
-  static unsigned execute_count;
-  basic_doc_iterator::docids_t docs;
-}; // test_empty
-
-DEFINE_FACTORY_DEFAULT(test_empty)
-
-unsigned test_empty::execute_count{ 0 };
-
 NS_END // detail
 
 TEST(boolean_query_boost, hierarchy) {
@@ -7481,6 +7386,14 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "same", "NOT POSSIBLE");
     check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
   }
+
+  // optimization should adjust min_match
+  {
+    irs::Or root;
+    root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A"); // 1
+    append<irs::by_term>(root, "same", "NOT POSSIBLE");
+    check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
 }
 
 TEST_P(boolean_filter_test_case, and_schemas) {
@@ -7829,6 +7742,28 @@ TEST_P(boolean_filter_test_case, not_sequential) {
                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                                 24, 25, 26, 27, 28, 29, 30, 31, 32 },
                   rdr);
+    }
+    // check 'all' filter added for Not nodes does not affects score
+    {
+      irs::Or root;
+      auto& left_branch = root.add<irs::And>();
+      // this three filters fire at same doc so it will get score = 3 
+      append<irs::by_term>(left_branch, "name", "A");
+      append<irs::by_term>(left_branch, "duplicated", "abcd");
+      append<irs::by_term>(left_branch, "same", "xyz");
+
+      auto& right_branch = root.add<irs::And>();
+      append<irs::by_term>(right_branch, "name", "B"); // +1 score
+      auto& sub = right_branch.add<irs::Or>();// this OR we actually test
+      append<irs::by_term>(sub, "name", "B"); // +1 score
+      // will exclude some docs (but A will stay) and produce 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("prefix", "abcde");
+      // will exclude some docs (but A will stay) and produce another 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      // if 'all' will add at least 1 to score totals score will be 3 and expected order will break
+      irs::order ord;
+      ord.add<tests::sort::boost>(false);
+      check_query(root, ord, docs_t{ 2, 1}, rdr);
     }
   }
 
@@ -8380,58 +8315,6 @@ TEST(And_test, not_boosted) {
   ASSERT_FALSE(docs->next());
 }
 
-TEST(And_test, optimize_only_all_boosted) {
-  irs::order ord;
-  ord.add<tests::sort::boost>(false);
-  auto pord = ord.prepare();
-  irs::And root;
-  detail::test_all::execute_count = 0;
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(4);
-  }
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(5);
-  }
-
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
-  auto docs = prep->execute(irs::sub_reader::empty(), pord);
-  auto* scr = irs::get<irs::score>(*docs);
-  ASSERT_FALSE(!scr);
-  auto* doc = irs::get<irs::document>(*docs);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(1, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(2, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(3, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(4, doc->value);
-
-  ASSERT_FALSE(docs->next());
-
-  ASSERT_EQ(1, detail::test_all::execute_count); // only one all should be executed
-}
-
 #endif // IRESEARCH_DLL
 
 // ----------------------------------------------------------------------------
@@ -8529,9 +8412,7 @@ TEST(Or_test, optimize_single_node) {
 
 TEST(Or_test, optimize_all_unboosted ) {
   irs::Or root;
-  detail::test_all::execute_count = 0;
   detail::boosted::execute_count = 0;
-  detail::test_empty::execute_count = 0;
   {
     auto& node = root.add<detail::boosted>();
     node.docs = { 1 };
@@ -8544,149 +8425,33 @@ TEST(Or_test, optimize_all_unboosted ) {
     auto& node = root.add<detail::boosted>();
     node.docs = { 3 };
   }
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-  }
-  root.add<detail::test_empty>();
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-  }
-  root.add<detail::test_empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
 
   auto prep = root.prepare(irs::sub_reader::empty(),
                            irs::order::prepared::unordered());
 
   prep->execute(irs::sub_reader::empty());
-  ASSERT_EQ(0, detail::boosted::execute_count); // regular filters should be supressed
-  ASSERT_EQ(1, detail::test_all::execute_count); // only one all should be executed
-  ASSERT_EQ(0, detail::test_empty::execute_count);
+  ASSERT_EQ(0, detail::boosted::execute_count); // specific filters should be opt out
 }
 
-TEST(Or_test, optimize_all_boosted) {
-  irs::order ord;
-  ord.add<tests::sort::boost>(false);
-  auto pord = ord.prepare();
-  irs::Or root;
-  detail::test_all::execute_count = 0;
-  detail::boosted::execute_count = 0;
-  detail::test_empty::execute_count = 0;
-  {
-    auto& node = root.add<detail::boosted>();
-    node.docs = { 1 };
-    node.boost(1);
-  }
-  {
-    auto& node = root.add<detail::boosted>();
-    node.docs = { 2 };
-    node.boost(2);
-  }
-  {
-    auto& node = root.add<detail::boosted>();
-    node.docs = { 3 };
-    node.boost(3);
-  }
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(4);
-  }
-  root.add<detail::test_empty>();
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(5);
-  }
-  root.add<detail::test_empty>();
-
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
-  auto docs = prep->execute(irs::sub_reader::empty(), pord);
-  auto* scr = irs::get<irs::score>(*docs);
-  ASSERT_FALSE(!scr);
-  auto* doc = irs::get<irs::document>(*docs);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(10., doc_boost);
-  ASSERT_EQ(1, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(11., doc_boost);
-  ASSERT_EQ(2, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(12., doc_boost);
-  ASSERT_EQ(3, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(4, doc->value);
-
-  ASSERT_FALSE(docs->next());
-
-  ASSERT_EQ(3, detail::boosted::execute_count); // regular filters should executed
-  ASSERT_EQ(1, detail::test_all::execute_count); // only one all should be executed
-  ASSERT_EQ(0, detail::test_empty::execute_count);
-}
 
 TEST(Or_test, optimize_only_all_boosted) {
   irs::order ord;
   ord.add<tests::sort::boost>(false);
   auto pord = ord.prepare();
   irs::Or root;
-  detail::test_all::execute_count = 0;
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(4);
-  }
-  {
-    auto& node = root.add<detail::test_all>();
-    node.docs = { 1, 2, 3, 4 };
-    node.boost(5);
-  }
+  root.boost(2);
+  root.add<irs::all>().boost(3);
+  root.add<irs::all>().boost(5);
 
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
-  auto docs = prep->execute(irs::sub_reader::empty(), pord);
-  auto* scr = irs::get<irs::score>(*docs);
-  ASSERT_FALSE(!scr);
-  auto* doc = irs::get<irs::document>(*docs);
+  auto prep = root.prepare(irs::sub_reader::empty(),
+    irs::order::prepared::unordered());
 
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(1, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(2, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(3, doc->value);
-
-  ASSERT_TRUE(docs->next());
-  scr->evaluate();
-  doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-  ASSERT_EQ(9., doc_boost);
-  ASSERT_EQ(4, doc->value);
-
-  ASSERT_FALSE(docs->next());
-
-  ASSERT_EQ(1, detail::test_all::execute_count); // only one all should be executed
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(16, prep->boost());
 }
 
 TEST(Or_test, boosted_not) {
@@ -8716,7 +8481,6 @@ TEST(Or_test, boosted_not) {
   auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
   ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
   ASSERT_EQ(1, doc->value);
-
   ASSERT_FALSE(docs->next());
 }
 

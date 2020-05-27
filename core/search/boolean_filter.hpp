@@ -78,7 +78,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
       std::vector<const filter*>& /*incl*/,
       std::vector<const filter*>& /*excl*/,
       const order::prepared& /*ord*/,
-      boost_t& /*boost*/) const {
+      boost_t& /*boost*/,
+      filters_t& /*aux_filters*/) const{
     // noop
   }
 
@@ -93,8 +94,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  private:
   void group_filters(
     std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl
-  ) const;
+    std::vector<const filter*>& excl,
+    filters_t& aux_filters) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
@@ -121,7 +122,8 @@ class IRESEARCH_API And: public boolean_filter {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const order::prepared& ord,
-    boost_t& boost
+    boost_t& boost,
+    filters_t& aux_filters
   ) const override;
 
   virtual filter::prepared::ptr prepare(
@@ -166,7 +168,8 @@ class IRESEARCH_API Or : public boolean_filter {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const order::prepared& ord,
-    boost_t& boost) const override;
+    boost_t& boost,
+    filters_t& aux_filters) const override;
 
   virtual filter::prepared::ptr prepare(
     const std::vector<const filter*>& incl,
