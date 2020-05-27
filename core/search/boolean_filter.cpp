@@ -44,7 +44,12 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
   return std::make_pair(inner, neg);
 }
 
+irs::all::ptr all_docs_zero_boost = []() {
+  auto a = irs::all::make(); 
+  a->boost(0); 
+  return a;}();
 
+irs::all::ptr all_docs_no_boost = irs::all::make();
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified queries
 //////////////////////////////////////////////////////////////////////////////
@@ -350,9 +355,7 @@ class min_match_query final : public boolean_query {
 // ----------------------------------------------------------------------------
 
 boolean_filter::boolean_filter(const type_info& type) noexcept
-  : filter(type) {
-  all_docs_zero_boost_.boost(0.f);
-}
+  : filter(type) {}
 
 size_t boolean_filter::hash() const noexcept {
   size_t seed = 0;
@@ -389,7 +392,7 @@ filter::prepared::ptr boolean_filter::prepare(
 
   if (incl.empty() && !excl.empty()) {
     // single negative query case
-    incl.push_back(&all_docs_);
+    incl.push_back(all_docs_no_boost.get());
   }
 
   return prepare(incl, excl, rdr, ord, boost, ctx);
@@ -425,7 +428,7 @@ void boolean_filter::group_filters(
         if (type() == irs::type<Or>::id()) {
           // FIXME: this should have same boost as Not filter.
           // But for now we do not boost negation.
-          incl.push_back(&all_docs_zero_boost_);
+          incl.push_back(all_docs_zero_boost.get());
         }
       } else {
         incl.push_back(res.first);
@@ -449,8 +452,8 @@ And::And() noexcept
 void And::optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
-    const order::prepared& ord,
-    boost_t& boost) const {
+    const order::prepared&,
+    boost_t&) const {
   if (incl.empty()) {
     // nothing to do
     return;
@@ -558,7 +561,7 @@ void Or::optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
     const order::prepared& ord,
-    boost_t& boost) const {
+    boost_t&) const {
   if (incl.empty()) {
     // nothing to do
     return;

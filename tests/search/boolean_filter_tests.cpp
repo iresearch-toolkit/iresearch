@@ -8689,7 +8689,7 @@ TEST(Or_test, optimize_only_all_boosted) {
   ASSERT_EQ(1, detail::test_all::execute_count); // only one all should be executed
 }
 
-TEST(Or_test, not_boosted) {
+TEST(Or_test, boosted_not) {
   irs::order ord;
   ord.add<tests::sort::boost>(false);
   auto pord = ord.prepare();
