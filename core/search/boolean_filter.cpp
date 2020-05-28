@@ -544,6 +544,10 @@ filter::prepared::ptr Or::prepare(
     return all().prepare(rdr, ord, boost, ctx);
   }
 
+  if (!incl.empty() && incl.back()->type() == irs::type<irs::empty>::id()) {
+    incl.pop_back();
+  }
+
   if (incl.empty()) {
     return prepared::empty();
   }
@@ -551,9 +555,7 @@ filter::prepared::ptr Or::prepare(
   irs::all cumulative_all;
   size_t optimized_match_count = 0;
   // Optimization steps
-  if (incl.back()->type() == irs::type<irs::empty>::id()) {
-    incl.pop_back();
-  }
+
   boost_t all_boost{ 0 };
   size_t all_count{ 0 };
   const irs::filter* incl_all{ nullptr };
