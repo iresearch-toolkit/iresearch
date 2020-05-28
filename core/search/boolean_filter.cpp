@@ -622,7 +622,7 @@ filter::prepared::ptr Or::prepare(
     return all().prepare(rdr, ord, boost, ctx);
   }
 
-  // check strictly less to not roll back to 'all' in case of
+  // check strictly less to not roll back to 0 min_match (we`ve handled this case above!)
   // single 'all' left -> it could contain boost we want to preserve
   const auto adjusted_min_match_count = (optimized_match_count_ < min_match_count_) ?
                                         min_match_count_ - optimized_match_count_ :
