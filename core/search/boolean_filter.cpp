@@ -579,7 +579,7 @@ void Or::optimize(
 
   if (ord.empty()) {
     // if we have at least one all in include group - all other filters are not necessary
-    // in case there is no scoring and min_match = 1
+    // in case there is no scoring and 'all' count satisfies  min_match
     auto incl_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
         return irs::type<irs::all>::id() == filter->type();
       });
