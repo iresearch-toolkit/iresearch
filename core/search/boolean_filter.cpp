@@ -466,8 +466,7 @@ filter::prepared::ptr And::prepare(
     return prepared::empty();
   }
 
-  filters_t aux_filters;
-
+  irs::all cumulative_all;
   boost_t all_boost{ 0 };
   size_t all_count{ 0 };
   std::for_each(
@@ -507,9 +506,8 @@ filter::prepared::ptr And::prepare(
       }
     } else {
       // create new 'all' with boost from all removed
-      auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
-      cumulative->boost(all_boost);
-      incl.push_back(cumulative);
+      cumulative_all.boost(all_boost);
+      incl.push_back(&cumulative_all);
     }
   }
   boost *= this->boost();
@@ -541,11 +539,17 @@ filter::prepared::ptr Or::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
+  
   if (0 == min_match_count_) { // only explicit 0 min match counts!
     // all conditions are satisfied
     return all().prepare(rdr, ord, boost, ctx);
   }
-  filters_t aux_filters;
+
+  if (incl.empty()) {
+    return prepared::empty();
+  }
+
+  irs::all cumulative_all;
   size_t optimized_match_count = 0;
   // Optimization steps
   if (!incl.empty()) {
@@ -586,12 +590,12 @@ filter::prepared::ptr Or::prepare(
         });
       incl.erase(it, incl.end());
       // create new 'all' with boost from all removed
-      auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
-      cumulative->boost(all_boost);
-      incl.push_back(cumulative);
+      cumulative_all.boost(all_boost);
+      incl.push_back(&cumulative_all);
       optimized_match_count = all_count - 1;
     }
   }
+  // preparing
   boost *= this->boost();
   // check strictly less to not roll back to 0 min_match (we`ve handled this case above!)
   // single 'all' left -> it could contain boost we want to preserve
@@ -605,10 +609,7 @@ filter::prepared::ptr Or::prepare(
     return prepared::empty();
   }
 
-  if (incl.empty()) {
-    // empty query
-    return prepared::empty();
-  } else if (1 == incl.size() && excl.empty()) {
+  if (1 == incl.size() && excl.empty()) {
     // single node case
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
