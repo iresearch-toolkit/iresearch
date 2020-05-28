@@ -539,7 +539,6 @@ filter::prepared::ptr Or::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
-  
   if (0 == min_match_count_) { // only explicit 0 min match counts!
     // all conditions are satisfied
     return all().prepare(rdr, ord, boost, ctx);
@@ -552,48 +551,46 @@ filter::prepared::ptr Or::prepare(
   irs::all cumulative_all;
   size_t optimized_match_count = 0;
   // Optimization steps
-  if (!incl.empty()) {
-    if (incl.back()->type() == irs::type<irs::empty>::id()) {
-      incl.pop_back();
-    }
-    boost_t all_boost{ 0 };
-    size_t all_count{ 0 };
-    const irs::filter* incl_all{ nullptr };
-    std::for_each(
-      incl.begin(), incl.end(),
-      [&all_count, &all_boost, &incl_all](const irs::filter* filter) {
-        if (filter->type() == irs::type<irs::all>::id()) {
-          all_count++;
-          all_boost += filter->boost();
-          incl_all = filter;
-        }
-      });
-
-    bool optimize_finished = false;
-    if (ord.empty() && all_count > 0) {
-      // if we have at least one all in include group - all other filters are not necessary
-      // in case there is no scoring and 'all' count satisfies  min_match
-      if (incl_all != nullptr && incl.size() > 1 && min_match_count_ <= all_count) {
-        std::swap(*incl.begin(), incl_all);
-        incl.erase(incl.begin() + 1, incl.end());
-        optimized_match_count = all_count - 1;
-        optimize_finished = true; // all perfect now )
+  if (incl.back()->type() == irs::type<irs::empty>::id()) {
+    incl.pop_back();
+  }
+  boost_t all_boost{ 0 };
+  size_t all_count{ 0 };
+  const irs::filter* incl_all{ nullptr };
+  std::for_each(
+    incl.begin(), incl.end(),
+    [&all_count, &all_boost, &incl_all](const irs::filter* filter) {
+      if (filter->type() == irs::type<irs::all>::id()) {
+        all_count++;
+        all_boost += filter->boost();
+        incl_all = filter;
       }
-    }
+    });
 
-    if (all_count != 0 && !optimize_finished) {
-      // Here Or differs from And. Last All should be left in include group
-      auto it = std::remove_if(
-        incl.begin(), incl.end(),
-        [](const irs::filter* filter) {
-          return irs::type<all>::id() == filter->type();
-        });
-      incl.erase(it, incl.end());
-      // create new 'all' with boost from all removed
-      cumulative_all.boost(all_boost);
-      incl.push_back(&cumulative_all);
+  bool optimize_finished = false;
+  if (ord.empty() && all_count > 0) {
+    // if we have at least one all in include group - all other filters are not necessary
+    // in case there is no scoring and 'all' count satisfies  min_match
+    if (incl_all != nullptr && incl.size() > 1 && min_match_count_ <= all_count) {
+      std::swap(*incl.begin(), incl_all);
+      incl.erase(incl.begin() + 1, incl.end());
       optimized_match_count = all_count - 1;
+      optimize_finished = true; // all perfect now )
     }
+  }
+
+  if (all_count != 0 && !optimize_finished) {
+    // Here Or differs from And. Last All should be left in include group
+    auto it = std::remove_if(
+      incl.begin(), incl.end(),
+      [](const irs::filter* filter) {
+        return irs::type<all>::id() == filter->type();
+      });
+    incl.erase(it, incl.end());
+    // create new 'all' with boost from all removed
+    cumulative_all.boost(all_boost);
+    incl.push_back(&cumulative_all);
+    optimized_match_count = all_count - 1;
   }
   // preparing
   boost *= this->boost();
