@@ -181,6 +181,7 @@ class IRESEARCH_API Or : public boolean_filter {
 
  private:
   size_t min_match_count_;
+  mutable size_t optimized_match_count_{0}; // count of always matched filters optimized away
 }; // Or
 
 //////////////////////////////////////////////////////////////////////////////

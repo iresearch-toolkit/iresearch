@@ -564,22 +564,10 @@ void Or::optimize(
     const order::prepared& ord,
     boost_t&,
     filters_t& aux_filters) const {
+  optimized_match_count_ = 0;
   if (incl.empty()) {
     // nothing to do
     return;
-  }
-
-  if (ord.empty()) {
-    // if we have at least one all in include group - all other filters are not necessary
-    // in case there is no scoring
-    auto incl_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
-        return irs::type<irs::all>::id() == filter->type();
-      });
-    if (incl_all != incl.end() && incl.size() > 1) {
-      std::swap(*incl.begin(), *incl_all);
-      incl.erase(incl.begin() + 1, incl.end());
-      return;
-    }
   }
 
   boost_t all_boost{ 0 };
@@ -592,6 +580,21 @@ void Or::optimize(
         all_boost += filter->boost();
       }
     });
+
+  if (ord.empty()) {
+    // if we have at least one all in include group - all other filters are not necessary
+    // in case there is no scoring and min_match = 1
+    auto incl_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
+        return irs::type<irs::all>::id() == filter->type();
+      });
+    if (incl_all != incl.end() && incl.size() > 1 && min_match_count_ <= all_count ) {
+      std::swap(*incl.begin(), *incl_all);
+      incl.erase(incl.begin() + 1, incl.end());
+      optimized_match_count_ = all_count - 1;
+      return;
+    }
+  }
+
   if (all_count != 0) {
     // Here Or differs from And. Last All should be left in include group
     auto it = std::remove_if(
@@ -604,6 +607,7 @@ void Or::optimize(
     auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
     cumulative->boost(all_boost);
     incl.push_back(cumulative);
+    optimized_match_count_ = all_count - 1;
   }
 
   // find `empty` filters
@@ -626,12 +630,15 @@ filter::prepared::ptr Or::prepare(
     const attribute_provider* ctx) const {
   boost *= this->boost();
 
-  if (0 == min_match_count_) {
+  auto match_count = (optimized_match_count_ < min_match_count_) ?
+                      min_match_count_ - optimized_match_count_ 
+                      : min_match_count_;
+  if (0 == match_count) {
     // all conditions are satisfied
     return all().prepare(rdr, ord, boost, ctx);
   }
 
-  if (min_match_count_ > incl.size()) {
+  if (match_count > incl.size()) {
     // can't satisfy 'min_match_count' conditions
     // having only 'incl.size()' queries
     return prepared::empty();
@@ -645,15 +652,15 @@ filter::prepared::ptr Or::prepare(
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
 
-  assert(min_match_count_ > 0 && min_match_count_ <= incl.size());
+  assert(match_count > 0 && match_count <= incl.size());
 
   boolean_query::ptr q;
-  if (min_match_count_ == incl.size()) {
+  if (match_count == incl.size()) {
     q = boolean_query::make<and_query>();
-  } else if (1 == min_match_count_) {
+  } else if (1 == match_count) {
     q = boolean_query::make<or_query>();
   } else { // min_match_count > 1 && min_match_count < incl.size()
-    q = boolean_query::make<min_match_query>(min_match_count_);
+    q = boolean_query::make<min_match_query>(match_count);
   }
 
   q->prepare(rdr, ord, boost, ctx, incl, excl);

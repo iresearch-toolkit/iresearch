@@ -7390,9 +7390,27 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // optimization should adjust min_match
   {
     irs::Or root;
-    root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A"); // 1
-    append<irs::by_term>(root, "same", "NOT POSSIBLE");
-    check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+    append<irs::by_term>(root,"name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(5);
+    check_query(root, docs_t{1}, rdr);
+  }
+
+  // optimization should adjust min_match same but with score to check scored optimization
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(5);
+    irs::order ord;
+    ord.add<sort::custom_sort>(false);
+    check_query(root, ord, docs_t{ 1 }, rdr);
   }
 }
 
@@ -8410,7 +8428,7 @@ TEST(Or_test, optimize_single_node) {
   }
 }
 
-TEST(Or_test, optimize_all_unboosted ) {
+TEST(Or_test, optimize_all_unscored ) {
   irs::Or root;
   detail::boosted::execute_count = 0;
   {
@@ -8438,6 +8456,36 @@ TEST(Or_test, optimize_all_unboosted ) {
 }
 
 
+TEST(Or_test, optimize_all_scored) {
+  irs::Or root;
+  detail::boosted::execute_count = 0;
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 1 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 2 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 3 };
+  }
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  auto prep = root.prepare(irs::sub_reader::empty(),
+                           pord);
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(3, detail::boosted::execute_count); // specific filters should executed as score needs them
+}
+
+
 TEST(Or_test, optimize_only_all_boosted) {
   irs::order ord;
   ord.add<tests::sort::boost>(false);
@@ -8448,7 +8496,7 @@ TEST(Or_test, optimize_only_all_boosted) {
   root.add<irs::all>().boost(5);
 
   auto prep = root.prepare(irs::sub_reader::empty(),
-    irs::order::prepared::unordered());
+                           pord);
 
   prep->execute(irs::sub_reader::empty());
   ASSERT_EQ(16, prep->boost());
