@@ -385,8 +385,6 @@ filter::prepared::ptr boolean_filter::prepare(
   filters_t aux_filters; // filter added by optimization steps
 
   group_filters(incl, excl);
-  optimize(incl, excl, ord, boost, aux_filters);
-
   if (incl.empty() && !excl.empty()) {
     // single negative query case
     incl.push_back(&all_docs_no_boost);
@@ -402,6 +400,7 @@ void boolean_filter::group_filters(
   excl.reserve(incl.capacity());
 
   const irs::filter* empty_filter{ nullptr };
+  const auto isOr = type() == irs::type<Or>::id();
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
     if (irs::type<irs::empty>::id() == begin->type()) {
       empty_filter = &*begin;
@@ -426,7 +425,7 @@ void boolean_filter::group_filters(
           return;
         }
         excl.push_back(res.first);
-        if (type() == irs::type<Or>::id()) {
+        if (isOr) {
           // FIXME: this should have same boost as Not filter.
           // But for now we do not boost negation.
           incl.push_back(&all_docs_zero_boost);
@@ -453,77 +452,68 @@ And::And() noexcept
   : boolean_filter(irs::type<And>::get()) {
 }
 
-void And::optimize(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& /*excl*/,
-    const order::prepared& ord,
-    boost_t& boost,
-    filters_t& aux_filters) const {
-  if (incl.empty()) {
-    // nothing to do
-    return;
-  }
-
-  // if include group has empty -> this whole conjunction is empty
-  if (incl.back()->type() == irs::type<irs::empty>::id()) {
-    std::swap(*incl.begin(), incl.back());
-    incl.erase(incl.begin() + 1, incl.end());
-    return;
-  }
-
-  boost_t all_boost{ 0 };
-  size_t all_count{ 0 };
-  std::for_each(
-    incl.begin(), incl.end(),
-    [&all_count, &all_boost](const irs::filter* filter) {
-      if (filter->type() == irs::type<irs::all>::id()) {
-        all_count++;
-        all_boost += filter->boost();
-      }
-    });
-  if (all_count != 0) {
-    const auto non_all_count = incl.size() - all_count;
-    auto it = std::remove_if(
-      incl.begin(), incl.end(),
-      [](const irs::filter* filter) {
-        return irs::type<all>::id() == filter->type();
-      });
-    incl.erase(it, incl.end());
-    // Here And differs from Or. Last 'All' should be left in include group only if there is more than one
-    // filter of other type. Otherwise this another filter could be container for boost from 'all' filters
-    if (1 == non_all_count) {
-      // let this last filter hold boost from all removed ones
-      // so we aggregate in external boost values from removed all filters
-      // If we will not optimize resulting boost will be:
-      //   boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST
-      // We could adjust only 'boost' so we recalculate it as
-      // new_boost =  ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) / (OR_BOOST * LEFT_BOOST)
-      // so when filter will be executed resulting boost will be:
-      // new_boost * OR_BOOST * LEFT_BOOST. If we substitute new_boost back we will get
-      // ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
-      auto left_boost = (*incl.begin())->boost();
-      if (this->boost() != 0 && left_boost != 0 && !ord.empty()) {
-        boost = (boost * this->boost() * all_boost + boost * this->boost() * left_boost)
-          / (left_boost * this->boost());
-      } else {
-        boost = 0;
-      }
-    } else {
-      // create new 'all' with boost from all removed
-      auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
-      cumulative->boost(all_boost);
-      incl.push_back(cumulative);
-    }
-  }
-}
-
 filter::prepared::ptr And::prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
+
+  //optimization step
+  filters_t aux_filters;
+  if (!incl.empty()) {
+    // if include group has empty -> this whole conjunction is empty
+    if (incl.back()->type() == irs::type<irs::empty>::id()) {
+      std::swap(*incl.begin(), incl.back());
+      incl.erase(incl.begin() + 1, incl.end());
+    } else {
+      boost_t all_boost{ 0 };
+      size_t all_count{ 0 };
+      std::for_each(
+        incl.begin(), incl.end(),
+        [&all_count, &all_boost](const irs::filter* filter) {
+          if (filter->type() == irs::type<irs::all>::id()) {
+            all_count++;
+            all_boost += filter->boost();
+          }
+        });
+      if (all_count != 0) {
+        const auto non_all_count = incl.size() - all_count;
+        auto it = std::remove_if(
+          incl.begin(), incl.end(),
+          [](const irs::filter* filter) {
+            return irs::type<all>::id() == filter->type();
+          });
+        incl.erase(it, incl.end());
+        // Here And differs from Or. Last 'All' should be left in include group only if there is more than one
+        // filter of other type. Otherwise this another filter could be container for boost from 'all' filters
+        if (1 == non_all_count) {
+          // let this last filter hold boost from all removed ones
+          // so we aggregate in external boost values from removed all filters
+          // If we will not optimize resulting boost will be:
+          //   boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST
+          // We could adjust only 'boost' so we recalculate it as
+          // new_boost =  ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) / (OR_BOOST * LEFT_BOOST)
+          // so when filter will be executed resulting boost will be:
+          // new_boost * OR_BOOST * LEFT_BOOST. If we substitute new_boost back we will get
+          // ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
+          auto left_boost = (*incl.begin())->boost();
+          if (this->boost() != 0 && left_boost != 0 && !ord.empty()) {
+            boost = (boost * this->boost() * all_boost + boost * this->boost() * left_boost)
+              / (left_boost * this->boost());
+          } else {
+            boost = 0;
+          }
+        } else {
+          // create new 'all' with boost from all removed
+          auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
+          cumulative->boost(all_boost);
+          incl.push_back(cumulative);
+        }
+      }
+    }
+  }
   boost *= this->boost();
 
   if (incl.empty()) {
@@ -550,82 +540,70 @@ Or::Or() noexcept
     min_match_count_(1) {
 }
 
-void Or::optimize(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& /*excl*/,
-    const order::prepared& ord,
-    boost_t&,
-    filters_t& aux_filters) const {
-  optimized_match_count_ = 0;
-  if (incl.empty()) {
-    // nothing to do
-    return;
-  }
-
-  if (incl.back()->type() == irs::type<irs::empty>::id()) {
-    incl.pop_back();
-  }
-
-  boost_t all_boost{ 0 };
-  size_t all_count{ 0 };
-  std::for_each(
-    incl.begin(), incl.end(),
-    [&all_count, &all_boost](const irs::filter* filter) {
-      if (filter->type() == irs::type<irs::all>::id()) {
-        all_count++;
-        all_boost += filter->boost();
-      }
-    });
-
-  if (ord.empty()) {
-    // if we have at least one all in include group - all other filters are not necessary
-    // in case there is no scoring and 'all' count satisfies  min_match
-    auto incl_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
-        return irs::type<irs::all>::id() == filter->type();
-      });
-    if (incl_all != incl.end() && incl.size() > 1 && min_match_count_ <= all_count) {
-      std::swap(*incl.begin(), *incl_all);
-      incl.erase(incl.begin() + 1, incl.end());
-      optimized_match_count_ = all_count - 1;
-      return;
-    }
-  }
-
-  if (all_count != 0) {
-    // Here Or differs from And. Last All should be left in include group
-    auto it = std::remove_if(
-      incl.begin(), incl.end(),
-      [](const irs::filter* filter) {
-        return irs::type<all>::id() == filter->type();
-      });
-    incl.erase(it, incl.end());
-    // create new 'all' with boost from all removed
-    auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
-    cumulative->boost(all_boost);
-    incl.push_back(cumulative);
-    optimized_match_count_ = all_count - 1;
-  }
-}
 
 filter::prepared::ptr Or::prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
-  boost *= this->boost();
-
-
   if (0 == min_match_count_) { // only explicit 0 min match counts!
     // all conditions are satisfied
     return all().prepare(rdr, ord, boost, ctx);
   }
+  filters_t aux_filters;
+  size_t optimized_match_count = 0;
+  // Optimization steps
+  if (!incl.empty()) {
+    if (incl.back()->type() == irs::type<irs::empty>::id()) {
+      incl.pop_back();
+    }
+    boost_t all_boost{ 0 };
+    size_t all_count{ 0 };
+    const irs::filter* incl_all{ nullptr };
+    std::for_each(
+      incl.begin(), incl.end(),
+      [&all_count, &all_boost, &incl_all](const irs::filter* filter) {
+        if (filter->type() == irs::type<irs::all>::id()) {
+          all_count++;
+          all_boost += filter->boost();
+          incl_all = filter;
+        }
+      });
 
+    bool optimize_finished = false;
+    if (ord.empty() && all_count > 0) {
+      // if we have at least one all in include group - all other filters are not necessary
+      // in case there is no scoring and 'all' count satisfies  min_match
+      if (incl_all != nullptr && incl.size() > 1 && min_match_count_ <= all_count) {
+        std::swap(*incl.begin(), incl_all);
+        incl.erase(incl.begin() + 1, incl.end());
+        optimized_match_count = all_count - 1;
+        optimize_finished = true; // all perfect now )
+      }
+    }
+
+    if (all_count != 0 && !optimize_finished) {
+      // Here Or differs from And. Last All should be left in include group
+      auto it = std::remove_if(
+        incl.begin(), incl.end(),
+        [](const irs::filter* filter) {
+          return irs::type<all>::id() == filter->type();
+        });
+      incl.erase(it, incl.end());
+      // create new 'all' with boost from all removed
+      auto cumulative = aux_filters.emplace_back(irs::all::make()).get();
+      cumulative->boost(all_boost);
+      incl.push_back(cumulative);
+      optimized_match_count = all_count - 1;
+    }
+  }
+  boost *= this->boost();
   // check strictly less to not roll back to 0 min_match (we`ve handled this case above!)
   // single 'all' left -> it could contain boost we want to preserve
-  const auto adjusted_min_match_count = (optimized_match_count_ < min_match_count_) ?
-                                        min_match_count_ - optimized_match_count_ :
+  const auto adjusted_min_match_count = (optimized_match_count < min_match_count_) ?
+                                        min_match_count_ - optimized_match_count :
                                         1;
 
   if (adjusted_min_match_count > incl.size()) {
