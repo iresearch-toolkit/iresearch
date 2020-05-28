@@ -7412,6 +7412,52 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     ord.add<sort::custom_sort>(false);
     check_query(root, ord, docs_t{ 1 }, rdr);
   }
+
+  // optimization should adjust min_match 
+  // case where it should be dropped to 1
+  // as optimized more filters than min_match
+  // unscored
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(3);
+    check_query(root, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
+                              9, 10, 11, 12, 13, 14, 15, 
+                              16, 17, 18, 19, 20, 21, 22,
+                              23, 24, 25, 26, 27, 28, 29,
+                              30, 31, 32 }, rdr);
+  }
+  //scored
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(3);
+    irs::order ord;
+    ord.add<sort::custom_sort>(false);
+    check_query(root, ord, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
+                                   9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22,
+                                   23, 24, 25, 26, 27, 28, 29,
+                                   30, 31, 32 }, rdr);
+  }
 }
 
 TEST_P(boolean_filter_test_case, and_schemas) {
@@ -8285,7 +8331,10 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(2.f);
     append<irs::by_term>(root, "test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
     ASSERT_EQ(8.f, prepared->boost());
   }
@@ -8295,8 +8344,10 @@ TEST(And_test, optimize_all_filters) {
     irs::And root;
     append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
-
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
     ASSERT_EQ(6.f, prepared->boost());
   }

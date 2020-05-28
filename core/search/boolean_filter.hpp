@@ -94,8 +94,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  private:
   void group_filters(
     std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl,
-    filters_t& aux_filters) const;
+    std::vector<const filter*>& excl) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
