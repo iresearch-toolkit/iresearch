@@ -81,13 +81,10 @@ class ngram_similarity_doc_iterator final
       min_match_count_(min_match_count),
       states_(states),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
+      cost_([this](){ return cost::extract(approx_); }), // FIXME find a better estimation
       score_(ord),
       empty_order_(ord.empty()) {
     assert(doc_);
-
-    // FIXME find a better estimation
-    // estimate iterator
-    cost_.rule([this](){ return cost::extract(approx_); });
 
     if (!empty_order_) {
       order::prepared::scorers scorers(

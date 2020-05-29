@@ -448,12 +448,9 @@ class phrase_iterator final : public doc_iterator {
         { type<frequency>::id(),    freq_.freq()  },
         { type<filter_boost>::id(), freq_.boost() },
       }},
-      score_(ord) {
+      score_(ord),
+      cost_([this](){ return cost::extract(approx_); }) { // FIXME find a better estimation
     assert(doc_);
-
-    // FIXME find a better estimation
-    // estimate iterator
-    cost_.rule([this](){ return cost::extract(approx_); });
 
     if (!ord.empty()) {
       order::prepared::scorers scorers(

@@ -37,12 +37,8 @@ all_iterator::all_iterator(
       { type<score>::id(),    &score_ },
     }},
     score_(order),
-    max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
-
-  // set estimation value
-  cost_.value(max_doc_);
-
-  // set score
+    max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)),
+    cost_(max_doc_) {
   if (!order.empty()) {
     order::prepared::scorers scorers(
       order, reader, irs::empty_term_reader(docs_count),

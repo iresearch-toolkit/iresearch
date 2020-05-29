@@ -34,19 +34,14 @@ bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
       { type<cost>::id(),     &cost_  },
       { type<score>::id(),    &score_ },
     }},
+    cost_(set.count()),
+    doc_(cost_.estimate()
+      ? doc_limits::invalid()
+      : doc_limits::eof()),
     score_(ord),
     begin_(set.begin()),
     end_(set.end()),
     next_(begin_) {
-  const auto docs_count = set.count();
-
-  // make doc_id accessible via attribute
-  doc_.value = docs_count
-    ? doc_limits::invalid()
-    : doc_limits::eof(); // seal iterator
-
-  // set estimation value
-  cost_.value(docs_count);
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
@@ -59,7 +54,7 @@ bitset_doc_iterator::bitset_doc_iterator(
   // prepare score
   if (!order.empty()) {
     order::prepared::scorers scorers(
-      order,  reader, empty_term_reader(cost_.estimate()),
+      order, reader, empty_term_reader(cost_.estimate()),
       stats, score_.data(),
       *this, // doc_iterator attributes
       boost);

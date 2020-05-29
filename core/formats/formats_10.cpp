@@ -4381,11 +4381,11 @@ class column_iterator final
         { irs::type<irs::score>::id(),    &score_  },
         { irs::type<irs::payload>::id(),  &payload_ },
       }},
+      cost_(column.size()),
       begin_(begin),
       seek_origin_(begin),
       end_(end),
       column_(&column) {
-    cost_.value(column.size());
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -4936,9 +4936,9 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
           { irs::type<irs::cost>::id(),     &cost_   },
           { irs::type<irs::score>::id(),    &score_  },
         }},
+        cost_(column.size()),
         min_(1 + column.min_),
         max_(column.max()) {
-      cost_.value(column.size());
     }
 
     virtual irs::doc_id_t value() const noexcept override {

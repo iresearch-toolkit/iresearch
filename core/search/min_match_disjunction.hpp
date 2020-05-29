@@ -85,6 +85,13 @@ class min_match_disjunction
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(doc_limits::invalid()),
       score_(ord),
+      cost_([this](){
+        return std::accumulate(
+          itrs_.begin(), itrs_.end(), cost::cost_t(0),
+          [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+            return lhs + cost::extract(rhs, 0);
+          });
+      }),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
@@ -95,16 +102,6 @@ class min_match_disjunction
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
         return cost::extract(lhs, 0) < cost::extract(rhs, 0);
     });
-
-    // estimate disjunction
-    cost_.rule([this](){
-      return std::accumulate(
-        // estimate only first min_match_count_ subnodes
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-        });
-      });
 
     // prepare external heap
     heap_.resize(itrs_.size());

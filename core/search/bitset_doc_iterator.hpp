@@ -56,8 +56,8 @@ class bitset_doc_iterator final
 
   bitset_doc_iterator(const bitset& set, const order::prepared& ord);
 
-  document doc_;
   cost cost_;
+  document doc_;
   score score_;
   const word_t* begin_;
   const word_t* end_;

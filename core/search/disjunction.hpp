@@ -124,11 +124,10 @@ class basic_disjunction final
       doc_iterator_t&& rhs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : basic_disjunction(std::move(lhs), std::move(rhs),
-                        ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return cost::extract(lhs_, 0) + cost::extract(rhs_, 0);
-    });
+    : basic_disjunction(
+        std::move(lhs), std::move(rhs), ord, merge_type,
+        [this](){ return cost::extract(lhs_, 0) + cost::extract(rhs_, 0); },
+        resolve_overload_tag{}) {
   }
 
   basic_disjunction(
@@ -137,9 +136,10 @@ class basic_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : basic_disjunction(std::move(lhs), std::move(rhs),
-                        ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : basic_disjunction(
+        std::move(lhs), std::move(rhs),
+        ord, merge_type, est,
+        resolve_overload_tag{}) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -178,13 +178,15 @@ class basic_disjunction final
   }
 
  private:
-  struct resolve_overload_tag { };
+  struct resolve_overload_tag{};
 
+  template<typename Estimation>
   basic_disjunction(
       doc_iterator_t&& lhs,
       doc_iterator_t&& rhs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
@@ -194,6 +196,7 @@ class basic_disjunction final
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       score_(ord),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
   }
@@ -312,22 +315,23 @@ class small_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : small_disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
   }
 
   explicit small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-      });
-    });
+    : small_disjunction(
+        std::move(itrs), ord, merge_type,
+        [this](){
+          return std::accumulate(
+            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -423,10 +427,12 @@ class small_disjunction final
  private:
   struct resolve_overload_tag{};
 
+  template<typename Estimation>
   small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
@@ -438,6 +444,7 @@ class small_disjunction final
         ? doc_limits::eof()
         : doc_limits::invalid()),
       score_(ord),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
   }
@@ -556,22 +563,23 @@ class disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
   }
 
   explicit disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-      });
-    });
+    : disjunction(
+        std::move(itrs), ord, merge_type,
+        [this](){
+          return std::accumulate(
+            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -644,10 +652,12 @@ class disjunction final
  private:
   struct resolve_overload_tag{};
 
+  template<typename Estimation>
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
@@ -659,6 +669,7 @@ class disjunction final
         ? doc_limits::eof()
         : doc_limits::invalid()),
       score_(ord),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
@@ -809,22 +820,23 @@ class block_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : block_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : block_disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
   }
 
   explicit block_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : block_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-      });
-    });
+    : block_disjunction(
+        std::move(itrs), ord, merge_type,
+        [this](){
+          return std::accumulate(
+            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -905,10 +917,12 @@ class block_disjunction final
 
   struct resolve_overload_tag{};
 
+  template<typename Estimation>
   block_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, doc_iterator>{{
         { type<document>::id(), &doc_   },
@@ -919,6 +933,7 @@ class block_disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      cost_(std::forward<Estimation>(estimation)),
       score_bucket_size_(Score ? 0 : ord.score_size()),
       score_buf_size_(!Score ? 0 : score_bucket_size_*WINDOW),
       score_buf_(!Score || ord.empty()
@@ -987,10 +1002,9 @@ class block_disjunction final
 
           irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
           if constexpr (Score) {
-            // FIXME use merger_score_buf_.get() + delta*score_bucket_size_, it.score->c_str());
             assert(it.score);
-            auto* score = it.score->evaluate();
-            //merger_(score_buf_.get() + delta*score_bucket_size_, &score, 1);
+            const auto* score = it.score->evaluate();
+            merger_(score_buf_.get() + delta*score_bucket_size_, &score, 1); // FIXME
           }
           empty = false;
 
