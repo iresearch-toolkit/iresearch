@@ -155,12 +155,14 @@ order::prepared order::prepare() const {
 // ----------------------------------------------------------------------------
 
 order::prepared::scorers::scorers(
-    const prepared_order_t& buckets,
+    const order::prepared& buckets,
     const sub_reader& segment,
     const term_reader& field,
     const byte_type* stats_buf,
+    byte_type* score_buf,
     const attribute_provider& doc,
-    boost_t boost) {
+    boost_t boost)
+  : score_buf_(score_buf){
   scorers_.reserve(buckets.size());
 
   for (auto& entry: buckets) {
@@ -169,21 +171,24 @@ order::prepared::scorers::scorers(
     const auto& bucket = *entry.bucket;
 
     auto scorer = bucket.prepare_scorer(
-      segment, field, stats_buf + entry.stats_offset, doc, boost
-    );
+      segment, field,
+      stats_buf + entry.stats_offset,
+      score_buf + entry.score_offset,
+      doc, boost);
 
     if (scorer.second) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer.first), scorer.second, entry.score_offset);
+      scorers_.emplace_back(std::move(scorer.first), scorer.second);
     }
   }
 }
 
-void order::prepared::scorers::score(byte_type* scr) const {
+const byte_type* order::prepared::scorers::evaluate() const {
   for (auto& scorer : scorers_) {
     assert(scorer.func);
-    (*scorer.func)(scorer.ctx.get(), scr + scorer.offset);
+    (*scorer.func)(scorer.ctx.get());
   }
+  return score_buf_;
 }
 
 void order::prepared::prepare_collectors(

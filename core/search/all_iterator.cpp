@@ -36,6 +36,7 @@ all_iterator::all_iterator(
       { type<cost>::id(),     &cost_  },
       { type<score>::id(),    &score_ },
     }},
+    score_(order),
     max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
 
   // set estimation value
@@ -43,11 +44,12 @@ all_iterator::all_iterator(
 
   // set score
   if (!order.empty()) {
-    score_.prepare(
-      order,
-      order.prepare_scorers(reader, irs::empty_term_reader(docs_count),
-                            query_stats, *this, boost)
-    );
+    order::prepared::scorers scorers(
+      order, reader, irs::empty_term_reader(docs_count),
+      query_stats, score_.data(),
+      *this, boost);
+
+    prepare_score(score_, std::move(scorers));
   }
 }
 

@@ -27,12 +27,14 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
+                                         const order::prepared& ord)
   : attributes{{
       { type<document>::id(), &doc_   },
       { type<cost>::id(),     &cost_  },
       { type<score>::id(),    &score_ },
     }},
+    score_(ord),
     begin_(set.begin()),
     end_(set.end()),
     next_(begin_) {
@@ -53,15 +55,16 @@ bitset_doc_iterator::bitset_doc_iterator(
       const bitset& set,
       const order::prepared& order,
       boost_t boost)
-  : bitset_doc_iterator(set) {
+  : bitset_doc_iterator(set, order) {
   // prepare score
   if (!order.empty()) {
-    score_.prepare(order, order.prepare_scorers(
-      reader,
-      empty_term_reader(cost_.estimate()),
-      stats,
+    order::prepared::scorers scorers(
+      order,  reader, empty_term_reader(cost_.estimate()),
+      stats, score_.data(),
       *this, // doc_iterator attributes
-      boost));
+      boost);
+
+    prepare_score(score_, std::move(scorers));
   }
 }
 

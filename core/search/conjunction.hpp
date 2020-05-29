@@ -141,6 +141,7 @@ class conjunction
         { type<cost>::id(),     irs::get_mutable<cost>(itrs.front) },
         { type<score>::id(),    &score_                            },
       }},
+      score_(ord),
       itrs_(std::move(itrs.itrs)),
       front_(itrs.front),
       front_doc_(itrs.front_doc),
@@ -187,52 +188,67 @@ class conjunction
     // copy scores into separate container
     // to avoid extra checks
     scores_.reserve(itrs_.size());
-    scores_vals_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       const auto* score = it.score;
       assert(score); // ensured by score_iterator_adapter
       if (!score->empty()) {
         scores_.push_back(score);
-        scores_vals_.push_back(score->c_str());
       }
     }
+    score_vals_.resize(scores_.size());
 
     // prepare score
     switch (scores_.size()) {
       case 0:
-        score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
+        score_.prepare(this, [](const irs::score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          return self.score_.data();
+        });
         break;
       case 1:
-        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<const conjunction*>(ctx);
-          self.scores_[0]->evaluate();
-          self.merger_(score, &self.scores_vals_[0], 1);
+          auto* score_buf = self.score_.data();
+          self.score_vals_.front() = self.scores_.front()->evaluate();
+          self.merger_(score_buf, self.score_vals_.data(), 1);
+
+          return score_buf;
         });
         break;
       case 2:
-        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<const conjunction*>(ctx);
-          self.scores_[0]->evaluate();
-          self.scores_[1]->evaluate();
-          self.merger_(score, &self.scores_vals_[0], 2);
+          auto* score_buf = self.score_.data();
+          self.score_vals_.front() = self.scores_.front()->evaluate();
+          self.score_vals_.back() = self.scores_.back()->evaluate();
+          self.merger_(score_buf, self.score_vals_.data(), 2);
+
+          return score_buf;
         });
         break;
       case 3:
-        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<const conjunction*>(ctx);
-          self.scores_[0]->evaluate();
-          self.scores_[1]->evaluate();
-          self.scores_[2]->evaluate();
-          self.merger_(score, &self.scores_vals_[0], 3);
+          auto* score_buf = self.score_.data();
+          self.score_vals_.front() = self.scores_.front()->evaluate();
+          self.score_vals_[1] = self.scores_[1]->evaluate();
+          self.score_vals_.back() = self.scores_.back()->evaluate();
+          self.merger_(score_buf, self.score_vals_.data(), 3);
+
+          return score_buf;
         });
         break;
       default:
-        score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<const conjunction*>(ctx);
+          auto* score_buf = self.score_.data();
+          auto* score_val = self.score_vals_.data();
           for (auto* it_score : self.scores_) {
-            it_score->evaluate();
+            *score_val++ = it_score->evaluate();
           }
-          self.merger_(score, &self.scores_vals_[0], self.scores_vals_.size());
+          self.merger_(score_buf, self.score_vals_.data(), self.score_vals_.size());
+
+          return score_buf;
         });
         break;
     }
@@ -272,7 +288,7 @@ class conjunction
   score score_;
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
-  mutable std::vector<const irs::byte_type*> scores_vals_;
+  mutable std::vector<const irs::byte_type*> score_vals_;
   irs::doc_iterator* front_;
   const irs::document* front_doc_{};
   order::prepared::merger merger_;

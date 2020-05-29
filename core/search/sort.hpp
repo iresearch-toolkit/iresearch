@@ -68,7 +68,7 @@ struct IRESEARCH_API score_ctx {
 
 typedef std::unique_ptr<score_ctx> score_ctx_ptr;
 typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef void(*score_f)(const score_ctx* ctx, byte_type*);
+typedef const byte_type*(*score_f)(const score_ctx* ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine range of scores denoted by 'src_start' and 'size' to 'dst',
@@ -282,6 +282,7 @@ class IRESEARCH_API sort {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
+      byte_type* score,
       const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
@@ -714,33 +715,56 @@ class IRESEARCH_API order final {
     class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
       struct entry {
-        entry(score_ctx_ptr&& ctx, score_f func, size_t offset)
+        entry(score_ctx_ptr&& ctx, score_f func)
           : ctx(std::move(ctx)),
-            func(func),
-            offset(offset) {
+            func(func) {
         }
 
         score_ctx_ptr ctx;
         score_f func;
-        size_t offset;
       };
 
       scorers() = default;
       scorers(
-        const prepared_order_t& buckets,
+        const order::prepared& buckets,
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats,
+        byte_type* score,
         const attribute_provider& doc,
         boost_t boost);
       scorers(scorers&& other) noexcept = default;
       scorers& operator=(scorers&& other) noexcept = default;
 
-      void score(byte_type* score) const;
+      const byte_type* evaluate() const;
+
+      const byte_type* score_buf() const noexcept {
+        return score_buf_;
+      }
 
       const entry& operator[](size_t i) const noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
+      }
+
+      const entry& front() const noexcept {
+        assert(!scorers_.empty());
+        return scorers_.front();
+      }
+
+      const entry& back() const noexcept {
+        assert(!scorers_.empty());
+        return scorers_.back();
+      }
+
+      entry& front() noexcept {
+        assert(!scorers_.empty());
+        return scorers_.front();
+      }
+
+      entry& back() noexcept {
+        assert(!scorers_.empty());
+        return scorers_.back();
       }
 
       entry& operator[](size_t i) noexcept {
@@ -755,6 +779,7 @@ class IRESEARCH_API order final {
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       std::vector<entry> scorers_; // scorer + offset
+      const byte_type* score_buf_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 
@@ -868,18 +893,6 @@ class IRESEARCH_API order final {
           assert(false);
           return {};
       }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return set of prepared scorer objects
-    ////////////////////////////////////////////////////////////////////////////
-    prepared::scorers prepare_scorers(
-        const sub_reader& segment,
-        const term_reader& field,
-        const byte_type* stats_buf,
-        const attribute_provider& doc,
-        irs::boost_t boost) const {
-      return scorers(order_, segment, field, stats_buf, doc, boost);
     }
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;

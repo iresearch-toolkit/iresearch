@@ -58,8 +58,7 @@ FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator&
   const auto* score = src.score;
   assert(score); // must be ensure by the adapter
   if (!score->empty()) {
-    score->evaluate();
-    *pVal++ = score->c_str();
+    *pVal++ = score->evaluate();
   }
 };
 
@@ -194,7 +193,7 @@ class basic_disjunction final
       }},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
-      doc_(doc_limits::invalid()),
+      score_(ord),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
   }
@@ -211,34 +210,50 @@ class basic_disjunction final
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators has score
-      scores_vals_[0] = lhs_.score->c_str();
-      scores_vals_[1] = rhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
+        auto* score_buf = self.score_.data();
 
-        const irs::byte_type** pVal = self.scores_vals_;
-        size_t matched_iterators = (size_t)self.score_iterator_impl(self.lhs_);
-        pVal += !matched_iterators;
-        matched_iterators += (size_t)self.score_iterator_impl(self.rhs_);
+        const irs::byte_type** pVal = self.score_vals_;
+        size_t matched_iterators = self.score_iterator_impl(self.lhs_, pVal);
+        pVal += matched_iterators;
+        matched_iterators += self.score_iterator_impl(self.rhs_, pVal);
         // always call merge. even if zero matched - we need to reset last accumulated score at least.
-        self.merger_(score, pVal, matched_iterators);
+        self.merger_(score_buf, self.score_vals_, matched_iterators);
+
+        return score_buf;
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      scores_vals_[0] = lhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
+        auto* score_buf = self.score_.data();
+
+        self.merger_(
+          score_buf,
+          self.score_vals_,
+          self.score_iterator_impl(self.lhs_, &self.score_vals_[0]));
+
+        return score_buf;
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      scores_vals_[0] = rhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+      score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
+        auto* score_buf = self.score_.data();
+
+        self.merger_(
+          score_buf,
+          self.score_vals_,
+          self.score_iterator_impl(self.rhs_, &self.score_vals_[0]));
+
+        return score_buf;
       });
     } else {
-      score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
+      score_.prepare(this, [](const irs::score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<const basic_disjunction*>(ctx);
+        return self.score_.data();
+      });
     }
   }
 
@@ -256,7 +271,7 @@ class basic_disjunction final
     }
   }
 
-  bool score_iterator_impl(doc_iterator_t& it) const {
+  size_t score_iterator_impl(doc_iterator_t& it, const byte_type** score) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -265,15 +280,15 @@ class basic_disjunction final
 
     if (doc == doc_.value) {
       const auto* rhs = it.score;
-      rhs->evaluate();
-      return true;
+      *score = rhs->evaluate();
+      return 1;
     }
-    return false;
+    return 0;
   }
 
   mutable doc_iterator_t lhs_;
   mutable doc_iterator_t rhs_;
-  mutable const irs::byte_type* scores_vals_[2];
+  mutable const irs::byte_type* score_vals_[2];
   document doc_;
   score score_;
   cost cost_;
@@ -422,6 +437,7 @@ class small_disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      score_(ord),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
   }
@@ -441,12 +457,11 @@ class small_disjunction final
     }
 
     // prepare score
-    if (scored_itrs_.empty()) {
-      score_.prepare(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
-    } else {
+    if (!scored_itrs_.empty()) {
       scores_vals_.resize(scored_itrs_.size());
-      score_.prepare(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
+      score_.prepare(this, [](const irs::score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<const small_disjunction*>(ctx);
+        auto* score_buf = self.score_.data();
         const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto& it : self.scored_itrs_) {
           auto doc = it.value();
@@ -456,12 +471,20 @@ class small_disjunction final
           }
 
           if (doc == self.doc_.value) {
-            it.score->evaluate();
-            *pVal++ = it.score->c_str();
+            *pVal++ = it.score->evaluate();
           }
         }
-        self.merger_(score, self.scores_vals_.data(),
+
+        self.merger_(score_buf,
+                     self.scores_vals_.data(),
                      std::distance(self.scores_vals_.data(), pVal));
+
+        return score_buf;
+      });
+    } else {
+      score_.prepare(this, [](const irs::score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<const small_disjunction*>(ctx);
+        return self.score_.data();
       });
     }
   }
@@ -635,6 +658,7 @@ class disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      score_(ord),
       merger_(ord.prepare_merger(merge_type)) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
@@ -654,9 +678,10 @@ class disjunction final
     }
 
     scores_vals_.resize(itrs_.size(), nullptr);
-    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
+    score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
       auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
       assert(!self.heap_.empty());
+      auto* score_buf = self.score_.data();
 
       const auto its = self.hitch_all_iterators();
       const irs::byte_type** pVal = self.scores_vals_.data();
@@ -673,8 +698,10 @@ class disjunction final
             detail::evaluate_score_iter(pVal, self.itrs_[it]);
         });
       }
-      self.merger_(score, self.scores_vals_.data(),
+      self.merger_(score_buf, self.scores_vals_.data(),
                    std::distance(self.scores_vals_.data(), pVal));
+
+      return score_buf;
     });
   }
 
@@ -764,19 +791,18 @@ class disjunction final
 
 template<typename DocIterator,
          typename Adapter = score_iterator_adapter<DocIterator>,
-         size_t NumBlocks = 64,
-         bool EnableUnary = false>
+         bool Score = false,
+         bool SeekReadahead = false,
+         size_t NumBlocks = 64>
 class block_disjunction final
     : public frozen_attributes<3, doc_iterator>,
       private score_ctx {
  public:
-  typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
-  typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
-  typedef unary_disjunction<DocIterator, Adapter> unary_disjunction_t;
-  typedef Adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
-
-  static constexpr bool ENABLE_UNARY = EnableUnary;
+  using small_disjunction_t = small_disjunction<DocIterator, Adapter>;
+  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
+  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
+  using doc_iterator_t = Adapter;
+  using doc_iterators_t = std::vector<doc_iterator_t>;
 
   block_disjunction(
       doc_iterators_t&& itrs,
@@ -836,7 +862,6 @@ class block_disjunction final
       next();
     } else {
       doc_.value = doc_limits::eof();
-      cur_ = 0;
 
       for_each_remove_if([this, target](auto& it) mutable {
         const auto doc = it->seek(target);
@@ -858,9 +883,16 @@ class block_disjunction final
       }
 
       assert(!doc_limits::eof(doc_.value));
-      min_ = doc_.value + 1;
-      max_ = doc_.value;
+      cur_ = 0;
       begin_ = std::end(mask_); // enforce "refill()" for upcoming "next()"
+      max_ = doc_.value;
+
+      if constexpr (SeekReadahead) {
+        min_ = doc_.value;
+        next();
+      } else {
+        min_ = doc_.value + 1;
+      }
     }
 
     return doc_.value;
@@ -887,7 +919,20 @@ class block_disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      score_bucket_size_(Score ? 0 : ord.score_size()),
+      score_buf_size_(!Score ? 0 : score_bucket_size_*WINDOW),
+      score_buf_(!Score || ord.empty()
+        ? nullptr
+        : new byte_type[score_buf_size_]),
       merger_(ord.prepare_merger(merge_type)) {
+    if (Score && !ord.empty()) {
+      score_.prepare(this, [](const score_ctx* ctx) noexcept -> const byte_type* {
+        auto& self = *static_cast<const block_disjunction*>(ctx);
+
+        const size_t delta = 0;
+        return self.score_buf_.get() + delta*self.score_bucket_size_;
+      });
+    }
   }
 
   template<typename Visitor>
@@ -912,6 +957,9 @@ class block_disjunction final
     }
 
     std::memset(mask_, 0, sizeof mask_);
+    if constexpr (Score) {
+      std::memset(score_buf_.get(), 0, score_buf_size_);
+    }
     bool empty = true;
 
     do {
@@ -938,6 +986,12 @@ class block_disjunction final
           const auto delta = *doc - base_;
 
           irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
+          if constexpr (Score) {
+            // FIXME use merger_score_buf_.get() + delta*score_bucket_size_, it.score->c_str());
+            assert(it.score);
+            auto* score = it.score->evaluate();
+            //merger_(score_buf_.get() + delta*score_bucket_size_, &score, 1);
+          }
           empty = false;
 
           if (!it->next()) {
@@ -969,6 +1023,10 @@ class block_disjunction final
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
   score score_;
   cost cost_;
+
+  size_t score_bucket_size_;
+  size_t score_buf_size_;
+  std::unique_ptr<byte_type[]> score_buf_;
   order::prepared::merger merger_;
 }; // block_disjunction
 

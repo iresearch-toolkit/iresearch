@@ -86,10 +86,11 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        score->prepare(
-          ord,
-          ord.prepare_scorers(segment, *state->reader,
-                              stat, *docs, entry.boost*boost()));
+        order::prepared::scorers scorers(
+          ord, segment, *state->reader, stat,
+          score->realloc(ord), *docs, entry.boost*boost());
+
+        prepare_score(*score, std::move(scorers));
       }
     }
 
