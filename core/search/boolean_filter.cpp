@@ -45,7 +45,6 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
 }
 
 const irs::all all_docs_zero_boost = []() {irs::all a; a.boost(0); return a;}();
-const irs::all all_docs_no_boost;
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified queries
 //////////////////////////////////////////////////////////////////////////////
@@ -382,8 +381,10 @@ filter::prepared::ptr boolean_filter::prepare(
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
-
+  
   group_filters(incl, excl);
+
+  const irs::all all_docs_no_boost;
   if (incl.empty() && !excl.empty()) {
     // single negative query case
     incl.push_back(&all_docs_no_boost);
