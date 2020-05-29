@@ -468,14 +468,12 @@ filter::prepared::ptr And::prepare(
   irs::all cumulative_all;
   boost_t all_boost{ 0 };
   size_t all_count{ 0 };
-  std::for_each(
-    incl.begin(), incl.end(),
-    [&all_count, &all_boost](const irs::filter* filter) {
-      if (filter->type() == irs::type<irs::all>::id()) {
-        all_count++;
-        all_boost += filter->boost();
-      }
-    });
+  for (auto filter : incl) {
+    if (filter->type() == irs::type<irs::all>::id()) {
+      all_count++;
+      all_boost += filter->boost();
+    }
+  }
   if (all_count != 0) {
     const auto non_all_count = incl.size() - all_count;
     auto it = std::remove_if(
