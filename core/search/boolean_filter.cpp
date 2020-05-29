@@ -382,7 +382,6 @@ filter::prepared::ptr boolean_filter::prepare(
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
-  filters_t aux_filters; // filter added by optimization steps
 
   group_filters(incl, excl);
   if (incl.empty() && !excl.empty()) {
@@ -400,7 +399,7 @@ void boolean_filter::group_filters(
   excl.reserve(incl.capacity());
 
   const irs::filter* empty_filter{ nullptr };
-  const auto isOr = type() == irs::type<Or>::id();
+  const auto is_or = type() == irs::type<Or>::id();
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
     if (irs::type<irs::empty>::id() == begin->type()) {
       empty_filter = &*begin;
@@ -425,7 +424,7 @@ void boolean_filter::group_filters(
           return;
         }
         excl.push_back(res.first);
-        if (isOr) {
+        if (is_or) {
           // FIXME: this should have same boost as Not filter.
           // But for now we do not boost negation.
           incl.push_back(&all_docs_zero_boost);
@@ -539,6 +538,9 @@ filter::prepared::ptr Or::prepare(
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
+  // preparing
+  boost *= this->boost();
+
   if (0 == min_match_count_) { // only explicit 0 min match counts!
     // all conditions are satisfied
     return all().prepare(rdr, ord, boost, ctx);
@@ -559,22 +561,20 @@ filter::prepared::ptr Or::prepare(
   boost_t all_boost{ 0 };
   size_t all_count{ 0 };
   const irs::filter* incl_all{ nullptr };
-  std::for_each(
-    incl.begin(), incl.end(),
-    [&all_count, &all_boost, &incl_all](const irs::filter* filter) {
-      if (filter->type() == irs::type<irs::all>::id()) {
-        all_count++;
-        all_boost += filter->boost();
-        incl_all = filter;
-      }
-    });
+  for (auto filter : incl) {
+    if (filter->type() == irs::type<irs::all>::id()) {
+      all_count++;
+      all_boost += filter->boost();
+      incl_all = filter;
+    }
+  }
   if (all_count != 0) {
     if (ord.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
       // if we have at least one all in include group - all other filters are not necessary
       // in case there is no scoring and 'all' count satisfies  min_match
       assert(incl_all != nullptr);
-      std::swap(*incl.begin(), incl_all);
-      incl.erase(incl.begin() + 1, incl.end());
+      incl.resize(1);
+      incl.front() = incl_all;
       optimized_match_count = all_count - 1;
     } else {
       // Here Or differs from And. Last All should be left in include group
@@ -590,8 +590,6 @@ filter::prepared::ptr Or::prepare(
       optimized_match_count = all_count - 1;
     }
   }
-  // preparing
-  boost *= this->boost();
   // check strictly less to not roll back to 0 min_match (we`ve handled this case above!)
   // single 'all' left -> it could contain boost we want to preserve
   const auto adjusted_min_match_count = (optimized_match_count < min_match_count_) ?
