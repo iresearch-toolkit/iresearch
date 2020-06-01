@@ -197,8 +197,8 @@ struct custom_sort: public irs::sort {
 
     prepared(const custom_sort& sort)
       : sort_(sort) {
-      aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
-                           const irs::byte_type** src_start, const size_t size) {
+      bulk_aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                                const irs::byte_type** src_start, const size_t size) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
         traits_t::score_cast(dst + offset) = irs::doc_limits::invalid();;
@@ -209,8 +209,16 @@ struct custom_sort: public irs::sort {
         }
       };
 
-      max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
-                           const irs::byte_type** src_start, const size_t size) {
+      aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
+        const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
+        const auto offset = ctx->score_offset;
+        if (impl->sort_.scorer_add) {
+          impl->sort_.scorer_add(traits_t::score_cast(dst + offset), traits_t::score_cast(src + offset));
+        }
+      };
+
+      bulk_max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+                          const irs::byte_type** src_start, const size_t size) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
         traits_t::score_cast(dst + offset) = irs::doc_limits::eof();;
@@ -219,6 +227,12 @@ struct custom_sort: public irs::sort {
             impl->sort_.scorer_max(traits_t::score_cast(dst + offset), traits_t::score_cast(src_start[i]  + offset));
           }
         }
+      };
+
+      max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
+        const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
+        const auto offset = ctx->score_offset;
+        impl->sort_.scorer_max(traits_t::score_cast(dst + offset), traits_t::score_cast(src + offset));
       };
     }
 
@@ -345,7 +359,7 @@ struct frequency_sort: public irs::sort {
       return const_cast<score_type&>(score_cast(const_cast<const irs::byte_type*>(buf)));
     }
 
-    static void aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+    static void bulk_aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
                           const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& score = score_cast(dst_buf + offset);
@@ -367,8 +381,28 @@ struct frequency_sort: public irs::sort {
       }
     }
 
-    static void max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
-                    const irs::byte_type** src_start, const size_t size) {
+    static void aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                          const irs::byte_type* src_start) {
+      const auto offset = ctx->score_offset;
+      auto& score = score_cast(dst_buf + offset);
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      score.value = std::numeric_limits<double>::infinity();
+      score.prepared = true;
+      auto& dst = score_cast(dst_buf + offset);
+      auto& src = score_cast(src_start + offset);
+      ASSERT_TRUE(src.prepared);
+      ASSERT_TRUE(dst.prepared);
+
+      if (std::isinf(dst.value)) {
+        dst.id = src.id;
+        dst.value = 0;
+      }
+
+      dst.value += src.value;
+    }
+
+    static void bulk_max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                         const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& score = score_cast(dst_buf + offset);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
@@ -384,6 +418,24 @@ struct frequency_sort: public irs::sort {
           dst.id = src.id;
           dst.value = src.value;
         }
+      }
+    }
+
+    static void max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+                    const irs::byte_type* src_start) {
+      const auto offset = ctx->score_offset;
+      auto& score = score_cast(dst_buf + offset);
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      score.value = std::numeric_limits<double>::min();
+      score.prepared = true;
+      auto& dst = score_cast(dst_buf + offset);
+      auto& src = score_cast(src_start + offset);
+      ASSERT_TRUE(src.prepared);
+      ASSERT_TRUE(dst.prepared);
+
+      if (std::isless(dst.value, src.value)) {
+        dst.id = src.id;
+        dst.value = src.value;
       }
     }
   };

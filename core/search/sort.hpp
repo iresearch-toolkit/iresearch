@@ -66,16 +66,24 @@ struct IRESEARCH_API score_ctx {
   virtual ~score_ctx() = default;
 }; // score_ctx
 
-typedef std::unique_ptr<score_ctx> score_ctx_ptr;
-typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef const byte_type*(*score_f)(const score_ctx* ctx);
+using score_ctx_ptr = std::unique_ptr<score_ctx>;
+using score_less_f = bool(*)(const byte_type* lhs, const byte_type* rhs);
+using score_f = const byte_type*(*)(const score_ctx* ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief combine range of scores denoted by 'src_start' and 'size' to 'dst',
+/// @brief combine range of scores denoted by 'src' and 'size' to 'dst',
 ///        i.e. using +=
 ////////////////////////////////////////////////////////////////////////////////
-typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
-                       const byte_type** src, size_t count);
+using bulk_merge_f = void(*)(const order_bucket* ctx, byte_type* dst,
+                             const byte_type** src, size_t count);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combine score denoted by 'src' to 'dst',
+///        i.e. using +=
+////////////////////////////////////////////////////////////////////////////////
+using merge_f = void(*)(const order_bucket* ctx,
+                        byte_type* dst,
+                        const byte_type* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -205,12 +213,38 @@ class IRESEARCH_API sort {
     DECLARE_UNIQUE_PTR(prepared);
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief default noop merge function
+    /// @brief default noop bulk merge function
     ////////////////////////////////////////////////////////////////////////////////
-    static void noop_merge(
+    static void noop_bulk_merge(
         const order_bucket*, byte_type*,
         const byte_type**, size_t) noexcept {
       // NOOP
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief default noop merge function
+    ////////////////////////////////////////////////////////////////////////////////
+    static void noop_merge(
+        const order_bucket*,
+        byte_type*,
+        const byte_type*) noexcept {
+      // NOOP
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief helper function retuns bulk merge function by a specified type
+    //////////////////////////////////////////////////////////////////////////////
+    template<MergeType type>
+    constexpr static bulk_merge_f bulk_merge_func(const prepared& bucket) noexcept {
+      switch (type) {
+        case MergeType::AGGREGATE:
+          return bucket.bulk_aggregate_func();
+        case MergeType::MAX:
+          return bucket.bulk_max_func();
+        default:
+          assert(false);
+          return noop_bulk_merge;
+      }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -230,9 +264,13 @@ class IRESEARCH_API sort {
     }
 
     explicit prepared(
+        bulk_merge_f bulk_aggregate_func = &noop_bulk_merge,
         merge_f aggregate_func = &noop_merge,
+        bulk_merge_f bulk_max_func = &noop_bulk_merge,
         merge_f max_func = &noop_merge) noexcept
-      : aggregate_func_(aggregate_func),
+      : bulk_aggregate_func_(bulk_aggregate_func),
+        aggregate_func_(aggregate_func),
+        bulk_max_func_(bulk_max_func),
         max_func_(max_func) {
     }
 
@@ -260,8 +298,7 @@ class IRESEARCH_API sort {
       byte_type* stats,
       const index_reader& index,
       const field_collector* field,
-      const term_collector* term
-    ) const = 0;
+      const term_collector* term) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief the features required for proper operation of this sort::prepared
@@ -316,19 +353,29 @@ class IRESEARCH_API sort {
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief aggregate range of scores denoted by 'src_start' and 'size' to 'dst',
-    ///        i.e. using +=
+    /// @brief aggregate a range of values, i.e. using +=
+    ////////////////////////////////////////////////////////////////////////////////
+    bulk_merge_f bulk_aggregate_func() const noexcept { return bulk_aggregate_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief aggregate 2 values, i.e.  i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
     merge_f aggregate_func() const noexcept { return aggregate_func_; }
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief find max score within range of scores denoted by 'src_start' and
-    ///        'size' to 'dst', i.e. using std::max(...)
+    /// @brief find max value within range of values, i.e. using std::max(...)
+    ////////////////////////////////////////////////////////////////////////////////
+    bulk_merge_f bulk_max_func() const noexcept { return bulk_max_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief find max value of 2 values, , i.e. using std::max(...)
     ////////////////////////////////////////////////////////////////////////////////
     merge_f max_func() const noexcept { return max_func_; }
 
    protected:
+    bulk_merge_f bulk_aggregate_func_;
     merge_f aggregate_func_;
+    bulk_merge_f bulk_max_func_;
     merge_f max_func_;
   }; // prepared
 
@@ -390,7 +437,10 @@ struct order_bucket : private util::noncopyable {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ScoreType>
 struct score_traits {
-  typedef ScoreType score_type;
+  using score_type = ScoreType;
+
+  static_assert(std::is_trivially_constructible_v<score_type>,
+                "ScoreType must be trivially constructible");
 
   FORCE_INLINE static const score_type& score_cast(const byte_type* buf) noexcept {
     assert(buf);
@@ -401,8 +451,8 @@ struct score_traits {
     return const_cast<score_type&>(score_cast(const_cast<const byte_type*>(buf)));
   }
 
-  static void aggregate(const order_bucket* ctx, byte_type* dst,
-                        const byte_type** src_begin, size_t size) {
+  static void bulk_aggregate(const order_bucket* ctx, byte_type* dst,
+                             const byte_type** src_begin, size_t size) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
     casted_dst = ScoreType();
@@ -434,8 +484,17 @@ struct score_traits {
     }
   }
 
-  static void max(const order_bucket* ctx, byte_type* dst,
-                  const byte_type** src_begin, size_t size) {
+  static void aggregate(
+      const order_bucket* ctx,
+      byte_type* RESTRICT dst,
+      const byte_type* RESTRICT src) noexcept {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+    casted_dst += score_cast(src + offset);
+  }
+
+  static void bulk_max(const order_bucket* ctx, byte_type* dst,
+                       const byte_type** src_begin, size_t size) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
 
@@ -459,6 +518,18 @@ struct score_traits {
         break;
     }
   }
+
+  static void max(const order_bucket* ctx,
+                  byte_type* RESTRICT dst,
+                  const byte_type* RESTRICT src) noexcept {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+    auto& casted_src = score_cast(src + offset);
+
+    if (casted_dst < casted_src) {
+      casted_dst = casted_src;
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,9 +547,9 @@ template<typename ScoreType,
   static_assert(std::is_trivially_constructible_v<StatsType>,
                 "StatsTypemust be trivially constructible");
 
-  typedef TraitsType traits_t;
-  typedef typename traits_t::score_type score_t;
-  typedef StatsType stats_t;
+  using traits_t = TraitsType;
+  using score_t = typename traits_t::score_type;
+  using stats_t = StatsType;
 
   FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
     assert(buf);
@@ -490,7 +561,11 @@ template<typename ScoreType,
   }
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+    : sort::prepared(
+        &traits_t::bulk_aggregate,
+        &traits_t::aggregate,
+        &traits_t::bulk_max,
+        &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -534,12 +609,16 @@ template<typename ScoreType,
 template <typename ScoreType, typename TraitsType>
 class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
  public:
-  typedef TraitsType traits_t;
-  typedef typename traits_t::score_type score_t;
-  typedef void stats_t;
+  using traits_t = TraitsType;
+  using score_t = typename traits_t::score_type;
+  using stats_t = void;
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+    : sort::prepared(
+        &traits_t::bulk_aggregate,
+        &traits_t::aggregate,
+        &traits_t::bulk_max,
+        &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -609,8 +688,8 @@ template<typename ScoreType,
          typename StatsType = void,
          typename TraitsType = score_traits<ScoreType>
 > class prepared_sort_basic : public prepared_sort_base<ScoreType, StatsType> {
-  typedef TraitsType traits_t;
-  typedef prepared_sort_base<ScoreType, StatsType> base_t;
+  using traits_t = TraitsType;
+  using base_t = prepared_sort_base<ScoreType, StatsType>;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -658,9 +737,9 @@ class IRESEARCH_API order final {
 
     template<typename T>
     const T& sort_cast() const noexcept {
-      typedef typename std::enable_if<
+      using type = typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
-      >::type type;
+      >::type ;
 
 #ifdef IRESEARCH_DEBUG
       return dynamic_cast<const type&>(sort());
@@ -671,9 +750,9 @@ class IRESEARCH_API order final {
 
     template<typename T>
     const T* sort_safe_cast() const noexcept {
-      typedef typename std::enable_if<
+      using type = typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
-      >::type type;
+      >::type;
 
       return type::type() == sort().type()
         ? static_cast<const type*>(&sort())
@@ -696,9 +775,9 @@ class IRESEARCH_API order final {
     bool reverse_;
   }; // entry
 
-  typedef std::vector<entry> order_t;
-  typedef order_t::const_iterator const_iterator;
-  typedef order_t::iterator iterator;
+  using order_t = std::vector<entry>;
+  using const_iterator = order_t::const_iterator;
+  using iterator = order_t::iterator;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @class sort
@@ -706,7 +785,7 @@ class IRESEARCH_API order final {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
-    typedef std::vector<order_bucket> prepared_order_t;
+    using prepared_order_t = std::vector<order_bucket>;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
@@ -797,8 +876,26 @@ class IRESEARCH_API order final {
           byte_type* score,
           const byte_type** rhs_start,
           const size_t count) const {
+        assert(bulk_merge_func_);
+        (*bulk_merge_func_)(bucket_, score, rhs_start, count);
+      }
+
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief merge score denoted by 'src' to 'dst',
+      //////////////////////////////////////////////////////////////////////////
+      FORCE_INLINE void operator()(
+          byte_type* dst,
+          const byte_type* src) const {
         assert(merge_func_);
-        (*merge_func_)(bucket_, score, rhs_start, count);
+        (*merge_func_)(bucket_, dst, src);
+      }
+
+      FORCE_INLINE bool operator==(bulk_merge_f merge_func) const noexcept {
+        return merge_func == bulk_merge_func_;
+      }
+
+      FORCE_INLINE bool operator!=(bulk_merge_f merge_func) const noexcept {
+        return merge_func != bulk_merge_func_;
       }
 
       FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
@@ -814,12 +911,18 @@ class IRESEARCH_API order final {
 
       merger() = default;
 
-      merger(const order_bucket* bucket, merge_f merge_func) noexcept
-        : bucket_(bucket), merge_func_(merge_func) {
+      merger(const order_bucket* bucket,
+             bulk_merge_f bulk_merge_func,
+             merge_f merge_func) noexcept
+        : bucket_(bucket),
+          bulk_merge_func_(bulk_merge_func),
+          merge_func_(merge_func) {
+        assert(bulk_merge_func_);
         assert(merge_func_);
       }
 
       const order_bucket* bucket_{nullptr};
+      bulk_merge_f bulk_merge_func_{&sort::prepared::noop_bulk_merge};
       merge_f merge_func_{&sort::prepared::noop_merge};
     }; // merger
 
@@ -912,7 +1015,7 @@ class IRESEARCH_API order final {
       typename StringType,
       typename TraitsType = typename StringType::traits_type
     > constexpr StringType to_string(const byte_type* score, size_t i) const {
-      typedef typename TraitsType::char_type char_type;
+      using char_type = typename TraitsType::char_type;
 
       return StringType(
         reinterpret_cast<const char_type*>(score + order_[i].score_offset),
@@ -933,16 +1036,22 @@ class IRESEARCH_API order final {
       switch (order_.size()) {
         case 0: return { };
         case 1: return {
-            &order_[0],
-            sort::prepared::merge_func<Type>(*order_[0].bucket)
+            &order_.front(),
+            sort::prepared::bulk_merge_func<Type>(*order_.front().bucket),
+            sort::prepared::merge_func<Type>(*order_.front().bucket)
           };
         case 2: return {
-            &order_[0],
+            order_.data(),
             [](const order_bucket* ctx, byte_type* dst,
                const byte_type** src_start, const size_t size) {
-                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
-                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
-          }};
+                sort::prepared::bulk_merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
+                sort::prepared::bulk_merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
+            },
+            [](const order_bucket* ctx, byte_type* dst, const byte_type* src) {
+                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, src);
+                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, src);
+            }
+          };
         default: return {
             reinterpret_cast<const order_bucket*>(&order_),
             [](const order_bucket* ctx, byte_type* dst,
@@ -950,9 +1059,17 @@ class IRESEARCH_API order final {
                 auto& order = *reinterpret_cast<const order::prepared*>(ctx);
                 order.for_each([dst, src_start, size](const order_bucket& sort) {
                   assert(sort.bucket);
-                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
-                });
-          }};
+                  sort::prepared::bulk_merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
+              });
+            },
+            [](const order_bucket* ctx, byte_type* dst, const byte_type* src_start) {
+                auto& order = *reinterpret_cast<const order::prepared*>(ctx);
+                order.for_each([dst, src_start](const order_bucket& sort) {
+                  assert(sort.bucket);
+                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start);
+              });
+            },
+          };
       }
     }
 
@@ -992,9 +1109,9 @@ class IRESEARCH_API order final {
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {
-    typedef typename std::enable_if<
+    using type = typename std::enable_if<
       std::is_base_of<sort, T>::value, T
-    >::type type;
+    >::type;
 
     add(reverse, type::make(std::forward<Args>(args)...));
     return static_cast<type&>(order_.back().sort());
@@ -1002,9 +1119,9 @@ class IRESEARCH_API order final {
 
   template<typename T>
   void remove() {
-    typedef typename std::enable_if<
+    using type = typename std::enable_if<
       std::is_base_of<sort, T>::value, T
-    >::type type;
+    >::type;
 
     remove(type::type());
   }

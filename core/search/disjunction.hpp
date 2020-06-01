@@ -75,7 +75,7 @@ struct compound_doc_iterator : doc_iterator {
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class unary_disjunction final : public compound_doc_iterator<Adapter> {
  public:
-  typedef Adapter doc_iterator_t;
+  using doc_iterator_t = Adapter;
 
   unary_disjunction(doc_iterator_t&& it)
     : it_(std::move(it)) {
@@ -117,7 +117,7 @@ class basic_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef Adapter doc_iterator_t;
+  using doc_iterator_t = Adapter;
 
   basic_disjunction(
       doc_iterator_t&& lhs,
@@ -307,8 +307,8 @@ class small_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef Adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
+  using doc_iterator_t  = Adapter;
+  using doc_iterators_t = std::vector<doc_iterator_t>;
 
   small_disjunction(
       doc_iterators_t&& itrs,
@@ -547,16 +547,17 @@ class disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
-  typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
-  typedef unary_disjunction<DocIterator, Adapter> unary_disjunction_t;
-  typedef Adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
+  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
+  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
+  using small_disjunction_t = small_disjunction<DocIterator, Adapter>;
 
-  typedef std::vector<size_t> heap_container;
-  typedef heap_container::iterator heap_iterator;
+  using doc_iterator_t  = Adapter;
+  using doc_iterators_t = std::vector<doc_iterator_t>;
+  using heap_container  = std::vector<size_t>;
+  using heap_iterator   = heap_container::iterator;
 
   static constexpr bool ENABLE_UNARY = EnableUnary;
+  static constexpr size_t SMALL_DISJUNCTION_UPPER_BOUND = 5;
 
   disjunction(
       doc_iterators_t&& itrs,
@@ -800,20 +801,50 @@ class disjunction final
   order::prepared::merger merger_;
 }; // disjunction
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct block_disjunction_traits
+////////////////////////////////////////////////////////////////////////////////
+template<bool Score, bool SeekReadahead, size_t NumBlocks>
+struct block_disjunction_traits {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for filtering only, "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool SCORE = Score;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief use readahead buffer for random access
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool SEEK_READAHEAD = SeekReadahead;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief size of the readhead buffer in blocks
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr size_t NUM_BLOCKS = NumBlocks;
+}; // block_disjunction_traits
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_disjunction
+/// @brief the implementation reads ahead 64*NumBlocks documents
+////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator,
          typename Adapter = score_iterator_adapter<DocIterator>,
-         bool Score = false,
-         bool SeekReadahead = false,
-         size_t NumBlocks = 64>
+         typename Traits = block_disjunction_traits<false, false, 64>>
 class block_disjunction final
     : public frozen_attributes<3, doc_iterator>,
       private score_ctx {
  public:
-  using small_disjunction_t = small_disjunction<DocIterator, Adapter>;
-  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
-  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
-  using doc_iterator_t = Adapter;
+  using traits_t = Traits;
+  using doc_iterator_t  = Adapter;
   using doc_iterators_t = std::vector<doc_iterator_t>;
+
+  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
+  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
+  using small_disjunction_t = block_disjunction;
+
+  static constexpr bool ENABLE_UNARY = false; // FIXME
+
+  // Block disjunction is faster than small_disjunction
+  static constexpr size_t SMALL_DISJUNCTION_UPPER_BOUND = 0;
 
   block_disjunction(
       doc_iterators_t&& itrs,
@@ -855,9 +886,12 @@ class block_disjunction final
       base_ += bits_required<uint64_t>();
     }
 
-    const doc_id_t delta = math::math_traits<uint64_t>::ctz(cur_);
+    const size_t delta = math::math_traits<uint64_t>::ctz(cur_);
     irs::unset_bit(cur_, delta);
-    doc_.value = base_ + delta;
+    doc_.value = base_ + doc_id_t(delta);
+    if constexpr (traits_t::SCORE) {
+      score_value_ = score_buf_.get() + (base_ + delta)*score_bucket_size_;
+    }
 
     return true;
   }
@@ -882,7 +916,7 @@ class block_disjunction final
           // exhausted
           return false;
         }
-         
+
         doc_.value = std::min(doc_.value, doc);
 
         return true;
@@ -899,11 +933,22 @@ class block_disjunction final
       begin_ = std::end(mask_); // enforce "refill()" for upcoming "next()"
       max_ = doc_.value;
 
-      if constexpr (SeekReadahead) {
+      if constexpr (traits_t::SEEK_READAHEAD) {
         min_ = doc_.value;
         next();
       } else {
         min_ = doc_.value + 1;
+
+        if constexpr (traits_t::SCORE) {
+          score_value_ = score_buf_.get();
+          std::memset(score_buf_.get(), 0, score_bucket_size_);
+          for (auto& it : itrs_) {
+            if (doc_.value == it->value()) {
+              assert(it.score);
+              merger_(score_buf_.get(), it.score->evaluate());
+            }
+          }
+        }
       }
     }
 
@@ -912,7 +957,7 @@ class block_disjunction final
 
  private:
   static constexpr doc_id_t BLOCK_SIZE = bits_required<uint64_t>();
-  static constexpr doc_id_t NUM_BLOCKS = std::max(size_t(1), NumBlocks);
+  static constexpr doc_id_t NUM_BLOCKS = std::max(size_t(1), traits_t::NUM_BLOCKS);
   static constexpr size_t WINDOW = BLOCK_SIZE*NUM_BLOCKS;
 
   struct resolve_overload_tag{};
@@ -934,18 +979,17 @@ class block_disjunction final
         ? doc_limits::eof()
         : doc_limits::invalid()),
       cost_(std::forward<Estimation>(estimation)),
-      score_bucket_size_(Score ? 0 : ord.score_size()),
-      score_buf_size_(!Score ? 0 : score_bucket_size_*WINDOW),
-      score_buf_(!Score || ord.empty()
+      score_bucket_size_(!traits_t::SCORE ? 0 : ord.score_size()),
+      score_buf_size_(!traits_t::SCORE ? 0 : score_bucket_size_*WINDOW),
+      score_buf_(!traits_t::SCORE || ord.empty()
         ? nullptr
         : new byte_type[score_buf_size_]),
       merger_(ord.prepare_merger(merge_type)) {
-    if (Score && !ord.empty()) {
+    if (traits_t::SCORE && !ord.empty()) {
       score_.prepare(this, [](const score_ctx* ctx) noexcept -> const byte_type* {
         auto& self = *static_cast<const block_disjunction*>(ctx);
 
-        const size_t delta = 0;
-        return self.score_buf_.get() + delta*self.score_bucket_size_;
+        return self.score_value_;
       });
     }
   }
@@ -972,7 +1016,8 @@ class block_disjunction final
     }
 
     std::memset(mask_, 0, sizeof mask_);
-    if constexpr (Score) {
+    if constexpr (traits_t::SCORE) {
+      score_value_ = score_buf_.get();
       std::memset(score_buf_.get(), 0, score_buf_size_);
     }
     bool empty = true;
@@ -983,36 +1028,11 @@ class block_disjunction final
       min_ = doc_limits::eof();
 
       for_each_remove_if([this, &empty](auto& it) mutable {
-        assert(it.doc);
-        const auto* doc = &it.doc->value;
-        assert(!doc_limits::eof(*doc));
-
-        if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
-          // exhausted
-          return false;
+        if (traits_t::SCORE && !it.score->empty()) {
+          return refill<true>(it, empty);
         }
 
-        for (;;) {
-          if (*doc >= max_) {
-            min_ = std::min(*doc, min_);
-            return true;
-          }
-
-          const auto delta = *doc - base_;
-
-          irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
-          if constexpr (Score) {
-            assert(it.score);
-            const auto* score = it.score->evaluate();
-            merger_(score_buf_.get() + delta*score_bucket_size_, &score, 1); // FIXME
-          }
-          empty = false;
-
-          if (!it->next()) {
-            // exhausted
-            return false;
-          }
-        }
+        return refill<false>(it, empty);
       });
     } while (empty);
 
@@ -1025,6 +1045,40 @@ class block_disjunction final
     }
 
     return true;
+  }
+
+  template<bool Score>
+  bool refill(doc_iterator_t& it, bool& empty) {
+     assert(it.doc);
+     const auto* doc = &it.doc->value;
+     assert(!doc_limits::eof(*doc));
+
+     if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
+       // exhausted
+       return false;
+     }
+
+     for (;;) {
+       if (*doc >= max_) {
+         min_ = std::min(*doc, min_);
+         return true;
+       }
+
+       const size_t delta = *doc - base_;
+
+       irs::set_bit(mask_[delta / BLOCK_SIZE], delta % BLOCK_SIZE);
+       if constexpr (Score) {
+         assert(it.score);
+         merger_(score_buf_.get() + delta*score_bucket_size_,
+                 it.score->evaluate());
+       }
+       empty = false;
+
+       if (!it->next()) {
+         // exhausted
+         return false;
+       }
+    }
   }
 
   doc_iterators_t itrs_;
@@ -1041,6 +1095,7 @@ class block_disjunction final
   size_t score_bucket_size_;
   size_t score_buf_size_;
   std::unique_ptr<byte_type[]> score_buf_;
+  const byte_type* score_value_{score_buf_.get()};
   order::prepared::merger merger_;
 }; // block_disjunction
 
@@ -1059,31 +1114,25 @@ doc_iterator::ptr make_disjunction(
       return doc_iterator::empty();
     case 1:
       if constexpr (Disjunction::ENABLE_UNARY) {
-        typedef typename Disjunction::unary_disjunction_t unary_disjunction_t;
+        using unary_disjunction_t = typename Disjunction::unary_disjunction_t;
         return doc_iterator::make<unary_disjunction_t>(
-          std::move(itrs.front())
-        );
+          std::move(itrs.front()));
       }
       // single sub-query
       return std::move(itrs.front());
     case 2: {
-      typedef typename Disjunction::basic_disjunction_t basic_disjunction_t;
+      using basic_disjunction_t = typename Disjunction::basic_disjunction_t;
 
       // simple disjunction
-      auto first = itrs.begin();
-      auto second = first;
-      std::advance(second, 1);
-
       return doc_iterator::make<basic_disjunction_t>(
-        std::move(*first),
-        std::move(*second),
+        std::move(itrs.front()),
+        std::move(itrs.back()),
         std::forward<Args>(args)...);
     }
   }
 
-  constexpr size_t LINEAR_MERGE_UPPER_BOUND = 5;
-  if (size <= LINEAR_MERGE_UPPER_BOUND) {
-    typedef typename Disjunction::small_disjunction_t small_disjunction_t;
+  if (Disjunction::SMALL_DISJUNCTION_UPPER_BOUND && size <= Disjunction::SMALL_DISJUNCTION_UPPER_BOUND) {
+    using small_disjunction_t = typename Disjunction::small_disjunction_t;
 
     // small disjunction
     return doc_iterator::make<small_disjunction_t>(

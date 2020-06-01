@@ -210,12 +210,12 @@ TEST(sort_tests, score_traits) {
     size_t max_dst = 0;
     size_t aggregated_dst = 0;
 
-    irs::score_traits<size_t>::aggregate(
+    irs::score_traits<size_t>::bulk_aggregate(
       &bucket,
       reinterpret_cast<irs::byte_type*>(&aggregated_dst),
       reinterpret_cast<const irs::byte_type**>(ptrs), i);
 
-    irs::score_traits<size_t>::max(
+    irs::score_traits<size_t>::bulk_max(
       &bucket,
       reinterpret_cast<irs::byte_type*>(&max_dst),
       reinterpret_cast<const irs::byte_type**>(ptrs), i);

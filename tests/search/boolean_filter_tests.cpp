@@ -3658,10 +3658,12 @@ TEST(block_disjunction_test, next) {
 }
 
 TEST(block_disjunction_test, next_small_block) {
+  using traits = irs::block_disjunction_traits<true, false, 1>;
+
   using disjunction = irs::block_disjunction<
     irs::doc_iterator::ptr,
     irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    1>;
+    traits>;
 
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
@@ -4194,10 +4196,13 @@ TEST(block_disjunction_test, seek) {
 }
 
 TEST(block_disjunction_test, seek_small_block) {
+  using traits = irs::block_disjunction_traits<true, false, 1>;
+
   using disjunction = irs::block_disjunction<
     irs::doc_iterator::ptr,
     irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    1>;
+    traits>;
+
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   // no iterators provided
@@ -4495,10 +4500,12 @@ TEST(block_disjunction_test, seek_next) {
 }
 
 TEST(block_disjunction_test, seek_next_small_block) {
+  using traits = irs::block_disjunction_traits<true, false, 1>;
+
   using disjunction = irs::block_disjunction<
     irs::doc_iterator::ptr,
     irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    1>;
+    traits>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   {
@@ -4529,6 +4536,810 @@ TEST(block_disjunction_test, seek_next_small_block) {
     ASSERT_EQ(29, it.seek(27));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
+TEST(block_disjunction_test, scored_seek_next_small_block) {
+  using traits = irs::block_disjunction_traits<true, false, 1>;
+
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
+    traits>;
+
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
+TEST(block_disjunction_test, scored_seek_next) {
+  using traits = irs::block_disjunction_traits<true, false, 64>;
+
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
+    traits>;
+
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
