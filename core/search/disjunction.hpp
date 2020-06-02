@@ -307,8 +307,8 @@ class small_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  using doc_iterator_t  = Adapter;
-  using doc_iterators_t = std::vector<doc_iterator_t>;
+  using adapter = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
 
   small_disjunction(
       doc_iterators_t&& itrs,
@@ -327,7 +327,7 @@ class small_disjunction final
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
-            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+            [](cost::cost_t lhs, const adapter& rhs) {
               return lhs + cost::extract(rhs, 0);
           });
         },
@@ -338,7 +338,7 @@ class small_disjunction final
     return doc_.value;
   }
 
-  bool next_iterator_impl(doc_iterator_t& it) {
+  bool next_iterator_impl(adapter& it) {
     const auto doc = it.value();
 
     if (doc == doc_.value) {
@@ -496,7 +496,7 @@ class small_disjunction final
     }
   }
 
-  bool remove_iterator(doc_iterator_t& it) {
+  bool remove_iterator(adapter& it) {
     std::swap(it, itrs_.back());
     itrs_.pop_back();
     return !itrs_.empty();
@@ -553,8 +553,8 @@ class disjunction final
   using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
   using small_disjunction_t = small_disjunction<DocIterator, Adapter>;
 
-  using doc_iterator_t  = Adapter;
-  using doc_iterators_t = std::vector<doc_iterator_t>;
+  using adapter = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
   using heap_container  = std::vector<size_t>;
   using heap_iterator   = heap_container::iterator;
 
@@ -578,7 +578,7 @@ class disjunction final
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
-            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+            [](cost::cost_t lhs, const adapter& rhs) {
               return lhs + cost::extract(rhs, 0);
           });
         },
@@ -761,13 +761,13 @@ class disjunction final
     pop(begin, end);
   }
 
-  inline doc_iterator_t& lead() noexcept {
+  inline adapter& lead() noexcept {
     assert(!heap_.empty());
     assert(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
-  inline doc_iterator_t& top() noexcept {
+  inline adapter& top() noexcept {
     assert(!heap_.empty());
     assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
@@ -836,8 +836,8 @@ class block_disjunction final
       private score_ctx {
  public:
   using traits_t = Traits;
-  using doc_iterator_t  = Adapter;
-  using doc_iterators_t = std::vector<doc_iterator_t>;
+  using adapter  = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
 
   using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
   using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
@@ -865,7 +865,7 @@ class block_disjunction final
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
-            [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+            [](cost::cost_t lhs, const adapter& rhs) {
               return lhs + cost::extract(rhs, 0);
           });
         },
@@ -1050,7 +1050,7 @@ class block_disjunction final
   }
 
   template<bool Score>
-  bool refill(doc_iterator_t& it, bool& empty) {
+  bool refill(adapter& it, bool& empty) {
      assert(it.doc);
      const auto* doc = &it.doc->value;
      assert(!doc_limits::eof(*doc));

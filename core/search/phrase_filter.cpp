@@ -432,8 +432,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
           continue;
         }
 
-        disjunction_t::doc_iterator_t docs(terms->postings(features),
-                                           term_state->second);
+        disjunction_t::adapter docs(terms->postings(features),
+                                    term_state->second);
 
         if (!docs.position) {
           // positions not found
