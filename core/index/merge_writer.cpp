@@ -34,6 +34,7 @@
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/memory.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
@@ -643,8 +644,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
     doc_itr_.reset(add_iterators);
   }
 
-  // aliasing constructor
-  return irs::doc_iterator::ptr(irs::doc_iterator::ptr(), doc_itr);
+  return irs::memory::to_managed<irs::doc_iterator, false>(doc_itr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -825,7 +825,7 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
     term_itr_.add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_map));
   }
 
-  return irs::memory::make_managed<irs::term_iterator, false>(&term_itr_);
+  return irs::memory::to_managed<irs::term_iterator, false>(&term_itr_);
 }
 
 //////////////////////////////////////////////////////////////////////////////

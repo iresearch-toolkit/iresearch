@@ -63,8 +63,7 @@ doc_iterator::ptr multiterm_query::execute(
     // since we don't want to emit doc_limits::invalid()
     assert(state->unscored_docs.any() && !state->unscored_docs.test(0));
 
-    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      state->unscored_docs));
+    itrs.emplace_back(memory::make_managed<bitset_doc_iterator>(state->unscored_docs));
   }
 
   auto& stats = this->stats();

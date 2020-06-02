@@ -4591,13 +4591,14 @@ class sparse_column final : public column {
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
-    return empty()
-      ? irs::doc_iterator::empty()
-      : irs::doc_iterator::make<iterator_t>(
-          *this,
-          refs_.data(),
-          refs_.data() + refs_.size() - 1 // -1 for upper bound
-        );
+    if (empty()) {
+      return irs::doc_iterator::empty();
+    }
+
+    return memory::make_managed<iterator_t>(
+      *this,
+      refs_.data(),
+      refs_.data() + refs_.size() - 1); // -1 for upper bound
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -4771,14 +4772,14 @@ class dense_fixed_offset_column final : public column {
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
-    return empty()
-      ? irs::doc_iterator::empty()
-      : irs::doc_iterator::make<iterator_t>(
-          *this,
-          refs_.data(),
-          refs_.data() + refs_.size()
-        )
-      ;
+    if (empty()) {
+      return irs::doc_iterator::empty();
+    }
+
+    return memory::make_managed<iterator_t>(
+      *this,
+      refs_.data(),
+      refs_.data() + refs_.size());
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -4987,7 +4988,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
   return empty()
     ? irs::doc_iterator::empty()
-    : irs::doc_iterator::make<column_iterator>(*this);
+    : memory::make_managed<column_iterator>(*this);
 }
 
 // ----------------------------------------------------------------------------
@@ -5340,6 +5341,17 @@ class postings_reader final: public postings_reader_base {
     const flags& field,
     const attribute_provider& attrs,
     const flags& features) override;
+
+ private:
+  template<typename IteratorTraits>
+  irs::doc_iterator::ptr iterator(
+      const attribute_provider& attrs,
+      const ::features& features) {
+    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
+    it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+
+    return it;
+  }
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -5362,34 +5374,22 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, true>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, true, true>>(attrs, features);
     }
     case features::FREQ | features::POS | features::OFFS: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, true, false>>(attrs, features);
     }
     case features::FREQ | features::POS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, true>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, false, true>>(attrs, features);
     }
     case features::FREQ | features::POS: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, false, false>>(attrs, features);
     }
     case features::FREQ: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, false, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, false, false, false>>(attrs, features);
     }
     default: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<false, false, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<false, false, false, false>>(attrs, features);
     }
   }
 
@@ -5453,35 +5453,35 @@ index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
   static ::index_meta_reader INSTANCE;
 
-  return memory::make_managed<irs::index_meta_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::index_meta_reader, false>(&INSTANCE);
 }
 
 segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
   static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MIN);
 
-  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
 segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
   static ::segment_meta_reader INSTANCE;
 
-  return memory::make_managed<irs::segment_meta_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_reader, false>(&INSTANCE);
 }
 
 document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
   static ::document_mask_writer INSTANCE;
 
-  return memory::make_managed<irs::document_mask_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::document_mask_writer, false>(&INSTANCE);
 }
 
 document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
   static ::document_mask_reader INSTANCE;
 
-  return memory::make_managed<irs::document_mask_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
 field_writer::ptr format10::get_field_writer(bool volatile_state) const {
@@ -5587,7 +5587,7 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
   // can reuse stateless writer
   static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MAX);
 
-  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {

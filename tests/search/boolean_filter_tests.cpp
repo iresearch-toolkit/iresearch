@@ -239,9 +239,8 @@ std::vector<DocIterator> execute_all(
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
   for (const auto& doc : docs) {
-    itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
-      doc.begin(), doc.end()
-    ));
+    itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
+      doc.begin(), doc.end()));
   }
 
   return itrs;
@@ -261,13 +260,13 @@ std::pair<std::vector<DocIterator>, std::vector<irs::order::prepared>> execute_a
     auto& ord = entry.second;
 
     if (ord.empty()) {
-      itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
+      itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
         doc.begin(), doc.end()
       ));
     } else {
       order.emplace_back(ord.prepare());
 
-      itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
+      itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
         doc.begin(), doc.end(), stats, order.back(), irs::no_boost()
       ));
     }
@@ -301,7 +300,7 @@ struct boosted: public irs::filter {
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
-      return irs::doc_iterator::make<basic_doc_iterator>(
+      return irs::memory::make_managed<basic_doc_iterator>(
         docs.begin(), docs.end(), stats.c_str(), ord, boost()
       );
     }
@@ -1245,7 +1244,7 @@ struct unestimated: public irs::filter {
       const irs::sub_reader&,
       const irs::order::prepared&,
       const irs::attribute_provider*) const override {
-      return irs::doc_iterator::make<unestimated::doc_iterator>();
+      return irs::memory::make_managed<unestimated::doc_iterator>();
     }
   }; // prepared
 
@@ -1307,7 +1306,7 @@ struct estimated: public irs::filter {
       const irs::sub_reader&,
       const irs::order::prepared&,
       const irs::attribute_provider*) const override {
-      return irs::doc_iterator::make<estimated::doc_iterator>(
+      return irs::memory::make_managed<estimated::doc_iterator>(
         est, evaluated
       );
     }
@@ -1626,11 +1625,11 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> last{ 1, 5, 6, 12, 29 };
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
+
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
 
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1656,9 +1655,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -1681,8 +1679,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1705,8 +1703,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1729,8 +1727,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1754,8 +1752,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1792,9 +1790,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -1816,8 +1813,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1844,8 +1841,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1871,8 +1868,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1893,8 +1890,8 @@ TEST(basic_disjunction_test, seek_next) {
     std::vector<irs::doc_id_t> last{ 1, 5, 6 };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -1940,8 +1937,8 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = last_order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order))
     );
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -1988,12 +1985,12 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
       irs::sort::MergeType::AGGREGATE,
-      1 // custom cost
-    );
+      1); // custom cost
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2046,12 +2043,11 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
       irs::sort::MergeType::MAX,
-      1 // custom cost
-    );
+      1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2097,11 +2093,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2147,11 +2142,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2201,11 +2195,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2255,11 +2248,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2308,11 +2300,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2361,11 +2352,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -8671,8 +8661,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
 
       // score, no order set
@@ -8700,8 +8690,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -8721,8 +8711,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
@@ -8742,8 +8732,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
@@ -8762,8 +8752,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -8784,8 +8774,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -8816,8 +8806,8 @@ TEST(exclusion_test, seek) {
         {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -8836,8 +8826,8 @@ TEST(exclusion_test, seek) {
       {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -8861,8 +8851,8 @@ TEST(exclusion_test, seek) {
       {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -8885,8 +8875,8 @@ TEST(exclusion_test, seek) {
       {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 

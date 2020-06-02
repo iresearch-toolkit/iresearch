@@ -355,14 +355,14 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       ++position;
     }
 
-    return memory::make_shared<phrase_iterator_t>(
-      std::move(itrs),
-      std::move(positions),
-      rdr,
-      *phrase_state->reader,
-      stats_.c_str(),
-      ord,
-      boost());
+    return memory::make_managed<phrase_iterator_t>(
+        std::move(itrs),
+        std::move(positions),
+        rdr,
+        *phrase_state->reader,
+        stats_.c_str(),
+        ord,
+        boost());
   }
 }; // fixed_phrase_query
 
@@ -460,7 +460,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     assert(term_state == phrase_state->terms.end());
 
     if (phrase_state->volatile_boost) {
-      return memory::make_shared<phrase_iterator_t<true>>(
+      return memory::make_managed<phrase_iterator_t<true>>(
         std::move(conj_itrs),
         std::move(positions),
         rdr,
@@ -470,7 +470,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
         boost());
     }
 
-    return memory::make_shared<phrase_iterator_t<false>>(
+    return memory::make_managed<phrase_iterator_t<false>>(
       std::move(conj_itrs),
       std::move(positions),
       rdr,

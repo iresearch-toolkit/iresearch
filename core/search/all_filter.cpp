@@ -44,9 +44,9 @@ class all_query final : public filter::prepared {
       const sub_reader& rdr,
       const order::prepared& order,
       const attribute_provider* /*ctx*/) const override {
-    return doc_iterator::make<all_iterator>(
-      rdr, stats_.c_str(), order, rdr.docs_count(), boost()
-    );
+    return memory::make_managed<all_iterator>(
+      rdr, stats_.c_str(), order,
+      rdr.docs_count(), boost());
   }
 
  private:

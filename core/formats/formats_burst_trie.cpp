@@ -1714,13 +1714,11 @@ term_reader::term_reader(term_reader&& rhs) noexcept
 }
 
 seek_term_iterator::ptr term_reader::iterator() const {
-  return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::term_iterator>(*this));
+  return memory::make_managed<detail::term_iterator>(*this);
 }
 
 seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
-  return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::automaton_term_iterator>(*this, matcher));
+  return memory::make_managed<detail::automaton_term_iterator>(*this, matcher);
 }
 
 void term_reader::prepare(
@@ -2563,11 +2561,8 @@ irs::field_iterator::ptr field_reader::iterator() const {
     string_ref, detail::term_reader, irs::field_iterator, less
   > iterator_t;
 
-  auto it = memory::make_unique<iterator_t>(
-    fields_.data(), fields_.data() + fields_.size()
-  );
-
-  return memory::make_managed<irs::field_iterator, true>(it.release());
+  return memory::make_managed<iterator_t>(
+    fields_.data(), fields_.data() + fields_.size());
 }
 
 size_t field_reader::size() const noexcept {

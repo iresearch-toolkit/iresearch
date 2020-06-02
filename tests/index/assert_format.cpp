@@ -528,7 +528,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual doc_iterator::ptr postings(const irs::flags& features) const override {
-    return doc_iterator::make<doc_iterator>(data_.features & features, *prev_);
+    return irs::memory::make_managed<doc_iterator>(data_.features & features, *prev_);
   }
 
   virtual bool seek(
@@ -549,15 +549,11 @@ class term_iterator final : public irs::seek_term_iterator {
 };
 
 irs::seek_term_iterator::ptr term_reader::iterator() const {
-  return irs::memory::make_managed<irs::seek_term_iterator>(
-    irs::memory::make_unique<term_iterator>(data_)
-  );
+  return irs::memory::make_managed<term_iterator>(data_);
 }
 
 irs::seek_term_iterator::ptr term_reader::iterator(irs::automaton_table_matcher& matcher) const {
-  return irs::memory::make_managed<irs::seek_term_iterator>(
-    irs::memory::make_unique<irs::automaton_term_iterator>(matcher.GetFst(), iterator())
-  );
+  return irs::memory::make_managed<irs::automaton_term_iterator>(matcher.GetFst(), iterator());
 }
 
 field_reader::field_reader(const index_segment& data)
@@ -619,21 +615,21 @@ irs::index_meta_reader::ptr format::get_index_meta_reader() const {
   // can reuse stateless reader
   static index_meta_reader reader;
 
-  return irs::memory::make_managed<irs::index_meta_reader, false>(&reader);
+  return irs::memory::to_managed<irs::index_meta_reader, false>(&reader);
 }
 
 irs::segment_meta_writer::ptr format::get_segment_meta_writer() const {
   // can reuse stateless writer
   static segment_meta_writer writer;
 
-  return irs::memory::make_managed<irs::segment_meta_writer, false>(&writer);
+  return irs::memory::to_managed<irs::segment_meta_writer, false>(&writer);
 }
 
 irs::segment_meta_reader::ptr format::get_segment_meta_reader() const {
   // can reuse stateless reader
   static segment_meta_reader reader;
 
-  return irs::memory::make_managed<irs::segment_meta_reader, false>(&reader);
+  return irs::memory::to_managed<irs::segment_meta_reader, false>(&reader);
 }
 
 irs::document_mask_reader::ptr format::get_document_mask_reader() const {

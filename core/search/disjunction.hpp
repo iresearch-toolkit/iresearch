@@ -117,11 +117,11 @@ class basic_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  using doc_iterator_t = Adapter;
+  using adapter = Adapter;
 
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : basic_disjunction(
@@ -131,8 +131,8 @@ class basic_disjunction final
   }
 
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
@@ -182,8 +182,8 @@ class basic_disjunction final
 
   template<typename Estimation>
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord,
       sort::MergeType merge_type,
       Estimation&& estimation,
@@ -260,11 +260,11 @@ class basic_disjunction final
     }
   }
 
-  bool seek_iterator_impl(doc_iterator_t& it, doc_id_t target) {
+  bool seek_iterator_impl(adapter& it, doc_id_t target) {
     return it.value() < target && target == it->seek(target);
   }
 
-  void next_iterator_impl(doc_iterator_t& it) {
+  void next_iterator_impl(adapter& it) {
     const auto doc = it.value();
 
     if (doc_.value == doc) {
@@ -274,7 +274,7 @@ class basic_disjunction final
     }
   }
 
-  size_t score_iterator_impl(doc_iterator_t& it, const byte_type** score) const {
+  size_t score_iterator_impl(adapter& it, const byte_type** score) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -289,8 +289,8 @@ class basic_disjunction final
     return 0;
   }
 
-  mutable doc_iterator_t lhs_;
-  mutable doc_iterator_t rhs_;
+  mutable adapter lhs_;
+  mutable adapter rhs_;
   mutable const irs::byte_type* score_vals_[2];
   document doc_;
   score score_;
@@ -459,7 +459,7 @@ class small_disjunction final
     scored_itrs_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       if (!it.score->empty()) {
-        scored_itrs_.emplace_back(it);
+        scored_itrs_.emplace_back(it.operator->(), it.doc, it.score);
       }
     }
 
@@ -471,14 +471,14 @@ class small_disjunction final
         auto* score_buf = self.score_.data();
         const irs::byte_type** pVal = self.scores_vals_.data();
         for (auto& it : self.scored_itrs_) {
-          auto doc = it.value();
+          auto doc = std::get<const document*>(it)->value;
 
           if (doc < self.doc_.value) {
-            doc = it->seek(self.doc_.value);
+            doc = std::get<doc_iterator*>(it)->seek(self.doc_.value);
           }
 
           if (doc == self.doc_.value) {
-            *pVal++ = it.score->evaluate();
+            *pVal++ = std::get<const score*>(it)->evaluate();
           }
         }
 
@@ -520,9 +520,11 @@ class small_disjunction final
     last_hitched_doc_ = doc_.value;
   }
 
+  using scored_iterator = std::tuple<doc_iterator*, const document*, const score*>;
+
   doc_id_t last_hitched_doc_{ doc_limits::invalid() };
   doc_iterators_t itrs_;
-  doc_iterators_t scored_itrs_; // iterators with scores
+  std::vector<scored_iterator> scored_itrs_; // iterators with scores
   document doc_;
   score score_;
   cost cost_;
@@ -1115,19 +1117,19 @@ doc_iterator::ptr make_disjunction(
     case 1:
       if constexpr (Disjunction::ENABLE_UNARY) {
         using unary_disjunction_t = typename Disjunction::unary_disjunction_t;
-        return doc_iterator::make<unary_disjunction_t>(
-          std::move(itrs.front()));
+        return memory::make_managed<unary_disjunction_t>(std::move(itrs.front()));
       }
+
       // single sub-query
       return std::move(itrs.front());
     case 2: {
       using basic_disjunction_t = typename Disjunction::basic_disjunction_t;
 
       // simple disjunction
-      return doc_iterator::make<basic_disjunction_t>(
-        std::move(itrs.front()),
-        std::move(itrs.back()),
-        std::forward<Args>(args)...);
+      return memory::make_managed<basic_disjunction_t>(
+         std::move(itrs.front()),
+         std::move(itrs.back()),
+         std::forward<Args>(args)...);
     }
   }
 
@@ -1135,13 +1137,13 @@ doc_iterator::ptr make_disjunction(
     using small_disjunction_t = typename Disjunction::small_disjunction_t;
 
     // small disjunction
-    return doc_iterator::make<small_disjunction_t>(
+    return memory::make_managed<small_disjunction_t>(
       std::move(itrs),
       std::forward<Args>(args)...);
   }
 
   // disjunction
-  return doc_iterator::make<Disjunction>(
+  return memory::make_managed<Disjunction>(
     std::move(itrs),
     std::forward<Args>(args)...);
 }

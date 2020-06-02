@@ -167,9 +167,7 @@ class boolean_query : public filter::prepared {
       return incl;
     }
 
-    return doc_iterator::make<exclusion>(
-      std::move(incl), std::move(excl)
-    );
+    return memory::make_managed<exclusion>(std::move(incl), std::move(excl));
   }
 
   virtual void prepare(
@@ -332,19 +330,16 @@ class min_match_query final : public boolean_query {
       typedef conjunction<doc_iterator::ptr> conjunction_t;
 
       // pure conjunction
-      return memory::make_shared<conjunction_t>(
+      return memory::make_managed<conjunction_t>(
         conjunction_t::doc_iterators_t(
           std::make_move_iterator(itrs.begin()),
-          std::make_move_iterator(itrs.end())
-        ), ord
-      );
+          std::make_move_iterator(itrs.end())), ord);
     }
 
     // min match disjunction
     assert(min_match_count < size);
-    return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
-      std::move(itrs), min_match_count, ord
-    );
+    return memory::make_managed<min_match_disjunction<doc_iterator::ptr>>(
+      std::move(itrs), min_match_count, ord);
   }
 
   size_t min_match_count_;

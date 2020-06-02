@@ -405,26 +405,8 @@ struct order_bucket : private util::noncopyable {
       reverse(reverse) {
   }
 
-  order_bucket(order_bucket&& rhs) noexcept
-    : bucket(std::move(rhs.bucket)),
-      score_offset(rhs.score_offset),
-      stats_offset(rhs.stats_offset),
-      reverse(rhs.reverse) {
-    rhs.score_offset = 0;
-    rhs.stats_offset = 0;
-  }
-
-  order_bucket& operator=(order_bucket&& rhs) noexcept {
-    if (this != &rhs) {
-      bucket = std::move(rhs.bucket);
-      score_offset = rhs.score_offset;
-      rhs.score_offset = 0;
-      stats_offset = rhs.stats_offset;
-      rhs.stats_offset = 0;
-      reverse = rhs.reverse;
-    }
-    return *this;
-  }
+  order_bucket(order_bucket&& rhs) = default;
+  order_bucket& operator=(order_bucket&& rhs) = default;
 
   sort::prepared::ptr bucket; // prepared score
   size_t score_offset; // offset in score buffer

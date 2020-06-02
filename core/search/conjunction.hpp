@@ -46,9 +46,6 @@ struct score_iterator_adapter {
     assert(doc);
   }
 
-  score_iterator_adapter(const score_iterator_adapter&) = default;
-  score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
-
   score_iterator_adapter(score_iterator_adapter&& rhs) noexcept
     : it(std::move(rhs.it)),
       doc(rhs.doc),
@@ -76,8 +73,8 @@ struct score_iterator_adapter {
     return it->get_mutable(type);
   }
 
-  operator doc_iterator_t&() noexcept {
-    return it;
+  operator doc_iterator_t&&() noexcept {
+    return std::move(it);
   }
 
   // access iterator value without virtual call
@@ -311,9 +308,9 @@ doc_iterator::ptr make_conjunction(
   }
 
   // conjunction
-  return doc_iterator::make<Conjunction>(
-      std::move(itrs), std::forward<Args>(args)...
-  );
+  return memory::make_managed<Conjunction>(
+    std::move(itrs),
+    std::forward<Args>(args)...);
 }
 
 NS_END // ROOT

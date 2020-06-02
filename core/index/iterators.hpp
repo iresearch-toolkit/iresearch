@@ -57,8 +57,7 @@ NS_ROOT
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
       attribute_provider {
-  DECLARE_SHARED_PTR(doc_iterator);
-  DEFINE_FACTORY_INLINE(doc_iterator)
+  DECLARE_MANAGED_PTR(doc_iterator);
 
   static doc_iterator::ptr empty();
 

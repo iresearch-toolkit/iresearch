@@ -449,9 +449,10 @@ class ngram_similarity_query : public filter::prepared {
     if (itrs.size() < min_match_count_) {
       return doc_iterator::empty();
     }
-    return memory::make_shared<ngram_similarity_doc_iterator<doc_iterator::ptr>>(
-      std::move(itrs), states_, rdr, *query_state.field, boost(), stats_.c_str(),
-      query_state.terms.size(), min_match_count_, ord);
+
+    return memory::make_managed<ngram_similarity_doc_iterator<doc_iterator::ptr>>(
+        std::move(itrs), states_, rdr, *query_state.field, boost(), stats_.c_str(),
+        query_state.terms.size(), min_match_count_, ord);
   }
 
   size_t min_match_count_;
