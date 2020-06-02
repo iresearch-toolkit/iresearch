@@ -40,9 +40,8 @@ irs::sort::ptr make_from_bool(
 ) {
   assert(json.IsBool());
 
-  return irs::memory::make_shared<irs::tfidf_sort>(
-    json.GetBool()
-  );
+  return irs::memory::make_unique<irs::tfidf_sort>(
+    json.GetBool());
 }
 
 static const irs::string_ref WITH_NORMS_PARAM_NAME = "withNorms";
@@ -52,7 +51,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  auto ptr = irs::memory::make_shared<irs::tfidf_sort>();
+  auto ptr = irs::memory::make_unique<irs::tfidf_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::tfidf_sort&>(*ptr);
@@ -113,12 +112,12 @@ irs::sort::ptr make_from_array(
     norms = arg.GetBool();
   }
 
-  return irs::memory::make_shared<irs::tfidf_sort>(norms);
+  return irs::memory::make_unique<irs::tfidf_sort>(norms);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
-    return irs::memory::make_shared<irs::tfidf_sort>();
+    return irs::memory::make_unique<irs::tfidf_sort>();
   }
 
   rapidjson::Document json;
@@ -303,8 +302,6 @@ struct norm_score_ctx final : public score_ctx {
 
 class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
  public:
-  DEFINE_FACTORY_INLINE(prepared)
-
   explicit sort(bool normalize) noexcept
     : normalize_(normalize) {
   }
@@ -460,7 +457,7 @@ tfidf_sort::tfidf_sort(bool normalize) noexcept
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {
-  return tfidf::sort::make<tfidf::sort>(normalize_);
+  return memory::make_unique<tfidf::sort>(normalize_);
 }
 
 NS_END // ROOT

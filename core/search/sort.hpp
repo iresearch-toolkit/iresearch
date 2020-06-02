@@ -93,7 +93,7 @@ using merge_f = void(*)(const order_bucket* ctx,
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API sort {
  public:
-  DECLARE_SHARED_PTR(sort);
+  using ptr = std::unique_ptr<sort>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics, for a specific matched
@@ -102,7 +102,7 @@ class IRESEARCH_API sort {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API field_collector {
     public:
-     DECLARE_UNIQUE_PTR(field_collector);
+     using ptr = std::unique_ptr<field_collector>;
 
      virtual ~field_collector() = default;
 
@@ -153,7 +153,7 @@ class IRESEARCH_API sort {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API term_collector {
    public:
-    DECLARE_UNIQUE_PTR(term_collector);
+    using ptr = std::unique_ptr<term_collector>;
 
     virtual ~term_collector() = default;
 
@@ -210,7 +210,7 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared {
    public:
-    DECLARE_UNIQUE_PTR(prepared);
+    using ptr = std::unique_ptr<prepared>;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief default noop bulk merge function
@@ -690,11 +690,6 @@ class IRESEARCH_API order final {
  public:
   class entry : private util::noncopyable {
    public:
-    entry(const irs::sort::ptr& sort, bool reverse) noexcept
-      : sort_(sort), reverse_(reverse) {
-      assert(sort_);
-    }
-
     entry(irs::sort::ptr&& sort, bool reverse) noexcept
       : sort_(std::move(sort)), reverse_(reverse) {
       assert(sort_);
@@ -1087,7 +1082,7 @@ class IRESEARCH_API order final {
 
   prepared prepare() const;
 
-  order& add(bool reverse, sort::ptr const& sort);
+  order& add(bool reverse, sort::ptr&& sort);
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {

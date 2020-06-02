@@ -46,9 +46,8 @@ namespace tests {
     }
     DECLARE_FACTORY();
 
-    class prepared : sort::prepared {
+    class prepared : public sort::prepared {
      public:
-      DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
       virtual void collect(
         irs::byte_type*,
@@ -87,7 +86,7 @@ namespace tests {
     };
 
     test_sort():sort(irs::type<test_sort>::get()) {}
-    virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
+    virtual sort::prepared::ptr prepare() const { return std::make_unique<test_sort::prepared>(); }
   };
 
   DEFINE_FACTORY_DEFAULT(test_sort)

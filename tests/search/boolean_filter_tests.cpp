@@ -316,7 +316,7 @@ struct boosted: public irs::filter {
       const irs::order::prepared&,
       irs::boost_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
-    return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
+    return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
   }
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -1253,7 +1253,7 @@ struct unestimated: public irs::filter {
       const irs::order::prepared&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
-    return filter::prepared::make<unestimated::prepared>();
+    return irs::memory::make_managed<unestimated::prepared>();
   }
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -1320,7 +1320,7 @@ struct estimated: public irs::filter {
       const irs::order::prepared&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
-    return filter::prepared::make<estimated::prepared>(est,&evaluated);
+    return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
   static constexpr irs::string_ref type_name() noexcept {

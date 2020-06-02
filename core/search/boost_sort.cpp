@@ -27,7 +27,7 @@ NS_LOCAL
 using namespace irs;
 
 sort::ptr make_json(const string_ref& /*args*/) {
-  return memory::make_shared<boost_sort>();
+  return memory::make_unique<boost_sort>();
 }
 
 struct boost_score_ctx : score_ctx {

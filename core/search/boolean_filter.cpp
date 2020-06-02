@@ -141,9 +141,6 @@ class boolean_query : public filter::prepared {
   typedef std::vector<filter::prepared::ptr> queries_t;
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
-  DECLARE_SHARED_PTR(boolean_query);
-  DEFINE_FACTORY_INLINE(boolean_query)
-
   boolean_query() noexcept : excl_(0) { }
 
   virtual doc_iterator::ptr execute(
@@ -229,7 +226,7 @@ protected:
 /// @brief represent a set of queries joint by "And"
 //////////////////////////////////////////////////////////////////////////////
 class and_query final : public boolean_query {
-public:
+ public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
@@ -489,7 +486,7 @@ filter::prepared::ptr And::prepare(
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
 
-  auto q = and_query::make<and_query>();
+  auto q = memory::make_managed<and_query>();
   q->prepare(rdr, ord, boost, ctx, incl, excl);
   return q;
 }
@@ -555,13 +552,13 @@ filter::prepared::ptr Or::prepare(
 
   assert(min_match_count_ > 0 && min_match_count_ <= incl.size());
 
-  boolean_query::ptr q;
+  memory::managed_ptr<boolean_query> q;
   if (min_match_count_ == incl.size()) {
-    q = boolean_query::make<and_query>();
+    q = memory::make_managed<and_query>();
   } else if (1 == min_match_count_) {
-    q = boolean_query::make<or_query>();
+    q = memory::make_managed<or_query>();
   } else { // min_match_count > 1 && min_match_count < incl.size()
-    q = boolean_query::make<min_match_query>(min_match_count_);
+    q = memory::make_managed<min_match_query>(min_match_count_);
   }
 
   q->prepare(rdr, ord, boost, ctx, incl, excl);
@@ -596,7 +593,7 @@ filter::prepared::ptr Not::prepare(
     const std::vector<const irs::filter*> incl { &all_docs };
     const std::vector<const irs::filter*> excl { res.first };
 
-    auto q = and_query::make<and_query>();
+    auto q = memory::make_managed<and_query>();
     q->prepare(rdr, ord, boost, ctx, incl, excl);
     return q;
   }

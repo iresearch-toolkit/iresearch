@@ -184,9 +184,8 @@ class failing_directory : public tests::directory_mock {
       return nullptr;
     }
 
-    return irs::index_input::make<failing_index_input>(
-      tests::directory_mock::open(name, advice), name, *this
-    );
+    return irs::memory::make_unique<failing_index_input>(
+      tests::directory_mock::open(name, advice), name, *this);
   }
   virtual bool remove(const std::string& name) noexcept override {
     if (should_fail(Failure::REMOVE, name)) {

@@ -562,7 +562,7 @@ field_reader::field_reader(const index_segment& data)
   readers_.reserve(data.fields().size());
 
   for (const auto& pair : data_.fields()) {
-    readers_.emplace_back(irs::term_reader::make<term_reader>(pair.second));
+    readers_.emplace_back(irs::memory::make_unique<term_reader>(pair.second));
   }
 }
 
@@ -608,7 +608,7 @@ format::format(const index_segment& data):
 }
 
 irs::index_meta_writer::ptr format::get_index_meta_writer() const {
-  return irs::index_meta_writer::make<index_meta_writer>();
+  return irs::memory::make_unique<index_meta_writer>();
 }
 
 irs::index_meta_reader::ptr format::get_index_meta_reader() const {
@@ -637,15 +637,15 @@ irs::document_mask_reader::ptr format::get_document_mask_reader() const {
 }
 
 irs::document_mask_writer::ptr format::get_document_mask_writer() const {
-  return irs::document_mask_writer::make<tests::document_mask_writer>(data_);
+  return irs::memory::make_managed<tests::document_mask_writer>(data_);
 }
 
 irs::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
-  return irs::field_writer::make<tests::field_writer>(data_);
+  return irs::memory::make_unique<tests::field_writer>(data_);
 }
 
 irs::field_reader::ptr format::get_field_reader() const {
-  return irs::field_reader::make<tests::field_reader>(data_);
+  return irs::memory::make_unique<tests::field_reader>(data_);
 }
 
 irs::column_meta_writer::ptr format::get_column_meta_writer() const {

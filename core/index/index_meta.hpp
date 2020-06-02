@@ -110,8 +110,8 @@ class IRESEARCH_API index_meta {
     segment_meta meta;
   }; // index_segment_t
 
-  typedef std::vector<index_segment_t> index_segments_t;
-  DECLARE_UNIQUE_PTR(index_meta);
+  using index_segments_t = std::vector<index_segment_t>;
+  using ptr = std::unique_ptr<index_meta>;
 
   index_meta();
   index_meta(index_meta&& rhs) noexcept;

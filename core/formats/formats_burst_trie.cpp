@@ -1746,7 +1746,7 @@ void term_reader::prepare(
   }
 
   // read FST
-  fst_.reset(fst_t::Read(in, fst_read_options()));
+  fst_ = fst_t::Read(in, fst_read_options());
 
   if (!fst_) {
     throw irs::index_error(string_utils::to_string(
@@ -1755,6 +1755,10 @@ void term_reader::prepare(
   }
 
   owner_ = &owner;
+}
+
+term_reader::~term_reader() {
+  delete fst_;
 }
 
 attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
@@ -1768,7 +1772,7 @@ attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
 class term_reader_visitor {
  public:
   explicit term_reader_visitor(const term_reader& field)
-    : fst_(field.fst_.get()),
+    : fst_(field.fst_),
       terms_in_(field.owner_->terms_in_->reopen()),
       terms_in_cipher_(field.owner_->terms_in_cipher_.get()) {
   }
@@ -2149,7 +2153,7 @@ field_writer::field_writer(
   : suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
-    fst_buf_(memory::make_unique<detail::fst_buffer>()),
+    fst_buf_(new detail::fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),
     term_count_(0),
     version_(version),
@@ -2163,6 +2167,10 @@ field_writer::field_writer(
   assert(version_ >= FORMAT_MIN && version_ <= FORMAT_MAX);
 
   min_term_.first = false;
+}
+
+field_writer::~field_writer() {
+  delete fst_buf_;
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
@@ -2210,8 +2218,7 @@ void field_writer::prepare(const irs::flush_state& state) {
       index_out_ = index_output::make<encrypted_output>(
         std::move(index_out_),
         *index_out_cipher_,
-        blocks_in_buffer
-      );
+        blocks_in_buffer);
     }
   }
 
@@ -2458,7 +2465,7 @@ void field_reader::prepare(
         buffered_index_input::DEFAULT_BUFFER_SIZE,
         index_in_cipher->block_size());
 
-      index_in = index_input::make<encrypted_input>(
+      index_in = memory::make_unique<encrypted_input>(
         std::move(index_in),
         *index_in_cipher,
         blocks_in_buffer,

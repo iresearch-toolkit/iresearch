@@ -72,7 +72,7 @@ filter::prepared::ptr all::prepare(
 
   order.prepare_collectors(stats_buf, reader);
 
-  return filter::prepared::make<all_query>(std::move(stats), this->boost()*filter_boost);
+  return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }
 
 NS_END // ROOT

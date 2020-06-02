@@ -603,12 +603,11 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ++term_idx;
   }
 
-  return memory::make_shared<fixed_phrase_query>(
+  return memory::make_managed<fixed_phrase_query>(
     std::move(phrase_states),
     std::move(positions),
     std::move(stats),
-    this->boost() * boost
-  );
+    this->boost() * boost);
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
@@ -721,12 +720,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     ++collector;
   }
 
-  return memory::make_shared<variadic_phrase_query>(
+  return memory::make_managed<variadic_phrase_query>(
     std::move(phrase_states),
     std::move(positions),
     std::move(stats),
-    this->boost() * boost
-  );
+    this->boost() * boost);
 }
 
 NS_END // ROOT

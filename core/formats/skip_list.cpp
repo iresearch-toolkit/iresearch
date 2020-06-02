@@ -187,9 +187,8 @@ index_input::ptr skip_reader::level::dup() const {
     throw io_error("failed to duplicate document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 byte_type skip_reader::level::read_byte() {
@@ -211,9 +210,8 @@ index_input::ptr skip_reader::level::reopen() const {
     throw io_error("failed to reopen document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 size_t skip_reader::level::file_pointer() const {

@@ -363,8 +363,6 @@ bool ngram_similarity_doc_iterator<DocIterator>::check_serial_positions() {
 //////////////////////////////////////////////////////////////////////////////
 class ngram_similarity_query : public filter::prepared {
  public:
-  DECLARE_SHARED_PTR(ngram_similarity_query);
-
   ngram_similarity_query(size_t min_match_count, states_t&& states, bstring&& stats, boost_t boost = no_boost())
       :prepared(boost), min_match_count_(min_match_count), states_(std::move(states)), stats_(std::move(stats)) {}
 
@@ -550,7 +548,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_stats.finish(stats_buf, term_idx, field_stats, rdr);
   }
 
-  return memory::make_shared<ngram_similarity_query>(
+  return memory::make_managed<ngram_similarity_query>(
       min_match_count,
       std::move(query_states),
       std::move(stats),

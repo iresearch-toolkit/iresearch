@@ -95,9 +95,9 @@ bool order::operator==(const order& other) const {
   return true;
 }
 
-order& order::add(bool reverse, const sort::ptr& sort) {
+order& order::add(bool reverse, sort::ptr&& sort) {
   assert(sort);
-  order_.emplace_back(sort, reverse);
+  order_.emplace_back(std::move(sort), reverse);
 
   return *this;
 }

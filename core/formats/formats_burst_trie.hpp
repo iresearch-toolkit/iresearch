@@ -235,10 +235,9 @@ class entry : private util::noncopyable {
 class term_reader : public irs::term_reader,
                     private util::noncopyable {
  public:
-  using fst_t = fst::VectorFst<byte_arc>;
-
   term_reader() = default;
   term_reader(term_reader&& rhs) noexcept;
+  virtual ~term_reader();
 
   void prepare(std::istream& in, const feature_map_t& features, field_reader& owner);
 
@@ -252,6 +251,7 @@ class term_reader : public irs::term_reader,
   virtual attribute* get_mutable(type_info::type_id type) noexcept override;
 
  private:
+  using fst_t = fst::VectorFst<byte_arc>;
   friend class term_iterator_base;
   friend class term_reader_visitor;
 
@@ -266,7 +266,7 @@ class term_reader : public irs::term_reader,
   frequency freq_; // total term freq
   frequency* pfreq_{};
   field_meta field_;
-  std::unique_ptr<fst_t> fst_; // TODO: use compact fst here!!!
+  fst_t* fst_{}; // TODO: use compact fst here!!!
   field_reader* owner_;
 }; // term_reader
 
@@ -302,6 +302,8 @@ class field_writer final : public irs::field_writer {
     int32_t version = FORMAT_MAX,
     uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
     uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
+
+  virtual ~field_writer();
 
   virtual void prepare(const irs::flush_state& state) override;
 
@@ -360,7 +362,7 @@ class field_writer final : public irs::field_writer {
   index_output::ptr index_out_; // output stream for indexes
   postings_writer::ptr pw_; // postings writer
   std::vector<detail::entry> stack_;
-  std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
+  detail::fst_buffer* fst_buf_; // pimpl buffer used for building FST for fields
   detail::volatile_byte_ref last_term_; // last pushed term
   std::vector<size_t> prefixes_;
   std::pair<bool, detail::volatile_byte_ref> min_term_; // current min term in a block

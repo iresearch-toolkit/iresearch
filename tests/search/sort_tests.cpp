@@ -84,7 +84,7 @@ struct aligned_scorer : public irs::sort {
   }
 
   static ptr make(const irs::flags& features = irs::flags::empty_instance()) {
-    return std::make_shared<aligned_scorer>(features);
+    return std::make_unique<aligned_scorer>(features);
   }
   aligned_scorer(const irs::flags& features = irs::flags::empty_instance())
     : irs::sort(irs::type<aligned_scorer>::get()),
@@ -102,7 +102,7 @@ struct dummy_scorer0: public irs::sort {
     return __FILE__ ":" STRINGIFY(__LINE__);
   }
 
-  static ptr make() { return std::make_shared<dummy_scorer0>(); }
+  static ptr make() { return std::make_unique<dummy_scorer0>(); }
   dummy_scorer0(): irs::sort(irs::type<dummy_scorer0>::get()) { }
   virtual prepared::ptr prepare() const override { return nullptr; }
 };
@@ -115,7 +115,7 @@ TEST(sort_tests, order_equal) {
       return __FILE__ ":" STRINGIFY(__LINE__);
     }
 
-    static ptr make() { return std::make_shared<dummy_scorer1>(); }
+    static ptr make() { return std::make_unique<dummy_scorer1>(); }
     dummy_scorer1(): irs::sort(irs::type<dummy_scorer1>::get()) { }
     virtual prepared::ptr prepare() const override { return nullptr; }
   };

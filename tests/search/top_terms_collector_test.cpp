@@ -59,7 +59,7 @@ struct sort : irs::sort {
   }
 
   static irs::sort::ptr make() {
-    return std::make_shared<sort>();
+    return std::make_unique<sort>();
   }
 
   sort() noexcept : irs::sort(irs::type<sort>::get()) { }

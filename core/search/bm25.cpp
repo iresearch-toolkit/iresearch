@@ -39,7 +39,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  auto ptr = irs::memory::make_shared<irs::bm25_sort>();
+  auto ptr = irs::memory::make_unique<irs::bm25_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::bm25_sort&>(*ptr);
@@ -132,13 +132,13 @@ irs::sort::ptr make_from_array(
     }
   }
 
-  return irs::memory::make_shared<irs::bm25_sort>(k, b);
+  return irs::memory::make_unique<irs::bm25_sort>(k, b);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
     // default args
-    return irs::memory::make_shared<irs::bm25_sort>();
+    return irs::memory::make_unique<irs::bm25_sort>();
   }
 
   rapidjson::Document json;
@@ -358,8 +358,6 @@ struct norm_score_ctx final : public score_ctx {
 
 class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  public:
-  DEFINE_FACTORY_INLINE(prepared)
-
   sort(float_t k, float_t b) noexcept
     : k_(k), b_(b) {
   }
@@ -548,7 +546,7 @@ bm25_sort::bm25_sort(
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_);
+  return memory::make_unique<bm25::sort>(k_, b_);
 }
 
 NS_END // ROOT

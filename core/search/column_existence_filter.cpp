@@ -152,8 +152,8 @@ filter::prepared::ptr by_column_existence::prepare(
   filter_boost *= boost();
 
   return options().prefix_match
-    ? filter::prepared::make<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
-    : filter::prepared::make<column_existence_query>(field(), std::move(stats), filter_boost);
+    ? memory::make_managed<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
+    : memory::make_managed<column_existence_query>(field(), std::move(stats), filter_boost);
 }
 
 NS_END // ROOT

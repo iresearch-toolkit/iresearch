@@ -164,8 +164,6 @@ class IRESEARCH_API memory_file
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_input final : public index_input {
  public:
-  DECLARE_UNIQUE_PTR(memory_index_input); // allow private construction
-
   explicit memory_index_input(const memory_file& file) noexcept;
 
   virtual index_input::ptr dup() const override;

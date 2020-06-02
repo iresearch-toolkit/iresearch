@@ -56,7 +56,6 @@ struct boost : public irs::sort {
 
   class prepared: public irs::prepared_sort_basic<irs::boost_t, void> {
    public:
-    DEFINE_FACTORY_INLINE(prepared)
     prepared() { }
 
     virtual const irs::flags& features() const override {
@@ -94,7 +93,7 @@ struct boost : public irs::sort {
   typedef irs::boost_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
-    return boost::prepared::make<boost::prepared>();
+    return irs::memory::make_unique<boost::prepared>();
   }
 }; // sort::boost
 
@@ -192,8 +191,6 @@ struct custom_sort: public irs::sort {
       const irs::term_reader& term_reader_;
       irs::byte_type* score_buf_;
     };
-
-    DEFINE_FACTORY_INLINE(prepared)
 
     prepared(const custom_sort& sort)
       : sort_(sort) {
@@ -325,7 +322,7 @@ struct custom_sort: public irs::sort {
   DECLARE_FACTORY();
   custom_sort(): sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
-    return custom_sort::prepared::make<custom_sort::prepared>(*this);
+    return irs::memory::make_unique<custom_sort::prepared>(*this);
   }
 };
 
@@ -483,8 +480,6 @@ struct frequency_sort: public irs::sort {
       irs::byte_type* score_buf;
     };
 
-    DEFINE_FACTORY_INLINE(prepared)
-
     prepared() = default;
 
     virtual void collect(
@@ -559,7 +554,7 @@ struct frequency_sort: public irs::sort {
   DECLARE_FACTORY();
   frequency_sort(): sort(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
-    return frequency_sort::prepared::make<frequency_sort::prepared>();
+    return irs::memory::make_unique<frequency_sort::prepared>();
   }
 }; // sort::frequency_sort
 

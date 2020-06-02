@@ -324,10 +324,8 @@ struct managed_deleter : util::noncopyable {
     typename U,
     typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
   managed_deleter& operator=(managed_deleter<U>&& rhs) noexcept {
-    if (this != &rhs) {
-      ptr_ = rhs.ptr_;
-      rhs.ptr_ = nullptr;
-    }
+    ptr_ = rhs.ptr_;
+    rhs.ptr_ = nullptr;
     return *this;
   }
 
