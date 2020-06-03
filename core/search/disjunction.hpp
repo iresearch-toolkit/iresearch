@@ -62,7 +62,7 @@ FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator&
   }
 };
 
-class score_buffer : private score_ctx {
+class score_buffer {
  public:
   score_buffer(const order::prepared& ord, size_t size)
     : bucket_size_(ord.score_size()),
@@ -1112,34 +1112,34 @@ class block_disjunction final
 
   template<bool Score>
   bool refill(adapter& it, bool& empty) {
-     assert(it.doc);
-     const auto* doc = &it.doc->value;
-     assert(!doc_limits::eof(*doc));
+    assert(it.doc);
+    const auto* doc = &it.doc->value;
+    assert(!doc_limits::eof(*doc));
 
-     if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
-       // exhausted
-       return false;
-     }
+    if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
+      // exhausted
+      return false;
+    }
 
-     for (;;) {
-       if (*doc >= max_) {
-         min_ = std::min(*doc, min_);
-         return true;
-       }
+    for (;;) {
+      if (*doc >= max_) {
+        min_ = std::min(*doc, min_);
+        return true;
+      }
 
-       const size_t delta = *doc - base_;
+      const size_t delta = *doc - base_;
 
-       irs::set_bit(mask_[delta / block_size()], delta % block_size());
-       if constexpr (Score) {
-         assert(it.score);
-         merger_(score_buf_.get(delta), it.score->evaluate());
-       }
-       empty = false;
+      irs::set_bit(mask_[delta / block_size()], delta % block_size());
+      if constexpr (Score) {
+        assert(it.score);
+        merger_(score_buf_.get(delta), it.score->evaluate());
+      }
+      empty = false;
 
-       if (!it->next()) {
-         // exhausted
-         return false;
-       }
+      if (!it->next()) {
+        // exhausted
+        return false;
+      }
     }
   }
 
