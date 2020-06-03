@@ -26,9 +26,10 @@
 #include <queue>
 
 #include "conjunction.hpp"
-#include "utils/std.hpp"
-#include "utils/type_limits.hpp"
 #include "index/iterators.hpp"
+#include "utils/std.hpp"
+#include "utils/misc.hpp"
+#include "utils/type_limits.hpp"
 
 NS_ROOT
 NS_BEGIN(detail)
@@ -62,6 +63,48 @@ FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator&
   }
 };
 
+template<size_t Size>
+class min_match_buffer {
+ public:
+  explicit min_match_buffer(size_t min_match_count) noexcept
+    : min_match_count_(std::max(size_t(1), min_match_count)) {
+  }
+
+  bool test(size_t i) noexcept {
+    assert(IRESEARCH_COUNTOF(match_count_) < i);
+    return match_count_[i] >= min_match_count_;
+  }
+
+  void inc(size_t i) noexcept {
+    ++match_count_[i];
+  }
+
+  void clear() noexcept {
+    std::memset(match_count_, 0, sizeof match_count_);
+  }
+
+  uint32_t min_match_count() const noexcept {
+    return min_match_count_;
+  }
+
+ private:
+  const uint32_t min_match_count_;
+  uint32_t match_count_[Size];
+}; // min_match_block
+
+template<>
+class min_match_buffer<0> {
+ public:
+  explicit min_match_buffer(size_t) noexcept {}
+  bool test(size_t) noexcept { assert(false); }
+  void inc(size_t) noexcept { assert(false); }
+  void clear() noexcept { assert(false); }
+  uint32_t min_match_count() const noexcept {
+    assert(false);
+    return 0;
+  }
+}; // min_match_block
+
 class score_buffer {
  public:
   score_buffer(const order::prepared& ord, size_t size)
@@ -91,7 +134,7 @@ class score_buffer {
   size_t bucket_size_;
   size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
-};
+}; // score_buffer
 
 struct empty_score_buffer {
   explicit empty_score_buffer(const order::prepared&, size_t) noexcept { }
@@ -112,7 +155,7 @@ struct empty_score_buffer {
   size_t bucket_size() const noexcept {
     return 0;
   }
-};
+}; // empty_score_buffer
 
 NS_END // detail
 
@@ -858,12 +901,19 @@ class disjunction final
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct block_disjunction_traits
 ////////////////////////////////////////////////////////////////////////////////
-template<bool Score, bool SeekReadahead, size_t NumBlocks>
+template<bool Score, bool MinMatch, bool SeekReadahead, size_t NumBlocks>
 struct block_disjunction_traits {
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief "false" - iterator is used for filtering only, "true" - otherwise
+  /// @brief "false" - iterator is used for filtering only,
+  ///        "true" - otherwise
   //////////////////////////////////////////////////////////////////////////////
   static constexpr bool score() noexcept { return Score; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for min match filtering,
+  ///         "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool min_match() noexcept { return MinMatch; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief use readahead buffer for random access
@@ -882,7 +932,7 @@ struct block_disjunction_traits {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator,
          typename Adapter = score_iterator_adapter<DocIterator>,
-         typename Traits = block_disjunction_traits<false, false, 64>>
+         typename Traits = block_disjunction_traits<false, false, false, 64>>
 class block_disjunction final
     : public frozen_attributes<3, doc_iterator>,
       private score_ctx {
@@ -905,15 +955,33 @@ class block_disjunction final
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : block_disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
+    : block_disjunction(std::move(itrs), 1, ord, merge_type, est) {
+  }
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      size_t min_match_count,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      cost::cost_t est)
+    : block_disjunction(std::move(itrs), min_match_count, ord,
+                        merge_type, est, resolve_overload_tag()) {
   }
 
   explicit block_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : block_disjunction(std::move(itrs), 1, ord, merge_type) {
+  }
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      size_t min_match_count,
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
     : block_disjunction(
-        std::move(itrs), ord, merge_type,
+        std::move(itrs), min_match_count, ord, merge_type,
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -929,25 +997,34 @@ class block_disjunction final
   }
 
   virtual bool next() override {
-    while (!cur_) {
-      if (begin_ >= std::end(mask_) && !refill()) {
-        doc_.value = doc_limits::eof();
+    while (true) {
+      while (!cur_) {
+        if (begin_ >= std::end(mask_) && !refill()) {
+          doc_.value = doc_limits::eof();
 
-        return false;
+          return false;
+        }
+
+        cur_ = *begin_++;
+        base_ += bits_required<uint64_t>();
       }
 
-      cur_ = *begin_++;
-      base_ += bits_required<uint64_t>();
-    }
+      const size_t delta = math::math_traits<uint64_t>::ctz(cur_);
+      irs::unset_bit(cur_, delta);
 
-    const size_t delta = math::math_traits<uint64_t>::ctz(cur_);
-    irs::unset_bit(cur_, delta);
-    doc_.value = base_ + doc_id_t(delta);
-    if constexpr (traits_type::score()) {
-      score_value_ = score_buf_.get(base_ + delta);
-    }
+      if constexpr (traits_type::min_match()) {
+        if (!match_buf_.test(delta)) {
+          continue;
+        }
+      }
 
-    return true;
+      doc_.value = base_ + doc_id_t(delta);
+      if constexpr (traits_type::score()) {
+        score_value_ = score_buf_.get(base_ + delta);
+      }
+
+      return true;
+    }
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -1011,27 +1088,31 @@ class block_disjunction final
   }
 
  private:
-  using score_buffer_type = std::conditional_t<traits_type::score(),
-    detail::score_buffer,
-    detail::empty_score_buffer>;
-
-  struct resolve_overload_tag{};
-
   static constexpr doc_id_t block_size() noexcept {
     return bits_required<uint64_t>();
   }
 
   static constexpr doc_id_t num_blocks() noexcept {
-    return  std::max(size_t(1), traits_type::num_blocks());
+    return std::max(size_t(1), traits_type::num_blocks());
   }
 
   static constexpr size_t window() noexcept {
     return block_size()*num_blocks();
   }
 
+  using score_buffer_type = std::conditional_t<traits_type::score(),
+    detail::score_buffer,
+    detail::empty_score_buffer>;
+
+  using min_match_buffer_type = detail::min_match_buffer<
+    traits_type::min_match() ? window() : 0>;
+
+  struct resolve_overload_tag{};
+
   template<typename Estimation>
   block_disjunction(
       doc_iterators_t&& itrs,
+      size_t min_match_count,
       const order::prepared& ord,
       sort::MergeType merge_type,
       Estimation&& estimation,
@@ -1047,12 +1128,23 @@ class block_disjunction final
         : doc_limits::invalid()),
       cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)),
-      score_buf_(ord, window()) {
+      score_buf_(ord, window()),
+      match_buf_(min_match_count) {
     if (traits_type::score() && !ord.empty()) {
       score_.prepare(this, [](const score_ctx* ctx) noexcept -> const byte_type* {
         auto& self = *static_cast<const block_disjunction*>(ctx);
 
         return self.score_value_;
+      });
+    }
+
+    if (traits_type::min_match() && min_match_count > 1) {
+      // sort subnodes in ascending order by their cost
+      // FIXME don't use extract
+      std::sort(
+        itrs_.begin(), itrs_.end(),
+        [](const adapter& lhs, const adapter& rhs) {
+          return cost::extract(lhs, 0) < cost::extract(rhs, 0);
       });
     }
   }
@@ -1062,11 +1154,22 @@ class block_disjunction final
     auto* begin = itrs_.data();
     auto* end = itrs_.data() + itrs_.size();
 
+    // local variable to avoid conversion uint32_t -> size_t
+    [[maybe_unused]] const size_t min_match_count = match_buf_.min_match_count();
+
     while (begin != end) {
       if (!visitor(*begin)) {
-        std::swap(*begin, itrs_.back());
-        itrs_.pop_back();
+        irstd::swap_remove(itrs_, begin);
         --end;
+
+        if constexpr (traits_type::min_match()) {
+          if (itrs_.size() < min_match_count) {
+            // can't fulfill min match requirement anymore
+            itrs_.clear();
+            return;
+          }
+        }
+
       } else {
         ++begin;
       }
@@ -1083,6 +1186,9 @@ class block_disjunction final
       score_value_ = score_buf_.data();
       std::memset(score_buf_.data(), 0, score_buf_.size());
     }
+    if constexpr (traits_type::min_match()) {
+      match_buf_.clear();
+    }
     bool empty = true;
 
     do {
@@ -1097,7 +1203,7 @@ class block_disjunction final
 
         return refill<false>(it, empty);
       });
-    } while (empty);
+    } while (empty && !itrs_.empty());
 
     // FIXME set to the first filled block
     begin_ = mask_;
@@ -1134,6 +1240,9 @@ class block_disjunction final
         assert(it.score);
         merger_(score_buf_.get(delta), it.score->evaluate());
       }
+      if constexpr (traits_type::min_match()) {
+        match_buf_.inc(delta);
+      }
       empty = false;
 
       if (!it->next()) {
@@ -1154,6 +1263,7 @@ class block_disjunction final
   score score_;
   cost cost_;
   score_buffer_type score_buf_;
+  min_match_buffer_type match_buf_;
   const byte_type* score_value_{score_buf_.data()};
   order::prepared::merger merger_;
 }; // block_disjunction
