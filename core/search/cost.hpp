@@ -47,12 +47,12 @@ class IRESEARCH_API cost final : public attribute {
 
   cost() = default;
 
-  cost(cost_t value) noexcept
+  explicit cost(cost_t value) noexcept
     : value_(value),
       init_(true) {
   }
 
-  cost(cost_f&& func) noexcept(std::is_nothrow_move_constructible_v<cost_f>)
+  explicit cost(cost_f&& func) noexcept(std::is_nothrow_move_constructible_v<cost_f>)
     : func_(std::move(func)),
       init_(false) {
   }
