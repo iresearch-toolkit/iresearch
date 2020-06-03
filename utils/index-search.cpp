@@ -511,7 +511,7 @@ int search(
     SCOPED_TIMER("Order build time");
     irs::order sort;
 
-    sort.add(true, scr);
+    sort.add(true, std::move(scr));
     order = sort.prepare();
   }
 
