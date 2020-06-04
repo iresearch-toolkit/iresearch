@@ -28,7 +28,6 @@
 #include "conjunction.hpp"
 #include "index/iterators.hpp"
 #include "utils/std.hpp"
-#include "utils/misc.hpp"
 #include "utils/type_limits.hpp"
 
 NS_ROOT
@@ -70,9 +69,9 @@ class min_match_buffer {
     : min_match_count_(std::max(size_t(1), min_match_count)) {
   }
 
-  bool test(size_t i) noexcept {
-    assert(IRESEARCH_COUNTOF(match_count_) < i);
-    return match_count_[i] >= min_match_count_;
+  uint32_t match_count(size_t i) const noexcept {
+    assert(i < Size);
+    return match_count_[i];
   }
 
   void inc(size_t i) noexcept {
@@ -90,20 +89,22 @@ class min_match_buffer {
  private:
   const uint32_t min_match_count_;
   uint32_t match_count_[Size];
-}; // min_match_block
+}; // min_match_buffer
 
 template<>
 class min_match_buffer<0> {
  public:
   explicit min_match_buffer(size_t) noexcept {}
-  bool test(size_t) noexcept { assert(false); }
   void inc(size_t) noexcept { assert(false); }
   void clear() noexcept { assert(false); }
-  uint32_t min_match_count() const noexcept {
+  uint32_t match_count(size_t) const noexcept {
     assert(false);
-    return 0;
+    return 1;
   }
-}; // min_match_block
+  uint32_t min_match_count() const noexcept {
+    return 1;
+   }
+}; // min_match_buffer
 
 class score_buffer {
  public:
@@ -992,6 +993,10 @@ class block_disjunction final
         resolve_overload_tag()) {
   }
 
+  size_t match_count() const noexcept {
+    return match_count_;
+  }
+
   virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
@@ -1009,18 +1014,20 @@ class block_disjunction final
         base_ += bits_required<uint64_t>();
       }
 
-      const size_t delta = math::math_traits<uint64_t>::ctz(cur_);
-      irs::unset_bit(cur_, delta);
+      const size_t offset = math::math_traits<uint64_t>::ctz(cur_);
+      irs::unset_bit(cur_, offset);
 
       if constexpr (traits_type::min_match()) {
-        if (!match_buf_.test(delta)) {
+        match_count_ = match_buf_.match_count(offset);
+
+        if (match_count_ < match_buf_.min_match_count()) {
           continue;
         }
       }
 
-      doc_.value = base_ + doc_id_t(delta);
+      doc_.value = base_ + doc_id_t(offset);
       if constexpr (traits_type::score()) {
-        score_value_ = score_buf_.get(base_ + delta);
+        score_value_ = score_buf_.get(base_ + offset);
       }
 
       return true;
@@ -1040,6 +1047,10 @@ class block_disjunction final
     } else {
       doc_.value = doc_limits::eof();
 
+      if constexpr (traits_type::min_match()) {
+        match_count_ = 0;
+      }
+
       for_each_remove_if([this, target](auto& it) mutable {
         const auto doc = it->seek(target);
 
@@ -1048,7 +1059,14 @@ class block_disjunction final
           return false;
         }
 
-        doc_.value = std::min(doc_.value, doc);
+        if (doc < doc_.value) {
+          doc_.value = doc;
+          if constexpr (traits_type::min_match()) {
+            match_count_ = 1;
+          }
+        } else if constexpr (traits_type::min_match()) {
+          ++match_count_;
+        }
 
         return true;
       });
@@ -1127,9 +1145,9 @@ class block_disjunction final
         ? doc_limits::eof()
         : doc_limits::invalid()),
       cost_(std::forward<Estimation>(estimation)),
-      merger_(ord.prepare_merger(merge_type)),
       score_buf_(ord, window()),
-      match_buf_(min_match_count) {
+      match_buf_(min_match_count),
+      merger_(ord.prepare_merger(merge_type)) {
     if (traits_type::score() && !ord.empty()) {
       score_.prepare(this, [](const score_ctx* ctx) noexcept -> const byte_type* {
         auto& self = *static_cast<const block_disjunction*>(ctx);
@@ -1233,15 +1251,15 @@ class block_disjunction final
         return true;
       }
 
-      const size_t delta = *doc - base_;
+      const size_t offset = *doc - base_;
 
-      irs::set_bit(mask_[delta / block_size()], delta % block_size());
+      irs::set_bit(mask_[offset / block_size()], offset % block_size());
       if constexpr (Score) {
         assert(it.score);
-        merger_(score_buf_.get(delta), it.score->evaluate());
+        merger_(score_buf_.get(offset), it.score->evaluate());
       }
       if constexpr (traits_type::min_match()) {
-        match_buf_.inc(delta);
+        match_buf_.inc(offset);
       }
       empty = false;
 
@@ -1262,6 +1280,7 @@ class block_disjunction final
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
   score score_;
   cost cost_;
+  size_t match_count_{1};
   score_buffer_type score_buf_;
   min_match_buffer_type match_buf_;
   const byte_type* score_value_{score_buf_.data()};
