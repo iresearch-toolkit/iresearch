@@ -242,7 +242,7 @@ class min_match_disjunction
   ///        to current matched document after this call.
   /// @returns total matched iterators count
   //////////////////////////////////////////////////////////////////////////////
-  size_t count_matched() {
+  size_t match_count() {
     push_valid_to_lead();
     return lead_;
   }

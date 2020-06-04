@@ -3659,9 +3659,7 @@ TEST(block_disjunction_test, next_small_block) {
   using traits = irs::block_disjunction_traits<true, false, false, 1>;
 
   using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    traits>;
+    irs::doc_iterator::ptr, traits>;
 
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
@@ -4197,9 +4195,7 @@ TEST(block_disjunction_test, seek_small_block) {
   using traits = irs::block_disjunction_traits<true, false, false, 1>;
 
   using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    traits>;
+    irs::doc_iterator::ptr, traits>;
 
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
@@ -4501,9 +4497,7 @@ TEST(block_disjunction_test, seek_next_small_block) {
   using traits = irs::block_disjunction_traits<true, false, false, 1>;
 
   using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    traits>;
+    irs::doc_iterator::ptr, traits>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   {
@@ -4545,9 +4539,7 @@ TEST(block_disjunction_test, scored_seek_next_small_block) {
   using traits = irs::block_disjunction_traits<true, false, false, 1>;
 
   using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    traits>;
+    irs::doc_iterator::ptr, traits>;
 
   // disjunction without score, sub-iterators with scores
   {
@@ -4947,9 +4939,7 @@ TEST(block_disjunction_test, scored_seek_next) {
   using traits = irs::block_disjunction_traits<true, false, false, 64>;
 
   using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::score_iterator_adapter<irs::doc_iterator::ptr>,
-    traits>;
+    irs::doc_iterator::ptr, traits>;
 
   // disjunction without score, sub-iterators with scores
   {

@@ -932,8 +932,8 @@ struct block_disjunction_traits {
 /// @brief the implementation reads ahead 64*NumBlocks documents
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator,
-         typename Adapter = score_iterator_adapter<DocIterator>,
-         typename Traits = block_disjunction_traits<false, false, false, 64>>
+         typename Traits = block_disjunction_traits<false, false, false, 32>,
+         typename Adapter = score_iterator_adapter<DocIterator>>
 class block_disjunction final
     : public frozen_attributes<3, doc_iterator>,
       private score_ctx {

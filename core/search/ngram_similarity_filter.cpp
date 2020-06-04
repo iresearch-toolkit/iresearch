@@ -43,6 +43,13 @@ struct ngram_segment_state_t {
 
 typedef states_cache<ngram_segment_state_t> states_t;
 
+template<typename DocIterator>
+using approximation = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<false, true, false, 32>>;
+
+//using approximation = min_match_disjunction<DocIterator>;
+
 NS_END
 
 NS_ROOT
@@ -55,7 +62,7 @@ template<typename DocIterator>
 class ngram_similarity_doc_iterator final
     : public doc_iterator, private score_ctx {
  public:
-  using doc_iterators_t = typename min_match_disjunction<DocIterator>::doc_iterators_t;
+  using doc_iterators_t = typename approximation<DocIterator>::doc_iterators_t;
 
   ngram_similarity_doc_iterator(
       doc_iterators_t&& itrs,
@@ -159,7 +166,7 @@ class ngram_similarity_doc_iterator final
   bool check_serial_positions();
 
   std::vector<position_t> pos_;
-  min_match_disjunction<DocIterator> approx_;
+  approximation<DocIterator> approx_;
   document* doc_;
   frozen_attributes<5, attribute_provider> attrs_;
   std::set<size_t> used_pos_; // longest sequence positions overlaping detector
@@ -178,7 +185,7 @@ class ngram_similarity_doc_iterator final
 
 template<typename DocIterator>
 bool ngram_similarity_doc_iterator<DocIterator>::check_serial_positions() {
-  size_t potential = approx_.count_matched(); // how long max sequence could be in the best case
+  size_t potential = approx_.match_count(); // how long max sequence could be in the best case
   search_buf_.clear();
   size_t longest_sequence_len = 0;
   seq_freq_.value = 0;
@@ -421,7 +428,7 @@ class ngram_similarity_query : public filter::prepared {
     const sub_reader& rdr,
     const ngram_segment_state_t& query_state,
     const order::prepared& ord) const {
-    min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
+    approximation<doc_iterator::ptr>::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
     auto features = ord.features() | by_ngram_similarity::features();
     for (auto& term_state : query_state.terms) {
