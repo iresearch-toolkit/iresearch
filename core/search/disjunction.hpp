@@ -82,12 +82,12 @@ class min_match_buffer {
     std::memset(match_count_, 0, sizeof match_count_);
   }
 
-  uint32_t min_match_count() const noexcept {
+  size_t min_match_count() const noexcept {
     return min_match_count_;
   }
 
  private:
-  const uint32_t min_match_count_;
+  const size_t min_match_count_;
   uint32_t match_count_[Size];
 }; // min_match_buffer
 
@@ -899,10 +899,16 @@ class disjunction final
   order::prepared::merger merger_;
 }; // disjunction
 
+enum class MatchType {
+  MATCH,
+  MIN_MATCH_FAST,
+  MIN_MATCH
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct block_disjunction_traits
 ////////////////////////////////////////////////////////////////////////////////
-template<bool Score, bool MinMatch, bool SeekReadahead, size_t NumBlocks>
+template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 32>
 struct block_disjunction_traits {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "false" - iterator is used for filtering only,
@@ -912,9 +918,19 @@ struct block_disjunction_traits {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "false" - iterator is used for min match filtering,
-  ///         "true" - otherwise
+  ///        "true" - otherwise
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr bool min_match() noexcept { return MinMatch; }
+  static constexpr bool min_match() noexcept {
+    return MatchType::MATCH != MinMatch;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for min match filtering,
+  ///        "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool min_match_early_pruning() noexcept {
+    return MatchType::MIN_MATCH_FAST == MinMatch;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief use readahead buffer for random access
@@ -932,7 +948,7 @@ struct block_disjunction_traits {
 /// @brief the implementation reads ahead 64*NumBlocks documents
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator,
-         typename Traits = block_disjunction_traits<false, false, false, 32>,
+         typename Traits,
          typename Adapter = score_iterator_adapter<DocIterator>>
 class block_disjunction final
     : public frozen_attributes<3, doc_iterator>,
@@ -1006,6 +1022,7 @@ class block_disjunction final
       while (!cur_) {
         if (begin_ >= std::end(mask_) && !refill()) {
           doc_.value = doc_limits::eof();
+          match_count_ = 0;
 
           return false;
         }
@@ -1065,7 +1082,9 @@ class block_disjunction final
             match_count_ = 1;
           }
         } else if constexpr (traits_type::min_match()) {
-          ++match_count_;
+          if (target == doc) {
+            ++match_count_;
+          }
         }
 
         return true;
@@ -1073,6 +1092,7 @@ class block_disjunction final
 
       if (itrs_.empty()) {
         doc_.value = doc_limits::eof();
+        match_count_ = 0;
 
         return doc_limits::eof();
       }
@@ -1144,6 +1164,9 @@ class block_disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      match_count_(itrs_.empty()
+        ? size_t(0)
+        : static_cast<size_t>(!traits_type::min_match())),
       cost_(std::forward<Estimation>(estimation)),
       score_buf_(ord, window()),
       match_buf_(min_match_count),
@@ -1172,24 +1195,30 @@ class block_disjunction final
     auto* begin = itrs_.data();
     auto* end = itrs_.data() + itrs_.size();
 
-    // local variable to avoid conversion uint32_t -> size_t
-    [[maybe_unused]] const size_t min_match_count = match_buf_.min_match_count();
-
     while (begin != end) {
       if (!visitor(*begin)) {
         irstd::swap_remove(itrs_, begin);
         --end;
 
-        if constexpr (traits_type::min_match()) {
-          if (itrs_.size() < min_match_count) {
+        if constexpr (traits_type::min_match_early_pruning()) {
+          // we don't need precise match count
+          if (itrs_.size() < match_buf_.min_match_count()) {
             // can't fulfill min match requirement anymore
             itrs_.clear();
             return;
           }
         }
-
       } else {
         ++begin;
+      }
+    }
+
+    if constexpr (traits_type::min_match() && !traits_type::min_match_early_pruning()) {
+      // we need precise match count, so can't break earlier
+      if (itrs_.size() < match_buf_.min_match_count()) {
+        // can't fulfill min match requirement anymore
+        itrs_.clear();
+        return;
       }
     }
   }
@@ -1279,8 +1308,8 @@ class block_disjunction final
   doc_id_t min_{doc_limits::invalid()}; // base doc id for the next mask
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
   score score_;
+  size_t match_count_;
   cost cost_;
-  size_t match_count_{1};
   score_buffer_type score_buf_;
   min_match_buffer_type match_buf_;
   const byte_type* score_value_{score_buf_.data()};
