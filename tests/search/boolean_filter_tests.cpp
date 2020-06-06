@@ -4116,6 +4116,59 @@ TEST(block_disjunction_test, min_match_next) {
     ASSERT_EQ(expected, result);
   }
 
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 1, 129 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1 };
+    std::vector<size_t> match_counts{ 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 129 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
   // values don't fit single block
   {
     std::vector<std::vector<irs::doc_id_t>> docs{

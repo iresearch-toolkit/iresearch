@@ -946,6 +946,9 @@ struct block_disjunction_traits {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_disjunction
 /// @brief the implementation reads ahead 64*NumBlocks documents
+/// @note the implementation isn't optimized for conjunction case
+///       when the requected min match count equals to a number of input
+///       iterators. It's better to to use a dedicated "conjunction" iterator.
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator,
          typename Traits,
@@ -1250,6 +1253,9 @@ class block_disjunction final
 
         return refill<false>(it, empty);
       });
+
+      // FIXME for min match we can check if this block
+      // contains the requested number of matches
     } while (empty && !itrs_.empty());
 
     // FIXME set to the first filled block
