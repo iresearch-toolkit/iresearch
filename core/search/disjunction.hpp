@@ -1047,7 +1047,7 @@ class block_disjunction final
 
       doc_.value = base_ + doc_id_t(offset);
       if constexpr (traits_type::score()) {
-        score_value_ = score_buf_.get(base_ + offset);
+        score_value_ = score_buf_.get(offset);
       }
 
       return true;

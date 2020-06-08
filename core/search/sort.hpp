@@ -906,8 +906,8 @@ class IRESEARCH_API order final {
     static const prepared& unordered() noexcept;
 
     prepared() = default;
-    prepared(prepared&& rhs) noexcept = default;
-    prepared& operator=(prepared&& rhs) noexcept = default;
+    prepared(prepared&& rhs) = default;
+    prepared& operator=(prepared&& rhs) = default;
 
     const flags& features() const noexcept { return features_; }
 
