@@ -2449,6 +2449,12 @@ void index_writer::finish() {
     if (!writer_->commit()) {
       throw illegal_state();
     }
+    // atomic_store may throw
+    static_assert(!noexcept
+      (committed_state_helper::atomic_store(&committed_state_,
+        std::move(pending_state_.commit))));
+    committed_state_helper::atomic_store(&committed_state_,
+      std::move(pending_state_.commit));
   } catch (...) {
     abort(); // rollback transaction
 
@@ -2458,10 +2464,6 @@ void index_writer::finish() {
   // ...........................................................................
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
-
-  committed_state_helper::atomic_store(
-    &committed_state_, std::move(pending_state_.commit)
-  );
   committing_consolidating_segments_.reset();
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
 }

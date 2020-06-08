@@ -49,17 +49,17 @@ class atomic_shared_ptr_helper {
     atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) noexcept { }
     atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
 
-    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
+    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
       SCOPED_LOCK(mutex_);
       return std::atomic_exchange(p, r);
     }
 
-    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
+    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
       SCOPED_LOCK(mutex_);
       std::atomic_store(p, r);
     }
 
-    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const noexcept {
+    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
       SCOPED_LOCK(mutex_);
       return std::atomic_load(p);
     }
@@ -68,15 +68,15 @@ class atomic_shared_ptr_helper {
     mutable std::mutex mutex_;
   #else
    public:
-    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) noexcept {
+    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       return std::atomic_exchange(p, r);
     }
 
-    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) noexcept {
+    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       std::atomic_store(p, r);
     }
 
-    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) noexcept {
+    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
       return std::atomic_load(p);
     }
   #endif // defined(IRESEARCH_VALGRIND)
