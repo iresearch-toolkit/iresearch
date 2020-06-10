@@ -1414,20 +1414,6 @@ bool index_writer::consolidate(
   std::set<const segment_meta*> candidates;
   const auto run_id = reinterpret_cast<size_t>(&candidates);
   
-  // Get local snapshot of all consolidated + committing_consolidated
-  // BEFORE loading last committed state.
-  // So either segments will not be present in last committed
-  // or we well catch all possibly consolidating segments
-  // in both cases - before flush_all (consolidating_segments_)
-  // or between flush_all and finish (committing_consolidating_segments_)
-  SCOPED_LOCK_NAMED(consolidation_lock_, local_data_lock);
-  auto consolidating_segments_local = consolidating_segments_;
-  auto commiting_consolidation_segments_local = committing_consolidating_segments_;
-  local_data_lock.unlock(); // release lock -> we could allow othere threads to go on from now
-  if(commiting_consolidation_segments_local) {
-    consolidating_segments_local.insert(commiting_consolidation_segments_local->begin(),
-                                        commiting_consolidation_segments_local->end());
-  }
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
@@ -1439,11 +1425,20 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
-    // grab latest state
-    consolidating_segments_local.insert(consolidating_segments_.begin(),
-                                        consolidating_segments_.end());
+
+    //cleanup all already expired consolidating segments
+    bool erase;
+    for (auto it = consolidating_segments_on_commit_.begin(); //!!! use remove_if!!!
+         it != consolidating_segments_on_commit_.end();) {
+      if (it->second.expired()) {
+        it = consolidating_segments_on_commit_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
     // FIXME TODO remove from 'consolidating_segments_' any segments in 'committed_state_' or 'pending_state_' to avoid data duplication
-    policy(candidates, *committed_meta, consolidating_segments_local);
+    policy(candidates, *committed_meta, consolidating_segments_);
 
     switch (candidates.size()) {
       case 0:
@@ -1467,13 +1462,20 @@ bool index_writer::consolidate(
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
-      if (consolidating_segments_local.end() != consolidating_segments_local.find(candidate)) {
+      if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
+        return false;
+      }
+
+      if (consolidating_segments_on_commit_.end() !=
+        consolidating_segments_on_commit_.find(candidate->name)) {
         return false;
       }
     }
 
     // register for consolidation
-    consolidating_segments_.insert(candidates.begin(), candidates.end());
+    for (const auto& c : candidates) {
+      consolidating_segments_.emplace(c);
+    }
   }
 
   // unregisterer for all registered candidates
@@ -1484,6 +1486,7 @@ bool index_writer::consolidate(
 
     SCOPED_LOCK(consolidation_lock_);
     for (const auto* candidate : candidates) {
+      consolidating_segments_on_commit_.erase(candidate->name);
       consolidating_segments_.erase(candidate);
     }
   });
@@ -1555,6 +1558,13 @@ bool index_writer::consolidate(
       // transaction has been started, we're somewhere in the middle
       auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
 
+      // mark candidates as pending to current meta
+      {
+        SCOPED_LOCK(consolidation_lock_);
+        for (const auto& c : candidates) {
+          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
+        }
+      }
       // register consolidation for the next transaction
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1564,7 +1574,6 @@ bool index_writer::consolidate(
         std::move(committed_meta), // consolidation context meta
         std::move(merger) // merge context
       );
-
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
         run_id
@@ -1581,6 +1590,13 @@ bool index_writer::consolidate(
       auto& segment_mask = ctx->segment_mask_;
 
       index_utils::flush_index_segment(dir, consolidation_segment); // persist segment meta
+      // mark candidates as pending to current meta
+      {
+        SCOPED_LOCK(consolidation_lock_);
+        for (const auto& c : candidates) {
+          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
+        }
+      }
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1659,6 +1675,13 @@ bool index_writer::consolidate(
       }
 
       index_utils::flush_index_segment(dir, consolidation_segment);// persist segment meta
+      // mark candidates as pending to current meta
+      {
+        SCOPED_LOCK(consolidation_lock_);
+        for (const auto& c : candidates) {
+          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
+        }
+      }
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1976,46 +1999,18 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   /// Stage 2
   /// add pending complete segments registered by import or consolidation
   /////////////////////////////////////////////////////////////////////////////
-
-  // number of candidates that have been registered for
-  // pending consolidation
-  size_t pending_candidates_count = 0;
-
   {
-    // should be finalized by previous commit (or abort)
-    assert(!committing_consolidating_segments_);
-    committing_consolidating_segments_ =
-      std::make_shared<decltype(committing_consolidating_segments_)::element_type>();
-    // ensure no allocations will be needed during transfer
-    committing_consolidating_segments_->reserve(consolidating_segments_.size());
     SCOPED_LOCK(consolidation_lock_);
-    // transfer ownership of all consolidating_segments
-    // to commit intermediate storage as now this commit
-    // is responsible for finalizing consolidation
     for (auto& pending_segment : ctx->pending_segments_) {
       auto& candidates = pending_segment.consolidation_ctx.candidates;
-      for (const auto& c : candidates) {
-        committing_consolidating_segments_->insert(c);
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate); // now only consolidating_segments_on_commit_ guards segments from re-consolidation
       }
     }
   }
-  // unregisterer for all registered candidates
-  // should do this regardless of the flush_all outcome
-  // FIXME: this should be done only upon abort or successfull commit
-  // and somehow noexcept. For now we could not do this in 
-  // abort or finish as taking consolidation_lock_ for clean could throw.
-  auto unregister_consolidating_segments = irs::make_finally([this]() noexcept {
-    auto pending = committing_consolidating_segments_;
-    if (!pending) {
-      return;
-    }
-
-    SCOPED_LOCK(consolidation_lock_);
-    for (const auto* candidate : *pending) {
-      consolidating_segments_.erase(candidate);
-    }
-    });
-
+  // number of candidates that have been registered for
+  // pending consolidation
+  size_t pending_candidates_count = 0;
   for (auto& pending_segment : ctx->pending_segments_) {
     // pending consolidation
     auto& candidates = pending_segment.consolidation_ctx.candidates;
@@ -2464,7 +2459,6 @@ void index_writer::finish() {
   // ...........................................................................
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
-  committing_consolidating_segments_.reset();
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
 }
 
@@ -2487,8 +2481,6 @@ void index_writer::abort() {
   // reset actual meta, note that here we don't change
   // segment counters since it can be changed from insert function
   meta_.reset(*(committed_state_->first));
-
-  committing_consolidating_segments_.reset();
 }
 
 NS_END

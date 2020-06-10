@@ -1044,14 +1044,7 @@ class IRESEARCH_API index_writer
   std::recursive_mutex consolidation_lock_;
   consolidating_segments_t consolidating_segments_; // segments that are under consolidation
   /// Intermediate storage for consolidating segments.
-  /// Could be set/reset without lock but any modification to
-  /// segments must be done under the consolidation_lock_.
-  /// Intended to store segments for postponed consolidation
-  /// being committed to close gap between actual finalizing consolidation
-  /// and finishing commit (storing new committed state).
-  /// shared_ptr here is to make commit finish noexcept - only release operation.
-  /// @note Only one running commit is expected!
-  std::shared_ptr<consolidating_segments_t> committing_consolidating_segments_;
+  std::unordered_map<std::string, std::weak_ptr<index_meta>> consolidating_segments_on_commit_;
   directory& dir_; // directory used for initialization of readers
   std::vector<flush_context> flush_context_pool_; // collection of contexts that collect data to be flushed, 2 because just swap them
   std::atomic<flush_context*> flush_context_; // currently active context accumulating data to be processed during the next flush
