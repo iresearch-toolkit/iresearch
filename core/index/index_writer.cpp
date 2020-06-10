@@ -1553,7 +1553,7 @@ bool index_writer::consolidate(
             // not all candidates are valid
             IR_FRMT_DEBUG(
               "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER
-              "', Not found segment %s in committed state",
+              "', not found segment %s in committed state",
               committed_meta->generation(),
               candidate->name.c_str()
             );
