@@ -1425,18 +1425,6 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
-
-    //cleanup all already expired consolidating segments
-    bool erase;
-    for (auto it = consolidating_segments_on_commit_.begin(); //!!! use remove_if!!!
-         it != consolidating_segments_on_commit_.end();) {
-      if (it->second.expired()) {
-        it = consolidating_segments_on_commit_.erase(it);
-      } else {
-        ++it;
-      }
-    }
-
     // FIXME TODO remove from 'consolidating_segments_' any segments in 'committed_state_' or 'pending_state_' to avoid data duplication
     policy(candidates, *committed_meta, consolidating_segments_);
 
@@ -1465,11 +1453,6 @@ bool index_writer::consolidate(
       if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
         return false;
       }
-
-      if (consolidating_segments_on_commit_.end() !=
-        consolidating_segments_on_commit_.find(candidate->name)) {
-        return false;
-      }
     }
 
     // register for consolidation
@@ -1481,12 +1464,14 @@ bool index_writer::consolidate(
     if (candidates.empty()) {
       return;
     }
-
-    SCOPED_LOCK(consolidation_lock_);
+    SCOPED_LOCK_NAMED(consolidation_lock_, cleanup_lock);
+    decltype(flush_context::segment_mask_) cached_mask;
     for (const auto* candidate : candidates) {
-      consolidating_segments_on_commit_.erase(candidate->name);
+      cached_mask.insert(*candidate);
       consolidating_segments_.erase(candidate);
     }
+    cleanup_lock.unlock();
+    cached_readers_.purge(cached_mask);
   });
 
   // validate candidates
@@ -1553,16 +1538,33 @@ bool index_writer::consolidate(
     assert(current_committed_meta);
 
     if (pending_state_) {
+
+      // check we didn`t added to reader cache already absent readers
+      // only if we have different index meta 
+      if (committed_meta != current_committed_meta) {
+        size_t found = 0;
+        // pointers are different so check by name
+        for (const auto& candidate : candidates) {
+          if (current_committed_meta->end() ==
+              std::find_if(current_committed_meta->begin(),
+                           current_committed_meta->end(),
+                           [&candidate](const index_meta::index_segment_t& s) {
+                             return candidate->name == s.meta.name;} )) {
+            // not all candidates are valid
+            IR_FRMT_DEBUG(
+              "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER
+              "', Not found segment %s in committed state",
+              committed_meta->generation(),
+              candidate->name.c_str()
+            );
+            return false;
+          }
+        }
+      }
+
       // transaction has been started, we're somewhere in the middle
       auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
 
-      // mark candidates as pending to current meta
-      {
-        SCOPED_LOCK(consolidation_lock_);
-        for (const auto& c : candidates) {
-          consolidating_segments_on_commit_.emplace(c->name, pending_state_.commit);
-        }
-      }
       // register consolidation for the next transaction
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1588,13 +1590,6 @@ bool index_writer::consolidate(
       auto& segment_mask = ctx->segment_mask_;
 
       index_utils::flush_index_segment(dir, consolidation_segment); // persist segment meta
-      // mark candidates as pending to current meta
-      {
-        SCOPED_LOCK(consolidation_lock_);
-        for (const auto& c : candidates) {
-          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
-        }
-      }
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1673,13 +1668,6 @@ bool index_writer::consolidate(
       }
 
       index_utils::flush_index_segment(dir, consolidation_segment);// persist segment meta
-      // mark candidates as pending to current meta
-      {
-        SCOPED_LOCK(consolidation_lock_);
-        for (const auto& c : candidates) {
-          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
-        }
-      }
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
@@ -1997,15 +1985,6 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   /// Stage 2
   /// add pending complete segments registered by import or consolidation
   /////////////////////////////////////////////////////////////////////////////
-  {
-    SCOPED_LOCK(consolidation_lock_);
-    for (auto& pending_segment : ctx->pending_segments_) {
-      auto& candidates = pending_segment.consolidation_ctx.candidates;
-      for (const auto* candidate : candidates) {
-        consolidating_segments_.erase(candidate); // now only consolidating_segments_on_commit_ guards segments from re-consolidation
-      }
-    }
-  }
   // number of candidates that have been registered for
   // pending consolidation
   size_t pending_candidates_count = 0;
@@ -2394,6 +2373,16 @@ bool index_writer::start(const before_commit_f& before_commit) {
     pending_refs.emplace_back(
       directory_utils::reference(dir, writer_->filename(pending_meta), true)
     );
+
+    {
+      SCOPED_LOCK(consolidation_lock_);
+      for (auto& pending_segment : to_commit.ctx->pending_segments_) {
+        auto& candidates = pending_segment.consolidation_ctx.candidates;
+        for (const auto* candidate : candidates) {
+          consolidating_segments_.erase(candidate); 
+        }
+      }
+    }
 
     meta_.segments_ = to_commit.meta->segments_; // create copy
 
