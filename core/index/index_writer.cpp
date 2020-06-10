@@ -1473,9 +1473,7 @@ bool index_writer::consolidate(
     }
 
     // register for consolidation
-    for (const auto& c : candidates) {
-      consolidating_segments_.emplace(c);
-    }
+    consolidating_segments_.insert(candidates.begin(), candidates.end());
   }
 
   // unregisterer for all registered candidates
