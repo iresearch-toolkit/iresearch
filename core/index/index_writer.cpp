@@ -1560,7 +1560,7 @@ bool index_writer::consolidate(
       {
         SCOPED_LOCK(consolidation_lock_);
         for (const auto& c : candidates) {
-          consolidating_segments_on_commit_.emplace(c->name, current_committed_meta);
+          consolidating_segments_on_commit_.emplace(c->name, pending_state_.commit);
         }
       }
       // register consolidation for the next transaction
