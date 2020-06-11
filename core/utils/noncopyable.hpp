@@ -34,6 +34,7 @@ struct noncopyable {
 
   noncopyable(const noncopyable&) = delete;
   noncopyable& operator= (const noncopyable&) = delete;
+  noncopyable(noncopyable&&) = default;
 };
 
 NS_END

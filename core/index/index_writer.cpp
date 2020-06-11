@@ -613,14 +613,6 @@ index_writer::active_segment_context::active_segment_context(
   }
 }
 
-index_writer::active_segment_context::active_segment_context(
-    active_segment_context&& other) noexcept
-  : ctx_(std::move(other.ctx_)),
-    flush_ctx_(std::move(other.flush_ctx_)),
-    pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
-    segments_active_(std::move(other.segments_active_)) {
-}
-
 index_writer::active_segment_context::~active_segment_context() {
   if (ctx_) {
     --*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -1230,6 +1222,12 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
+  static_assert(std::is_move_constructible<import_context>::value);
+  static_assert(std::is_move_constructible<modification_context>::value);
+  static_assert(std::is_move_constructible<consolidation_context_t>::value);
+  static_assert(std::is_move_constructible<pending_context_t>::value);
+  static_assert(std::is_move_constructible<merge_writer>::value);
+  static_assert(std::is_move_constructible<active_segment_context>::value);
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
@@ -1405,7 +1403,6 @@ bool index_writer::consolidate(
     format::ptr codec /*= nullptr*/,
     const merge_writer::flush_progress_t& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
-
   if (!codec) {
     // use default codec if not specified
     codec = codec_;
