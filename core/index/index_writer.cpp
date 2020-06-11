@@ -1422,6 +1422,21 @@ bool index_writer::consolidate(
   auto committed_meta = committed_state->first;
   assert(committed_meta);
 
+  // unregisterer for all registered candidates
+  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
+    if (candidates.empty()) {
+      return;
+    }
+    SCOPED_LOCK_NAMED(consolidation_lock_, cleanup_lock);
+    decltype(flush_context::segment_mask_) cached_mask;
+    for (const auto* candidate : candidates) {
+      cached_mask.insert(*candidate);
+      consolidating_segments_.erase(candidate);
+    }
+    cleanup_lock.unlock();
+    cached_readers_.purge(cached_mask);
+  });
+
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
@@ -1458,21 +1473,6 @@ bool index_writer::consolidate(
     // register for consolidation
     consolidating_segments_.insert(candidates.begin(), candidates.end());
   }
-
-  // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
-    if (candidates.empty()) {
-      return;
-    }
-    SCOPED_LOCK_NAMED(consolidation_lock_, cleanup_lock);
-    decltype(flush_context::segment_mask_) cached_mask;
-    for (const auto* candidate : candidates) {
-      cached_mask.insert(*candidate);
-      consolidating_segments_.erase(candidate);
-    }
-    cleanup_lock.unlock();
-    cached_readers_.purge(cached_mask);
-  });
 
   // validate candidates
   {
@@ -1538,7 +1538,6 @@ bool index_writer::consolidate(
     assert(current_committed_meta);
 
     if (pending_state_) {
-
       // check we didn`t added to reader cache already absent readers
       // only if we have different index meta 
       if (committed_meta != current_committed_meta) {
@@ -1880,18 +1879,6 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
 
-  auto cleanup_consolidating_segments = irs::make_finally([&ctx, this]() {
-    if (ctx) {
-      SCOPED_LOCK(consolidation_lock_);
-      for (auto& pending_segment : ctx->pending_segments_) {
-        auto& candidates = pending_segment.consolidation_ctx.candidates;
-        for (const auto* candidate : candidates) {
-          consolidating_segments_.erase(candidate);
-        }
-      }
-    }
-    });
-
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
   /// wait for any outstanding segments to settle to ensure that any rollbacks
@@ -2126,6 +2113,18 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
     to_sync.register_full_sync(segments.size());
     segments.emplace_back(std::move(pending_segment.segment));
   }
+  
+  // do cleanup once 
+  {
+    SCOPED_LOCK(consolidation_lock_);
+    for (auto& pending_segment : ctx->pending_segments_) {
+      auto& candidates = pending_segment.consolidation_ctx.candidates;
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
+      }
+    }
+  }
+
 
   if (pending_candidates_count) {
     // for pending consolidation we need to filter out
