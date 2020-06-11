@@ -32,7 +32,8 @@ doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
     const attribute_provider* /*ctx*/) const {
-  typedef disjunction<doc_iterator::ptr> disjunction_t;
+  using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
+  using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
 
   // get term state for the specified reader
   auto state = states_.find(segment);
@@ -101,9 +102,13 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction_t>(
-    std::move(itrs), ord,
-    merge_type_, state->estimation());
+  if (ord.empty()) {
+    return make_disjunction<disjunction_t>(
+      std::move(itrs), ord, merge_type_, state->estimation());
+  }
+
+  return make_disjunction<scored_disjunction_t>(
+    std::move(itrs), ord, merge_type_, state->estimation());
 }
 
 NS_END // ROOT

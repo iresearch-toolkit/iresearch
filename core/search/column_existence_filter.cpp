@@ -96,6 +96,9 @@ class column_prefix_existence_query final : public column_existence_query {
       const irs::sub_reader& segment,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
+    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
+    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+
     const string_ref prefix = field_;
 
     auto it = segment.columns();
@@ -105,7 +108,6 @@ class column_prefix_existence_query final : public column_existence_query {
       return irs::doc_iterator::empty();
     }
 
-    typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
     disjunction_t::doc_iterators_t itrs;
 
     while (irs::starts_with(it->value().name, prefix)) {
@@ -122,7 +124,11 @@ class column_prefix_existence_query final : public column_existence_query {
       }
     }
 
-    return irs::make_disjunction<disjunction_t>(std::move(itrs), ord);
+    if (ord.empty()) {
+      return irs::make_disjunction<disjunction_t>(std::move(itrs));
+    }
+
+    return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), ord);
   }
 }; // column_prefix_existence_query
 

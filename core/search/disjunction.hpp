@@ -1114,6 +1114,11 @@ class block_disjunction final
         if constexpr (traits_type::score()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
+            // FIXME
+            if (it.score->empty()) {
+              continue;
+            }
+
             if (doc_.value == it->value()) {
               assert(it.score);
               merger_(score_buf_.data(), it.score->evaluate());
@@ -1321,6 +1326,38 @@ class block_disjunction final
   const byte_type* score_value_{score_buf_.data()};
   order::prepared::merger merger_;
 }; // block_disjunction
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using scored_disjunction_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<true, MatchType::MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using disjunction_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<false, MatchType::MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using scored_min_match_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<true, MatchType::MIN_MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using min_match_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<false, MatchType::MIN_MATCH, false>,
+  Adapter>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified sub iterators
