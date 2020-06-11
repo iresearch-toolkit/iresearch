@@ -1542,7 +1542,6 @@ bool index_writer::consolidate(
       // check we didn`t added to reader cache already absent readers
       // only if we have different index meta 
       if (committed_meta != current_committed_meta) {
-        size_t found = 0;
         // pointers are different so check by name
         for (const auto& candidate : candidates) {
           if (current_committed_meta->end() ==
@@ -1880,6 +1879,18 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   auto& dir = *(ctx->dir_);
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
+
+  auto cleanup_consolidating_segments = irs::make_finally([&ctx, this]() {
+    if (ctx) {
+      SCOPED_LOCK(consolidation_lock_);
+      for (auto& pending_segment : ctx->pending_segments_) {
+        auto& candidates = pending_segment.consolidation_ctx.candidates;
+        for (const auto* candidate : candidates) {
+          consolidating_segments_.erase(candidate);
+        }
+      }
+    }
+    });
 
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
@@ -2374,16 +2385,6 @@ bool index_writer::start(const before_commit_f& before_commit) {
       directory_utils::reference(dir, writer_->filename(pending_meta), true)
     );
 
-    {
-      SCOPED_LOCK(consolidation_lock_);
-      for (auto& pending_segment : to_commit.ctx->pending_segments_) {
-        auto& candidates = pending_segment.consolidation_ctx.candidates;
-        for (const auto* candidate : candidates) {
-          consolidating_segments_.erase(candidate); 
-        }
-      }
-    }
-
     meta_.segments_ = to_commit.meta->segments_; // create copy
 
     // 1st phase of the transaction successfully finished here,
@@ -2431,10 +2432,12 @@ void index_writer::finish() {
     if (!writer_->commit()) {
       throw illegal_state();
     }
+#ifndef __APPLE__
     // atomic_store may throw
     static_assert(!noexcept
       (committed_state_helper::atomic_store(&committed_state_,
         std::move(pending_state_.commit))));
+#endif
     committed_state_helper::atomic_store(&committed_state_,
       std::move(pending_state_.commit));
   } catch (...) {
