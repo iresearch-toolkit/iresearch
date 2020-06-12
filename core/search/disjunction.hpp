@@ -112,6 +112,7 @@ class score_buffer {
     : bucket_size_(ord.score_size()),
       buf_size_(bucket_size_*size),
       buf_(ord.empty() ? nullptr : new byte_type[buf_size_]) {
+    std::memset(data(), 0, this->size());
   }
 
   byte_type* get(size_t i) noexcept {
@@ -1023,7 +1024,12 @@ class block_disjunction final
   virtual bool next() override {
     while (true) {
       while (!cur_) {
-        if (begin_ >= std::end(mask_) && !refill()) {
+        if (begin_ >= std::end(mask_)) {
+          if (refill()) {
+            assert(cur_);
+            break;
+          }
+
           doc_.value = doc_limits::eof();
           match_count_ = 0;
 
@@ -1031,23 +1037,28 @@ class block_disjunction final
         }
 
         cur_ = *begin_++;
-        base_ += bits_required<uint64_t>();
+        doc_base_ += bits_required<uint64_t>();
+        if constexpr (traits_type::min_match() || traits_type::score()) {
+          buf_offset_ += bits_required<uint64_t>();
+        }
       }
 
       const size_t offset = math::math_traits<uint64_t>::ctz(cur_);
       irs::unset_bit(cur_, offset);
 
+      [[maybe_unused]] const size_t buf_offset = buf_offset_ + offset;
+
       if constexpr (traits_type::min_match()) {
-        match_count_ = match_buf_.match_count(offset);
+        match_count_ = match_buf_.match_count(buf_offset);
 
         if (match_count_ < match_buf_.min_match_count()) {
           continue;
         }
       }
 
-      doc_.value = base_ + doc_id_t(offset);
+      doc_.value = doc_base_ + doc_id_t(offset);
       if constexpr (traits_type::score()) {
-        score_value_ = score_buf_.get(offset);
+        score_value_ = score_buf_.get(buf_offset);
       }
 
       return true;
@@ -1055,12 +1066,12 @@ class block_disjunction final
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target < doc_.value) {
+    if (target <= doc_.value) {
       return doc_.value;
     } else if (target < max_) {
       target -= (max_ - window());
       begin_ = mask_ + target / block_size();
-      base_ += doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
+      doc_base_ += doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
       cur_ = (*begin_++) & ((~UINT64_C(0)) << target % block_size());
 
       next();
@@ -1110,16 +1121,12 @@ class block_disjunction final
         next();
       } else {
         min_ = doc_.value + 1;
+        buf_offset_ = 0;
 
         if constexpr (traits_type::score()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
-            // FIXME
-            if (it.score->empty()) {
-              continue;
-            }
-
-            if (doc_.value == it->value()) {
+            if (!it.score->empty() && doc_.value == it->value()) {
               assert(it.score);
               merger_(score_buf_.data(), it.score->evaluate());
             }
@@ -1247,7 +1254,7 @@ class block_disjunction final
     bool empty = true;
 
     do {
-      base_ = min_;
+      doc_base_ = min_;
       max_ = min_ + window();
       min_ = doc_limits::eof();
 
@@ -1263,12 +1270,17 @@ class block_disjunction final
       // contains the requested number of matches
     } while (empty && !itrs_.empty());
 
-    // FIXME set to the first filled block
-    begin_ = mask_;
-    base_ -= bits_required<uint64_t>();
+    if (empty) {
+      // exhausted
+      assert(itrs_.empty());
+      return false;
+    }
 
-    if (!doc_limits::valid(doc_.value)) { // FIXME
-      irs::unset_bit<0>(mask_[0]);
+    cur_ = *mask_;
+    assert(cur_);
+    begin_ = mask_ + 1;
+    if constexpr (traits_type::min_match() || traits_type::score()) {
+      buf_offset_ = 0;
     }
 
     return true;
@@ -1280,9 +1292,11 @@ class block_disjunction final
     const auto* doc = &it.doc->value;
     assert(!doc_limits::eof(*doc));
 
-    if (*doc < base_ && doc_limits::eof(it->seek(base_))) {
-      // exhausted
-      return false;
+    if constexpr (!traits_type::seek_readahead()) {
+      if (*doc < doc_base_ && doc_limits::eof(it->seek(doc_base_))) {
+        // exhausted
+        return false;
+      }
     }
 
     for (;;) {
@@ -1291,7 +1305,7 @@ class block_disjunction final
         return true;
       }
 
-      const size_t offset = *doc - base_;
+      const size_t offset = *doc - doc_base_;
 
       irs::set_bit(mask_[offset / block_size()], offset % block_size());
       if constexpr (Score) {
@@ -1315,12 +1329,13 @@ class block_disjunction final
   uint64_t* begin_{std::end(mask_)};
   uint64_t cur_{};
   document doc_;
-  doc_id_t base_{doc_limits::invalid() - bits_required<uint64_t>()};
-  doc_id_t min_{doc_limits::invalid()}; // base doc id for the next mask
+  doc_id_t doc_base_{doc_limits::invalid()};
+  doc_id_t min_{doc_limits::min()}; // base doc id for the next mask
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
   score score_;
   size_t match_count_;
   cost cost_;
+  size_t buf_offset_{}; // offset within a buffer
   score_buffer_type score_buf_;
   min_match_buffer_type match_buf_;
   const byte_type* score_value_{score_buf_.data()};
