@@ -1022,7 +1022,7 @@ class block_disjunction final
   }
 
   virtual bool next() override {
-    while (true) {
+    do {
       while (!cur_) {
         if (begin_ >= std::end(mask_)) {
           if (refill()) {
@@ -1062,7 +1062,10 @@ class block_disjunction final
       }
 
       return true;
-    }
+    } while (traits_type::min_match());
+
+    assert(false);
+    return true;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -1277,8 +1280,13 @@ class block_disjunction final
     }
 
     cur_ = *mask_;
-    assert(cur_);
     begin_ = mask_ + 1;
+    while (!cur_) {
+      cur_ = *begin_++;
+      doc_base_ += bits_required<uint64_t>();
+    }
+    assert(cur_);
+
     if constexpr (traits_type::min_match() || traits_type::score()) {
       buf_offset_ = 0;
     }
@@ -1293,8 +1301,8 @@ class block_disjunction final
     assert(!doc_limits::eof(*doc));
 
     // disjunction is 1 step next behind, that may happen:
-    // - before the first next()
-    // - after seek() if seek_readahead() == false
+    // - before the very first next()
+    // - after seek() in case of 'seek_readahead() == false'
     if (*doc < doc_base_ && !it->next()) {
       // exhausted
       return false;
