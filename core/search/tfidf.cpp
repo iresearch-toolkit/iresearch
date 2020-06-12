@@ -362,8 +362,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return {
         memory::make_unique<tfidf::const_score_ctx>(score_buf, boost),
-        [](const irs::score_ctx* ctx) noexcept {
-          return static_cast<const tfidf::const_score_ctx*>(ctx)->score_buf;
+        [](irs::score_ctx* ctx) noexcept {
+          return static_cast<tfidf::const_score_ctx*>(ctx)->score_buf;
         }
       };
     }
@@ -387,8 +387,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         if (filter_boost) {
           return {
             memory::make_unique<tfidf::norm_score_ctx>(score_buf, std::move(norm), boost, stats, freq, filter_boost),
-            [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<tfidf::norm_score_ctx*>(ctx);
               assert(state.filter_boost);
               irs::sort::score_cast<tfidf::score_t>(state.score_buf) = ::tfidf(state.freq->value,
                                                                                state.idf * state.filter_boost->value) *
@@ -400,8 +400,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         } else {
           return {
             memory::make_unique<tfidf::norm_score_ctx>(score_buf, std::move(norm), boost, stats, freq),
-            [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<tfidf::norm_score_ctx*>(ctx);
               irs::sort::score_cast<tfidf::score_t>(state.score_buf) = ::tfidf(state.freq->value, state.idf) * state.norm_.read();
 
               return state.score_buf;
@@ -414,8 +414,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     if (filter_boost) {
       return {
         memory::make_unique<tfidf::score_ctx>(score_buf, boost, stats, freq, filter_boost),
-        [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          auto& state = *static_cast<tfidf::score_ctx*>(ctx);
           assert(state.filter_boost);
           irs::sort::score_cast<score_t>(state.score_buf) = ::tfidf(state.freq->value,
                                                                     state.idf * state.filter_boost->value);
@@ -425,8 +425,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     } else {
       return {
         memory::make_unique<tfidf::score_ctx>(score_buf, boost, stats, freq),
-        [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          auto& state = *static_cast<tfidf::score_ctx*>(ctx);
           irs::sort::score_cast<score_t>(state.score_buf) = ::tfidf(state.freq->value, state.idf);
 
           return state.score_buf;

@@ -441,8 +441,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return {
         memory::make_unique<bm25::const_score_ctx>(score_buf, boost),
-        [](const irs::score_ctx* ctx) noexcept {
-          return static_cast<const bm25::const_score_ctx*>(ctx)->score_buf;
+        [](irs::score_ctx* ctx) noexcept {
+          return static_cast<bm25::const_score_ctx*>(ctx)->score_buf;
         }
       };
     }
@@ -464,8 +464,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         if (filter_boost) {
           return {
             memory::make_unique<bm25::norm_score_ctx>(score_buf, k_, boost, stats, freq, std::move(norm), filter_boost),
-            [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<bm25::norm_score_ctx*>(ctx);
               assert(state.filter_boost_);
               const float_t tf = ::SQRT(state.freq_->value);
               irs::sort::score_cast<score_t>(state.score_buf) = state.filter_boost_->value *
@@ -478,8 +478,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         } else {
           return {
             memory::make_unique<bm25::norm_score_ctx>(score_buf, k_, boost, stats, freq, std::move(norm)),
-            [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<bm25::norm_score_ctx*>(ctx);
 
               const float_t tf = ::SQRT(state.freq_->value);
               irs::sort::score_cast<score_t>(state.score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
@@ -495,8 +495,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     if (filter_boost) {
       return {
         memory::make_unique<bm25::score_ctx>(score_buf, k_, boost, stats, freq, filter_boost),
-        [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<const bm25::score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          auto& state = *static_cast<bm25::score_ctx*>(ctx);
           assert(state.filter_boost_);
           const float_t tf = ::SQRT(state.freq_->value);
           irs::sort::score_cast<score_t>(state.score_buf) = state.filter_boost_->value *  state.num_ * tf / (state.norm_const_ + tf);
@@ -507,8 +507,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     } else {
       return {
         memory::make_unique<bm25::score_ctx>(score_buf, k_, boost, stats, freq),
-        [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<const bm25::score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          auto& state = *static_cast<bm25::score_ctx*>(ctx);
 
           const float_t tf = ::SQRT(state.freq_->value);
           irs::sort::score_cast<score_t>(state.score_buf) = state.num_ * tf / (state.norm_const_ + tf);

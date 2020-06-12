@@ -254,9 +254,8 @@ class min_match_disjunction
     }
 
     scores_vals_.resize(itrs_.size());
-    score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
-      auto& self = const_cast<min_match_disjunction&>(
-        *static_cast<const min_match_disjunction*>(ctx));
+    score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+      auto& self = *static_cast<min_match_disjunction*>(ctx);
       auto* score_buf = self.score_.data();
       assert(!self.heap_.empty());
 

@@ -73,7 +73,7 @@ struct prepared final : prepared_sort_basic<boost_t> {
     if (!volatile_boost) {
       return {
         memory::make_unique<boost_score_ctx>(score_buf, boost), // FIXME can avoid allocation
-        [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           return reinterpret_cast<const boost_score_ctx*>(ctx)->score_buf;
         }
       };
@@ -81,8 +81,8 @@ struct prepared final : prepared_sort_basic<boost_t> {
 
     return {
       memory::make_unique<volatile_boost_score_ctx>(score_buf, volatile_boost, boost), // FIXME can avoid allocation
-      [](const irs::score_ctx* ctx) noexcept -> const byte_type* {
-        auto& state = *reinterpret_cast<const volatile_boost_score_ctx*>(ctx);
+      [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+        auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
         sort::score_cast<boost_t>(state.score_buf) = state.volatile_boost->value*state.boost;
 
         return state.score_buf;

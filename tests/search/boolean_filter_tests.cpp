@@ -108,8 +108,8 @@ struct basic_sort : irs::sort {
         irs::boost_t) const override {
       return {
         irs::score_ctx_ptr(new basic_scorer(idx, score_buf)),
-        [](const irs::score_ctx* ctx) -> const irs::byte_type* {
-          auto& state = *reinterpret_cast<const basic_scorer*>(ctx);
+        [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
           sort::score_cast<size_t>(state.score_buf) = state.idx;
 
           return state.score_buf;
@@ -164,8 +164,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
         *this,
         boost);
 
-      score_.prepare(this, [](const irs::score_ctx* ctx) {
-        auto& self = *static_cast<const basic_doc_iterator*>(ctx);
+      score_.prepare(this, [](irs::score_ctx* ctx) {
+        const auto& self = *static_cast<basic_doc_iterator*>(ctx);
         return self.scorers_.evaluate();
       });
 

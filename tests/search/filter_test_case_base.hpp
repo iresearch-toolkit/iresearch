@@ -71,8 +71,8 @@ struct boost : public irs::sort {
         irs::boost_t boost) const override {
       return {
         irs::memory::make_unique<boost::score_ctx>(boost, score_buf),
-        [](const irs::score_ctx* ctx) -> const irs::byte_type* {
-          auto& state = *reinterpret_cast<const score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          const auto& state = *reinterpret_cast<score_ctx*>(ctx);
 
           sort::score_cast<irs::boost_t>(state.score_buf_) = state.boost_;
 
@@ -229,7 +229,9 @@ struct custom_sort: public irs::sort {
       max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
-        impl->sort_.scorer_max(traits_t::score_cast(dst + offset), traits_t::score_cast(src + offset));
+        if (impl->sort_.scorer_max) {
+          impl->sort_.scorer_max(traits_t::score_cast(dst + offset), traits_t::score_cast(src + offset));
+        }
       };
     }
 
@@ -272,8 +274,8 @@ struct custom_sort: public irs::sort {
         irs::memory::make_unique<custom_sort::prepared::scorer>(
            sort_, segment_reader, term_reader,
            filter_node_attrs, document_attrs, score_buf),
-        [](const irs::score_ctx* ctx) -> const irs::byte_type* {
-          auto& state = *reinterpret_cast<const scorer*>(ctx);
+        [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          const auto& state = *reinterpret_cast<scorer*>(ctx);
           assert(state.score_buf_);
           auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(state.score_buf_);
 
@@ -511,8 +513,8 @@ struct frequency_sort: public irs::sort {
       const size_t* docs_count = &stats.count;
       return {
         irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc_id_t, score_buf),
-        [](const irs::score_ctx* ctx) -> const irs::byte_type* {
-          auto& state = *reinterpret_cast<const scorer*>(ctx);
+        [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          const auto& state = *reinterpret_cast<scorer*>(ctx);
           auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
 
           if (!buf.prepared) {

@@ -58,13 +58,13 @@ class IRESEARCH_API score : public attribute {
 
   void prepare(score_ctx_ptr&& ctx, const score_f func) noexcept {
     assert(func);
-    ctx_ = memory::to_managed<const score_ctx>(std::move(ctx));
+    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
     func_ = func;
   }
 
-  void prepare(const score_ctx* ctx, const score_f func) noexcept {
+  void prepare(score_ctx* ctx, const score_f func) noexcept {
     assert(func);
-    ctx_ = memory::to_managed<const score_ctx, false>(ctx);
+    ctx_ = memory::to_managed<score_ctx, false>(ctx);
     func_ = func;
   }
 
@@ -77,10 +77,15 @@ class IRESEARCH_API score : public attribute {
     return const_cast<byte_type*>(buf_.c_str());
   }
 
+  void clear() noexcept {
+    assert(!buf_.empty());
+    std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());
+  }
+
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
-  memory::managed_ptr<const score_ctx> ctx_; // arbitrary scoring context
+  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
   score_f func_; // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score

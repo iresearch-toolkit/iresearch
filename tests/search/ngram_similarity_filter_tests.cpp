@@ -918,8 +918,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       auto* boost = irs::get<irs::filter_boost>(attr);
       return {
         irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
-        [](const irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
-          auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
           freq.freq->push_back(freq.freq_from_filter->value);
           freq.filter_boost->push_back(freq.boost_from_filter->value);
 
@@ -994,8 +994,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     auto* boost = irs::get<irs::filter_boost>(attr);
     return {
         irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
-        [](const irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
-          auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
           freq.freq->push_back(freq.freq_from_filter->value);
           freq.filter_boost->push_back(freq.boost_from_filter->value);
 

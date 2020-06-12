@@ -27,7 +27,7 @@ NS_LOCAL
 
 const irs::score EMPTY_SCORE;
 
-const irs::byte_type* no_score(const irs::score_ctx*) noexcept {
+const irs::byte_type* no_score(irs::score_ctx*) noexcept {
   return irs::bytes_ref::EMPTY.c_str();
 }
 
@@ -76,8 +76,8 @@ void prepare_score(irs::score& score, order::prepared::scorers&& scorers) {
 
       score.prepare(
         memory::make_unique<ctx>(std::move(scorers)),
-        [](const score_ctx* ctx) {
-          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
           auto& front = scorers.front();
           auto& back = scorers.back();
           (*front.func)(front.ctx.get());
@@ -96,8 +96,8 @@ void prepare_score(irs::score& score, order::prepared::scorers&& scorers) {
 
       score.prepare(
         memory::make_unique<ctx>(std::move(scorers)),
-        [](const score_ctx* ctx) {
-          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
           return scorers.evaluate();
       });
     } break;

@@ -68,7 +68,7 @@ struct IRESEARCH_API score_ctx {
 
 using score_ctx_ptr = std::unique_ptr<score_ctx>;
 using score_less_f = bool(*)(const byte_type* lhs, const byte_type* rhs);
-using score_f = const byte_type*(*)(const score_ctx* ctx);
+using score_f = const byte_type*(*)(score_ctx* ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine range of scores denoted by 'src' and 'size' to 'dst',

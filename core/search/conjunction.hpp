@@ -197,14 +197,14 @@ class conjunction
     // prepare score
     switch (scores_.size()) {
       case 0:
-        score_.prepare(this, [](const irs::score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<const conjunction*>(ctx);
+        score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<conjunction*>(ctx);
           return self.score_.data();
         });
         break;
       case 1:
-        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<const conjunction*>(ctx);
+        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.merger_(score_buf, self.score_vals_.data(), 1);
@@ -213,8 +213,8 @@ class conjunction
         });
         break;
       case 2:
-        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<const conjunction*>(ctx);
+        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
@@ -224,8 +224,8 @@ class conjunction
         });
         break;
       case 3:
-        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<const conjunction*>(ctx);
+        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_[1] = self.scores_[1]->evaluate();
@@ -236,8 +236,8 @@ class conjunction
         });
         break;
       default:
-        score_.prepare(this, [](const score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<const conjunction*>(ctx);
+        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+          auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           auto* score_val = self.score_vals_.data();
           for (auto* it_score : self.scores_) {
