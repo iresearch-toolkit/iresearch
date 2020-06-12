@@ -1292,11 +1292,12 @@ class block_disjunction final
     const auto* doc = &it.doc->value;
     assert(!doc_limits::eof(*doc));
 
-    if constexpr (!traits_type::seek_readahead()) {
-      if (*doc < doc_base_ && doc_limits::eof(it->seek(doc_base_))) {
-        // exhausted
-        return false;
-      }
+    // disjunction is 1 step next behind, that may happen:
+    // - before the first next()
+    // - after seek() if seek_readahead() == false
+    if (*doc < doc_base_ && !it->next()) {
+      // exhausted
+      return false;
     }
 
     for (;;) {
