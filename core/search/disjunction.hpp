@@ -293,6 +293,7 @@ class basic_disjunction final
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
       score_(ord),
+      no_score_value_(ord.score_size(), 0),
       cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
@@ -313,24 +314,14 @@ class basic_disjunction final
       score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
 
-        auto* lhs_score = self.score_iterator_impl(self.lhs_);
-        auto* rhs_score = self.score_iterator_impl(self.rhs_);
-        auto* score_buf = self.score_.data();
-        const bool lhs_hit = lhs_score != score_buf;
-        const bool rhs_hit = rhs_score != score_buf;
+        const byte_type* score_values[2] {
+          self.score_iterator_impl(self.lhs_),
+          self.score_iterator_impl(self.rhs_) };
 
-        if (lhs_hit && rhs_hit) {
-          std::memcpy(score_buf, lhs_score, self.score_.size());
-          self.merger_(score_buf, rhs_score);
-          return score_buf;
-        } else if (lhs_hit) {
-          return lhs_score;
-        } else if (rhs_hit) {
-          return rhs_score;
-        } else {
-          self.score_.clear();
-          return score_buf;
-        }
+        auto* score_buf = self.score_.data();
+        self.merger_(score_buf, score_values, 2);
+
+        return score_buf;
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
@@ -345,9 +336,10 @@ class basic_disjunction final
         return self.score_iterator_impl(self.rhs_);
       });
     } else {
-      score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
-        auto& self = *static_cast<basic_disjunction*>(ctx);
-        return self.score_.data();
+      score_.prepare(
+          reinterpret_cast<score_ctx*>(score_.data()),
+          [](irs::score_ctx* ctx) -> const byte_type* {
+        return reinterpret_cast<irs::byte_type*>(ctx);
       });
     }
   }
@@ -377,13 +369,14 @@ class basic_disjunction final
       return it.score->evaluate();
     }
 
-    return score_.data();
+    return no_score_value_.c_str();
   }
 
   mutable adapter lhs_;
   mutable adapter rhs_;
   document doc_;
   score score_;
+  bstring no_score_value_; // empty score value
   cost cost_;
   order::prepared::merger merger_;
 }; // basic_disjunction
@@ -1184,9 +1177,7 @@ class block_disjunction final
       merger_(ord.prepare_merger(merge_type)) {
     if (traits_type::score() && !ord.empty()) {
       score_.prepare(this, [](score_ctx* ctx) noexcept -> const byte_type* {
-        auto& self = *static_cast<block_disjunction*>(ctx);
-
-        return self.score_value_;
+        return static_cast<block_disjunction*>(ctx)->score_value_;
       });
     }
 

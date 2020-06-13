@@ -99,8 +99,8 @@ struct score_iterator_adapter {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 class conjunction
-    : public frozen_attributes<3, doc_iterator>,
-      private score_ctx {
+  : public frozen_attributes<3, doc_iterator>,
+    private score_ctx {
  public:
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
@@ -197,19 +197,17 @@ class conjunction
     // prepare score
     switch (scores_.size()) {
       case 0:
-        score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<conjunction*>(ctx);
-          return self.score_.data();
+        score_.prepare(
+            reinterpret_cast<score_ctx*>(score_.data()),
+            [](score_ctx* ctx) -> const byte_type* {
+          return reinterpret_cast<irs::byte_type*>(ctx);
         });
         break;
       case 1:
-        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = self.score_.data();
-          self.score_vals_.front() = self.scores_.front()->evaluate();
-          self.merger_(score_buf, self.score_vals_.data(), 1);
-
-          return score_buf;
+        score_.prepare(
+            const_cast<score_ctx*>(reinterpret_cast<const score_ctx*>(&scores_.front())),
+            [](score_ctx* ctx) -> const byte_type* {
+          return reinterpret_cast<irs::score*>(ctx)->evaluate();
         });
         break;
       case 2:
