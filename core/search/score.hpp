@@ -77,6 +77,10 @@ class IRESEARCH_API score : public attribute {
     return const_cast<byte_type*>(buf_.c_str());
   }
 
+  size_t size() const noexcept {
+    return buf_.size();
+  }
+
   void clear() noexcept {
     assert(!buf_.empty());
     std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());

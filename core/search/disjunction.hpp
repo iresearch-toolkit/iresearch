@@ -313,31 +313,36 @@ class basic_disjunction final
       score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
 
-        self.score_.clear();
-        self.score_iterator_impl(self.lhs_);
-        self.score_iterator_impl(self.rhs_);
+        auto* lhs_score = self.score_iterator_impl(self.lhs_);
+        auto* rhs_score = self.score_iterator_impl(self.rhs_);
+        auto* score_buf = self.score_.data();
+        const bool lhs_hit = lhs_score != score_buf;
+        const bool rhs_hit = rhs_score != score_buf;
 
-        return self.score_.data();
+        if (lhs_hit && rhs_hit) {
+          std::memcpy(score_buf, lhs_score, self.score_.size());
+          self.merger_(score_buf, rhs_score);
+          return score_buf;
+        } else if (lhs_hit) {
+          return lhs_score;
+        } else if (rhs_hit) {
+          return rhs_score;
+        } else {
+          self.score_.clear();
+          return score_buf;
+        }
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
       score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
-
-        self.score_.clear();
-        self.score_iterator_impl(self.lhs_);
-
-        return self.score_.data();
+        return self.score_iterator_impl(self.lhs_);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
       score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
-
-        self.score_.clear();
-        self.score_iterator_impl(self.rhs_);
-
-        return self.score_.data();
+        return self.score_iterator_impl(self.rhs_);
       });
     } else {
       score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
@@ -361,7 +366,7 @@ class basic_disjunction final
     }
   }
 
-  void score_iterator_impl(adapter& it) const {
+  const byte_type* score_iterator_impl(adapter& it) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -369,8 +374,10 @@ class basic_disjunction final
     }
 
     if (doc == doc_.value) {
-      merger_(score_.data(), it.score->evaluate());
+      return it.score->evaluate();
     }
+
+    return score_.data();
   }
 
   mutable adapter lhs_;
