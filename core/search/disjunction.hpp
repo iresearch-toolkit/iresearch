@@ -309,7 +309,7 @@ class basic_disjunction final
     const bool rhs_score_empty = rhs_.score->empty();
 
     if (!lhs_score_empty && !rhs_score_empty) {
-      // both sub-iterators has score
+      // both sub-iterators have score
       score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
 
