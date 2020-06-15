@@ -1259,8 +1259,8 @@ class block_disjunction final
 
     do {
       if constexpr (traits_type::min_match()) {
-        // in min match case we need to clear internal buffers
-        // on every iteration
+        // in min match case we need to clear
+        // internal buffers on every iteration
         reset();
       }
 
@@ -1269,6 +1269,16 @@ class block_disjunction final
       min_ = doc_limits::eof();
 
       for_each_remove_if([this, &empty](auto& it) mutable {
+        // FIXME
+        // for min match case we can skip the whole block if
+        // we can't satisfy match_buf_.min_match_count() conditions, namely
+        //if constexpr (traits_type::min_match()) {
+        //  if (empty && (&it + (match_buf_.min_match_count() - match_buf_.max_match_count()) < (itrs_.data() + itrs_.size()))) {
+        //    // skip current block
+        //    return true;
+        //  }
+        //}
+
         if constexpr (traits_type::score()) {
           if (!it.score->empty()) {
             return refill<true>(it, empty);
