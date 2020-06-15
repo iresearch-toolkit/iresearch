@@ -1115,6 +1115,13 @@ class block_disjunction final
         min_ = doc_.value + 1;
         buf_offset_ = 0;
 
+        if constexpr (traits_type::min_match()) {
+          if (match_count_ < match_buf_.min_match_count()) {
+            next();
+            return doc_.value;
+          }
+        }
+
         if constexpr (traits_type::score()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {

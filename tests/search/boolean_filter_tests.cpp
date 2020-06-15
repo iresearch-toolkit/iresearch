@@ -202,8 +202,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       return doc_.value;
     }
 
-    do { 
-      next(); 
+    do {
+      next();
     } while (doc_.value < doc);
 
     return doc_.value;
@@ -1318,7 +1318,7 @@ struct estimated: public irs::filter {
     bool* evaluated;
     irs::cost::cost_t est;
   }; // prepared
-  
+
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
       const irs::order::prepared&,
@@ -1386,7 +1386,7 @@ TEST( boolean_query_estimation, or ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-   
+
     auto docs = prep->execute(irs::sub_reader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
@@ -1503,7 +1503,7 @@ TEST( boolean_query_estimation, and ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-    
+
     auto docs = prep->execute(irs::sub_reader::empty());
 
     // check that subqueries were estimated
@@ -1529,7 +1529,7 @@ TEST( boolean_query_estimation, and ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-    
+
     auto docs = prep->execute(irs::sub_reader::empty());
 
     // check that subqueries were estimated
@@ -8330,6 +8330,34 @@ TEST(block_disjunction_test, min_match_seek_no_readahead) {
       ASSERT_EQ(target.match_count, it.match_count());
     }
   }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 8, 12, 29 },
+      { 1, 5, 6 },
+      { 8, 256 },
+      { 8, 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {5, 5, 3},
+      {7, 8, 3},
+      {9, irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
 }
 
 TEST(block_disjunction_test, seek_readahead) {
@@ -9236,6 +9264,34 @@ TEST(block_disjunction_test, min_match_seek_readahead) {
       ASSERT_EQ(target.match_count, it.match_count());
     }
   }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 8, 12, 29 },
+      { 1, 5, 6 },
+      { 8, 256 },
+      { 8, 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {5, 5, 3},
+      {7, 8, 3},
+      {9, irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
 }
 
 TEST(block_disjunction_test, seek_next_no_readahead) {
@@ -9305,7 +9361,6 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
-
 }
 
 TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
@@ -12318,7 +12373,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                    iterator0 AND iterator1 AND iterator2 AND ... 
+// --SECTION--                    iterator0 AND iterator1 AND iterator2 AND ...
 // ----------------------------------------------------------------------------
 
 TEST(conjunction_test, next) {
@@ -13327,7 +13382,7 @@ TEST(exclusion_test, seek) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                Boolean test case 
+// --SECTION--                                                Boolean test case
 // ----------------------------------------------------------------------------
 
 class boolean_filter_test_case : public filter_test_case_base { };
@@ -13440,7 +13495,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // empty query
   {
     check_query(irs::Or(), docs_t{}, rdr);
-  } 
+  }
 
   {
     irs::Or root;
@@ -13605,7 +13660,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     check_query(root, ord, docs_t{ 1 }, rdr);
   }
 
-  // optimization should adjust min_match 
+  // optimization should adjust min_match
   // case where it should be dropped to 1
   // as optimized more filters than min_match
   // unscored
@@ -13623,7 +13678,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
     check_query(root, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
-                              9, 10, 11, 12, 13, 14, 15, 
+                              9, 10, 11, 12, 13, 14, 15,
                               16, 17, 18, 19, 20, 21, 22,
                               23, 24, 25, 26, 27, 28, 29,
                               30, 31, 32 }, rdr);
@@ -13990,7 +14045,7 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       irs::Or root;
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                                 24, 25, 26, 27, 28, 29, 30, 31, 32 },
                   rdr);
@@ -13999,7 +14054,7 @@ TEST_P(boolean_filter_test_case, not_sequential) {
     {
       irs::Or root;
       auto& left_branch = root.add<irs::And>();
-      // this three filters fire at same doc so it will get score = 3 
+      // this three filters fire at same doc so it will get score = 3
       append<irs::by_term>(left_branch, "name", "A");
       append<irs::by_term>(left_branch, "duplicated", "abcd");
       append<irs::by_term>(left_branch, "same", "xyz");
@@ -14387,7 +14442,7 @@ TEST(Not_test, equal) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                   And base tests 
+// --SECTION--                                                   And base tests
 // ----------------------------------------------------------------------------
 
 TEST(And_test, ctor) {
@@ -14570,7 +14625,7 @@ TEST(And_test, not_boosted) {
 #endif // IRESEARCH_DLL
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                    Or base tests 
+// --SECTION--                                                    Or base tests
 // ----------------------------------------------------------------------------
 
 TEST(Or_test, ctor) {
