@@ -1466,7 +1466,7 @@ bool index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
+  auto unregister_segments = irs::make_finally([&candidates, this]() {
     if (candidates.empty()) {
       return;
     }
