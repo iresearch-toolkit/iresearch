@@ -74,8 +74,8 @@ class min_match_buffer {
     return match_count_[i];
   }
 
-  void inc(size_t i) noexcept {
-    ++match_count_[i];
+  bool inc(size_t i) noexcept {
+    return ++match_count_[i] < min_match_count_;
   }
 
   void clear() noexcept {
@@ -95,7 +95,10 @@ template<>
 class min_match_buffer<0> {
  public:
   explicit min_match_buffer(size_t) noexcept {}
-  void inc(size_t) noexcept { assert(false); }
+  bool inc(size_t) noexcept {
+    assert(false);
+    return true;
+  }
   void clear() noexcept { assert(false); }
   uint32_t match_count(size_t) const noexcept {
     assert(false);
@@ -1225,11 +1228,7 @@ class block_disjunction final
     }
   }
 
-  bool refill() {
-    if (itrs_.empty()) {
-      return false;
-    }
-
+  void reset() noexcept {
     std::memset(mask_, 0, sizeof mask_);
     if constexpr (traits_type::score()) {
       score_value_ = score_buf_.data();
@@ -1238,23 +1237,39 @@ class block_disjunction final
     if constexpr (traits_type::min_match()) {
       match_buf_.clear();
     }
+  }
+
+  bool refill() {
+    if (itrs_.empty()) {
+      return false;
+    }
+
+    if constexpr (!traits_type::min_match()) {
+      reset();
+    }
+
     bool empty = true;
 
     do {
+      if constexpr (traits_type::min_match()) {
+        // in min match case we need to clear internal buffers
+        // on every iteration
+        reset();
+      }
+
       doc_base_ = min_;
       max_ = min_ + window();
       min_ = doc_limits::eof();
 
       for_each_remove_if([this, &empty](auto& it) mutable {
-        if (traits_type::score() && !it.score->empty()) {
-          return refill<true>(it, empty);
+        if constexpr (traits_type::score()) {
+          if (!it.score->empty()) {
+            return refill<true>(it, empty);
+          }
         }
 
         return refill<false>(it, empty);
       });
-
-      // FIXME for min match we can check if this block
-      // contains the requested number of matches
     } while (empty && !itrs_.empty());
 
     if (empty) {
@@ -1301,14 +1316,17 @@ class block_disjunction final
       const size_t offset = *doc - doc_base_;
 
       irs::set_bit(mask_[offset / block_size()], offset % block_size());
+
       if constexpr (Score) {
         assert(it.score);
         merger_(score_buf_.get(offset), it.score->evaluate());
       }
+
       if constexpr (traits_type::min_match()) {
-        match_buf_.inc(offset);
+        empty &= match_buf_.inc(offset);
+      } else {
+        empty = false;
       }
-      empty = false;
 
       if (!it->next()) {
         // exhausted
