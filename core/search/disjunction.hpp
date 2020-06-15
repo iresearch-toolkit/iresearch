@@ -1074,7 +1074,7 @@ class block_disjunction final
         match_count_ = 0;
       }
 
-      for_each_remove_if([this, target](auto& it) mutable {
+      visit_and_purge([this, target](auto& it) mutable {
         const auto doc = it->seek(target);
 
         if (doc_limits::eof(doc)) {
@@ -1203,7 +1203,7 @@ class block_disjunction final
   }
 
   template<typename Visitor>
-  void for_each_remove_if(Visitor visitor) {
+  void visit_and_purge(Visitor visitor) {
     auto* begin = itrs_.data();
     auto* end = itrs_.data() + itrs_.size();
 
@@ -1268,7 +1268,7 @@ class block_disjunction final
       max_ = min_ + window();
       min_ = doc_limits::eof();
 
-      for_each_remove_if([this, &empty](auto& it) mutable {
+      visit_and_purge([this, &empty](auto& it) mutable {
         // FIXME
         // for min match case we can skip the whole block if
         // we can't satisfy match_buf_.min_match_count() conditions, namely
