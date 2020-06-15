@@ -7354,7 +7354,6 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
     }
   }
 }
@@ -7863,7 +7862,6 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
     }
   }
 }
