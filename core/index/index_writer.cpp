@@ -1419,18 +1419,6 @@ bool index_writer::consolidate(
   auto committed_meta = committed_state->first;
   assert(committed_meta);
 
-  bool candidates_registered{ false };
-  // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates_registered, &candidates, this]() noexcept {
-    if (candidates.empty() || !candidates_registered) {
-      return;
-    }
-    SCOPED_LOCK(consolidation_lock_);
-    for (const auto* candidate : candidates) {
-      consolidating_segments_.erase(candidate);
-    }
-  });
-
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
@@ -1463,11 +1451,31 @@ bool index_writer::consolidate(
         return false;
       }
     }
-
-    candidates_registered = true; // only from now candidates should be cleanuped
-    // register for consolidation
-    consolidating_segments_.insert(candidates.begin(), candidates.end());
+    try {
+      // register for consolidation
+      consolidating_segments_.insert(candidates.begin(), candidates.end());
+    } catch(...) { 
+      // rollback in case of insertion fails (finalizer below won`t handle partial insert
+      // as concurrent consolidation is free to select same candidate before finalizer 
+      // reacquires the consolidation_lock)
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
+      }
+      throw;
+    }
   }
+
+  // unregisterer for all registered candidates
+  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
+    if (candidates.empty()) {
+      return;
+    }
+    SCOPED_LOCK(consolidation_lock_);
+    for (const auto* candidate : candidates) {
+      consolidating_segments_.erase(candidate);
+    }
+  });
+
 
   // validate candidates
   {
@@ -1554,8 +1562,7 @@ bool index_writer::consolidate(
 
     if (pending_state_) {
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers = irs::make_finally([&cleanup_cached_readers]() {
-                                                                   cleanup_cached_readers(); });
+      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
 
       // check we didn`t added to reader cache already absent readers
       // only if we have different index meta 
@@ -1640,8 +1647,7 @@ bool index_writer::consolidate(
       // there was a commit(s) since consolidation was started,
 
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers = irs::make_finally([&cleanup_cached_readers]() {
-                                                                  cleanup_cached_readers(); });
+      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
 
       auto ctx = get_flush_context();
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
@@ -1907,6 +1913,9 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this]()
     {
       assert(ctx_raw);
+      if (ctx_raw->pending_segments_.empty()) {
+        return;
+      }
       SCOPED_LOCK(consolidation_lock_);
       for (auto& pending_segment : ctx_raw->pending_segments_) {
         auto& candidates = pending_segment.consolidation_ctx.candidates;
