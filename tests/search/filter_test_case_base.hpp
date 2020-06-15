@@ -339,7 +339,6 @@ struct frequency_sort: public irs::sort {
   struct score_t {
     irs::doc_id_t id;
     double value;
-    bool prepared;
   };
 
   struct stats_t {
@@ -363,15 +362,11 @@ struct frequency_sort: public irs::sort {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
       dst.id = irs::doc_limits::invalid();
-      dst.value = std::numeric_limits<double>::infinity();
-      dst.prepared = true;
       for (size_t i = 0; i < size; ++i) {
         auto& src = score_cast(src_start[i]  + offset);
-        ASSERT_TRUE(src.prepared);
 
-        if (std::isinf(dst.value)) {
+        if (!irs::doc_limits::valid(dst.id) && irs::doc_limits::valid(src.id)) {
           dst.id = src.id;
-          dst.value = 0;
         }
 
         dst.value += src.value;
@@ -382,17 +377,10 @@ struct frequency_sort: public irs::sort {
                           const irs::byte_type* src_start) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
-      if (!dst.prepared) {
-        dst.id = irs::doc_limits::invalid();
-        dst.value = std::numeric_limits<double>::infinity();
-        dst.prepared = true;
-      }
       auto& src = score_cast(src_start + offset);
-      ASSERT_TRUE(src.prepared);
 
-      if (std::isinf(dst.value)) {
+      if (!irs::doc_limits::valid(dst.id) && irs::doc_limits::valid(src.id)) {
         dst.id = src.id;
-        dst.value = 0;
       }
 
       dst.value += src.value;
@@ -402,15 +390,15 @@ struct frequency_sort: public irs::sort {
                          const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
-      dst.id = irs::doc_limits::invalid();
-      dst.value = std::numeric_limits<double>::min();
-      dst.prepared = true;
+      dst.value = std::numeric_limits<double>::max();
       for (size_t i = 0; i < size; ++i) {
-        auto& src = score_cast(src_start[i]  + offset);
-        ASSERT_TRUE(src.prepared);
+        auto& src = score_cast(src_start[i] + offset);
+
+        if (!irs::doc_limits::valid(dst.id) && irs::doc_limits::valid(src.id)) {
+          dst.id = src.id;
+        }
 
         if (std::isless(dst.value, src.value)) {
-          dst.id = src.id;
           dst.value = src.value;
         }
       }
@@ -420,16 +408,14 @@ struct frequency_sort: public irs::sort {
                     const irs::byte_type* src_start) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
-      if (!dst.prepared) {
-        dst.id = irs::doc_limits::invalid();
-        dst.value = std::numeric_limits<double>::min();
-        dst.prepared = true;
-      }
       auto& src = score_cast(src_start + offset);
-      ASSERT_TRUE(src.prepared);
+
+      if (!irs::doc_limits::valid(dst.id) && irs::doc_limits::valid(src.id)) {
+        dst.id = src.id;
+        dst.value = std::numeric_limits<double>::max();
+      }
 
       if (std::isless(dst.value, src.value)) {
-        dst.id = src.id;
         dst.value = src.value;
       }
     }
@@ -517,17 +503,13 @@ struct frequency_sort: public irs::sort {
           const auto& state = *reinterpret_cast<scorer*>(ctx);
           auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
 
-          if (!buf.prepared) {
-            buf.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-            buf.value = std::numeric_limits<double>::infinity();
-            buf.prepared = true;
-          }
-
           buf.id = state.doc_id_attr->value;
 
           // docs_count may be nullptr if no collector called, e.g. by range_query for bitset_doc_iterator
           if (state.docs_count) {
             buf.value = 1. / *state.docs_count;
+          } else {
+            buf.value = 0;
           }
 
           return state.score_buf;
@@ -541,13 +523,11 @@ struct frequency_sort: public irs::sort {
 
     virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
       auto lhs = traits_t::score_cast(lhs_buf);
-      if (!lhs.prepared) {
-        lhs.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      if (!irs::doc_limits::valid(lhs.id)) {
         lhs.value = std::numeric_limits<double>::infinity();
       }
       auto rhs = traits_t::score_cast(rhs_buf);
-      if (!rhs.prepared) {
-        rhs.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      if (!irs::doc_limits::valid(rhs.id)) {
         rhs.value = std::numeric_limits<double>::infinity();
       }
 
