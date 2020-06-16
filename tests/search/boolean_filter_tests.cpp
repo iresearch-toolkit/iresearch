@@ -259,16 +259,14 @@ std::pair<std::vector<DocIterator>, std::vector<irs::order::prepared>> execute_a
     auto& doc = entry.first;
     auto& ord = entry.second;
 
+    order.emplace_back(ord.prepare());
+
     if (ord.empty()) {
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
-        doc.begin(), doc.end()
-      ));
+        doc.begin(), doc.end()));
     } else {
-      order.emplace_back(ord.prepare());
-
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
-        doc.begin(), doc.end(), stats, order.back(), irs::no_boost()
-      ));
+        doc.begin(), doc.end(), stats, order.back(), irs::no_boost()));
     }
   }
 
@@ -7343,7 +7341,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
                    irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.empty());
+    ASSERT_TRUE(score.empty());
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7851,7 +7849,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
                    irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.empty());
+    ASSERT_TRUE(score.empty());
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);

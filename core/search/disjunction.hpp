@@ -115,7 +115,9 @@ class score_buffer {
     : bucket_size_(ord.score_size()),
       buf_size_(bucket_size_*size),
       buf_(ord.empty() ? nullptr : new byte_type[buf_size_]) {
-    std::memset(data(), 0, this->size());
+    if (buf_) {
+      std::memset(data(), 0, this->size());
+    }
   }
 
   byte_type* get(size_t i) noexcept {
