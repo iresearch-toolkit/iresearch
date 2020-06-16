@@ -72,7 +72,7 @@ TEST(field_meta_test, move) {
 
     ASSERT_EQ("", moved.name);
     ASSERT_EQ(iresearch::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_EQ(norm, moved.norm);
   }
 
   // assign operator
@@ -94,7 +94,7 @@ TEST(field_meta_test, move) {
 
     ASSERT_EQ("", moved.name);
     ASSERT_EQ(iresearch::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_EQ(norm, moved.norm);
   }
 }
 

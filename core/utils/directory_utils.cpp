@@ -353,15 +353,14 @@ void tracking_directory::flush_tracked(file_set& other) noexcept {
 
 ref_tracking_directory::ref_tracking_directory(
     directory& impl,
-    bool track_open /*= false*/
-) : attribute_(impl.attributes().emplace<index_file_refs>()),
+    bool track_open /*= false*/)
+  : attribute_(impl.attributes().emplace<index_file_refs>()),
     impl_(impl),
     track_open_(track_open) {
 }
 
 ref_tracking_directory::ref_tracking_directory(
-    ref_tracking_directory&& other
-) noexcept
+    ref_tracking_directory&& other) noexcept
   : attribute_(other.attribute_), // references do not require std::move(...)
     impl_(other.impl_), // references do not require std::move(...)
     refs_(std::move(other.refs_)),
@@ -374,8 +373,7 @@ void ref_tracking_directory::clear_refs() const noexcept {
 }
 
 index_output::ptr ref_tracking_directory::create(
-  const std::string& name
-) noexcept {
+    const std::string& name) noexcept {
   try {
     auto result = impl_.create(name);
 

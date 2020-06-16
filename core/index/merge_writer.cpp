@@ -470,11 +470,8 @@ class compound_iterator {
         doc_map(&doc_map) {
       }
 
-    iterator_t(iterator_t&& other) noexcept
-      : it(std::move(other.it)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+    iterator_t(iterator_t&&) = default;
+    iterator_t& operator=(iterator_t&&) = delete;
 
     Iterator it;
     const irs::sub_reader* reader;
@@ -711,11 +708,8 @@ class compound_field_iterator : public irs::basic_term_reader {
         reader(&reader),
         doc_map(&doc_map) {
     }
-    field_iterator_t(field_iterator_t&& other) noexcept
-      : itr(std::move(other.itr)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+    field_iterator_t(field_iterator_t&&) = default;
+    field_iterator_t& operator=(field_iterator_t&&) = delete;
 
     irs::field_iterator::ptr itr;
     const irs::sub_reader* reader;

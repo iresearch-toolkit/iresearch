@@ -39,10 +39,11 @@ struct timer_stat_t {
   std::atomic<size_t> time;
 };
 
-class IRESEARCH_API scoped_timer: private iresearch::util::noncopyable {
+class IRESEARCH_API scoped_timer : private util::noncopyable {
  public:
   scoped_timer(timer_stat_t& stat);
-  scoped_timer(scoped_timer&& other) noexcept;
+  scoped_timer(scoped_timer&&) = default;
+  scoped_timer& operator=(scoped_timer&&) = delete;
   ~scoped_timer();
 
  private:
@@ -93,15 +94,13 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void init_stats(
   bool track_all_keys = false,
-  const std::unordered_set<std::string>& tracked_keys = std::unordered_set<std::string>()
-);
+  const std::unordered_set<std::string>& tracked_keys = std::unordered_set<std::string>());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API bool visit(
-  const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
-);
+  const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush formatted timer stats to a specified stream

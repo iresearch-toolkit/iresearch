@@ -303,10 +303,8 @@ class raw_block_vector_base
       buffer_t::size = bucket_size;
     }
 
-    buffer_entry_t(buffer_entry_t&& other) noexcept
-      : buffer_t(std::move(other)),
-        ptr(std::move(other.ptr)) {
-    }
+    buffer_entry_t(buffer_entry_t&&) = default;
+    buffer_entry_t& operator=(buffer_entry_t&&) = delete;
 
     typename Allocator::value_type ptr;
   };
@@ -343,9 +341,8 @@ template<
     : base_t(alloc) {
   }
 
-  raw_block_vector(raw_block_vector&& other) noexcept
-    : base_t(std::move(other)) {
-  }
+  raw_block_vector(raw_block_vector&&) = default;
+  raw_block_vector& operator=(raw_block_vector&&) = delete;
 
   FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     // non-precomputed bucket size is the same as the last precomputed bucket size

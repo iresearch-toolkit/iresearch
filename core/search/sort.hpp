@@ -780,8 +780,8 @@ class IRESEARCH_API order final {
         byte_type* score,
         const attribute_provider& doc,
         boost_t boost);
-      scorers(scorers&& other) noexcept = default;
-      scorers& operator=(scorers&& other) noexcept = default;
+      scorers(scorers&&) = default;
+      scorers& operator=(scorers&&) = default;
 
       const byte_type* evaluate() const;
 

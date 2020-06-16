@@ -142,7 +142,7 @@ class IRESEARCH_API index_writer
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
         size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
     ) noexcept;
-    active_segment_context(active_segment_context&& other)  = default;
+    active_segment_context(active_segment_context&&) = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
 
@@ -175,8 +175,7 @@ class IRESEARCH_API index_writer
       document(
         flush_context_ptr&& ctx,
         const segment_context_ptr& segment,
-        const segment_writer::update_context& update
-      );
+        const segment_writer::update_context& update);
       document(document&& other) noexcept;
       ~document() noexcept;
 
@@ -394,8 +393,8 @@ class IRESEARCH_API index_writer
       : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
     modification_context(irs::filter::ptr&& match_filter, size_t gen, bool isUpdate)
       : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(modification_context&& other) = default;
-    modification_context& operator=(const modification_context& other) = delete; // no default constructor
+    modification_context(modification_context&&) = default;
+    modification_context& operator=(const modification_context&) = delete; // no default constructor
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -728,7 +727,7 @@ class IRESEARCH_API index_writer
         segment(std::move(segment)) {
     }
 
-    import_context(import_context&& other) = default;
+    import_context(import_context&&) = default;
 
     import_context& operator=(const import_context&) = delete;
 
@@ -973,7 +972,7 @@ class IRESEARCH_API index_writer
     sync_context to_sync; // file names and segments to be synced during next commit
 
     pending_context_t() = default;
-    pending_context_t(pending_context_t&& other) = default;
+    pending_context_t(pending_context_t&&) = default;
     operator bool() const noexcept { return ctx && meta; }
   }; // pending_context_t
 

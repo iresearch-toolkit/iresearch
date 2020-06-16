@@ -631,8 +631,7 @@ index_writer::active_segment_context::~active_segment_context() {
 }
 
 index_writer::active_segment_context& index_writer::active_segment_context::operator=(
-    active_segment_context&& other
-) noexcept {
+    active_segment_context&& other) noexcept {
   if (this != &other) {
     if (ctx_) {
       --*segments_active_; // track here since garanteed to have 1 ref per active segment

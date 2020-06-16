@@ -38,7 +38,11 @@ class bitvector final {
   bitvector() = default;
   explicit bitvector(size_t bits): size_(bits) { resize(bits); }
   bitvector(const bitvector& other) { *this = other; }
-  bitvector(bitvector&& other) noexcept { *this = std::move(other); }
+  bitvector(bitvector&& other) noexcept
+    : set_(std::move(other.set_)),
+      size_(other.size_) {
+    other.size_ = 0;
+  }
 
   bool operator==(const bitvector& rhs) const noexcept {
     if (this->size() != rhs.size()) {

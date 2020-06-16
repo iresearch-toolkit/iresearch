@@ -98,13 +98,6 @@ namespace iresearch {
       irs::order* order = nullptr;
       size_t* limit = nullptr;
       std::string* error = nullptr;
-      query(): order(nullptr), limit(nullptr), error(nullptr) {}
-      query(query&& other):
-        filter(std::move(other.filter)),
-        order(other.order),
-        limit(other.limit),
-        error(other.error) {
-      }
     };
 
     ////////////////////////////////////////////////////////////////////////////////

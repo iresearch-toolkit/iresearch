@@ -40,7 +40,7 @@ NS_ROOT
 template<
   typename Elem,
   typename Alloc = std::allocator <Elem>
-> class basic_allocator: compact<0, Alloc> {
+> class basic_allocator : compact<0, Alloc> {
  public:
   typedef compact<0, Alloc> allocator_t;
   typedef typename allocator_t::type allocator_type;
@@ -48,16 +48,9 @@ template<
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) noexcept
-    : allocator_t(std::move(rhs)) { }
-
+  basic_allocator(basic_allocator&&) = default;
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
-    if (this != &rhs) {
-      allocator_t::operator=(std::move(rhs));
-    }
-    return *this;
-  }
+  basic_allocator& operator=(basic_allocator&&) = default;
 
   pointer allocate(size_t len) {
     return allocator_t::get().allocate(len);
@@ -80,16 +73,9 @@ class basic_allocator<char, std::allocator<char>>:
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) noexcept
-    : allocator_t(std::move(rhs)) { }
-
+  basic_allocator(basic_allocator&&) = default;
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
-    if (this != &rhs) {
-      allocator_t::operator=(std::move(rhs));
-    }
-    return *this;
-  }
+  basic_allocator& operator=(basic_allocator&&) = default;
 
   pointer allocate(size_t size) {
     auto ptr = allocator_t::get().allocate(size + 1);
@@ -106,9 +92,7 @@ class basic_allocator<char, std::allocator<char>>:
 // basic_const_str
 // -------------------------------------------------------------------
 
-inline size_t oversize(
-    size_t chunk_size, size_t size, size_t min_size
-) noexcept {
+inline size_t oversize(size_t chunk_size, size_t size, size_t min_size) noexcept {
   assert(chunk_size);
   assert(min_size > size);
 
@@ -125,7 +109,7 @@ template<
   typename Elem,
   typename Traits = std::char_traits<Elem>,
   typename Alloc = std::allocator<Elem>
-> class basic_str_builder: public basic_string_ref<Elem, Traits> {
+> class basic_str_builder : public basic_string_ref<Elem, Traits> {
  public:
   typedef basic_string_ref<Elem, Traits> ref_type;
   typedef basic_allocator <Elem, Alloc> allocator_type;
@@ -136,24 +120,22 @@ template<
   static const size_t DEF_ALIGN = 8;
 
   explicit basic_str_builder(
-    size_t capacity = DEF_CAPACITY, const allocator_type& alloc = allocator_type()
-  ): rep_(capacity, alloc) {
+      size_t capacity = DEF_CAPACITY,
+      const allocator_type& alloc = allocator_type())
+    : rep_(capacity, alloc) {
     if (capacity) {
       this->data_ = allocator().allocate(capacity);
     }
   }
 
   explicit basic_str_builder(
-    const ref_type& ref, const allocator_type& alloc = allocator_type()
-  ): rep_(0, alloc) {
+      const ref_type& ref,
+      const allocator_type& alloc = allocator_type())
+    : rep_(0, alloc) {
     *this += ref;
   }
 
-  basic_str_builder(basic_str_builder&& rhs) noexcept
-    : ref_type(rhs.data_, rhs.size_), rep_(std::move(rhs.rep_)) {
-    rhs.data_ = nullptr;
-    rhs.size_ = 0;
-  }
+  basic_str_builder(basic_str_builder&&) = default;
 
   basic_str_builder(const basic_str_builder& rhs):
     ref_type(nullptr, rhs.size_), rep_(rhs.rep_) {
@@ -175,17 +157,7 @@ template<
     return *this;
   }
 
-  basic_str_builder& operator=(basic_str_builder&& rhs) noexcept {
-    if (this != &rhs) {
-      this->data_ = rhs.data_;
-      rhs.data_ = nullptr;
-      this->size_ = rhs.size_;
-      rhs.size_ = 0;
-      rep_ = std::move(rhs.rep_);
-    }
-
-    return *this;
-  }
+  basic_str_builder& operator=(basic_str_builder&&) = default;
 
   virtual ~basic_str_builder() {
     destroy();
@@ -216,8 +188,7 @@ template<
   }
 
   basic_str_builder& append(
-    const char_type* b, size_t size, size_t align = DEF_ALIGN
-  ) {
+      const char_type* b, size_t size, size_t align = DEF_ALIGN) {
     oversize(this->size() + size, align);
     traits_type::copy(data() + this->size(), b, size);
     this->size_ += size;
@@ -225,8 +196,8 @@ template<
   }
 
   basic_str_builder& append(
-    const basic_string_ref<char_type>& ref, size_t align = DEF_ALIGN
-  ) {
+      const basic_string_ref<char_type>& ref,
+      size_t align = DEF_ALIGN) {
     return append(ref.c_str(), ref.size(), align);
   }
 
@@ -237,28 +208,26 @@ template<
     return *this;
   }
 
-  inline basic_str_builder& operator=(const basic_string_ref<char_type>& ref) {
+  basic_str_builder& operator=(const basic_string_ref<char_type>& ref) {
     reset();
     return (*this += ref);
   }
 
-  inline basic_str_builder& operator+=(char_type b) {
+  basic_str_builder& operator+=(char_type b) {
     return append(b);
   }
 
-  inline basic_str_builder& operator+=(
-    const basic_string_ref<char_type>& ref
-  ) {
+  basic_str_builder& operator+=(const basic_string_ref<char_type>& ref) {
     return append(ref.c_str(), ref.size());
   }
 
-  inline void oversize(size_t minsize, size_t chunksize = DEF_ALIGN) {
+  void oversize(size_t minsize, size_t chunksize = DEF_ALIGN) {
     if (minsize > capacity()) {
       reserve(iresearch::oversize(chunksize, capacity(), minsize));
     }
   }
 
-  inline size_t max_size() const noexcept {
+  size_t max_size() const noexcept {
     const size_t size = allocator().max_size();
     return (size <= 1U ? 1U : size - 1);
   }
@@ -278,15 +247,15 @@ template<
  private:
   void capacity(size_t capacity) { rep_.first() = capacity; }
 
-  inline const allocator_type& allocator() const {
+  const allocator_type& allocator() const {
     return rep_.second();
   }
 
-  inline allocator_type& allocator() {
+  allocator_type& allocator() {
     return rep_.second();
   }
 
-  inline void destroy() noexcept {
+  void destroy() noexcept {
     allocator().deallocate(data(), capacity());
   }
 
@@ -381,11 +350,11 @@ template<
     return *this;
   }
 
-  inline basic_string_builder& operator+=(char_type ch) {
+  basic_string_builder& operator+=(char_type ch) {
     return append(ch);
   }
 
-  inline basic_string_builder& operator+=(const ref_type& ref) {
+  basic_string_builder& operator+=(const ref_type& ref) {
     return append(ref);
   }
 
@@ -417,7 +386,7 @@ template<
 
   char_type* data() { return &(buf_[0]); }
 
-  inline size_t max_size() const noexcept { return buf_.max_size(); }
+  size_t max_size() const noexcept { return buf_.max_size(); }
 
   size_t remain() const { return capacity() - this->size(); }
 
