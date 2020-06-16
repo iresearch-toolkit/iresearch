@@ -123,7 +123,7 @@ struct IRESEARCH_API index_input : public data_input {
   virtual int64_t checksum(size_t offset) const = 0;
 
  private:
-  index_input& operator=( const index_input& ) = delete;
+  index_input& operator=(const index_input&) = delete;
 }; // index_input
 
 //////////////////////////////////////////////////////////////////////////////

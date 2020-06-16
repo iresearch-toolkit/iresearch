@@ -405,8 +405,8 @@ struct order_bucket : private util::noncopyable {
       reverse(reverse) {
   }
 
-  order_bucket(order_bucket&& rhs) = default;
-  order_bucket& operator=(order_bucket&& rhs) = default;
+  order_bucket(order_bucket&&) = default;
+  order_bucket& operator=(order_bucket&&) = default;
 
   sort::prepared::ptr bucket; // prepared score
   size_t score_offset; // offset in score buffer
@@ -695,17 +695,8 @@ class IRESEARCH_API order final {
       assert(sort_);
     }
 
-    entry(entry&& rhs) noexcept
-      : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
-    }
-
-    entry& operator=(entry&& rhs) noexcept {
-      if (this != &rhs) {
-        sort_ = std::move(rhs.sort_);
-        reverse_ = rhs.reverse_;
-      }
-      return *this;
-    }
+    entry(entry&&) = default;
+    entry& operator=(entry&&) = default;
 
     const irs::sort& sort() const noexcept {
       assert(sort_);
@@ -906,8 +897,8 @@ class IRESEARCH_API order final {
     static const prepared& unordered() noexcept;
 
     prepared() = default;
-    prepared(prepared&& rhs) = default;
-    prepared& operator=(prepared&& rhs) = default;
+    prepared(prepared&&) = default;
+    prepared& operator=(prepared&&) = default;
 
     const flags& features() const noexcept { return features_; }
 
@@ -1062,20 +1053,10 @@ class IRESEARCH_API order final {
   static const order& unordered() noexcept;
 
   order() = default;
-  order(order&& rhs) noexcept
-    : order_(std::move(rhs.order_)) {
-  }
-
-  order& operator=(order&& rhs) noexcept {
-    if (this != &rhs) {
-      order_ = std::move(rhs.order_);
-    }
-
-    return *this;
-  }
+  order(order&&) = default;
+  order& operator=(order&&) = default;
 
   bool operator==(const order& other) const;
-
   bool operator!=(const order& other) const {
     return !(*this == other);
   }

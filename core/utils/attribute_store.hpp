@@ -53,22 +53,10 @@ template<
   };
 
   attribute_map() = default;
-
-  attribute_map(const attribute_map& other) = default;
-
-  attribute_map(attribute_map&& other) noexcept {
-    *this = std::move(other);
-  }
-
-  attribute_map& operator=(const attribute_map& other) = default;
-
-  attribute_map& operator=(attribute_map&& other) noexcept {
-    if (this != &other) {
-      map_ = std::move(other.map_);
-    }
-
-    return *this;
-  }
+  attribute_map(const attribute_map&) = default;
+  attribute_map(attribute_map&&) = default;
+  attribute_map& operator=(const attribute_map&) = default;
+  attribute_map& operator=(attribute_map&&) = default;
 
   void clear() {
     map_.clear();
@@ -234,19 +222,10 @@ class IRESEARCH_API attribute_store
   static const attribute_store& empty_instance();
 
   explicit attribute_store(size_t reserve = 0);
-
   attribute_store(const attribute_store&) = default;
-
-  attribute_store(attribute_store&& rhs) noexcept
-    : base_t(std::move(rhs)) {
-  }
-
+  attribute_store(attribute_store&&) = default;
   attribute_store& operator=(const attribute_store&) = default;
-
-  attribute_store& operator=(attribute_store&& rhs) noexcept {
-    base_t::operator=(std::move(rhs));
-    return *this;
-  }
+  attribute_store& operator=(attribute_store&&) = default;
 
   template<typename T, typename... Args>
   typename ref<T>::type& try_emplace(bool& inserted, Args&&... args) {

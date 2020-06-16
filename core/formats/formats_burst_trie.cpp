@@ -692,13 +692,8 @@ class term_iterator final : public term_iterator_base {
     typedef fst_byte_builder::stateid_t stateid_t;
 
     arc() = default;
-
-    arc(arc&& rhs) noexcept
-      : state(rhs.state), 
-        weight(std::move(rhs.weight)),
-        block(rhs.block) {
-      rhs.block = nullptr;
-    }
+    arc(arc&&) = default;
+    arc& operator=(arc&&) = default;
 
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {

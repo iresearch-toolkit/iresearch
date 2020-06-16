@@ -57,20 +57,18 @@ struct IRESEARCH_API segment_meta {
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs) noexcept;
+  segment_meta(segment_meta&&) = default;
   segment_meta(const string_ref& name, format_ptr codec);
-  segment_meta(
-    std::string&& name,
-    format_ptr codec,
-    uint64_t docs_count,
-    uint64_t live_docs_count,
-    bool column_store,
-    file_set&& files,
-    size_t size = 0,
-    field_id sort = field_limits::invalid()
-  ) noexcept;
+  segment_meta(std::string&& name,
+               format_ptr codec,
+               uint64_t docs_count,
+               uint64_t live_docs_count,
+               bool column_store,
+               file_set&& files,
+               size_t size = 0,
+               field_id sort = field_limits::invalid()) noexcept;
 
-  segment_meta& operator=(segment_meta&& rhs) noexcept;
+  segment_meta& operator=(segment_meta&&) = default;
   segment_meta& operator=(const segment_meta&) = default;
 
   bool operator==(const segment_meta& other) const noexcept;
@@ -98,11 +96,12 @@ class IRESEARCH_API index_meta {
  public:
   struct IRESEARCH_API index_segment_t {
     index_segment_t() = default;
-    index_segment_t(segment_meta&& v_meta);
-    index_segment_t(const index_segment_t& other) = default;
-    index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&& other) noexcept;
-    index_segment_t& operator=(index_segment_t&& other) noexcept;
+    index_segment_t(segment_meta&& meta);
+    index_segment_t(const index_segment_t&) = default;
+    index_segment_t& operator=(const index_segment_t&) = default;
+    index_segment_t(index_segment_t&&) = default;
+    index_segment_t& operator=(index_segment_t&&) = default;
+
     bool operator==(const index_segment_t& other) const noexcept;
     bool operator!=(const index_segment_t& other) const noexcept;
 

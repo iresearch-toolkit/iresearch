@@ -91,10 +91,8 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact& rhs) noexcept
-    : val_(rhs.val_) {}
-  compact(compact&& rhs) noexcept
-    : val_(std::move(rhs.val_)) { }
+  compact(const compact&) = default;
+  compact(compact&&) = default;
 
   template<typename U = T>
   compact(U&& value) noexcept
@@ -102,12 +100,8 @@ class compact<I, T, false> {
   }
 
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&& rhs) noexcept {
-    if (this != &rhs) {
-      val_ = std::move(rhs);
-    }
-    return *this;
-  }
+  compact& operator=(compact&&) = default;
+
   compact& operator=(const T& value) noexcept {
     val_ = value;
     return *this;
@@ -208,10 +202,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
 
   compact_pair() = default;
   compact_pair(const compact_pair&) = default;
-  compact_pair(compact_pair&& rhs) noexcept
-    : first_compressed_t(std::move(rhs.first())),
-      second_compressed_t(std::move(rhs.second())) {
-  }
+  compact_pair(compact_pair&&) = default;
 
   template<typename U0 = T0, typename U1 = T1>
   compact_pair(U0&& v0, U1&& v1) 
@@ -220,13 +211,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
   }
 
   compact_pair& operator=(const compact_pair&) = default;
-  compact_pair& operator=(compact_pair&& rhs) noexcept {
-    if (this != &rhs) {
-      first_compressed_t::operator=(std::move(rhs.first()));
-      second_compressed_t::operator=(std::move(rhs.second()));
-    }
-    return *this;
-  }
+  compact_pair& operator=(compact_pair&&) = default;
 
   const first_type& first() const noexcept {
     return first_compressed_t::get();

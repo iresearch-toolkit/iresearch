@@ -647,7 +647,7 @@ class IRESEARCH_API index_writer
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
 
-    consolidation_context_t(consolidation_context_t&& rhs) = default; 
+    consolidation_context_t(consolidation_context_t&&) = default;
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
@@ -908,17 +908,8 @@ class IRESEARCH_API index_writer
 
   struct sync_context : util::noncopyable {
     sync_context() = default;
-    sync_context(sync_context&& rhs) noexcept
-      : files(std::move(rhs.files)),
-        segments(std::move(rhs.segments)) {
-    }
-    sync_context& operator=(sync_context&& rhs) noexcept {
-      if (this != &rhs) {
-        files = std::move(rhs.files);
-        segments = std::move(rhs.segments);
-      }
-      return *this;
-    }
+    sync_context(sync_context&&) = default;
+    sync_context& operator=(sync_context&&) = default;
 
     bool empty() const noexcept {
       return segments.empty();

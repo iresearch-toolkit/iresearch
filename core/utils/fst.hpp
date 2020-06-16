@@ -232,12 +232,8 @@ class fst_builder : util::noncopyable {
 
   struct state : private util::noncopyable {
     state() = default;
-
-    state(state&& rhs) noexcept
-      : arcs(std::move(rhs.arcs)),
-        out(std::move(rhs.out)),
-        final(rhs.final) {
-    }
+    state(state&&) = default;
+    state& operator=(state&&) = delete;
 
     void clear() noexcept {
       arcs.clear();

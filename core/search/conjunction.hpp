@@ -46,20 +46,8 @@ struct score_iterator_adapter {
     assert(doc);
   }
 
-  score_iterator_adapter(score_iterator_adapter&& rhs) noexcept
-    : it(std::move(rhs.it)),
-      doc(rhs.doc),
-      score(rhs.score) {
-  }
-
-  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) noexcept {
-    if (this != &rhs) {
-      it = std::move(rhs.it);
-      score = rhs.score;
-      doc = rhs.doc;
-    }
-    return *this;
-  }
+  score_iterator_adapter(score_iterator_adapter&&) = default;
+  score_iterator_adapter& operator=(score_iterator_adapter&&) = default;
 
   typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();

@@ -50,7 +50,7 @@ struct fixed_phrase_state {
   };
 
   fixed_phrase_state() = default;
-  fixed_phrase_state(fixed_phrase_state&& rhs) = default;
+  fixed_phrase_state(fixed_phrase_state&&) = default;
   fixed_phrase_state& operator=(const fixed_phrase_state&) = delete;
 
   phrase_state<term_state> terms;
@@ -65,7 +65,7 @@ struct variadic_phrase_state : fixed_phrase_state {
   using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
 
   variadic_phrase_state() = default;
-  variadic_phrase_state(variadic_phrase_state&& rhs) = default;
+  variadic_phrase_state(variadic_phrase_state&&) = default;
   variadic_phrase_state& operator=(const variadic_phrase_state&) = delete;
 
   std::vector<size_t> num_terms; // number of terms per phrase part

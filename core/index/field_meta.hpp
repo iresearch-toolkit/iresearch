@@ -39,17 +39,17 @@ struct IRESEARCH_API field_meta {
 
   field_meta() = default;
   field_meta(const field_meta&) = default;
-  field_meta(field_meta&& rhs) noexcept;
-  field_meta(
-    const string_ref& field, 
-    const flags& features, 
-    field_id norm = field_limits::invalid()
-  );
+  field_meta(field_meta&&) = default;
+  field_meta(const string_ref& field,
+             const flags& features,
+             field_id norm = field_limits::invalid());
 
-  field_meta& operator=(field_meta&& rhs) noexcept;
+  field_meta& operator=(field_meta&&) = default;
   field_meta& operator=(const field_meta&) = default;
 
-  bool operator==(const field_meta& rhs) const;
+  bool operator==(const field_meta& rhs) const {
+    return features == rhs.features && name == rhs.name;
+  }
   bool operator!=(const field_meta& rhs) const {
     return !(*this == rhs);
   }
@@ -67,13 +67,15 @@ struct IRESEARCH_API column_meta {
  public:
   column_meta() = default;
   column_meta(const column_meta&) = default;
-  column_meta(column_meta&& rhs) noexcept;
+  column_meta(column_meta&&) = default;
   column_meta(const string_ref& field, field_id id);
 
-  column_meta& operator=(column_meta&& rhs) noexcept;
+  column_meta& operator=(column_meta&&) = default;
   column_meta& operator=(const column_meta&) = default;
 
-  bool operator==(const column_meta& rhs) const;
+  bool operator==(const column_meta& rhs) const {
+    return name == rhs.name;
+  }
   bool operator!=(const column_meta& rhs) const {
     return !(*this == rhs);
   }

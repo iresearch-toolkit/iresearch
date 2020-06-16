@@ -46,8 +46,7 @@ segment_meta::segment_meta(
     bool column_store,
     segment_meta::file_set&& files,
     size_t size, /* = 0*/
-    field_id sort /* = field_limits::invalid() */
-) noexcept
+    field_id sort /* = field_limits::invalid() */) noexcept
   : files(std::move(files)),
     name(std::move(name)),
     docs_count(docs_count),
@@ -56,42 +55,6 @@ segment_meta::segment_meta(
     size(size),
     sort(sort),
     column_store(column_store) {
-}
-
-segment_meta::segment_meta(segment_meta&& rhs) noexcept
-  : files(std::move(rhs.files)),
-    name(std::move(rhs.name)),
-    docs_count(rhs.docs_count),
-    live_docs_count(rhs.live_docs_count),
-    codec(rhs.codec),
-    size(rhs.size),
-    version(rhs.version),
-    sort(rhs.sort),
-    column_store(rhs.column_store) {
-  rhs.docs_count = 0;
-  rhs.size = 0;
-  rhs.sort = field_limits::invalid();
-}
-
-segment_meta& segment_meta::operator=(segment_meta&& rhs) noexcept {
-  if (this != &rhs) {
-    files = std::move(rhs.files);
-    name = std::move(rhs.name);
-    docs_count = rhs.docs_count;
-    rhs.docs_count = 0;
-    live_docs_count = rhs.live_docs_count;
-    rhs.live_docs_count = 0;
-    codec = rhs.codec;
-    rhs.codec = nullptr;
-    size = rhs.size;
-    rhs.size = 0;
-    version = rhs.version;
-    sort = rhs.sort;
-    rhs.sort = field_limits::invalid();
-    column_store = rhs.column_store;
-  }
-
-  return *this;
 }
 
 bool segment_meta::operator==(const segment_meta& other) const noexcept {
@@ -184,37 +147,17 @@ uint64_t index_meta::next_generation() const noexcept {
  * index_meta::index_segment_t
  * ------------------------------------------------------------------*/
 
-index_meta::index_segment_t::index_segment_t(segment_meta&& v_meta)
-  : meta(std::move(v_meta)) {
-}
-
-index_meta::index_segment_t::index_segment_t(index_segment_t&& other) noexcept
-  : filename(std::move(other.filename)), 
-    meta(std::move(other.meta)) {
-}
-
-index_meta::index_segment_t& index_meta::index_segment_t::operator=(
-    index_segment_t&& other
-) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-
-  filename = std::move(other.filename);
-  meta = std::move(other.meta);
-
-  return *this;
+index_meta::index_segment_t::index_segment_t(segment_meta&& meta)
+  : meta(std::move(meta)) {
 }
 
 bool index_meta::index_segment_t::operator==(
-  const index_segment_t& other
-) const noexcept {
+    const index_segment_t& other) const noexcept {
   return this == &other || false == (*this != other);
 }
 
 bool index_meta::index_segment_t::operator!=(
-  const index_segment_t& other
-) const noexcept {
+    const index_segment_t& other) const noexcept {
   if (this == &other) {
     return false;
   }

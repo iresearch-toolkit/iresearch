@@ -196,16 +196,14 @@ class IRESEARCH_API skip_reader: util::noncopyable {
 
  private:
   struct level final : public index_input {
-    level(
-      index_input::ptr&& stream,
-      size_t step,
-      uint64_t begin,
-      uint64_t end,
-      uint64_t child = 0,
-      size_t skipped = 0,
-      doc_id_t doc = doc_limits::invalid()
-    ) noexcept;
-    level(level&& rhs) noexcept;
+    level(index_input::ptr&& stream,
+          size_t step,
+          uint64_t begin,
+          uint64_t end,
+          uint64_t child = 0,
+          size_t skipped = 0,
+          doc_id_t doc = doc_limits::invalid()) noexcept;
+    level(level&&) = default;
 
     ptr dup() const override;
     uint8_t read_byte() override;

@@ -217,13 +217,8 @@ class IRESEARCH_API utf8_transitions_builder {
   struct state : private util::noncopyable {
     state() = default;
 
-    state(state&& rhs) noexcept
-      : rho_id(rhs.rho_id),
-        id(rhs.id),
-        arcs(std::move(rhs.arcs)) {
-      rhs.rho_id = fst::kNoStateId;
-      rhs.id = fst::kNoStateId;
-    }
+    state(state&&) = default;
+    state& operator=(state&&) = delete;
 
     void clear() noexcept {
       rho_id = fst::kNoStateId;

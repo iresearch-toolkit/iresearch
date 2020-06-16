@@ -156,8 +156,7 @@ skip_reader::level::level(
     uint64_t end,
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
-    doc_id_t doc /*= doc_limits::invalid()*/
-) noexcept
+    doc_id_t doc /*= doc_limits::invalid()*/) noexcept
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
@@ -165,16 +164,6 @@ skip_reader::level::level(
     step(step),
     skipped(skipped),
     doc(doc) {
-}
-
-skip_reader::level::level(skip_reader::level&& rhs) noexcept 
-  : stream(std::move(rhs.stream)),
-    begin(rhs.begin),
-    end(rhs.end),
-    child(rhs.child),
-    step(rhs.step), 
-    skipped(rhs.skipped),
-    doc(rhs.doc) {
 }
 
 index_input::ptr skip_reader::level::dup() const {

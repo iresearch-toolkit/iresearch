@@ -3370,9 +3370,8 @@ class block_cache : irs::util::noncopyable {
   block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
-  block_cache(block_cache&& rhs) noexcept
-    : cache_(std::move(rhs.cache_)) {
-  }
+  block_cache(block_cache&&) = default;
+  block_cache& operator=(block_cache&&) = delete;
 
   template<typename... Args>
   Block& emplace_back(Args&&... args) {

@@ -81,36 +81,20 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     : str_(1, label) {
   }
 
+  explicit StringLeftWeight(const irs::basic_string_ref<Label>& rhs)
+    : str_(rhs.c_str(), rhs.size()) {
+  }
+
   template <typename Iterator>
   StringLeftWeight(Iterator begin, Iterator end)
     : str_(begin, end) {
   }
 
-  StringLeftWeight(const StringLeftWeight& rhs)
-    : str_(rhs.str_) {
-  }
+  StringLeftWeight(const StringLeftWeight&) = default;
+  StringLeftWeight(StringLeftWeight&&) = default;
 
-  StringLeftWeight(StringLeftWeight&& rhs) noexcept
-    : str_(std::move(rhs.str_)) {
-  }
-
-  explicit StringLeftWeight(const irs::basic_string_ref<Label>& rhs)
-    : str_(rhs.c_str(), rhs.size()) {
-  }
-
-  StringLeftWeight& operator=(StringLeftWeight&& rhs) noexcept {
-    if (this != &rhs) {
-      str_ = std::move(rhs.str_);
-    }
-    return *this;
-  }
-
-  StringLeftWeight& operator=(const StringLeftWeight& rhs) {
-    if (this != &rhs) {
-      str_ = rhs.str_;
-    }
-    return *this;
-  }
+  StringLeftWeight& operator=(StringLeftWeight&&) = default;
+  StringLeftWeight& operator=(const StringLeftWeight&) = default;
 
   StringLeftWeight& operator=(const irs::basic_string_ref<Label>& rhs) {
     str_.assign(rhs.c_str(), rhs.size());

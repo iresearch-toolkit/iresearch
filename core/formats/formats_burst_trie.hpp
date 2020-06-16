@@ -159,22 +159,8 @@ struct block_t : private util::noncopyable {
       meta(meta) {
   }
 
-  block_t(block_t&& rhs) noexcept
-    : index(std::move(rhs.index)),
-      start(rhs.start),
-      label(rhs.label),
-      meta(rhs.meta) {
-  }
-
-  block_t& operator=(block_t&& rhs) noexcept {
-    if (this != &rhs) {
-      index = std::move(rhs.index);
-      start = rhs.start;
-      label = rhs.label;
-      meta =  rhs.meta;
-    }
-    return *this;
-  }
+  block_t(block_t&&) = default;
+  block_t& operator=(block_t&&) = default;
 
   std::list<prefixed_output> index; // fst index data
   uint64_t start; // file pointer

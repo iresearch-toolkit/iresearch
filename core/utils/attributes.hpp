@@ -69,6 +69,12 @@ struct IRESEARCH_API attribute { };
 struct IRESEARCH_API stored_attribute : attribute {
   using ptr = std::unique_ptr<stored_attribute>;
 
+  stored_attribute() = default;
+  stored_attribute(stored_attribute&&) = default;
+  stored_attribute& operator=(stored_attribute&&) = default;
+  stored_attribute(const stored_attribute&) = default;
+  stored_attribute& operator=(const stored_attribute&) = default;
+
   virtual ~stored_attribute() = default;
 };
 
@@ -105,10 +111,10 @@ class IRESEARCH_API flags {
 
   flags() = default;
   flags(const flags&) = default;
-  flags(flags&& rhs) = default;
+  flags(flags&&) = default;
   flags(std::initializer_list<type_info> flags);
   flags& operator=(std::initializer_list<type_info> flags);
-  flags& operator=(flags&& rhs) = default;
+  flags& operator=(flags&&) = default;
   flags& operator=(const flags&) = default;
 
   type_map::const_iterator begin() const noexcept { return map_.begin(); }
