@@ -169,7 +169,7 @@ class field_collector_wrapper
   IRESEARCH_API static collector_type& noop() noexcept;
 
   field_collector_wrapper() = default;
-  field_collector_wrapper(field_collector_wrapper&& rhs) = default;
+  field_collector_wrapper(field_collector_wrapper&&) = default;
   field_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
@@ -187,8 +187,8 @@ class field_collector_wrapper
 class IRESEARCH_API field_collectors : public collectors_base<field_collector_wrapper> {
  public:
   explicit field_collectors(const order::prepared& buckets);
-  field_collectors(field_collectors&& rhs) = default;
-  field_collectors& operator=(field_collectors&& rhs) = default;
+  field_collectors(field_collectors&&) = default;
+  field_collectors& operator=(field_collectors&&) = default;
 
   size_t size() const noexcept {
     return collectors_.size();
@@ -231,7 +231,7 @@ class term_collector_wrapper
   IRESEARCH_API static collector_type& noop() noexcept;
 
   term_collector_wrapper() = default;
-  term_collector_wrapper(term_collector_wrapper&& rhs) = default;
+  term_collector_wrapper(term_collector_wrapper&&) = default;
   term_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
@@ -250,8 +250,8 @@ class term_collector_wrapper
 class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrapper> {
  public:
   term_collectors(const order::prepared& buckets, size_t size);
-  term_collectors(term_collectors&& rhs) = default;
-  term_collectors& operator=(term_collectors&& rhs) = default;
+  term_collectors(term_collectors&&) = default;
+  term_collectors& operator=(term_collectors&&) = default;
 
   size_t size() const noexcept {
     return buckets_->size() ? collectors_.size() / buckets_->size() : 0;
