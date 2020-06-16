@@ -447,16 +447,17 @@ class phrase_iterator final : public doc_iterator {
         { type<score>::id(),        &score_       },
         { type<frequency>::id(),    freq_.freq()  },
         { type<filter_boost>::id(), freq_.boost() },
-      }} {
+      }},
+      score_(ord),
+      cost_([this](){ return cost::extract(approx_); }) { // FIXME find a better estimation
     assert(doc_);
 
-    // FIXME find a better estimation
-    // estimate iterator
-    cost_.rule([this](){ return cost::extract(approx_); });
-
     if (!ord.empty()) {
-      score_.prepare(ord, ord.prepare_scorers(segment, field, stats,
-                                              *this, boost));
+      order::prepared::scorers scorers(
+        ord, segment, field, stats,
+        score_.data(), *this, boost);
+
+      prepare_score(score_, std::move(scorers));
     }
   }
 

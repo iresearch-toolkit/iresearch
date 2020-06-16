@@ -84,6 +84,14 @@ class min_match_disjunction
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()), doc_(doc_limits::invalid()),
+      score_(ord),
+      cost_([this](){
+        return std::accumulate(
+          itrs_.begin(), itrs_.end(), cost::cost_t(0),
+          [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+            return lhs + cost::extract(rhs, 0);
+          });
+      }),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
@@ -94,16 +102,6 @@ class min_match_disjunction
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
         return cost::extract(lhs, 0) < cost::extract(rhs, 0);
     });
-
-    // estimate disjunction
-    cost_.rule([this](){
-      return std::accumulate(
-        // estimate only first min_match_count_ subnodes
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-        });
-      });
 
     // prepare external heap
     heap_.resize(itrs_.size());
@@ -244,7 +242,7 @@ class min_match_disjunction
   ///        to current matched document after this call.
   /// @returns total matched iterators count
   //////////////////////////////////////////////////////////////////////////////
-  size_t count_matched() {
+  size_t match_count() {
     push_valid_to_lead();
     return lead_;
   }
@@ -256,9 +254,9 @@ class min_match_disjunction
     }
 
     scores_vals_.resize(itrs_.size());
-    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-      auto& self = const_cast<min_match_disjunction&>(
-        *static_cast<const min_match_disjunction*>(ctx));
+    score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+      auto& self = *static_cast<min_match_disjunction*>(ctx);
+      auto* score_buf = self.score_.data();
       assert(!self.heap_.empty());
 
       self.push_valid_to_lead();
@@ -272,8 +270,10 @@ class min_match_disjunction
           detail::evaluate_score_iter(pVal, self.itrs_[it]);
       });
 
-      self.merger_(score, self.scores_vals_.data(),
+      self.merger_(score_buf, self.scores_vals_.data(),
                    std::distance(self.scores_vals_.data(), pVal));
+
+      return score_buf;
     });
   }
 

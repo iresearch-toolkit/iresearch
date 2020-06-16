@@ -483,7 +483,7 @@ class IRESEARCH_API index_writer
     segment_equal
   > consolidating_segments_t; // segments that are under consolidation
 
-  DECLARE_SHARED_PTR(index_writer);
+  using ptr = std::shared_ptr<index_writer>;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
@@ -777,8 +777,8 @@ class IRESEARCH_API index_writer
       flushed_t(segment_meta&& meta)
         : index_meta::index_segment_t(std::move(meta)) {}
     };
-    typedef std::function<segment_meta()> segment_meta_generator_t;
-    DECLARE_SHARED_PTR(segment_context);
+    using segment_meta_generator_t = std::function<segment_meta()>;
+    using ptr = std::shared_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call

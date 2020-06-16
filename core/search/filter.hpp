@@ -89,8 +89,7 @@ class IRESEARCH_API filter {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared {
    public:
-    DECLARE_SHARED_PTR(const prepared);
-    DEFINE_FACTORY_INLINE(prepared)
+    using ptr = memory::managed_ptr<const prepared>;
 
     static prepared::ptr empty();
 
@@ -124,8 +123,7 @@ class IRESEARCH_API filter {
     boost_t boost_;
   }; // prepared
 
-  DECLARE_UNIQUE_PTR(filter);
-  DEFINE_FACTORY_INLINE(filter)
+  using ptr = std::unique_ptr<filter>;
 
   explicit filter(const type_info& type) noexcept;
   virtual ~filter() = default;

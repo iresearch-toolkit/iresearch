@@ -36,7 +36,9 @@ class bitset_doc_iterator final
   : public frozen_attributes<3, doc_iterator>,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set);
+  explicit bitset_doc_iterator(const bitset& set)
+    : bitset_doc_iterator(set, order::prepared::unordered()) {
+  }
 
   bitset_doc_iterator(
     const sub_reader& reader,
@@ -52,8 +54,10 @@ class bitset_doc_iterator final
  private:
   using word_t = bitset::word_t;
 
-  document doc_;
+  bitset_doc_iterator(const bitset& set, const order::prepared& ord);
+
   cost cost_;
+  document doc_;
   score score_;
   const word_t* begin_;
   const word_t* end_;

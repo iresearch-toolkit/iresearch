@@ -112,8 +112,7 @@ struct IRESEARCH_API data_input {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
-  DECLARE_UNIQUE_PTR(index_input);
-  DEFINE_FACTORY_INLINE(index_input)
+  using ptr = std::unique_ptr<index_input>;
 
   virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)

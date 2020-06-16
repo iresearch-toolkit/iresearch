@@ -425,7 +425,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   }
 
   virtual ptr dup() const override {
-    return index_input::make<bytes_ref_input>(*this);
+    return memory::make_unique<bytes_ref_input>(*this);
   }
 
   virtual ptr reopen() const override {

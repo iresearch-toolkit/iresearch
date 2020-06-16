@@ -371,7 +371,7 @@ class postings_writer_base : public irs::postings_writer {
   }; // doc_stream
 
   struct pos_stream : stream {
-    DECLARE_UNIQUE_PTR(pos_stream);
+    using ptr = std::unique_ptr<pos_stream>;
 
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
@@ -393,7 +393,7 @@ class postings_writer_base : public irs::postings_writer {
   }; // pos_stream
 
   struct pay_stream : stream {
-    DECLARE_UNIQUE_PTR(pay_stream);
+    using ptr = std::unique_ptr<pay_stream>;
 
     void push_payload(uint32_t i, const bytes_ref& pay) {
       if (!pay.empty()) {
@@ -1564,8 +1564,6 @@ template<typename IteratorTraits>
 class doc_iterator final
     : public frozen_attributes<5, irs::doc_iterator> {
  public:
-  DECLARE_SHARED_PTR(doc_iterator);
-
   doc_iterator() noexcept
     : attributes{{
         { type<document>::id(), &doc_ },
@@ -2727,12 +2725,11 @@ bool meta_reader::prepare(
         in_cipher_->block_size()
       );
 
-      in_ = index_input::make<encrypted_input>(
+      in_ = memory::make_unique<encrypted_input>(
         std::move(in_),
         *in_cipher_,
         blocks_in_buffer,
-        FOOTER_LEN
-      );
+        FOOTER_LEN);
     }
   }
 
@@ -4166,7 +4163,7 @@ class read_context
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
     public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
-  DECLARE_SHARED_PTR(read_context);
+  using ptr = std::shared_ptr<read_context>;
 
   static ptr make(const index_input& stream, encryption::stream* cipher) {
     auto clone = stream.reopen(); // reopen thead-safe stream
@@ -4320,7 +4317,7 @@ class column
     : public irs::columnstore_reader::column_reader,
       private util::noncopyable {
  public:
-  DECLARE_UNIQUE_PTR(column);
+  using ptr = std::unique_ptr<column>;
 
   explicit column(ColumnProperty props) noexcept
     : props_(props),
@@ -4381,11 +4378,11 @@ class column_iterator final
         { irs::type<irs::score>::id(),    &score_  },
         { irs::type<irs::payload>::id(),  &payload_ },
       }},
+      cost_(column.size()),
       begin_(begin),
       seek_origin_(begin),
       end_(end),
       column_(&column) {
-    cost_.value(column.size());
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -4591,13 +4588,14 @@ class sparse_column final : public column {
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
-    return empty()
-      ? irs::doc_iterator::empty()
-      : irs::doc_iterator::make<iterator_t>(
-          *this,
-          refs_.data(),
-          refs_.data() + refs_.size() - 1 // -1 for upper bound
-        );
+    if (empty()) {
+      return irs::doc_iterator::empty();
+    }
+
+    return memory::make_managed<iterator_t>(
+      *this,
+      refs_.data(),
+      refs_.data() + refs_.size() - 1); // -1 for upper bound
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -4771,14 +4769,14 @@ class dense_fixed_offset_column final : public column {
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
-    return empty()
-      ? irs::doc_iterator::empty()
-      : irs::doc_iterator::make<iterator_t>(
-          *this,
-          refs_.data(),
-          refs_.data() + refs_.size()
-        )
-      ;
+    if (empty()) {
+      return irs::doc_iterator::empty();
+    }
+
+    return memory::make_managed<iterator_t>(
+      *this,
+      refs_.data(),
+      refs_.data() + refs_.size());
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -4936,9 +4934,9 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
           { irs::type<irs::cost>::id(),     &cost_   },
           { irs::type<irs::score>::id(),    &score_  },
         }},
+        cost_(column.size()),
         min_(1 + column.min_),
         max_(column.max()) {
-      cost_.value(column.size());
     }
 
     virtual irs::doc_id_t value() const noexcept override {
@@ -4987,7 +4985,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
   return empty()
     ? irs::doc_iterator::empty()
-    : irs::doc_iterator::make<column_iterator>(*this);
+    : memory::make_managed<column_iterator>(*this);
 }
 
 // ----------------------------------------------------------------------------
@@ -5340,6 +5338,17 @@ class postings_reader final: public postings_reader_base {
     const flags& field,
     const attribute_provider& attrs,
     const flags& features) override;
+
+ private:
+  template<typename IteratorTraits>
+  irs::doc_iterator::ptr iterator(
+      const attribute_provider& attrs,
+      const ::features& features) {
+    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
+    it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+
+    return it;
+  }
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -5362,34 +5371,22 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, true>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, true, true>>(attrs, features);
     }
     case features::FREQ | features::POS | features::OFFS: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, true, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, true, false>>(attrs, features);
     }
     case features::FREQ | features::POS | features::PAY: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, true>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, false, true>>(attrs, features);
     }
     case features::FREQ | features::POS: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, true, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, true, false, false>>(attrs, features);
     }
     case features::FREQ: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<true, false, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<true, false, false, false>>(attrs, features);
     }
     default: {
-      auto it = memory::make_shared<doc_iterator<iterator_traits<false, false, false, false>>>();
-      it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
-      return it;
+      return iterator<iterator_traits<false, false, false, false>>(attrs, features);
     }
   }
 
@@ -5444,64 +5441,60 @@ class format10 : public irs::version10::format {
 }; // format10
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
-  return irs::index_meta_writer::make<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MIN)
-  );
+  return memory::make_unique<::index_meta_writer>(
+    int32_t(::index_meta_writer::FORMAT_MIN));
 }
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
   static ::index_meta_reader INSTANCE;
 
-  return memory::make_managed<irs::index_meta_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::index_meta_reader, false>(&INSTANCE);
 }
 
 segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
   static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MIN);
 
-  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
 segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
   static ::segment_meta_reader INSTANCE;
 
-  return memory::make_managed<irs::segment_meta_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_reader, false>(&INSTANCE);
 }
 
 document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
   static ::document_mask_writer INSTANCE;
 
-  return memory::make_managed<irs::document_mask_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::document_mask_writer, false>(&INSTANCE);
 }
 
 document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
   static ::document_mask_reader INSTANCE;
 
-  return memory::make_managed<irs::document_mask_reader, false>(&INSTANCE);
+  return memory::to_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
 field_writer::ptr format10::get_field_writer(bool volatile_state) const {
-  return irs::field_writer::make<burst_trie::field_writer>(
+  return memory::make_unique<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
     volatile_state,
-    int32_t(burst_trie::field_writer::FORMAT_MIN)
-  );
+    int32_t(burst_trie::field_writer::FORMAT_MIN));
 }
 
 field_reader::ptr format10::get_field_reader() const  {
-  return irs::field_reader::make<burst_trie::field_reader>(
-    get_postings_reader()
-  );
+  return memory::make_unique<burst_trie::field_reader>(
+    get_postings_reader());
 }
 
 column_meta_writer::ptr format10::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MIN)
-  );
+    int32_t(columns::meta_writer::FORMAT_MIN));
 }
 
 column_meta_reader::ptr format10::get_column_meta_reader() const {
@@ -5510,8 +5503,7 @@ column_meta_reader::ptr format10::get_column_meta_reader() const {
 
 columnstore_writer::ptr format10::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MIN)
-  );
+    int32_t(columns::writer::FORMAT_MIN));
 }
 
 columnstore_reader::ptr format10::get_columnstore_reader() const {
@@ -5529,7 +5521,7 @@ irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) con
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits, true>>();
+  return memory::make_unique<::postings_reader<format_traits, true>>();
 }
 
 /*static*/ irs::format::ptr format10::make() {
@@ -5570,24 +5562,22 @@ class format11 : public format10 {
 }; // format11
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
-  return irs::index_meta_writer::make<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MAX)
-  );
+  return memory::make_unique<::index_meta_writer>(
+    int32_t(::index_meta_writer::FORMAT_MAX));
 }
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
-  return irs::field_writer::make<burst_trie::field_writer>(
+  return memory::make_unique<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
     volatile_state,
-    int32_t(burst_trie::field_writer::FORMAT_MAX)
-  );
+    int32_t(burst_trie::field_writer::FORMAT_MAX));
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
   // can reuse stateless writer
   static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MAX);
 
-  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {
@@ -5676,7 +5666,7 @@ irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) con
 }
 
 irs::postings_reader::ptr format13::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits, false>>();
+  return memory::make_unique<::postings_reader<format_traits, false>>();
 }
 
 /*static*/ irs::format::ptr format13::make() {
@@ -5738,7 +5728,7 @@ irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state)
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits_simd, true>>();
+  return memory::make_unique<::postings_reader<format_traits_simd, true>>();
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
@@ -5780,7 +5770,7 @@ irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state)
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
-  return irs::postings_reader::make<::postings_reader<format_traits_simd, false>>();
+  return memory::make_unique<::postings_reader<format_traits_simd, false>>();
 }
 
 /*static*/ irs::format::ptr format13simd::make() {

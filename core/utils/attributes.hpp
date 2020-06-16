@@ -67,7 +67,8 @@ struct IRESEARCH_API attribute { };
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
-  DECLARE_UNIQUE_PTR(stored_attribute);
+  using ptr = std::unique_ptr<stored_attribute>;
+
   virtual ~stored_attribute() = default;
 };
 
@@ -100,7 +101,7 @@ class IRESEARCH_API flags {
   // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
   typedef std::set<type_info::type_id> type_map;
 
-  static const flags& empty_instance();
+  static const flags& empty_instance() noexcept;
 
   flags() = default;
   flags(const flags&) = default;

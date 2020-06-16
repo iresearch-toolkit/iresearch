@@ -71,7 +71,7 @@ struct options {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API compressor {
-  DECLARE_SHARED_PTR(compressor);
+  using ptr = std::shared_ptr<compressor>;
 
   virtual ~compressor() = default;
 
@@ -86,7 +86,7 @@ struct IRESEARCH_API compressor {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API decompressor {
-  DECLARE_SHARED_PTR(decompressor);
+  using ptr = std::shared_ptr<decompressor>;
 
   virtual ~decompressor() = default;
 
