@@ -3369,6 +3369,8 @@ class block_cache : irs::util::noncopyable {
  public:
   block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
+    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+                  "default move constructor expected");
   }
   block_cache(block_cache&&) = default;
   block_cache& operator=(block_cache&&) = delete;

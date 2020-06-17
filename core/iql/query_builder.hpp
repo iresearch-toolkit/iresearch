@@ -99,7 +99,8 @@ namespace iresearch {
       size_t* limit = nullptr;
       std::string* error = nullptr;
     };
-
+    static_assert(std::is_nothrow_move_constructible<query>::value,
+                  "default move constructor expected");
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief helper class for transforming a textual query into an iResearch query
     ////////////////////////////////////////////////////////////////////////////////

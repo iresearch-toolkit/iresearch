@@ -94,6 +94,9 @@ class conjunction
   using doc_iterators_t = std::vector<doc_iterator_t>;
   using iterator = typename doc_iterators_t::const_iterator;
 
+  static_assert(std::is_nothrow_move_constructible<doc_iterator_t>::value,
+                "default move constructor expected");
+
   struct doc_iterators {
     // intentionally implicit
     doc_iterators(doc_iterators_t&& itrs) noexcept
