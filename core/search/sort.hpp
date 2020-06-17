@@ -1115,8 +1115,10 @@ class IRESEARCH_API order final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
-static_assert(std::is_nothrow_move_constructible_v<order>);
-static_assert(std::is_nothrow_move_assignable_v<order>);
+// std::is_nothrow_constructible_v<std::set<...>> == false
+static_assert(std::is_move_constructible_v<order>);
+// std::is_nothrow_assignable_v<std::set<...>> == false
+static_assert(std::is_move_assignable_v<order>);
 
 NS_END
 

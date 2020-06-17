@@ -157,8 +157,6 @@ struct block_t : private util::noncopyable {
     : start(block_start),
       label(label),
       meta(meta) {
-    static_assert(std::is_move_constructible<std::remove_pointer<decltype(this)>::type>::value,
-                  "default move constructor expected");
   }
 
   block_t(block_t&& rhs) noexcept
@@ -183,6 +181,11 @@ struct block_t : private util::noncopyable {
   int16_t label;  // block lead label
   byte_type meta; // block metadata
 }; // block_t
+
+// FIXME std::is_nothrow_move_constructible_v<std::list<...>> == false
+static_assert(std::is_nothrow_move_constructible_v<block_t>);
+// FIXME std::is_nothrow_move_assignable_v<std::list<...>> == false
+static_assert(std::is_nothrow_move_assignable_v<block_t>);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @enum EntryType
