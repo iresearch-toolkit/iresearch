@@ -79,7 +79,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
   explicit StringLeftWeight(Label label) 
     : str_(1, label) {
-    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+    static_assert(std::is_nothrow_move_constructible<std::remove_pointer<decltype(this)>::type>::value,
                   "default move constructor expected");
   }
 
