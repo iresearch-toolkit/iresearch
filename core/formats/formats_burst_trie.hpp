@@ -157,7 +157,7 @@ struct block_t : private util::noncopyable {
     : start(block_start),
       label(label),
       meta(meta) {
-    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+    static_assert(std::is_move_constructible<std::remove_pointer<decltype(this)>::type>::value,
                   "default move constructor expected");
   }
 
