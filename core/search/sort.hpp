@@ -1059,8 +1059,10 @@ class IRESEARCH_API order final {
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
-  static_assert(std::is_nothrow_move_constructible_v<prepared>);
-  static_assert(std::is_nothrow_move_assignable_v<prepared>);
+  // std::is_nothrow_move_constructible_v<flags> == false
+  static_assert(std::is_move_constructible_v<prepared>);
+  // std::is_nothrow_move_assignable_v<flags> == false
+  static_assert(std::is_move_assignable_v<prepared>);
 
   static const order& unordered() noexcept;
 
@@ -1115,10 +1117,8 @@ class IRESEARCH_API order final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
-// std::is_nothrow_constructible_v<std::set<...>> == false
-static_assert(std::is_move_constructible_v<order>);
-// std::is_nothrow_assignable_v<std::set<...>> == false
-static_assert(std::is_move_assignable_v<order>);
+static_assert(std::is_nothrow_move_constructible_v<order>);
+static_assert(std::is_nothrow_move_constructible_v<order>);
 
 NS_END
 
