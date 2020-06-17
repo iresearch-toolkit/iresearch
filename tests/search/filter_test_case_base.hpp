@@ -607,11 +607,15 @@ class filter_test_case_base : public index_test_base {
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
 
-        const irs::bytes_ref score_value = score
-            ? irs::bytes_ref{ score->evaluate(), prepared_order.score_size() }
-            : irs::bytes_ref::EMPTY;
-
-        scored_result.emplace(score_value, docs->value());
+        if (score && !score->empty()) {
+          scored_result.emplace(
+            irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
+            docs->value());
+        } else {
+          scored_result.emplace(
+            irs::bytes_ref::EMPTY,
+            docs->value());
+        }
       }
     }
 
