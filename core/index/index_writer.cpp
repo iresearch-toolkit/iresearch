@@ -1222,12 +1222,6 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
-  static_assert(std::is_move_constructible<import_context>::value, "default move constructor expected");
-  static_assert(std::is_nothrow_move_constructible<modification_context>::value, "default move constructor expected");
-  static_assert(std::is_move_constructible<consolidation_context_t>::value, "default move constructor expected");
-  static_assert(std::is_nothrow_move_constructible<pending_context_t>::value, "default move constructor expected");
-  static_assert(std::is_nothrow_move_constructible<merge_writer>::value, "default move constructor expected");
-  static_assert(std::is_nothrow_move_constructible<active_segment_context>::value, "default move constructor expected");
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);

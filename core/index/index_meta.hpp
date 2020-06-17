@@ -101,11 +101,12 @@ class IRESEARCH_API index_meta {
  public:
   struct IRESEARCH_API index_segment_t {
     index_segment_t() = default;
-    index_segment_t(segment_meta&& v_meta);
+    index_segment_t(segment_meta&& meta);
     index_segment_t(const index_segment_t& other) = default;
     index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&& other) noexcept;
-    index_segment_t& operator=(index_segment_t&& other) noexcept;
+    index_segment_t(index_segment_t&&) = default;
+    index_segment_t& operator=(index_segment_t&&) = default;
+
     bool operator==(const index_segment_t& other) const noexcept;
     bool operator!=(const index_segment_t& other) const noexcept;
 
@@ -113,8 +114,8 @@ class IRESEARCH_API index_meta {
     segment_meta meta;
   }; // index_segment_t
 
-  static_assert(std::is_move_constructible<index_segment_t>::value,
-                "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
+  static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
 
   using index_segments_t = std::vector<index_segment_t>;
   using ptr = std::unique_ptr<index_meta>;

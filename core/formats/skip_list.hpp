@@ -203,9 +203,9 @@ class IRESEARCH_API skip_reader: util::noncopyable {
       uint64_t end,
       uint64_t child = 0,
       size_t skipped = 0,
-      doc_id_t doc = doc_limits::invalid()
-    ) noexcept;
-    level(level&& rhs) noexcept;
+      doc_id_t doc = doc_limits::invalid()) noexcept;
+    level(level&&) = default;
+    level& operator=(level&&) = delete;
 
     ptr dup() const override;
     uint8_t read_byte() override;
@@ -229,8 +229,8 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     doc_id_t doc{ doc_limits::invalid() }; // current key
   };
 
-  static_assert(std::is_nothrow_move_constructible<level>::value,
-                "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<level>);
+
   typedef std::vector<level> levels_t;
 
   static void load_level(levels_t& levels, index_input::ptr&& stream, size_t step);

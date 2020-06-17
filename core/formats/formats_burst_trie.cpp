@@ -693,12 +693,8 @@ class term_iterator final : public term_iterator_base {
 
     arc() = default;
 
-    arc(arc&& rhs) noexcept
-      : state(rhs.state), 
-        weight(std::move(rhs.weight)),
-        block(rhs.block) {
-      rhs.block = nullptr;
-    }
+    arc(arc&&) = default;
+    arc& operator=(arc&&) = delete;
 
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {
@@ -709,9 +705,7 @@ class term_iterator final : public term_iterator_base {
     block_iterator* block{};
   }; // arc
 
-
-  static_assert(std::is_nothrow_move_constructible<arc>::value,
-                "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<arc>);
 
   typedef std::vector<arc> seek_state_t;
   typedef std::deque<block_iterator> block_stack_t;

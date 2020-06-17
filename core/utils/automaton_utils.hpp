@@ -225,6 +225,8 @@ class IRESEARCH_API utf8_transitions_builder {
       rhs.id = fst::kNoStateId;
     }
 
+    state& operator=(state&&) = delete;
+
     void clear() noexcept {
       rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
@@ -236,7 +238,7 @@ class IRESEARCH_API utf8_transitions_builder {
     std::vector<arc> arcs;
   }; // state
 
-  static_assert(std::is_nothrow_move_constructible<state>::value, "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<state>);
 
   struct state_hash {
     size_t operator()(const state& s, const automaton& fst) const noexcept {
