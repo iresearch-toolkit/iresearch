@@ -704,6 +704,10 @@ class term_iterator final : public term_iterator_base {
     block_iterator* block{};
   }; // arc
 
+
+  static_assert(std::is_nothrow_move_constructible<arc>::value,
+                "default move constructor expected");
+
   typedef std::vector<arc> seek_state_t;
   typedef std::deque<block_iterator> block_stack_t;
 

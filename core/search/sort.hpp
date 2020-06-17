@@ -743,6 +743,9 @@ class IRESEARCH_API order final {
     bool reverse_;
   }; // entry
 
+  static_assert(std::is_nothrow_move_constructible<entry>::value,
+                "default move constructor expected");
+
   using order_t = std::vector<entry>;
   using const_iterator = order_t::const_iterator;
   using iterator = order_t::iterator;
@@ -1102,6 +1105,8 @@ class IRESEARCH_API order final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
+static_assert(std::is_nothrow_move_constructible<order>::value,
+              "default move constructor expected");
 NS_END
 
 #endif

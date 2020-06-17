@@ -234,6 +234,9 @@ class IRESEARCH_API flags {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
+static_assert(std::is_move_constructible<flags>::value,
+              "default move constructor expected");
+
 NS_END
 
 #endif // IRESEARCH_ATTRIBUTES_H
