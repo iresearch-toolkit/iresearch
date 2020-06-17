@@ -115,6 +115,9 @@ scoped_timer::~scoped_timer() {
   stat_.time += std::chrono::system_clock::now().time_since_epoch().count() - start_;
 }
 
+static_assert(std::is_nothrow_move_constructible<scoped_timer>::value,
+              "default move constructor expected");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                timer registration
 // -----------------------------------------------------------------------------

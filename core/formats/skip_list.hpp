@@ -229,6 +229,8 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     doc_id_t doc{ doc_limits::invalid() }; // current key
   };
 
+  static_assert(std::is_nothrow_move_constructible<level>::value,
+                "default move constructor expected");
   typedef std::vector<level> levels_t;
 
   static void load_level(levels_t& levels, index_input::ptr&& stream, size_t step);

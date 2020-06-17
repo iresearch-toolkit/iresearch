@@ -67,6 +67,9 @@ class min_match_disjunction
     cost::cost_t est;
   }; // cost_iterator_adapter
 
+  static_assert(std::is_nothrow_move_constructible<cost_iterator_adapter>::value,
+                "default move constructor expected");
+
   typedef cost_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 

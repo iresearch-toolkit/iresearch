@@ -99,6 +99,8 @@ class compact<I, T, false> {
   template<typename U = T>
   compact(U&& value) noexcept
     : val_(std::forward<U>(value)) {
+    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+                  "default move constructor expected");
   }
 
   compact& operator=(const compact&) = default;
@@ -217,6 +219,8 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
   compact_pair(U0&& v0, U1&& v1) 
     : first_compressed_t(std::forward<U0>(v0)), 
       second_compressed_t(std::forward<U1>(v1)) { 
+    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+                  "default move constructor expected");
   }
 
   compact_pair& operator=(const compact_pair&) = default;

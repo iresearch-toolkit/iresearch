@@ -87,6 +87,9 @@ struct IRESEARCH_API segment_meta {
   bool column_store{};
 };
 
+static_assert(std::is_move_constructible<segment_meta>::value,
+              "default move constructor expected");
+
 /* -------------------------------------------------------------------
  * index_meta
  * ------------------------------------------------------------------*/
@@ -109,6 +112,9 @@ class IRESEARCH_API index_meta {
     std::string filename;
     segment_meta meta;
   }; // index_segment_t
+
+  static_assert(std::is_move_constructible<index_segment_t>::value,
+                "default move constructor expected");
 
   using index_segments_t = std::vector<index_segment_t>;
   using ptr = std::unique_ptr<index_meta>;

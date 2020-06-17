@@ -79,6 +79,8 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
   explicit StringLeftWeight(Label label) 
     : str_(1, label) {
+    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value,
+                  "default move constructor expected");
   }
 
   template <typename Iterator>

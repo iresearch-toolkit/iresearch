@@ -161,6 +161,8 @@ struct IRESEARCH_API norm final : stored_attribute {
   const document* doc_;
 }; // norm
 
+static_assert(std::is_nothrow_move_constructible<norm>::value,
+              "default move constructor expected");
 //////////////////////////////////////////////////////////////////////////////
 /// @class position 
 /// @brief iterator represents term positions in a document

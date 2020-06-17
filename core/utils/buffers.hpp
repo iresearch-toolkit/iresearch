@@ -60,6 +60,8 @@ template<
   }
 
   pointer allocate(size_t len) {
+    static_assert(std::is_nothrow_move_constructible<decltype(*this)>::value, 
+                  "default move constructor expected");
     return allocator_t::get().allocate(len);
   }
   void deallocate(pointer ptr, size_t size) {

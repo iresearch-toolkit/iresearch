@@ -129,6 +129,8 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer
 
+static_assert(std::is_nothrow_move_constructible<merge_writer>::value,
+              "default move constructor expected");
 NS_END
 
 #endif

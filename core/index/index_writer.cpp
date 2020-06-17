@@ -1223,11 +1223,11 @@ index_writer::index_writer(
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
   static_assert(std::is_move_constructible<import_context>::value);
-  static_assert(std::is_move_constructible<modification_context>::value);
+  static_assert(std::is_nothrow_move_constructible<modification_context>::value);
   static_assert(std::is_move_constructible<consolidation_context_t>::value);
-  static_assert(std::is_move_constructible<pending_context_t>::value);
-  static_assert(std::is_move_constructible<merge_writer>::value);
-  static_assert(std::is_move_constructible<active_segment_context>::value);
+  static_assert(std::is_nothrow_move_constructible<pending_context_t>::value);
+  static_assert(std::is_nothrow_move_constructible<merge_writer>::value);
+  static_assert(std::is_nothrow_move_constructible<active_segment_context>::value);
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);

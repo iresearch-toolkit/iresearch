@@ -236,6 +236,8 @@ class IRESEARCH_API utf8_transitions_builder {
     std::vector<arc> arcs;
   }; // state
 
+  static_assert(std::is_nothrow_move_constructible<state>::value, "default move constructor expected");
+
   struct state_hash {
     size_t operator()(const state& s, const automaton& fst) const noexcept {
       if (fst::kNoStateId != s.id) {
