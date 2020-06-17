@@ -43,7 +43,7 @@ class states_cache : private util::noncopyable {
   using state_type = State;
 
   explicit states_cache(size_t size) {
-    static_assert(std::is_nothrow_move_constructible<std::remove_pointer<decltype(this)>::type>::value,
+    static_assert(std::is_move_constructible<std::remove_pointer<decltype(this)>::type>::value,
                   "default move constructor expected");
     states_.reserve(size);
   }
