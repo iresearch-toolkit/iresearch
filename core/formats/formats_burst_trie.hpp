@@ -182,6 +182,11 @@ struct block_t : private util::noncopyable {
   byte_type meta; // block metadata
 }; // block_t
 
+// FIXME std::is_nothrow_move_constructible_v<std::list<...>> == false
+static_assert(std::is_nothrow_move_constructible_v<block_t>);
+// FIXME std::is_nothrow_move_assignable_v<std::list<...>> == false
+static_assert(std::is_nothrow_move_assignable_v<block_t>);
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @enum EntryType
 ///////////////////////////////////////////////////////////////////////////////

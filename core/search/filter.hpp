@@ -46,18 +46,8 @@ class states_cache : private util::noncopyable {
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_constructible_v<states_map>)
-    : states_(std::move(rhs.states_)) {
-  }
-
-  states_cache& operator=(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_assignable_v<states_map>) {
-    if (this != &rhs) {
-      states_ = std::move(rhs.states_);
-    }
-    return *this;
-  }
+  states_cache(states_cache&&) = default;
+  states_cache& operator=(states_cache&&) = default;
 
   State& insert(const sub_reader& rdr) {
     return states_[&rdr];

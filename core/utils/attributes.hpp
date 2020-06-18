@@ -69,8 +69,17 @@ struct IRESEARCH_API attribute { };
 struct IRESEARCH_API stored_attribute : attribute {
   using ptr = std::unique_ptr<stored_attribute>;
 
+  stored_attribute() = default;
+  stored_attribute(const stored_attribute&) = default;
+  stored_attribute(stored_attribute&&) = default;
+  stored_attribute& operator=(const stored_attribute&) = default;
+  stored_attribute& operator=(stored_attribute&&) = default;
+
   virtual ~stored_attribute() = default;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<stored_attribute>);
+static_assert(std::is_nothrow_move_assignable_v<stored_attribute>);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            Attribute registration
@@ -227,6 +236,9 @@ class IRESEARCH_API flags {
   type_map map_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
+
+static_assert(std::is_move_constructible_v<flags>);
+static_assert(std::is_move_assignable_v<flags>);
 
 NS_END
 

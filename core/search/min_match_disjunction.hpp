@@ -52,20 +52,14 @@ class min_match_disjunction
       est = cost::extract(*this->it, cost::MAX);
     }
 
-    cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
-      : score_iterator_adapter<DocIterator>(std::move(rhs)), est(rhs.est) {
-    }
-
-    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) noexcept {
-      if (this != &rhs) {
-        score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
-        est = rhs.est;
-      }
-      return *this;
-    }
+    cost_iterator_adapter(cost_iterator_adapter&&) = default;
+    cost_iterator_adapter& operator=(cost_iterator_adapter&&) = default;
 
     cost::cost_t est;
   }; // cost_iterator_adapter
+
+  static_assert(std::is_nothrow_move_constructible<cost_iterator_adapter>::value,
+                "default move constructor expected");
 
   typedef cost_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;

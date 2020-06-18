@@ -38,7 +38,7 @@ using phrase_state = std::vector<StateType>;
 /// @class fixed_phrase_state
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
-struct fixed_phrase_state {
+struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
     term_state(seek_term_iterator::cookie_ptr&& first,
@@ -49,13 +49,12 @@ struct fixed_phrase_state {
     seek_term_iterator::cookie_ptr first;
   };
 
-  fixed_phrase_state() = default;
-  fixed_phrase_state(fixed_phrase_state&& rhs) = default;
-  fixed_phrase_state& operator=(const fixed_phrase_state&) = delete;
-
   phrase_state<term_state> terms;
   const term_reader* reader{};
 }; // fixed_phrase_state
+
+static_assert(std::is_nothrow_move_constructible_v<fixed_phrase_state>);
+static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class variadic_phrase_state
@@ -64,15 +63,14 @@ struct fixed_phrase_state {
 struct variadic_phrase_state : fixed_phrase_state {
   using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
 
-  variadic_phrase_state() = default;
-  variadic_phrase_state(variadic_phrase_state&& rhs) = default;
-  variadic_phrase_state& operator=(const variadic_phrase_state&) = delete;
-
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
   const term_reader* reader{};
   bool volatile_boost{};
 }; // variadic_phrase_state
+
+static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_state>);
+static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_state>);
 
 struct get_visitor {
   using result_type = field_visitor;

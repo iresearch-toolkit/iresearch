@@ -167,16 +167,6 @@ skip_reader::level::level(
     doc(doc) {
 }
 
-skip_reader::level::level(skip_reader::level&& rhs) noexcept 
-  : stream(std::move(rhs.stream)),
-    begin(rhs.begin),
-    end(rhs.end),
-    child(rhs.child),
-    step(rhs.step), 
-    skipped(rhs.skipped),
-    doc(rhs.doc) {
-}
-
 index_input::ptr skip_reader::level::dup() const {
   auto clone = stream->dup(); // non thread-safe clone
 

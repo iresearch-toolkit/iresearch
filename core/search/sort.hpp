@@ -393,26 +393,29 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct order_bucket
 ////////////////////////////////////////////////////////////////////////////////
-struct order_bucket : private util::noncopyable {
+struct order_bucket : util::noncopyable {
   explicit order_bucket(
       sort::prepared::ptr&& bucket,
       size_t score_offset,
       size_t stats_offset,
-      bool reverse)
+      bool reverse) noexcept
     : bucket(std::move(bucket)),
       score_offset(score_offset),
       stats_offset(stats_offset),
       reverse(reverse) {
   }
 
-  order_bucket(order_bucket&& rhs) = default;
-  order_bucket& operator=(order_bucket&& rhs) = default;
+  order_bucket(order_bucket&&) = default;
+  order_bucket& operator=(order_bucket&&) = default;
 
   sort::prepared::ptr bucket; // prepared score
   size_t score_offset; // offset in score buffer
   size_t stats_offset; // offset in stats buffer
   bool reverse;
 }; // order_bucket
+
+static_assert(std::is_nothrow_move_constructible_v<order_bucket>);
+static_assert(std::is_nothrow_move_assignable_v<order_bucket>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct score_traits
@@ -695,17 +698,8 @@ class IRESEARCH_API order final {
       assert(sort_);
     }
 
-    entry(entry&& rhs) noexcept
-      : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
-    }
-
-    entry& operator=(entry&& rhs) noexcept {
-      if (this != &rhs) {
-        sort_ = std::move(rhs.sort_);
-        reverse_ = rhs.reverse_;
-      }
-      return *this;
-    }
+    entry(entry&&) = default;
+    entry& operator=(entry&&) = default;
 
     const irs::sort& sort() const noexcept {
       assert(sort_);
@@ -752,6 +746,9 @@ class IRESEARCH_API order final {
     bool reverse_;
   }; // entry
 
+  static_assert(std::is_nothrow_move_constructible_v<entry>);
+  static_assert(std::is_nothrow_move_assignable_v<entry>);
+
   using order_t = std::vector<entry>;
   using const_iterator = order_t::const_iterator;
   using iterator = order_t::iterator;
@@ -789,8 +786,8 @@ class IRESEARCH_API order final {
         byte_type* score,
         const attribute_provider& doc,
         boost_t boost);
-      scorers(scorers&& other) noexcept = default;
-      scorers& operator=(scorers&& other) noexcept = default;
+      scorers(scorers&&) = default;
+      scorers& operator=(scorers&&) = default;
 
       const byte_type* evaluate() const;
 
@@ -838,6 +835,9 @@ class IRESEARCH_API order final {
       const byte_type* score_buf_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
+
+    static_assert(std::is_nothrow_move_constructible_v<scorers>);
+    static_assert(std::is_nothrow_move_assignable_v<scorers>);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @class merger
@@ -906,8 +906,8 @@ class IRESEARCH_API order final {
     static const prepared& unordered() noexcept;
 
     prepared() = default;
-    prepared(prepared&& rhs) = default;
-    prepared& operator=(prepared&& rhs) = default;
+    prepared(prepared&&) = default;
+    prepared& operator=(prepared&&) = default;
 
     const flags& features() const noexcept { return features_; }
 
@@ -1059,20 +1059,16 @@ class IRESEARCH_API order final {
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
+  // std::is_nothrow_move_constructible_v<flags> == false
+  static_assert(std::is_move_constructible_v<prepared>);
+  // std::is_nothrow_move_assignable_v<flags> == false
+  static_assert(std::is_move_assignable_v<prepared>);
+
   static const order& unordered() noexcept;
 
   order() = default;
-  order(order&& rhs) noexcept
-    : order_(std::move(rhs.order_)) {
-  }
-
-  order& operator=(order&& rhs) noexcept {
-    if (this != &rhs) {
-      order_ = std::move(rhs.order_);
-    }
-
-    return *this;
-  }
+  order(order&&) = default;
+  order& operator=(order&&) = default;
 
   bool operator==(const order& other) const;
 
@@ -1120,6 +1116,9 @@ class IRESEARCH_API order final {
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
+
+static_assert(std::is_nothrow_move_constructible_v<order>);
+static_assert(std::is_nothrow_move_constructible_v<order>);
 
 NS_END
 
