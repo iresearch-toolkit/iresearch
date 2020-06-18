@@ -389,6 +389,14 @@ class basic_disjunction final
 ////////////////////////////////////////////////////////////////////////////////
 /// @class small_disjunction
 /// @brief linear search based disjunction
+/// ----------------------------------------------------------------------------
+///  Unscored iterators   Scored iterators
+///   [0]   [1]   [2]   |   [3]    [4]     [5]
+///    ^                |    ^                    ^
+///    |                |    |                    |
+///   begin             |   scored               end
+///                     |   begin
+/// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class small_disjunction final
@@ -414,7 +422,7 @@ class small_disjunction final
         std::move(itrs), ord, merge_type,
         [this](){
           return std::accumulate(
-            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            begin_, end_, cost::cost_t(0),
             [](cost::cost_t lhs, const adapter& rhs) {
               return lhs + cost::extract(rhs, 0);
           });
@@ -445,10 +453,10 @@ class small_disjunction final
 
     doc_id_t min = doc_limits::eof();
 
-    for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
+    for (auto begin = begin_; begin != end_; ) {
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
-        if (!remove_iterator(it)) {
+        if (!remove_iterator(begin)) {
           doc_.value = doc_limits::eof();
           return false;
         }
@@ -473,7 +481,7 @@ class small_disjunction final
 
     doc_id_t min = doc_limits::eof();
 
-    for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
+    for (auto begin = begin_; begin != end_; ) {
       auto& it = *begin;
 
       if (it.value() < target) {
@@ -482,7 +490,7 @@ class small_disjunction final
         if (doc == target) {
           return doc_.value = doc;
         } else if (doc_limits::eof(doc)) {
-          if (!remove_iterator(it)) {
+          if (!remove_iterator(begin)) {
             // exhausted
             return doc_.value = doc_limits::eof();
           }
@@ -505,7 +513,8 @@ class small_disjunction final
     assert(ctx);
     assert(visitor);
     hitch_all_iterators();
-    for (auto& it : itrs_) {
+    for (auto begin = begin_; begin != end_; ++begin) {
+      auto& it = *begin;
       if (it->value() == doc_.value && !visitor(ctx, it)) {
         return;
       }
@@ -527,13 +536,27 @@ class small_disjunction final
         { type<cost>::id(),     &cost_  },
         { type<score>::id(),    &score_ },
       }},
-      itrs_(std::move(itrs)),
+      itrs_(itrs.size()),
+      scored_begin_(itrs_.begin()),
+      begin_(scored_begin_),
+      end_(itrs_.end()),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
       score_(ord),
       cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
+    auto rbegin = itrs_.rbegin();
+    for (auto& it : itrs) {
+      if (it.score->empty()) {
+        *scored_begin_ = std::move(it);
+        ++scored_begin_;
+      } else {
+        *rbegin = std::move(it);
+        ++rbegin;
+      }
+    }
+
     prepare_score(ord);
   }
 
@@ -542,31 +565,23 @@ class small_disjunction final
       return;
     }
 
-    // copy iterators with scores into separate container
-    // to avoid extra checks
-    scored_itrs_.reserve(itrs_.size());
-    for (auto& it : itrs_) {
-      if (!it.score->empty()) {
-        scored_itrs_.emplace_back(it.operator->(), it.doc, it.score);
-      }
-    }
-
     // prepare score
-    if (!scored_itrs_.empty()) {
-      scores_vals_.resize(scored_itrs_.size());
+    if (scored_begin_ != end_) {
+      scores_vals_.resize(size_t(std::distance(scored_begin_, end_)));
+
       score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<small_disjunction*>(ctx);
         auto* score_buf = self.score_.data();
         const irs::byte_type** pVal = self.scores_vals_.data();
-        for (auto& it : self.scored_itrs_) {
-          auto doc = std::get<const document*>(it)->value;
+        for (auto begin = self.scored_begin_, end = self.end_; begin != end; ++begin) {
+          auto doc = begin->value();
 
           if (doc < self.doc_.value) {
-            doc = std::get<doc_iterator*>(it)->seek(self.doc_.value);
+            doc = (*begin)->seek(self.doc_.value);
           }
 
           if (doc == self.doc_.value) {
-            *pVal++ = std::get<const score*>(it)->evaluate();
+            *pVal++ = begin->score->evaluate();
           }
         }
 
@@ -584,35 +599,41 @@ class small_disjunction final
     }
   }
 
-  bool remove_iterator(adapter& it) {
-    std::swap(it, itrs_.back());
-    itrs_.pop_back();
-    return !itrs_.empty();
+  bool remove_iterator(typename doc_iterators_t::iterator it) {
+    if (it->score->empty()) {
+      std::swap(*it, *begin_);
+      ++begin_;
+    } else {
+      std::swap(*it, *(--end_));
+    }
+
+    return begin_ != end_;
   }
 
   void hitch_all_iterators() {
     if (last_hitched_doc_ == doc_.value) {
       return; // nothing to do
     }
-    for (auto rbegin = itrs_.rbegin(); rbegin != itrs_.rend();) {
-      auto& it = *rbegin;
-      ++rbegin;
+    for (auto begin = begin_; begin != end_;++begin) {
+      auto& it = *begin;
       if (it.value() < doc_.value && doc_limits::eof(it->seek(doc_.value))) {
         #ifdef IRESEARCH_DEBUG
-          assert(remove_iterator(it));
+          assert(remove_iterator(begin));
         #else
-          remove_iterator(it);
+          remove_iterator(begin);
         #endif
       }
     }
     last_hitched_doc_ = doc_.value;
   }
 
-  using scored_iterator = std::tuple<doc_iterator*, const document*, const score*>;
+  using iterator = typename doc_iterators_t::iterator;
 
   doc_id_t last_hitched_doc_{ doc_limits::invalid() };
   doc_iterators_t itrs_;
-  std::vector<scored_iterator> scored_itrs_; // iterators with scores
+  iterator scored_begin_; // beginning of scored doc iterator range
+  iterator begin_; // beginning of unscored doc iterators range
+  iterator end_; // end of scored doc iterator range
   document doc_;
   score score_;
   cost cost_;
