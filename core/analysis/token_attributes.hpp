@@ -52,6 +52,10 @@ struct IRESEARCH_API offset final : attribute {
   uint32_t end{0};
 };
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<offset>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class increment 
 /// @brief represents token increment in a stream 
@@ -62,6 +66,10 @@ struct IRESEARCH_API increment final : attribute {
   uint32_t value{1};
 };
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<increment>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_attribute 
 /// @brief represents term value in a stream 
@@ -71,6 +79,10 @@ struct IRESEARCH_API term_attribute final : attribute {
 
   bytes_ref value;
 };
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<term_attribute>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class payload
@@ -83,6 +95,10 @@ struct IRESEARCH_API payload final : attribute {
 
   bytes_ref value;
 };
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<payload>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class document 
@@ -99,6 +115,10 @@ struct IRESEARCH_API document final : attribute {
   doc_id_t value;
 };
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<document>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class frequency 
 /// @brief how many times term appears in a document
@@ -109,6 +129,10 @@ struct IRESEARCH_API frequency final : attribute {
 
   uint32_t value{0};
 }; // frequency
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<frequency>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class granularity_prefix
@@ -123,6 +147,10 @@ struct IRESEARCH_API granularity_prefix final : attribute {
     return "iresearch::granularity_prefix";
   }
 }; // granularity_prefix
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<granularity_prefix>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
@@ -157,6 +185,10 @@ struct IRESEARCH_API norm final : attribute {
 
 static_assert(std::is_nothrow_move_constructible_v<norm>);
 static_assert(std::is_nothrow_move_assignable_v<norm>);
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<norm>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class position 
@@ -197,11 +229,15 @@ class IRESEARCH_API position
   value_t value_{ pos_limits::invalid() };
 }; // position
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<position>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class attribute_provider_change
 /// @brief subscription for attribute provider change
 //////////////////////////////////////////////////////////////////////////////
-class attribute_provider_change final : public attribute {
+class IRESEARCH_API attribute_provider_change final : public attribute {
  public:
   using callback_f = std::function<void(attribute_provider&)>;
 
@@ -227,6 +263,10 @@ class attribute_provider_change final : public attribute {
 
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<attribute_provider_change>;
+#endif
 
 NS_END // ROOT
 

@@ -74,6 +74,10 @@ struct IRESEARCH_API encryption : public stored_attribute {
     byte_type* header) = 0;
 };
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<encryption>;
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
@@ -93,8 +97,7 @@ IRESEARCH_API bool encrypt(
   index_output& out,
   encryption* enc,
   bstring& header,
-  encryption::stream::ptr& cipher
-);
+  encryption::stream::ptr& cipher);
 
 /// @brief create corresponding cipher stream from a specified encryption header
 /// @returns true if cipher stream was initialized, false if encryption is not
@@ -104,8 +107,7 @@ IRESEARCH_API bool decrypt(
   const std::string& filename,
   index_input& in,
   encryption* enc,
-  encryption::stream::ptr& cipher
-);
+  encryption::stream::ptr& cipher);
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
@@ -222,7 +224,6 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
   const uint64_t start_;
   const size_t length_;
 }; // encrypted_input
-
 
 NS_END // ROOT
 

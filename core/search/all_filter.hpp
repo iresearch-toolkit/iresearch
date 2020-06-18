@@ -50,6 +50,10 @@ class IRESEARCH_API all: public filter {
     const attribute_provider* ctx) const override;
 }; // all
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<all>;
+#endif
+
 NS_END // ROOT
 
 #endif

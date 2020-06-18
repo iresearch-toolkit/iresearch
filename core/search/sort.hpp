@@ -58,6 +58,10 @@ struct IRESEARCH_API filter_boost final : attribute {
   boost_t value{no_boost()};
 }; // filter_boost
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<filter_boost>;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stateful object used for computing the document score based on the
 ///        stored state

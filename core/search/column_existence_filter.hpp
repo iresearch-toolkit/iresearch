@@ -73,6 +73,10 @@ class IRESEARCH_API by_column_existence final
     const attribute_provider* ctx) const override;
 }; // by_column_existence
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_column_existence>;
+#endif
+
 NS_END // ROOT
 
 #endif // IRESEARCH_COLUMN_EXISTENCE_FILTER_H

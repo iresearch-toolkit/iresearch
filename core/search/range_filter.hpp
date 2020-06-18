@@ -110,7 +110,11 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
                    field(), options().range,
                    options().scored_terms_limit);
   }
-}; // by_range 
+}; // by_range
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_range>;
+#endif
 
 NS_END // ROOT
 

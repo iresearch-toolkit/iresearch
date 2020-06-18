@@ -133,6 +133,10 @@ class IRESEARCH_API by_granular_range
   }
 }; // by_granular_range
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_granular_range>;
+#endif
+
 NS_END // ROOT
 
 #endif

@@ -109,6 +109,10 @@ class IRESEARCH_API by_terms final
     const attribute_provider* /*ctx*/) const override;
 }; // by_terms
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_terms>;
+#endif
+
 NS_END
 
 NS_BEGIN(std)

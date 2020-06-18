@@ -94,6 +94,10 @@ class IRESEARCH_API score : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<score>;
+#endif
+
 IRESEARCH_API void prepare_score(
   irs::score& score, order::prepared::scorers&& scorers);
 

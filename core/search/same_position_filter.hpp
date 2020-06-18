@@ -85,6 +85,10 @@ class IRESEARCH_API by_same_position
     const attribute_provider* ctx) const override;
 }; // by_same_position
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_same_position>;
+#endif
+
 NS_END // ROOT
 
 #endif // IRESEARCH_SAME_POSITION_FILTER_H

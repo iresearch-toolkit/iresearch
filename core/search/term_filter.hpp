@@ -86,6 +86,10 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
   }
 }; // by_term
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_term>;
+#endif
+
 NS_END
 
 NS_BEGIN(std)

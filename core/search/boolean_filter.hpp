@@ -117,6 +117,10 @@ class IRESEARCH_API And: public boolean_filter {
     const attribute_provider* ctx) const override;
 }; // And
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<And>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class Or
 //////////////////////////////////////////////////////////////////////////////
@@ -157,6 +161,10 @@ class IRESEARCH_API Or : public boolean_filter {
  private:
   size_t min_match_count_;
 }; // Or
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<Or>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class not
@@ -215,6 +223,10 @@ class IRESEARCH_API Not: public filter {
   filter::ptr filter_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<Not>;
+#endif
 
 NS_END
 

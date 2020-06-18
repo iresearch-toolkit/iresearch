@@ -41,6 +41,10 @@ struct IRESEARCH_API boost_sort final : public sort {
   virtual sort::prepared::ptr prepare() const override;
 }; // boost_sort
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<boost_sort>;
+#endif
+
 NS_END
 
 #endif // IRESEARCH_BOOST_H

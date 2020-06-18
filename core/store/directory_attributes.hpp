@@ -66,6 +66,10 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
   allocator_type allocator_;
 }; // memory_allocator
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<memory_allocator>;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class fd_pool_size
 /// @brief the size of file descriptor pools
@@ -83,6 +87,10 @@ struct IRESEARCH_API fd_pool_size: public stored_attribute {
 
   size_t size;
 }; // fd_pool_size
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<fd_pool_size>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class index_file_refs
@@ -113,6 +121,10 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   counter_t refs_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
+
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<index_file_refs>;
+#endif
 
 NS_END
 

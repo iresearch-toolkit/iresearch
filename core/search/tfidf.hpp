@@ -27,8 +27,8 @@
 
 NS_ROOT
 
-class tfidf_sort : public sort {
-public:
+class tfidf_sort final : public sort {
+ public:
   static constexpr string_ref type_name() noexcept {
     return "tfidf";
   }
@@ -38,7 +38,7 @@ public:
   }
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY();
+  static ptr make(bool normalize);
 
   typedef float_t score_t;
 

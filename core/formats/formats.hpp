@@ -71,6 +71,10 @@ struct IRESEARCH_API term_meta : attribute {
   uint32_t freq = 0; // FIXME check whether we can move freq to another place
 }; // term_meta
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<term_meta>;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////

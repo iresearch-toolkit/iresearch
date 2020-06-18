@@ -443,9 +443,11 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
   bool normalize_;
 }; // sort
 
-NS_END // tfidf 
+NS_END // tfidf
 
-DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
+tfidf_sort::ptr tfidf_sort::make(bool normalize) {
+  return memory::make_unique<tfidf_sort>(normalize);
+}
 
 tfidf_sort::tfidf_sort(bool normalize) noexcept
   : sort(irs::type<tfidf_sort>::get()),

@@ -3420,7 +3420,7 @@ TEST(block_disjunction_test, check_attributes) {
   // no scoring, order
   {
     irs::order ord;
-    ord.add<irs::bm25_sort>(true);
+    ord.add<detail::basic_sort>(true, 0);
 
     auto prepared = ord.prepare();
 
@@ -3443,7 +3443,7 @@ TEST(block_disjunction_test, check_attributes) {
   // scoring, order
   {
     irs::order ord;
-    ord.add<irs::bm25_sort>(true);
+    ord.add<detail::basic_sort>(true, 0);
 
     auto prepared = ord.prepare();
 

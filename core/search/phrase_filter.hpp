@@ -214,6 +214,10 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
     boost_t boost) const;
 }; // by_phrase
 
+#ifdef IRESEARCH_DLL
+template class IRESEARCH_API type<by_phrase>;
+#endif
+
 NS_END // ROOT
 
 #endif
