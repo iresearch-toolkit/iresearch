@@ -2514,7 +2514,7 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
   doc4.insert(std::make_shared<tests::templates::string_field>(field, data4));
   doc4.sorted = doc4.indexed.find(field)[0];
 
-  auto codec_ptr = irs::formats::get("1_3");
+  auto codec_ptr = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
   binary_comparer test_comparer;
