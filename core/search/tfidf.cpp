@@ -445,7 +445,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
 NS_END // tfidf
 
-tfidf_sort::ptr tfidf_sort::make(bool normalize) {
+tfidf_sort::ptr tfidf_sort::make(bool normalize /*= WITH_NORMS()*/) {
   return memory::make_unique<tfidf_sort>(normalize);
 }
 

@@ -38,7 +38,7 @@ class tfidf_sort final : public sort {
   }
 
   // for use with irs::order::add<T>() and default args (static build)
-  static ptr make(bool normalize);
+  static ptr make(bool normalize = WITH_NORMS());
 
   typedef float_t score_t;
 
