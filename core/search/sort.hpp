@@ -59,7 +59,7 @@ struct IRESEARCH_API filter_boost final : attribute {
 }; // filter_boost
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<filter_boost>;
+template struct IRESEARCH_API type<filter_boost>;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

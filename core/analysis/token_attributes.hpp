@@ -53,7 +53,7 @@ struct IRESEARCH_API offset final : attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<offset>;
+template struct IRESEARCH_API type<offset>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ struct IRESEARCH_API increment final : attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<increment>;
+template struct IRESEARCH_API type<increment>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ struct IRESEARCH_API term_attribute final : attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<term_attribute>;
+template struct IRESEARCH_API type<term_attribute>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ struct IRESEARCH_API payload final : attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<payload>;
+template struct IRESEARCH_API type<payload>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +116,7 @@ struct IRESEARCH_API document final : attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<document>;
+template struct IRESEARCH_API type<document>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ struct IRESEARCH_API frequency final : attribute {
 }; // frequency
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<frequency>;
+template struct IRESEARCH_API type<frequency>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -149,7 +149,7 @@ struct IRESEARCH_API granularity_prefix final : attribute {
 }; // granularity_prefix
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<granularity_prefix>;
+template struct IRESEARCH_API type<granularity_prefix>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,7 @@ static_assert(std::is_nothrow_move_constructible_v<norm>);
 static_assert(std::is_nothrow_move_assignable_v<norm>);
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<norm>;
+template struct IRESEARCH_API type<norm>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -230,7 +230,7 @@ class IRESEARCH_API position
 }; // position
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<position>;
+template struct IRESEARCH_API type<position>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ class IRESEARCH_API attribute_provider_change final : public attribute {
 }; // attribute_provider_change
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<attribute_provider_change>;
+template struct IRESEARCH_API type<attribute_provider_change>;
 #endif
 
 NS_END // ROOT

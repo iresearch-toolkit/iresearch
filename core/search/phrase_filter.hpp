@@ -215,7 +215,7 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
 }; // by_phrase
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_phrase>;
+template struct IRESEARCH_API type<by_phrase>;
 #endif
 
 NS_END // ROOT

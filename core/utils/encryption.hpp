@@ -75,7 +75,7 @@ struct IRESEARCH_API encryption : public stored_attribute {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<encryption>;
+template struct IRESEARCH_API type<encryption>;
 #endif
 
 // -----------------------------------------------------------------------------

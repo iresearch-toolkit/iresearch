@@ -113,7 +113,7 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
 }; // by_range
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_range>;
+template struct IRESEARCH_API type<by_range>;
 #endif
 
 NS_END // ROOT

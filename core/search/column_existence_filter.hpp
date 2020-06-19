@@ -74,7 +74,7 @@ class IRESEARCH_API by_column_existence final
 }; // by_column_existence
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_column_existence>;
+template struct IRESEARCH_API type<by_column_existence>;
 #endif
 
 NS_END // ROOT

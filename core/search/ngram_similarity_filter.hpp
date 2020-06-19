@@ -78,7 +78,7 @@ class IRESEARCH_API by_ngram_similarity
 }; // by_ngram_similarity
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_ngram_similarity>;
+template struct IRESEARCH_API type<by_ngram_similarity>;
 #endif
 
 NS_END // ROOT

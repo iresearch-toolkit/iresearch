@@ -110,7 +110,7 @@ class IRESEARCH_API by_terms final
 }; // by_terms
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_terms>;
+template struct IRESEARCH_API type<by_terms>;
 #endif
 
 NS_END

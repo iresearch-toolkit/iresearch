@@ -109,7 +109,7 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
 }; // by_prefix
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_prefix>;
+template struct IRESEARCH_API type<by_prefix>;
 #endif
 
 NS_END

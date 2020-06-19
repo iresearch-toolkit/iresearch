@@ -86,7 +86,7 @@ class IRESEARCH_API by_same_position
 }; // by_same_position
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_same_position>;
+template struct IRESEARCH_API type<by_same_position>;
 #endif
 
 NS_END // ROOT

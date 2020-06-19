@@ -42,7 +42,7 @@ struct IRESEARCH_API boost_sort final : public sort {
 }; // boost_sort
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<boost_sort>;
+template struct IRESEARCH_API type<boost_sort>;
 #endif
 
 NS_END

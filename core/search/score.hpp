@@ -95,7 +95,7 @@ class IRESEARCH_API score : public attribute {
 }; // score
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<score>;
+template struct IRESEARCH_API type<score>;
 #endif
 
 IRESEARCH_API void prepare_score(

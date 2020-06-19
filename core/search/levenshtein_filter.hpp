@@ -139,7 +139,7 @@ class IRESEARCH_API by_edit_distance final
 }; // by_edit_distance
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<by_edit_distance>;
+template struct IRESEARCH_API type<by_edit_distance>;
 #endif
 
 NS_END

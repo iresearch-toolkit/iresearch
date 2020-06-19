@@ -51,7 +51,7 @@ class IRESEARCH_API all: public filter {
 }; // all
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<all>;
+template struct IRESEARCH_API type<all>;
 #endif
 
 NS_END // ROOT

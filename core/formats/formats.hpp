@@ -72,7 +72,7 @@ struct IRESEARCH_API term_meta : attribute {
 }; // term_meta
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<term_meta>;
+template struct IRESEARCH_API type<term_meta>;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

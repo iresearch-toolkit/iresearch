@@ -110,7 +110,7 @@ class IRESEARCH_API cost final : public attribute {
 }; // cost
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<cost>;
+template struct IRESEARCH_API type<cost>;
 #endif
 
 NS_END // ROOT

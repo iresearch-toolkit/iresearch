@@ -72,10 +72,10 @@ struct xml {
 NS_END // text_format
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<text_format::csv>;
-template class IRESEARCH_API type<text_format::json>;
-template class IRESEARCH_API type<text_format::text>;
-template class IRESEARCH_API type<text_format::xml>;
+template struct IRESEARCH_API type<text_format::csv>;
+template struct IRESEARCH_API type<text_format::json>;
+template struct IRESEARCH_API type<text_format::text>;
+template struct IRESEARCH_API type<text_format::xml>;
 #endif
 
 NS_END // ROOT

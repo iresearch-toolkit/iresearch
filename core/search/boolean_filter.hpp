@@ -118,7 +118,7 @@ class IRESEARCH_API And: public boolean_filter {
 }; // And
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<And>;
+template struct IRESEARCH_API type<And>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -163,7 +163,7 @@ class IRESEARCH_API Or : public boolean_filter {
 }; // Or
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<Or>;
+template struct IRESEARCH_API type<Or>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -225,7 +225,7 @@ class IRESEARCH_API Not: public filter {
 };
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<Not>;
+template struct IRESEARCH_API type<Not>;
 #endif
 
 NS_END

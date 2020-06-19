@@ -67,7 +67,7 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 }; // memory_allocator
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<memory_allocator>;
+template struct IRESEARCH_API type<memory_allocator>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ struct IRESEARCH_API fd_pool_size: public stored_attribute {
 }; // fd_pool_size
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<fd_pool_size>;
+template struct IRESEARCH_API type<fd_pool_size>;
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
 }; // index_file_refs
 
 #ifdef IRESEARCH_DLL
-template class IRESEARCH_API type<index_file_refs>;
+template struct IRESEARCH_API type<index_file_refs>;
 #endif
 
 NS_END
