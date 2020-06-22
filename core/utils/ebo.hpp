@@ -91,10 +91,8 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact& rhs) noexcept
-    : val_(rhs.val_) {}
-  compact(compact&& rhs) noexcept
-    : val_(std::move(rhs.val_)) { }
+  compact(const compact&) = default;
+  compact(compact&&) = default;
 
   template<typename U = T>
   compact(U&& value) noexcept
@@ -103,12 +101,8 @@ class compact<I, T, false> {
   }
 
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&& rhs) noexcept {
-    if (this != &rhs) {
-      val_ = std::move(rhs);
-    }
-    return *this;
-  }
+  compact& operator=(compact&&) = default;
+
   compact& operator=(const T& value) noexcept {
     val_ = value;
     return *this;

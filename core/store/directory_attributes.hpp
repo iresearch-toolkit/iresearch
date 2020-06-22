@@ -58,6 +58,10 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 
   explicit memory_allocator(size_t pool_size);
 
+  // MSVC tries to instantinate default copy-constructor without this
+  // and fails to copy allocator_. So delete it explicitly.
+  memory_allocator(const memory_allocator&) = delete;
+
   operator allocator_type&() const noexcept {
     return const_cast<allocator_type&>(allocator_);
   }
