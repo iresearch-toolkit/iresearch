@@ -77,6 +77,10 @@ class IRESEARCH_API by_ngram_similarity
     const attribute_provider* ctx) const override;
 }; // by_ngram_similarity
 
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<by_ngram_similarity>;
+#endif
+
 NS_END // ROOT
 
 #endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

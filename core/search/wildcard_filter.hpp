@@ -105,6 +105,10 @@ class IRESEARCH_API by_wildcard final
   }
 }; // by_wildcard
 
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<by_wildcard>;
+#endif
+
 NS_END
 
 NS_BEGIN(std)

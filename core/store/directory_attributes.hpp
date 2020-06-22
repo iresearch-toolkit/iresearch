@@ -58,6 +58,10 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 
   explicit memory_allocator(size_t pool_size);
 
+  // MSVC tries to instantinate default copy-constructor without this
+  // and fails to copy allocator_. So delete it explicitly.
+  memory_allocator(const memory_allocator&) = delete;
+
   operator allocator_type&() const noexcept {
     return const_cast<allocator_type&>(allocator_);
   }
@@ -65,6 +69,10 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
  private:
   allocator_type allocator_;
 }; // memory_allocator
+
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<memory_allocator>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fd_pool_size
@@ -83,6 +91,10 @@ struct IRESEARCH_API fd_pool_size: public stored_attribute {
 
   size_t size;
 }; // fd_pool_size
+
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<fd_pool_size>;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class index_file_refs
@@ -113,6 +125,10 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   counter_t refs_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
+
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<index_file_refs>;
+#endif
 
 NS_END
 

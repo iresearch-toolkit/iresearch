@@ -109,6 +109,10 @@ class IRESEARCH_API cost final : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
+#ifdef IRESEARCH_DLL
+template struct IRESEARCH_API type<cost>;
+#endif
+
 NS_END // ROOT
 
 #endif // IRESEARCH_COST_H

@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-class bm25_sort : public sort {
+class bm25_sort final : public sort {
  public:
   static constexpr string_ref type_name() noexcept {
     return "bm25";
@@ -44,7 +44,7 @@ class bm25_sort : public sort {
   static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY();
+  static ptr make(float_t k = K(), float_t b = B());
 
   typedef float_t score_t;
 

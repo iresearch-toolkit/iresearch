@@ -530,12 +530,13 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
 NS_END // bm25
 
-DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
+/*static*/ bm25_sort::ptr bm25_sort::make(
+    float_t k /*= K()*/,
+    float_t b /*= B()*/) {
+  return memory::make_unique<bm25_sort>(k, b);
+}
 
-bm25_sort::bm25_sort(
-    float_t k /*= 1.2f*/,
-    float_t b /*= 0.75f*/
-) noexcept
+bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/) noexcept
   : sort(irs::type<bm25_sort>::get()),
     k_(k),
     b_(b) {
