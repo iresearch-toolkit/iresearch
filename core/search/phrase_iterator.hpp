@@ -106,15 +106,19 @@ class fixed_phrase_frequency {
 /// @brief adapter to use doc_iterator with positions for disjunction
 ////////////////////////////////////////////////////////////////////////////////
 struct variadic_phrase_adapter final : score_iterator_adapter<doc_iterator::ptr> {
+  variadic_phrase_adapter() = default;
   variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
     : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
       position(irs::get_mutable<irs::position>(this->it.get())),
       boost(boost) {
   }
 
-  irs::position* position;
-  boost_t boost;
+  irs::position* position{};
+  boost_t boost{no_boost()};
 }; // variadic_phrase_adapter
+
+static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_adapter>);
+static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_adapter>);
 
 using variadic_term_position = std::pair<
   compound_doc_iterator<variadic_phrase_adapter>*,

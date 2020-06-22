@@ -39,10 +39,11 @@ template<typename DocIterator>
 struct score_iterator_adapter {
   typedef DocIterator doc_iterator_t;
 
+  score_iterator_adapter() = default;
   score_iterator_adapter(doc_iterator_t&& it) noexcept
-    : it(std::move(it)) {
-    score = &irs::score::get(*this->it);
-    doc = irs::get<irs::document>(*this->it);
+    : it(std::move(it)),
+      doc(irs::get<irs::document>(*this->it)),
+      score(&irs::score::get(*this->it)) {
     assert(doc);
   }
 
@@ -71,8 +72,8 @@ struct score_iterator_adapter {
   }
 
   doc_iterator_t it;
-  const irs::document* doc;
-  const irs::score* score;
+  const irs::document* doc{};
+  const irs::score* score{};
 }; // score_iterator_adapter
 
 ////////////////////////////////////////////////////////////////////////////////
