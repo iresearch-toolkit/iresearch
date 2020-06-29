@@ -302,16 +302,6 @@ struct stats final {
 
 typedef bm25_sort::score_t score_t;
 
-struct const_score_ctx final : public irs::score_ctx {
-  const_score_ctx(byte_type* score_buf,
-                  irs::boost_t boost) noexcept
-    : score_buf(score_buf) {
-    irs::sort::score_cast<score_t>(score_buf) = boost;
-  }
-
-  const byte_type* score_buf;
-}; // const_score_ctx
-
 struct score_ctx : public irs::score_ctx {
   score_ctx(
       byte_type* score_buf,
@@ -424,7 +414,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
+  virtual score_function prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
@@ -439,10 +429,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       }
 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      irs::sort::score_cast<score_t>(score_buf) = boost;
+
       return {
-        memory::make_unique<bm25::const_score_ctx>(score_buf, boost),
-        [](irs::score_ctx* ctx) noexcept {
-          return static_cast<bm25::const_score_ctx*>(ctx)->score_buf;
+        reinterpret_cast<score_ctx*>(score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          return reinterpret_cast<byte_type*>(ctx);
         }
       };
     }
