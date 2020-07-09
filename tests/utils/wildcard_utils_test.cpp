@@ -631,6 +631,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("vczczvccccc"))));
   }
 
+  // mixed from wikipedia
+  {
+    auto a = irs::from_wildcard("%a%_r_c%");
+    assert_properties(a);
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, 
+        irs::ref_cast<irs::byte_type>(irs::string_ref("Error detection and correction"))));
+                                                                     //^      ^ ^
+  }
+
   // invalid UTF-8 sequence
   ASSERT_EQ(0, irs::from_wildcard("\xD0").NumStates());
   ASSERT_EQ(0, irs::from_wildcard("\xE2\x9E").NumStates());
