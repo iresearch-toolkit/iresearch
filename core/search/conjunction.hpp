@@ -77,6 +77,122 @@ struct score_iterator_adapter {
 }; // score_iterator_adapter
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class basic_conjunction
+////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
+class basic_conjunction
+  : public frozen_attributes<3, doc_iterator>,
+    private score_ctx {
+ public:
+  using doc_iterator_t = score_iterator_adapter<DocIterator>;
+  using iterators = std::pair<doc_iterator_t, doc_iterator_t>;
+
+  static_assert(std::is_nothrow_move_constructible<doc_iterator_t>::value,
+                "default move constructor expected");
+
+  struct doc_iterators {
+    doc_iterators(doc_iterator_t&& first, doc_iterator_t&& second) noexcept
+      : itrs{cost::extract(first, cost::MAX) < cost::extract(second, cost::MAX)
+               ? iterators{ std::move(first), std::move(second) }
+               : iterators{ std::move(second), std::move(first) } },
+        cost(irs::get_mutable<irs::cost>(itrs.first.it.get())),
+        doc(const_cast<document*>(itrs.first.doc)) {
+    }
+
+    std::pair<doc_iterator_t, doc_iterator_t> itrs;
+    irs::cost* cost;
+    document* doc;
+  }; // doc_iterators
+
+  basic_conjunction(
+      doc_iterators&& itrs,
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : attributes{{
+        { type<document>::id(), itrs.doc  },
+        { type<cost>::id(),     itrs.cost },
+        { type<score>::id(),    &score_   },
+      }},
+      itrs_(std::move(itrs.itrs)),
+      score_(ord),
+      merger_(ord.prepare_merger(merge_type)) {
+    prepare_score(ord);
+  }
+
+  virtual bool next() override {
+    if (!itrs_.first->next()) {
+      return false;
+    }
+
+    return !doc_limits::eof(converge(itrs_.first.doc->value));
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    if (doc_limits::eof(target = itrs_.first->seek(target))) {
+      return doc_limits::eof();
+    }
+
+    return converge(target);
+  }
+
+  virtual doc_id_t value() const noexcept override final {
+    return itrs_.first.doc->value;
+  }
+
+ private:
+  // tries to converge front_ and other iterators to the specified target.
+  // if it impossible tries to find first convergence place
+  doc_id_t converge(doc_id_t target) {
+    assert(!doc_limits::eof(target));
+
+    for (auto rest = itrs_.second->seek(target); target != rest; rest = itrs_.second->seek(target)) {
+      target = itrs_.first->seek(rest);
+      if (doc_limits::eof(target)) {
+        break;
+      }
+    }
+
+    return target;
+  }
+
+  void prepare_score(const order::prepared& ord) {
+    if (ord.empty()) {
+      return;
+    }
+
+    assert(itrs_.first.score && itrs_.second.score); // must be ensure by the adapter
+
+    const bool first_score_empty = itrs_.first.score->is_default();
+    const bool second_score_empty = itrs_.second.score->is_default();
+
+    if (!first_score_empty && !second_score_empty) {
+      // both sub-iterators have score
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<basic_conjunction*>(ctx);
+
+        auto* score_buf = self.score_.data();
+        self.score_values_[0] = self.itrs_.first.score->evaluate();
+        self.score_values_[1] = self.itrs_.second.score->evaluate();
+        self.merger_(score_buf, self.score_values_, 2);
+
+        return score_buf;
+      });
+    } else if (!first_score_empty) {
+      score_.reset(*itrs_.first.score);
+    } else if (!second_score_empty) {
+      score_.reset(*itrs_.second.score);
+    } else {
+      assert(score_.is_default());
+    }
+  }
+
+  iterators itrs_;
+  score score_;
+  const byte_type* score_values_[2];
+  order::prepared::merger merger_;
+}; // basic_conjunction
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class conjunction
 ///-----------------------------------------------------------------------------
 /// c |  [0] <-- lead (the least cost iterator)
@@ -91,6 +207,8 @@ class conjunction
   : public frozen_attributes<3, doc_iterator>,
     private score_ctx {
  public:
+  using basic_conjunction_t = basic_conjunction<DocIterator>;
+
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
   using iterator = typename doc_iterators_t::const_iterator;
@@ -148,7 +266,7 @@ class conjunction
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
 
-  virtual doc_id_t value() const override final {
+  virtual doc_id_t value() const noexcept override final {
     return front_doc_->value;
   }
 
@@ -287,6 +405,14 @@ doc_iterator::ptr make_conjunction(
     case 1:
       // single sub-query
       return std::move(itrs.front());
+    case 2:
+      // basic conjunction
+      using basic_conjunction_t = typename Conjunction::basic_disjunction_t;
+
+      // simple disjunction
+      return memory::make_managed<basic_conjunction_t>(
+         { std::move(itrs.front()), std::move(itrs.back()) },
+         std::forward<Args>(args)...);
   }
 
   // conjunction
