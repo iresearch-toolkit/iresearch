@@ -95,15 +95,6 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 }
 
 automaton from_wildcard(const bytes_ref& expr) {
-  struct match_any_state {
-    match_any_state(automaton::StateId state, size_t offset) noexcept
-      : offset(offset), state(state) {
-    }
-
-    size_t offset;
-    automaton::StateId state;
-  };
-
   struct {
     automaton::StateId from;
     automaton::StateId to;
@@ -113,12 +104,18 @@ automaton from_wildcard(const bytes_ref& expr) {
     bool match_all{ false };
   } state;
 
-  std::vector<match_any_state> match_any_sequence;
-  std::vector<std::pair<bytes_ref, automaton::StateId>> match_all_sequence;
   utf8_transitions_builder builder;
+
+  // offset + state
+  std::vector<std::pair<size_t, automaton::StateId>> match_any_sequence;
+  // label + state
+  std::vector<std::pair<bytes_ref, automaton::StateId>> match_all_sequence;
+  // label + state
   std::pair<bytes_ref, automaton::StateId> arcs[3];
 
-  auto sort = [&arcs](size_t size) {
+  auto sort = [&arcs](size_t size) noexcept {
+    // use optimized version of sort as we know
+    // that array contains at most 3 elements
     switch (size) {
       case 1:
         break;
@@ -161,19 +158,19 @@ automaton from_wildcard(const bytes_ref& expr) {
               }
             }
 
-            if (const auto offset = match_any_state.offset % match_all_sequence.size(); offset) {
+            if (const auto offset = match_any_state.first % match_all_sequence.size(); offset) {
               auto& arc = match_all_sequence[offset];
               if (c != arc.first) {
                 *end++ = arc;
               }
             }
 
-            const auto rho_state = match_any_state.offset > match_any_sequence.size()
+            const auto rho_state = match_any_state.first > match_any_sequence.size()
               ? state.match_all_from
               : state.from;
 
             sort(std::distance(arcs, end));
-            builder.insert(a, match_any_state.state, rho_state, arcs, end);
+            builder.insert(a, match_any_state.second, rho_state, arcs, end);
           }
 
           match_any_sequence.clear();
@@ -241,22 +238,20 @@ automaton from_wildcard(const bytes_ref& expr) {
           state.to = a.AddState();
 
           if (!state.match_all && !match_all_sequence.empty()) {
-//            assert(!state.match_all);
-
             for (auto& match_any_state : match_any_sequence) {
               const auto to = a.AddState();
 
-              assert(match_any_state.offset < match_all_sequence.size());
+              assert(match_any_state.first < match_all_sequence.size());
 
               utf8_emplace_arc(
-                a, match_any_state.state, state.to,
-                match_all_sequence[match_any_state.offset].first, to);
-              ++match_any_state.offset;
-              match_any_state.state = to;
+                a, match_any_state.second, state.to,
+                match_all_sequence[match_any_state.first].first, to);
+              ++match_any_state.first;
+              match_any_state.second = to;
             }
 
             const auto to = a.AddState();
-            match_any_sequence.emplace_back(to, 1);
+            match_any_sequence.emplace_back(1, to);
             utf8_emplace_arc(a, state.from, match_all_sequence.front().first, to);
           }
 
