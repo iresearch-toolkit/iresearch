@@ -23,6 +23,7 @@
 #include "wildcard_utils.hpp"
 
 #include "automaton_utils.hpp"
+#include "draw-impl.h"
 
 NS_ROOT
 
@@ -94,53 +95,116 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 }
 
 automaton from_wildcard(const bytes_ref& expr) {
+  struct match_any_state {
+    match_any_state(automaton::StateId state, size_t offset) noexcept
+      : offset(offset), state(state) {
+    }
+
+    size_t offset;
+    automaton::StateId state;
+  };
+
   struct {
-   automaton::StateId from;
-   automaton::StateId to;
-   automaton::StateId match_all_from{ fst::kNoStateId };
-   automaton::StateId match_all_to{ fst::kNoStateId };
-   bytes_ref match_all_label{};
-   bool escaped{ false };
-   bool match_all{ false };
+    automaton::StateId from;
+    automaton::StateId to;
+    automaton::StateId match_all_from{ fst::kNoStateId };
+    size_t offset{};
+    bool escaped{ false };
+    bool match_all{ false };
   } state;
 
+  std::vector<match_any_state> match_any_sequence;
+  std::vector<std::pair<bytes_ref, automaton::StateId>> match_all_sequence;
   utf8_transitions_builder builder;
-  std::pair<bytes_ref, automaton::StateId> arcs[2];
+  std::pair<bytes_ref, automaton::StateId> arcs[3];
+
+  auto sort = [&arcs](size_t size) {
+    switch (size) {
+      case 1:
+        break;
+      case 2:
+        if (arcs[1].first < arcs[0].first) std::swap(arcs[0], arcs[1]);
+        break;
+      case 3:
+        if (arcs[1].first < arcs[0].first) std::swap(arcs[0], arcs[1]);
+        if (arcs[2].first < arcs[0].first) std::swap(arcs[0], arcs[2]);
+        if (arcs[2].first < arcs[1].first) std::swap(arcs[1], arcs[2]);
+        break;
+      default:
+        assert(false);
+        break;
+    }
+  };
 
   automaton a;
   state.from = a.AddState();
   state.to = state.from;
   a.SetStart(state.from);
 
-  auto appendChar = [&a, &builder, &arcs, &state](const bytes_ref& c) {
+  auto appendChar = [&](const bytes_ref& c) {
     state.to = a.AddState();
     if (!state.match_all) {
-      if (state.match_all_label.null()) {
+      if (match_all_sequence.empty()) {
         utf8_emplace_arc(a, state.from, c, state.to);
       } else {
-        const auto r = compare(c, state.match_all_label);
-
-        if (!r) {
-          utf8_emplace_arc(a, state.from, state.match_all_from, c, state.to);
-          state.match_all_to = state.to;
+        if (match_any_sequence.empty()) {
+          match_all_sequence.emplace_back(c, state.to);
         } else {
-          arcs[0] = { c, state.to };
-          arcs[1] = { state.match_all_label, state.match_all_to };
+          for (auto& match_any_state : match_any_sequence) {
+            arcs[0] = { c, state.to };
 
-          if (r > 0) {
-            std::swap(arcs[0], arcs[1]);
+            auto* end = arcs + 1;
+            {
+              auto& arc = match_all_sequence.front();
+              if (c != arc.first) {
+                *end++ = arc;
+              }
+            }
+
+            if (const auto offset = match_any_state.offset % match_all_sequence.size(); offset) {
+              auto& arc = match_all_sequence[offset];
+              if (c != arc.first) {
+                *end++ = arc;
+              }
+            }
+
+            const auto rho_state = match_any_state.offset > match_any_sequence.size()
+              ? state.match_all_from
+              : state.from;
+
+            sort(std::distance(arcs, end));
+            builder.insert(a, match_any_state.state, rho_state, arcs, end);
           }
 
-          builder.insert(a, state.from, state.match_all_from,
-                         std::begin(arcs), std::end(arcs));
+          match_any_sequence.clear();
         }
+
+        arcs[0] = { c, state.to };
+        auto* end = arcs + 1;
+
+        if (auto& arc = match_all_sequence[state.offset]; c != arc.first) {
+          *end++ = arc;
+          state.offset = 0;
+        } else {
+          ++state.offset;
+        }
+
+        if (state.offset) {
+          if (auto& arc = match_all_sequence.front(); c != arc.first) {
+            *end++ = arc;
+          }
+        }
+
+        sort(std::distance(arcs, end));
+        builder.insert(a, state.from, state.match_all_from, arcs, end);
       }
     } else {
       utf8_emplace_arc(a, state.from, state.from, c, state.to);
+      match_any_sequence.clear();
+      match_all_sequence.clear();
+      match_all_sequence.emplace_back(c, state.to);
 
       state.match_all_from = state.from;
-      state.match_all_to = state.to;
-      state.match_all_label = c;
       state.match_all = false;
     }
 
@@ -175,6 +239,27 @@ automaton from_wildcard(const bytes_ref& expr) {
           appendChar({label_begin, label_length});
         } else {
           state.to = a.AddState();
+
+          if (!state.match_all && !match_all_sequence.empty()) {
+//            assert(!state.match_all);
+
+            for (auto& match_any_state : match_any_sequence) {
+              const auto to = a.AddState();
+
+              assert(match_any_state.offset < match_all_sequence.size());
+
+              utf8_emplace_arc(
+                a, match_any_state.state, state.to,
+                match_all_sequence[match_any_state.offset].first, to);
+              ++match_any_state.offset;
+              match_any_state.state = to;
+            }
+
+            const auto to = a.AddState();
+            match_any_sequence.emplace_back(to, 1);
+            utf8_emplace_arc(a, state.from, match_all_sequence.front().first, to);
+          }
+
           utf8_emplace_rho_arc(a, state.from, state.to);
           state.from = state.to;
         }
@@ -191,7 +276,13 @@ automaton from_wildcard(const bytes_ref& expr) {
       default: {
         appendChar({label_begin, label_length});
         break;
-      }
+      } 
+    }
+
+    {
+      std::fstream out;
+      out.open("/home/gnusi/1", std::fstream::out);
+      fst::drawFst(a, out);
     }
 
     label_begin = label_end;
@@ -213,8 +304,11 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (state.match_all_from != fst::kNoStateId) {
     // non-terminal MATCH_ALL
+    assert(!match_all_sequence.empty());
+    auto& arc = match_all_sequence[state.offset];
+
     utf8_emplace_arc(a, state.to, state.match_all_from,
-                     state.match_all_label, state.match_all_to);
+                     arc.first, arc.second);
   }
 
   a.SetFinal(state.to);
