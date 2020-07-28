@@ -25,12 +25,6 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/wildcard_utils.hpp"
 #include "draw-impl.h"
-#include "fst/union.h"
-#include "fst/concat.h"
-#include "fst/closure.h"
-#include "fst/minimize.h"
-#include "fst/rmepsilon.h"
-#include "fst/epsnormalize.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test
@@ -49,7 +43,6 @@ class wildcard_utils_test : public test_base {
 };
 
 TEST_F(wildcard_utils_test, match_wildcard) {
-  // mixed from wikipedia
   {
     auto a = irs::from_wildcard("%rc%");
     assert_properties(a);
@@ -62,12 +55,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::from_wildcard("%bcebce%");
     assert_properties(a);
 
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
-
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("bcebcebce"))));
   }
@@ -76,12 +63,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::from_wildcard("%bcebcd%");
     assert_properties(a);
 
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
-
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("bcebcebcd"))));
   }
@@ -89,12 +70,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   {
     auto a = irs::from_wildcard("%bcebced%");
     assert_properties(a);
-
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("bcebcebced"))));
@@ -122,17 +97,10 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::from_wildcard("%rrc%");
     assert_properties(a);
 
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
-
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("corrction"))));
   }
 
-  // mixed from wikipedia
   {
     auto a = irs::from_wildcard("%arc%");
     assert_properties(a);
@@ -141,7 +109,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("arrrc"))));
   }
 
-  // mixed from wikipedia
   {
     auto a = irs::from_wildcard("%aca%");
     assert_properties(a);
@@ -150,16 +117,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("arrrc"))));
   }
 
-  // mixed from wikipedia
   {
     auto a = irs::from_wildcard("%r_c%");
     assert_properties(a);
-
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("correc"))));
@@ -173,16 +133,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("correction"))));
   }
 
-  // mixed from wikipedia
   {
     auto a = irs::from_wildcard("%_r_c%");
     assert_properties(a);
-
-    {
-      std::fstream out;
-      out.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, out);
-    }
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("correction"))));
@@ -190,8 +143,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed from wikipedia
   {
-    // FIXME check
     auto a = irs::from_wildcard("%a%_r_c%");
+    assert_properties(a);
+
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("Error detection and correction"))));
+                                                                     //^      ^ ^
+  }
+
+  {
+    auto a = irs::from_wildcard("%a%bce_bc");
     assert_properties(a);
 
     {
@@ -201,14 +162,88 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     }
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("Error detection and correction"))));
-                                                                     //^      ^ ^
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abceabc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcebbcecbc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abceabcbcebbc"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcebcebc"))));
+  }
+
+  {
+    auto a = irs::from_wildcard("%a%bc__bc");
+    assert_properties(a);
+
+    {
+      std::fstream out;
+      out.open("/home/gnusi/1", std::fstream::out);
+      fst::drawFst(a, out);
+    }
+
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbbc"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbcbcc"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbcbcb"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbbbc"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbcbc"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbb"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbb"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
+  }
+
+  {
+    auto a = irs::from_wildcard("%a%bc_bc");
+    assert_properties(a);
+
+    {
+      std::fstream out;
+      out.open("/home/gnusi/1", std::fstream::out);
+      fst::drawFst(a, out);
+    }
+
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcbbc"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbb"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbb"))));
+//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
+  }
+
+  {
+    auto a = irs::from_wildcard("%a%b_b");
+    assert_properties(a);
+
+    {
+      std::fstream out;
+      out.open("/home/gnusi/1", std::fstream::out);
+      fst::drawFst(a, out);
+    }
+
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abab"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbb"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbb"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
   }
 
   // FIXME TODO
   // a%b_b
   // a%b__b
   // a%bce_bce
+  // a%bce_bce__def
   // a%bce___d
   // a%bce____d
   // a%bce_____
@@ -221,12 +256,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard("a%bce_b");
-    {
-      std::fstream f;
-      f.open("/home/gnusi/1");
-      fst::drawFst(a, f);
-    }
     assert_properties(a);
+
+    {
+      std::fstream out;
+      out.open("/home/gnusi/1", std::fstream::out);
+      fst::drawFst(a, out);
+    }
+
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("aabce1dbce1b"))));
@@ -242,11 +279,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard("a%bce_d");
-    {
-      std::fstream f;
-      f.open("/home/gnusi/1");
-      fst::drawFst(a, f);
-    }
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -620,11 +652,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   // mixed
   {
     auto a = irs::from_wildcard("a%bce_d");
-    {
-      std::fstream f;
-      f.open("/home/gnusi/1");
-      fst::drawFst(a, f);
-    }
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));

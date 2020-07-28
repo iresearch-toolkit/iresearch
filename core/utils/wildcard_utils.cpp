@@ -95,6 +95,11 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 }
 
 automaton from_wildcard(const bytes_ref& expr) {
+  // label + state
+  using arc_type = std::pair<bytes_ref, automaton::StateId>;
+  // offset + state
+  using state_type = std::pair<size_t, automaton::StateId>;
+
   struct {
     automaton::StateId from;
     automaton::StateId to;
@@ -104,25 +109,37 @@ automaton from_wildcard(const bytes_ref& expr) {
     bool match_all{ false };
   } state;
 
+  std::vector<state_type> match_any_sequence;
+  std::vector<arc_type> match_all_sequence;
+  arc_type arcs[3];
+
   utf8_transitions_builder builder;
 
-  // offset + state
-  std::vector<std::pair<size_t, automaton::StateId>> match_any_sequence;
-  // label + state
-  std::vector<std::pair<bytes_ref, automaton::StateId>> match_all_sequence;
-  // label + state
-  std::pair<bytes_ref, automaton::StateId> arcs[3];
+  automaton a;
+  state.from = a.AddState();
+  state.to = state.from;
+  a.SetStart(state.from);
 
-  auto sort = [&arcs](size_t size) noexcept {
+  auto add_arcs = [&](automaton::StateId from, automaton::StateId rho_state,
+                      const auto* begin, const auto* end ) {
+    assert(begin <= end);
+
     // use optimized version of sort as we know
     // that array contains at most 3 elements
-    switch (size) {
+    switch (std::distance(begin, end)) {
       case 1:
-        break;
+        assert(begin == arcs);
+        utf8_emplace_arc(a, from, rho_state, arcs[0].first, arcs[0].second);
+        return;
       case 2:
+        assert(begin == arcs);
+        assert(begin + 1 == arcs + 1);
         if (arcs[1].first < arcs[0].first) std::swap(arcs[0], arcs[1]);
         break;
       case 3:
+        assert(begin == arcs);
+        assert(begin + 1 == arcs + 1);
+        assert(begin + 2 == arcs + 2);
         if (arcs[1].first < arcs[0].first) std::swap(arcs[0], arcs[1]);
         if (arcs[2].first < arcs[0].first) std::swap(arcs[0], arcs[2]);
         if (arcs[2].first < arcs[1].first) std::swap(arcs[1], arcs[2]);
@@ -131,69 +148,65 @@ automaton from_wildcard(const bytes_ref& expr) {
         assert(false);
         break;
     }
+
+    builder.insert(a, from, rho_state, begin, end);
   };
 
-  automaton a;
-  state.from = a.AddState();
-  state.to = state.from;
-  a.SetStart(state.from);
-
-  auto appendChar = [&](const bytes_ref& c) {
+  auto append_char = [&](const bytes_ref& c) {
     state.to = a.AddState();
     if (!state.match_all) {
       if (match_all_sequence.empty()) {
         utf8_emplace_arc(a, state.from, c, state.to);
       } else {
-        if (match_any_sequence.empty()) {
-          match_all_sequence.emplace_back(c, state.to);
-        } else {
-          for (auto& match_any_state : match_any_sequence) {
-            arcs[0] = { c, state.to };
+        match_all_sequence.emplace_back(c, state.to);
 
-            auto* end = arcs + 1;
-            {
-              auto& arc = match_all_sequence.front();
-              if (c != arc.first) {
-                *end++ = arc;
-              }
-            }
+        for (auto& match_any_state : match_any_sequence) {
+          arcs[0] = { c, state.to };
 
-            if (const auto offset = match_any_state.first % match_all_sequence.size(); offset) {
-              auto& arc = match_all_sequence[offset];
-              if (c != arc.first) {
-                *end++ = arc;
-              }
-            }
+          auto* end = arcs + 1;
 
-            const auto rho_state = match_any_state.first > match_any_sequence.size()
-              ? state.match_all_from
-              : state.from;
-
-            sort(std::distance(arcs, end));
-            builder.insert(a, match_any_state.second, rho_state, arcs, end);
+          assert(!match_all_sequence.empty());
+          if (auto& arc = match_all_sequence.front(); c != arc.first) {
+            arcs[1] = arc;
+            ++end;
           }
 
-          match_any_sequence.clear();
+          if (const auto offset = (match_any_state.first + 1)% match_all_sequence.size(); offset) {
+            assert(offset < match_all_sequence.size());
+            if (auto& arc = match_all_sequence[offset]; c != arc.first) {
+              *end++ = arc;
+            }
+          }
+
+          const auto rho_state = match_any_state.first > match_any_sequence.size()
+            ? state.match_all_from
+            : state.from;
+
+          add_arcs(match_any_state.second, rho_state, arcs, end);
         }
+
+        match_any_sequence.clear();
 
         arcs[0] = { c, state.to };
         auto* end = arcs + 1;
 
+        assert(state.offset < match_all_sequence.size());
         if (auto& arc = match_all_sequence[state.offset]; c != arc.first) {
-          *end++ = arc;
+          arcs[1] = arc;
+          ++end;
           state.offset = 0;
         } else {
           ++state.offset;
         }
 
         if (state.offset) {
+          assert(!match_all_sequence.empty());
           if (auto& arc = match_all_sequence.front(); c != arc.first) {
             *end++ = arc;
           }
         }
 
-        sort(std::distance(arcs, end));
-        builder.insert(a, state.from, state.match_all_from, arcs, end);
+        add_arcs(state.from, state.match_all_from, arcs, end);
       }
     } else {
       utf8_emplace_arc(a, state.from, state.from, c, state.to);
@@ -225,7 +238,7 @@ automaton from_wildcard(const bytes_ref& expr) {
     switch (*label_begin) {
       case WildcardMatch::ANY_STRING: {
         if (state.escaped) {
-          appendChar({label_begin, label_length});
+          append_char({label_begin, label_length});
         } else {
           state.match_all = true;
         }
@@ -233,25 +246,25 @@ automaton from_wildcard(const bytes_ref& expr) {
       }
       case WildcardMatch::ANY_CHAR: {
         if (state.escaped) {
-          appendChar({label_begin, label_length});
+          append_char({label_begin, label_length});
         } else {
           state.to = a.AddState();
 
           if (!state.match_all && !match_all_sequence.empty()) {
             for (auto& match_any_state : match_any_sequence) {
               const auto to = a.AddState();
+              ++match_any_state.first;
 
               assert(match_any_state.first < match_all_sequence.size());
 
               utf8_emplace_arc(
                 a, match_any_state.second, state.to,
                 match_all_sequence[match_any_state.first].first, to);
-              ++match_any_state.first;
               match_any_state.second = to;
             }
 
             const auto to = a.AddState();
-            match_any_sequence.emplace_back(1, to);
+            match_any_sequence.emplace_back(0, to);
             utf8_emplace_arc(a, state.from, match_all_sequence.front().first, to);
           }
 
@@ -262,14 +275,14 @@ automaton from_wildcard(const bytes_ref& expr) {
       }
       case WildcardMatch::ESCAPE: {
         if (state.escaped) {
-          appendChar({label_begin, label_length});
+          append_char({label_begin, label_length});
         } else {
           state.escaped = !state.escaped;
         }
         break;
       }
       default: {
-        appendChar({label_begin, label_length});
+        append_char({label_begin, label_length});
         break;
       } 
     }
@@ -290,7 +303,7 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (state.escaped) {
     // non-terminated escape sequence
-    appendChar({&c, 1});
+    append_char({&c, 1});
   } if (state.match_all) {
     // terminal MATCH_ALL
     utf8_emplace_rho_arc(a, state.to, state.to);
@@ -299,11 +312,27 @@ automaton from_wildcard(const bytes_ref& expr) {
 
   if (state.match_all_from != fst::kNoStateId) {
     // non-terminal MATCH_ALL
-    assert(!match_all_sequence.empty());
-    auto& arc = match_all_sequence[state.offset];
+    assert(state.offset < match_all_sequence.size());
+    arcs[0] = match_all_sequence[state.offset];
+    auto* end = arcs + 1;
 
-    utf8_emplace_arc(a, state.to, state.match_all_from,
-                     arc.first, arc.second);
+    if (match_all_sequence[0].first != arcs[0].first) {
+      arcs[1] = match_all_sequence[0];
+      ++end;
+    }
+
+   // auto* end = arcs;
+   // if (state.offset && state.offset < match_all_sequence.size()) {
+   //   arcs[0] = match_all_sequence[state.offset];
+   //   ++end;
+   // }
+
+
+   // if (auto& arc = match_all_sequence[0]; arcs == end || arcs[0].first != arc.first) {
+   //   *end++ = arc;
+   // }
+
+    add_arcs(state.to, state.match_all_from, arcs, end);
   }
 
   a.SetFinal(state.to);
