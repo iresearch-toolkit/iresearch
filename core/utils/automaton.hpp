@@ -117,6 +117,9 @@ class BooleanWeight {
   friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
     return NoWeight();
   }
+  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight) noexcept {
+    return NoWeight();
+  }
   friend std::ostream& operator<<(std::ostream& strm, const BooleanWeight& w) {
     if (w.Member()) {
       strm << "{" << char(bool(w) + 48) << "," << int(w.Payload()) << "}";
@@ -213,7 +216,7 @@ struct Transition {
   Label olabel;
   //EmptyLabel olabel;
   StateId nextstate;
-  Weight weight{Weight::Zero()}; // all arcs are trivial
+  Weight weight{Weight::One()}; // all arcs are trivial
 
   Transition() noexcept(std::is_nothrow_default_constructible<Weight>::value) {}
 

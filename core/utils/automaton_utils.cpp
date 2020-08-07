@@ -56,6 +56,9 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 };
 
+// 0 is reserved for Epsilon transition
+constexpr automaton::Arc::Label MIN = 1;
+
 NS_END
 
 NS_ROOT
@@ -82,7 +85,7 @@ void utf8_emplace_arc(
   const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
 
   const automaton::Arc::Label lead = label.front();
-  automaton::Arc::Label min = 0;
+  automaton::Arc::Label min = MIN;
 
   for (; min < lead; ++min) {
     a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
@@ -161,9 +164,10 @@ void utf8_emplace_arc(
       return;
     }
     case 4: {
-      const auto s0 = a.AddState();
-      const auto s1 = a.AddState();
-      const auto s2 = a.AddState();
+      const auto s0 = a.NumStates();
+      const auto s1 = s0 + 1;
+      const auto s2 = s0 + 2;
+      a.AddStates(3);
       a.EmplaceArc(from, label[0], s0);
       a.EmplaceArc(s0, label[1], s1);
       a.EmplaceArc(s1, label[2], s2);
@@ -181,17 +185,48 @@ void utf8_emplace_rho_arc(
   a.AddStates(3);
   const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
 
+  // reserve enough space for arcs
+  a.ReserveArcs(from, 255);
+
   // add rho transitions
 
-  for (automaton::Arc::Label label = 0; label < 256; ++label) {
+  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
+    a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
+  }
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
+  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
+  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+}
+
+void utf8_emplace_rho_arc_expand(
+    automaton& a,
+    automaton::StateId from,
+    automaton::StateId to) {
+  const auto id = a.NumStates(); // stated ids are sequential
+  a.AddStates(3);
+  const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
+
+  // reserve enough space for arcs
+  a.ReserveArcs(from, 255);
+  a.ReserveArcs(rho_states[1], 64);
+  a.ReserveArcs(rho_states[2], 64);
+  a.ReserveArcs(rho_states[3], 64);
+
+  // add rho transitions
+
+  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
     a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
   }
 
   // connect intermediate states of default multi-byte UTF8 sequence
 
-  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
-  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
-  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+  for (automaton::Arc::Label label = 128; label < 192; ++label) {
+    a.EmplaceArc(rho_states[1], label, rho_states[0]);
+    a.EmplaceArc(rho_states[2], label, rho_states[1]);
+    a.EmplaceArc(rho_states[3], label, rho_states[2]);
+  }
 }
 
 void utf8_transitions_builder::insert(
@@ -247,10 +282,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     return;
   }
 
-  // reserve enough memory to store all outbound transitions
-
-  a.ReserveArcs(from, 256);
-
   // in presence of default state we have to add some extra
   // transitions from root to properly handle multi-byte sequences
   // and preserve correctness of arcs order
@@ -260,7 +291,11 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     a.EmplaceArc(from, label, rho_states_[rho_state_idx]);
   };
 
-  automaton::Arc::Label min = 0;
+  // reserve enough memory to store all outbound transitions
+
+  a.ReserveArcs(from, 255);
+
+  automaton::Arc::Label min = MIN;
 
   for (const auto& arc : root.arcs) {
     assert(arc.label < 256);
