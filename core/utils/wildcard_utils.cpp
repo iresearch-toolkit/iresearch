@@ -176,12 +176,12 @@ automaton from_wildcard(const bytes_ref& expr) {
     fst::Concat(*begin, &nfa);
   }
 
- automaton dfa;
- if (fst::DeterminizeStar(nfa, &dfa)) {
-   // nfa isn't fully determinized
-   return {};
- }
- fst::Minimize(&dfa);
+  automaton dfa;
+  if (fst::DeterminizeStar(nfa, &dfa)) {
+    // nfa isn't fully determinized
+    return {};
+  }
+  fst::Minimize(&dfa);
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
