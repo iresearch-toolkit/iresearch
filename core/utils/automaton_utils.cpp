@@ -56,6 +56,9 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 };
 
+// 0 is reserved for Epsilon transition
+constexpr automaton::Arc::Label MIN = 1;
+
 NS_END
 
 NS_ROOT
@@ -82,7 +85,7 @@ void utf8_emplace_arc(
   const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
 
   const automaton::Arc::Label lead = label.front();
-  automaton::Arc::Label min = 1; // 0 is reserved for Epsilon transition
+  automaton::Arc::Label min = MIN;
 
   for (; min < lead; ++min) {
     a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
@@ -187,8 +190,7 @@ void utf8_emplace_rho_arc(
 
   // add rho transitions
 
-  for (automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
-       label < 256; ++label) {
+  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
     a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
   }
 
@@ -214,8 +216,7 @@ void utf8_emplace_rho_arc_expand(
 
   // add rho transitions
 
-  for (automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
-       label < 256; ++label) {
+  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
     a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
   }
 
@@ -294,7 +295,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
   a.ReserveArcs(from, 255);
 
-  automaton::Arc::Label min = 1; // 0 is reserved for Epsilon transition
+  automaton::Arc::Label min = MIN;
 
   for (const auto& arc : root.arcs) {
     assert(arc.label < 256);
