@@ -23,7 +23,22 @@
 #include "wildcard_utils.hpp"
 
 #include "fst/concat.h"
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+
 #include "fstext/determinize-star.h"
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 
 #include "automaton_utils.hpp"
 
