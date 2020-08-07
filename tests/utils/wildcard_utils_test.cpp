@@ -24,7 +24,6 @@
 
 #include "utils/automaton_utils.hpp"
 #include "utils/wildcard_utils.hpp"
-#include "draw-impl.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test
@@ -412,12 +411,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   {
     auto a = irs::from_wildcard("%");
 
-    {
-      std::fstream f;
-      f.open("/home/gnusi/1", std::fstream::out);
-      fst::drawFst(a, f);
-    }
-
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -528,6 +521,17 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\_\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
+  }
+
+  // escaped 'a'
+  {
+    auto a = irs::from_wildcard("\\a");
+    assert_properties(a);
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
+    ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\\\\a"))));
   }
 
   // nonterminated '\'
