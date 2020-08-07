@@ -82,7 +82,7 @@ void utf8_emplace_arc(
   const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
 
   const automaton::Arc::Label lead = label.front();
-  automaton::Arc::Label min = 0;
+  automaton::Arc::Label min = 1;
 
   for (; min < lead; ++min) {
     a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
@@ -183,15 +183,44 @@ void utf8_emplace_rho_arc(
 
   // add rho transitions
 
-  for (automaton::Arc::Label label = 0; label < 256; ++label) {
+  for (automaton::Arc::Label label = 1; label < 256; ++label) {
+    a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
+  }
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
+  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
+  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+}
+
+void utf8_emplace_rho_arc1(
+    automaton& a,
+    automaton::StateId from,
+    automaton::StateId to) {
+  const auto id = a.NumStates(); // stated ids are sequential
+  a.AddStates(3);
+  const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
+
+  // add rho transitions
+
+  for (automaton::Arc::Label label = 1; label < 256; ++label) {
     a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
   }
 
   // connect intermediate states of default multi-byte UTF8 sequence
 
-  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
-  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
-  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+  for (automaton::Arc::Label label = 192; label < 256; ++label) {
+    a.EmplaceArc(rho_states[1], label, rho_states[0]);
+    a.EmplaceArc(rho_states[2], label, rho_states[1]);
+    a.EmplaceArc(rho_states[3], label, rho_states[2]);
+  }
+}
+
+void utf8_emplace_rho_arc2(
+    automaton& a,
+    automaton::StateId from,
+    automaton::StateId to) {
+  a.EmplaceArc(from, fst::fsa::kRho, to);
 }
 
 void utf8_transitions_builder::insert(
@@ -260,7 +289,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     a.EmplaceArc(from, label, rho_states_[rho_state_idx]);
   };
 
-  automaton::Arc::Label min = 0;
+  automaton::Arc::Label min = 1;
 
   for (const auto& arc : root.arcs) {
     assert(arc.label < 256);

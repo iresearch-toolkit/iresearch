@@ -30,6 +30,7 @@
 #include "utils/fst_table_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
+#include "fst/closure.h"
 
 NS_ROOT
 
@@ -40,11 +41,10 @@ inline automaton_table_matcher make_automaton_matcher(const automaton& a) {
 }
 
 template<typename Char, typename Matcher>
-inline automaton::Weight accept(
-    const automaton& a,
+inline automaton::Weight match(
     Matcher& matcher,
     const basic_string_ref<Char>& target) {
-  auto state = a.Start();
+  auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
   auto begin = target.begin();
@@ -55,16 +55,16 @@ inline automaton::Weight accept(
     matcher.SetState(state);
   }
 
-  return begin == end ? a.Final(state)
+  return begin == end ? matcher.Final(state)
                       : automaton::Weight::Zero();
 }
 
-template<typename Char>
-inline automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
-  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+template<typename Char, typename Automaton>
+inline automaton::Weight accept(const Automaton& a, const basic_string_ref<Char>& target) {
+  typedef fst::RhoMatcher<fst::SortedMatcher<Automaton>> matcher_t;
 
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
-  return accept(a, matcher, target);
+  return match(matcher, target);
 }
 
 class automaton_term_iterator final : public seek_term_iterator {
@@ -126,7 +126,7 @@ class automaton_term_iterator final : public seek_term_iterator {
  private:
   typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
 
-  bool accept() { return irs::accept(*a_, matcher_, *value_); }
+  bool accept() { return irs::match(matcher_, *value_); }
 
   const automaton* a_;
   matcher_t matcher_;
@@ -379,7 +379,6 @@ class IRESEARCH_API utf8_transitions_builder {
   bytes_ref last_;
 }; // utf8_automaton_builder
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error
 //////////////////////////////////////////////////////////////////////////////
@@ -456,6 +455,44 @@ IRESEARCH_API void utf8_emplace_rho_arc(
   automaton& a,
   automaton::StateId from,
   automaton::StateId to);
+
+IRESEARCH_API void utf8_emplace_rho_arc1(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+IRESEARCH_API void utf8_emplace_rho_arc2(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+inline automaton make_char(const bytes_ref& c) {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_arc(a, 0, c, 1);
+  return a;
+}
+
+inline automaton make_any() {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_rho_arc(a, 0, 1);
+  return a;
+}
+
+inline automaton make_all() {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_rho_arc(a, 0, 1);
+  fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
+  return a;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief instantiate compiled filter based on a specified automaton, field
