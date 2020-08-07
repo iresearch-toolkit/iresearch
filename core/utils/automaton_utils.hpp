@@ -456,12 +456,7 @@ IRESEARCH_API void utf8_emplace_rho_arc(
   automaton::StateId from,
   automaton::StateId to);
 
-IRESEARCH_API void utf8_emplace_rho_arc1(
-  automaton& a,
-  automaton::StateId from,
-  automaton::StateId to);
-
-IRESEARCH_API void utf8_emplace_rho_arc2(
+IRESEARCH_API void utf8_emplace_rho_arc_expand(
   automaton& a,
   automaton::StateId from,
   automaton::StateId to);
@@ -480,7 +475,7 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc(a, 0, 1);
+  utf8_emplace_rho_arc_expand(a, 0, 1);
   return a;
 }
 
@@ -489,7 +484,7 @@ inline automaton make_all() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc(a, 0, 1);
+  utf8_emplace_rho_arc_expand(a, 0, 1);
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };

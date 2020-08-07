@@ -24,7 +24,6 @@
 
 #include "fst/concat.h"
 #include "fstext/determinize-star.h"
-#include "draw-impl.h"
 
 #include "automaton_utils.hpp"
 
@@ -98,12 +97,23 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 }
 
 automaton from_wildcard(const bytes_ref& expr) {
+  // need this variable to preserve valid address
+  // for cases with match all and  terminal escape
+  // character (%\\)
+  const byte_type c = WildcardMatch::ESCAPE;
+
   bool escaped = false;
 
   const auto* label_begin = expr.begin();
   const auto* end = expr.end();
 
   std::vector<automaton> parts;
+
+  auto append_char = [&](const bytes_ref& label) {
+    parts.emplace_back(make_char(label));
+    escaped = false;
+  };
+
   while (label_begin < end) {
     const auto label_length = utf8_utils::cp_length(*label_begin);
     const auto label_end = label_begin + label_length;
@@ -116,8 +126,7 @@ automaton from_wildcard(const bytes_ref& expr) {
     switch (*label_begin) {
       case WildcardMatch::ANY_STRING: {
         if (escaped) {
-          parts.emplace_back(make_char({label_begin, label_length}));
-          escaped = false;
+          append_char({label_begin, label_length});
         } else {
           parts.emplace_back(make_all());
         }
@@ -125,8 +134,7 @@ automaton from_wildcard(const bytes_ref& expr) {
       }
       case WildcardMatch::ANY_CHAR: {
         if (escaped) {
-          parts.emplace_back(make_char({label_begin, label_length}));
-          escaped = false;
+          append_char({label_begin, label_length});
         } else {
           parts.emplace_back(make_any());
         }
@@ -134,16 +142,18 @@ automaton from_wildcard(const bytes_ref& expr) {
       }
       case WildcardMatch::ESCAPE: {
         if (escaped) {
-          parts.emplace_back(make_char({label_begin, label_length}));
-          escaped = false;
+          append_char({label_begin, label_length});
         } else {
           escaped = !escaped;
         }
         break;
       }
       default: {
-        parts.emplace_back(make_char({label_begin, label_length}));
-        escaped = false;
+        if (escaped) {
+          // a backslash followed by no special character
+          parts.emplace_back(make_char({&c, 1}));
+        }
+        append_char({label_begin, label_length});
         break;
       }
     }
@@ -151,13 +161,8 @@ automaton from_wildcard(const bytes_ref& expr) {
     label_begin = label_end;
   }
 
-  // need this variable to preserve valid address
-  // for cases with match all and  terminal escape
-  // character (%\\)
-  const byte_type c = WildcardMatch::ESCAPE;
-
   if (escaped) {
-    // non-terminated escape sequence
+    // a non-terminated escape sequence
     parts.emplace_back(make_char({&c, 1}));
   }
 
@@ -168,14 +173,11 @@ automaton from_wildcard(const bytes_ref& expr) {
     fst::Concat(&nfa, part);
   }
 
-   // {
-   //   std::fstream f;
-   //   f.open("/home/gnusi/1", std::fstream::out);
-   //   fst::drawFst(nfa, f);
-   // }
-
  automaton dfa;
- fst::DeterminizeStar(nfa, &dfa);
+ if (fst::DeterminizeStar(nfa, &dfa)) {
+   // nfa isn't fully determinized
+   return {};
+ }
  fst::Minimize(&dfa);
 
 #ifdef IRESEARCH_DEBUG
