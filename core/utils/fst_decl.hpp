@@ -31,6 +31,7 @@ template<typename Label> class StringLeftWeight;
 
 NS_BEGIN(fsa)
 
+template<typename Weight, typename Label>
 struct Transition;
 
 NS_END // fsa

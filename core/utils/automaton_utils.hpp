@@ -124,7 +124,8 @@ class automaton_term_iterator final : public seek_term_iterator {
   }
 
  private:
-  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+  using automaton_matcher_t = fst::SortedMatcher<automaton>;
+  using matcher_t = fst::RhoMatcher<automaton_matcher_t>;
 
   bool accept() { return irs::match(matcher_, *value_); }
 

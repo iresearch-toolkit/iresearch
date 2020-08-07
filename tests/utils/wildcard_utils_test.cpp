@@ -34,7 +34,7 @@ class wildcard_utils_test : public test_base {
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
       fst::kILabelSorted | fst::kOLabelSorted |
-      fst::kIDeterministic | fst::kODeterministic |
+      fst::kIDeterministic |
       fst::kAcceptor | fst::kUnweighted;
 
     ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));

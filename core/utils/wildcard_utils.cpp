@@ -29,6 +29,7 @@
 #elif defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wsign-compare"
+  #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #include "fstext/determinize-star.h"
@@ -201,9 +202,10 @@ automaton from_wildcard(const bytes_ref& expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
-    fst::kIDeterministic | fst::kODeterministic |
+    fst::kIDeterministic |
     fst::kILabelSorted | fst::kOLabelSorted |
     fst::kAcceptor | fst::kUnweighted;
+
   assert(EXPECTED_PROPERTIES == dfa.Properties(EXPECTED_PROPERTIES, true));
   UNUSED(EXPECTED_PROPERTIES);
 #endif
