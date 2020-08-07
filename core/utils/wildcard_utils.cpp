@@ -103,16 +103,16 @@ automaton from_wildcard(const bytes_ref& expr) {
   const byte_type c = WildcardMatch::ESCAPE;
 
   bool escaped = false;
-
-  const auto* label_begin = expr.begin();
-  const auto* end = expr.end();
-
   std::vector<automaton> parts;
+  parts.reserve(expr.size() / 2); // reserve some space
 
   auto append_char = [&](const bytes_ref& label) {
     parts.emplace_back(make_char(label));
     escaped = false;
   };
+
+  const auto* label_begin = expr.begin();
+  const auto* end = expr.end();
 
   while (label_begin < end) {
     const auto label_length = utf8_utils::cp_length(*label_begin);
@@ -169,8 +169,11 @@ automaton from_wildcard(const bytes_ref& expr) {
   automaton nfa;
   nfa.SetStart(nfa.AddState());
   nfa.SetFinal(0, true);
-  for (auto& part : parts) {
-    fst::Concat(&nfa, part);
+
+  for (auto begin = parts.rbegin(), end = parts.rend(); begin != end; ++begin) {
+    // prefer prepending version of fst::Concat(...) as the cost of concatenation
+    // is linear in the sum of the size of the input FSAs
+    fst::Concat(*begin, &nfa);
   }
 
  automaton dfa;
