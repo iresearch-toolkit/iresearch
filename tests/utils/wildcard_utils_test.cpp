@@ -222,24 +222,19 @@ TEST_F(wildcard_utils_test, match_wildcard) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
   }
 
-//  {
-//
-//    auto a = irs::from_wildcard("%a%bce___bce");
-//    assert_properties(a);
-//
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abcabbbcab"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbb"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbbb"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbbbbb"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbccbbbcbbbbbb"))));
-//    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-//        irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
-//  }
+  {
+    auto a = irs::from_wildcard("%a%bce___bce");
+    assert_properties(a);
+
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abcabcebcebce"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbccbcebbbbce"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbccbcebcebce"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("abbccbcebcebbce"))));
+  }
 
   {
 
@@ -304,18 +299,13 @@ TEST_F(wildcard_utils_test, match_wildcard) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("abbabbbbbbb"))));
   }
 
-  // FIXME TODO
-  // a%b__b
-  // a%bce_bce
-  // a%bce_bce__def
-  // a%bce___d
-  // a%bce____d
-  // a%bce_____
-  // a%bce____%
-  // a%bce__%
-  // a%bce____t%
-  // a%bce____d%
-  // a%bce____b%
+  {
+    auto a = irs::from_wildcard("%a%_bce____def___b%");
+    assert_properties(a);
+
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
+        irs::ref_cast<irs::byte_type>(irs::string_ref("a__bcedefadefbabb"))));
+  }
 
   // mixed
   {
