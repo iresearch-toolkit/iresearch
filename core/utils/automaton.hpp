@@ -229,9 +229,11 @@ struct Transition {
   }
 
   Label ilabel{fst::kNoLabel};
-  StateId nextstate{fst::kNoStateId};
-  EmptyLabel<Label> olabel;
-  EmptyWeight<Weight> weight; // all arcs are trivial
+  union {
+    StateId nextstate{fst::kNoStateId};
+    EmptyLabel<Label> olabel;
+    EmptyWeight<Weight> weight; // all arcs are trivial
+  };
 
   constexpr Transition() = default;
 
@@ -251,8 +253,9 @@ struct Transition {
     : ilabel(ilabel),
       nextstate(nextstate) {
   }
-};
+}; // Transition
 
+static_assert(sizeof(Transition<>) == 2*sizeof(int32_t));
 
 constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
