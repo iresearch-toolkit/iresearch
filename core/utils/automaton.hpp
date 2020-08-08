@@ -138,15 +138,22 @@ template<typename T>
 struct RangeLabel {
   using ValueType = T;
 
-  constexpr RangeLabel(ValueType label = kNoLabel) noexcept
+  constexpr RangeLabel() noexcept = default;
+
+  constexpr RangeLabel(ValueType label) noexcept
     : min(label), max(label) {
   }
   constexpr RangeLabel(ValueType min, ValueType max) noexcept
     : min(min), max(max) {
   }
-
+  constexpr bool operator==(int32_t rhs) const noexcept {
+    return rhs >= min && rhs <= max;
+  }
+  constexpr bool operator!=(int32_t rhs) const noexcept {
+    return !(*this == rhs);
+  }
   constexpr bool operator==(const RangeLabel& rhs) const noexcept {
-    return min == rhs.min && max == rhs.max;
+    return rhs.min >= min && rhs.max <= max;
   }
   constexpr bool operator!=(const RangeLabel& rhs) const noexcept {
     return !(*this == rhs);
@@ -168,8 +175,8 @@ struct RangeLabel {
     return strm;
   }
 
-  ValueType min;
-  ValueType max;
+  ValueType min{kNoLabel};
+  ValueType max{kNoLabel};
 }; // RangeLabel
 
 template<typename Label>
@@ -188,7 +195,7 @@ struct EmptyLabel {
 
   friend constexpr bool operator==(Label, EmptyLabel) noexcept { return true; }
   friend constexpr bool operator!=(Label, EmptyLabel) noexcept { return false; }
-  friend constexpr std::ostream& operator<<(std::ostream& strm, EmptyLabel) {
+  friend constexpr std::ostream& operator<<(std::ostream& strm, EmptyLabel) noexcept {
     return strm;
   }
 }; // EmptyLabel
@@ -206,12 +213,12 @@ struct EmptyWeight {
   constexpr bool operator==(EmptyWeight) const noexcept { return true; }
   constexpr bool operator!=(EmptyWeight) const noexcept { return false; }
 
-  std::ostream& Write(std::ostream& strm) const noexcept {
+  std::ostream& Write(std::ostream& strm) const {
     Weight::One().Write(strm);
     return strm;
   }
 
-  std::istream& Read(std::istream& strm) noexcept {
+  std::istream& Read(std::istream& strm) {
     Weight().Read(strm);
     return strm;
   }
@@ -255,7 +262,7 @@ struct Transition {
   }
 }; // Transition
 
-static_assert(sizeof(Transition<>) == 2*sizeof(int32_t));
+static_assert(sizeof(Transition<>) == 2*sizeof(Transition<>::Label));
 
 constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
