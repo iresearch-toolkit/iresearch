@@ -34,7 +34,6 @@ TEST(boolean_weight_test, static_const) {
             fst::kCommutative | fst::kIdempotent | fst::kPath,
             fst::fsa::BooleanWeight::Properties());
   ASSERT_EQ("boolean", fst::fsa::BooleanWeight::Type());
-  ASSERT_EQ(0x3F, fst::fsa::BooleanWeight::PayloadType(fst::fsa::BooleanWeight::MaxPayload));
 }
 
 TEST(boolean_weight_test, create) {
@@ -238,10 +237,10 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
-    ASSERT_NE(fst::fsa::BooleanWeight(false, fst::fsa::BooleanWeight::MaxPayload), weight);
+    ASSERT_NE(fst::fsa::BooleanWeight(false, std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
-    ASSERT_EQ(fst::fsa::BooleanWeight(true, fst::fsa::BooleanWeight::MaxPayload), weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight(true, std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
@@ -250,14 +249,13 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
     ASSERT_EQ(true, bool(weight));
     ASSERT_NE(false, bool(weight));
-    ASSERT_EQ(fst::fsa::BooleanWeight::PayloadType(fst::fsa::BooleanWeight::MaxPayload),
-              weight.Payload());
+    ASSERT_EQ(std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max(), weight.Payload());
     ASSERT_EQ(1, weight.Hash());
 
     {
       std::stringstream ss;
       ss << weight;
-      ASSERT_EQ("{1,63}", ss.str());
+      ASSERT_EQ("{1,255}", ss.str());
     }
 
     {

@@ -55,8 +55,6 @@ class BooleanWeight {
   using ReverseWeight = BooleanWeight;
   using PayloadType = irs::byte_type;
 
-  static constexpr PayloadType MaxPayload = 0x3F;
-
   static const std::string& Type() {
     static const std::string type = "boolean";
     return type;
@@ -71,12 +69,12 @@ class BooleanWeight {
            kCommutative | kIdempotent | kPath;
   }
 
-  constexpr BooleanWeight() noexcept : v_(Invalid) { }
+  constexpr BooleanWeight() noexcept = default;
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(PayloadType(v) | (payload << 2)) {
+    : v_(PayloadType(v)), p_(payload) {
   }
 
-  constexpr bool Member() const noexcept { return 0 == (v_ & Invalid); }
+  constexpr bool Member() const noexcept { return Invalid != v_; }
   constexpr BooleanWeight Quantize([[maybe_unused]]float delta = kDelta) const noexcept { return {};  }
   std::istream& Read(std::istream& strm) noexcept {
     v_ = strm.get();
@@ -89,10 +87,10 @@ class BooleanWeight {
     strm.put(v_);
     return strm;
   }
-  constexpr size_t Hash() const noexcept { return size_t(v_ & WeightMask); }
+  constexpr size_t Hash() const noexcept { return size_t(v_); }
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr PayloadType Payload() const noexcept { return v_ >> 2; }
-  constexpr operator bool() const noexcept { return 0 != (v_ & True); }
+  constexpr PayloadType Payload() const noexcept { return p_; }
+  constexpr operator bool() const noexcept { return v_ == True; }
 
   friend constexpr bool operator==(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
     return lhs.Hash() == rhs.Hash();
@@ -124,14 +122,12 @@ class BooleanWeight {
   }
 
  private:
-  static constexpr PayloadType WeightMask = 0x03;
-  static constexpr PayloadType True = 1;    // "is true" mask
-  static constexpr PayloadType Invalid = 2; // "not a member" mask
+  static constexpr PayloadType False = 0;
+  static constexpr PayloadType True = 1;     // "is true" mask
+  static constexpr PayloadType Invalid = 2; // "not a member" value
 
-  // [2..7] - payload
-  // [1] - "not a member" bit
-  // [0] - true/false bit
-  PayloadType v_;
+  PayloadType v_{Invalid};
+  PayloadType p_{};
 };
 
 template<typename T>

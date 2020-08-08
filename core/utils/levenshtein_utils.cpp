@@ -603,7 +603,6 @@ automaton make_levenshtein_automaton(
   const auto distance = description.distance(1, utf8_size);
 
   if (distance <= description.max_distance()) {
-    assert(distance < fst::fsa::BooleanWeight::MaxPayload);
     a.SetFinal(a.Start(), {true, distance});
   }
 
@@ -638,7 +637,6 @@ automaton make_levenshtein_automaton(
         const auto distance = description.distance(transition.first, utf8_size - offset);
 
         if (distance <= description.max_distance()) {
-          assert(distance < fst::fsa::BooleanWeight::MaxPayload);
           a.SetFinal(to, {true, distance});
         }
 
