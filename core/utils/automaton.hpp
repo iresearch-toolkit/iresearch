@@ -258,7 +258,7 @@ struct Transition {
   }
 }; // Transition
 
-static_assert(sizeof(Transition<>) == 2*sizeof(Transition<>::Label));
+static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
 
 constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol

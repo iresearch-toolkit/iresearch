@@ -40,7 +40,6 @@ template<class Label, class StringId> class StringRepository {
   // This is a utility that maps back and forth between a vector<Label> and StringId
   // representation of sequences of Labels.  It is to save memory, and to save compute.
   // We treat sequences of length zero and one separately, for efficiency.
-
  public:
   class VectorKey { // Hash function object.
    public:
@@ -108,14 +107,6 @@ template<class Label, class StringId> class StringRepository {
     }
   }
 
-  StringRepository() {
-    // The following are really just constants but don't want to complicate compilation so make them
-    // class variables.  Due to the brokenness of <limits>, they can't be accessed as constants.
-    string_end = (std::numeric_limits<StringId>::max() / 2) - 1;  // all hash values must be <= this.
-    no_symbol = (std::numeric_limits<StringId>::max() / 2);  // reserved for empty sequence.
-    single_symbol_start =  (std::numeric_limits<StringId>::max() / 2) + 1;
-    single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
-  }
   void Destroy() {
     for (typename std::vector<std::vector<Label>* >::iterator iter = vec_.begin(); iter != vec_.end(); ++iter)
       delete *iter;
@@ -124,12 +115,19 @@ template<class Label, class StringId> class StringRepository {
     MapType tmp_map;
     tmp_map.swap(map_);
   }
+  StringRepository() = default;
   ~StringRepository() {
     Destroy();
   }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(StringRepository);
+
+  static constexpr StringId string_start = (StringId) 0;  // This must not change.  It's assumed.
+  static constexpr StringId string_end = (std::numeric_limits<StringId>::max() / 2) - 1; // all hash values must be <= this.
+  static constexpr StringId no_symbol = (std::numeric_limits<StringId>::max() / 2); // reserved for empty sequence.
+  static constexpr StringId single_symbol_start = (std::numeric_limits<StringId>::max() / 2) + 1;
+  static constexpr StringId single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
 
   StringId IdOfSeqInternal(const std::vector<Label> &v) {
     typename MapType::iterator iter = map_.find(&v);
@@ -147,12 +145,6 @@ template<class Label, class StringId> class StringRepository {
 
   std::vector<std::vector<Label>* > vec_;
   MapType map_;
-
-  static const StringId string_start = (StringId) 0;  // This must not change.  It's assumed.
-  StringId string_end;  // = (numeric_limits<StringId>::max() / 2) - 1; // all hash values must be <= this.
-  StringId no_symbol;  // = (numeric_limits<StringId>::max() / 2); // reserved for empty sequence.
-  StringId single_symbol_start;  // =  (numeric_limits<StringId>::max() / 2) + 1;
-  StringId single_symbol_range;  // =  numeric_limits<StringId>::max() - single_symbol_start;
 };
 
 
@@ -195,9 +187,7 @@ template<class F> class DeterminizerStar {
       elem.state = start_id;
       elem.weight = Weight::One();
       elem.string = repository_.IdOfEmpty();  // Id of empty sequence.
-      std::vector<Element> vec;
-      vec.push_back(elem);
-      OutputStateId cur_id = SubsetToStateId(vec);
+      OutputStateId cur_id = SubsetToStateId({elem});
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
     while (!Q_.empty()) {
@@ -360,7 +350,7 @@ template<class F> class DeterminizerStar {
 
    private:
     struct EpsilonClosureInfo {
-      EpsilonClosureInfo() {}
+      EpsilonClosureInfo() = default;
       EpsilonClosureInfo(const Element &e, const Weight &w, bool i) :
         element(e), weight_to_process(w), in_queue(i) {}
       // the weight in the Element struct is the total current weight
@@ -553,28 +543,25 @@ template<class F> class DeterminizerStar {
   // and adds a new pair to the queue.
   // Side effects on hash_ and Q_, and on output_arcs_ [just affects the size].
   OutputStateId SubsetToStateId(const std::vector<Element> &subset) {  // may add the subset to the queue.
-    typedef typename SubsetHash::iterator IterType;
-    IterType iter = hash_.find(&subset);
-    if (iter == hash_.end()) {  // was not there.
+    const auto res = hash_.try_emplace(&subset, (OutputStateId) output_arcs_.size());
+
+    if (res.second) {  // was not there.
       std::vector<Element> *new_subset = new std::vector<Element>(subset);
-      OutputStateId new_state_id = (OutputStateId) output_arcs_.size();
-      bool ans = hash_.insert(std::pair<const std::vector<Element>*,
-                                        OutputStateId>(new_subset,
-                                                       new_state_id)).second;
-      assert(ans);
-      output_arcs_.push_back(std::vector<TempArc>());
+      const OutputStateId new_state_id = res.first->second;
+      const_cast<std::vector<Element>*&>(res.first->first) = new_subset;
+      output_arcs_.emplace_back();
       if (allow_partial_ == false) {
         // If --allow-partial is not requested, we do the old way.
-        Q_.push_front(std::pair<std::vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+        Q_.emplace_front(new_subset,  new_state_id);
       } else {
         // If --allow-partial is requested, we do breadth first search. This
         // ensures that when we return partial results, we return the states
         // that are reachable by the fewest steps from the start state.
-        Q_.push_back(std::pair<std::vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+        Q_.emplace_front(new_subset,  new_state_id);
       }
       return new_state_id;
     } else {
-      return iter->second;  // the OutputStateId.
+      return res.first->second;  // the OutputStateId.
     }
   }
 
@@ -922,10 +909,7 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
     return;
   }
   // Add basic states-- but will add extra ones to account for strings on output.
-  for (OutputStateId s = 0; s < num_states; s++) {
-    OutputStateId news = ofst->AddState();
-    assert(news == s);
-  }
+  ofst->AddStates(num_states);
   ofst->SetStart(0);
   for (OutputStateId this_state = 0; this_state < num_states; this_state++) {
     std::vector<TempArc> &this_vec(output_arcs_[this_state]);
