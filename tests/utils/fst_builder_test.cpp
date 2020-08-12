@@ -26,7 +26,7 @@
 #include "tests_shared.hpp"
 #include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_decl.hpp"
-#include "utils/fstext/fst.hpp"
+#include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fst_utils.hpp"
 

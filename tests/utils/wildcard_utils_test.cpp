@@ -26,7 +26,7 @@
 #include "utils/wildcard_utils.hpp"
 
 #include <fstream>
-#include "utils/fstext/draw-impl.h"
+#include "utils/fstext/fst_draw.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test

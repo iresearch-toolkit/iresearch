@@ -64,7 +64,7 @@
 #include "index/index_meta.hpp"
 #include "utils/automaton.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/fstext/fst.hpp"
+#include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/timer_utils.hpp"
