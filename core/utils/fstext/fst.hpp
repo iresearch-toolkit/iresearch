@@ -58,7 +58,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
-#include "utils/fst_states_map.hpp"
+#include "utils/fstext/fst_states_map.hpp"
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 

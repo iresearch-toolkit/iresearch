@@ -26,8 +26,8 @@
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
 #include "utils/automaton.hpp"
-#include "utils/fst_states_map.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_states_map.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
@@ -436,6 +436,12 @@ IRESEARCH_API void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_arc_range(
+  automaton& a,
+  automaton::StateId from,
+  const bytes_ref& label,
+  automaton::StateId to);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source (from)
 ///        and target (to) states with the fallback to default (rho_state)
@@ -462,12 +468,17 @@ IRESEARCH_API void utf8_emplace_rho_arc_expand(
   automaton::StateId from,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_rho_arc_range(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
 inline automaton make_char(const bytes_ref& c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_arc(a, 0, c, 1);
+  utf8_emplace_arc_range(a, 0, c, 1);
   return a;
 }
 
@@ -476,7 +487,7 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_expand(a, 0, 1);
+  utf8_emplace_rho_arc_range(a, 0, 1);
   return a;
 }
 
@@ -485,7 +496,7 @@ inline automaton make_all() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_expand(a, 0, 1);
+  utf8_emplace_rho_arc_range(a, 0, 1);
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };
