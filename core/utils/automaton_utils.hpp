@@ -478,7 +478,7 @@ inline automaton make_char(const bytes_ref& c) {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_arc_range(a, 0, c, 1);
+  utf8_emplace_arc(a, 0, c, 1);
   return a;
 }
 
@@ -487,7 +487,7 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_range(a, 0, 1);
+  utf8_emplace_rho_arc_expand(a, 0, 1);
   return a;
 }
 
@@ -496,7 +496,7 @@ inline automaton make_all() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_range(a, 0, 1);
+  utf8_emplace_rho_arc_expand(a, 0, 1);
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };
