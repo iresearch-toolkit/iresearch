@@ -130,17 +130,20 @@ template<class Label, class StringId> class StringRepository {
   static constexpr StringId single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
 
   StringId IdOfSeqInternal(const std::vector<Label> &v) {
-    typename MapType::iterator iter = map_.find(&v);
-    if (iter != map_.end()) {
+    const auto [iter, is_new] = map_.try_emplace(&v);
+
+    if (!is_new) {
       return iter->second;
-    } else {  // must add it to map.
-      StringId this_id = (StringId) vec_.size();
-      std::vector<Label> *v_new = new std::vector<Label> (v);
-      vec_.push_back(v_new);
-      map_[v_new] = this_id;
-      assert(this_id < string_end);  // or we used up the labels.
-      return this_id;
     }
+
+    // must add it to map.
+    StringId this_id = (StringId) vec_.size();
+    std::vector<Label> *v_new = new std::vector<Label>(v);
+    const_cast<std::vector<Label>*&>(iter->first) = v_new;
+
+    vec_.push_back(v_new);
+    assert(this_id < string_end);  // or we used up the labels.
+    return this_id;
   }
 
   std::vector<std::vector<Label>* > vec_;
@@ -543,25 +546,27 @@ template<class F> class DeterminizerStar {
   // and adds a new pair to the queue.
   // Side effects on hash_ and Q_, and on output_arcs_ [just affects the size].
   OutputStateId SubsetToStateId(const std::vector<Element> &subset) {  // may add the subset to the queue.
-    const auto res = hash_.try_emplace(&subset, (OutputStateId) output_arcs_.size());
+    const auto [iter, is_new] = hash_.try_emplace(&subset, (OutputStateId) output_arcs_.size());
 
-    if (res.second) {  // was not there.
-      std::vector<Element> *new_subset = new std::vector<Element>(subset);
-      const OutputStateId new_state_id = res.first->second;
-      const_cast<std::vector<Element>*&>(res.first->first) = new_subset;
+    if (is_new) {  // was not there.
+      std::vector<Element>* new_subset = new std::vector<Element>(subset);
+      const_cast<std::vector<Element>*&>(iter->first) = new_subset;
+
+      const OutputStateId new_state_id = iter->second;
       output_arcs_.emplace_back();
       if (allow_partial_ == false) {
         // If --allow-partial is not requested, we do the old way.
-        Q_.emplace_front(new_subset,  new_state_id);
+        Q_.emplace_front(new_subset, new_state_id);
       } else {
         // If --allow-partial is requested, we do breadth first search. This
         // ensures that when we return partial results, we return the states
         // that are reachable by the fewest steps from the start state.
-        Q_.emplace_front(new_subset,  new_state_id);
+        Q_.emplace_front(new_subset, new_state_id);
       }
+
       return new_state_id;
     } else {
-      return res.first->second;  // the OutputStateId.
+      return iter->second;  // the OutputStateId.
     }
   }
 
