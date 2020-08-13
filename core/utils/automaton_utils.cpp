@@ -177,63 +177,110 @@ void utf8_emplace_arc(
   }
 }
 
-//void utf8_emplace_arc_range(
-//    automaton& a,
-//    automaton::StateId from,
-//    const bytes_ref& label,
-//    automaton::StateId to) {
-//  switch (label.size()) {
-//    case 1: {
-//      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), to);
-//      return;
-//    }
-//    case 2: {
-//      const auto s0 = a.AddState();
-//      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-//      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), to);
-//      return;
-//    }
-//    case 3: {
-//      const auto s0 = a.AddState();
-//      const auto s1 = a.AddState();
-//      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-//      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-//      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), to);
-//      return;
-//    }
-//    case 4: {
-//      const auto s0 = a.NumStates();
-//      const auto s1 = s0 + 1;
-//      const auto s2 = s0 + 2;
-//      a.AddStates(3);
-//      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-//      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-//      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), s2);
-//      a.EmplaceArc(s2, fst::fsa::EncodeRange(label[3]), to);
-//      return;
-//    }
-//  }
-//}
-//
-//void utf8_emplace_rho_arc_range(
-//    automaton& a,
-//    automaton::StateId from,
-//    automaton::StateId to) {
-//  const auto id = a.NumStates(); // stated ids are sequential
-//  a.AddStates(3);
-//
-//  // add rho transitions
-//  a.EmplaceArc(from, fst::fsa::EncodeRange(0, 127), to);
-//  a.EmplaceArc(from, fst::fsa::EncodeRange(192, 223), id);
-//  a.EmplaceArc(from, fst::fsa::EncodeRange(224, 239), id + 1);
-//  a.EmplaceArc(from, fst::fsa::EncodeRange(240, 255), id + 2);
-//
-//  // connect intermediate states of default multi-byte UTF8 sequence
-//  const auto label = fst::fsa::EncodeRange(128, 191);
-//  a.EmplaceArc(id, label, to);
-//  a.EmplaceArc(id + 1, label, id);
-//  a.EmplaceArc(id + 2, label, id + 1);
-//}
+void utf8_emplace_arc_range(
+    automaton& a,
+    automaton::StateId from,
+    const bytes_ref& label,
+    automaton::StateId to) {
+  switch (label.size()) {
+    case 1: {
+      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), to);
+      return;
+    }
+    case 2: {
+      const auto s0 = a.AddState();
+      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
+      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), to);
+      return;
+    }
+    case 3: {
+      const auto s0 = a.AddState();
+      const auto s1 = a.AddState();
+      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
+      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
+      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), to);
+      return;
+    }
+    case 4: {
+      const auto s0 = a.NumStates();
+      const auto s1 = s0 + 1;
+      const auto s2 = s0 + 2;
+      a.AddStates(3);
+      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
+      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
+      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), s2);
+      a.EmplaceArc(s2, fst::fsa::EncodeRange(label[3]), to);
+      return;
+    }
+  }
+}
+
+void utf8_emplace_rho_arc_range(
+    automaton& a,
+    automaton::StateId from,
+    automaton::StateId to) {
+  const auto id = a.NumStates(); // stated ids are sequential
+  a.AddStates(3);
+
+  // add rho transitions
+  a.EmplaceArc(from, fst::fsa::EncodeRange(0, 127), to);
+  a.EmplaceArc(from, fst::fsa::EncodeRange(192, 223), id);
+  a.EmplaceArc(from, fst::fsa::EncodeRange(224, 239), id + 1);
+  a.EmplaceArc(from, fst::fsa::EncodeRange(240, 255), id + 2);
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+  const auto label = fst::fsa::EncodeRange(128, 191);
+  a.EmplaceArc(id, label, to);
+  a.EmplaceArc(id + 1, label, id);
+  a.EmplaceArc(id + 2, label, id + 1);
+}
+
+void utf8_expand_labels(automaton& a) {
+  assert(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
+
+  using utf8_arc = std::tuple<bytes_ref, automaton::StateId, std::array<byte_type, 4>>;
+
+  std::vector<utf8_arc> utf8_arcs;
+
+  utf8_transitions_builder builder;
+  fst::ArcIteratorData<automaton::Arc> arcs;
+  for (auto s = 0, nstates = a.NumStates(); s < nstates ; ++s) {
+    a.InitArcIterator(s, &arcs);
+
+    if (arcs.narcs) {
+      auto* arc = arcs.arcs + arcs.narcs - 1;
+      if (arc->ilabel == fst::fsa::kRho) {
+        const auto rho_state = arc->nextstate;
+
+        utf8_arcs.clear();
+        for (auto begin = arcs.arcs; begin != arc; ++begin) {
+          utf8_arcs.emplace_back();
+          auto& utf8_arc = utf8_arcs.back();
+
+          auto* utf8_buf = std::get<2>(utf8_arc).begin();
+
+          std::get<1>(utf8_arc) = begin->nextstate;
+          std::get<0>(utf8_arc) = bytes_ref(utf8_buf, utf8_utils::utf32_to_utf8(arcs.arcs->ilabel, utf8_buf));
+        }
+
+        a.DeleteArcs(s);
+
+        switch (utf8_arcs.size()) {
+          case 0: {
+            utf8_emplace_rho_arc(a, s, rho_state);
+          } break;
+          case 1: {
+            auto& utf8_arc = utf8_arcs.front();
+            utf8_emplace_arc(a, s, rho_state, std::get<0>(utf8_arc), std::get<1>(utf8_arc));
+          } break;
+          default: {
+            builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
+          } break;
+        }
+      }
+    }
+  }
+}
 
 void utf8_emplace_rho_arc(
     automaton& a,

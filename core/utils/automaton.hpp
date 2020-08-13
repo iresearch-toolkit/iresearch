@@ -220,6 +220,14 @@ struct EmptyWeight {
   }
 }; // EmptyWeight
 
+constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
+  return uint64_t(min) << 32 | uint64_t(max);
+}
+
+constexpr uint64_t EncodeRange(uint32_t v) noexcept {
+  return EncodeRange(v, v);
+}
+
 template<typename W = BooleanWeight, typename L = int32_t>
 struct Transition {
   using Weight = W;

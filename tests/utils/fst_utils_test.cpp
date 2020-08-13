@@ -31,7 +31,7 @@ TEST(fst_table_matcher_test, static_const) {
   static_assert(fst::kNoOEpsilons | fst::kODeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<>, 256, false>::MATCH_TYPE, "assertion failed");
   static_assert(std::is_same<fst::fsa::Automaton<>, fst::TableMatcher<fst::fsa::Automaton<>>::FST>::value, "assertion failed");
   static_assert(std::is_same<fst::fsa::Transition<>,fst::TableMatcher<fst::fsa::Automaton<>>::Arc>::value, "assertion failed");
-  static_assert(std::is_same<int64_t,fst::TableMatcher<fst::fsa::Automaton<>>::Label>::value, "assertion failed");
+  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::Label>::value, "assertion failed");
   static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::StateId>::value, "assertion failed");
   static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton<>>::Weight>::value, "assertion failed");
 }
