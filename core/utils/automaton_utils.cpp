@@ -245,11 +245,22 @@ void utf8_expand_labels(automaton& a) {
   UNUSED(EXPECTED_PROPERTIES);
 #endif
 
-  using utf8_arc = std::tuple<bytes_ref, automaton::StateId, std::array<byte_type, 4>>;
+  class utf8_char {
+   public:
+    explicit utf8_char(uint32_t utf32value) noexcept
+      : size_(utf8_utils::utf32_to_utf8(utf32value, data_.begin())) {
+    }
 
-  // FIXME do not preallocate
-  std::vector<utf8_arc> utf8_arcs;
-  utf8_arcs.reserve(5);
+    size_t size() const noexcept { return size_; }
+    const byte_type* c_str() const noexcept { return data_.begin(); }
+    explicit operator bytes_ref() const noexcept { return { c_str(), size() }; }
+
+   private:
+    std::array<byte_type, 4> data_;
+    size_t size_;
+  };
+
+  std::vector<std::pair<utf8_char, automaton::StateId>> utf8_arcs;
 
   utf8_transitions_builder builder;
   fst::ArcIteratorData<automaton::Arc> arcs;
@@ -268,13 +279,7 @@ void utf8_expand_labels(automaton& a) {
 
       utf8_arcs.clear();
       for (auto begin = arcs.arcs; begin != arc; ++begin) {
-        utf8_arcs.emplace_back();
-        auto& utf8_arc = utf8_arcs.back();
-
-        auto* utf8_buf = std::get<2>(utf8_arc).begin();
-
-        std::get<1>(utf8_arc) = begin->nextstate;
-        std::get<0>(utf8_arc) = bytes_ref(utf8_buf, utf8_utils::utf32_to_utf8(begin->ilabel, utf8_buf));
+        utf8_arcs.emplace_back(begin->ilabel, begin->nextstate);
       }
 
       a.DeleteArcs(s);
@@ -287,7 +292,7 @@ void utf8_expand_labels(automaton& a) {
         } break;
         case 1: {
           auto& utf8_arc = utf8_arcs.front();
-          utf8_emplace_arc(a, s, rho_state, std::get<0>(utf8_arc), std::get<1>(utf8_arc));
+          utf8_emplace_arc(a, s, rho_state, bytes_ref(utf8_arc.first), utf8_arc.second);
         } break;
         default: {
           builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());

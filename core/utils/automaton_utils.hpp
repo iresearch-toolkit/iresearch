@@ -175,11 +175,11 @@ class IRESEARCH_API utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= std::get<0>(*begin));
+      assert(last_ <= static_cast<bytes_ref>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
       insert(a, label.c_str(), label.size(), std::get<1>(*begin));
-      last_ = label;
+      last_ = static_cast<bytes_ref>(label);
     }
 
     finish(a, from);
