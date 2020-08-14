@@ -25,6 +25,7 @@
 #include "base/kaldi-error.h"
 
 #include <unordered_map>
+#include <algorithm>
 using std::unordered_map;
 
 #include <vector>
@@ -56,7 +57,7 @@ template<class Label, class StringId> class StringRepository {
   };
   class VectorEqual {  // Equality-operator function object.
    public:
-    size_t operator()(const std::vector<Label> *vec1, const std::vector<Label> *vec2) const {
+    bool operator()(const std::vector<Label> *vec1, const std::vector<Label> *vec2) const {
       return (*vec1 == *vec2);
     }
   };
@@ -150,7 +151,6 @@ template<class Label, class StringId> class StringRepository {
   MapType map_;
 };
 
-
 template<class F> class DeterminizerStar {
   typedef typename F::Arc Arc;
  public:
@@ -163,7 +163,7 @@ template<class F> class DeterminizerStar {
   // on the output.  If destroy == true, release memory as we go
   // (but we cannot output again).
 
-  void  Output(MutableFst<Arc> *ofst, bool destroy = true);
+  void Output(MutableFst<Arc> *ofst, bool destroy = true);
 
 
   // Initializer.  After initializing the object you will typically call
@@ -467,21 +467,6 @@ template<class F> class DeterminizerStar {
   // and hash_.
   void ProcessTransition(OutputStateId state, Label ilabel, std::vector<Element> *subset);
 
-  // "less than" operator for pair<Label, Element>.   Used in ProcessTransitions.
-  // Lexicographical order, with comparing the state only for "Element".
-
-  class PairComparator {
-   public:
-    inline bool operator () (const std::pair<Label, Element> &p1, const std::pair<Label, Element> &p2) {
-      if (p1.first < p2.first) return true;
-      else if (p1.first > p2.first) return false;
-      else {
-        return p1.second.state < p2.second.state;
-      }
-    }
-  };
-
-
   // ProcessTransitions handles transitions out of this subset of states.
   // Ignores epsilon transitions (epsilon closure already handled that).
   // Does not consider final states.  Breaks the transitions up by ilabel,
@@ -495,12 +480,8 @@ template<class F> class DeterminizerStar {
     std::vector<std::pair<Label, Element> > all_elems;
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
-      typename std::vector<Element>::const_iterator iter = closed_subset.begin(),
-          end = closed_subset.end();
-      for (; iter != end; ++iter) {
-        const Element &elem = *iter;
-        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
-             !aiter.Done(); aiter.Next()) {
+      for (const Element& elem : closed_subset) {
+        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
             std::pair<Label, Element> this_pr;
@@ -522,22 +503,57 @@ template<class F> class DeterminizerStar {
         }
       }
     }
-    PairComparator pc;
-    std::sort(all_elems.begin(), all_elems.end(), pc);
     // now sorted first on input label, then on state.
-    typedef typename std::vector<std::pair<Label, Element> >::const_iterator PairIter;
-    PairIter cur = all_elems.begin(), end = all_elems.end();
-    std::vector<Element> this_subset;
-    while (cur != end) {
-      // Process ranges that share the same input symbol.
-      Label ilabel = cur->first;
-      this_subset.clear();
-      while (cur != end && cur->first == ilabel) {
-        this_subset.push_back(cur->second);
-        cur++;
+    std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
+      if (p1.first < p2.first) {
+        return true;
+      } else if (p1.first > p2.first) {
+        return false;
+      } else {
+        return p1.second.state < p2.second.state;
       }
+    });
+
+    auto begin = all_elems.begin();
+    const auto end = all_elems.end();
+
+    // where rho transitions start
+    const auto rho = std::find_if(all_elems.rbegin(), all_elems.rend(),
+      [](const auto& v) noexcept {
+        return v.first != std::numeric_limits<Label>::max(); }).base();
+
+    std::vector<Element> this_subset;
+
+    while (begin < rho) {
+      // Process ranges that share the same input symbol.
+      const Label ilabel = begin->first;
+      this_subset.clear();
+
+      while (begin < rho && begin->first == ilabel) {
+        this_subset.push_back(begin->second);
+        begin++;
+      }
+
+      // add rho transitions as they would labeled with the same ilabel
+      std::for_each(rho, end, [&this_subset](const auto& value) {
+        assert(value.first == RhoLabel);
+        this_subset.push_back(value.second);
+      });
+
       // We now have a subset for this ilabel.
       ProcessTransition(state, ilabel, &this_subset);
+    }
+
+    // explicitly add rho transitions
+    this_subset.clear();
+    std::for_each(rho, end, [&this_subset](const auto& value) {
+      assert(value.first == RhoLabel);
+      this_subset.push_back(value.second);
+    });
+
+    // We now have a subset for RhoLabel
+    if (!this_subset.empty()) {
+      ProcessTransition(state, RhoLabel, &this_subset);
     }
   }
 
@@ -592,6 +608,9 @@ template<class F> class DeterminizerStar {
   }
 
   void Debug();
+
+  // Label denoting "Rho" transition (consume symbol, match rest)
+  static constexpr Label RhoLabel = std::numeric_limits<Label>::max();
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   std::deque<std::pair<std::vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.

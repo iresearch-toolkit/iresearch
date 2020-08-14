@@ -212,6 +212,8 @@ automaton from_wildcard(const bytes_ref& expr) {
     // nfa isn't fully determinized
     return {};
   }
+
+//FIXME???
 //  fst::Minimize(&dfa);
 
   utf8_expand_labels(dfa);
