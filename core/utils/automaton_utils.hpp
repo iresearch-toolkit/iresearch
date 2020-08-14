@@ -498,8 +498,8 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_expand(a, 0, 1);
-  //a.EmplaceArc(0, fst::fsa::kRho, 1);
+  //utf8_emplace_rho_arc_expand(a, 0, 1);
+  a.EmplaceArc(0, fst::fsa::kRho, 1);
   return a;
 }
 

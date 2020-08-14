@@ -26,7 +26,6 @@
 #include "utils/wildcard_utils.hpp"
 
 #include <fstream>
-#include "utils/fstext/fst_draw.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test
@@ -48,9 +47,6 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   {
     auto a = irs::from_wildcard("%rc%");
     assert_properties(a);
-
-    fst::drawFst(a, "/home/gnusi/1", fst::fsa::RangeLabelToString());
-    int i = 5;
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
         irs::ref_cast<irs::byte_type>(irs::string_ref("corrction"))));
@@ -493,7 +489,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\x61"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\x61"))));
-    //ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\xFF\xFF\x61")))); // do not accept invalid utf8 sequence
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\xFF\xFF\x61")))); // accept invalid utf8 sequence
   }
 
   // escaped '_'
@@ -697,8 +693,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
-    //ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
   }
 
   // mixed
@@ -717,14 +713,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\x61"))));
   }
 
   // mixed

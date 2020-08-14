@@ -236,11 +236,20 @@ void utf8_emplace_rho_arc_range(
 }
 
 void utf8_expand_labels(automaton& a) {
-  assert(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
+#ifdef IRESEARCH_DEBUG
+  // ensure resulting automaton is sorted and deterministic
+  static constexpr auto EXPECTED_PROPERTIES =
+    fst::kIDeterministic | fst::kILabelSorted;
+
+  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
+  UNUSED(EXPECTED_PROPERTIES);
+#endif
 
   using utf8_arc = std::tuple<bytes_ref, automaton::StateId, std::array<byte_type, 4>>;
 
+  // FIXME do not preallocate
   std::vector<utf8_arc> utf8_arcs;
+  utf8_arcs.reserve(5);
 
   utf8_transitions_builder builder;
   fst::ArcIteratorData<automaton::Arc> arcs;
@@ -248,38 +257,59 @@ void utf8_expand_labels(automaton& a) {
     a.InitArcIterator(s, &arcs);
 
     if (arcs.narcs) {
-      auto* arc = arcs.arcs + arcs.narcs - 1;
+      const auto* arc = arcs.arcs + arcs.narcs - 1;
+
+      automaton::StateId rho_state = fst::kNoLabel;
       if (arc->ilabel == fst::fsa::kRho) {
-        const auto rho_state = arc->nextstate;
+        rho_state = arc->nextstate;
+      } else {
+        ++arc;
+      }
 
-        utf8_arcs.clear();
-        for (auto begin = arcs.arcs; begin != arc; ++begin) {
-          utf8_arcs.emplace_back();
-          auto& utf8_arc = utf8_arcs.back();
+      utf8_arcs.clear();
+      for (auto begin = arcs.arcs; begin != arc; ++begin) {
+        utf8_arcs.emplace_back();
+        auto& utf8_arc = utf8_arcs.back();
 
-          auto* utf8_buf = std::get<2>(utf8_arc).begin();
+        auto* utf8_buf = std::get<2>(utf8_arc).begin();
 
-          std::get<1>(utf8_arc) = begin->nextstate;
-          std::get<0>(utf8_arc) = bytes_ref(utf8_buf, utf8_utils::utf32_to_utf8(arcs.arcs->ilabel, utf8_buf));
-        }
+        std::get<1>(utf8_arc) = begin->nextstate;
+        std::get<0>(utf8_arc) = bytes_ref(utf8_buf, utf8_utils::utf32_to_utf8(begin->ilabel, utf8_buf));
+      }
 
-        a.DeleteArcs(s);
+      a.DeleteArcs(s);
 
-        switch (utf8_arcs.size()) {
-          case 0: {
+      switch (utf8_arcs.size()) {
+        case 0: {
+          if (rho_state != fst::kNoStateId) {
             utf8_emplace_rho_arc(a, s, rho_state);
-          } break;
-          case 1: {
-            auto& utf8_arc = utf8_arcs.front();
-            utf8_emplace_arc(a, s, rho_state, std::get<0>(utf8_arc), std::get<1>(utf8_arc));
-          } break;
-          default: {
-            builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
-          } break;
-        }
+          }
+        } break;
+        case 1: {
+          auto& utf8_arc = utf8_arcs.front();
+          utf8_emplace_arc(a, s, rho_state, std::get<0>(utf8_arc), std::get<1>(utf8_arc));
+        } break;
+        default: {
+          builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
+        } break;
       }
     }
   }
+
+#ifdef IRESEARCH_DEBUG
+  // Ensure automaton is defined over the alphabet of
+  // { [0..255], fst::fsa::kRho }
+  for (auto s = 0, nstates = a.NumStates(); s < nstates ; ++s) {
+    a.InitArcIterator(s, &arcs);
+    auto* begin = arcs.arcs;
+    auto* end = begin + arcs.narcs;
+    for (; begin != end; ++begin) {
+      assert(begin->ilabel == fst::fsa::kRho ||
+               (begin->ilabel >= std::numeric_limits<byte_type>::min() &&
+                begin->ilabel <= std::numeric_limits<byte_type>::max()));
+    }
+  }
+#endif
 }
 
 void utf8_emplace_rho_arc(
