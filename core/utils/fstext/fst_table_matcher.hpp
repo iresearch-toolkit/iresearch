@@ -172,7 +172,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   virtual void SetState(StateId s) noexcept final {
     assert(!error_);
     assert(s*start_labels_.size() < transitions_.size());
-    //state_begin_ = transitions_.data() + s*start_labels_.size();
+    state_begin_ = transitions_.data() + s*start_labels_.size();
     state_ = state_begin_;
     state_end_ = state_begin_ + start_labels_.size();
   }
