@@ -36,7 +36,7 @@ TEST(fst_table_matcher_test, static_const) {
   static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton<>>::Weight>::value, "assertion failed");
 }
 
-TEST(fst_table_matcher_test, invalid_matcher) {
+TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<> a;
@@ -48,7 +48,7 @@ TEST(fst_table_matcher_test, invalid_matcher) {
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
-  // not an acceptor
+  // acceptor, regardless of specified arc weights
   {
     fst::fsa::Automaton<> a;
     a.AddState(); // 0
@@ -60,7 +60,7 @@ TEST(fst_table_matcher_test, invalid_matcher) {
     const_cast<fst::fsa::Transition<>&>(data.arcs[0]).olabel = fst::kNoLabel;
 
     fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
-    ASSERT_EQ(fst::kError, matcher.Properties(0));
+    ASSERT_NE(fst::kError, matcher.Properties(0));
   }
 }
 
