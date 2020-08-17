@@ -290,8 +290,19 @@ void utf8_expand_labels(automaton& a) {
       }
 
       utf8_arcs.clear();
-      for (auto begin = arcs.arcs; begin != arc; ++begin) {
+      auto begin = arcs.arcs;
+      for (; begin != arc; ++begin) {
+        if (IRS_UNLIKELY(begin->ilabel > static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
+          // invalid code point, give up
+          break;
+        }
+
         utf8_arcs.emplace_back(begin->ilabel, begin->nextstate);
+      }
+
+      if (IRS_UNLIKELY(begin != arc)) {
+        // found an invalid code point
+        continue;
       }
 
       a.DeleteArcs(s);

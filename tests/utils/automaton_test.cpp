@@ -332,10 +332,10 @@ TEST(boolean_weight_test, plus) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     utf8_transitions_builder_test
+// --SECTION--                                               automaton_test_base
 // -----------------------------------------------------------------------------
 
-class utf8_transitions_builder_test : public test_base {
+class automaton_test_base : public test_base {
  protected:
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
@@ -382,6 +382,12 @@ class utf8_transitions_builder_test : public test_base {
     }
   }
 };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     utf8_transitions_builder_test
+// -----------------------------------------------------------------------------
+
+class utf8_transitions_builder_test : public automaton_test_base { };
 
 TEST_F(utf8_transitions_builder_test, no_arcs) {
   irs::utf8_transitions_builder builder;
@@ -827,53 +833,7 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
 // --SECTION--                                             utf8_emplace_arc_test
 // -----------------------------------------------------------------------------
 
-class utf8_emplace_arc_test : public test_base {
- protected:
-  static void assert_properties(const irs::automaton& a) {
-    constexpr auto EXPECTED_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted |
-      fst::kIDeterministic |
-      fst::kAcceptor | fst::kUnweighted;
-
-    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
-  }
-
-  static void assert_arc(
-      const irs::automaton::Arc& actual_arc,
-      irs::automaton::Arc::Label expected_label,
-      irs::automaton::StateId expected_target) {
-    ASSERT_EQ(expected_label, actual_arc.ilabel);
-    ASSERT_EQ(expected_label, actual_arc.olabel);
-    ASSERT_EQ(expected_target, actual_arc.nextstate);
-    ASSERT_EQ(fst::fsa::BooleanWeight::One(), actual_arc.weight);
-  }
-
-  static void assert_state(
-      const irs::automaton& a,
-      const irs::automaton::StateId state,
-      const std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>& expected_arcs) {
-    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
-    a.InitArcIterator(state, &actual_arcs);
-    ASSERT_EQ(expected_arcs.size(), actual_arcs.narcs);
-
-    auto* actual_arc = actual_arcs.arcs;
-    for (auto& expected_arc : expected_arcs) {
-      assert_arc(*actual_arc, expected_arc.first, expected_arc.second);
-      ++actual_arc;
-    }
-  };
-
-  static void assert_automaton(
-      const irs::automaton& a,
-      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>& expected_automaton) {
-    ASSERT_EQ(expected_automaton.size(), a.NumStates());
-    irs::automaton::StateId state = 0;
-    for (auto& expected_arcs : expected_automaton) {
-      assert_state(a, state, expected_arcs);
-      ++state;
-    }
-  }
-};
+class utf8_emplace_arc_test : public automaton_test_base { };
 
 TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
    // 1-byte sequence
@@ -1541,4 +1501,118 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF\xD0\xBF"))));
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xD0\xBF"))));
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\xD0\xBF"))));
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           utf8_expand_labels_test
+// -----------------------------------------------------------------------------
+
+class utf8_expand_labels_test : public automaton_test_base { };
+
+TEST_F(utf8_expand_labels_test, no_arcs) {
+  // no arcs -> nothing to do
+  {
+    irs::automaton a;
+    irs::utf8_expand_labels(a);
+    ASSERT_EQ(0, a.NumStates());
+  }
+
+  // no arcs -> nothing to do
+  {
+    irs::automaton a;
+    a.SetStart(a.AddState());
+    irs::utf8_expand_labels(a);
+    ASSERT_EQ(1, a.NumStates());
+  }
+}
+
+TEST_F(utf8_expand_labels_test, invalid_sequence) {
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, irs::utf8_utils::MAX_CODE_POINT + 1, 1);
+    irs::utf8_expand_labels(a);
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { irs::utf8_utils::MAX_CODE_POINT + 1, 1 } },
+      { },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
+}
+
+TEST_F(utf8_expand_labels_test, 1byte_sequence) {
+  // 1-byte sequence -> nothing to do
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, 'c', 1);
+    irs::utf8_expand_labels(a);
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { 0x63, 1 } },
+      { },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
+}
+
+TEST_F(utf8_expand_labels_test, 2byte_sequence) {
+  // 2-byte sequence
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, 0x43F, 1);
+    irs::utf8_expand_labels(a);
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { 0xD0, 2 } },
+      { },
+      { { 0xBF, 1 } },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
+}
+
+TEST_F(utf8_expand_labels_test, 3byte_sequence) {
+  // 3-byte sequence
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, 0x2796, 1);
+    irs::utf8_expand_labels(a);
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { 0xE2, 2 } },
+      { },
+      { { 0x9E, 3 } },
+      { { 0x96, 1 } },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
+}
+
+
+TEST_F(utf8_expand_labels_test, 4byte_sequence) {
+  // 4-byte sequence
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, 0x1F601, 1);
+    irs::utf8_expand_labels(a);
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { 0xF0, 2 } },
+      { },
+      { { 0x9F, 3 } },
+      { { 0x98, 4 } },
+      { { 0x81, 1 } },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
 }
