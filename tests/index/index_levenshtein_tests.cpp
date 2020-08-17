@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+
+#include <utf8/core.h>
+
 #include "index/index_tests.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -53,6 +56,12 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
           auto edit_distance = irs::edit_distance(expected_term, target);
           if (edit_distance > description.max_distance()) {
+            continue;
+          }
+
+          const auto pos = utf8::find_invalid(expected_term.begin(), expected_term.end());
+          if (pos != expected_term.end()) {
+            // invalid utf8 sequence
             continue;
           }
 

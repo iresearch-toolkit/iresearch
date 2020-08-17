@@ -669,9 +669,9 @@ automaton make_levenshtein_automaton(
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
-    fst::kIDeterministic | fst::kODeterministic |
+    fst::kIDeterministic |
     fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kAcceptor;
+    fst::kAcceptor | fst::kUnweighted;
   assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
   UNUSED(EXPECTED_PROPERTIES);
 
