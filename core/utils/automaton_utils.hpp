@@ -473,7 +473,12 @@ IRESEARCH_API void utf8_emplace_rho_arc_range(
   automaton::StateId from,
   automaton::StateId to);
 
-IRESEARCH_API void utf8_expand_labels(automaton& a);
+//////////////////////////////////////////////////////////////////////////////
+/// @brief modifies a specified UTF-8 automaton to an equivalent one that is
+///        defined over the alphabet of { [0..255], fst::fsa::kRho }
+/// @returns fst::kNoStateId on success, otherwise first failed state id
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
 
 inline automaton make_char(const automaton::Arc::Label c) {
   automaton a;

@@ -1513,7 +1513,7 @@ TEST_F(utf8_expand_labels_test, no_arcs) {
   // no arcs -> nothing to do
   {
     irs::automaton a;
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
     ASSERT_EQ(0, a.NumStates());
   }
 
@@ -1521,7 +1521,7 @@ TEST_F(utf8_expand_labels_test, no_arcs) {
   {
     irs::automaton a;
     a.SetStart(a.AddState());
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
     ASSERT_EQ(1, a.NumStates());
   }
 }
@@ -1531,7 +1531,7 @@ TEST_F(utf8_expand_labels_test, invalid_sequence) {
     irs::automaton a;
     a.AddStates(2);
     a.EmplaceArc(0, irs::utf8_utils::MAX_CODE_POINT + 1, 1);
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(0, irs::utf8_expand_labels(a));
 
     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
       { { irs::utf8_utils::MAX_CODE_POINT + 1, 1 } },
@@ -1540,15 +1540,30 @@ TEST_F(utf8_expand_labels_test, invalid_sequence) {
 
     assert_automaton(a, expected_automaton);
   }
+
+  {
+    irs::automaton a;
+    a.AddStates(2);
+    a.EmplaceArc(0, irs::utf8_utils::MAX_CODE_POINT + 1, 1);
+    a.EmplaceArc(0, fst::fsa::kRho, 1);
+    ASSERT_EQ(0, irs::utf8_expand_labels(a));
+
+    const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
+      { { irs::utf8_utils::MAX_CODE_POINT + 1, 1 },  { fst::fsa::kRho, 1 } },
+      { },
+    };
+
+    assert_automaton(a, expected_automaton);
+  }
 }
 
-TEST_F(utf8_expand_labels_test, 1byte_sequence) {
+TEST_F(utf8_expand_labels_test, 1arc_1byte_sequence) {
   // 1-byte sequence -> nothing to do
   {
     irs::automaton a;
     a.AddStates(2);
     a.EmplaceArc(0, 'c', 1);
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
 
     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
       { { 0x63, 1 } },
@@ -1559,13 +1574,13 @@ TEST_F(utf8_expand_labels_test, 1byte_sequence) {
   }
 }
 
-TEST_F(utf8_expand_labels_test, 2byte_sequence) {
+TEST_F(utf8_expand_labels_test, 1arc_2byte_sequence) {
   // 2-byte sequence
   {
     irs::automaton a;
     a.AddStates(2);
     a.EmplaceArc(0, 0x43F, 1);
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
 
     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
       { { 0xD0, 2 } },
@@ -1577,13 +1592,13 @@ TEST_F(utf8_expand_labels_test, 2byte_sequence) {
   }
 }
 
-TEST_F(utf8_expand_labels_test, 3byte_sequence) {
+TEST_F(utf8_expand_labels_test, 1arc_3byte_sequence) {
   // 3-byte sequence
   {
     irs::automaton a;
     a.AddStates(2);
     a.EmplaceArc(0, 0x2796, 1);
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
 
     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
       { { 0xE2, 2 } },
@@ -1597,13 +1612,13 @@ TEST_F(utf8_expand_labels_test, 3byte_sequence) {
 }
 
 
-TEST_F(utf8_expand_labels_test, 4byte_sequence) {
+TEST_F(utf8_expand_labels_test, 1arc_4byte_sequence) {
   // 4-byte sequence
   {
     irs::automaton a;
     a.AddStates(2);
     a.EmplaceArc(0, 0x1F601, 1);
-    irs::utf8_expand_labels(a);
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
 
     const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
       { { 0xF0, 2 } },

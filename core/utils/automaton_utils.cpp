@@ -235,7 +235,7 @@ void utf8_emplace_rho_arc_range(
   a.EmplaceArc(id + 2, label, id + 1);
 }
 
-void utf8_expand_labels(automaton& a) {
+automaton::StateId utf8_expand_labels(automaton& a) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
@@ -294,15 +294,10 @@ void utf8_expand_labels(automaton& a) {
       for (; begin != arc; ++begin) {
         if (IRS_UNLIKELY(begin->ilabel > static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
           // invalid code point, give up
-          break;
+          return s;
         }
 
         utf8_arcs.emplace_back(begin->ilabel, begin->nextstate);
-      }
-
-      if (IRS_UNLIKELY(begin != arc)) {
-        // found an invalid code point
-        continue;
       }
 
       a.DeleteArcs(s);
@@ -338,6 +333,8 @@ void utf8_expand_labels(automaton& a) {
     }
   }
 #endif
+
+  return fst::kNoStateId;
 }
 
 void utf8_emplace_rho_arc(
