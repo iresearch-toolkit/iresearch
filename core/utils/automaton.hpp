@@ -142,30 +142,6 @@ struct RangeLabel {
   constexpr RangeLabel(ValueType min, ValueType max) noexcept
     : min(min), max(max) {
   }
-  constexpr bool operator==(int32_t rhs) const noexcept {
-    return rhs >= min && rhs <= max;
-  }
-  constexpr bool operator!=(int32_t rhs) const noexcept {
-    return !(*this == rhs);
-  }
-  constexpr bool operator==(const RangeLabel& rhs) const noexcept {
-    return rhs.min >= min && rhs.max <= max;
-  }
-  constexpr bool operator!=(const RangeLabel& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-  constexpr bool operator<(const RangeLabel& rhs) const noexcept {
-    return min < rhs.min || max < rhs.max;
-  }
-  constexpr bool operator>(const RangeLabel& rhs) const noexcept {
-    return min > rhs.min || max > rhs.max;
-  }
-  constexpr bool operator>=(const RangeLabel& rhs) const noexcept {
-    return !(*this < rhs);
-  }
-  void Write(std::ostream& strm) const {
-    strm << min << max;
-  }
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
@@ -174,6 +150,14 @@ struct RangeLabel {
   ValueType min{kNoLabel};
   ValueType max{kNoLabel};
 }; // RangeLabel
+
+constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
+  return uint64_t(min) << 32 | uint64_t(max);
+}
+
+constexpr uint64_t EncodeRange(uint32_t v) noexcept {
+  return EncodeRange(v, v);
+}
 
 template<typename Label>
 struct EmptyLabel {
@@ -219,14 +203,6 @@ struct EmptyWeight {
     return strm;
   }
 }; // EmptyWeight
-
-constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
-  return uint64_t(min) << 32 | uint64_t(max);
-}
-
-constexpr uint64_t EncodeRange(uint32_t v) noexcept {
-  return EncodeRange(v, v);
-}
 
 template<typename W = BooleanWeight, typename L = int32_t>
 struct Transition {
