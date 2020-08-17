@@ -260,6 +260,9 @@ void utf8_expand_labels(automaton& a) {
     size_t size_;
   };
 
+  using Label = automaton::Arc::Label;
+  static_assert(sizeof(Label) == sizeof(utf8_utils::MIN_2BYTES_CODE_POINT));
+
   std::vector<std::pair<utf8_char, automaton::StateId>> utf8_arcs;
 
   utf8_transitions_builder builder;
@@ -271,7 +274,10 @@ void utf8_expand_labels(automaton& a) {
       const auto* arc = arcs.arcs + arcs.narcs - 1;
 
       automaton::StateId rho_state = fst::kNoLabel;
-      if (arc->ilabel == fst::fsa::kRho) {
+      if (arc->ilabel < static_cast<Label>(utf8_utils::MIN_2BYTES_CODE_POINT)) {
+        // no rho transition, all label are single-byte UTF8 characters
+        continue;
+      } else if (arc->ilabel == fst::fsa::kRho) {
         rho_state = arc->nextstate;
       } else {
         ++arc;

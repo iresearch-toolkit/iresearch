@@ -35,6 +35,9 @@ NS_BEGIN(utf8_utils)
 // max number of bytes to represent single UTF8 code point
 constexpr size_t MAX_CODE_POINT_SIZE = 4;
 constexpr uint32_t MIN_CODE_POINT = 0;
+constexpr uint32_t MIN_2BYTES_CODE_POINT = 0x80;
+constexpr uint32_t MIN_3BYTES_CODE_POINT = 0x800;
+constexpr uint32_t MIN_4BYTES_CODE_POINT = 0x10000;
 constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
 constexpr uint32_t INVALID_CODE_POINT = integer_traits<uint32_t>::const_max;
 
