@@ -42,27 +42,33 @@ template<class Label, class StringId> class StringRepository {
   // representation of sequences of Labels.  It is to save memory, and to save compute.
   // We treat sequences of length zero and one separately, for efficiency.
  public:
+  // sequence + hash
+  using Key = std::pair<const std::vector<Label>*, size_t>;
+
+  static size_t hash(const std::vector<Label> *vec) {
+    assert(vec != NULL);
+    size_t hash = 0, factor = 1;
+    for (const auto& label : *vec) {
+      hash += factor*(label);
+      factor *= 103333;  // just an arbitrary prime number.
+    }
+    return hash;
+  }
+
   class VectorKey { // Hash function object.
    public:
-    size_t operator()(const std::vector<Label> *vec) const {
-      assert(vec != NULL);
-      size_t hash = 0, factor = 1;
-      for (typename std::vector<Label>::const_iterator it = vec->begin();
-           it != vec->end(); it++) {
-        hash += factor*(*it);
-        factor *= 103333;  // just an arbitrary prime number.
-      }
-      return hash;
+    size_t operator()(const Key& value) const noexcept {
+      return value.second;
     }
   };
   class VectorEqual {  // Equality-operator function object.
    public:
-    bool operator()(const std::vector<Label> *vec1, const std::vector<Label> *vec2) const {
-      return (*vec1 == *vec2);
+    bool operator()(const Key& lhs, const Key& rhs) const noexcept {
+      return (*lhs.first == *rhs.first);
     }
   };
 
-  typedef unordered_map<const std::vector<Label>*, StringId, VectorKey, VectorEqual> MapType;
+  typedef unordered_map<Key, StringId, VectorKey, VectorEqual> MapType;
 
   StringId IdOfEmpty() { return no_symbol; }
 
@@ -131,7 +137,7 @@ template<class Label, class StringId> class StringRepository {
   static constexpr StringId single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
 
   StringId IdOfSeqInternal(const std::vector<Label> &v) {
-    const auto [iter, is_new] = map_.try_emplace(&v);
+    const auto [iter, is_new] = map_.try_emplace(Key{&v, hash(&v)});
 
     if (!is_new) {
       return iter->second;
@@ -140,7 +146,7 @@ template<class Label, class StringId> class StringRepository {
     // must add it to map.
     StringId this_id = (StringId) vec_.size();
     std::vector<Label> *v_new = new std::vector<Label>(v);
-    const_cast<std::vector<Label>*&>(iter->first) = v_new;
+    const_cast<std::vector<Label>*&>(iter->first.first) = v_new;
 
     vec_.push_back(v_new);
     assert(this_id < string_end);  // or we used up the labels.
@@ -172,11 +178,11 @@ template<class F> class DeterminizerStar {
                    int max_states = -1, bool allow_partial = false):
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
       determinized_(false), allow_partial_(allow_partial),
-      is_partial_(false), equal_(delta),
+      is_partial_(false),
       hash_(ifst.Properties(kExpanded, false) ?
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
-            hasher_, equal_),
+            SubsetKey(), SubsetEqual(delta_)),
       epsilon_closure_(ifst_, max_states, &repository_, delta) { }
 
   void Determinize(bool *debug_ptr) {
@@ -226,7 +232,7 @@ template<class F> class DeterminizerStar {
     }
     for (typename SubsetHash::iterator iter = hash_.begin();
         iter != hash_.end(); ++iter)
-      delete iter->first;
+      delete iter->first.first;
     SubsetHash tmp;
     tmp.swap(hash_);
   }
@@ -278,17 +284,24 @@ template<class F> class DeterminizerStar {
   // Instead we apply the delta when comparing subsets for equality, and allow a small
   // difference.
 
+  // sequence + hash
+  using Key = std::pair<const std::vector<Element>*, size_t>;
+
+  static size_t hash(const std::vector<Element>* subset) {  // hashes only the state and string.
+    assert(subset);
+    size_t hash = 0, factor = 1;
+    for (const auto& elem : *subset) {
+      hash *= factor;
+      hash += elem.state + 103333 * elem.string;
+      factor *= 23531;  // these numbers are primes.
+    }
+    return hash;
+  }
+
   class SubsetKey {
    public:
-    size_t operator ()(const std::vector<Element> * subset) const {  // hashes only the state and string.
-      size_t hash = 0, factor = 1;
-      for (typename std::vector<Element>::const_iterator iter = subset->begin();
-           iter != subset->end(); ++iter) {
-        hash *= factor;
-        hash += iter->state + 103333 * iter->string;
-        factor *= 23531;  // these numbers are primes.
-      }
-      return hash;
+    size_t operator ()(const Key& subset) const noexcept {  // hashes only the state and string.
+      return subset.second;
     }
   };
 
@@ -296,8 +309,10 @@ template<class F> class DeterminizerStar {
   // and string, and approximate match on weights.
   class SubsetEqual {
    public:
-    bool operator ()(const std::vector<Element> *s1,
-                     const std::vector<Element> *s2) const {
+    bool operator ()(const Key& lhs,
+                     const Key& rhs) const {
+      const std::vector<Element> *s1 = lhs.first;
+      const std::vector<Element> *s2 = rhs.first;
       size_t sz = s1->size();
       assert(sz >= 0);
       if (sz != s2->size()) return false;
@@ -312,8 +327,8 @@ template<class F> class DeterminizerStar {
       return true;
     }
     float delta_;
-    SubsetEqual(float delta): delta_(delta) {}
-    SubsetEqual(): delta_(kDelta) {}
+    SubsetEqual(float delta) noexcept : delta_(delta) {}
+    SubsetEqual() noexcept : delta_(kDelta) {}
   };
 
   // Operator that says whether two Elements have the same states.
@@ -334,7 +349,7 @@ template<class F> class DeterminizerStar {
   };
 
   // Define the hash type we use to store subsets.
-  typedef unordered_map<const std::vector<Element>*, OutputStateId, SubsetKey, SubsetEqual> SubsetHash;
+  typedef unordered_map<Key, OutputStateId, SubsetKey, SubsetEqual> SubsetHash;
 
   class EpsilonClosure {
    public:
@@ -562,11 +577,11 @@ template<class F> class DeterminizerStar {
   // and adds a new pair to the queue.
   // Side effects on hash_ and Q_, and on output_arcs_ [just affects the size].
   OutputStateId SubsetToStateId(const std::vector<Element> &subset) {  // may add the subset to the queue.
-    const auto [iter, is_new] = hash_.try_emplace(&subset, (OutputStateId) output_arcs_.size());
+    const auto [iter, is_new] = hash_.try_emplace(Key{&subset, hash(&subset)}, (OutputStateId) output_arcs_.size());
 
     if (is_new) {  // was not there.
       std::vector<Element>* new_subset = new std::vector<Element>(subset);
-      const_cast<std::vector<Element>*&>(iter->first) = new_subset;
+      const_cast<std::vector<Element>*&>(iter->first.first) = new_subset;
 
       const OutputStateId new_state_id = iter->second;
       output_arcs_.emplace_back();
@@ -623,8 +638,6 @@ template<class F> class DeterminizerStar {
   bool determinized_; // used to check usage.
   bool allow_partial_;  // output paritial results or not
   bool is_partial_;     // if we get partial results or not
-  SubsetKey hasher_;  // object that computes keys-- has no data members.
-  SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
 
   StringRepository<Label, StringId> repository_;  // associate integer id's with sequences of labels.
