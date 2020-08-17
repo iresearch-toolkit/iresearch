@@ -1557,6 +1557,83 @@ TEST_F(utf8_expand_labels_test, invalid_sequence) {
   }
 }
 
+TEST_F(utf8_expand_labels_test, rho_arc) {
+  irs::automaton a;
+  auto start = a.AddState();
+  auto finish = a.AddState();
+  a.SetStart(start);
+  a.SetFinal(finish);
+  a.EmplaceArc(0, fst::fsa::kRho, 1);
+  auto intermediate0 = a.NumStates();
+  auto intermediate1 = a.NumStates() + 1;
+  auto intermediate2 = a.NumStates() + 2;
+
+  ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+  assert_properties(a);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(255, actual_arcs.narcs);
+
+    auto* actual_arc = actual_arcs.arcs;
+    irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+
+    for (; label < 192; ++label) {
+      assert_arc(*actual_arc, label, finish);
+      ++actual_arc;
+    }
+
+    for (; label < 224; ++label) {
+      assert_arc(*actual_arc, label, intermediate0);
+      ++actual_arc;
+    }
+
+    for (; label < 240; ++label) {
+      assert_arc(*actual_arc, label, intermediate1);
+      ++actual_arc;
+    }
+
+    for (; label < 256; ++label) {
+      assert_arc(*actual_arc, label, intermediate2);
+      ++actual_arc;
+    }
+
+    ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+  }
+
+  // arcs from 'intermediate0'
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(intermediate0, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, finish);
+  }
+
+  // arcs from 'intermediate1'
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(intermediate1, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+  }
+
+  // arcs from 'intermediate2'
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(intermediate2, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+  }
+
+  // arcs from 'finish0'
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(finish, &actual_arcs);
+    ASSERT_EQ(0, actual_arcs.narcs);
+  }
+}
+
 TEST_F(utf8_expand_labels_test, 1byte_sequence) {
   // 1-byte sequence -> nothing to do
   {
@@ -2086,5 +2163,227 @@ TEST_F(utf8_expand_labels_test, 4byte_sequence) {
       a.InitArcIterator(def, &actual_arcs);
       ASSERT_EQ(0, actual_arcs.narcs);
     }
+  }
+}
+
+TEST_F(utf8_expand_labels_test, 1byte_many_arcs) {
+  // no default transition
+  {
+
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish0 = a.AddState();
+    auto finish1 = a.AddState();
+
+    std::vector<std::pair<uint32_t, irs::automaton::StateId>> arcs;
+    arcs.emplace_back('a', finish0);
+    arcs.emplace_back('0', finish0);
+    arcs.emplace_back('7', finish1);
+    arcs.emplace_back('U', finish0);
+    arcs.emplace_back('b', finish1);
+    std::sort(arcs.begin(), arcs.end());
+
+    for (auto& arc : arcs) {
+      a.EmplaceArc(start, arc.first, arc.second);
+    }
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    assert_properties(a);
+    ASSERT_EQ(3, a.NumStates());
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(arcs.size(), actual_arcs.narcs);
+
+      auto* actual_arc = actual_arcs.arcs;
+      for (auto& arc : arcs) {
+        assert_arc(*actual_arc, arc.first, arc.second);
+        ++actual_arc;
+      }
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'finish0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish0, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'finish1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish1, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+  }
+
+  // default transition
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish0 = a.AddState();
+    auto finish1 = a.AddState();
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    a.SetStart(start);
+
+    std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>> arcs;
+    arcs.emplace_back('a', finish0);
+    arcs.emplace_back('0', finish0);
+    arcs.emplace_back('7', finish1);
+    arcs.emplace_back('U', finish0);
+    arcs.emplace_back('b', finish1);
+    arcs.emplace_back(fst::fsa::kRho, finish1);
+    std::sort(arcs.begin(), arcs.end());
+
+    for (auto& arc : arcs) {
+      a.EmplaceArc(start, arc.first, arc.second);
+    }
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    assert_properties(a);
+    ASSERT_EQ(6, a.NumStates()); // +3 intermediate states
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
+
+      auto* actual_arc = actual_arcs.arcs;
+      auto expected_arc = arcs.begin();
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+
+      while (expected_arc != (arcs.end() - 1) && label < 192) {
+        for (; label < expected_arc->first; ++label) {
+          assert_arc(*actual_arc, label, finish1);
+          ++actual_arc;
+        }
+
+        ASSERT_EQ(label, expected_arc->first);
+        assert_arc(*actual_arc, label, expected_arc->second);
+        ++label;
+        ++actual_arc;
+        ++expected_arc;
+      }
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, finish1);
+        ++actual_arc;
+      }
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, finish1);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish0, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'finish1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish1, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+  }
+}
+
+TEST_F(utf8_expand_labels_test, multi_byte_many_arcs) {
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    a.SetStart(start);
+    auto finish0 = a.AddState();
+    auto finish1 = a.AddState();
+    a.SetStart(start);
+
+    std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>> arcs;
+    arcs.emplace_back('a', finish0);
+    arcs.emplace_back('0', finish0);
+    arcs.emplace_back('7', finish1);
+    arcs.emplace_back('U', finish0);
+    arcs.emplace_back('b', finish1);
+    arcs.emplace_back(0x1F601, finish1);
+    arcs.emplace_back(0x450, finish0);
+    arcs.emplace_back(0x446, finish0);
+    arcs.emplace_back(0x2156, finish1);
+    arcs.emplace_back(0x2796, finish1);
+    arcs.emplace_back(0x2797, finish1);
+    arcs.emplace_back(0x3797, finish1);
+    arcs.emplace_back(0x3157, finish1);
+    std::sort(arcs.begin(), arcs.end());
+
+    for (auto& arc : arcs) {
+      a.EmplaceArc(start, arc.first, arc.second);
+    }
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    assert_properties(a);
+
+    std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton {
+      { { 48, 1 }, { 55, 2 }, { 85, 1 }, { 97, 1 },
+        { 98, 2 }, { 209, 3 }, { 226, 6 }, { 227, 8 },
+        { 240, 11 } },
+      { },
+      { },
+      { { 134, 1 }, { 144, 1 } },
+      { { 150, 2 } },
+      { { 150, 2 }, { 151, 2 } },
+      { { 133, 4 }, { 158, 5 } },
+      { { 151, 2 } },
+      { { 133, 7 }, { 158, 7 } },
+      { { 129, 2 } },
+      { { 152, 9 } },
+      { { 159, 10 } }
+    };
+
+    assert_automaton(a, expected_automaton);
   }
 }
