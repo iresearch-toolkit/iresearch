@@ -26,8 +26,8 @@
 #include <vector>
 
 #include "shared.hpp"
-#include "ebo.hpp"
-#include "noncopyable.hpp"
+#include "utils/ebo.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 

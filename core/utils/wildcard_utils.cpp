@@ -29,6 +29,7 @@
 #elif defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wsign-compare"
+  #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #include "fstext/determinize-star.h"
@@ -122,7 +123,9 @@ automaton from_wildcard(const bytes_ref& expr) {
   parts.reserve(expr.size() / 2); // reserve some space
 
   auto append_char = [&](const bytes_ref& label) {
-    parts.emplace_back(make_char(label));
+    auto* begin = label.begin();
+
+    parts.emplace_back(make_char(utf8_utils::next(begin)));
     escaped = false;
   };
 
@@ -191,21 +194,37 @@ automaton from_wildcard(const bytes_ref& expr) {
     fst::Concat(*begin, &nfa);
   }
 
+#ifdef IRESEARCH_DEBUG
+  // ensure nfa is sorted
+  static constexpr auto EXPECTED_NFA_PROPERTIES =
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kAcceptor | fst::kUnweighted;
+
+  assert(EXPECTED_NFA_PROPERTIES == nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+  UNUSED(EXPECTED_NFA_PROPERTIES);
+#endif
+
+  // nfa has only 1 arc per state
+  nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
+
   automaton dfa;
   if (fst::DeterminizeStar(nfa, &dfa)) {
     // nfa isn't fully determinized
     return {};
   }
-  fst::Minimize(&dfa);
+
+//FIXME???
+//  fst::Minimize(&dfa);
+
+  utf8_expand_labels(dfa);
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
-  static constexpr auto EXPECTED_PROPERTIES =
-    fst::kIDeterministic | fst::kODeterministic |
-    fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kAcceptor | fst::kUnweighted;
-  assert(EXPECTED_PROPERTIES == dfa.Properties(EXPECTED_PROPERTIES, true));
-  UNUSED(EXPECTED_PROPERTIES);
+  static constexpr auto EXPECTED_DFA_PROPERTIES =
+    fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
+
+  assert(EXPECTED_DFA_PROPERTIES == dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
+  UNUSED(EXPECTED_DFA_PROPERTIES);
 #endif
 
   return dfa;

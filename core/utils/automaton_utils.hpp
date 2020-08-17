@@ -26,8 +26,8 @@
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
 #include "utils/automaton.hpp"
-#include "utils/fst_states_map.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_states_map.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
@@ -124,7 +124,8 @@ class automaton_term_iterator final : public seek_term_iterator {
   }
 
  private:
-  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+  using automaton_matcher_t = fst::SortedMatcher<automaton>;
+  using matcher_t = fst::RhoMatcher<automaton_matcher_t>;
 
   bool accept() { return irs::match(matcher_, *value_); }
 
@@ -174,11 +175,11 @@ class IRESEARCH_API utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= std::get<0>(*begin));
+      assert(last_ <= static_cast<bytes_ref>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
       insert(a, label.c_str(), label.size(), std::get<1>(*begin));
-      last_ = label;
+      last_ = static_cast<bytes_ref>(label);
     }
 
     finish(a, from);
@@ -435,6 +436,12 @@ IRESEARCH_API void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_arc_range(
+  automaton& a,
+  automaton::StateId from,
+  const bytes_ref& label,
+  automaton::StateId to);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source (from)
 ///        and target (to) states with the fallback to default (rho_state)
@@ -461,6 +468,27 @@ IRESEARCH_API void utf8_emplace_rho_arc_expand(
   automaton::StateId from,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_rho_arc_range(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief modifies a specified UTF-8 automaton to an equivalent one that is
+///        defined over the alphabet of { [0..255], fst::fsa::kRho }
+/// @returns fst::kNoStateId on success, otherwise first failed state id
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
+
+inline automaton make_char(const automaton::Arc::Label c) {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  a.EmplaceArc(0, c, 1);
+  return a;
+}
+
 inline automaton make_char(const bytes_ref& c) {
   automaton a;
   a.AddStates(2);
@@ -475,16 +503,13 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  utf8_emplace_rho_arc_expand(a, 0, 1);
+  //utf8_emplace_rho_arc_expand(a, 0, 1);
+  a.EmplaceArc(0, fst::fsa::kRho, 1);
   return a;
 }
 
 inline automaton make_all() {
-  automaton a;
-  a.AddStates(2);
-  a.SetStart(0);
-  a.SetFinal(1);
-  utf8_emplace_rho_arc_expand(a, 0, 1);
+  automaton a = make_any();
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };

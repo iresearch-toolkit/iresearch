@@ -217,10 +217,15 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
     ++state_;
 
-    for (auto& label = get_label(arc_); !Done(); ++state_) {
+    for (; !Done(); ++state_) {
       if (*state_ != kNoLabel) {
         assert(state_ > state_begin_ && state_ < state_end_);
-        label = start_labels_[size_t(std::distance(state_begin_, state_))];
+        const auto label = start_labels_[size_t(std::distance(state_begin_, state_))];
+        if constexpr (MATCH_TYPE == MATCH_INPUT) {
+          arc_.ilabel = label;
+        } else {
+          arc_.olabel = label;
+        }
         arc_.nextstate = *state_;
         return;
       }
@@ -245,8 +250,12 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
  private:
   template<typename Arc>
-  static typename irs::irstd::adjust_const<Arc, typename Arc::Label>::reference& get_label(Arc& arc) {
-    return (MATCH_TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel);
+  static typename Arc::Label get_label(Arc& arc) {
+    if constexpr (MATCH_TYPE == MATCH_INPUT) {
+      return arc.ilabel;
+    }
+
+    return arc.olabel;
   }
 
   size_t find_label_offset(Label label) const noexcept {

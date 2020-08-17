@@ -25,6 +25,7 @@
 #include "base/kaldi-error.h"
 
 #include <unordered_map>
+#include <algorithm>
 using std::unordered_map;
 
 #include <vector>
@@ -40,29 +41,34 @@ template<class Label, class StringId> class StringRepository {
   // This is a utility that maps back and forth between a vector<Label> and StringId
   // representation of sequences of Labels.  It is to save memory, and to save compute.
   // We treat sequences of length zero and one separately, for efficiency.
-
  public:
+  // sequence + hash
+  using Key = std::pair<const std::vector<Label>*, size_t>;
+
+  static size_t hash(const std::vector<Label> *vec) {
+    assert(vec != NULL);
+    size_t hash = 0, factor = 1;
+    for (const auto& label : *vec) {
+      hash += factor*(label);
+      factor *= 103333;  // just an arbitrary prime number.
+    }
+    return hash;
+  }
+
   class VectorKey { // Hash function object.
    public:
-    size_t operator()(const std::vector<Label> *vec) const {
-      assert(vec != NULL);
-      size_t hash = 0, factor = 1;
-      for (typename std::vector<Label>::const_iterator it = vec->begin();
-           it != vec->end(); it++) {
-        hash += factor*(*it);
-        factor *= 103333;  // just an arbitrary prime number.
-      }
-      return hash;
+    size_t operator()(const Key& value) const noexcept {
+      return value.second;
     }
   };
   class VectorEqual {  // Equality-operator function object.
    public:
-    size_t operator()(const std::vector<Label> *vec1, const std::vector<Label> *vec2) const {
-      return (*vec1 == *vec2);
+    bool operator()(const Key& lhs, const Key& rhs) const noexcept {
+      return (*lhs.first == *rhs.first);
     }
   };
 
-  typedef unordered_map<const std::vector<Label>*, StringId, VectorKey, VectorEqual> MapType;
+  typedef unordered_map<Key, StringId, VectorKey, VectorEqual> MapType;
 
   StringId IdOfEmpty() { return no_symbol; }
 
@@ -108,14 +114,6 @@ template<class Label, class StringId> class StringRepository {
     }
   }
 
-  StringRepository() {
-    // The following are really just constants but don't want to complicate compilation so make them
-    // class variables.  Due to the brokenness of <limits>, they can't be accessed as constants.
-    string_end = (std::numeric_limits<StringId>::max() / 2) - 1;  // all hash values must be <= this.
-    no_symbol = (std::numeric_limits<StringId>::max() / 2);  // reserved for empty sequence.
-    single_symbol_start =  (std::numeric_limits<StringId>::max() / 2) + 1;
-    single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
-  }
   void Destroy() {
     for (typename std::vector<std::vector<Label>* >::iterator iter = vec_.begin(); iter != vec_.end(); ++iter)
       delete *iter;
@@ -124,6 +122,7 @@ template<class Label, class StringId> class StringRepository {
     MapType tmp_map;
     tmp_map.swap(map_);
   }
+  StringRepository() = default;
   ~StringRepository() {
     Destroy();
   }
@@ -131,30 +130,32 @@ template<class Label, class StringId> class StringRepository {
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(StringRepository);
 
+  static constexpr StringId string_start = (StringId) 0;  // This must not change.  It's assumed.
+  static constexpr StringId string_end = (std::numeric_limits<StringId>::max() / 2) - 1; // all hash values must be <= this.
+  static constexpr StringId no_symbol = (std::numeric_limits<StringId>::max() / 2); // reserved for empty sequence.
+  static constexpr StringId single_symbol_start = (std::numeric_limits<StringId>::max() / 2) + 1;
+  static constexpr StringId single_symbol_range =  std::numeric_limits<StringId>::max() - single_symbol_start;
+
   StringId IdOfSeqInternal(const std::vector<Label> &v) {
-    typename MapType::iterator iter = map_.find(&v);
-    if (iter != map_.end()) {
+    const auto [iter, is_new] = map_.try_emplace(Key{&v, hash(&v)});
+
+    if (!is_new) {
       return iter->second;
-    } else {  // must add it to map.
-      StringId this_id = (StringId) vec_.size();
-      std::vector<Label> *v_new = new std::vector<Label> (v);
-      vec_.push_back(v_new);
-      map_[v_new] = this_id;
-      assert(this_id < string_end);  // or we used up the labels.
-      return this_id;
     }
+
+    // must add it to map.
+    StringId this_id = (StringId) vec_.size();
+    std::vector<Label> *v_new = new std::vector<Label>(v);
+    const_cast<std::vector<Label>*&>(iter->first.first) = v_new;
+
+    vec_.push_back(v_new);
+    assert(this_id < string_end);  // or we used up the labels.
+    return this_id;
   }
 
   std::vector<std::vector<Label>* > vec_;
   MapType map_;
-
-  static const StringId string_start = (StringId) 0;  // This must not change.  It's assumed.
-  StringId string_end;  // = (numeric_limits<StringId>::max() / 2) - 1; // all hash values must be <= this.
-  StringId no_symbol;  // = (numeric_limits<StringId>::max() / 2); // reserved for empty sequence.
-  StringId single_symbol_start;  // =  (numeric_limits<StringId>::max() / 2) + 1;
-  StringId single_symbol_range;  // =  numeric_limits<StringId>::max() - single_symbol_start;
 };
-
 
 template<class F> class DeterminizerStar {
   typedef typename F::Arc Arc;
@@ -168,7 +169,7 @@ template<class F> class DeterminizerStar {
   // on the output.  If destroy == true, release memory as we go
   // (but we cannot output again).
 
-  void  Output(MutableFst<Arc> *ofst, bool destroy = true);
+  void Output(MutableFst<Arc> *ofst, bool destroy = true);
 
 
   // Initializer.  After initializing the object you will typically call
@@ -177,11 +178,11 @@ template<class F> class DeterminizerStar {
                    int max_states = -1, bool allow_partial = false):
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
       determinized_(false), allow_partial_(allow_partial),
-      is_partial_(false), equal_(delta),
+      is_partial_(false),
       hash_(ifst.Properties(kExpanded, false) ?
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
-            hasher_, equal_),
+            SubsetKey(), SubsetEqual(delta_)),
       epsilon_closure_(ifst_, max_states, &repository_, delta) { }
 
   void Determinize(bool *debug_ptr) {
@@ -195,9 +196,7 @@ template<class F> class DeterminizerStar {
       elem.state = start_id;
       elem.weight = Weight::One();
       elem.string = repository_.IdOfEmpty();  // Id of empty sequence.
-      std::vector<Element> vec;
-      vec.push_back(elem);
-      OutputStateId cur_id = SubsetToStateId(vec);
+      OutputStateId cur_id = SubsetToStateId({elem});
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
     while (!Q_.empty()) {
@@ -233,7 +232,7 @@ template<class F> class DeterminizerStar {
     }
     for (typename SubsetHash::iterator iter = hash_.begin();
         iter != hash_.end(); ++iter)
-      delete iter->first;
+      delete iter->first.first;
     SubsetHash tmp;
     tmp.swap(hash_);
   }
@@ -285,17 +284,24 @@ template<class F> class DeterminizerStar {
   // Instead we apply the delta when comparing subsets for equality, and allow a small
   // difference.
 
+  // sequence + hash
+  using Key = std::pair<const std::vector<Element>*, size_t>;
+
+  static size_t hash(const std::vector<Element>* subset) {  // hashes only the state and string.
+    assert(subset);
+    size_t hash = 0, factor = 1;
+    for (const auto& elem : *subset) {
+      hash *= factor;
+      hash += elem.state + 103333 * elem.string;
+      factor *= 23531;  // these numbers are primes.
+    }
+    return hash;
+  }
+
   class SubsetKey {
    public:
-    size_t operator ()(const std::vector<Element> * subset) const {  // hashes only the state and string.
-      size_t hash = 0, factor = 1;
-      for (typename std::vector<Element>::const_iterator iter = subset->begin();
-           iter != subset->end(); ++iter) {
-        hash *= factor;
-        hash += iter->state + 103333 * iter->string;
-        factor *= 23531;  // these numbers are primes.
-      }
-      return hash;
+    size_t operator ()(const Key& subset) const noexcept {  // hashes only the state and string.
+      return subset.second;
     }
   };
 
@@ -303,8 +309,10 @@ template<class F> class DeterminizerStar {
   // and string, and approximate match on weights.
   class SubsetEqual {
    public:
-    bool operator ()(const std::vector<Element> *s1,
-                     const std::vector<Element> *s2) const {
+    bool operator ()(const Key& lhs,
+                     const Key& rhs) const {
+      const std::vector<Element> *s1 = lhs.first;
+      const std::vector<Element> *s2 = rhs.first;
       size_t sz = s1->size();
       assert(sz >= 0);
       if (sz != s2->size()) return false;
@@ -319,8 +327,8 @@ template<class F> class DeterminizerStar {
       return true;
     }
     float delta_;
-    SubsetEqual(float delta): delta_(delta) {}
-    SubsetEqual(): delta_(kDelta) {}
+    SubsetEqual(float delta) noexcept : delta_(delta) {}
+    SubsetEqual() noexcept : delta_(kDelta) {}
   };
 
   // Operator that says whether two Elements have the same states.
@@ -341,7 +349,7 @@ template<class F> class DeterminizerStar {
   };
 
   // Define the hash type we use to store subsets.
-  typedef unordered_map<const std::vector<Element>*, OutputStateId, SubsetKey, SubsetEqual> SubsetHash;
+  typedef unordered_map<Key, OutputStateId, SubsetKey, SubsetEqual> SubsetHash;
 
   class EpsilonClosure {
    public:
@@ -360,7 +368,7 @@ template<class F> class DeterminizerStar {
 
    private:
     struct EpsilonClosureInfo {
-      EpsilonClosureInfo() {}
+      EpsilonClosureInfo() = default;
       EpsilonClosureInfo(const Element &e, const Weight &w, bool i) :
         element(e), weight_to_process(w), in_queue(i) {}
       // the weight in the Element struct is the total current weight
@@ -474,21 +482,6 @@ template<class F> class DeterminizerStar {
   // and hash_.
   void ProcessTransition(OutputStateId state, Label ilabel, std::vector<Element> *subset);
 
-  // "less than" operator for pair<Label, Element>.   Used in ProcessTransitions.
-  // Lexicographical order, with comparing the state only for "Element".
-
-  class PairComparator {
-   public:
-    inline bool operator () (const std::pair<Label, Element> &p1, const std::pair<Label, Element> &p2) {
-      if (p1.first < p2.first) return true;
-      else if (p1.first > p2.first) return false;
-      else {
-        return p1.second.state < p2.second.state;
-      }
-    }
-  };
-
-
   // ProcessTransitions handles transitions out of this subset of states.
   // Ignores epsilon transitions (epsilon closure already handled that).
   // Does not consider final states.  Breaks the transitions up by ilabel,
@@ -502,12 +495,8 @@ template<class F> class DeterminizerStar {
     std::vector<std::pair<Label, Element> > all_elems;
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
-      typename std::vector<Element>::const_iterator iter = closed_subset.begin(),
-          end = closed_subset.end();
-      for (; iter != end; ++iter) {
-        const Element &elem = *iter;
-        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
-             !aiter.Done(); aiter.Next()) {
+      for (const Element& elem : closed_subset) {
+        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
             std::pair<Label, Element> this_pr;
@@ -529,22 +518,57 @@ template<class F> class DeterminizerStar {
         }
       }
     }
-    PairComparator pc;
-    std::sort(all_elems.begin(), all_elems.end(), pc);
     // now sorted first on input label, then on state.
-    typedef typename std::vector<std::pair<Label, Element> >::const_iterator PairIter;
-    PairIter cur = all_elems.begin(), end = all_elems.end();
-    std::vector<Element> this_subset;
-    while (cur != end) {
-      // Process ranges that share the same input symbol.
-      Label ilabel = cur->first;
-      this_subset.clear();
-      while (cur != end && cur->first == ilabel) {
-        this_subset.push_back(cur->second);
-        cur++;
+    std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
+      if (p1.first < p2.first) {
+        return true;
+      } else if (p1.first > p2.first) {
+        return false;
+      } else {
+        return p1.second.state < p2.second.state;
       }
+    });
+
+    auto begin = all_elems.begin();
+    const auto end = all_elems.end();
+
+    // where rho transitions start
+    const auto rho = std::find_if(all_elems.rbegin(), all_elems.rend(),
+      [](const auto& v) noexcept {
+        return v.first != std::numeric_limits<Label>::max(); }).base();
+
+    std::vector<Element> this_subset;
+
+    while (begin < rho) {
+      // Process ranges that share the same input symbol.
+      const Label ilabel = begin->first;
+      this_subset.clear();
+
+      while (begin < rho && begin->first == ilabel) {
+        this_subset.push_back(begin->second);
+        begin++;
+      }
+
+      // add rho transitions as they would labeled with the same ilabel
+      std::for_each(rho, end, [&this_subset](const auto& value) {
+        assert(value.first == RhoLabel);
+        this_subset.push_back(value.second);
+      });
+
       // We now have a subset for this ilabel.
       ProcessTransition(state, ilabel, &this_subset);
+    }
+
+    // explicitly add rho transitions
+    this_subset.clear();
+    std::for_each(rho, end, [&this_subset](const auto& value) {
+      assert(value.first == RhoLabel);
+      this_subset.push_back(value.second);
+    });
+
+    // We now have a subset for RhoLabel
+    if (!this_subset.empty()) {
+      ProcessTransition(state, RhoLabel, &this_subset);
     }
   }
 
@@ -553,25 +577,24 @@ template<class F> class DeterminizerStar {
   // and adds a new pair to the queue.
   // Side effects on hash_ and Q_, and on output_arcs_ [just affects the size].
   OutputStateId SubsetToStateId(const std::vector<Element> &subset) {  // may add the subset to the queue.
-    typedef typename SubsetHash::iterator IterType;
-    IterType iter = hash_.find(&subset);
-    if (iter == hash_.end()) {  // was not there.
-      std::vector<Element> *new_subset = new std::vector<Element>(subset);
-      OutputStateId new_state_id = (OutputStateId) output_arcs_.size();
-      bool ans = hash_.insert(std::pair<const std::vector<Element>*,
-                                        OutputStateId>(new_subset,
-                                                       new_state_id)).second;
-      assert(ans);
-      output_arcs_.push_back(std::vector<TempArc>());
+    const auto [iter, is_new] = hash_.try_emplace(Key{&subset, hash(&subset)}, (OutputStateId) output_arcs_.size());
+
+    if (is_new) {  // was not there.
+      std::vector<Element>* new_subset = new std::vector<Element>(subset);
+      const_cast<std::vector<Element>*&>(iter->first.first) = new_subset;
+
+      const OutputStateId new_state_id = iter->second;
+      output_arcs_.emplace_back();
       if (allow_partial_ == false) {
         // If --allow-partial is not requested, we do the old way.
-        Q_.push_front(std::pair<std::vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+        Q_.emplace_front(new_subset, new_state_id);
       } else {
         // If --allow-partial is requested, we do breadth first search. This
         // ensures that when we return partial results, we return the states
         // that are reachable by the fewest steps from the start state.
-        Q_.push_back(std::pair<std::vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+        Q_.emplace_front(new_subset, new_state_id);
       }
+
       return new_state_id;
     } else {
       return iter->second;  // the OutputStateId.
@@ -601,6 +624,9 @@ template<class F> class DeterminizerStar {
 
   void Debug();
 
+  // Label denoting "Rho" transition (consume symbol, match rest)
+  static constexpr Label RhoLabel = std::numeric_limits<Label>::max();
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   std::deque<std::pair<std::vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
@@ -612,8 +638,6 @@ template<class F> class DeterminizerStar {
   bool determinized_; // used to check usage.
   bool allow_partial_;  // output paritial results or not
   bool is_partial_;     // if we get partial results or not
-  SubsetKey hasher_;  // object that computes keys-- has no data members.
-  SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
 
   StringRepository<Label, StringId> repository_;  // associate integer id's with sequences of labels.
@@ -922,10 +946,7 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
     return;
   }
   // Add basic states-- but will add extra ones to account for strings on output.
-  for (OutputStateId s = 0; s < num_states; s++) {
-    OutputStateId news = ofst->AddState();
-    assert(news == s);
-  }
+  ofst->AddStates(num_states);
   ofst->SetStart(0);
   for (OutputStateId this_state = 0; this_state < num_states; this_state++) {
     std::vector<TempArc> &this_vec(output_arcs_[this_state]);

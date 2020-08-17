@@ -25,6 +25,8 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/wildcard_utils.hpp"
 
+#include <fstream>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test
 // -----------------------------------------------------------------------------
@@ -34,7 +36,7 @@ class wildcard_utils_test : public test_base {
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
       fst::kILabelSorted | fst::kOLabelSorted |
-      fst::kIDeterministic | fst::kODeterministic |
+      fst::kIDeterministic |
       fst::kAcceptor | fst::kUnweighted;
 
     ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
@@ -487,7 +489,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ba"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\x61"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\x61"))));
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\xFF\xFF\x61")))); // do not accept invalid utf8 sequence
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\xFF\xFF\x61")))); // accept invalid utf8 sequence
   }
 
   // escaped '_'
@@ -691,7 +693,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
   }
 
@@ -711,9 +713,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
-    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
