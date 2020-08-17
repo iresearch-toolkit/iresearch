@@ -353,7 +353,7 @@ class utf8_transitions_builder_test : public test_base {
     ASSERT_EQ(expected_label, actual_arc.ilabel);
     ASSERT_EQ(expected_label, actual_arc.olabel);
     ASSERT_EQ(expected_target, actual_arc.nextstate);
-    ASSERT_EQ(fst::fsa::BooleanWeight(false), actual_arc.weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight::One(), actual_arc.weight);
   }
 
   static void assert_state(
@@ -424,10 +424,10 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs); // 0 is reserved for Epsilon transition
 
       auto* actual_arc = actual_arcs.arcs;
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1;
 
       for (; label < 192; ++label) {
         assert_arc(*actual_arc, label, finish);
@@ -538,10 +538,10 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs); // 0 is reserved for Epsilon transition
 
       auto* actual_arc = actual_arcs.arcs;
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1;
 
       for (; label < 192; ++label) {
         assert_arc(*actual_arc, label, finish);
@@ -681,11 +681,11 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
 
       auto* actual_arc = actual_arcs.arcs;
       auto expected_arc = arcs.begin();
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
 
       while (expected_arc != arcs.end() && label < 192) {
         for (; label < expected_arc->first[0]; ++label) {
@@ -832,8 +832,8 @@ class utf8_emplace_arc_test : public test_base {
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
       fst::kILabelSorted | fst::kOLabelSorted |
-      fst::kIDeterministic | fst::kODeterministic |
-      fst::kAcceptor;
+      fst::kIDeterministic |
+      fst::kAcceptor | fst::kUnweighted;
 
     ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
   }
@@ -845,7 +845,7 @@ class utf8_emplace_arc_test : public test_base {
     ASSERT_EQ(expected_label, actual_arc.ilabel);
     ASSERT_EQ(expected_label, actual_arc.olabel);
     ASSERT_EQ(expected_target, actual_arc.nextstate);
-    ASSERT_EQ(fst::fsa::BooleanWeight(false), actual_arc.weight);
+    ASSERT_EQ(fst::fsa::BooleanWeight::One(), actual_arc.weight);
   }
 
   static void assert_state(
@@ -1010,9 +1010,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
 
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
       auto* actual_arc = actual_arcs.arcs;
 
       for (; label < 'a'; ++label) {
@@ -1115,9 +1115,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
 
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
       auto* actual_arc = actual_arcs.arcs;
 
       for (; label < 192; ++label) {
@@ -1229,9 +1229,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
 
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
       auto* actual_arc = actual_arcs.arcs;
 
       for (; label < 192; ++label) {
@@ -1352,9 +1352,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
-      ASSERT_EQ(256, actual_arcs.narcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
 
-      irs::automaton::Arc::Label label = 0;
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
       auto* actual_arc = actual_arcs.arcs;
 
       for (; label < 192; ++label) {
@@ -1474,10 +1474,10 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
    {
      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
      a.InitArcIterator(start, &actual_arcs);
-     ASSERT_EQ(256, actual_arcs.narcs);
+     ASSERT_EQ(255, actual_arcs.narcs);
 
      auto* actual_arc = actual_arcs.arcs;
-     irs::automaton::Arc::Label label = 0;
+     irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
 
      for (; label < 192; ++label) {
        assert_arc(*actual_arc, label, finish);
