@@ -245,23 +245,29 @@ void utf8_expand_labels(automaton& a) {
   UNUSED(EXPECTED_PROPERTIES);
 #endif
 
+  using Label = automaton::Arc::Label;
+  static_assert(sizeof(Label) == sizeof(utf8_utils::MIN_2BYTES_CODE_POINT));
+
   class utf8_char {
    public:
     explicit utf8_char(uint32_t utf32value) noexcept
-      : size_(utf8_utils::utf32_to_utf8(utf32value, data_.begin())) {
+      : size_(utf8_utils::utf32_to_utf8(utf32value, data())) {
     }
 
-    size_t size() const noexcept { return size_; }
-    const byte_type* c_str() const noexcept { return data_.begin(); }
-    explicit operator bytes_ref() const noexcept { return { c_str(), size() }; }
+    uint32_t size() const noexcept { return size_; }
+    const byte_type* c_str() const noexcept {
+      return const_cast<utf8_char*>(this)->data();
+    }
+    operator bytes_ref() const noexcept {
+      return { c_str(), size() };
+    }
 
    private:
-    std::array<byte_type, 4> data_;
-    size_t size_;
-  };
+    byte_type* data() noexcept { return reinterpret_cast<byte_type*>(&data_); }
 
-  using Label = automaton::Arc::Label;
-  static_assert(sizeof(Label) == sizeof(utf8_utils::MIN_2BYTES_CODE_POINT));
+    uint32_t data_;
+    uint32_t size_;
+  };
 
   std::vector<std::pair<utf8_char, automaton::StateId>> utf8_arcs;
 
