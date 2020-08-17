@@ -1557,7 +1557,7 @@ TEST_F(utf8_expand_labels_test, invalid_sequence) {
   }
 }
 
-TEST_F(utf8_expand_labels_test, 1arc_1byte_sequence) {
+TEST_F(utf8_expand_labels_test, 1byte_sequence) {
   // 1-byte sequence -> nothing to do
   {
     irs::automaton a;
@@ -1572,9 +1572,104 @@ TEST_F(utf8_expand_labels_test, 1arc_1byte_sequence) {
 
     assert_automaton(a, expected_automaton);
   }
+
+  // 1-byte sequence + rho label
+  {
+    irs::automaton a;
+    a.AddStates(3);
+    a.EmplaceArc(0, 'c', 1);
+    a.EmplaceArc(0, fst::fsa::kRho, 2);
+    irs::automaton::StateId def = 2;
+    irs::automaton::StateId finish = 1;
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(0, &actual_arcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
+
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+      auto* actual_arc = actual_arcs.arcs;
+
+      for (; label < 'c'; ++label) {
+        assert_arc(*actual_arc, label, def);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ('c', label);
+      assert_arc(*actual_arc, label, finish);
+      ++label;
+      ++actual_arc;
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, def);
+        ++actual_arc;
+      }
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'def'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(def, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+  }
 }
 
-TEST_F(utf8_expand_labels_test, 1arc_2byte_sequence) {
+TEST_F(utf8_expand_labels_test, 2byte_sequence) {
   // 2-byte sequence
   {
     irs::automaton a;
@@ -1588,11 +1683,127 @@ TEST_F(utf8_expand_labels_test, 1arc_2byte_sequence) {
       { { 0xBF, 1 } },
     };
 
+    assert_properties(a);
     assert_automaton(a, expected_automaton);
+  }
+
+  // 2-byte sequence
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish = a.AddState();
+    auto def = a.AddState();
+    a.SetStart(start);
+    a.SetFinal(finish);
+    a.SetFinal(def);
+    a.EmplaceArc(start, 0x43F, finish);
+    a.EmplaceArc(start, fst::fsa::kRho, def);
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    ASSERT_EQ(7, a.NumStates());
+    assert_properties(a);
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
+
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+      auto* actual_arc = actual_arcs.arcs;
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, def);
+        ++actual_arc;
+      }
+
+      for (; label < 208; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(208, label);
+      assert_arc(*actual_arc, label, intermediate2+1);
+      ++label;
+      ++actual_arc;
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate2+1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+1, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 191, finish);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'def'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(def, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
   }
 }
 
-TEST_F(utf8_expand_labels_test, 1arc_3byte_sequence) {
+TEST_F(utf8_expand_labels_test, 3byte_sequence) {
   // 3-byte sequence
   {
     irs::automaton a;
@@ -1607,12 +1818,136 @@ TEST_F(utf8_expand_labels_test, 1arc_3byte_sequence) {
       { { 0x96, 1 } },
     };
 
+    assert_properties(a);
     assert_automaton(a, expected_automaton);
+  }
+
+  // 3-byte sequence
+  {
+    irs::automaton a;
+    auto start = a.AddState();
+    auto finish = a.AddState();
+    auto def = a.AddState();
+    a.SetStart(start);
+    a.SetFinal(finish);
+    a.SetFinal(def);
+    a.EmplaceArc(start, 0x2796, finish);
+    a.EmplaceArc(start, fst::fsa::kRho, def);
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    ASSERT_EQ(8, a.NumStates());
+    assert_properties(a);
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
+
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+      auto* actual_arc = actual_arcs.arcs;
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, def);
+        ++actual_arc;
+      }
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 226; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(226, label);
+      assert_arc(*actual_arc, label, intermediate2+1);
+      ++label;
+      ++actual_arc;
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate2+1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+1, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 158, intermediate2+2);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2+2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+2, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 150, finish);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'def'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(def, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96"))));
+    ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81"))));
   }
 }
 
-
-TEST_F(utf8_expand_labels_test, 1arc_4byte_sequence) {
+TEST_F(utf8_expand_labels_test, 4byte_sequence) {
   // 4-byte sequence
   {
     irs::automaton a;
@@ -1628,6 +1963,128 @@ TEST_F(utf8_expand_labels_test, 1arc_4byte_sequence) {
       { { 0x81, 1 } },
     };
 
+    assert_properties(a);
     assert_automaton(a, expected_automaton);
+  }
+
+  // 4-byte sequence
+  {
+    irs::automaton a;
+    a.AddStates(3);
+    auto start = 0;
+    auto finish = 1;
+    auto def = 2;
+    a.SetStart(start);
+    a.EmplaceArc(start, 0x1F601, finish);
+    a.EmplaceArc(start, fst::fsa::kRho, def);
+    auto intermediate0 = a.NumStates();
+    auto intermediate1 = a.NumStates() + 1;
+    auto intermediate2 = a.NumStates() + 2;
+
+    ASSERT_EQ(fst::kNoStateId, irs::utf8_expand_labels(a));
+    ASSERT_EQ(9, a.NumStates());
+    assert_properties(a);
+
+    // arcs from start state
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(start, &actual_arcs);
+      ASSERT_EQ(255, actual_arcs.narcs);
+
+      irs::automaton::Arc::Label label = 1; // 0 is reserved for Epsilon transition
+      auto* actual_arc = actual_arcs.arcs;
+
+      for (; label < 192; ++label) {
+        assert_arc(*actual_arc, label, def);
+        ++actual_arc;
+      }
+
+      for (; label < 224; ++label) {
+        assert_arc(*actual_arc, label, intermediate0);
+        ++actual_arc;
+      }
+
+      for (; label < 240; ++label) {
+        assert_arc(*actual_arc, label, intermediate1);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(240, label);
+      assert_arc(*actual_arc, label, intermediate2+1);
+      ++label;
+      ++actual_arc;
+
+      for (; label < 256; ++label) {
+        assert_arc(*actual_arc, label, intermediate2);
+        ++actual_arc;
+      }
+
+      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
+    }
+
+    // arcs from 'intermediate2+1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+1, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 159, intermediate2+2);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'intermediate2+2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+2, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 152, intermediate2+3);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2+3'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2+3, &actual_arcs);
+      ASSERT_EQ(2, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], 129, finish);
+      assert_arc(actual_arcs.arcs[1], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate0'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate0, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, def);
+    }
+
+    // arcs from 'intermediate1'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate1, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate0);
+    }
+
+    // arcs from 'intermediate2'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(intermediate2, &actual_arcs);
+      ASSERT_EQ(1, actual_arcs.narcs);
+      assert_arc(actual_arcs.arcs[0], fst::fsa::kRho, intermediate1);
+    }
+
+    // arcs from 'finish'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(finish, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
+
+    // arcs from 'def'
+    {
+      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+      a.InitArcIterator(def, &actual_arcs);
+      ASSERT_EQ(0, actual_arcs.narcs);
+    }
   }
 }
