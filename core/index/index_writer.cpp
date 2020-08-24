@@ -2297,7 +2297,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           }
         }
 
-        bool removes_passed{ false };
+        bool segment_modified{ false };
         // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
         for (auto& modifications: ctx->pending_segment_contexts_) {
           auto modifications_begin = modifications.modification_offset_begin_;
@@ -2310,10 +2310,10 @@ index_writer::pending_context_t index_writer::flush_all() {
             modifications_end - modifications_begin
           );
 
-          removes_passed |= add_document_mask_modified_records(
+          segment_modified |= add_document_mask_modified_records(
             modification_queries, flush_segment_ctx, cached_readers_);
         }
-        if (removes_passed) {
+        if (segment_modified) {
           ctx->segment_mask_.emplace(flush_segment_ctx.segment_.meta);
         }
       }
