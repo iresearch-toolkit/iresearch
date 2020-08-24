@@ -24,94 +24,55 @@
 #define IRESEARCH_GEO_FILTER_H
 
 #include <s2/s2region_term_indexer.h>
+#include <s2/util/math/vector3_hash.h>
 
 #include "filter.hpp"
 
 NS_ROOT
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class geo_filter
-/// @brief base class for all geo filters
-//////////////////////////////////////////////////////////////////////////////
-class geo_filter : public filter {
- public:
-  geo_filter& field(std::string field) {
-    field_ = std::move(field);
-    return *this;
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_term_options
+/// @brief options for term filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_geo_distance_options {
+  using filter_type = by_geo_distance_options;
+
+  S2Point point;
+  double_t distance{0.};
+
+  bool operator==(const by_geo_distance_options& rhs) const noexcept {
+    return point == rhs.point && distance == rhs.distance;
   }
 
-  const std::string& field() const noexcept {
-    return field_;
+  size_t hash() const noexcept {
+    return hash_combine(GoodFastHash<S2Point>()(point),
+                        std::hash<decltype(distance)>()(distance));
   }
-
-  using filter::prepare;
-
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx) const override;
-
-  virtual size_t hash() const noexcept override;
-
-  const S2RegionTermIndexer::Options& options() const noexcept {
-    return indexer_.options();
-  }
-
-  geo_filter& options(const S2RegionTermIndexer::Options& options) {
-    *indexer_.mutable_options() = options;
-    return *this;
-  }
-
- protected:
-  geo_filter(const type_id& type);
-
-  virtual bool equals(const filter &rhs) const noexcept override;
-
-  virtual std::vector<std::string>
-  get_geo_terms(S2RegionTermIndexer& indexer) const = 0;
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string field_;
-  mutable S2RegionTermIndexer indexer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // geo_filter
+}; // by_term_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_geo_distance
 /// @brief user-side geo distance filter
 //////////////////////////////////////////////////////////////////////////////
-class by_geo_distance final : public geo_filter {
+class IRESEARCH_API by_geo_distance final
+  : public filter_base<by_geo_distance_options>{
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_geo_distance";
+  }
+
   DECLARE_FACTORY();
 
-  by_geo_distance();
+  using filter::prepare;
 
-  double_t distance() const noexcept { return distance_; }
-  by_geo_distance& distance(double_t distance) noexcept {
-    distance_ = distance;
-    return *this;
-  }
-
-  const S2Point& point() const noexcept { return point_; }
-  by_geo_distance& point(const S2Point& point) noexcept {
-    point_ = point;
-    return *this;
-  }
-
-  virtual size_t hash() const noexcept override;
-
- protected:
-  virtual bool equals(const filter &rhs) const noexcept override;
-
-  virtual std::vector<std::string>
-  get_geo_terms(S2RegionTermIndexer& indexer) const override;
+  virtual prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_provider* /*ctx*/) const;
 
  private:
-  S2Point point_;
-  double_t distance_{0.};
+  mutable S2RegionTermIndexer indexer_;
 }; // by_geo_distance
 
 NS_END
