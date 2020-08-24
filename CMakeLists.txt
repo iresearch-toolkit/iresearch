@@ -1,4 +1,11 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
+
+################################################################################
+### set required standard version
+################################################################################
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
 ### interprocedural optimization (link time optimization)
@@ -69,6 +76,7 @@ endif()
 
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
 option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
+option(USE_IWYU "Include IWYU checks" OFF)
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
@@ -116,6 +124,20 @@ if (USE_CLANG_TIDY)
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
   else()
     message(STATUS "clang-tidy not found.")
+  endif()
+endif()
+
+################################################################################
+### setup IWYU
+################################################################################
+
+unset(IWYU_PATH)
+
+if (USE_IWYU)
+  find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+
+  if(NOT IWYU_PATH)
+    message(FATAL_ERROR "Could not find the program include-what-you-use")
   endif()
 endif()
 
@@ -348,7 +370,11 @@ if (USE_TESTS)
         coverage
         "--ires_output"
       )
-      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
+      setup_target_for_collecting_coverage_cobertura(
+        ${IResearch_TARGET_NAME}-coverage-cobertura-collect
+        coverage
+      )
+      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura-collect
         ${IResearchTests_TARGET_NAME}-static
       )
     endif()

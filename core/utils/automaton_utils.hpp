@@ -23,23 +23,28 @@
 #ifndef IRESEARCH_AUTOMATON_UTILS_H
 #define IRESEARCH_AUTOMATON_UTILS_H
 
-#include "automaton.hpp"
-#include "fst_states_map.hpp"
-#include "hash_utils.hpp"
-#include "utf8_utils.hpp"
 #include "formats/formats.hpp"
 #include "search/filter.hpp"
+#include "utils/automaton.hpp"
+#include "utils/fstext/fst_states_map.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
+#include "fst/closure.h"
 
 NS_ROOT
 
 struct filter_visitor;
 
+inline automaton_table_matcher make_automaton_matcher(const automaton& a) {
+  return automaton_table_matcher(a, fst::fsa::kRho);
+}
+
 template<typename Char, typename Matcher>
-inline automaton::Weight accept(
-    const automaton& a,
+inline automaton::Weight match(
     Matcher& matcher,
     const basic_string_ref<Char>& target) {
-  auto state = a.Start();
+  auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
   auto begin = target.begin();
@@ -50,16 +55,16 @@ inline automaton::Weight accept(
     matcher.SetState(state);
   }
 
-  return begin == end ? a.Final(state)
+  return begin == end ? matcher.Final(state)
                       : automaton::Weight::Zero();
 }
 
-template<typename Char>
-inline automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
-  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+template<typename Char, typename Automaton>
+inline automaton::Weight accept(const Automaton& a, const basic_string_ref<Char>& target) {
+  typedef fst::RhoMatcher<fst::SortedMatcher<Automaton>> matcher_t;
 
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
-  return accept(a, matcher, target);
+  return match(matcher, target);
 }
 
 class automaton_term_iterator final : public seek_term_iterator {
@@ -92,8 +97,8 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return it_->attributes();
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
   }
 
   virtual SeekResult seek_ge(const bytes_ref& target) override {
@@ -119,9 +124,10 @@ class automaton_term_iterator final : public seek_term_iterator {
   }
 
  private:
-  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+  using automaton_matcher_t = fst::SortedMatcher<automaton>;
+  using matcher_t = fst::RhoMatcher<automaton_matcher_t>;
 
-  bool accept() { return irs::accept(*a_, matcher_, *value_); }
+  bool accept() { return irs::match(matcher_, *value_); }
 
   const automaton* a_;
   matcher_t matcher_;
@@ -169,11 +175,11 @@ class IRESEARCH_API utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= std::get<0>(*begin));
+      assert(last_ <= static_cast<bytes_ref>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
       insert(a, label.c_str(), label.size(), std::get<1>(*begin));
-      last_ = label;
+      last_ = static_cast<bytes_ref>(label);
     }
 
     finish(a, from);
@@ -220,6 +226,8 @@ class IRESEARCH_API utf8_transitions_builder {
       rhs.id = fst::kNoStateId;
     }
 
+    state& operator=(state&&) = delete;
+
     void clear() noexcept {
       rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
@@ -230,6 +238,8 @@ class IRESEARCH_API utf8_transitions_builder {
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
+
+  static_assert(std::is_nothrow_move_constructible_v<state>);
 
   struct state_hash {
     size_t operator()(const state& s, const automaton& fst) const noexcept {
@@ -371,10 +381,62 @@ class IRESEARCH_API utf8_transitions_builder {
 }; // utf8_automaton_builder
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief validate a specified automaton and print message on error
+//////////////////////////////////////////////////////////////////////////////
+inline bool validate(const automaton& a) {
+  if (fst::kError == a.Properties(automaton_table_matcher::FST_PROPERTIES, true)) {
+    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                  "got the following properties " IR_UINT64_T_SPECIFIER "",
+                  a.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+
+    return false;
+  }
+
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief generalized field visitation logic for automaton based filters
+/// @param segment segment reader
+/// @param field term reader
+/// @param matcher input matcher
+/// @param visitor visitor
+//////////////////////////////////////////////////////////////////////////////
+template<typename Visitor>
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    automaton_table_matcher& matcher,
+    Visitor& visitor) {
+  assert(fst::kError != matcher.Properties(0));
+  auto terms = reader.iterator(matcher);
+
+  if (IRS_UNLIKELY(!terms)) {
+    return;
+  }
+
+  if (terms->next()) {
+    visitor.prepare(segment, reader, *terms);
+
+    do {
+      terms->read();
+
+      visitor.visit(no_boost());
+    } while (terms->next());
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source and
 ///        target states
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  const bytes_ref& label,
+  automaton::StateId to);
+
+IRESEARCH_API void utf8_emplace_arc_range(
   automaton& a,
   automaton::StateId from,
   const bytes_ref& label,
@@ -401,11 +463,62 @@ IRESEARCH_API void utf8_emplace_rho_arc(
   automaton::StateId from,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_rho_arc_expand(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+IRESEARCH_API void utf8_emplace_rho_arc_range(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief modifies a specified UTF-8 automaton to an equivalent one that is
+///        defined over the alphabet of { [0..255], fst::fsa::kRho }
+/// @returns fst::kNoStateId on success, otherwise first failed state id
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
+
+inline automaton make_char(const automaton::Arc::Label c) {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  a.EmplaceArc(0, c, 1);
+  return a;
+}
+
+inline automaton make_char(const bytes_ref& c) {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_arc(a, 0, c, 1);
+  return a;
+}
+
+inline automaton make_any() {
+  automaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  //utf8_emplace_rho_arc_expand(a, 0, 1);
+  a.EmplaceArc(0, fst::fsa::kRho, 1);
+  return a;
+}
+
+inline automaton make_all() {
+  automaton a = make_any();
+  fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
+  return a;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief instantiate compiled filter based on a specified automaton, field
 ///        and other properties
 /// @param field field name
-/// @param acceptor input automaton
+/// @param matcher input matcher
 /// @param scored_terms_limit score as many terms
 /// @param index index reader
 /// @param order compiled order
@@ -419,17 +532,6 @@ IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const index_reader& index,
   const order::prepared& order,
   boost_t boost);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief visit an automaton with a reader using a forwarded visitor
-/// @param reader term reader
-/// @param acceptor input automaton
-/// @param fv visitor
-//////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void automaton_visit(
-  const term_reader& reader,
-  const automaton& acceptor,
-  filter_visitor& fv);
 
 NS_END
 
