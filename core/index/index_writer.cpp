@@ -2324,9 +2324,8 @@ index_writer::pending_context_t index_writer::flush_all() {
       // if have a writer with potential update-replacement records then check if they were seen
       add_document_mask_unused_updates(segment_ctx);
 
-
-      // all modified segments should already be masked.
-      // so if segment is empty here it should also be masked!
+      // after mismatched replaces here could be also empty segment
+      // so masking is needed
       if (!segment_ctx.segment_.meta.live_docs_count) {
         ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
