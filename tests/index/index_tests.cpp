@@ -13457,6 +13457,142 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(files.empty());
 }
 
+TEST_P(index_test_case, writer_insert_immediate_remove) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto* doc3 = gen.next();
+  auto* doc4 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()
+  ));
+
+  writer->commit(); // index should be non-empty
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+  directory.visit(get_number_of_files_in_segments);
+  const auto one_segment_files_count = count;
+
+  // Create segment and immediately do a remove operation
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  writer->commit();
+
+  // remove for initial segment to trigger consolidation
+  // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
+  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  writer->documents().remove(*(query_doc3.filter.get()));
+  writer->commit();
+
+  // this consolidation should bring us to one consolidated segment without removals.
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
+
+  // file removal should pass for all files (especially valid for Microsoft Windows)
+  irs::directory_utils::remove_all_unreferenced(directory);
+
+  // validate that all files from old segments have been removed
+  count = 0;
+  directory.visit(get_number_of_files_in_segments);
+  ASSERT_EQ(count, one_segment_files_count);
+}
+
+TEST_P(index_test_case, writer_insert_immediate_remove_all) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto* doc3 = gen.next();
+  auto* doc4 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()
+  ));
+
+  writer->commit(); // index should be non-empty
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+  directory.visit(get_number_of_files_in_segments);
+  const auto one_segment_files_count = count;
+
+  // Create segment and immediately do a remove operation for all added documents
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+  writer->documents().remove(*(query_doc2.filter.get()));
+  writer->commit();
+
+  // remove for initial segment to trigger consolidation
+  // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
+  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  writer->documents().remove(*(query_doc3.filter.get()));
+  writer->commit();
+
+  // this consolidation should bring us to one consolidated segment without removes.
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
+
+  // file removal should pass for all files (especially valid for Microsoft Windows)
+  irs::directory_utils::remove_all_unreferenced(directory);
+
+  // validate that all files from old segments have been removed
+  count = 0;
+  directory.visit(get_number_of_files_in_segments);
+  ASSERT_EQ(count, one_segment_files_count);
+}
+
+
 INSTANTIATE_TEST_CASE_P(
   index_test_10,
   index_test_case,
