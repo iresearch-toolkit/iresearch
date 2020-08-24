@@ -2328,7 +2328,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       // all modified segments should already be masked.
       // so if segment is empty here it should also be masked!
       if (!segment_ctx.segment_.meta.live_docs_count) {
-        assert(!ctx->segment_mask_.emplace(segment_ctx.segment_.meta).second);
+        ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
       }
       // write non-empty document mask
