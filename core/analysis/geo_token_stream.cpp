@@ -27,11 +27,13 @@ NS_BEGIN(analysis)
 
 geo_token_stream::geo_token_stream(const S2RegionTermIndexer::Options& opts,
                                    const string_ref& prefix)
-  : indexer_(opts),
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<term_attribute>::id(), &term_ }
+    }},
+    indexer_(opts),
     prefix_(prefix) {
-  attrs_.emplace(offset_);
-  attrs_.emplace(inc_);
-  attrs_.emplace(term_);
 }
 
 bool geo_token_stream::next() noexcept {
@@ -39,7 +41,12 @@ bool geo_token_stream::next() noexcept {
     return false;
   }
 
-  term_.value(*begin_++);
+  auto& value = *begin_++;
+
+  term_.value = bytes_ref(
+    reinterpret_cast<const byte_type*>(value.c_str()),
+    value.size());
+
   return true;
 }
 

@@ -27,105 +27,233 @@
 #include <s2/s2cap.h>
 
 #include "index/index_reader.hpp"
+#include "search/collectors.hpp"
+#include "search/conjunction.hpp"
+#include "search/disjunction.hpp"
 #include "search/filter_visitor.hpp"
+#include "search/multiterm_query.hpp"
+#include "search/term_filter.hpp"
 
 NS_LOCAL
 
-//using namespace irs;
-//
-//class term_visitor final : public filter_visitor {
-// public:
-//  term_visitor() { }
-//
-//  virtual void prepare(const seek_term_iterator& terms) noexcept override {
-//  }
-//
-//  virtual void visit() override {
-//  }
-//};
-//
-//template<typename Visitor>
-//void visit(const term_reader& reader,
-//           const std::vector<std::string>& geo_terms,
-//           Visitor& visitor) {
-//  auto terms = reader.iterator();
-//
-//  if (IRS_UNLIKELY(!terms)) {
-//    return;
-//  }
-//
-//  for (auto& geo_term : geo_terms) {
-//    const bytes_ref term(
-//      reinterpret_cast<const byte_type*>(geo_term.c_str()),
-//      geo_term.size());
-//
-//    if (!terms->seek(term)) {
-//      continue;
-//    }
-//
-//    visitor.prepare(*terms);
-//
-//    // read term attributes
-//    terms->read();
-//
-//    visitor.visit();
-//  }
-//}
+using namespace irs;
 
+template<typename Iterator>
+class geo_terms_iterator {
+ public:
 
-std::vector<std::string> get_geo_terms(
-    S2RegionTermIndexer& indexer,
-    const irs::by_geo_distance_options& opts) {
-  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(opts.distance)));
+ private:
+  Iterator it_;
+};
 
-  // FIXME  if (!region.is_valid()) {
-  if (!(S2::IsUnitLength(opts.point) && radius.length2() <= 4)) {
-    return {};
+//////////////////////////////////////////////////////////////////////////////
+/// @struct multiterm_state
+/// @brief cached per reader state
+//////////////////////////////////////////////////////////////////////////////
+struct geo_state {
+  using term_state = seek_term_iterator::seek_cookie::ptr;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reader using for iterate over the terms
+  //////////////////////////////////////////////////////////////////////////////
+  const term_reader* reader{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief geo term states
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<seek_term_iterator::seek_cookie::ptr> states;
+}; // geo_state
+
+class geo_terms_query : public filter::prepared {
+ public:
+  using states_t = states_cache<geo_state>;
+
+  geo_terms_query(
+      states_t&& states,
+      bstring&& stats,
+      boost_t boost,
+      bool contains) noexcept
+    : prepared(boost), states_(std::move(states)),
+      stats_(std::move(stats)), contains_(contains) {
   }
 
-  const S2Cap region(opts.point, radius);
-  return indexer.GetQueryTerms(region, {});
+  virtual doc_iterator::ptr execute(
+      const sub_reader& segment,
+      const order::prepared& ord,
+      const attribute_provider* /*ctx*/) const override {
+    using doc_iterator_t = score_iterator_adapter<doc_iterator::ptr>;
+
+    // get term state for the specified reader
+    auto state = states_.find(segment);
+
+    if (!state) {
+      // invalid state
+      return doc_iterator::empty();
+    }
+
+    // get terms iterator
+    auto terms = state->reader->iterator();
+
+    if (IRS_UNLIKELY(!terms)) {
+      return doc_iterator::empty();
+    }
+
+    std::vector<doc_iterator_t> itrs;
+    itrs.reserve(state->states.size());
+
+    const auto& features = irs::flags::empty_instance();
+
+    for (auto& entry : state->states) {
+      assert(entry);
+      if (!terms->seek(bytes_ref::NIL, *entry)) {
+        return doc_iterator::empty(); // internal error
+      }
+
+      auto docs = terms->postings(features);
+
+      itrs.emplace_back(std::move(docs));
+
+      if (IRS_UNLIKELY(!itrs.back().it)) {
+        itrs.pop_back();
+
+        if (contains_) {
+          return doc_iterator::empty();
+        }
+
+        continue;
+      }
+    }
+
+    doc_iterator::ptr it;
+    if (contains_) {
+      using conjunction_t = conjunction<doc_iterator::ptr>;
+
+      it = make_conjunction<conjunction_t>(std::move(itrs));
+    } else {
+      using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
+
+      it = make_disjunction<disjunction_t>(std::move(itrs));
+    }
+
+    return it;
+
+    //if (ord.empty()) {
+    //  return make_disjunction<disjunction_t>(
+    //    std::move(itrs), ord, merge_type_, state->estimation());
+    //}
+
+    //return make_disjunction<scored_disjunction_t>(
+    //  std::move(itrs), ord, merge_type_, state->estimation());
+  }
+
+ private:
+  states_t states_;
+  bstring stats_;
+  bool contains_;
+};
+
+NS_END
+
+NS_ROOT
+NS_BEGIN(geo)
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                             by_geo_terms_options
+// ----------------------------------------------------------------------------
+
+bool by_geo_terms_options::reset(GeoFilterType type, S2Point point, double_t distance) {
+  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(distance)));
+
+  // FIXME  if (!region.is_valid()) {
+  if (!(S2::IsUnitLength(point) && radius.length2() <= 4)) {
+    return false;
+  }
+
+  reset(type, S2Cap(point, radius));
+  return true;
 }
 
-irs::filter::prepared::ptr prepare(
-    const irs::string_ref& field,
-    const std::vector<std::string>& geo_terms,
-    const irs::index_reader& index,
-    const irs::order::prepared& order,
-    irs::boost_t boost) {
+void by_geo_terms_options::reset(GeoFilterType type, const S2Region& region) {
+  terms_ = indexer_.GetQueryTerms(region, {});
+  type_ = type;
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                     by_geo_terms
+// ----------------------------------------------------------------------------
+
+filter::prepared::ptr by_geo_terms::prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const attribute_provider* /*ctx*/) const {
+  const string_ref field = this->field();
+
+  boost *= this->boost();
+  const auto& geo_terms = options().terms();
+  const size_t size = geo_terms.size();
+
+  if (0 == size) {
+    return prepared::empty();
+  }
+
+  if (1 == size) {
+    return by_term::prepare(index, order, boost, field, ref_cast<byte_type>(geo_terms.front()));
+  }
+
+  const bool contains = options().type() == GeoFilterType::CONTAINS;
+  field_collectors field_stats(order);
+  geo_terms_query::states_t states(index.size());
+  std::vector<geo_state::term_state> term_states;
+
   for (auto& segment : index) {
-    const auto* reader = segment.field(field);
+    auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-//    term_visitor tv;
-//
-//    ::visit(*reader, geo_terms, tv);
+    auto terms = reader->iterator();
+
+    if (IRS_UNLIKELY(!terms)) {
+      continue;
+    }
+
+    field_stats.collect(segment, *reader);
+    term_states.reserve(size);
+
+    for (auto& term : geo_terms) {
+      if (!terms->seek(ref_cast<byte_type>(term))) {
+        if (contains) {
+          break;
+        }
+
+        continue;
+      }
+
+      terms->read();
+
+      term_states.emplace_back(terms->cookie());
+    }
+
+    if (contains && term_states.size() != geo_terms.size()) {
+      continue;
+    }
+
+    auto& state = states.insert(segment);
+    state.reader = reader;
+    state.states = std::move(term_states);
   }
 
-  return irs::filter::prepared::empty();
+  bstring stats(order.stats_size(), 0);
+  field_stats.finish(const_cast<byte_type*>(stats.data()), index);
+
+  return memory::make_managed<geo_terms_query>(
+    std::move(states), std::move(stats),
+    boost, contains);
 }
 
-NS_END
+DEFINE_FACTORY_DEFAULT(by_geo_terms)
 
-NS_ROOT
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  by_geo_distance
-// ----------------------------------------------------------------------------
-
-filter::prepared::ptr by_geo_distance::prepare(
-    const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
-    const attribute_provider* /*ctx*/) const {
-  return ::prepare(this->field(), ::get_geo_terms(indexer_, options()),
-                   index, order, boost);
-}
-
-
-DEFINE_FACTORY_DEFAULT(by_geo_distance)
-
+NS_END // geo
 NS_END

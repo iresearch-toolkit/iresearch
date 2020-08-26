@@ -26,34 +26,22 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "shared.hpp"
-#include "analyzers.hpp"
-#include "token_stream.hpp"
-#include "token_attributes.hpp"
+#include "analysis/analyzer.hpp"
+#include "analysis/token_stream.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
 
-class geo_token_stream final : public token_stream,
-                               private util::noncopyable {
- private:
-  class term : public term_attribute {
-   public:
-    void value(const std::string& v) noexcept {
-      value_ = bytes_ref(
-        reinterpret_cast<const byte_type*>(v.c_str()),
-        v.size());
-    }
-  }; // term
-
+class geo_token_stream final
+  : public frozen_attributes<3, token_stream>,
+    private util::noncopyable {
  public:
   static void init(); // for triggering registration in a static build
 
   explicit geo_token_stream(const S2RegionTermIndexer::Options& opts,
                             const string_ref& prefix);
-
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
 
   virtual bool next() noexcept override;
 
@@ -66,10 +54,9 @@ class geo_token_stream final : public token_stream,
   const std::string* begin_{ terms_.data() };
   const std::string* end_{ begin_ };
   std::string prefix_;
-  attribute_view attrs_;
   offset offset_;
   increment inc_;
-  term term_;
+  term_attribute term_;
 }; // geo_token_stream
 
 NS_END // analysis

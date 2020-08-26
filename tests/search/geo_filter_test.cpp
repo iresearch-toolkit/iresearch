@@ -89,31 +89,78 @@ TEST_P(geo_filter_test_case, test) {
 //}
 //#endif
 //
+
+TEST(by_geo_distance_test, options) {
+  irs::geo::by_geo_terms_options opts;
+  ASSERT_TRUE(opts.terms().empty());
+  ASSERT_EQ(irs::geo::GeoFilterType::INTERSECTS, opts.type());
+}
+
 TEST(by_geo_distance_test, ctor) {
-  irs::by_geo_distance q;
-  ASSERT_EQ(irs::by_geo_distance::type(), q.type());
-  ASSERT_EQ(S2Point(), q.point());
-  ASSERT_EQ(0., q.distance());
+  irs::geo::by_geo_terms q;
+  ASSERT_EQ(irs::type<irs::geo::by_geo_terms>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::geo::by_geo_terms_options{}, q.options());
 }
 
 TEST(by_geo_distance_test, equal) {
-  irs::by_geo_distance q;
-  q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
-  ASSERT_EQ(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field"));
-  ASSERT_EQ(q.hash(), irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field").hash());
-  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field1"));
-  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(6.).field("field"));
-  ASSERT_NE(q, irs::by_geo_distance().point(S2Point{2., 2., 3.}).distance(5.).field("field"));
-  ASSERT_EQ(q, irs::by_geo_distance().point(S2Point{1., 2., 3.}).distance(5.).field("field").boost(2.));
+  irs::geo::by_geo_terms q;
+  q.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+  *q.mutable_field() = "field";
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    *q1.mutable_field() = "field";
+    ASSERT_EQ(q, q1);
+    ASSERT_EQ(q.hash(), q1.hash());
+  }
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.boost(1.5);
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    *q1.mutable_field() = "field";
+    ASSERT_EQ(q, q1);
+    ASSERT_EQ(q.hash(), q1.hash());
+  }
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    *q1.mutable_field() = "field1";
+    ASSERT_NE(q, q1);
+  }
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::CONTAINS, S2Point{1., 2., 3.}, 5.);
+    *q1.mutable_field() = "field";
+    ASSERT_NE(q, q1);
+  }
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::CONTAINS, S2Point{1., 2., 3.}, 5.);
+    *q1.mutable_field() = "field";
+    ASSERT_NE(q, q1);
+  }
+
+  {
+    irs::geo::by_geo_terms q1;
+    q1.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{2., 2., 3.}, 5.);
+    *q1.mutable_field() = "field";
+    ASSERT_NE(q, q1);
+  }
 }
 
 TEST(by_geo_distance_test, boost) {
   // no boost
   {
-    irs::by_geo_distance q;
-    q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
+    irs::geo::by_geo_terms q;
+    q.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -122,8 +169,9 @@ TEST(by_geo_distance_test, boost) {
   // with boost
   {
     irs::boost_t boost = 1.5f;
-    irs::by_geo_distance q;
-    q.point(S2Point{1., 2., 3.}).distance(5.).field("field");
+    irs::geo::by_geo_terms q;
+    q.mutable_options()->reset(irs::geo::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    *q.mutable_field() = "field";
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());

@@ -24,41 +24,73 @@
 #define IRESEARCH_GEO_FILTER_H
 
 #include <s2/s2region_term_indexer.h>
-#include <s2/util/math/vector3_hash.h>
 
 #include "filter.hpp"
 
 NS_ROOT
+NS_BEGIN(geo)
+
+class by_geo_terms;
+
+enum class GeoFilterType : uint32_t {
+  INTERSECTS = 0,
+  CONTAINS
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_term_options
 /// @brief options for term filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_geo_distance_options {
-  using filter_type = by_geo_distance_options;
+class IRESEARCH_API by_geo_terms_options {
+ public:
+  using filter_type = by_geo_terms;
 
-  S2Point point;
-  double_t distance{0.};
+  bool reset(GeoFilterType type, S2Point point, double_t distance);
+  void reset(GeoFilterType type, const S2Region& region);
 
-  bool operator==(const by_geo_distance_options& rhs) const noexcept {
-    return point == rhs.point && distance == rhs.distance;
+  const std::vector<std::string> terms() const noexcept {
+    return terms_;
+  }
+
+  GeoFilterType type() const noexcept {
+    return type_;
+  }
+
+  const S2RegionTermIndexer::Options& options() const noexcept {
+    return indexer_.options();
+  }
+
+  S2RegionTermIndexer::Options* mutable_options() noexcept {
+    return indexer_.mutable_options();
+  }
+
+  bool operator==(const by_geo_terms_options& rhs) const noexcept {
+    return type_ == rhs.type_ && terms_ == rhs.terms_;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(GoodFastHash<S2Point>()(point),
-                        std::hash<decltype(distance)>()(distance));
+    size_t hash = std::hash<decltype(type_)>()(type_);
+    for (auto& term : terms_) {
+      hash = hash_combine(hash, hash_utils::hash(string_ref(term)));
+    }
+    return hash;
   }
-}; // by_term_options
+
+ private:
+  std::vector<std::string> terms_;
+  mutable S2RegionTermIndexer indexer_;
+  GeoFilterType type_{GeoFilterType::INTERSECTS};
+}; // by_geo_terms_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_geo_distance
 /// @brief user-side geo distance filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_geo_distance final
-  : public filter_base<by_geo_distance_options>{
+class IRESEARCH_API by_geo_terms final
+  : public filter_base<by_geo_terms_options>{
  public:
   static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_geo_distance";
+    return "iresearch::by_geo_terms";
   }
 
   DECLARE_FACTORY();
@@ -70,11 +102,9 @@ class IRESEARCH_API by_geo_distance final
       const order::prepared& ord,
       boost_t boost,
       const attribute_provider* /*ctx*/) const;
+}; // by_geo_terms
 
- private:
-  mutable S2RegionTermIndexer indexer_;
-}; // by_geo_distance
-
+NS_END // geo
 NS_END
 
 #endif // IRESEARCH_GEO_FILTER_H
