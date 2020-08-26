@@ -155,7 +155,6 @@ class geo_terms_query : public filter::prepared {
 NS_END
 
 NS_ROOT
-NS_BEGIN(geo)
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             by_geo_terms_options
@@ -255,5 +254,4 @@ filter::prepared::ptr by_geo_terms::prepare(
 
 DEFINE_FACTORY_DEFAULT(by_geo_terms)
 
-NS_END // geo
 NS_END

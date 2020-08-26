@@ -28,7 +28,6 @@
 #include "filter.hpp"
 
 NS_ROOT
-NS_BEGIN(geo)
 
 class by_geo_terms;
 
@@ -104,7 +103,6 @@ class IRESEARCH_API by_geo_terms final
       const attribute_provider* /*ctx*/) const;
 }; // by_geo_terms
 
-NS_END // geo
 NS_END
 
 #endif // IRESEARCH_GEO_FILTER_H

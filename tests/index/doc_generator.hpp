@@ -217,6 +217,7 @@ class particle: irs::util::noncopyable {
   void reserve(size_t size) { fields_.reserve(size); }
   void push_back(const ifield::ptr& fld) { fields_.emplace_back(fld); }
 
+  ifield& front() const { return *fields_.front(); }
   ifield& back() const { return *fields_.back(); }
   bool contains(const irs::string_ref& name) const;
   std::vector<ifield::ptr> find(const irs::string_ref& name) const;
