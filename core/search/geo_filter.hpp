@@ -44,8 +44,8 @@ class IRESEARCH_API by_geo_terms_options {
  public:
   using filter_type = by_geo_terms;
 
-  bool reset(GeoFilterType type, S2Point point, double_t distance);
   void reset(GeoFilterType type, const S2Region& region);
+  void reset(const S2Point& point);
 
   const std::vector<std::string> terms() const noexcept {
     return terms_;
@@ -53,6 +53,14 @@ class IRESEARCH_API by_geo_terms_options {
 
   GeoFilterType type() const noexcept {
     return type_;
+  }
+
+  const std::string& prefix() const noexcept {
+    return prefix_;
+  }
+
+  std::string* mutable_prefix() noexcept {
+    return &prefix_;
   }
 
   const S2RegionTermIndexer::Options& options() const noexcept {
@@ -77,6 +85,7 @@ class IRESEARCH_API by_geo_terms_options {
 
  private:
   std::vector<std::string> terms_;
+  std::string prefix_;
   mutable S2RegionTermIndexer indexer_;
   GeoFilterType type_{GeoFilterType::INTERSECTS};
 }; // by_geo_terms_options
