@@ -26,9 +26,8 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "shared.hpp"
-#include "analysis/analyzer.hpp"
-#include "analysis/token_stream.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_stream.hpp"
 #include "utils/frozen_attributes.hpp"
 
 NS_ROOT

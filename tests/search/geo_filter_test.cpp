@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
@@ -26,6 +25,8 @@
 #include "rapidjson/document.h"
 #include "s2/s2latlng.h"
 #include "s2/s2text_format.h"
+#include <s2/s2earth.h>
+#include <s2/s2cap.h>
 
 #include "index/doc_generator.hpp"
 #include "filter_test_case_base.hpp"
@@ -67,7 +68,74 @@ struct geo_region_field final : tests::field_base {
 
 class geo_terms_filter_test_case : public tests::filter_test_case_base { };
 
-TEST_P(geo_terms_filter_test_case, test) {
+TEST_P(geo_terms_filter_test_case, test_region) {
+  // add segment
+  double_t lnglat[2];
+  double_t* coord = lnglat;
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential_geo.json"),
+    [&](tests::document& doc,
+       const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
+     if (name == "type") {
+       coord = lnglat;
+       ASSERT_TRUE(data.is_string());
+       ASSERT_EQ(data.str, irs::string_ref("Point"));
+     } else if (name == "coordinates") {
+       ASSERT_TRUE(data.is_number());
+       *coord++ = data.dbl;
+     } else if (name == "name") {
+       auto geo_field = std::make_shared<::geo_point_field>();
+       geo_field->name("point");
+       geo_field->point = S2Point(S2LatLng::FromDegrees(lnglat[1], lnglat[0]));
+       auto name_field = std::make_shared<tests::templates::string_field>("name");
+       name_field->value(data.str);
+
+       doc.insert(geo_field, true, true);
+       doc.insert(name_field, true, true);
+     }
+  });
+
+  add_segment(gen);
+
+  auto reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0];
+  auto* column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+
+  const double_t distance = 0.000005;
+  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(distance)));
+
+  gen.reset();
+  irs::doc_id_t doc_id = irs::doc_limits::min();
+  while (auto* doc = gen.next()) {
+    auto& geo_field = static_cast<const geo_point_field&>(doc->indexed.front());
+    auto& name_field = static_cast<const tests::templates::string_field&>(doc->indexed.back());
+
+    irs::by_geo_terms q;
+    *q.mutable_field() = "point";
+    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap(geo_field.point, radius));
+
+    auto prepared = q.prepare(reader);
+    ASSERT_NE(nullptr, prepared);
+    auto docs = prepared->execute(segment);
+    ASSERT_NE(nullptr, docs);
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(doc_id, docs->value());
+    ASSERT_FALSE(docs->next());
+    ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
+
+    irs::bytes_ref value;
+    ASSERT_TRUE(values(doc_id, value));
+    ASSERT_EQ(name_field.value(), irs::to_string<irs::string_ref>(value.c_str()));
+    ++doc_id;
+  }
+}
+
+TEST_P(geo_terms_filter_test_case, test_point) {
   // add segment
   double_t lnglat[2];
   double_t* coord = lnglat;
@@ -113,7 +181,8 @@ TEST_P(geo_terms_filter_test_case, test) {
 
     irs::by_geo_terms q;
     *q.mutable_field() = "point";
-    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, geo_field.point, 0.000005);
+    q.mutable_options()->mutable_options()->set_index_contains_points_only(true);
+    q.mutable_options()->reset(geo_field.point);
 
     auto prepared = q.prepare(reader);
     ASSERT_NE(nullptr, prepared);
@@ -175,13 +244,15 @@ TEST(by_geo_distance_test, ctor) {
 }
 
 TEST(by_geo_distance_test, equal) {
+  const S1ChordAngle radius5(S1Angle::Radians(S2Earth::MetersToRadians(5.)));
+
   irs::by_geo_terms q;
-  q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+  q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
   *q.mutable_field() = "field";
 
   {
     irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
@@ -190,7 +261,7 @@ TEST(by_geo_distance_test, equal) {
   {
     irs::by_geo_terms q1;
     q1.boost(1.5);
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
@@ -198,38 +269,40 @@ TEST(by_geo_distance_test, equal) {
 
   {
     irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q1.mutable_field() = "field1";
     ASSERT_NE(q, q1);
   }
 
   {
     irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Point{1., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 
   {
     irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Point{1., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 
   {
     irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{2., 2., 3.}, 5.);
+    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{2., 2., 3.}, radius5});
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 }
 
 TEST(by_geo_distance_test, boost) {
+  const S1ChordAngle radius5(S1Angle::Radians(S2Earth::MetersToRadians(5.)));
+
   // no boost
   {
     irs::by_geo_terms q;
-    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -240,7 +313,7 @@ TEST(by_geo_distance_test, boost) {
   {
     irs::boost_t boost = 1.5f;
     irs::by_geo_terms q;
-    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Point{1., 2., 3.}, 5.);
+    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
     *q.mutable_field() = "field";
     q.boost(boost);
 

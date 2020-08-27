@@ -22,10 +22,6 @@
 
 #include "geo_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-#include <s2/s2earth.h>
-#include <s2/s2cap.h>
-
 #include "index/index_reader.hpp"
 #include "search/collectors.hpp"
 #include "search/conjunction.hpp"
@@ -160,21 +156,14 @@ NS_ROOT
 // --SECTION--                                             by_geo_terms_options
 // ----------------------------------------------------------------------------
 
-bool by_geo_terms_options::reset(GeoFilterType type, S2Point point, double_t distance) {
-  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(distance)));
-
-  // FIXME  if (!region.is_valid()) {
-  if (!(S2::IsUnitLength(point) && radius.length2() <= 4)) {
-    return false;
-  }
-
-  reset(type, S2Cap(point, radius));
-  return true;
+void by_geo_terms_options::reset(GeoFilterType type, const S2Region& region) {
+  terms_ = indexer_.GetQueryTerms(region, prefix_);
+  type_ = type;
 }
 
-void by_geo_terms_options::reset(GeoFilterType type, const S2Region& region) {
-  terms_ = indexer_.GetQueryTerms(region, {});
-  type_ = type;
+void by_geo_terms_options::reset(const S2Point& point) {
+  terms_ = indexer_.GetQueryTerms(point, prefix_);
+  type_ = GeoFilterType::INTERSECTS;
 }
 
 // ----------------------------------------------------------------------------
