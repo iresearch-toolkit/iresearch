@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 
-// #include "analysis/pipeline_token_stream.hpp"
+#include "analysis/pipeline_token_stream.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
@@ -38,104 +38,103 @@
 
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
-NS_ROOT
-NS_BEGIN(analysis)
-
-class pipeline_token_stream final
-	: public frozen_attributes<3, analyzer>,  private util::noncopyable {
- public:
-  struct options_t {
-		std::vector<irs::analysis::analyzer::ptr> pipeline;
-  };
-
-	static constexpr string_ref type_name() noexcept { return "pipeline"; }
-
-	pipeline_token_stream(const options_t& options) 
-		: attributes{ {
-		 { irs::type<increment>::id(), &inc_ },
-		 { irs::type<offset>::id(), &offs_ },
-		 { irs::type<term_attribute>::id(), &term_ }},
-	   irs::type<pipeline_token_stream>::get()} {
-		pipeline_.reserve(options.pipeline.size());
-		for (const auto& p : options.pipeline) {
-			pipeline_.emplace_back(p);
-		}
-	}
-
-	virtual bool next() override {
-		while (!current_->analyzer->next()) {
-			if (current_ == pipeline_.rbegin()) {
-				return false;
-			}
-			current_--;
-		}
-		return true;
-	}
-
-	virtual bool reset(const string_ref& data) override {
-		current_ = pipeline_.rbegin();
-		return pipeline_.front().analyzer->reset(data);
-	}
-
- private:
-	 struct sub_analyzer_t {
-	   explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a) : analyzer(a) {}
-		 
-		 void reset(const string_ref& data) {
-			 analyzer->reset(data);
-			 sub_pos = integer_traits<uint32_t>::const_max;
-		 }
-		 uint32_t sub_pos{ integer_traits<uint32_t>::const_max };
-		 irs::analysis::analyzer::ptr analyzer;
-	};
-	using pipeline_t = std::vector<sub_analyzer_t>;
-	pipeline_t pipeline_;
-	pipeline_t::reverse_iterator current_;
-	offset offs_;
-	increment inc_;
-	// FIXME: find way to wire attribute directly from last pipeline member
-	term_attribute term_;
-};
-
-NS_END
-NS_END
-
 #ifndef IRESEARCH_DLL
 
-TEST(pipeline_token_stream_test, construct) {
-	auto text = irs::analysis::analyzers::get("text",
-		irs::type<irs::text_format::json>::get(),
-		"{\"locale\":\"en_US.UTF-8\", \"stopwords\":[] }");
 
-	auto ngram = irs::analysis::analyzers::get("ngram",
-		irs::type<irs::text_format::json>::get(),
-		"{\"min\":2, \"max\":2, \"preserveOriginal\":true }");
-
-	auto delimiter = irs::analysis::analyzers::get("delimiter",
-		irs::type<irs::text_format::json>::get(),
-		"{\"delimiter\":\",\"}");
-
-	irs::analysis::pipeline_token_stream::options_t pipeline_options;
-	pipeline_options.pipeline.push_back(delimiter);
-	pipeline_options.pipeline.push_back(text);
-	pipeline_options.pipeline.push_back(ngram);
-
-	irs::analysis::pipeline_token_stream pipe(pipeline_options);
-
-	std::string data = "quick brown fox jumps over lazy dog";
+void check_pipeline(irs::analysis::pipeline_token_stream& pipe, const std::string& data, bool no_modifications) {
+	SCOPED_TRACE(data);
 	auto* offset = irs::get<irs::offset>(pipe);
 	auto* term = irs::get<irs::term_attribute>(pipe);
 	auto* inc = irs::get<irs::increment>(pipe);
 	pipe.reset(data);
 	uint32_t pos { irs::integer_traits<uint32_t>::const_max }; 
 	while (pipe.next()) {
-		std::cerr << "===================" << std::endl;
-		std::cerr << "Offset:" << offset->start << ":" << offset->end << std::endl;
-		std::cerr << "Inc:" << inc->value << std::endl;
+		auto old_pos = pos;
 		pos += inc->value;
+		auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+#ifdef IRESEARCH_DEBUG //TODO: remove me
+		std::cerr << term_value << "(" << pos << ")" <<"|";
+#endif
 		ASSERT_EQ(term->value.size(), offset->end - offset->start);
-		ASSERT_EQ(offset->start, inc->value);
-		std::cerr << term->value.c_str() << std::endl;
+		ASSERT_GE(pos - old_pos, 0);
+		if (no_modifications) {
+			ASSERT_EQ(data.substr(offset->start, offset->end - offset->start), term_value);
+		}
+	}
+	std::cerr << std::endl;
+}
+
+TEST(pipeline_token_stream_test, many_tokenizers) {
+	auto delimiter = irs::analysis::analyzers::get("delimiter",
+		irs::type<irs::text_format::json>::get(),
+		"{\"delimiter\":\",\"}");
+
+	auto delimiter2 = irs::analysis::analyzers::get("delimiter",
+		irs::type<irs::text_format::json>::get(),
+		"{\"delimiter\":\" \"}");
+
+	auto text = irs::analysis::analyzers::get("text",
+		irs::type<irs::text_format::json>::get(),
+		"{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":false }");
+
+	auto ngram = irs::analysis::analyzers::get("ngram",
+		irs::type<irs::text_format::json>::get(),
+		"{\"min\":2, \"max\":2, \"preserveOriginal\":true }");
+
+	irs::analysis::pipeline_token_stream::options_t pipeline_options;
+	pipeline_options.pipeline.push_back(delimiter);
+	pipeline_options.pipeline.push_back(delimiter2);
+	pipeline_options.pipeline.push_back(text);
+	pipeline_options.pipeline.push_back(ngram);
+
+	irs::analysis::pipeline_token_stream pipe(pipeline_options);
+
+	std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
+	check_pipeline(pipe, data, true);
+}
+
+TEST(pipeline_token_stream_test, overlapping_ngrams) {
+
+	auto ngram = irs::analysis::analyzers::get("ngram",
+		irs::type<irs::text_format::json>::get(),
+		"{\"min\":6, \"max\":10, \"preserveOriginal\":false }");
+	auto ngram2 = irs::analysis::analyzers::get("ngram",
+		irs::type<irs::text_format::json>::get(),
+		"{\"min\":2, \"max\":3, \"preserveOriginal\":false }");
+
+	irs::analysis::pipeline_token_stream::options_t pipeline_options;
+	pipeline_options.pipeline.push_back(ngram);
+	pipeline_options.pipeline.push_back(ngram2);
+	irs::analysis::pipeline_token_stream pipe(pipeline_options);
+
+	std::string data = "ABCDEFJHIJKLMNOP";
+	check_pipeline(pipe, data, true);
+}
+
+
+TEST(pipeline_token_stream_test, case_ngrams) {
+
+	auto ngram = irs::analysis::analyzers::get("ngram",
+		irs::type<irs::text_format::json>::get(),
+		"{\"min\":3, \"max\":3, \"preserveOriginal\":false }");
+	auto norm = irs::analysis::analyzers::get("norm",
+		irs::type<irs::text_format::json>::get(),
+		"{\"locale\":\"en\", \"case\":\"upper\"}");
+	std::string data = "QuIck BroWN FoX";
+	{
+		irs::analysis::pipeline_token_stream::options_t pipeline_options;
+		pipeline_options.pipeline.push_back(ngram);
+		pipeline_options.pipeline.push_back(norm);
+		irs::analysis::pipeline_token_stream pipe(pipeline_options);
+		check_pipeline(pipe, data, false);
+	}
+	{
+		irs::analysis::pipeline_token_stream::options_t pipeline_options;
+		pipeline_options.pipeline.push_back(norm);
+		pipeline_options.pipeline.push_back(ngram);
+		irs::analysis::pipeline_token_stream pipe(pipeline_options);
+		check_pipeline(pipe, data, false);
 	}
 }
+
 #endif
