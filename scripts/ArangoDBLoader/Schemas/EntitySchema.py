@@ -4,14 +4,26 @@ from mimesis import builtins
 def getSchema():
   _ = Field('en', providers=[builtins.USASpecProvider])
 
+  entityTypes = [
+    "address","bankaccount","bankcard","case","charge","commonreference","caserecord",
+    "emailaddress","flight","handset","interview","judgement","loyaltycard","meter","nationalidcard",
+    "numberplate","operation","organisation","passport","person","phonenumber","pointofsale","prison",
+    "punishment","simcard","suspect","vehicle","visa","pobox","pointofentry","ship","financialendpoint",
+    "unknownparty" ]
+
+  permissions = ['Public', 'Private', 'Department']
+  statuses = ['Live', 'Disabled', 'Work In Progress']
+
   return Schema(schema=lambda: {
-    'id': _('identifier'),
+    '_key': _('identifier', mask='#####-#####-####'),
     'owner': _('full_name'),
-    'permission': _('choice', items=['Public', 'Private', 'Department']),
-    'status': _('choice', items=['Live', 'Disabled', 'Work In Progress']),
+    'permission': _('choice', items=permissions),
+    'status': _('choice', items=statuses),
+    'type': _('choice', items=entityTypes),
     'address': [ { "value": _('address') } ],
     'firstName': [ { "value": _('first_name') } ],
     'lastName': [ { "value": _('last_name') } ],
+    'gender': [ { "value": _('gender') } ],
     'phone': [ { "value": _('telephone') } ],
     'nationality': [ { "value": _('nationality') } ],
     'occupation': [ { "value": _('occupation') } ],
@@ -31,7 +43,7 @@ def getSchema():
     'suspect': [ { "value": _('text.swear_word') } ],
     'visa': [ { "value": _('uuid') } ],
     'flight': [ { "value": _('text.word') } ],
-    'timestamp': [ {"value": _('timestamp', posix=False) } ]
+    'timestamp': [ {"value": _('timestamp', posix=False) } ],
   })
 
 def main():
