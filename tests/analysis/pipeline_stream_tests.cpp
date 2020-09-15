@@ -51,18 +51,18 @@ struct analyzer_token {
 using analyzer_tokens = std::vector<analyzer_token>;
 
 
-void assert_pipeline(irs::analysis::pipeline_token_stream& pipe, const std::string& data, const analyzer_tokens& expected_tokens) {
+void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, const analyzer_tokens& expected_tokens) {
 	SCOPED_TRACE(data);
-	auto* offset = irs::get<irs::offset>(pipe);
+	auto* offset = irs::get<irs::offset>(*pipe);
 	ASSERT_TRUE(offset);
-	auto* term = irs::get<irs::term_attribute>(pipe);
+	auto* term = irs::get<irs::term_attribute>(*pipe);
 	ASSERT_TRUE(term);
-	auto* inc = irs::get<irs::increment>(pipe);
+	auto* inc = irs::get<irs::increment>(*pipe);
 	ASSERT_TRUE(inc);
-	ASSERT_TRUE(pipe.reset(data));
+	ASSERT_TRUE(pipe->reset(data));
 	uint32_t pos { irs::integer_traits<uint32_t>::const_max };
 	auto expected_token = expected_tokens.begin();
-	while (pipe.next()) {
+	while (pipe->next()) {
 		auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
 		auto old_pos = pos;
 		pos += inc->value;
@@ -141,7 +141,7 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
 		{ "dog", 37, 40, 20},
 		{ "og", 38, 40, 21},
 	};
-	assert_pipeline(pipe, data, expected);
+	assert_pipeline(&pipe, data, expected);
 }
 
 TEST(pipeline_token_stream_test, overlapping_ngrams) {
@@ -173,7 +173,7 @@ TEST(pipeline_token_stream_test, overlapping_ngrams) {
 		{"DEF", 3, 6, 23}, {"EF", 4, 6, 24}, {"EFJ", 4, 7, 24}, {"FJ", 5, 7, 25},
 		{"FJH", 5, 8, 25}, {"JH", 6, 8, 26},
 	};
-	assert_pipeline(pipe, data, expected);
+	assert_pipeline(&pipe, data, expected);
 }
 
 
@@ -197,14 +197,14 @@ TEST(pipeline_token_stream_test, case_ngrams) {
 		pipeline_options.pipeline.push_back(ngram);
 		pipeline_options.pipeline.push_back(norm);
 		irs::analysis::pipeline_token_stream pipe(pipeline_options);
-		assert_pipeline(pipe, data, expected);
+		assert_pipeline(&pipe, data, expected);
 	}
 	{
 		irs::analysis::pipeline_token_stream::options_t pipeline_options;
 		pipeline_options.pipeline.push_back(norm);
 		pipeline_options.pipeline.push_back(ngram);
 		irs::analysis::pipeline_token_stream pipe(pipeline_options);
-		assert_pipeline(pipe, data, expected);
+		assert_pipeline(&pipe, data, expected);
 	}
 }
 
@@ -223,7 +223,7 @@ TEST(pipeline_token_stream_test, no_tokenizers) {
 	pipeline_options.pipeline.push_back(norm1);
 	pipeline_options.pipeline.push_back(norm2);
 	irs::analysis::pipeline_token_stream pipe(pipeline_options);
-	assert_pipeline(pipe, data, expected);
+	assert_pipeline(&pipe, data, expected);
 }
 
 TEST(pipeline_token_stream_test, source_modification_tokenizer) {
@@ -245,15 +245,31 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
 		pipeline_options.pipeline.push_back(text);
 		pipeline_options.pipeline.push_back(norm);
 		irs::analysis::pipeline_token_stream pipe(pipeline_options);
-		assert_pipeline(pipe, data, expected);
+		assert_pipeline(&pipe, data, expected);
 	}
 	{
 		irs::analysis::pipeline_token_stream::options_t pipeline_options;
 		pipeline_options.pipeline.push_back(norm);
 		pipeline_options.pipeline.push_back(text);
 		irs::analysis::pipeline_token_stream pipe(pipeline_options);
-		assert_pipeline(pipe, data, expected);
+		assert_pipeline(&pipe, data, expected);
 	}
+}
+
+TEST(pipeline_token_stream_test, test_construct) {
+	std::string config = "{\"pipeline\":[\
+                           {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"type\":\"text\", \"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
+                        ]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_NE(nullptr, stream);
+	const analyzer_tokens expected{
+		{"QUICK", 0, 5, 0},
+		{"BROWN", 6, 11, 1},
+		{"JUMP", 16, 21, 2}
+	};
+	assert_pipeline(stream.get(), "QuickABrownAFOXAjUmps", expected);
 }
 
 #endif

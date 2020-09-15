@@ -29,17 +29,6 @@
 
 NS_LOCAL
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a jSON encoded object with the following attributes:
-/// pipeline: Array of objects containing analyzers definition inside pipeline.
-/// Each definition is an object with the following attributes:
-/// type: analyzer type name (one of registered analyzers type)
-/// properties: object with properties for corresponding analyzer
-////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-	return nullptr;
-}
-
 constexpr irs::string_ref PIPELINE_PARAM_NAME   = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME       = "type";
 constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
@@ -143,7 +132,28 @@ bool parse_json_config(const irs::string_ref& args,
 
 
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
-	return false;
+	irs::analysis::pipeline_token_stream::options_t options;
+	if (parse_json_config(args, options)) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a jSON encoded object with the following attributes:
+/// pipeline: Array of objects containing analyzers definition inside pipeline.
+/// Each definition is an object with the following attributes:
+/// type: analyzer type name (one of registered analyzers type)
+/// properties: object with properties for corresponding analyzer
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+	irs::analysis::pipeline_token_stream::options_t options;
+	if (parse_json_config(args, options)) {
+		return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
+	} else {
+		return nullptr;
+	}
 }
 
 
