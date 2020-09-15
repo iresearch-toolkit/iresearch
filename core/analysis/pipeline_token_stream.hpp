@@ -42,6 +42,7 @@ public:
 
 	static constexpr string_ref type_name() noexcept { return "pipeline"; }
 	static void init(); // for triggering registration in a static build
+	// TODO: check shared build - access to other anakyzers may be tricky!
 
 	pipeline_token_stream(const options_t& options);
 	virtual bool next() override;
@@ -55,10 +56,15 @@ private:
 			inc(irs::get<irs::increment>(*analyzer)),
 			offs(irs::get<irs::offset>(*analyzer)){}
 
+		bool reset(const string_ref& data) {
+			data_size = data.size();
+			return analyzer->reset(data);
+		}
 		irs::analysis::analyzer::ptr analyzer;
 		const term_attribute* term;
 		const increment* inc;
 		const offset* offs;
+		size_t data_size{ 0 };
 	};
 	using pipeline_t = std::vector<sub_analyzer_t>;
 	pipeline_t pipeline_;
@@ -69,7 +75,6 @@ private:
 	increment inc_;
 	// FIXME: find way to wire attribute directly from last pipeline member
 	term_attribute term_;
-	uint32_t upstream_inc_{ 0 };
 };
 
 NS_END
