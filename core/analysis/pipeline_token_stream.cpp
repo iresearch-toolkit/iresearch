@@ -35,6 +35,7 @@ constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 
 bool parse_json_config(const irs::string_ref& args,
 	irs::analysis::pipeline_token_stream::options_t& options) {
+	assert(options.pipeline.empty());
 	rapidjson::Document json;
 	if (json.Parse(args.c_str(), args.size()).HasParseError()) {
 		IR_FRMT_ERROR(
@@ -126,6 +127,12 @@ bool parse_json_config(const irs::string_ref& args,
 			args.c_str());
 		return false;
 	}
+	if (options.pipeline.empty()) {
+		IR_FRMT_ERROR(
+			"Empty pipeline found while constructing pipeline_token_stream, "
+			"arguments: %s", args.c_str());
+		return false;
+	}
 	return true;
 }
 
@@ -169,7 +176,7 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 	: attributes{ {
 		{ irs::type<increment>::id(), &inc_ },
 		{ irs::type<offset>::id(), &offs_ },
-		{ irs::type<term_attribute>::id(), &term_ }}, // TODO: use get_mutable
+		{ irs::type<term_attribute>::id(), irs::get_mutable<term_attribute>(options.pipeline.back().get()) }},
 		irs::type<pipeline_token_stream>::get()} {
 	pipeline_.reserve(options.pipeline.size());
 	for (const auto& p : options.pipeline) {
@@ -229,7 +236,6 @@ inline bool pipeline_token_stream::next() {
 	if (step_for_rollback) {
 		upstream_inc++;
 	}
-	term_.value = current_->term->value;
 
 	// FIXME: get rid of full recalc. Use incremental approach
 	uint32_t start{ 0 };

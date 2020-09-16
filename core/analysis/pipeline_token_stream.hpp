@@ -83,8 +83,6 @@ private:
 	pipeline_t::iterator bottom_;
 	offset offs_;
 	increment inc_;
-	// FIXME: find way to wire attribute directly from last pipeline member
-	term_attribute term_;
 };
 
 NS_END

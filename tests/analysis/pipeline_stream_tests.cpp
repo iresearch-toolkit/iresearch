@@ -374,4 +374,10 @@ TEST(pipeline_token_stream_test, test_construct_invalid_analyzer) {
 	ASSERT_EQ(nullptr, stream);
 }
 
+TEST(pipeline_token_stream_test, empty_pipeline) {
+	std::string config = "{\"pipeline\":[]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
 #endif
