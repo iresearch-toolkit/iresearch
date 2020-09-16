@@ -186,8 +186,10 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 	bottom_ = --pipeline_.end();
 }
 
-
-/// Pipeline position change rules:
+/// Moves pipeline to next token.
+/// Term is taken from last analyzer in pipeline
+/// Offset is recalculated accordingly
+/// Increment is calculated according to following position change rules
 ///  - If none of pipeline members changes position - whole pipeline holds position
 ///  - If one or more pipeline member moves - pipeline moves( change from max->0 is not move, see rules below!).
 ///    All position gaps are accumulated (e.g. if one member has inc 2(1 pos gap) and other has inc 3(2 pos gap)  - pipeline has inc 4 (1+2 pos gap))
@@ -198,14 +200,14 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 ///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
 ///    not change max->0 and position is indeed changed.
 inline bool pipeline_token_stream::next() {
-	uint32_t upstream_inc = 0;
+	
 	while (!current_->next()) {
 		if (current_ == top_) { // reached pipeline top and next has failed - we are done
 			return false;
 		}
 		--current_;
 	}
-	upstream_inc += current_->inc->value;
+	uint32_t pipeline_inc{ current_->inc->value };
 
 	const auto top_holds_position = current_->inc->value == 0;
 
@@ -226,15 +228,15 @@ inline bool pipeline_token_stream::next() {
 			}
 			--current_;
 		}
-		upstream_inc += current_->inc->value;
+		pipeline_inc += current_->inc->value;
 		assert(current_->inc->value > 0); // first increment after reset should be positive to give 0 or next pos!
-		assert(upstream_inc > 0);
-		upstream_inc--; // compensate placing sub_analyzer from max to 0 due to reset
+		assert(pipeline_inc > 0);
+		pipeline_inc--; // compensate placing sub_analyzer from max to 0 due to reset
 										// as this step actually does not move whole pipeline
-										// sub analyzer just stays same pos as it`s parent (rollback step will be done below if necessary!)
+										// sub analyzer just stays same pos as it`s parent (step for rollback to 0 will be done below if necessary!)
 	}
 	if (step_for_rollback) {
-		upstream_inc++;
+		pipeline_inc++;
 	}
 
 	// FIXME: get rid of full recalc. Use incremental approach
@@ -242,13 +244,13 @@ inline bool pipeline_token_stream::next() {
 	uint32_t upstream_end{ static_cast<uint32_t>(pipeline_.front().data_size) };
 	for (const auto& p : pipeline_) {
 		start += p.offs->start;
-		if (p.offs->end != p.data_size && p.analyzer != bottom_->analyzer) {
+		if (p.offs->end != p.data_size && p.analyzer != bottom_->analyzer) { // TODO: hide analyzer and remove kludge check!
 			// this analyzer is not last and eaten not all its data.
 			// so it will mark new pipeline offset end.
 			upstream_end = start +  (p.offs->end - p.offs->start);
 		}
 	}
-	inc_.value = upstream_inc;
+	inc_.value = pipeline_inc;
 	offs_.start = start;
 	offs_.end = current_->offs->end == current_->data_size ? 
 		          upstream_end : // all data eaten - actual end is defined by upstream
