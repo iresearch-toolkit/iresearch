@@ -251,6 +251,37 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
 	}
 }
 
+TEST(pipeline_token_stream_test, signle_tokenizer) {
+	auto text = irs::analysis::analyzers::get("text",
+		irs::type<irs::text_format::json>::get(),
+		"{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"lower\", \"stemming\":true }");
+	std::string data = "QuIck broWn fox jumps";
+	const analyzer_tokens expected{
+		{"quick", 0, 5, 0},
+		{"brown", 6, 11, 1},
+		{"fox", 12, 15, 2},
+		{"jump", 16, 21, 3}
+	};
+	irs::analysis::pipeline_token_stream::options_t pipeline_options;
+	pipeline_options.pipeline.push_back(text);
+	irs::analysis::pipeline_token_stream pipe(pipeline_options);
+	assert_pipeline(&pipe, data, expected);
+}
+
+TEST(pipeline_token_stream_test, signle_non_tokenizer) {
+	auto norm = irs::analysis::analyzers::get("norm",
+		irs::type<irs::text_format::json>::get(),
+		"{\"locale\":\"en\", \"case\":\"lower\"}");
+	std::string data = "QuIck";
+	const analyzer_tokens expected{
+		{"quick", 0, 5, 0}
+	};
+	irs::analysis::pipeline_token_stream::options_t pipeline_options;
+	pipeline_options.pipeline.push_back(norm);
+	irs::analysis::pipeline_token_stream pipe(pipeline_options);
+	assert_pipeline(&pipe, data, expected);
+}
+
 TEST(pipeline_token_stream_test, hold_position_tokenizer) {
 	auto ngram = irs::analysis::analyzers::get("ngram",
 		irs::type<irs::text_format::json>::get(),

@@ -58,12 +58,12 @@ private:
 
 		bool reset(const string_ref& data) {
 			data_size = data.size();
-			last_pos = irs::integer_traits<uint32_t>::const_max;
+			pos = irs::integer_traits<uint32_t>::const_max;
 			return analyzer->reset(data);
 		}
 		bool next() {
 			if (analyzer->next()) {
-				last_pos += inc->value;
+				pos += inc->value;
 				return true;
 			}
 			return false;
@@ -74,7 +74,7 @@ private:
 		const increment* inc;
 		const offset* offs;
 		size_t data_size{ 0 };
-		uint32_t last_pos{ irs::integer_traits<uint32_t>::const_max };
+		uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
 	};
 	using pipeline_t = std::vector<sub_analyzer_t>;
 	pipeline_t pipeline_;

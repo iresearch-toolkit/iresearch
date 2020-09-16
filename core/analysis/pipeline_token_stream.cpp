@@ -157,7 +157,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 	irs::analysis::pipeline_token_stream::options_t options;
 	if (parse_json_config(args, options)) {
-		return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
+		return std::make_shared<irs::analysis::pipeline_token_stream>(options);
 	} else {
 		return nullptr;
 	}
@@ -217,8 +217,8 @@ inline bool pipeline_token_stream::next() {
 		const auto prev_term = current_->term->value;
 		++current_;
 		// check do we need to do step forward due to rollback to 0.
-		step_for_rollback |= top_holds_position && current_->last_pos !=0 &&
-			                   current_->last_pos != irs::integer_traits<uint32_t>::const_max;
+		step_for_rollback |= top_holds_position && current_->pos !=0 &&
+			                   current_->pos != irs::integer_traits<uint32_t>::const_max;
 		if (!current_->reset(irs::ref_cast<char>(prev_term))) {
 			return false;
 		}
