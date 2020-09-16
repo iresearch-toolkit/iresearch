@@ -302,4 +302,76 @@ TEST(pipeline_token_stream_test, test_construct) {
 	assert_pipeline(stream.get(), "QuickABrownAFOXAjUmps", expected);
 }
 
+TEST(pipeline_token_stream_test, test_construct_invalid_json) {
+	std::string config = "INVALID_JSON}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_not_object_json) {
+	std::string config = "[1,2,3]";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_no_pipeline) {
+	std::string config = "{\"NOT_pipeline\":[\
+                           {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"type\":\"text\", \"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\
+                             \"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
+                        ]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_not_array_pipeline) {
+	std::string config = "{\"pipeline\": \"text\"}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_not_pipeline_objects) {
+	std::string config = "{\"pipeline\":[\"123\"]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_no_type) {
+	std::string config = "{\"pipeline\":[\
+                           {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\
+                             \"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
+                        ]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_non_string_type) {
+	std::string config = "{\"pipeline\":[{\"type\":1, \"properties\": {\"delimiter\":\"A\"}}]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_no_properties) {
+	std::string config = "{\"pipeline\":[\
+                           {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"type\":\"text\"}\
+                        ]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
+TEST(pipeline_token_stream_test, test_construct_invalid_analyzer) {
+	std::string config = "{\"pipeline\":[\
+                           {\"type\":\"UNKNOWN\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\
+                             \"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
+                        ]}";
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
+	ASSERT_EQ(nullptr, stream);
+}
+
 #endif
