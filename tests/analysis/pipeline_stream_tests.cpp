@@ -64,11 +64,9 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
 	auto expected_token = expected_tokens.begin();
 	while (pipe->next()) {
 		auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+		SCOPED_TRACE(testing::Message("Term:") << term_value);
 		auto old_pos = pos;
 		pos += inc->value;
-#ifdef IRESEARCH_DEBUG //TODO: remove me
-		std::cerr << term_value << "(" << pos << ")" <<"|";
-#endif
 		ASSERT_NE(expected_token, expected_tokens.end());
 		ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
 		ASSERT_EQ(expected_token->start, offset->start);
@@ -77,9 +75,6 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
 		++expected_token;
 	}
 	ASSERT_EQ(expected_token, expected_tokens.end());
-#ifdef IRESEARCH_DEBUG //TODO: remove me
-	std::cerr << std::endl;
-#endif
 }
 
 NS_END
@@ -256,10 +251,45 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
 	}
 }
 
+TEST(pipeline_token_stream_test, hold_position_tokenizer) {
+	auto ngram = irs::analysis::analyzers::get("ngram",
+		irs::type<irs::text_format::json>::get(),
+		"{\"min\":2, \"max\":3, \"preserveOriginal\":true }");
+	auto norm = irs::analysis::analyzers::get("norm",
+		irs::type<irs::text_format::json>::get(),
+		"{\"locale\":\"en\", \"case\":\"lower\"}");
+	std::string data = "QuIck";
+	const analyzer_tokens expected{
+		{"qu", 0, 2, 0},
+		{"qui", 0, 3, 0},
+		{"quick", 0, 5, 0},
+		{"ui", 1, 3, 1},
+		{"uic", 1, 4, 1},
+		{"ic", 2, 4, 2},
+		{"ick", 2, 5, 2},
+		{"ck", 3, 5, 3},
+	};
+	{
+		irs::analysis::pipeline_token_stream::options_t pipeline_options;
+		pipeline_options.pipeline.push_back(ngram);
+		pipeline_options.pipeline.push_back(norm);
+		irs::analysis::pipeline_token_stream pipe(pipeline_options);
+		assert_pipeline(&pipe, data, expected);
+	}
+	{
+		irs::analysis::pipeline_token_stream::options_t pipeline_options;
+		pipeline_options.pipeline.push_back(norm);
+		pipeline_options.pipeline.push_back(ngram);
+		irs::analysis::pipeline_token_stream pipe(pipeline_options);
+		assert_pipeline(&pipe, data, expected);
+	}
+}
+
 TEST(pipeline_token_stream_test, test_construct) {
 	std::string config = "{\"pipeline\":[\
                            {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
-                           {\"type\":\"text\", \"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+                           {\"type\":\"text\", \"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\
+                             \"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
 													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
                         ]}";
 	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);

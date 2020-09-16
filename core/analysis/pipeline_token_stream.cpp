@@ -180,27 +180,40 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 }
 
 
-
+/// Pipeline position change rules:
+///  - If none of pipeline members changes position - whole pipeline holds position
+///  - If one or more pipeline member moves - pipeline moves( change from max->0 is not move, see rules below!).
+///    All position gaps are accumulated (e.g. if one member has inc 2(1 pos gap) and other has inc 3(2 pos gap)  - pipeline has inc 4 (1+2 pos gap))
+///  - All position changes caused by parent analyzer move next (e.g. transfer from max->0 by first next after reset) are collapsed.
+///    e.g if parent moves after next, all its children are resetted to new token and also moves step froward - this whole operation
+///    is just one step for pipeline (if any of children has moved more than 1 step - gaps are preserved!)
+///  - If parent after next is NOT moved (inc == 0) than pipeline makes one step forward if at least one child changes
+///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
+///    not change max->0 and position is indeed changed.
 inline bool pipeline_token_stream::next() {
 	uint32_t upstream_inc = 0;
-	while (!current_->analyzer->next()) {
+	while (!current_->next()) {
 		if (current_ == top_) { // reached pipeline top and next has failed - we are done
 			return false;
 		}
 		--current_;
 	}
 	upstream_inc += current_->inc->value;
-	// if upstream holds postions than all downstream resets will be just one step forward
-	// other possible gaps will be counted below in downstream loop
-	upstream_inc += (current_->inc->value == 0 && current_ != bottom_);
+
+	const auto top_holds_position = current_->inc->value == 0;
+
 	// go down to lowest pipe to get actual tokens
+	bool step_for_rollback{ false };
 	while (current_ != bottom_) {
 		const auto prev_term = current_->term->value;
 		++current_;
+		// check do we need to do step forward due to rollback to 0.
+		step_for_rollback |= top_holds_position && current_->last_pos !=0 &&
+			                   current_->last_pos != irs::integer_traits<uint32_t>::const_max;
 		if (!current_->reset(irs::ref_cast<char>(prev_term))) {
 			return false;
 		}
-		while (!current_->analyzer->next()) { // empty one found. Move upstream.
+		while (!current_->next()) { // empty one found. Move upstream.
 			if (current_ == top_) { // reached pipeline top and next has failed - we are done
 				return false;
 			}
@@ -209,9 +222,12 @@ inline bool pipeline_token_stream::next() {
 		upstream_inc += current_->inc->value;
 		assert(current_->inc->value > 0); // first increment after reset should be positive to give 0 or next pos!
 		assert(upstream_inc > 0);
-		upstream_inc --; // compensate placing sub_analyzer from -1 to 0
-										 // as this step actually does not move whole pipeline
-										 // sub analyzer just stays same pos as it`s parent
+		upstream_inc--; // compensate placing sub_analyzer from max to 0 due to reset
+										// as this step actually does not move whole pipeline
+										// sub analyzer just stays same pos as it`s parent (rollback step will be done below if necessary!)
+	}
+	if (step_for_rollback) {
+		upstream_inc++;
 	}
 	term_.value = current_->term->value;
 
