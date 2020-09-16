@@ -200,7 +200,6 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 ///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
 ///    not change max->0 and position is indeed changed.
 inline bool pipeline_token_stream::next() {
-	
 	while (!current_->next()) {
 		if (current_ == top_) { // reached pipeline top and next has failed - we are done
 			return false;
@@ -215,11 +214,13 @@ inline bool pipeline_token_stream::next() {
 	bool step_for_rollback{ false };
 	while (current_ != bottom_) {
 		const auto prev_term = current_->term->value;
+		const auto prev_start = current_->start();
+		const auto prev_end = current_->end();
 		++current_;
 		// check do we need to do step forward due to rollback to 0.
 		step_for_rollback |= top_holds_position && current_->pos !=0 &&
 			                   current_->pos != irs::integer_traits<uint32_t>::const_max;
-		if (!current_->reset(irs::ref_cast<char>(prev_term))) {
+		if (!current_->reset(prev_start, prev_end, irs::ref_cast<char>(prev_term))) {
 			return false;
 		}
 		while (!current_->next()) { // empty one found. Move upstream.
@@ -239,28 +240,15 @@ inline bool pipeline_token_stream::next() {
 		pipeline_inc++;
 	}
 
-	// FIXME: get rid of full recalc. Use incremental approach
-	uint32_t start{ 0 };
-	uint32_t upstream_end{ static_cast<uint32_t>(pipeline_.front().data_size) };
-	for (const auto& p : pipeline_) {
-		start += p.offs->start;
-		if (p.offs->end != p.data_size && p.analyzer != bottom_->analyzer) { // TODO: hide analyzer and remove kludge check!
-			// this analyzer is not last and eaten not all its data.
-			// so it will mark new pipeline offset end.
-			upstream_end = start +  (p.offs->end - p.offs->start);
-		}
-	}
 	inc_.value = pipeline_inc;
-	offs_.start = start;
-	offs_.end = current_->offs->end == current_->data_size ? 
-		          upstream_end : // all data eaten - actual end is defined by upstream
-              (offs_.start + (current_->offs->end - current_->offs->start));
+	offs_.start = current_->start();
+	offs_.end = current_->end();
 	return true;
 }
 
 inline bool pipeline_token_stream::reset(const string_ref& data) {
 	current_ = top_;
-	return pipeline_.front().reset(data);
+	return pipeline_.front().reset(0, data.size(), data);
 }
 
 /*static*/ void pipeline_token_stream::init() {
