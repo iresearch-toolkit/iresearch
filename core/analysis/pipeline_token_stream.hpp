@@ -34,69 +34,71 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 class pipeline_token_stream final
-	: public frozen_attributes<3, analyzer>,  private util::noncopyable {
-public:
-	struct options_t {
-		std::vector<irs::analysis::analyzer::ptr> pipeline;
-	};
+  : public frozen_attributes<3, analyzer>, private util::noncopyable {
+ public:
+  struct options_t {
+    std::vector<irs::analysis::analyzer::ptr> pipeline;
+  };
 
-	static constexpr string_ref type_name() noexcept { return "pipeline"; }
-	static void init(); // for triggering registration in a static build
-	// TODO: check shared build - access to other anakyzers may be tricky!
+  static constexpr string_ref type_name() noexcept { return "pipeline"; }
+  static void init(); // for triggering registration in a static build
 
-	pipeline_token_stream(const options_t& options);
-	virtual bool next() override;
-	virtual bool reset(const string_ref& data) override;
+  explicit pipeline_token_stream(const options_t& options);
+  virtual bool next() override;
+  virtual bool reset(const string_ref& data) override;
 
-private:
-	struct sub_analyzer_t {
-		explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a)
-			: analyzer(a),
-			term(irs::get<irs::term_attribute>(*analyzer)),
-			inc(irs::get<irs::increment>(*analyzer)),
-			offs(irs::get<irs::offset>(*analyzer)){}
+ private:
+  struct sub_analyzer_t {
+    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a)
+      : term(irs::get<irs::term_attribute>(*a)),
+        inc(irs::get<irs::increment>(*a)),
+        offs(irs::get<irs::offset>(*a)),
+        analyzer(a) {}
 
-		bool reset(uint32_t start, uint32_t end, const string_ref& data) {
-			data_size = data.size();
-			data_start = start;
-			data_end = end;
-			pos = irs::integer_traits<uint32_t>::const_max;
-			return analyzer->reset(data);
-		}
-		bool next() {
-			if (analyzer->next()) {
-				pos += inc->value;
-				return true;
-			}
-			return false;
-		}
+    bool reset(uint32_t start, uint32_t end, const string_ref& data) {
+      data_size = data.size();
+      data_start = start;
+      data_end = end;
+      pos = irs::integer_traits<uint32_t>::const_max;
+      return analyzer->reset(data);
+    }
+    bool next() {
+      if (analyzer->next()) {
+        pos += inc->value;
+        return true;
+      }
+      return false;
+    }
 
-		uint32_t start() const noexcept {
-			return data_start + offs->start;
-		}
+    uint32_t start() const noexcept {
+      return data_start + offs->start;
+    }
 
-		uint32_t end() const noexcept {
-			return offs->end == data_size ? 
-				                    data_end :
-				                    start() + offs->end - offs->start;
-		}
+    uint32_t end() const noexcept {
+      return offs->end == data_size ?
+        data_end :
+        start() + offs->end - offs->start;
+    }
+    const term_attribute* term;
+    const increment* inc;
+    const offset* offs;
+    size_t data_size{ 0 };
+    uint32_t data_start{ 0 };
+    uint32_t data_end{ 0 };
+    uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
 
-		irs::analysis::analyzer::ptr analyzer;
-		const term_attribute* term;
-		const increment* inc;
-		const offset* offs;
-		size_t data_size{ 0 };
-		uint32_t data_start{ 0 };
-		uint32_t data_end{ 0 };
-		uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
-	};
-	using pipeline_t = std::vector<sub_analyzer_t>;
-	pipeline_t pipeline_;
-	pipeline_t::iterator current_;
-	pipeline_t::iterator top_;
-	pipeline_t::iterator bottom_;
-	offset offs_;
-	increment inc_;
+   private:
+    // sub analyzer should be operated through provided next/release
+    // methods to properly track positions/offsets
+    irs::analysis::analyzer::ptr analyzer;
+  };
+  using pipeline_t = std::vector<sub_analyzer_t>;
+  pipeline_t pipeline_;
+  pipeline_t::iterator current_;
+  pipeline_t::iterator top_;
+  pipeline_t::iterator bottom_;
+  offset offs_;
+  increment inc_;
 };
 
 NS_END
