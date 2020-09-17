@@ -159,43 +159,24 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
 	options_normalize_t options;
 	if (parse_json_config(args, options)) {
-		rapidjson::Document json;
-		json.SetObject();
-		rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
-		rapidjson::Value pipeline(rapidjson::kArrayType);
-		{
-			for (auto analyzer : options.pipeline) {
-				rapidjson::Value pipe_member(rapidjson::kObjectType);
-				pipe_member.AddMember(rapidjson::StringRef(TYPE_PARAM_NAME.c_str(), TYPE_PARAM_NAME.size()),
-					                    rapidjson::Value(analyzer.first.c_str(), 
-																               static_cast<rapidjson::SizeType>(analyzer.first.length())),
-					                    allocator);
-				rapidjson::Document properties_json;
-				if (properties_json.Parse(analyzer.second.c_str(), analyzer.second.size()).HasParseError()) {
-					IR_FRMT_ERROR(
-						"Failed to parse properties while normalizing pipeline_token_stream, "
-						"arguments: %s", analyzer.second.c_str());
-					return false;
-				}
-				pipe_member.AddMember(rapidjson::StringRef(PROPERTIES_PARAM_NAME.c_str(), PROPERTIES_PARAM_NAME.size()),
-					                    properties_json,
-					                    allocator);
-				pipeline.PushBack(pipe_member.Move(), allocator);
+		definition.clear();
+		definition.append("{\"").append(PIPELINE_PARAM_NAME).append("\":[");
+		bool first{true};
+		for (auto analyzer : options.pipeline) {
+			if (first) {
+				first = false;
+			} else {
+				definition.append(",");
 			}
+			definition.append("{\"").append(TYPE_PARAM_NAME)
+				        .append("\":\"").append(analyzer.first).append("\",")
+				        .append("\"").append(PROPERTIES_PARAM_NAME).append("\":")
+				        .append(analyzer.second).append("}");
 		}
-		json.AddMember(
-			rapidjson::StringRef(PIPELINE_PARAM_NAME.c_str(), PIPELINE_PARAM_NAME.size()),
-			pipeline.Move(),
-			allocator);
-		rapidjson::StringBuffer buffer;
-		rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-		json.Accept(writer);
-		definition = buffer.GetString();
+		definition.append("]}");
 		return true;
-	} else {
-		return false;
 	}
+	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
