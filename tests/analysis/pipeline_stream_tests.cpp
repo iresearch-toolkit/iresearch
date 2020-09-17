@@ -333,6 +333,26 @@ TEST(pipeline_token_stream_test, test_construct) {
 	assert_pipeline(stream.get(), "QuickABrownAFOXAjUmps", expected);
 }
 
+TEST(pipeline_token_stream_test, test_normalized_construct) {
+	std::string config = "{\"pipeline\":[\
+                           {\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}},\
+                           {\"type\":\"text\", \"properties\":{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\
+                             \"accent\":false,\"stemming\":true,\"stopwords\":[\"fox\"]}},\
+													 {\"type\":\"norm\", \"properties\": {\"locale\":\"en_US.UTF-8\", \"case\":\"upper\"}}\
+                        ]}";
+	std::string normalized;
+	ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized, "pipeline",
+		                                              irs::type<irs::text_format::json>::get(), config));
+	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), normalized);
+	ASSERT_NE(nullptr, stream);
+	const analyzer_tokens expected{
+		{"QUICK", 0, 5, 0},
+		{"BROWN", 6, 11, 1},
+		{"JUMP", 16, 21, 2}
+	};
+	assert_pipeline(stream.get(), "QuickABrownAFOXAjUmps", expected);
+}
+
 TEST(pipeline_token_stream_test, test_construct_invalid_json) {
 	std::string config = "INVALID_JSON}";
 	auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
@@ -414,36 +434,36 @@ TEST(pipeline_token_stream_test, empty_pipeline) {
 TEST(pipeline_token_stream_test, normalize_json) {
 	//with unknown parameter
 	{
-		std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
+		std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
 		std::string actual;
 		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+		ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
 	}
 	//with unknown parameter in pipeline member
 	{
-		std::string config = "{\"pipeline\":[\{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
+		std::string config = "{\"pipeline\":[{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
 		std::string actual;
 		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+		ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
 	}
 	//with unknown parameter in analyzer properties
 	{
-		std::string config = "{\"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
+		std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
 		std::string actual;
 		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+		ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
 	}
 
 	//with unknown analyzer
 	{
-		std::string config = "{\"pipeline\":[\{\"type\":\"unknown\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
+		std::string config = "{\"pipeline\":[{\"type\":\"unknown\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
 		std::string actual;
 		ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
 	}
 
 	//with invalid properties
 	{
-		std::string config = "{\"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"wrong_delimiter\":\"A\"}}]}";
+		std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"wrong_delimiter\":\"A\"}}]}";
 		std::string actual;
 		ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
 	}
