@@ -107,7 +107,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
             } else {
               std::string normalized;
               if (!irs::analysis::analyzers::normalize(normalized, type,
-                irs::type<irs::text_format::json>::get(),
+                                                       irs::type<irs::text_format::json>::get(),
                 properties_buffer.GetString())) {
                 IR_FRMT_ERROR(
                   "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
@@ -214,6 +214,7 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
   for (const auto& p : options.pipeline) {
     pipeline_.emplace_back(p);
   }
+  assert(!pipeline.empty());
   top_ = pipeline_.begin();
   bottom_ = --pipeline_.end();
 }
