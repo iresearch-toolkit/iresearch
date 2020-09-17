@@ -411,4 +411,42 @@ TEST(pipeline_token_stream_test, empty_pipeline) {
 	ASSERT_EQ(nullptr, stream);
 }
 
+TEST(pipeline_token_stream_test, normalize_json) {
+	//with unknown parameter
+	{
+		std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
+		std::string actual;
+		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+	}
+	//with unknown parameter in pipeline member
+	{
+		std::string config = "{\"pipeline\":[\{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
+		std::string actual;
+		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+	}
+	//with unknown parameter in analyzer properties
+	{
+		std::string config = "{\"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
+		std::string actual;
+		ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+		ASSERT_EQ("{\"pipeline\":[\{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+	}
+
+	//with unknown analyzer
+	{
+		std::string config = "{\"pipeline\":[\{\"type\":\"unknown\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
+		std::string actual;
+		ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+	}
+
+	//with invalid properties
+	{
+		std::string config = "{\"pipeline\":[\{\"type\":\"delimiter\", \"properties\": {\"wrong_delimiter\":\"A\"}}]}";
+		std::string actual;
+		ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+	}
+}
+
 #endif
