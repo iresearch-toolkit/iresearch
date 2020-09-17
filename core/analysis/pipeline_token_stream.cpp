@@ -33,9 +33,15 @@ constexpr irs::string_ref PIPELINE_PARAM_NAME   = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME       = "type";
 constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 
-bool parse_json_config(const irs::string_ref& args,
-	irs::analysis::pipeline_token_stream::options_t& options) {
-	assert(options.pipeline.empty());
+struct options_normalize_t {
+	std::vector<std::pair<std::string, std::string>> pipeline;
+};
+
+template<typename T>
+bool parse_json_config(const irs::string_ref& args, T& options) {
+	if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
+		assert(options.pipeline.empty());
+	}
 	rapidjson::Document json;
 	if (json.Parse(args.c_str(), args.size()).HasParseError()) {
 		IR_FRMT_ERROR(
@@ -84,18 +90,32 @@ bool parse_json_config(const irs::string_ref& args,
 						rapidjson::StringBuffer properties_buffer;
 						rapidjson::Writer< rapidjson::StringBuffer> writer(properties_buffer);
 						properties_atr.Accept(writer);
-						auto analyzer = irs::analysis::analyzers::get(
-							                type.c_str(), 
-							                irs::type<irs::text_format::json>::get(),
-							                properties_buffer.GetString());
-						if (analyzer) {
-							options.pipeline.push_back(std::move(analyzer));
+						if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
+							auto analyzer = irs::analysis::analyzers::get(
+																type, 
+																irs::type<irs::text_format::json>::get(),
+																properties_buffer.GetString());
+							if (analyzer) {
+								options.pipeline.push_back(std::move(analyzer));
+							} else {
+								IR_FRMT_ERROR(
+									"Failed to create pipeline member of type '%s' with properties '%s' while constructing "
+									"pipeline_token_stream from jSON arguments: %s",
+									type.c_str(), properties_buffer.GetString(), args.c_str());
+								return false;
+							}
 						} else {
-							IR_FRMT_ERROR(
-								"Failed to create pipeline member of type '%s' with properties '%s' while constructing "
-								"pipeline_token_stream from jSON arguments: %s",
-								type.c_str(), properties_buffer.GetString(), args.c_str());
-							return false;
+							std::string normalized;
+							if (!irs::analysis::analyzers::normalize(normalized, type, 
+								                                       irs::type<irs::text_format::json>::get(),
+								                                       properties_buffer.GetString())) {
+								IR_FRMT_ERROR(
+									"Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
+									"pipeline_token_stream from jSON arguments: %s",
+									type.c_str(), properties_buffer.GetString(), args.c_str());
+								return false;
+							}
+							options.pipeline.emplace_back(type, normalized);
 						}
 					} else {
 						IR_FRMT_ERROR(
@@ -136,11 +156,42 @@ bool parse_json_config(const irs::string_ref& args,
 	return true;
 }
 
-
-
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
-	irs::analysis::pipeline_token_stream::options_t options;
+	options_normalize_t options;
 	if (parse_json_config(args, options)) {
+		rapidjson::Document json;
+		json.SetObject();
+		rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+
+		rapidjson::Value pipeline(rapidjson::kArrayType);
+		{
+			for (auto analyzer : options.pipeline) {
+				rapidjson::Value pipe_member(rapidjson::kObjectType);
+				pipe_member.AddMember(rapidjson::StringRef(TYPE_PARAM_NAME.c_str(), TYPE_PARAM_NAME.size()),
+					                    rapidjson::Value(analyzer.first.c_str(), 
+																               static_cast<rapidjson::SizeType>(analyzer.first.length())),
+					                    allocator);
+				rapidjson::Document properties_json;
+				if (properties_json.Parse(analyzer.second.c_str(), analyzer.second.size()).HasParseError()) {
+					IR_FRMT_ERROR(
+						"Failed to parse properties while normalizing pipeline_token_stream, "
+						"arguments: %s", analyzer.second.c_str());
+					return false;
+				}
+				pipe_member.AddMember(rapidjson::StringRef(PROPERTIES_PARAM_NAME.c_str(), PROPERTIES_PARAM_NAME.size()),
+					                    properties_json,
+					                    allocator);
+				pipeline.PushBack(pipe_member.Move(), allocator);
+			}
+		}
+		json.AddMember(
+			rapidjson::StringRef(PIPELINE_PARAM_NAME.c_str(), PIPELINE_PARAM_NAME.size()),
+			pipeline.Move(),
+			allocator);
+		rapidjson::StringBuffer buffer;
+		rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+		json.Accept(writer);
+		definition = buffer.GetString();
 		return true;
 	} else {
 		return false;
