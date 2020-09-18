@@ -36,21 +36,16 @@ constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 const irs::offset NO_OFFSET;
 
 class empty_analyzer
-  : public irs::frozen_attributes<2, irs::analysis::analyzer>, private irs::util::noncopyable {
+  : public irs::analysis::analyzer, private irs::util::noncopyable {
  public:
-  empty_analyzer() : attributes{ {
-      { irs::type<irs::increment>::id(), &inc_},
-      { irs::type<irs::term_attribute>::id(), &term_}},
-    irs::type<empty_analyzer>::get() } {}
+  empty_analyzer() : analyzer(irs::type<empty_analyzer>::get()) {}
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) { return nullptr;  }
   static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
   virtual bool next() override { return false; }
   virtual bool reset(const irs::string_ref&) override { return false; }
- private:
-  irs::increment inc_;
-  irs::term_attribute term_;
 };
 
-irs::analysis::analyzer::ptr EMPTY_ANALYZER{ std::make_shared<empty_analyzer>()};
+empty_analyzer EMPTY_ANALYZER;
 
 using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
@@ -257,7 +252,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     pipeline_.emplace_back(p, track_offset);
   }
   if (pipeline_.empty()) {
-    pipeline_.emplace_back(EMPTY_ANALYZER, true);
+    pipeline_.push_back(sub_analyzer_t());
   }
   top_ = pipeline_.begin();
   bottom_ = --pipeline_.end();
@@ -344,6 +339,10 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(const irs::analysis::analy
   assert(inc);
   assert(term);
 }
+
+pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
+  : term(nullptr), inc(nullptr), offs(nullptr),
+    analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
 NS_END
 NS_END

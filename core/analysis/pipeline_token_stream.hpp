@@ -48,6 +48,7 @@ class pipeline_token_stream final
  private:
   struct sub_analyzer_t {
     explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset);
+    sub_analyzer_t();
 
     bool reset(uint32_t start, uint32_t end, const string_ref& data) {
       data_size = data.size();
