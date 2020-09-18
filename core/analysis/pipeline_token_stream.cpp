@@ -33,6 +33,25 @@ constexpr irs::string_ref PIPELINE_PARAM_NAME = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME = "type";
 constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 
+const irs::offset NO_OFFSET;
+
+class empty_analyzer
+  : public irs::frozen_attributes<2, irs::analysis::analyzer>, private irs::util::noncopyable {
+ public:
+  empty_analyzer() : attributes{ {
+      { irs::type<irs::increment>::id(), &inc_},
+      { irs::type<irs::term_attribute>::id(), &term_}},
+    irs::type<empty_analyzer>::get() } {}
+  static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
+  virtual bool next() override { return false; }
+  virtual bool reset(const irs::string_ref&) override { return false; }
+ private:
+  irs::increment inc_;
+  irs::term_attribute term_;
+};
+
+irs::analysis::analyzer::ptr EMPTY_ANALYZER{ std::make_shared<empty_analyzer>()};
+
 struct options_normalize_t {
   std::vector<std::pair<std::string, std::string>> pipeline;
 };
@@ -199,6 +218,26 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
   normalize_json_config);
 
+irs::attribute* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+  for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
+    auto payload = irs::get_mutable<irs::payload>(it->get());
+    if (payload) {
+      return payload;
+    }
+  }
+  return nullptr;
+}
+
+bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+  for (auto it = pipeline.begin(); it != pipeline.end(); ++it) {
+    auto offset = irs::get<irs::offset>(*it->get());
+    if (!offset) {
+      return false;
+    }
+  }
+  return true;
+}
+
 NS_END
 
 NS_ROOT
@@ -206,23 +245,30 @@ NS_BEGIN(analysis)
 
 pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
+    { irs::type<payload>::id(), find_payload(options.pipeline)},
     { irs::type<increment>::id(), &inc_},
-    { irs::type<offset>::id(), &offs_ },
-    { irs::type<term_attribute>::id(), irs::get_mutable<term_attribute>(options.pipeline.back().get())}},
+    { irs::type<offset>::id(), all_have_offset(options.pipeline)? &offs_: nullptr},
+    { irs::type<term_attribute>::id(), options.pipeline.empty() ? 
+                                         nullptr
+                                         : irs::get_mutable<term_attribute>(options.pipeline.back().get())}},
     irs::type<pipeline_token_stream>::get()} {
   pipeline_.reserve(options.pipeline.size());
+  const auto track_offset = irs::get<offset>(*this) != nullptr;
   for (const auto& p : options.pipeline) {
     assert(p);
-    pipeline_.emplace_back(p);
+    pipeline_.emplace_back(p, track_offset);
   }
-  assert(!pipeline.empty());
+  if (pipeline_.empty()) {
+    pipeline_.emplace_back(EMPTY_ANALYZER, true);
+  }
   top_ = pipeline_.begin();
   bottom_ = --pipeline_.end();
 }
 
 /// Moves pipeline to next token.
 /// Term is taken from last analyzer in pipeline
-/// Offset is recalculated accordingly
+/// Offset is recalculated accordingly (only if ALL analyzers in pipeline )
+/// Payload is taken from lowest analyzer having this attribute
 /// Increment is calculated according to following position change rules
 ///  - If none of pipeline members changes position - whole pipeline holds position
 ///  - If one or more pipeline member moves - pipeline moves( change from max->0 is not move, see rules below!).
@@ -292,5 +338,16 @@ bool pipeline_token_stream::reset(const string_ref& data) {
     normalize_json_config);  // match registration above
 }
 
+pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset)
+  : term(irs::get<irs::term_attribute>(*a)),
+  inc(irs::get<irs::increment>(*a)),
+  offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
+  analyzer(a) {
+  assert(inc);
+  assert(term);
+}
+
 NS_END
 NS_END
+
+

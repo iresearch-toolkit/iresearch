@@ -79,6 +79,14 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
 
 NS_END
 
+TEST(pipeline_token_stream_test, empty_pipeline) {
+  irs::analysis::pipeline_token_stream::options_t pipeline_options;
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+
+  std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
+  ASSERT_FALSE(pipe.reset(data));
+}
+
 TEST(pipeline_token_stream_test, many_tokenizers) {
   auto delimiter = irs::analysis::analyzers::get("delimiter",
     irs::type<irs::text_format::json>::get(),
@@ -424,7 +432,7 @@ TEST(pipeline_token_stream_test, test_construct_invalid_analyzer) {
   ASSERT_EQ(nullptr, stream);
 }
 
-TEST(pipeline_token_stream_test, empty_pipeline) {
+TEST(pipeline_token_stream_test, empty_pipeline_construct) {
   std::string config = "{\"pipeline\":[]}";
   auto stream = irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(), config);
   ASSERT_EQ(nullptr, stream);

@@ -34,7 +34,7 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 class pipeline_token_stream final
-  : public frozen_attributes<3, analyzer>, private util::noncopyable {
+  : public frozen_attributes<4, analyzer>, private util::noncopyable {
  public:
   struct options_t {
     std::vector<irs::analysis::analyzer::ptr> pipeline;
@@ -49,14 +49,7 @@ class pipeline_token_stream final
 
  private:
   struct sub_analyzer_t {
-    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a)
-      : term(irs::get<irs::term_attribute>(*a)),
-        inc(irs::get<irs::increment>(*a)),
-        offs(irs::get<irs::offset>(*a)),
-        analyzer(a) {
-      assert(inc);
-      assert(term);
-    }
+    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset);
 
     bool reset(uint32_t start, uint32_t end, const string_ref& data) {
       data_size = data.size();
