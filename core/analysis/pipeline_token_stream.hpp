@@ -66,10 +66,12 @@ class pipeline_token_stream final
     }
 
     uint32_t start() const noexcept {
+      assert(offs);
       return data_start + offs->start;
     }
 
     uint32_t end() const noexcept {
+      assert(offs);
       return offs->end == data_size ?
         data_end :
         start() + offs->end - offs->start;
