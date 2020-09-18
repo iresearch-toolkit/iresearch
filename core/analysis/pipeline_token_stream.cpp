@@ -52,9 +52,7 @@ class empty_analyzer
 
 irs::analysis::analyzer::ptr EMPTY_ANALYZER{ std::make_shared<empty_analyzer>()};
 
-struct options_normalize_t {
-  std::vector<std::pair<std::string, std::string>> pipeline;
-};
+using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
 bool parse_json_config(const irs::string_ref& args, T& options) {
@@ -115,7 +113,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
                 irs::type<irs::text_format::json>::get(),
                 properties_buffer.GetString());
               if (analyzer) {
-                options.pipeline.push_back(std::move(analyzer));
+                options.push_back(std::move(analyzer));
               } else {
                 IR_FRMT_ERROR(
                   "Failed to create pipeline member of type '%s' with properties '%s' while constructing "
@@ -134,7 +132,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
                   type.c_str(), properties_buffer.GetString(), args.c_str());
                 return false;
               }
-              options.pipeline.emplace_back(type, normalized);
+              options.emplace_back(type, normalized);
             }
           } else {
             IR_FRMT_ERROR(
@@ -166,7 +164,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
       args.c_str());
     return false;
   }
-  if (options.pipeline.empty()) {
+  if (options.empty()) {
     IR_FRMT_ERROR(
       "Empty pipeline found while constructing pipeline_token_stream, "
       "arguments: %s", args.c_str());
@@ -181,7 +179,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     definition.clear();
     definition.append("{\"").append(PIPELINE_PARAM_NAME).append("\":[");
     bool first{ true };
-    for (auto analyzer : options.pipeline) {
+    for (auto analyzer : options) {
       if (first) {
         first = false;
       } else {
@@ -245,16 +243,16 @@ NS_BEGIN(analysis)
 
 pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
-    { irs::type<payload>::id(), find_payload(options.pipeline)},
+    { irs::type<payload>::id(), find_payload(options)},
     { irs::type<increment>::id(), &inc_},
-    { irs::type<offset>::id(), all_have_offset(options.pipeline)? &offs_: nullptr},
-    { irs::type<term_attribute>::id(), options.pipeline.empty() ? 
+    { irs::type<offset>::id(), all_have_offset(options)? &offs_: nullptr},
+    { irs::type<term_attribute>::id(), options.empty() ? 
                                          nullptr
-                                         : irs::get_mutable<term_attribute>(options.pipeline.back().get())}},
+                                         : irs::get_mutable<term_attribute>(options.back().get())}},
     irs::type<pipeline_token_stream>::get()} {
-  pipeline_.reserve(options.pipeline.size());
+  pipeline_.reserve(options.size());
   const auto track_offset = irs::get<offset>(*this) != nullptr;
-  for (const auto& p : options.pipeline) {
+  for (const auto& p : options) {
     assert(p);
     pipeline_.emplace_back(p, track_offset);
   }

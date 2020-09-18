@@ -36,9 +36,7 @@ NS_BEGIN(analysis)
 class pipeline_token_stream final
   : public frozen_attributes<4, analyzer>, private util::noncopyable {
  public:
-  struct options_t {
-    std::vector<irs::analysis::analyzer::ptr> pipeline;
-  };
+  using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
   static constexpr string_ref type_name() noexcept { return "pipeline"; }
   static void init(); // for triggering registration in a static build
