@@ -21,8 +21,8 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
-#define IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
+#ifndef IRESEARCH_PIPELINE_TOKEN_STREAM_H
+#define IRESEARCH_PIPELINE_TOKEN_STREAM_H
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -43,7 +43,7 @@ class pipeline_token_stream final
   static constexpr string_ref type_name() noexcept { return "pipeline"; }
   static void init(); // for triggering registration in a static build
 
-  explicit pipeline_token_stream(const options_t& options);
+  explicit pipeline_token_stream(options_t&& options);
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -53,7 +53,10 @@ class pipeline_token_stream final
       : term(irs::get<irs::term_attribute>(*a)),
         inc(irs::get<irs::increment>(*a)),
         offs(irs::get<irs::offset>(*a)),
-        analyzer(a) {}
+        analyzer(a) {
+      assert(inc);
+      assert(term);
+    }
 
     bool reset(uint32_t start, uint32_t end, const string_ref& data) {
       data_size = data.size();
@@ -104,4 +107,4 @@ class pipeline_token_stream final
 NS_END
 NS_END
 
-#endif // IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
+#endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H

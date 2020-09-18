@@ -189,7 +189,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   irs::analysis::pipeline_token_stream::options_t options;
   if (parse_json_config(args, options)) {
-    return std::make_shared<irs::analysis::pipeline_token_stream>(options);
+    return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
   } else {
     return nullptr;
   }
@@ -204,14 +204,15 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::options_t& options)
+pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
-    { irs::type<increment>::id(), &inc_ },
+    { irs::type<increment>::id(), &inc_},
     { irs::type<offset>::id(), &offs_ },
-    { irs::type<term_attribute>::id(), irs::get_mutable<term_attribute>(options.pipeline.back().get()) }},
-    irs::type<pipeline_token_stream>::get() } {
+    { irs::type<term_attribute>::id(), irs::get_mutable<term_attribute>(options.pipeline.back().get())}},
+    irs::type<pipeline_token_stream>::get()} {
   pipeline_.reserve(options.pipeline.size());
   for (const auto& p : options.pipeline) {
+    assert(p);
     pipeline_.emplace_back(p);
   }
   assert(!pipeline.empty());
@@ -232,7 +233,7 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 ///  - If parent after next is NOT moved (inc == 0) than pipeline makes one step forward if at least one child changes
 ///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
 ///    not change max->0 and position is indeed changed.
-inline bool pipeline_token_stream::next() {
+bool pipeline_token_stream::next() {
   uint32_t pipeline_inc;
   bool step_for_rollback;
   do {
@@ -281,7 +282,7 @@ inline bool pipeline_token_stream::next() {
   return true;
 }
 
-inline bool pipeline_token_stream::reset(const string_ref& data) {
+bool pipeline_token_stream::reset(const string_ref& data) {
   current_ = top_;
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }

@@ -102,7 +102,7 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
   pipeline_options.pipeline.push_back(text);
   pipeline_options.pipeline.push_back(ngram);
 
-  irs::analysis::pipeline_token_stream pipe(pipeline_options);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
 
   std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
   const analyzer_tokens expected{
@@ -150,7 +150,7 @@ TEST(pipeline_token_stream_test, overlapping_ngrams) {
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   pipeline_options.pipeline.push_back(ngram);
   pipeline_options.pipeline.push_back(ngram2);
-  irs::analysis::pipeline_token_stream pipe(pipeline_options);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
 
   std::string data = "ABCDEFJH";
   const analyzer_tokens expected{
@@ -190,14 +190,14 @@ TEST(pipeline_token_stream_test, case_ngrams) {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(ngram);
     pipeline_options.pipeline.push_back(norm);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(norm);
     pipeline_options.pipeline.push_back(ngram);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
 }
@@ -216,7 +216,7 @@ TEST(pipeline_token_stream_test, no_tokenizers) {
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   pipeline_options.pipeline.push_back(norm1);
   pipeline_options.pipeline.push_back(norm2);
-  irs::analysis::pipeline_token_stream pipe(pipeline_options);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
 
@@ -238,14 +238,14 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(text);
     pipeline_options.pipeline.push_back(norm);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(norm);
     pipeline_options.pipeline.push_back(text);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
 }
@@ -263,7 +263,7 @@ TEST(pipeline_token_stream_test, signle_tokenizer) {
   };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   pipeline_options.pipeline.push_back(text);
-  irs::analysis::pipeline_token_stream pipe(pipeline_options);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
 
@@ -277,7 +277,7 @@ TEST(pipeline_token_stream_test, signle_non_tokenizer) {
   };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   pipeline_options.pipeline.push_back(norm);
-  irs::analysis::pipeline_token_stream pipe(pipeline_options);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
 
@@ -303,14 +303,14 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(ngram);
     pipeline_options.pipeline.push_back(norm);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.pipeline.push_back(norm);
     pipeline_options.pipeline.push_back(ngram);
-    irs::analysis::pipeline_token_stream pipe(pipeline_options);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
 }
