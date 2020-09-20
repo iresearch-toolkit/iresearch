@@ -52,7 +52,7 @@ using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 template<typename T>
 bool parse_json_config(const irs::string_ref& args, T& options) {
   if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
-    assert(options.pipeline.empty());
+    assert(options.empty());
   }
   rapidjson::Document json;
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {

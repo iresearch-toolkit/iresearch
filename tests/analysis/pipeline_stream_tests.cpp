@@ -41,6 +41,44 @@
 
 #ifndef IRESEARCH_DLL
 NS_LOCAL
+
+class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::analyzer>, private irs::util::noncopyable {
+ public:
+  pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload) 
+    : attributes{ {
+        { irs::type<irs::payload>::id(), payload == irs::bytes_ref::NIL ? nullptr : &payload_},
+        { irs::type<irs::increment>::id(), &inc_},
+        { irs::type<irs::offset>::id(), has_offset? &offs_: nullptr},
+        { irs::type<irs::term_attribute>::id(), &term_}},
+        irs::type<pipeline_test_analyzer>::get()} {
+    payload_.value = payload;
+  }
+  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer"; }
+  virtual bool next() override { 
+    if (term_emitted) {
+      return false;
+    }
+    term_emitted = false;
+    inc_.value = 1;
+    offs_.start = 0;
+    offs_.end = static_cast<uint32_t>(term_.value.size());
+    return true;
+  }
+  virtual bool reset(const irs::string_ref& data) override {
+    term_emitted = false;
+    term_.value = irs::ref_cast<irs::byte_type>(data);
+    return true;
+  }
+
+ private:
+  bool term_emitted{ true };
+  irs::term_attribute term_;
+  irs::payload payload_;
+  irs::offset offs_;
+  irs::increment inc_;
+};
+
+
 struct analyzer_token {
   irs::string_ref value;
   size_t start;
@@ -473,6 +511,101 @@ TEST(pipeline_token_stream_test, normalize_json) {
     std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"wrong_delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
+  }
+}
+
+TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
+  irs::byte_type test_payload[] { 0x1, 0x2, 0x3 };
+  irs::byte_type test_payload2[] { 0x11, 0x22, 0x33 };
+  pipeline_test_analyzer payload_offset(true, test_payload);
+  pipeline_test_analyzer only_payload(false, test_payload2);
+  pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
+  pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
+
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_offset);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    auto* offset = irs::get<irs::offset>(pipe);
+    ASSERT_TRUE(offset);
+    auto* term = irs::get<irs::term_attribute>(pipe);
+    ASSERT_TRUE(term);
+    auto* inc = irs::get<irs::increment>(pipe);
+    ASSERT_TRUE(inc);
+    auto* pay = irs::get<irs::payload>(pipe);
+    ASSERT_TRUE(pay);
+    ASSERT_TRUE(pipe.reset("A"));
+    ASSERT_TRUE(pipe.next());
+    ASSERT_EQ(test_payload, pay->value);
+  }
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_offset);
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    auto* offset = irs::get<irs::offset>(pipe);
+    ASSERT_TRUE(offset);
+    auto* term = irs::get<irs::term_attribute>(pipe);
+    ASSERT_TRUE(term);
+    auto* inc = irs::get<irs::increment>(pipe);
+    ASSERT_TRUE(inc);
+    auto* pay = irs::get<irs::payload>(pipe);
+    ASSERT_TRUE(pay);
+    ASSERT_TRUE(pipe.reset("A"));
+    ASSERT_TRUE(pipe.next());
+    ASSERT_EQ(test_payload, pay->value);
+  }
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    auto* offset = irs::get<irs::offset>(pipe);
+    ASSERT_FALSE(offset);
+    auto* term = irs::get<irs::term_attribute>(pipe);
+    ASSERT_TRUE(term);
+    auto* inc = irs::get<irs::increment>(pipe);
+    ASSERT_TRUE(inc);
+    auto* pay = irs::get<irs::payload>(pipe);
+    ASSERT_TRUE(pay);
+    ASSERT_TRUE(pipe.reset("A"));
+    ASSERT_TRUE(pipe.next());
+    ASSERT_EQ(test_payload2, pay->value);
+  }
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    auto* offset = irs::get<irs::offset>(pipe);
+    ASSERT_FALSE(offset);
+    auto* term = irs::get<irs::term_attribute>(pipe);
+    ASSERT_TRUE(term);
+    auto* inc = irs::get<irs::increment>(pipe);
+    ASSERT_TRUE(inc);
+    auto* pay = irs::get<irs::payload>(pipe);
+    ASSERT_TRUE(pay);
+    ASSERT_TRUE(pipe.reset("A"));
+    ASSERT_TRUE(pipe.next());
+    ASSERT_EQ(test_payload, pay->value);
+  }
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
+    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &no_payload_no_offset);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    auto* offset = irs::get<irs::offset>(pipe);
+    ASSERT_FALSE(offset);
+    auto* term = irs::get<irs::term_attribute>(pipe);
+    ASSERT_TRUE(term);
+    auto* inc = irs::get<irs::increment>(pipe);
+    ASSERT_TRUE(inc);
+    auto* pay = irs::get<irs::payload>(pipe);
+    ASSERT_TRUE(pay);
+    ASSERT_TRUE(pipe.reset("A"));
+    ASSERT_TRUE(pipe.next());
+    ASSERT_EQ(test_payload2, pay->value);
   }
 }
 
