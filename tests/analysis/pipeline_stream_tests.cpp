@@ -644,8 +644,8 @@ TEST(pipeline_token_stream_test, normalize_json) {
 }
 
 TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
-  irs::byte_type test_payload[] { 0x1, 0x2, 0x3 };
-  irs::byte_type test_payload2[] { 0x11, 0x22, 0x33 };
+  irs::bytes_ref test_payload{ { 0x1, 0x2, 0x3 }, 3 };
+  irs::bytes_ref test_payload2{ { 0x11, 0x22, 0x33 }, 3 };
   pipeline_test_analyzer payload_offset(true, test_payload);
   pipeline_test_analyzer only_payload(false, test_payload2);
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
