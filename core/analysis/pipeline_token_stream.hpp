@@ -72,9 +72,9 @@ class pipeline_token_stream final
 
     uint32_t end() const noexcept {
       assert(offs);
-      return offs->end == data_size ?
-        data_end :
-        start() + offs->end - offs->start;
+      return offs->end == data_size
+        ? data_end
+        : start() + offs->end - offs->start;
     }
     const term_attribute* term;
     const increment* inc;
