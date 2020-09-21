@@ -241,7 +241,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     { irs::type<payload>::id(), find_payload(options)},
     { irs::type<increment>::id(), &inc_},
     { irs::type<offset>::id(), all_have_offset(options)? &offs_: nullptr},
-    { irs::type<term_attribute>::id(), options.empty() ? 
+    { irs::type<term_attribute>::id(), options.empty() ?
                                          nullptr
                                          : irs::get_mutable<term_attribute>(options.back().get())}},
     irs::type<pipeline_token_stream>::get()} {

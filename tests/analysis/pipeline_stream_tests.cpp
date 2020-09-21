@@ -44,7 +44,7 @@ NS_LOCAL
 
 class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::analyzer>, private irs::util::noncopyable {
  public:
-  pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload) 
+  pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload)
     : attributes{ {
         { irs::type<irs::payload>::id(), payload == irs::bytes_ref::NIL ? nullptr : &payload_},
         { irs::type<irs::increment>::id(), &inc_},
@@ -54,7 +54,7 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
     payload_.value = payload;
   }
   static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer"; }
-  virtual bool next() override { 
+  virtual bool next() override {
     if (term_emitted) {
       return false;
     }
@@ -90,7 +90,7 @@ class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::
       { irs::type<irs::term_attribute>::id(), &term_}},
       irs::type<pipeline_test_analyzer>::get() },
       offsets_(offsets), increments_(increments), nexts_(nexts), resets_(resets),
-      terms_(terms){
+      terms_(terms) {
     current_offset_ = offsets_.begin();
     current_increment_ = increments_.begin();
     current_next_ = nexts_.begin();
@@ -436,7 +436,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   irs::byte_type term[] { "A" };
   irs::analysis::analyzer::ptr tokenizer1;
   {
-    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 0,5 }};
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 0, 5 }};
     std::vector<uint32_t> increments{1, 0 };
     std::vector<bool> nexts{ true, true };
     std::vector<bool> resets{ true };
@@ -449,7 +449,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   }
   irs::analysis::analyzer::ptr tokenizer2;
   {
-    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 1,5 }, {2, 5}, { 2,5 }};
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 1, 5 }, {2, 5}, { 2, 5 }};
     std::vector<uint32_t> increments{ 1, 1, 1, 0 };
     std::vector<bool> nexts{ true, true, false, true, true };
     std::vector<bool> resets{ true, true };
@@ -462,7 +462,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   }
   irs::analysis::analyzer::ptr tokenizer3;
   {
-    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 1}, { 0,1 }};
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 1}, { 0, 1 }};
     std::vector<uint32_t> increments{ 1, 1 };
     std::vector<bool> nexts{ true, false, false, false, true };
     std::vector<bool> resets{ true, true, true, true };
