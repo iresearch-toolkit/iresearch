@@ -33,6 +33,10 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class pipeline_token_stream
+/// @brief an analyser capable of chaining other analyzers
+////////////////////////////////////////////////////////////////////////////////
 class pipeline_token_stream final
   : public frozen_attributes<4, analyzer>, private util::noncopyable {
  public:
