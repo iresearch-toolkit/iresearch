@@ -78,6 +78,77 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
   irs::increment inc_;
 };
 
+class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::analyzer>, private irs::util::noncopyable {
+ public:
+  pipeline_test_analyzer2(std::vector<std::pair<uint32_t, uint32_t>>&& offsets,
+    std::vector<uint32_t>&& increments,
+    std::vector<bool>&& nexts, std::vector<bool>&& resets,
+    std::vector<irs::bytes_ref>&& terms)
+    : attributes{ {
+      { irs::type<irs::increment>::id(), &inc_},
+      { irs::type<irs::offset>::id(), &offs_},
+      { irs::type<irs::term_attribute>::id(), &term_}},
+      irs::type<pipeline_test_analyzer>::get() },
+      offsets_(offsets), increments_(increments), nexts_(nexts), resets_(resets),
+      terms_(terms){
+    current_offset_ = offsets_.begin();
+    current_increment_ = increments_.begin();
+    current_next_ = nexts_.begin();
+    current_reset_ = resets_.begin();
+    current_term_ = terms_.begin();
+  }
+  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer2"; }
+  virtual bool next() override {
+    if (current_next_ != nexts_.end()) {
+      auto next_val = *(current_next_++);
+      if (next_val) {
+        if (current_offset_ != offsets_.end()) {
+          auto value = *(current_offset_++);
+          offs_.start = value.first;
+          offs_.end = value.second;
+        } else {
+          offs_.start = 0;
+          offs_.end = 0;
+        }
+        if (current_increment_ != increments_.end()) {
+          inc_.value = *(current_increment_++);
+        } else {
+          inc_.value = 0;
+        }
+        if (current_term_ != terms_.end()) {
+          term_.value = *(current_term_++);
+        } else {
+          term_.value = irs::bytes_ref::NIL;
+        }
+      }
+      return next_val;
+    }
+    return false;
+  }
+  virtual bool reset(const irs::string_ref& data) override {
+    if (current_reset_ != resets_.end()) {
+      return *(current_reset_++);
+    }
+    return false;
+  }
+
+ private:
+  std::vector<std::pair<uint32_t, uint32_t>> offsets_;
+  std::vector<std::pair<uint32_t, uint32_t>>::const_iterator current_offset_;
+  std::vector<uint32_t> increments_;
+  std::vector<uint32_t>::const_iterator current_increment_;
+  std::vector<bool> nexts_;
+  std::vector<bool>::const_iterator current_next_;
+  std::vector<bool> resets_;
+  std::vector<bool>::const_iterator current_reset_;
+  std::vector<irs::bytes_ref> terms_;
+  std::vector<irs::bytes_ref>::const_iterator current_term_;
+
+  irs::term_attribute term_;
+  irs::offset offs_;
+  irs::increment inc_;
+};
+
 
 struct analyzer_token {
   irs::string_ref value;
@@ -360,6 +431,64 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
     assert_pipeline(&pipe, data, expected);
   }
 }
+
+TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
+  irs::byte_type term[] { "A" };
+  irs::analysis::analyzer::ptr tokenizer1;
+  {
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 0,5 }};
+    std::vector<uint32_t> increments{1, 0 };
+    std::vector<bool> nexts{ true, true };
+    std::vector<bool> resets{ true };
+    std::vector<irs::bytes_ref> terms{ term };
+    tokenizer1.reset(
+       new pipeline_test_analyzer2(std::move(offsets),
+                                   std::move(increments),
+                                   std::move(nexts), std::move(resets),
+                                   std::move(terms)));
+  }
+  irs::analysis::analyzer::ptr tokenizer2;
+  {
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 1,5 }, {2, 5}, { 2,5 }};
+    std::vector<uint32_t> increments{ 1, 1, 1, 0 };
+    std::vector<bool> nexts{ true, true, false, true, true };
+    std::vector<bool> resets{ true, true };
+    std::vector<irs::bytes_ref> terms{ term };
+    tokenizer2.reset(
+      new pipeline_test_analyzer2(std::move(offsets),
+        std::move(increments),
+        std::move(nexts), std::move(resets),
+        std::move(terms)));
+  }
+  irs::analysis::analyzer::ptr tokenizer3;
+  {
+    std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 1}, { 0,1 }};
+    std::vector<uint32_t> increments{ 1, 1 };
+    std::vector<bool> nexts{ true, false, false, false, true };
+    std::vector<bool> resets{ true, true, true, true };
+    std::vector<irs::bytes_ref> terms{ term, term };
+    tokenizer3.reset(
+      new pipeline_test_analyzer2(std::move(offsets),
+        std::move(increments),
+        std::move(nexts), std::move(resets),
+        std::move(terms)));
+  }
+
+  std::string data = "A";
+  const analyzer_tokens expected{
+    {"A", 0, 5, 0},
+    {"A", 2, 3, 1}
+  };
+  {
+    irs::analysis::pipeline_token_stream::options_t pipeline_options;
+    pipeline_options.push_back(tokenizer1);
+    pipeline_options.push_back(tokenizer2);
+    pipeline_options.push_back(tokenizer3);
+    irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+    assert_pipeline(&pipe, data, expected);
+  }
+}
+
 
 TEST(pipeline_token_stream_test, test_construct) {
   std::string config = "{\"pipeline\":["

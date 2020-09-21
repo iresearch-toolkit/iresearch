@@ -274,9 +274,8 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
 ///    not change max->0 and position is indeed changed.
 bool pipeline_token_stream::next() {
   uint32_t pipeline_inc;
-  bool step_for_rollback;
+  bool step_for_rollback{ false };
   do {
-    step_for_rollback = false;
     while (!current_->next()) {
       if (current_ == top_) { // reached pipeline top and next has failed - we are done
         return false;
@@ -284,9 +283,7 @@ bool pipeline_token_stream::next() {
       --current_;
     }
     pipeline_inc = current_->inc->value;
-
     const auto top_holds_position = current_->inc->value == 0;
-
     // go down to lowest pipe to get actual tokens
     while (current_ != bottom_) {
       const auto prev_term = current_->term->value;
