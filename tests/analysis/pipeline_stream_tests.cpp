@@ -433,7 +433,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
 }
 
 TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
-  irs::byte_type term[] { "A" };
+  irs::bytes_ref term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
   irs::analysis::analyzer::ptr tokenizer1;
   {
     std::vector<std::pair<uint32_t, uint32_t>> offsets{ {0, 5}, { 0, 5 }};
