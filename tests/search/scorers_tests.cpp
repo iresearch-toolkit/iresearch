@@ -26,10 +26,6 @@
 
 TEST(scorers_tests, duplicate_register) {
   struct dummy_scorer: public irs::sort {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "dummy_scorer";
-    }
-
     static ptr make(const irs::string_ref&) { return ptr(new dummy_scorer()); }
     dummy_scorer(): irs::sort(irs::type<dummy_scorer>::get()) { }
 

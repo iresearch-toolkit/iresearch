@@ -106,10 +106,6 @@ struct aligned_scorer : public irs::sort {
     bool empty_scorer_;
   };
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static ptr make(const irs::flags& features = irs::flags::empty_instance(),
                   bool empty_scorer = true) {
     return std::make_unique<aligned_scorer>(features, empty_scorer);
@@ -133,10 +129,6 @@ struct aligned_scorer : public irs::sort {
 };
 
 struct dummy_scorer0: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static ptr make() { return std::make_unique<dummy_scorer0>(); }
   dummy_scorer0(): irs::sort(irs::type<dummy_scorer0>::get()) { }
   virtual prepared::ptr prepare() const override { return nullptr; }
@@ -146,10 +138,6 @@ NS_END
 
 TEST(sort_tests, order_equal) {
   struct dummy_scorer1: public irs::sort {
-    static constexpr irs::string_ref type_name() noexcept {
-      return __FILE__ ":" STRINGIFY(__LINE__);
-    }
-
     static ptr make() { return std::make_unique<dummy_scorer1>(); }
     dummy_scorer1(): irs::sort(irs::type<dummy_scorer1>::get()) { }
     virtual prepared::ptr prepare() const override { return nullptr; }

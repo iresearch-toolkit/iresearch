@@ -28,6 +28,22 @@
 
 #include "shared.hpp"
 
+#define DEFINE_HAS_MEMBER(member)                                          \
+  template<typename T>                                                     \
+  class has_member_##member {                                              \
+   private:                                                                \
+    using yes_type = char;                                                 \
+    using no_type = long;                                                  \
+    template<typename U> static yes_type test(decltype(&U::member_name));  \
+    template<typename U> static no_type  test(...);                        \
+   public:                                                                 \
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);  \
+  };                                                                       \
+  template<typename T>                                                     \
+  inline constexpr has_member_##member##_v = has_member_##member<T>::value
+
+#define HAS_MEMBER(type, member) has_member_##member_v<type>
+
 NS_ROOT
 NS_BEGIN(irstd)
 

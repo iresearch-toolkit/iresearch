@@ -59,10 +59,6 @@ struct IRESEARCH_API by_ngram_similarity_options {
 class IRESEARCH_API by_ngram_similarity
     : public filter_base<by_ngram_similarity_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_ngram_similarity";
-  }
-
   DECLARE_FACTORY();
 
   // returns set of features required for filter 

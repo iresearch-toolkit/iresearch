@@ -264,10 +264,6 @@ class filter_base : public filter_with_options<Options> {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty final : public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::empty";
-  }
-
   DECLARE_FACTORY();
 
   empty();

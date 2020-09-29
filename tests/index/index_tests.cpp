@@ -38,10 +38,6 @@
 NS_BEGIN(tests)
 
 struct incompatible_attribute : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::incompatible_attribute";
-  }
-
   incompatible_attribute() noexcept;
 };
 

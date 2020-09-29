@@ -25,8 +25,15 @@
 
 #include "shared.hpp"
 #include "string.hpp"
+#include "std.hpp"
+
+#include <boost/type_index/ctti_type_index.hpp>
 
 NS_ROOT
+
+NS_BEGIN(detail)
+DEFINE_HAS_MEMBER(type_name);
+NS_END
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class type_info
@@ -114,9 +121,15 @@ struct type {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns type name of a type denoted by template parameter "T"
+  /// @note !!! Never persist type name provided by boost::typeindex as !!!
+  ///       !!! it's platform dependent                                 !!!
   //////////////////////////////////////////////////////////////////////////////
   static constexpr string_ref name() noexcept {
-    return T::type_name();
+    if constexpr (detail::has_member_type_name_v<T>) {
+      return T::type_name();
+    }
+
+    return { boost::typeindex::ctti_type_index::type_id<T>().raw_name() };
   }
 
   //////////////////////////////////////////////////////////////////////////////

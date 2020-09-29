@@ -26,10 +26,6 @@
 
 TEST(formats_tests, duplicate_register) {
   struct dummy_format: public irs::format {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "dummy_format";
-    }
-
     static ptr make() { return ptr(new dummy_format()); }
     dummy_format(): irs::format(dummy_format::type()) { }
     virtual irs::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }

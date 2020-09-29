@@ -85,10 +85,6 @@ struct boost : public irs::sort {
     const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::boostsort";
-  }
-
   DECLARE_FACTORY();
   typedef irs::boost_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
@@ -101,10 +97,6 @@ struct boost : public irs::sort {
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
 struct custom_sort: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::custom_sort";
-  }
-
   class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
     class field_collector :  public irs::sort::field_collector {
@@ -332,10 +324,6 @@ struct custom_sort: public irs::sort {
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
 struct frequency_sort: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::frequency_sort";
-  }
-
   struct score_t {
     irs::doc_id_t id;
     double value;

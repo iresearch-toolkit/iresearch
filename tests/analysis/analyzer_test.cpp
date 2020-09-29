@@ -64,10 +64,6 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer: public irs::analysis::analyzer {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "dummy_analyzer";
-    }
-
     static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
     static bool normalize(const irs::string_ref&, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) { }

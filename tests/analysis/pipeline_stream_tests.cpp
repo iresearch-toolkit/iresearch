@@ -53,7 +53,6 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
         irs::type<pipeline_test_analyzer>::get()} {
     payload_.value = payload;
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer"; }
   virtual bool next() override {
     if (term_emitted) {
       return false;
@@ -97,7 +96,6 @@ class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::
     current_reset_ = resets_.begin();
     current_term_ = terms_.begin();
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer2"; }
   virtual bool next() override {
     if (current_next_ != nexts_.end()) {
       auto next_val = *(current_next_++);
