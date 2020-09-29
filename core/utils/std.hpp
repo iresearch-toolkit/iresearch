@@ -40,7 +40,7 @@
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);  \
   };                                                                       \
   template<typename T>                                                     \
-  inline constexpr has_member_##member##_v = has_member_##member<T>::value
+  inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
 
 #define HAS_MEMBER(type, member) has_member_##member_v<type>
 
