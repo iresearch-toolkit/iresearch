@@ -37,7 +37,7 @@
     template<typename U> static yes_type test(decltype(&U::member));  \
     template<typename U> static no_type  test(...);                        \
    public:                                                                 \
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);  \
+    static constexpr bool value = sizeof(test<std::remove_reference_t<std::remove_cv_t<T>>>(0)) == sizeof(yes_type);  \
   };                                                                       \
   template<typename T>                                                     \
   inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
