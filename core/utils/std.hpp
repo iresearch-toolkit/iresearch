@@ -42,7 +42,7 @@
   template<typename T>                                                     \
   inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
 
-#define HAS_MEMBER(type, member) has_member_##member_v<type>
+#define HAS_MEMBER(type, member) has_member_##member##_v<type>
 
 NS_ROOT
 NS_BEGIN(irstd)
