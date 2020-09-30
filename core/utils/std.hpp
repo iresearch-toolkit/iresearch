@@ -28,18 +28,19 @@
 
 #include "shared.hpp"
 
-#define DEFINE_HAS_MEMBER(member)                                          \
-  template<typename T>                                                     \
-  class has_member_##member {                                              \
-   private:                                                                \
-    using yes_type = char;                                                 \
-    using no_type = long;                                                  \
-    template<typename U> static yes_type test(decltype(&U::member));  \
-    template<typename U> static no_type  test(...);                        \
-   public:                                                                 \
-    static constexpr bool value = sizeof(test<std::remove_reference_t<std::remove_cv_t<T>>>(0)) == sizeof(yes_type);  \
-  };                                                                       \
-  template<typename T>                                                     \
+#define DEFINE_HAS_MEMBER(member)                                            \
+  template<typename T>                                                       \
+  class has_member_##member {                                                \
+   private:                                                                  \
+    using yes_type = char;                                                   \
+    using no_type = long;                                                    \
+    using type = std::remove_reference_t<std::remove_cv_t<T>>;               \
+    template<typename U> static yes_type test(decltype(&U::member));         \
+    template<typename U> static no_type  test(...);                          \
+   public:                                                                   \
+    static constexpr bool value = sizeof(test<type>(0)) == sizeof(yes_type); \
+  };                                                                         \
+  template<typename T>                                                       \
   inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
 
 #define HAS_MEMBER(type, member) has_member_##member##_v<type>
