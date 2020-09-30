@@ -23,12 +23,11 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "sort.hpp"
-
 #include <unordered_map>
 #include <functional>
 
 #include "shared.hpp"
+#include "search/sort.hpp"
 #include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 

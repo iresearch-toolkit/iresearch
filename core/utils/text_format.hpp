@@ -24,8 +24,6 @@
 #ifndef IRESEARCH_TEXT_FORMAT_H
 #define IRESEARCH_TEXT_FORMAT_H
 
-#include "type_id.hpp"
-
 NS_ROOT
 NS_BEGIN(text_format)
 

@@ -33,7 +33,7 @@
 
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
-#include "utils/type_id.hpp"
+#include "utils/type_index.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
 

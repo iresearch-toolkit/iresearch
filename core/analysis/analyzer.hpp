@@ -24,7 +24,7 @@
 #define IRESEARCH_ANALYZER_H
 
 #include "analysis/token_stream.hpp"
-#include "utils/type_id.hpp"
+#include "utils/type_index.hpp"
 #include "utils/text_format.hpp"
 
 NS_ROOT

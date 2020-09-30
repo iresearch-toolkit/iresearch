@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_COMPRESSION_H
 #define IRESEARCH_COMPRESSION_H
 
-#include "type_id.hpp"
 #include "memory.hpp"
+#include "type_id.hpp"
 #include "noncopyable.hpp"
 
 #include <map>
