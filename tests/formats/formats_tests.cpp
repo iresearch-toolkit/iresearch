@@ -46,8 +46,8 @@ TEST(formats_tests, duplicate_register) {
 
   // check required for tests with repeat (static maps are not cleared between runs)
   if (initial_expected) {
-    ASSERT_FALSE(irs::formats::exists("dummy_format"));
-    ASSERT_EQ(nullptr, irs::formats::get("dummy_format"));
+    ASSERT_FALSE(irs::formats::exists(irs::type<dummy_format>::name()));
+    ASSERT_EQ(nullptr, irs::formats::get(irs::type<dummy_format>::name()));
 
     irs::format_registrar initial(irs::type<dummy_format>::get(), irs::string_ref::NIL, &dummy_format::make);
     ASSERT_EQ(!initial_expected, !initial);
@@ -57,6 +57,6 @@ TEST(formats_tests, duplicate_register) {
   irs::format_registrar duplicate(irs::type<dummy_format>::get(), "foo", &dummy_format::make);
   ASSERT_TRUE(!duplicate);
 
-  ASSERT_TRUE(irs::formats::exists("dummy_format"));
-  ASSERT_NE(nullptr, irs::formats::get("dummy_format"));
+  ASSERT_TRUE(irs::formats::exists(irs::type<dummy_format>::name()));
+  ASSERT_NE(nullptr, irs::formats::get(irs::type<dummy_format>::name()));
 }
