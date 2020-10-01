@@ -103,17 +103,8 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
 
-  struct test_format0 {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "test_format0";
-    }
-  };
-
-  struct test_format1 {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "test_format1";
-    }
-  };
+  struct test_format0 { };
+  struct test_format1 { };
 
   test_format test_codec0(irs::type<test_format0>::get());
   test_format test_codec1(irs::type<test_format1>::get());

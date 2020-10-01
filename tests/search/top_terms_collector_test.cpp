@@ -54,10 +54,6 @@ NS_END
 NS_LOCAL
 
 struct sort : irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static irs::sort::ptr make() {
     return std::make_unique<sort>();
   }

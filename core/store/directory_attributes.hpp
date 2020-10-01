@@ -43,10 +43,6 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
   }; // buffer
 
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::memory_allocator";
-  }
-
   DECLARE_FACTORY(size_t pool_size);
 
   typedef container_utils::memory::bucket_allocator<
@@ -72,10 +68,6 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 ///        where applicable, e.g. fs_directory
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API fd_pool_size: public stored_attribute {
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::fd_pool_size";
-  }
-
   DECLARE_FACTORY();
 
   fd_pool_size() noexcept;
@@ -93,10 +85,6 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   typedef attribute_store::ref<index_file_refs>::type attribute_t;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
-
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::index_file_refs";
-  }
 
   DECLARE_FACTORY();
   index_file_refs() = default;

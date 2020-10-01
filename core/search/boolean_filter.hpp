@@ -97,10 +97,6 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API And: public boolean_filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::And";
-  }
-
   DECLARE_FACTORY();
 
   And() noexcept;
@@ -122,10 +118,6 @@ class IRESEARCH_API And: public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API Or : public boolean_filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::Or";
-  }
-
   DECLARE_FACTORY();
 
   Or() noexcept;
@@ -163,10 +155,6 @@ class IRESEARCH_API Or : public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API Not: public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::Not";
-  }
-
   DECLARE_FACTORY();
 
   Not() noexcept;

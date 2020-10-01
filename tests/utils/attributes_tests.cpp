@@ -47,10 +47,6 @@ using namespace iresearch;
 namespace tests {
 
 struct attribute : iresearch::stored_attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::attribute";
-  }
-
   DECLARE_FACTORY();
 
   virtual void clear() { value = 0; }
@@ -65,10 +61,6 @@ struct attribute : iresearch::stored_attribute {
 DEFINE_FACTORY_DEFAULT(attribute)
 
 struct invalid_attribute : iresearch::stored_attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::invalid_attribute";
-  }
-
   DECLARE_FACTORY();
 
   virtual void clear() { value = 0; }
@@ -81,11 +73,7 @@ DEFINE_FACTORY_DEFAULT(invalid_attribute)
 } // tests
 
 TEST(attributes_tests, duplicate_register) {
-  struct dummy_attribute: public irs::attribute {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "tests::attributes_tests::dummy_attribute";
-    }
-  };
+  struct dummy_attribute: public irs::attribute { };
 
   static bool initial_expected = true;
 

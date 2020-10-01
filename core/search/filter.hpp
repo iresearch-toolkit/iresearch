@@ -23,12 +23,11 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "sort.hpp"
-
 #include <unordered_map>
 #include <functional>
 
 #include "shared.hpp"
+#include "search/sort.hpp"
 #include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 
@@ -264,10 +263,6 @@ class filter_base : public filter_with_options<Options> {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty final : public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::empty";
-  }
-
   DECLARE_FACTORY();
 
   empty();
