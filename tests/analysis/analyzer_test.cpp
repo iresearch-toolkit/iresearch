@@ -26,7 +26,7 @@
 #include "analysis/analyzers.hpp"
 #include "utils/runtime_utils.hpp"
 
-NS_BEGIN(tests)
+namespace tests {
 
 class analyzer_test: public ::testing::Test {
 
@@ -54,7 +54,7 @@ class analyzer_test: public ::testing::Test {
   }
 };
 
-NS_END
+}
 
 using namespace tests;
 

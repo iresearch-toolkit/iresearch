@@ -25,19 +25,19 @@
 
 #include <fst/fst-decl.h>
 
-NS_BEGIN(fst)
+namespace fst {
 
 template<typename Label> class StringLeftWeight;
 
-NS_BEGIN(fsa)
+namespace fsa {
 
 template<typename Weight, typename Label>
 struct Transition;
 
-NS_END // fsa
-NS_END // fst
+} // fsa
+} // fst
 
-NS_ROOT
+namespace iresearch {
 
 typedef fst::StringLeftWeight<byte_type> byte_weight;
 typedef fst::ArcTpl<byte_weight> byte_arc;
@@ -46,6 +46,6 @@ typedef fst::VectorFst<byte_arc> vector_byte_fst;
 template<typename Key, typename Weight> class fst_builder;
 typedef fst_builder<byte_type, vector_byte_fst> fst_byte_builder;
 
-NS_END
+}
 
 #endif

@@ -33,7 +33,7 @@
 
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
-NS_LOCAL
+namespace {
 
 std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -46,7 +46,7 @@ std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   return result;
 }
 
-NS_END // NS_LOCAL
+} // namespace {
 
 namespace tests {
 

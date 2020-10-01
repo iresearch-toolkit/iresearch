@@ -26,11 +26,11 @@
 #include "type_info.hpp"
 #include "misc.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-NS_BEGIN(detail)
+namespace detail {
 DEFINE_HAS_MEMBER(type_name);
-NS_END // detail
+} // detail
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class type
@@ -68,6 +68,6 @@ struct type {
   }
 }; // type
 
-NS_END
+}
 
 #endif

@@ -32,7 +32,7 @@
 #include "utils/misc.hpp"
 #include "utils/map_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -44,9 +44,9 @@ struct ngram_segment_state_t {
 using states_t = states_cache<ngram_segment_state_t>;
 using approximation = min_match_disjunction<doc_iterator::ptr>;
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 ///@class ngram_similarity_doc_iterator
@@ -554,4 +554,4 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       this->boost() * boost);
 }
 
-NS_END
+}

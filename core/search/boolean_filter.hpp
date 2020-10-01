@@ -29,7 +29,7 @@
 #include "all_filter.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_filter
@@ -204,6 +204,6 @@ class IRESEARCH_API Not: public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-NS_END
+}
 
 #endif

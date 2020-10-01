@@ -35,7 +35,7 @@
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(std)
+namespace std {
 
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_ref)
@@ -119,9 +119,9 @@ struct char_traits<::iresearch::byte_type> {
 }; // char_traits
 #endif
 
-NS_END // std
+} // std
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               binary std::string
@@ -392,7 +392,7 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
 // --SECTION--                                        String hashing algorithms
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(hash_utils)
+namespace hash_utils {
 
 IRESEARCH_API size_t hash(const irs::bstring& value) noexcept;
 IRESEARCH_API size_t hash(const char* value) noexcept;
@@ -400,9 +400,9 @@ IRESEARCH_API size_t hash(const wchar_t* value) noexcept;
 IRESEARCH_API size_t hash(const bytes_ref& value) noexcept;
 IRESEARCH_API size_t hash(const string_ref& value) noexcept;
 
-NS_END // hash_utils
+} // hash_utils
 
-NS_BEGIN(literals)
+namespace literals {
 
 FORCE_INLINE constexpr irs::string_ref operator "" _sr(const char* src, size_t size) noexcept {
   return irs::string_ref(src, size);
@@ -412,15 +412,15 @@ FORCE_INLINE constexpr irs::bytes_ref operator "" _bsr(const char* src, size_t s
   return irs::ref_cast<irs::byte_type>(irs::string_ref(src, size));
 }
 
-NS_END // literars
+} // literars
 
-NS_END // NS_ROOT
+} // namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<char*> {
@@ -457,6 +457,6 @@ struct hash<::iresearch::string_ref> {
   }
 }; // hash
 
-NS_END // std
+} // std
 
 #endif

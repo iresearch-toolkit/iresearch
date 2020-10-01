@@ -36,7 +36,7 @@
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 struct bstring_data_output: public data_output {
   irs::bstring out_;
@@ -1451,4 +1451,4 @@ INSTANTIATE_TEST_CASE_P(
 
 #endif // IRESEARCH_DLL
 
-NS_END // NS_LOCAL
+} // namespace {

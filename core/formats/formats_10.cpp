@@ -75,7 +75,7 @@
   #pragma warning(disable : 4351)
 #endif
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -2530,7 +2530,7 @@ bool document_mask_reader::read(
 // --SECTION--                                                      columnstore
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(columns)
+namespace columns {
 
 template<typename T, typename M>
 std::string file_name(const M& meta); // forward declaration
@@ -5180,7 +5180,7 @@ const reader::column_reader* reader::column(field_id field) const {
     : columns_[field].get();
 }
 
-NS_END // columns
+} // columns
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  postings_reader
@@ -5782,10 +5782,10 @@ REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 void init() {
 #ifndef IRESEARCH_DLL
@@ -5808,10 +5808,10 @@ format::format(const irs::type_info& type) noexcept
   : irs::format(type) {
 }
 
-NS_END // version10
+} // version10
 
 // use base irs::position type for ancestors
 template<typename IteratorTraits, bool Position>
 struct type<::position<IteratorTraits, Position>> : type<irs::position> { };
 
-NS_END // root
+} // root

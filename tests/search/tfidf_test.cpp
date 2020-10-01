@@ -37,7 +37,7 @@
 #include "utils/utf8_path.hpp"
 #include "utils/type_limits.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace tests;
 
@@ -1304,4 +1304,4 @@ INSTANTIATE_TEST_CASE_P(
 
 #endif // IRESEARCH_DLL
 
-NS_END // NS_LOCAL
+} // namespace {

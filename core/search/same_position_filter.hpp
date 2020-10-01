@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_same_position;
 
@@ -81,6 +81,6 @@ class IRESEARCH_API by_same_position
     const attribute_provider* ctx) const override;
 }; // by_same_position
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_SAME_POSITION_FILTER_H

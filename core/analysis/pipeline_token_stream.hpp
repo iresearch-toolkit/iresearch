@@ -30,8 +30,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class pipeline_token_stream
@@ -102,7 +102,7 @@ class pipeline_token_stream final
   increment inc_;
 };
 
-NS_END
-NS_END
+}
+}
 
 #endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H

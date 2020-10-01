@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_column_existence;
 
@@ -69,6 +69,6 @@ class IRESEARCH_API by_column_existence final
     const attribute_provider* ctx) const override;
 }; // by_column_existence
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COLUMN_EXISTENCE_FILTER_H

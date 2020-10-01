@@ -29,7 +29,7 @@
 
 #include <functional>
 
-NS_LOCAL
+namespace {
 
 irs::by_ngram_similarity make_filter(const irs::string_ref& field,
                                      const std::vector<irs::string_ref>& ngrams,
@@ -44,9 +44,9 @@ irs::by_ngram_similarity make_filter(const irs::string_ref& field,
   return filter;
 }
 
-NS_END
+}
 
-NS_BEGIN(tests)
+namespace tests {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                            by_ngram_similarity filter base tests
@@ -1108,4 +1108,4 @@ INSTANTIATE_TEST_CASE_P(
                       tests::format_info{"1_3", "1_0"})),
     tests::to_string);
 
-NS_END // tests
+} // tests

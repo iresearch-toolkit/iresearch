@@ -24,7 +24,7 @@
 #include "tests_shared.hpp"
 #include "utils/attribute_store.hpp"
 
-NS_LOCAL
+namespace {
 
 template< typename T >
 inline T* copy_attribute(irs::attribute_store& dst, const irs::attribute_store& src) {
@@ -40,7 +40,7 @@ inline T* copy_attribute(irs::attribute_store& dst, const irs::attribute_store& 
   return dsta;
 }
 
-NS_END
+}
 
 using namespace iresearch;
 

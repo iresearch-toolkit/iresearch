@@ -31,7 +31,7 @@
 #include "fstext/fst_decl.hpp"
 #include "fstext/fst_string_weight.h"
 
-NS_ROOT
+namespace iresearch {
 
 struct byte_weight_output : data_output, private util::noncopyable {
   virtual void close() override {}
@@ -47,6 +47,6 @@ struct byte_weight_output : data_output, private util::noncopyable {
   byte_weight weight;
 }; // byte_weight_output
 
-NS_END // ROOT
+} // ROOT
 
 #endif

@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_edit_distance;
 class parametric_description;
@@ -134,9 +134,9 @@ class IRESEARCH_API by_edit_distance final
   }
 }; // by_edit_distance
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_edit_distance_filter_options> {
@@ -145,6 +145,6 @@ struct hash<::iresearch::by_edit_distance_filter_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_LEVENSHTEIN_FILTER_H

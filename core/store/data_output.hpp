@@ -30,7 +30,7 @@
 
 #include <streambuf>
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct data_output
@@ -162,6 +162,6 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 
-NS_END
+}
 
 #endif // IRESEARCH_DATAOUTPUT_H

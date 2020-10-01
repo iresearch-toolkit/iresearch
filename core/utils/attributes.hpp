@@ -33,7 +33,7 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API attributes {
   static bool exists(
@@ -238,6 +238,6 @@ class IRESEARCH_API flags {
 static_assert(std::is_move_constructible_v<flags>);
 static_assert(std::is_move_assignable_v<flags>);
 
-NS_END
+}
 
 #endif // IRESEARCH_ATTRIBUTES_H

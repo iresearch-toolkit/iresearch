@@ -32,6 +32,8 @@
 #include <math.h>
 #include <string>
 
+#include "types.hpp" // iresearch types
+
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
   // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
   #error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
@@ -299,12 +301,7 @@
 
 #define UNUSED(par) (void)(par)
 
-#define NS_BEGIN(ns) namespace ns {
-#define NS_LOCAL namespace {
-#define NS_ROOT NS_BEGIN(iresearch)
-#define NS_END }
-
-NS_ROOT NS_END // ROOT namespace predeclaration
+namespace iresearch { }
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x
@@ -313,7 +310,5 @@ namespace irs = ::iresearch;
 // CMPXCHG16B requires that the destination
 // (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
-
-#include "types.hpp" // iresearch types
 
 #endif // IRESEARCH_SHARED_H

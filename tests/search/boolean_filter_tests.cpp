@@ -39,7 +39,7 @@
 
 #include <functional>
 
-NS_LOCAL
+namespace {
 
 template<typename Filter>
 Filter make_filter(
@@ -61,14 +61,14 @@ Filter& append(irs::boolean_filter& root,
   return sub;
 }
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   Iterator tests
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(tests)
-NS_BEGIN(detail)
+namespace tests {
+namespace detail {
 
 struct basic_sort : irs::sort {
   static irs::sort::ptr make(size_t i) {
@@ -274,13 +274,13 @@ struct seek_doc {
   irs::doc_id_t expected;
 };
 
-NS_END // detail
+} // detail
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                              Boolean query boost
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 struct boosted: public irs::filter {
   struct prepared: irs::filter::prepared {
@@ -324,7 +324,7 @@ DEFINE_FACTORY_DEFAULT(boosted)
 
 unsigned boosted::execute_count{ 0 };
 
-NS_END // detail
+} // detail
 
 TEST(boolean_query_boost, hierarchy) {
   // hierarchy of boosted subqueries
@@ -1212,7 +1212,7 @@ TEST(boolean_query_boost, or) {
 // --SECTION--                                         Boolean query estimation
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 struct unestimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
@@ -1325,7 +1325,7 @@ struct estimated: public irs::filter {
 
 DEFINE_FACTORY_DEFAULT(estimated)
 
-NS_END // detail
+} // detail
 
 TEST( boolean_query_estimation, or ) {
   // estimated subqueries
@@ -15099,4 +15099,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END // tests
+} // tests

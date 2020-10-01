@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class type_info
@@ -97,9 +97,9 @@ class type_info {
   string_ref name_;
 }; // type_info
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::type_info> {
@@ -108,7 +108,7 @@ struct hash<::iresearch::type_info> {
   }
 };
 
-NS_END // std
+} // std
 
 #endif // IRESEARCH_TYPE_INDEX_H
 

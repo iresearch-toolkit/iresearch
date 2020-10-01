@@ -62,7 +62,7 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 /// @class fst_builder
 /// @brief helper class for building minimal acyclic subsequential transducers
@@ -352,6 +352,6 @@ class fst_builder : util::noncopyable {
   fst_t& fst_;
 }; // fst_builder
 
-NS_END
+}
 
 #endif

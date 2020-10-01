@@ -27,7 +27,7 @@
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
-NS_LOCAL
+namespace {
 
 constexpr irs::string_ref PIPELINE_PARAM_NAME = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME = "type";
@@ -229,10 +229,10 @@ bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) 
   });
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
@@ -342,5 +342,5 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr), inc(nullptr), offs(nullptr),
     analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
-NS_END
-NS_END
+}
+}

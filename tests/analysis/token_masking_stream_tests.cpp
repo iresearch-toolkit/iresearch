@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 #include "analysis/token_masking_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 class token_masking_stream_tests: public ::testing::Test {
   virtual void SetUp() {
@@ -36,7 +36,7 @@ class token_masking_stream_tests: public ::testing::Test {
   }
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

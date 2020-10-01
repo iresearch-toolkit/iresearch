@@ -40,7 +40,7 @@
 
 #include <string>
 
-NS_BEGIN(fst)
+namespace fst {
 
 template <typename Label>
 class StringLeftWeight;
@@ -608,6 +608,6 @@ inline StringLeftWeight<irs::byte_type> Divide(
   return StringLeftWeight<irs::byte_type>(DivideLeft(lhs, rhs));
 }
 
-NS_END // fst
+} // fst
 
 #endif  // IRESEARCH_FST_STRING_WEIGHT_H

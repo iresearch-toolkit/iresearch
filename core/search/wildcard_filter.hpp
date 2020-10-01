@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_wildcard;
 struct filter_visitor;
@@ -101,9 +101,9 @@ class IRESEARCH_API by_wildcard final
   }
 }; // by_wildcard
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_wildcard_options> {
@@ -112,6 +112,6 @@ struct hash<::iresearch::by_wildcard_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_WILDCARD_FILTER_H

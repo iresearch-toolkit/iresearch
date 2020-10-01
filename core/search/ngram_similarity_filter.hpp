@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_ngram_similarity;
 
@@ -73,6 +73,6 @@ class IRESEARCH_API by_ngram_similarity
     const attribute_provider* ctx) const override;
 }; // by_ngram_similarity
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

@@ -28,7 +28,7 @@
 #include <numeric>
 #include <random>
 
-NS_LOCAL
+namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
   virtual irs::bytes_ref compress(irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
@@ -48,7 +48,7 @@ struct dummy_decompressor final : irs::compression::decompressor {
   virtual bool prepare(data_input&) { return true; }
 };
 
-NS_END
+}
 
 TEST(compression_test, registration) {
   struct dummy_compression { };

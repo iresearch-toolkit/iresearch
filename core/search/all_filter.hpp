@@ -25,7 +25,7 @@
 
 #include "filter.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class all
@@ -46,6 +46,6 @@ class IRESEARCH_API all: public filter {
     const attribute_provider* ctx) const override;
 }; // all
 
-NS_END // ROOT
+} // ROOT
 
 #endif

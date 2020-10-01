@@ -31,8 +31,8 @@
 #include "utils/string.hpp"
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(timer_utils)
+namespace iresearch {
+namespace timer_utils {
 
 struct timer_stat_t {
   std::atomic<size_t> count;
@@ -112,7 +112,7 @@ IRESEARCH_API bool visit(
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void flush_stats(std::ostream &out);
 
-NS_END // timer_utils
-NS_END // NS_ROOT
+} // timer_utils
+} // namespace iresearch {
 
 #endif

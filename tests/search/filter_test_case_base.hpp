@@ -35,8 +35,8 @@
 #include "utils/type_limits.hpp"
 #include "index/index_tests.hpp"
 
-NS_BEGIN(tests)
-NS_BEGIN(sort)
+namespace tests {
+namespace sort {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class boost
@@ -532,7 +532,7 @@ struct frequency_sort: public irs::sort {
   }
 }; // sort::frequency_sort
 
-NS_END // sort
+} // sort
 
 class filter_test_case_base : public index_test_base {
  protected:
@@ -738,6 +738,6 @@ class empty_filter_visitor : public irs::filter_visitor {
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor
 
-NS_END // tests
+} // tests
 
 #endif // IRESEARCH_FILTER_TEST_CASE_BASE

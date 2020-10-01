@@ -28,7 +28,7 @@
 #include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_granular_range;
 class numeric_token_stream;
@@ -129,6 +129,6 @@ class IRESEARCH_API by_granular_range
   }
 }; // by_granular_range
 
-NS_END // ROOT
+} // ROOT
 
 #endif

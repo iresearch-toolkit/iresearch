@@ -28,7 +28,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class cost
@@ -109,6 +109,6 @@ class IRESEARCH_API cost final : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COST_H

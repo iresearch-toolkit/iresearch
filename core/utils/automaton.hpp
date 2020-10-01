@@ -47,8 +47,8 @@
 #include "automaton_decl.hpp"
 #include "string.hpp"
 
-NS_BEGIN(fst)
-NS_BEGIN(fsa)
+namespace fst {
+namespace fsa {
 
 class BooleanWeight {
  public:
@@ -252,10 +252,10 @@ constexpr const int32_t kSigma = kPhi - 1; // match all + consume symbol
 constexpr const int32_t kMinLabel = 0;
 constexpr const int32_t kMaxLabel = kSigma - 1;
 
-NS_END // fsa
-NS_END // fst
+} // fsa
+} // fst
 
-NS_BEGIN(std)
+namespace std {
 
 template<typename T, typename W>
 inline void swap(::fst::fsa::RangeLabel<T>& lhs,
@@ -287,7 +287,7 @@ struct hash<typename ::fst::fsa::EmptyLabel<W>> {
   }
 };
 
-NS_END
+}
 
 #if defined(_MSC_VER)
   // NOOP
@@ -305,13 +305,13 @@ NS_END
   #pragma GCC diagnostic pop
 #endif
 
-NS_BEGIN(fst)
-NS_BEGIN(fsa)
+namespace fst {
+namespace fsa {
 
 template<typename W, typename L>
 using AutomatonMatcher = SortedMatcher<Automaton<W, L>>;
 
-NS_END
-NS_END
+}
+}
 
 #endif // IRESEARCH_AUTOMATON_H

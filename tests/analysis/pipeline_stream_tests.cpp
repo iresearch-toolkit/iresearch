@@ -40,7 +40,7 @@
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
 #ifndef IRESEARCH_DLL
-NS_LOCAL
+namespace {
 
 class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::analyzer>, private irs::util::noncopyable {
  public:
@@ -184,7 +184,7 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   ASSERT_EQ(expected_token, expected_tokens.end());
 }
 
-NS_END
+}
 
 TEST(pipeline_token_stream_test, consts) {
   static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());

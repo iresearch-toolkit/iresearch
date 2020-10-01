@@ -55,12 +55,12 @@
 
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
-NS_BEGIN(burst_trie)
+namespace iresearch {
+namespace burst_trie {
 
 class field_reader;
 
-NS_BEGIN(detail)
+namespace detail {
 
 class fst_buffer;
 class term_iterator_base;
@@ -283,7 +283,7 @@ class term_reader : public irs::term_reader,
 ////////////////////////////////////////////////////////////////////////////////
 [[maybe_unused]] void dump(const term_reader& field, std::ostream& out);
 
-NS_END // detail
+} // detail
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class field_writer
@@ -408,7 +408,7 @@ class field_reader final : public irs::field_reader {
   index_input::ptr terms_in_;
 }; // field_reader
 
-NS_END // burst_trie
-NS_END // ROOT
+} // burst_trie
+} // ROOT
 
 #endif

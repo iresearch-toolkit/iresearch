@@ -30,7 +30,7 @@
 #include "search/score.hpp"
 #include "utils/misc.hpp"
 
-NS_LOCAL
+namespace {
 
 struct empty_attribute_provider : irs::attribute_provider {
   virtual irs::attribute* get_mutable(irs::type_info::type_id) {
@@ -134,7 +134,7 @@ struct dummy_scorer0: public irs::sort {
   virtual prepared::ptr prepare() const override { return nullptr; }
 };
 
-NS_END
+}
 
 TEST(sort_tests, order_equal) {
   struct dummy_scorer1: public irs::sort {

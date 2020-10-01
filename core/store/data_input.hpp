@@ -35,7 +35,7 @@
 
 #include <iterator>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum BufferHint
@@ -222,6 +222,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_input
 
-NS_END
+}
 
 #endif // IRESEARCH_DATAINPUT_H

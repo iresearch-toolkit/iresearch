@@ -30,8 +30,8 @@
 
 struct sb_stemmer; // forward declaration
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class text_token_stemming_stream
@@ -61,7 +61,7 @@ class text_token_stemming_stream final
    bool term_eof_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

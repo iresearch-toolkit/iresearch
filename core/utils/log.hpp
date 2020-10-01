@@ -54,8 +54,8 @@
   static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
 #endif
 
-NS_ROOT
-NS_BEGIN(logger)
+namespace iresearch {
+namespace logger {
 
 // use a prefx that does not clash with any predefined macros (e.g. win32 'ERROR')
 enum level_t {
@@ -101,7 +101,7 @@ IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
   void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
 #endif
 
-NS_BEGIN(detail)
+namespace detail {
 // not everyone who includes header actually logs something, that`s ok
 [[maybe_unused]] static void log_formatted(const char* function, const char* file, int line,
                                            level_t level, const char* format, ...) {
@@ -118,9 +118,9 @@ NS_BEGIN(detail)
     log(function, file, line, level, buf.data(), size_t(required_len));
   }
 }
-NS_END // detail
-NS_END // logger
-NS_END
+} // detail
+} // logger
+}
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, format, ...) \

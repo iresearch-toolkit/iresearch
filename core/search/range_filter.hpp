@@ -27,7 +27,7 @@
 #include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_range;
 struct filter_visitor;
@@ -108,9 +108,9 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
   }
 }; // by_range 
 
-NS_END // ROOT
+} // ROOT
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_range_options> {
@@ -119,6 +119,6 @@ struct hash<::iresearch::by_range_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_RANGE_FILTER_H

@@ -41,7 +41,7 @@
 #include "index/index_writer.hpp"
 #include "utils/numeric_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 // reads input data to build fst
 // first - prefix
@@ -142,6 +142,6 @@ TEST(fst_builder_test, build_fst) {
   }
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_DLL

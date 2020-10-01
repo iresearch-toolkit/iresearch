@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_term;
 struct filter_visitor;
@@ -82,9 +82,9 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
   }
 }; // by_term
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_term_options> {
@@ -93,6 +93,6 @@ struct hash<::iresearch::by_term_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_TERM_FILTER_H

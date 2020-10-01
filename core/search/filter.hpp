@@ -31,7 +31,7 @@
 #include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename State>
 class states_cache : private util::noncopyable {
@@ -277,9 +277,9 @@ class IRESEARCH_API empty final : public filter {
 struct filter_visitor;
 using field_visitor = std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<iresearch::filter> {
@@ -291,6 +291,6 @@ struct hash<iresearch::filter> {
   }
 };
 
-NS_END // std
+} // std
 
 #endif

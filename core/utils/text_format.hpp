@@ -24,8 +24,8 @@
 #ifndef IRESEARCH_TEXT_FORMAT_H
 #define IRESEARCH_TEXT_FORMAT_H
 
-NS_ROOT
-NS_BEGIN(text_format)
+namespace iresearch {
+namespace text_format {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            common textual formats
@@ -51,7 +51,7 @@ struct text { };
 ////////////////////////////////////////////////////////////////////////////////
 struct xml { };
 
-NS_END // text_format
-NS_END // ROOT
+} // text_format
+} // ROOT
 
 #endif

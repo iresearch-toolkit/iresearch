@@ -29,7 +29,7 @@
 #include "utils/ref_counter.hpp"
 #include "utils/container_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class memory_allocator
@@ -102,6 +102,6 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
 
-NS_END
+}
 
 #endif

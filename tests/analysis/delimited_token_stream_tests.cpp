@@ -25,7 +25,7 @@
 #include "tests_config.hpp"
 #include "analysis/delimited_token_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 class delimited_token_stream_tests: public ::testing::Test {
   virtual void SetUp() {
@@ -37,7 +37,7 @@ class delimited_token_stream_tests: public ::testing::Test {
   }
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

@@ -74,7 +74,7 @@
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace iresearch;
 using namespace iresearch::burst_trie::detail;
@@ -308,11 +308,11 @@ void merge_blocks(std::list<irs::burst_trie::detail::entry>& blocks) {
   );
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(burst_trie)
-NS_BEGIN(detail)
+namespace iresearch {
+namespace burst_trie {
+namespace detail {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class fst_buffer
@@ -1909,7 +1909,7 @@ void dump(const term_reader& field, std::ostream& out) {
   visitor(dump);
 }
 
-NS_END // detail
+} // detail
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       field_writer implementation
@@ -2574,5 +2574,5 @@ size_t field_reader::size() const noexcept {
   return fields_.size();
 }
 
-NS_END // burst_trie
-NS_END // ROOT
+} // burst_trie
+} // ROOT

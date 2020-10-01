@@ -31,7 +31,7 @@
 #include "utils/version_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::format* codec0;
 irs::format* codec1;
@@ -39,7 +39,7 @@ irs::format* codec1;
 irs::format::ptr get_codec0() { return irs::format::ptr(codec0, [](irs::format*)->void{}); }
 irs::format::ptr get_codec1() { return irs::format::ptr(codec1, [](irs::format*)->void{}); }
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           Composite index reader

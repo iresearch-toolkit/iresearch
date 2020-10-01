@@ -26,7 +26,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SFINAE
@@ -52,10 +52,10 @@ NS_ROOT
 /// @brief Cross-platform 'COUNTOF' implementation
 ////////////////////////////////////////////////////////////////////////////////
 #if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
-  NS_BEGIN(detail)
+  namespace detail {
   template <typename T, std::size_t N>
   constexpr std::size_t countof(T const (&)[N]) noexcept { return N; }
-  NS_END // detail
+  } // detail
   #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
   #define IRESEARCH_COUNTOF(x) _countof(x)
@@ -123,6 +123,6 @@ move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   return move_on_copy<T>(std::move(value));
 }
 
-NS_END
+}
 
 #endif

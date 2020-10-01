@@ -25,11 +25,11 @@
 #include "analysis/text_token_stemming_stream.hpp"
 #include "utils/locale_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 class text_token_stemming_stream_tests: public ::testing::Test { };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

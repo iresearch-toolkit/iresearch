@@ -30,7 +30,7 @@
 #include "index/field_meta.hpp"
 #include "utils/math_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
@@ -241,10 +241,10 @@ FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
   return idf * SQRT(freq);
 }
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
-NS_BEGIN(tfidf)
+namespace iresearch {
+namespace tfidf {
 
 // empty frequency
 const frequency EMPTY_FREQ;
@@ -435,7 +435,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
   bool normalize_;
 }; // sort
 
-NS_END // tfidf 
+} // tfidf 
 
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
 
@@ -452,4 +452,4 @@ sort::prepared::ptr tfidf_sort::prepare() const {
   return memory::make_unique<tfidf::sort>(normalize_);
 }
 
-NS_END // ROOT
+} // ROOT
