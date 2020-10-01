@@ -45,7 +45,7 @@ NS_END // NS_LOCAL
 
 #ifndef IRESEARCH_DLL
 
-TEST(delimited_token_stream_tests, consts) {
+TEST_F(delimited_token_stream_tests, consts) {
   static_assert("delimiter" == irs::type<irs::analysis::delimited_token_stream>::name());
 }
 
