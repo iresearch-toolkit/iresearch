@@ -65,10 +65,6 @@ struct IRESEARCH_API by_same_position_options {
 class IRESEARCH_API by_same_position
     : public filter_with_options<by_same_position_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_same_position";
-  }
-
   DECLARE_FACTORY();
 
   //////////////////////////////////////////////////////////////////////////////

@@ -45,11 +45,16 @@ NS_END // NS_LOCAL
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(delimited_token_stream_tests, consts) {
+  static_assert("delimiter" == irs::type<irs::analysis::delimited_token_stream>::name());
+}
+
 TEST_F(delimited_token_stream_tests, test_delimiter) {
   // test delimiter string_ref::NIL
   {
     irs::string_ref data("abc,def\"\",\"\"ghi");
     irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
+    ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(), stream.type());
 
     ASSERT_TRUE(stream.reset(data));
 

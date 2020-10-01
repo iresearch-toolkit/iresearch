@@ -79,10 +79,6 @@ struct IRESEARCH_API by_range_options : by_range_filter_options {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_range : public filter_base<by_range_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_range";
-  }
-
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(

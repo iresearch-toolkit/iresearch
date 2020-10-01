@@ -37,6 +37,10 @@ NS_END // NS_LOCAL
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(text_token_stemming_stream_tests, consts) {
+  static_assert("stem" == irs::type<irs::analysis::text_token_stemming_stream>::name());
+}
+
 TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (locale irs::string_ref::NIL)
   // there is no Snowball stemmer for "C" locale
@@ -44,6 +48,7 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
     irs::string_ref data("running");
     irs::analysis::text_token_stemming_stream stream(
         irs::locale_utils::locale(irs::string_ref::NIL));
+    ASSERT_EQ(irs::type<irs::analysis::text_token_stemming_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);

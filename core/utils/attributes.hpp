@@ -51,8 +51,6 @@ struct IRESEARCH_API attributes {
 /// @class attribute
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
-///        all derived classes must implement the following function:
-///        static constexpr string_ref type_name() noexcept
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute { };
 

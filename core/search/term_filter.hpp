@@ -55,10 +55,6 @@ struct IRESEARCH_API by_term_options {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_term";
-  }
-
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(

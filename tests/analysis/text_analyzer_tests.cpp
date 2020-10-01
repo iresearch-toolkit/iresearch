@@ -99,6 +99,10 @@ using namespace irs::analysis;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(TextAnalyzerParserTestSuite, consts) {
+  static_assert("text" == irs::type<irs::analysis::text_token_stream>::name());
+}
+
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   irs::analysis::text_token_stream::options_t options;
 
@@ -110,6 +114,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
   irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+  ASSERT_EQ(irs::type<irs::analysis::text_token_stream >::id(), stream.type());
 
   ASSERT_TRUE(stream.reset(data));
 

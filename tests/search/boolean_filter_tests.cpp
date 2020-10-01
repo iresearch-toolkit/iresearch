@@ -71,10 +71,6 @@ NS_BEGIN(tests)
 NS_BEGIN(detail)
 
 struct basic_sort : irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static irs::sort::ptr make(size_t i) {
     return irs::sort::ptr(new basic_sort(i));
   }
@@ -316,10 +312,6 @@ struct boosted: public irs::filter {
       irs::boost_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
     return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
-  }
-
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
   }
 
   boosted(): filter(irs::type<boosted>::get()) { }
@@ -1258,10 +1250,6 @@ struct unestimated: public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   DECLARE_FACTORY();
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
@@ -1325,9 +1313,6 @@ struct estimated: public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
   DECLARE_FACTORY();
 
   explicit estimated()

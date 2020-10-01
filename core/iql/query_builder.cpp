@@ -239,10 +239,6 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class ErrorNode: public irs::filter {
    public:
-    static constexpr irs::string_ref type_name() noexcept {
-      return "iresearch::iql::ErrorNode";
-    }
-
     ErrorNode(): filter(irs::type<ErrorNode>::get()) {}
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
@@ -263,10 +259,6 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    static constexpr irs::string_ref type_name() noexcept {
-      return "iresearch::iql::LinkNode";
-    }
-
     LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = ptr(link);
     }

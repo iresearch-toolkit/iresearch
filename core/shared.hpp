@@ -238,12 +238,12 @@
 
 // define function name used for pretty printing
 // NOTE: the alias points to a compile time finction not a preprocessor macro
-#if defined(__GNUC__)
-  #define CURRENT_FUNCTION __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-  #define CURRENT_FUNCTION __FUNCSIG__
+#if defined(__FUNCSIG__)
+  #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
+#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__)
+  #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
-  #define CURRENT_FUNCTION __FUNCTION__
+  #error "compiler is not supported"
 #endif
 
 #ifndef __has_feature

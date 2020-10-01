@@ -53,7 +53,6 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
         irs::type<pipeline_test_analyzer>::get()} {
     payload_.value = payload;
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer"; }
   virtual bool next() override {
     if (term_emitted) {
       return false;
@@ -97,7 +96,6 @@ class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::
     current_reset_ = resets_.begin();
     current_term_ = terms_.begin();
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer2"; }
   virtual bool next() override {
     if (current_next_ != nexts_.end()) {
       auto next_val = *(current_next_++);
@@ -188,6 +186,10 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
 
 NS_END
 
+TEST(pipeline_token_stream_test, consts) {
+  static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());
+}
+
 TEST(pipeline_token_stream_test, empty_pipeline) {
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
@@ -220,6 +222,7 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
   pipeline_options.push_back(ngram);
 
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+  ASSERT_EQ(irs::type<irs::analysis::pipeline_token_stream>::id(), pipe.type());
 
   std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
   const analyzer_tokens expected{

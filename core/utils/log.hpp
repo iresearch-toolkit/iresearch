@@ -125,7 +125,7 @@ NS_END
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
@@ -136,7 +136,7 @@ NS_END
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)
@@ -148,12 +148,12 @@ NS_END
 
 #define IR_LOG_EXCEPTION() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\n Exception stack trace:",CURRENT_FUNCTION); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\n Exception stack trace:",IRESEARCH_CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception()); \
   }
 #define IR_LOG_STACK_TRACE() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\nstack trace:", CURRENT_FUNCTION); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\nstack trace:", IRESEARCH_CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level()); \
   }
 
