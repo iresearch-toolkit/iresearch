@@ -23,20 +23,13 @@
 #ifndef IRESEARCH_TYPE_ID_H
 #define IRESEARCH_TYPE_ID_H
 
-#include "type_index.hpp"
-#include "std.hpp"
+#include "type_info.hpp"
+#include "misc.hpp"
 
 NS_ROOT
 
 NS_BEGIN(detail)
-
 DEFINE_HAS_MEMBER(type_name);
-
-template<typename T>
-constexpr string_ref ctti() noexcept {
-  return { IRESEARCH_CURRENT_FUNCTION };
-}
-
 NS_END // detail
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +57,7 @@ struct type {
       return T::type_name();
     }
 
-    return detail::ctti<T>();
+    return ctti<T>();
   }
 
   //////////////////////////////////////////////////////////////////////////////

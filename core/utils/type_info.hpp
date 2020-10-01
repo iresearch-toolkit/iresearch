@@ -71,7 +71,7 @@ class type_info {
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if current object is less than to a denoted by 'rhs'
   //////////////////////////////////////////////////////////////////////////////
-  constexpr bool operator<(const type_info& rhs) const noexcept {
+  bool operator<(const type_info& rhs) const noexcept {
     return id_ < rhs.id_;
   }
 

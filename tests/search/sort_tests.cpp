@@ -218,6 +218,9 @@ TEST(sort_tests, order_equal) {
 }
 
 TEST(sort_tests, static_const) {
+  static_assert("iresearch::filter_boost" == irs::type<irs::filter_boost>::name());
+  static_assert(irs::no_boost() == irs::filter_boost().value);
+
   ASSERT_TRUE(irs::order::unordered().empty());
   ASSERT_TRUE(irs::order::prepared::unordered().empty());
 }

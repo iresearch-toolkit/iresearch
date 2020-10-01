@@ -186,6 +186,10 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
 
 NS_END
 
+TEST(pipeline_token_stream_test, consts) {
+  static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());
+}
+
 TEST(pipeline_token_stream_test, empty_pipeline) {
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
@@ -218,6 +222,7 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
   pipeline_options.push_back(ngram);
 
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+  ASSERT_EQ(irs::type<irs::analysis::pipeline_token_stream>::id(), pipe.type());
 
   std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
   const analyzer_tokens expected{
