@@ -24,7 +24,9 @@
 #ifndef IRESEARCH_DLL
 
 #include "tests_shared.hpp"
+#include "utils/fstext/const_fst.hpp"
 #include "utils/fstext/fst_string_weight.h"
+#include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
@@ -43,12 +45,27 @@
 
 namespace {
 
+struct fst_stats : iresearch::fst_stats {
+  size_t total_weight_size{};
+
+  void operator()(const irs::vector_byte_fst::Weight& w) noexcept {
+    total_weight_size += w.Size();
+  }
+
+  [[maybe_unused]] bool operator==(const fst_stats& rhs) const noexcept {
+    return num_states == rhs.num_states &&
+           num_arcs == rhs.num_arcs &&
+           total_weight_size == rhs.total_weight_size;
+  }
+};
+
+using fst_byte_builder = irs::fst_builder<irs::byte_type, irs::vector_byte_fst, fst_stats>;
+
 // reads input data to build fst
 // first - prefix
 // second - payload
 std::vector<std::pair<irs::bstring, irs::bstring>> read_fst_input(
-    const std::string& filename
-) {
+    const std::string& filename) {
   auto read_size = [](std::istream& stream) {
     size_t size;
     stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));
@@ -81,7 +98,7 @@ std::vector<std::pair<irs::bstring, irs::bstring>> read_fst_input(
 }
 
 TEST(fst_builder_test, static_const) {
-  ASSERT_EQ(0, irs::fst_byte_builder::stateid_t(irs::fst_byte_builder::final));
+  ASSERT_EQ(0, fst_byte_builder::stateid_t(fst_byte_builder::final));
 }
 
 TEST(fst_builder_test, build_fst) {
@@ -97,11 +114,11 @@ TEST(fst_builder_test, build_fst) {
     })
   );
 
-  irs::fst_byte_builder::fst_t fst;
+  fst_byte_builder::fst_t fst;
 
   // build fst
   {
-    irs::fst_byte_builder builder(fst);
+    fst_byte_builder builder(fst);
     builder.reset();
 
     for (auto& data : expected_data) {
@@ -113,11 +130,11 @@ TEST(fst_builder_test, build_fst) {
 
   // check fst
   {
-    typedef fst::SortedMatcher<irs::fst_byte_builder::fst_t> sorted_matcher_t;
+    typedef fst::SortedMatcher<fst_byte_builder::fst_t> sorted_matcher_t;
     typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
-    ASSERT_TRUE(fst.Final(irs::fst_byte_builder::final).Empty());
+    ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
 
     for (auto& data : expected_data) {
       irs::byte_weight actual_weight;
@@ -138,6 +155,66 @@ TEST(fst_builder_test, build_fst) {
       actual_weight = fst::Times(actual_weight, fst.Final(state));
 
       ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(data.second));
+    }
+  }
+}
+
+
+TEST(fst_builder_test, read_write_constfst) {
+  auto expected_data = read_fst_input(test_base::resource("fst"));
+  ASSERT_FALSE(expected_data.empty());
+
+  using fst_t = fst_byte_builder::fst_t;
+
+  fst_t fst;
+  fst_stats stats;
+
+  // build fst
+  {
+    fst_byte_builder builder(fst);
+    builder.reset();
+
+    for (auto& data : expected_data) {
+      builder.add(data.first, irs::byte_weight(data.second.begin(), data.second.end()));
+    }
+
+    stats = builder.finish();
+  }
+
+  irs::memory_output out(irs::memory_allocator::global());
+
+  using immutable_fst = fst::fstext::ImmutableFst<fst::fstext::Transition<fst::fstext::StringRefLeftWeight<irs::byte_type>>>;
+
+  {
+    irs::output_buf osb(&out.stream);
+    std::ostream os(&osb);
+    immutable_fst::WriteFst(fst, os, fst::FstWriteOptions{});
+    out.stream.flush();
+  }
+
+  std::unique_ptr<immutable_fst> read_fst;
+  {
+    irs::memory_index_input in(out.file);
+    irs::input_buf isb(&in);
+    std::istream is(&isb);
+    read_fst.reset(immutable_fst::Read(is, fst::FstReadOptions{}));
+  }
+
+  ASSERT_NE(nullptr, read_fst);
+  ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));
+  ASSERT_EQ(fst.NumStates(), read_fst->NumStates());
+  for (fst::StateIterator<decltype(fst)> it(fst); !it.Done(); it.Next()) {
+    ASSERT_EQ(fst.NumArcs(it.Value()), read_fst->NumArcs(it.Value()));
+
+    fst::ArcIterator<decltype(fst)> expected_arcs(fst, it.Value());
+    fst::ArcIterator<immutable_fst> actual_arcs(*read_fst, it.Value());
+    for (; !expected_arcs.Done(); expected_arcs.Next(), actual_arcs.Next()) {
+      auto& expected_arc = expected_arcs.Value();
+      auto& actual_arc = actual_arcs.Value();
+      ASSERT_EQ(expected_arc.ilabel, actual_arc.ilabel);
+      ASSERT_EQ(expected_arc.nextstate, actual_arc.nextstate);
+      ASSERT_EQ(static_cast<irs::bytes_ref>(expected_arc.weight),
+                static_cast<irs::bytes_ref>(actual_arc.weight));
     }
   }
 }

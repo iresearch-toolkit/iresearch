@@ -146,6 +146,8 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   operator index_input&() { return *in_; }
 
+  index_input* internal() const { return in_; }
+
  private:
   index_input* in_;
 }; // input_buf

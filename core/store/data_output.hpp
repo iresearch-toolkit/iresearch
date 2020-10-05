@@ -113,6 +113,8 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 
   virtual int_type overflow(int_type c) override;
 
+  index_output* internal() const { return out_; }
+
  private:
   index_output* out_;
 }; // output_buf

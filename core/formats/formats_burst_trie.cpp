@@ -315,25 +315,44 @@ namespace burst_trie {
 namespace detail {
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @class fst_stats
+/// @brief fst builder stats
+///////////////////////////////////////////////////////////////////////////////
+struct fst_stats : iresearch::fst_stats {
+  size_t total_weight_size{};
+
+  void operator()(const vector_byte_fst::Weight& w) noexcept {
+    total_weight_size += w.Size();
+  }
+
+  [[maybe_unused]] bool operator==(const fst_stats& rhs) const noexcept {
+    return num_states == rhs.num_states &&
+           num_arcs == rhs.num_arcs &&
+           total_weight_size == rhs.total_weight_size;
+  }
+};
+
+using fst_byte_builder = fst_builder<byte_type, vector_byte_fst, fst_stats>;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @class fst_buffer
 /// @brief resetable FST buffer
 ///////////////////////////////////////////////////////////////////////////////
 class fst_buffer : public vector_byte_fst {
  public:
   template<typename Data>
-  fst_buffer& reset(const Data& data) {
-    fst_byte_builder builder(*this);
-
+  fst_stats reset(const Data& data) {
     builder.reset();
 
     for (auto& fst_data: data) {
       builder.add(fst_data.prefix, fst_data.weight);
     }
 
-    builder.finish();
-
-    return *this;
+    return builder.finish();
   }
+
+ private:
+  fst_byte_builder builder{*this};
 }; // fst_buffer
 
 // -----------------------------------------------------------------------------
@@ -2348,7 +2367,23 @@ void field_writer::end_field(
 
   // build fst
   assert(fst_buf_);
-  auto& fst = fst_buf_->reset(root.block().index);
+  const auto fst_stats = fst_buf_->reset(root.block().index);
+  const vector_byte_fst& fst = *fst_buf_;
+
+#ifdef IRESEARCH_DEBUG
+  // ensure evaluated stats are correct
+  struct fst_stats stats;
+  for (fst::StateIterator<vector_byte_fst> states(fst); !states.Done(); states.Next()) {
+    const auto stateid = states.Value();
+    ++stats.num_states;
+    stats.num_arcs += fst.NumArcs(stateid);
+    stats(fst.Final(stateid));
+    for (fst::ArcIterator<vector_byte_fst> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+      stats(fst.Final(stateid));
+    }
+  }
+  assert(stats == fst_stats);
+#endif
 
   // write field meta
   write_string(*index_out_, name);
