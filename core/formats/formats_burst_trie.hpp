@@ -280,7 +280,7 @@ class term_reader : public irs::term_reader,
 
 } // detail
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @class field_writer
 ////////////////////////////////////////////////////////////////////////////////
 class field_writer final : public irs::field_writer {
@@ -414,7 +414,6 @@ class field_reader final : public irs::field_reader {
 
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;
-  std::vector<const detail::term_reader*> fields_mask_;
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
