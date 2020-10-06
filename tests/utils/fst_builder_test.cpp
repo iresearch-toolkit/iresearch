@@ -30,7 +30,6 @@
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
-#include "utils/fst_utils.hpp"
 
 #include <fst/vector-fst.h>
 #include <fst/matcher.h>
@@ -181,24 +180,26 @@ TEST(fst_builder_test, read_write_constfst) {
     stats = builder.finish();
   }
 
-  irs::memory_output out(irs::memory_allocator::global());
+  fst_stats expected_stats;
+  for (fst::StateIterator<fst_t> states(fst); !states.Done(); states.Next()) {
+    const auto stateid = states.Value();
+    ++expected_stats.num_states;
+    expected_stats.num_arcs += fst.NumArcs(stateid);
+    expected_stats(fst.Final(stateid));
+    for (fst::ArcIterator<fst_t> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+      expected_stats(arcs.Value().weight);
+    }
+  }
+  ASSERT_EQ(expected_stats, stats);
 
   using immutable_fst = fst::fstext::ImmutableFst<fst::fstext::Transition<fst::fstext::StringRefLeftWeight<irs::byte_type>>>;
 
-  {
-    irs::output_buf osb(&out.stream);
-    std::ostream os(&osb);
-    immutable_fst::WriteFst(fst, os, fst::FstWriteOptions{});
-    out.stream.flush();
-  }
+  irs::memory_output out(irs::memory_allocator::global());
+  immutable_fst::Write(fst, out.stream, stats);
+  out.stream.flush();
 
-  std::unique_ptr<immutable_fst> read_fst;
-  {
-    irs::memory_index_input in(out.file);
-    irs::input_buf isb(&in);
-    std::istream is(&isb);
-    read_fst.reset(immutable_fst::Read(is, fst::FstReadOptions{}));
-  }
+  irs::memory_index_input in(out.file);
+  std::unique_ptr<immutable_fst> read_fst(immutable_fst::Read(in));
 
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));

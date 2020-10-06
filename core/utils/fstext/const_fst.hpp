@@ -20,6 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_CONST_FST_H
+#define IRESEARCH_CONST_FST_H
+
 #include <fst/fst.h>
 #include <fst/vector-fst.h>
 #include <fst/expanded-fst.h>
@@ -30,9 +33,6 @@
 #include "utils/automaton.hpp"
 #include "utils/misc.hpp"
 #include "utils/fstext/fst_string_ref_weight.h"
-
-#ifndef IRESEARCH_CONST_FST_H
-#define IRESEARCH_CONST_FST_H
 
 namespace fst {
 namespace fstext {
@@ -79,14 +79,10 @@ struct Transition {
   }
 }; // Transition
 
+template<typename Arc>
+class ImmutableFst;
 
-template<typename Arc> class ImmutableFst;
-
-constexpr static const char kImmutableFstType[] = "fst::fstext::immutable";
-
-// States and arcs each implemented by single arrays, templated on the
-// Arc definition
-template <class A>
+template<typename A>
 class ImmutableFstImpl : public internal::FstImpl<A> {
  public:
   using Arc = A;
@@ -99,11 +95,13 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   using internal::FstImpl<A>::SetProperties;
   using internal::FstImpl<A>::Properties;
 
+  constexpr static const char kType[] = "fst::fstext::immutable";
+
   ImmutableFstImpl()
       : narcs_(0),
         nstates_(0),
         start_(kNoStateId) {
-    SetType(kImmutableFstType);
+    SetType(kType);
     SetProperties(kNullProperties | kStaticProperties);
   }
 
@@ -119,7 +117,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
   size_t NumOutputEpsilons(StateId) const noexcept { return 0; }
 
-  static ImmutableFstImpl<Arc>* Read(std::istream &strm, const FstReadOptions &opts);
+  static std::shared_ptr<ImmutableFstImpl<Arc>> Read(irs::data_input& strm);
 
   const Arc* Arcs(StateId s) const noexcept { return states_[s].arcs; }
 
@@ -138,10 +136,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   }
 
  private:
-  // Used to find narcs_ and nstates_ in Write.
   friend class ImmutableFst<Arc>;
 
-  // States implemented by array *states_ below, arcs by (single) *arcs_.
   struct State {
     const Arc* arcs; // Start of state's arcs in *arcs_.
     size_t narcs;    // Number of arcs (per state).
@@ -151,8 +147,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   // Properties always true of this FST class.
   static constexpr uint64 kStaticProperties = kExpanded;
 
-  std::vector<State> states_;
-  std::vector<Arc> arcs_;
+  std::unique_ptr<State[]> states_;
+  std::unique_ptr<Arc[]> arcs_;
   std::unique_ptr<irs::byte_type[]> weights_;
   size_t narcs_;                               // Number of arcs.
   StateId nstates_;                            // Number of states.
@@ -162,52 +158,41 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   ImmutableFstImpl &operator=(const ImmutableFstImpl &) = delete;
 };
 
-template <class Arc>
-ImmutableFstImpl<Arc>* ImmutableFstImpl<Arc>::Read(
-    std::istream &strm,
-    const FstReadOptions& /*opts*/) {
-#ifdef IRESEARCH_DEBUG
-  auto* strmImpl = dynamic_cast<irs::input_buf*>(strm.rdbuf());
-#else
-  auto* strmImpl = static_cast<irs::input_buf*>(strm.rdbuf());
-#endif
-  assert(strmImpl && strmImpl->internal());
-
-  auto* stream = strmImpl->internal();
-
-  auto impl = std::make_unique<ImmutableFstImpl<Arc>>();
+template<typename Arc>
+std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_input& stream) {
+  auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
-  const size_t total_weight_size = stream->read_long();
-  const uint64_t props = stream->read_long();
-  const StateId start = stream->read_vint();
-  const size_t nstates = stream->read_vlong();
-  const size_t narcs = stream->read_vlong();
+  const uint64_t props = stream.read_long();
+  const size_t total_weight_size = stream.read_long();
+  const StateId start = stream.read_vint();
+  const size_t nstates = stream.read_vlong();
+  const size_t narcs = stream.read_vlong();
 
-  std::vector<State> states(nstates);
-  std::vector<Arc> arcs(narcs);
+  auto states = std::make_unique<State[]>(nstates);
+  auto arcs = std::make_unique<Arc[]>(narcs);
   auto weights = std::make_unique<irs::byte_type[]>(total_weight_size);
 
   // read states & arcs
   auto* weight = weights.get();
-  auto* arc = arcs.data();
-  for (auto& state : states) {
-    state.arc = arc;
-    state.narcs = stream->read_vlong(); // FIXME total number of arcs can be encoded with 1 byte
-    state.weight = { weight, stream->read_vlong() };
+  auto* arc = arcs.get();
+  for (auto* state = states.get(), end = state + nstates; state != end; ++state) {
+    state->arcs = arc;
+    state->narcs = stream.read_byte(); // FIXME total number of arcs can be encoded with 1 byte
+    state->weight = { weight, stream.read_vlong() };
 
-    weight += state.weight.Size();
+    weight += state->weight.Size();
 
-    for (auto* end = arc + state.narcs; arc != end; ++arc) {
-      arc->ilabel = stream->read_byte();
-      arc->nextstate = stream->read_vint();
-      arc->weight = { weight, stream->read_vlong() };
+    for (auto* end = arc + state->narcs; arc != end; ++arc) {
+      arc->ilabel = stream.read_byte();
+      arc->nextstate = stream.read_vint();
+      arc->weight = { weight, stream.read_vlong() };
       weight += arc->weight.Size();
     }
   }
 
   // read weights
-  stream->read_bytes(weight, total_weight_size);
+  stream.read_bytes(weights.get(), total_weight_size);
 
   // noexcept block
   impl->properties_ = props;
@@ -218,14 +203,10 @@ ImmutableFstImpl<Arc>* ImmutableFstImpl<Arc>::Read(
   impl->arcs_ = std::move(arcs);
   impl->weights_ = std::move(weights);
 
-  return impl.release();
+  return impl;
 }
 
-// Simple concrete immutable FST. This class attaches interface to
-// implementation and handles reference counting, delegating most methods to
-// ImplToExpandedFst. The unsigned type U is used to represent indices into the
-// arc array (default declared in fst-decl.h).
-template <class A>
+template<typename A>
 class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
  public:
   using Arc = A;
@@ -236,39 +217,28 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   friend class StateIterator<ImmutableFst<Arc>>;
   friend class ArcIterator<ImmutableFst<Arc>>;
 
-  template <class F, class G>
-  void friend Cast(const F &, G *);
+  template<typename F, typename G>
+  void friend Cast(const F&, G*);
 
   ImmutableFst() : ImplToExpandedFst<Impl>(std::make_shared<Impl>()) {}
 
-  // Reads a ConstFst from an input stream, returning nullptr on error.
-  static ImmutableFst<A> *Read(std::istream &strm,
-                           const FstReadOptions &opts) {
-    auto *impl = Impl::Read(strm, opts);
-    return impl ? new ImmutableFst<A>(std::shared_ptr<Impl>(impl))
-                : nullptr;
+  explicit ImmutableFst(const ImmutableFst<A> &fst, bool safe = false)
+    : ImplToExpandedFst<Impl>(fst) {}
+
+  // Gets a copy of this ConstFst. See Fst<>::Copy() for further doc.
+  ImmutableFst<A>* Copy(bool safe = false) const override {
+    return new ImmutableFst<A>(*this, safe);
   }
 
-  // Read a ConstFst from a file; return nullptr on error; empty filename reads
-  // from standard input.
-  static ImmutableFst<A> *Read(const std::string &filename) {
-    auto *impl = ImplToExpandedFst<Impl>::Read(filename);
-    return impl ? new ImmutableFst<A>(std::shared_ptr<Impl>(impl))
-                : nullptr;
+  static ImmutableFst<A>* Read(irs::data_input& strm) {
+    auto impl = Impl::Read(strm);
+    return impl ? new ImmutableFst<A>(std::move(impl)) : nullptr;
   }
 
-  bool Write(std::ostream& strm, const FstWriteOptions& opts) const override {
-    return WriteFst(*this, strm, opts);
-  }
-
-  bool Write(const std::string &filename) const override {
-    return Fst<Arc>::WriteFile(filename);
-  }
-
-  template<typename FST>
-  static bool WriteFst(const FST& fst,
-                       std::ostream &strm,
-                       const FstWriteOptions &opts);
+  template<typename FST, typename Stats>
+  static bool Write(const FST& fst,
+                    irs::data_output& strm,
+                    const Stats& stats);
 
   void InitStateIterator(StateIteratorData<Arc> *data) const override {
     GetImpl()->InitStateIterator(data);
@@ -283,70 +253,52 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
       : ImplToExpandedFst<Impl>(impl) {}
 
   using ImplToFst<Impl, ExpandedFst<Arc>>::GetImpl;
+  using ImplToExpandedFst<ImmutableFstImpl<A>>::Write;
+  using ImplToExpandedFst<ImmutableFstImpl<A>>::Read;
 
-  ImmutableFst &operator=(const ImmutableFst &) = delete;
+  ImmutableFst(const ImmutableFst&) = delete;
+  ImmutableFst& operator=(const ImmutableFst&) = delete;
 };
 
-// Writes FST in Const format, potentially with a pass over the machine before
-// writing to compute number of states and arcs.
-template <class A>
-template <class FST>
-bool ImmutableFst<A>::WriteFst(
+template <typename A>
+template <typename FST, typename Stats>
+bool ImmutableFst<A>::Write(
     const FST& fst,
-    std::ostream &strm,
-    const FstWriteOptions& /*opts*/) {
-#ifdef IRESEARCH_DEBUG
-  auto* strmImpl = dynamic_cast<irs::output_buf*>(strm.rdbuf());
-#else
-  auto* strmImpl = static_cast<irs::output_buf*>(strm.rdbuf());
-#endif
-  assert(strmImpl && strmImpl->internal());
-  auto* fstImpl = fst.GetImpl();
+    irs::data_output& stream,
+    const Stats& stats) {
+  auto* impl = fst.GetImpl();
+  assert(impl);
 
   const auto properties =
-      fst.Properties(kCopyProperties, true) |
-      fstext::ImmutableFstImpl<Arc>::kStaticProperties;
-
-  // FIXME we can precompute 'num_arcs'
-  size_t num_arcs = 0;
-  for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
-    num_arcs += fstImpl->NumArcs(siter.Value());
-  }
-
-  auto* stream = strmImpl->internal();
+    fst.Properties(kCopyProperties, true) |
+    fstext::ImmutableFstImpl<Arc>::kStaticProperties;
 
   // write header
-  stream->write_long(properties);
-  stream->write_long(total_weight_size);
-  stream->write_vint(fst.Start());
-  stream->write_vlong(fstImpl->NumStates());
-  stream->write_vlong(num_arcs);
-  // FIXME write total weight size
+  stream.write_long(properties);
+  stream.write_long(stats.total_weight_size);
+  stream.write_vint(fst.Start());
+  stream.write_vlong(stats.num_states);
+  stream.write_vlong(stats.num_arcs);
 
   // FIXME SIMD???
   // write states & arcs
   for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
     const StateId s = siter.Value();
-    const size_t narcs = fstImpl->NumArcs(s);
 
-    size_t weight_size = 0;
+    stream.write_byte(static_cast<irs::byte_type>(impl->NumArcs(s) & 0xFF)); // FIXME make it optional
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
-      weight_size = fstImpl->FinalRef(s).Size();
+      stream.write_vlong(impl->FinalRef(s).Size());
     } else {
-      weight_size = fstImpl->Final(s).Size();
+      stream.write_vlong(impl->Final(s).Size());
     }
-
-    stream->write_byte(static_cast<irs::byte_type>(narcs & 0xFF)); // FIXME make it optional
-    stream->write_vlong(weight_size);
 
     for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
       const auto& arc = aiter.Value();
-      const size_t weight_size = arc.weight.Size();
 
       assert(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
-      stream->write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF)); // FIXME make it optional?
-      stream->write_vint(arc.nextstate);
-      stream->write_vlong(weight_size);
+      stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF)); // FIXME make it optional?
+      stream.write_vint(arc.nextstate);
+      stream.write_vlong(arc.weight.Size());
     }
   }
 
@@ -355,14 +307,14 @@ bool ImmutableFst<A>::WriteFst(
     const StateId s = siter.Value();
 
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
-      const auto& weight = fstImpl->FinalRef(s);
+      const auto& weight = impl->FinalRef(s);
       if (!weight.Empty()) {
-        stream->write_bytes(weight.c_str(), weight.Size());
+        stream.write_bytes(weight.c_str(), weight.Size());
       }
     } else {
-      const auto weight = fstImpl->Final(s);
+      const auto weight = impl->Final(s);
       if (!weight.Empty()) {
-        stream->write_bytes(weight.c_str(), weight.Size());
+        stream.write_bytes(weight.c_str(), weight.Size());
       }
     }
 
@@ -370,7 +322,7 @@ bool ImmutableFst<A>::WriteFst(
       const auto& arc = aiter.Value();
 
       if (!arc.weight.Empty()) {
-        stream->write_bytes(arc.weight.c_str(), arc.weight.Size());
+        stream.write_bytes(arc.weight.c_str(), arc.weight.Size());
       }
     }
   }
@@ -382,7 +334,7 @@ bool ImmutableFst<A>::WriteFst(
 
 // Specialization for ConstFst; see generic version in fst.h for sample usage
 // (but use the ConstFst type instead). This version should inline.
-template <class Arc>
+template<typename Arc>
 class StateIterator<fstext::ImmutableFst<Arc>> {
  public:
   using StateId = typename Arc::StateId;
@@ -405,7 +357,7 @@ class StateIterator<fstext::ImmutableFst<Arc>> {
 
 // Specialization for ConstFst; see generic version in fst.h for sample usage
 // (but use the ConstFst type instead). This version should inline.
-template <class Arc>
+template<typename Arc>
 class ArcIterator<fstext::ImmutableFst<Arc>> {
  public:
   using StateId = typename Arc::StateId;

@@ -2363,27 +2363,6 @@ void field_writer::end_field(
   // write root block with empty prefix
   write_blocks(0, stack_.size());
   assert(1 == stack_.size());
-  const entry& root = *stack_.begin();
-
-  // build fst
-  assert(fst_buf_);
-  const auto fst_stats = fst_buf_->reset(root.block().index);
-  const vector_byte_fst& fst = *fst_buf_;
-
-#ifdef IRESEARCH_DEBUG
-  // ensure evaluated stats are correct
-  struct fst_stats stats;
-  for (fst::StateIterator<vector_byte_fst> states(fst); !states.Done(); states.Next()) {
-    const auto stateid = states.Value();
-    ++stats.num_states;
-    stats.num_arcs += fst.NumArcs(stateid);
-    stats(fst.Final(stateid));
-    for (fst::ArcIterator<vector_byte_fst> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
-      stats(fst.Final(stateid));
-    }
-  }
-  assert(stats == fst_stats);
-#endif
 
   // write field meta
   write_string(*index_out_, name);
@@ -2397,6 +2376,27 @@ void field_writer::end_field(
   if (features.check<frequency>()) {
     index_out_->write_vlong(total_term_freq);
   }
+
+  // build fst
+  const entry& root = *stack_.begin();
+  assert(fst_buf_);
+  const auto fst_stats = fst_buf_->reset(root.block().index);
+  const vector_byte_fst& fst = *fst_buf_;
+
+#ifdef IRESEARCH_DEBUG
+  // ensure evaluated stats are correct
+  struct fst_stats stats;
+  for (fst::StateIterator<vector_byte_fst> states(fst); !states.Done(); states.Next()) {
+    const auto stateid = states.Value();
+    ++stats.num_states;
+    stats.num_arcs += fst.NumArcs(stateid);
+    stats(fst.Final(stateid));
+    for (fst::ArcIterator<vector_byte_fst> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+      stats(arcs.Value().weight);
+    }
+  }
+  assert(stats == fst_stats);
+#endif
 
   // write FST
   output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant

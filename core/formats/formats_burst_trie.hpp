@@ -34,25 +34,10 @@
 #include "store/store_utils.hpp"
 #include "utils/buffers.hpp"
 #include "utils/encryption.hpp"
+#include "utils/fstext/fst_decl.hpp"
+#include "utils/fstext/fst_string_weight.h"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
-
-#if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wsign-compare"
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-
-#include "utils/fst_utils.hpp"
-
-#if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -143,11 +128,22 @@ typedef volatile_ref<byte_type> volatile_byte_ref;
 /// @brief block of terms
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
-  struct prefixed_output final : irs::byte_weight_output {
+  struct prefixed_output final : data_output, private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
      : prefix(std::move(prefix)) {
     }
 
+    virtual void close() override {}
+
+    virtual void write_byte(byte_type b) override final {
+      weight.PushBack(b);
+    }
+
+    virtual void write_bytes(const byte_type* b, size_t len) override final {
+      weight.PushBack(b, b + len);
+    }
+
+    byte_weight weight;
     volatile_byte_ref prefix;
   }; // prefixed_output
 
