@@ -111,8 +111,29 @@ struct ILabelArc {
   }
 }; // ILabelArc
 
+} // fstext
+} // fst
+
+namespace std {
+
+template<typename L>
+inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/, int32_t& rhs) noexcept {
+  rhs = ::fst::kNoLabel;
 }
+
+template<typename L>
+inline void swap(int32_t& lhs, typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
+  lhs = ::fst::kNoLabel;
 }
+
+template<typename L>
+struct hash<typename ::fst::fstext::EmptyLabel<L>> {
+  constexpr size_t operator()(typename ::fst::fstext::EmptyLabel<L>) const noexcept {
+    return 0;
+  }
+};
+
+} // std
 
 #endif // IRESEARCH_FST_UTILS_H
 

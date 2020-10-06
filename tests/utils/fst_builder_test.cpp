@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DLL
@@ -26,9 +25,6 @@
 #include "tests_shared.hpp"
 
 #include <fstream>
-
-#include <fst/vector-fst.h>
-#include <fst/matcher.h>
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
@@ -42,6 +38,9 @@
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_utils.hpp"
 #include "utils/numeric_utils.hpp"
+
+#include <fst/vector-fst.h>
+#include <fst/matcher.h>
 
 namespace {
 
@@ -115,6 +114,7 @@ TEST(fst_builder_test, build_fst) {
   );
 
   fst_byte_builder::fst_t fst;
+  fst_stats stats;
 
   // build fst
   {
@@ -125,8 +125,20 @@ TEST(fst_builder_test, build_fst) {
       builder.add(data.first, irs::byte_weight(data.second.begin(), data.second.end()));
     }
 
-    builder.finish();
+    stats = builder.finish();
   }
+
+  fst_stats expected_stats;
+  for (fst::StateIterator<fst_byte_builder::fst_t> states(fst); !states.Done(); states.Next()) {
+    const auto stateid = states.Value();
+    ++expected_stats.num_states;
+    expected_stats.num_arcs += fst.NumArcs(stateid);
+    expected_stats(fst.Final(stateid));
+    for (fst::ArcIterator<fst_byte_builder::fst_t> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+      expected_stats(arcs.Value().weight);
+    }
+  }
+  ASSERT_EQ(expected_stats, stats);
 
   // check fst
   {
@@ -159,8 +171,7 @@ TEST(fst_builder_test, build_fst) {
   }
 }
 
-
-TEST(fst_builder_test, read_write_constfst) {
+TEST(immutable_fst_test, read_write) {
   auto expected_data = read_fst_input(test_base::resource("fst"));
   ASSERT_FALSE(expected_data.empty());
 
@@ -218,6 +229,36 @@ TEST(fst_builder_test, read_write_constfst) {
       ASSERT_EQ(expected_arc.nextstate, actual_arc.nextstate);
       ASSERT_EQ(static_cast<irs::bytes_ref>(expected_arc.weight),
                 static_cast<irs::bytes_ref>(actual_arc.weight));
+    }
+  }
+
+  // check fst
+  {
+    using sorted_matcher_t = fst::SortedMatcher<immutable_fst_t>;
+    using matcher_t = fst::explicit_matcher<sorted_matcher_t>; // avoid implicit loops
+
+    ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
+    ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
+
+    for (auto& data : expected_data) {
+      irs::byte_weight actual_weight;
+
+      auto state = fst.Start(); // root node
+
+      matcher_t matcher(*read_fst, fst::MATCH_INPUT);
+      for (irs::byte_type c : data.first) {
+        matcher.SetState(state);
+        ASSERT_TRUE(matcher.Find(c));
+
+        const auto& arc = matcher.Value();
+        ASSERT_EQ(c, arc.ilabel);
+        actual_weight.PushBack(arc.weight.begin(), arc.weight.end());
+        state = arc.nextstate;
+      }
+
+      actual_weight = fst::Times(actual_weight, fst.Final(state));
+
+      ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(data.second));
     }
   }
 }

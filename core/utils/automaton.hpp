@@ -219,27 +219,10 @@ inline void swap(::fst::fsa::RangeLabel<T>& lhs,
   lhs = ::fst::kNoLabel;
 }
 
-template<typename W>
-inline void swap(int32_t& lhs, typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
-  lhs = ::fst::kNoLabel;
-}
-
-template<typename W>
-inline void swap(typename ::fst::fstext::EmptyLabel<W>& /*lhs*/, int32_t& rhs) noexcept {
-  rhs = ::fst::kNoLabel;
-}
-
 template<typename T>
 struct hash<::fst::fsa::RangeLabel<T>> {
   size_t operator()(const ::fst::fsa::RangeLabel<T>& label) const noexcept {
     return hash<uint64_t>()(uint64_t(label.min) | uint64_t(label.max) << 32);
-  }
-};
-
-template<typename W>
-struct hash<typename ::fst::fstext::EmptyLabel<W>> {
-  size_t operator()(typename ::fst::fstext::EmptyLabel<W>) const noexcept {
-    return 0;
   }
 };
 
