@@ -430,7 +430,7 @@ entry::~entry() noexcept {
 ///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
-  static const uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
+  static constexpr uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
   block_iterator(uint64_t start, size_t prefix) noexcept
@@ -1933,14 +1933,6 @@ void dump(const term_reader& field, std::ostream& out) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                       field_writer implementation
 // -----------------------------------------------------------------------------
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
-const string_ref field_writer::TERMS_EXT = "tm";
-const string_ref field_writer::FORMAT_TERMS_INDEX = "block_tree_terms_index";
-const string_ref field_writer::TERMS_INDEX_EXT = "ti";
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;

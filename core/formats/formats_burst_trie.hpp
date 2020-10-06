@@ -147,7 +147,7 @@ struct block_t : private util::noncopyable {
     volatile_byte_ref prefix;
   }; // prefixed_output
 
-  static const int16_t INVALID_LABEL = -1;
+  static constexpr int16_t INVALID_LABEL = -1;
 
   block_t(uint64_t block_start, byte_type meta, int16_t label) noexcept
     : start(block_start),
@@ -286,16 +286,16 @@ class term_reader : public irs::term_reader,
 ///////////////////////////////////////////////////////////////////////////////
 class field_writer final : public irs::field_writer {
  public:
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = 1;
 
-  static const uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
-  static const uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
+  static constexpr uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
+  static constexpr uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
 
-  static const string_ref FORMAT_TERMS;
-  static const string_ref TERMS_EXT;
-  static const string_ref FORMAT_TERMS_INDEX;
-  static const string_ref TERMS_INDEX_EXT;
+  static constexpr string_ref FORMAT_TERMS = "block_tree_terms_dict";
+  static constexpr string_ref TERMS_EXT = "tm";
+  static constexpr string_ref FORMAT_TERMS_INDEX = "block_tree_terms_index";
+  static constexpr string_ref TERMS_INDEX_EXT = "ti";
 
   field_writer(
     irs::postings_writer::ptr&& pw,
@@ -317,7 +317,7 @@ class field_writer final : public irs::field_writer {
     irs::term_iterator& terms) override;
 
  private:
-  static const size_t DEFAULT_SIZE = 8;
+  static constexpr size_t DEFAULT_SIZE = 8;
 
   void write_segment_features(data_output& out, const flags& features);
 
