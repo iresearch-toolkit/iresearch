@@ -24,22 +24,23 @@
 #ifndef IRESEARCH_DLL
 
 #include "tests_shared.hpp"
-#include "utils/fstext/const_fst.hpp"
+
+#include <fstream>
+
+#include <fst/vector-fst.h>
+#include <fst/matcher.h>
+
+#include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/mmap_directory.hpp"
+#include "store/memory_directory.hpp"
+#include "utils/fstext/immutable_fst.h"
 #include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
-
-#include <fst/vector-fst.h>
-#include <fst/matcher.h>
-
-#include <fstream>
-
-#include "store/mmap_directory.hpp"
-#include "store/memory_directory.hpp"
-#include "index/directory_reader.hpp"
-#include "index/index_writer.hpp"
+#include "utils/fstext/fst_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
 namespace {
@@ -192,14 +193,15 @@ TEST(fst_builder_test, read_write_constfst) {
   }
   ASSERT_EQ(expected_stats, stats);
 
-  using immutable_fst = fst::fstext::ImmutableFst<fst::fstext::Transition<fst::fstext::StringRefLeftWeight<irs::byte_type>>>;
+  using arc_t = fst::fstext::ILabelArc<fst::fstext::StringRefLeftWeight<irs::byte_type>>;
+  using immutable_fst_t = fst::fstext::ImmutableFst<arc_t>;
 
   irs::memory_output out(irs::memory_allocator::global());
-  immutable_fst::Write(fst, out.stream, stats);
+  immutable_fst_t::Write(fst, out.stream, stats);
   out.stream.flush();
 
   irs::memory_index_input in(out.file);
-  std::unique_ptr<immutable_fst> read_fst(immutable_fst::Read(in));
+  std::unique_ptr<immutable_fst_t> read_fst(immutable_fst_t::Read(in));
 
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));
@@ -208,7 +210,7 @@ TEST(fst_builder_test, read_write_constfst) {
     ASSERT_EQ(fst.NumArcs(it.Value()), read_fst->NumArcs(it.Value()));
 
     fst::ArcIterator<decltype(fst)> expected_arcs(fst, it.Value());
-    fst::ArcIterator<immutable_fst> actual_arcs(*read_fst, it.Value());
+    fst::ArcIterator<immutable_fst_t> actual_arcs(*read_fst, it.Value());
     for (; !expected_arcs.Done(); expected_arcs.Next(), actual_arcs.Next()) {
       auto& expected_arc = expected_arcs.Value();
       auto& actual_arc = actual_arcs.Value();

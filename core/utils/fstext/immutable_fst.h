@@ -20,8 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_CONST_FST_H
-#define IRESEARCH_CONST_FST_H
+#ifndef IRESEARCH_IMMUTABLE_FST_H
+#define IRESEARCH_IMMUTABLE_FST_H
 
 #include <fst/fst.h>
 #include <fst/vector-fst.h>
@@ -30,9 +30,7 @@
 #include "shared.hpp"
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/automaton.hpp"
 #include "utils/misc.hpp"
-#include "utils/fstext/fst_string_ref_weight.h"
 
 namespace fst {
 namespace fstext {
@@ -40,44 +38,6 @@ namespace fstext {
 namespace detail {
 DEFINE_HAS_MEMBER(FinalRef);
 }
-
-template<typename W, typename L = int32_t>
-struct Transition {
-  using Weight = W;
-  using Label = L;
-  using StateId = int32_t;
-
-  static const std::string &Type() {
-    static const std::string type("fst::Transition");
-    return type;
-  }
-
-  Label ilabel{fst::kNoLabel};
-  StateId nextstate{fst::kNoStateId};
-  union {
-    Weight weight{};
-    fsa::EmptyLabel<Label> olabel;
-  };
-
-  constexpr Transition() = default;
-
-  constexpr Transition(Label ilabel, StateId nextstate)
-    : ilabel(ilabel),
-      nextstate(nextstate) {
-  }
-
-  // satisfy openfst API
-  constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
-    : ilabel(ilabel),
-      nextstate(nextstate) {
-  }
-
-  // satisfy openfst API
-  constexpr Transition(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel),
-      nextstate(nextstate) {
-  }
-}; // Transition
 
 template<typename Arc>
 class ImmutableFst;
@@ -394,5 +354,5 @@ class ArcIterator<fstext::ImmutableFst<Arc>> {
 
 } // fst
 
-#endif // IRESEARCH_CONST_FST_H
+#endif // IRESEARCH_IMMUTABLE_FST_H
 
