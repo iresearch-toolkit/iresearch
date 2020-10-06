@@ -124,7 +124,7 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
-  static const size_t DEFAULT_BUFFER_SIZE = 1024;
+  static constexpr size_t DEFAULT_BUFFER_SIZE = 1024;
 
   buffered_index_output(size_t buf_size = DEFAULT_BUFFER_SIZE);
 

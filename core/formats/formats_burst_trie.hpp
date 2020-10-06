@@ -280,14 +280,30 @@ class term_reader : public irs::term_reader,
 
 } // detail
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class field_writer
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 class field_writer final : public irs::field_writer {
  public:
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_ENCRYPTION_MIN = 1;
-  static constexpr int32_t FORMAT_MAX = 2;
+  enum class Version : int32_t {
+    ////////////////////////////////////////////////////////////////////////////
+    /// * no encryption support
+    /// * term dictionary stored on disk as fst::VectorFst<...>
+    ////////////////////////////////////////////////////////////////////////////
+    MIN = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// * encryption support
+    /// * term dictionary stored on disk as fst::VectorFst<...>
+    ////////////////////////////////////////////////////////////////////////////
+    ENCRYPTION_MIN = 1,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// * encryption support
+    /// * term dictionary stored on disk as fst::fstext::ImmutableFst<...>
+    ////////////////////////////////////////////////////////////////////////////
+    MAX = 2
+  };
 
   static constexpr uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
   static constexpr uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
@@ -300,7 +316,7 @@ class field_writer final : public irs::field_writer {
   field_writer(
     irs::postings_writer::ptr&& pw,
     bool volatile_state,
-    int32_t version = FORMAT_MAX,
+    Version version = Version::MAX,
     uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
     uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
 
@@ -370,7 +386,7 @@ class field_writer final : public irs::field_writer {
   detail::volatile_byte_ref max_term_; // current max term in a block
   uint64_t term_count_; // count of terms
   size_t fields_count_{};
-  const int32_t version_;
+  const Version version_;
   const uint32_t min_block_size_;
   const uint32_t max_block_size_;
   const bool volatile_state_;

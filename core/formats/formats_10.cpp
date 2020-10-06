@@ -5482,7 +5482,7 @@ field_writer::ptr format10::get_field_writer(bool volatile_state) const {
   return memory::make_unique<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
     volatile_state,
-    int32_t(burst_trie::field_writer::FORMAT_MIN));
+    burst_trie::field_writer::Version::MIN);
 }
 
 field_reader::ptr format10::get_field_reader() const  {
@@ -5568,7 +5568,7 @@ field_writer::ptr format11::get_field_writer(bool volatile_state) const {
   return memory::make_unique<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
     volatile_state,
-    int32_t(burst_trie::field_writer::FORMAT_MAX));
+    burst_trie::field_writer::Version::ENCRYPTION_MIN);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {

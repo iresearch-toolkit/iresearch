@@ -162,7 +162,7 @@ inline void prepare_output(
     const flush_state& state,
     const string_ref& ext,
     const string_ref& format,
-    const int32_t version ) {
+    const int32_t version) {
   assert(!out);
 
   file_name(str, state.name, ext);
@@ -2156,7 +2156,7 @@ void field_writer::push( const bytes_ref& term ) {
 field_writer::field_writer(
     irs::postings_writer::ptr&& pw,
     bool volatile_state,
-    int32_t version /* = FORMAT_MAX */,
+    Version version /* = Format::MAX */,
     uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
     uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
   : suffix_(memory_allocator::global()),
@@ -2173,7 +2173,7 @@ field_writer::field_writer(
   assert(min_block_size > 1);
   assert(min_block_size <= max_block_size);
   assert(2 * (min_block_size - 1) <= max_block_size);
-  assert(version_ >= FORMAT_MIN && version_ <= FORMAT_MAX);
+  assert(version_ >= Version::MIN && version_ <= Version::MAX);
 
   min_term_.first = false;
 }
@@ -2201,10 +2201,12 @@ void field_writer::prepare(const irs::flush_state& state) {
   bstring enc_header;
   auto* enc = get_encryption(state.dir->attributes());
 
-  // prepare terms dictionary
-  prepare_output(filename, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
+  // prepare term dictionary
+  prepare_output(filename, terms_out_, state,
+                 TERMS_EXT, FORMAT_TERMS,
+                 static_cast<int32_t>(version_));
 
-  if (version_ > FORMAT_MIN) {
+  if (version_ > Version::MIN) {
     // encrypt term dictionary
     const auto encrypt = irs::encrypt(filename, *terms_out_, enc, enc_header, terms_out_cipher_);
     assert(!encrypt || (terms_out_cipher_ && terms_out_cipher_->block_size()));
@@ -2212,9 +2214,11 @@ void field_writer::prepare(const irs::flush_state& state) {
   }
 
   // prepare term index
-  prepare_output(filename, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
+  prepare_output(filename, index_out_, state,
+                 TERMS_INDEX_EXT, FORMAT_TERMS_INDEX,
+                 static_cast<int32_t>(version_));
 
-  if (version_ > FORMAT_MIN) {
+  if (version_ > Version::MIN) {
     // encrypt term index
     if (irs::encrypt(filename, *index_out_, enc, enc_header, index_out_cipher_)) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
@@ -2391,7 +2395,7 @@ void field_writer::end_field(
 #endif
 
   // write FST
-  if (version_ > FORMAT_ENCRYPTION_MIN) {
+  if (version_ > Version::ENCRYPTION_MIN) {
     immutable_byte_fst::Write(fst, *index_out_, fst_stats);
   } else {
     // wrap stream to be OpenFST compliant
@@ -2456,14 +2460,14 @@ void field_reader::prepare(
 
   int64_t checksum = 0;
 
-  const auto term_index_version = prepare_input(
+  const auto term_index_version = field_writer::Version(prepare_input(
     filename, index_in,
     irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
     field_writer::FORMAT_TERMS_INDEX,
-    field_writer::FORMAT_MIN,
-    field_writer::FORMAT_MAX,
-    &checksum);
+    static_cast<int32_t>(field_writer::Version::MIN),
+    static_cast<int32_t>(field_writer::Version::MAX),
+    &checksum));
 
   constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // fields count
@@ -2487,7 +2491,7 @@ void field_reader::prepare(
   auto* enc = get_encryption(dir.attributes());
   encryption::stream::ptr index_in_cipher;
 
-  if (term_index_version > field_writer::FORMAT_MIN) {
+  if (term_index_version > field_writer::Version::MIN) {
     if (irs::decrypt(filename, *index_in, enc, index_in_cipher)) {
       assert(index_in_cipher && index_in_cipher->block_size());
 
@@ -2548,12 +2552,12 @@ void field_reader::prepare(
   //-----------------------------------------------------------------
 
   // check term header
-  const auto term_dict_version = prepare_input(
+  const auto term_dict_version = field_writer::Version(prepare_input(
     filename, terms_in_, irs::IOAdvice::RANDOM, state,
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
-    field_writer::FORMAT_MIN,
-    field_writer::FORMAT_MAX);
+    static_cast<int32_t>(field_writer::Version::MIN),
+    static_cast<int32_t>(field_writer::Version::MAX)));
 
   if (term_index_version != term_dict_version) {
     throw index_error(string_utils::to_string(
@@ -2563,7 +2567,7 @@ void field_reader::prepare(
       term_dict_version));
   }
 
-  if (term_dict_version > field_writer::FORMAT_MIN) {
+  if (term_dict_version > field_writer::Version::MIN) {
     if (irs::decrypt(filename, *terms_in_, enc, terms_in_cipher_)) {
       assert(terms_in_cipher_ && terms_in_cipher_->block_size());
     }
