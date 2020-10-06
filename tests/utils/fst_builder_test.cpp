@@ -30,13 +30,13 @@
 #include "index/index_writer.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
-#include "utils/fstext/immutable_fst.h"
 #include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_string_ref_weight.h"
-#include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
+#include "utils/fstext/immutable_fst.h"
 #include "utils/fstext/fst_utils.hpp"
+#include "utils/fstext/fst_decl.hpp"
 #include "utils/numeric_utils.hpp"
 
 #include <fst/vector-fst.h>
@@ -113,7 +113,7 @@ TEST(fst_builder_test, build_fst) {
     })
   );
 
-  fst_byte_builder::fst_t fst;
+  irs::vector_byte_fst fst;
   fst_stats stats;
 
   // build fst
@@ -129,12 +129,12 @@ TEST(fst_builder_test, build_fst) {
   }
 
   fst_stats expected_stats;
-  for (fst::StateIterator<fst_byte_builder::fst_t> states(fst); !states.Done(); states.Next()) {
+  for (fst::StateIterator<irs::vector_byte_fst> states(fst); !states.Done(); states.Next()) {
     const auto stateid = states.Value();
     ++expected_stats.num_states;
     expected_stats.num_arcs += fst.NumArcs(stateid);
     expected_stats(fst.Final(stateid));
-    for (fst::ArcIterator<fst_byte_builder::fst_t> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+    for (fst::ArcIterator<irs::vector_byte_fst> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
       expected_stats(arcs.Value().weight);
     }
   }
@@ -142,7 +142,7 @@ TEST(fst_builder_test, build_fst) {
 
   // check fst
   {
-    typedef fst::SortedMatcher<fst_byte_builder::fst_t> sorted_matcher_t;
+    typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
     typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
@@ -175,9 +175,7 @@ TEST(immutable_fst_test, read_write) {
   auto expected_data = read_fst_input(test_base::resource("fst"));
   ASSERT_FALSE(expected_data.empty());
 
-  using fst_t = fst_byte_builder::fst_t;
-
-  fst_t fst;
+  irs::vector_byte_fst fst;
   fst_stats stats;
 
   // build fst
@@ -193,26 +191,23 @@ TEST(immutable_fst_test, read_write) {
   }
 
   fst_stats expected_stats;
-  for (fst::StateIterator<fst_t> states(fst); !states.Done(); states.Next()) {
+  for (fst::StateIterator<irs::vector_byte_fst> states(fst); !states.Done(); states.Next()) {
     const auto stateid = states.Value();
     ++expected_stats.num_states;
     expected_stats.num_arcs += fst.NumArcs(stateid);
     expected_stats(fst.Final(stateid));
-    for (fst::ArcIterator<fst_t> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
+    for (fst::ArcIterator<irs::vector_byte_fst> arcs(fst, stateid); !arcs.Done(); arcs.Next()) {
       expected_stats(arcs.Value().weight);
     }
   }
   ASSERT_EQ(expected_stats, stats);
 
-  using arc_t = fst::fstext::ILabelArc<fst::fstext::StringRefLeftWeight<irs::byte_type>>;
-  using immutable_fst_t = fst::fstext::ImmutableFst<arc_t>;
-
   irs::memory_output out(irs::memory_allocator::global());
-  immutable_fst_t::Write(fst, out.stream, stats);
+  irs::immutable_byte_fst::Write(fst, out.stream, stats);
   out.stream.flush();
 
   irs::memory_index_input in(out.file);
-  std::unique_ptr<immutable_fst_t> read_fst(immutable_fst_t::Read(in));
+  std::unique_ptr<irs::immutable_byte_fst> read_fst(irs::immutable_byte_fst::Read(in));
 
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));
@@ -221,7 +216,7 @@ TEST(immutable_fst_test, read_write) {
     ASSERT_EQ(fst.NumArcs(it.Value()), read_fst->NumArcs(it.Value()));
 
     fst::ArcIterator<decltype(fst)> expected_arcs(fst, it.Value());
-    fst::ArcIterator<immutable_fst_t> actual_arcs(*read_fst, it.Value());
+    fst::ArcIterator<irs::immutable_byte_fst> actual_arcs(*read_fst, it.Value());
     for (; !expected_arcs.Done(); expected_arcs.Next(), actual_arcs.Next()) {
       auto& expected_arc = expected_arcs.Value();
       auto& actual_arc = actual_arcs.Value();
@@ -234,7 +229,7 @@ TEST(immutable_fst_test, read_write) {
 
   // check fst
   {
-    using sorted_matcher_t = fst::SortedMatcher<immutable_fst_t>;
+    using sorted_matcher_t = fst::SortedMatcher<irs::immutable_byte_fst>;
     using matcher_t = fst::explicit_matcher<sorted_matcher_t>; // avoid implicit loops
 
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
