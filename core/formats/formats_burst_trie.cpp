@@ -66,7 +66,9 @@
 #include "utils/directory_utils.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
+#include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/fstext/immutable_fst.h"
 #include "utils/timer_utils.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
@@ -321,7 +323,7 @@ namespace detail {
 struct fst_stats : iresearch::fst_stats {
   size_t total_weight_size{};
 
-  void operator()(const vector_byte_fst::Weight& w) noexcept {
+  void operator()(const byte_weight& w) noexcept {
     total_weight_size += w.Size();
   }
 
@@ -620,8 +622,6 @@ class term_iterator_base
   }
 
  protected:
-  typedef term_reader::fst_t fst_t;
-
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
     const auto size = prefix_size + suffix_size;
     term_.oversize(size);
@@ -634,7 +634,7 @@ class term_iterator_base
     return owner_->field_;
   }
 
-  fst_t& fst() const noexcept {
+  vector_byte_fst& fst() const noexcept {
     assert(owner_ && owner_->fst_);
     return *owner_->fst_;
   }
@@ -702,7 +702,7 @@ class term_iterator final : public term_iterator_base {
   }
 
  private:
-  typedef fst::SortedMatcher<fst_t> sorted_matcher_t;
+  typedef fst::SortedMatcher<vector_byte_fst> sorted_matcher_t;
   typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
   friend class block_iterator;
@@ -1763,7 +1763,7 @@ void term_reader::prepare(
   }
 
   // read FST
-  fst_ = fst_t::Read(in, fst_read_options());
+  fst_ = vector_byte_fst::Read(in, fst_read_options());
 
   if (!fst_) {
     throw irs::index_error(string_utils::to_string(
@@ -1864,7 +1864,7 @@ class term_reader_visitor {
     return &block_stack_.back();
   }
 
-  const term_reader::fst_t* fst_;
+  const vector_byte_fst* fst_;
   std::deque<block_iterator> block_stack_;
   bytes_builder term_;
   index_input::ptr terms_in_;
@@ -2372,7 +2372,7 @@ void field_writer::end_field(
   // build fst
   const entry& root = *stack_.begin();
   assert(fst_buf_);
-  const auto fst_stats = fst_buf_->reset(root.block().index);
+  [[maybe_unused]] const auto fst_stats = fst_buf_->reset(root.block().index);
   const vector_byte_fst& fst = *fst_buf_;
 
 #ifdef IRESEARCH_DEBUG
@@ -2391,9 +2391,14 @@ void field_writer::end_field(
 #endif
 
   // write FST
-  output_buf isb(index_out_.get()); // wrap stream to be OpenFST compliant
-  std::ostream os(&isb);
-  fst.Write(os, fst_write_options());
+  if (version_ > FORMAT_ENCRYPTION_MIN) {
+    immutable_byte_fst::Write(fst, *index_out_, fst_stats);
+  } else {
+    // wrap stream to be OpenFST compliant
+    output_buf isb(index_out_.get());
+    std::ostream os(&isb);
+    fst.Write(os, fst_write_options());
+  }
 
   stack_.clear();
   ++fields_count_;

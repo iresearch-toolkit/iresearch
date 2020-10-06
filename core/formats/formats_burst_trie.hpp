@@ -252,7 +252,6 @@ class term_reader : public irs::term_reader,
   virtual attribute* get_mutable(type_info::type_id type) noexcept override;
 
  private:
-  using fst_t = fst::VectorFst<byte_arc>;
   friend class term_iterator_base;
   friend class term_reader_visitor;
 
@@ -267,7 +266,7 @@ class term_reader : public irs::term_reader,
   frequency freq_; // total term freq
   frequency* pfreq_{};
   field_meta field_;
-  fst_t* fst_{}; // TODO: use compact fst here!!!
+  vector_byte_fst* fst_{}; // TODO: use compact fst here!!!
   field_reader* owner_;
 }; // term_reader
 
@@ -287,7 +286,8 @@ class term_reader : public irs::term_reader,
 class field_writer final : public irs::field_writer {
  public:
   static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_ENCRYPTION_MIN = 1;
+  static constexpr int32_t FORMAT_MAX = 2;
 
   static constexpr uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
   static constexpr uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
