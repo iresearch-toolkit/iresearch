@@ -248,8 +248,8 @@ inline void prepare_input(
 //////////////////////////////////////////////////////////////////////////////
 class postings_writer_base : public irs::postings_writer {
  public:
-  static const int32_t TERMS_FORMAT_MIN = 0;
-  static const int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
+  static constexpr int32_t TERMS_FORMAT_MIN = 0;
+  static constexpr int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
 
   static constexpr int32_t FORMAT_MIN = 0;
   // positions are stored one based (if first osition is 1 first offset is 0)
@@ -270,17 +270,17 @@ class postings_writer_base : public irs::postings_writer {
   static constexpr int32_t FORMAT_SSE_POSITIONS_ZEROBASED = FORMAT_POSITIONS_ZEROBASED + 1;
   static constexpr int32_t FORMAT_MAX = FORMAT_SSE_POSITIONS_ZEROBASED;
 
-  static const uint32_t MAX_SKIP_LEVELS = 10;
-  static const uint32_t BLOCK_SIZE = 128;
-  static const uint32_t SKIP_N = 8;
+  static constexpr uint32_t MAX_SKIP_LEVELS = 10;
+  static constexpr uint32_t BLOCK_SIZE = 128;
+  static constexpr uint32_t SKIP_N = 8;
 
-  static const string_ref DOC_FORMAT_NAME;
-  static const string_ref DOC_EXT;
-  static const string_ref POS_FORMAT_NAME;
-  static const string_ref POS_EXT;
-  static const string_ref PAY_FORMAT_NAME;
-  static const string_ref PAY_EXT;
-  static const string_ref TERMS_FORMAT_NAME;
+  static constexpr string_ref DOC_FORMAT_NAME = "iresearch_10_postings_documents";
+  static constexpr string_ref DOC_EXT = "doc";
+  static constexpr string_ref POS_FORMAT_NAME = "iresearch_10_postings_positions";
+  static constexpr string_ref POS_EXT = "pos";
+  static constexpr string_ref PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
+  static constexpr string_ref PAY_EXT = "pay";
+  static constexpr string_ref TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
 
  protected:
   postings_writer_base(int32_t postings_format_version, int32_t terms_format_version)
@@ -454,22 +454,6 @@ class postings_writer_base : public irs::postings_writer {
   const int32_t terms_format_version_;
   uint32_t pos_min_; // initial base value for writing positions offsets
 };
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-
-const string_ref postings_writer_base::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
-
-const string_ref postings_writer_base::DOC_FORMAT_NAME = "iresearch_10_postings_documents";
-const string_ref postings_writer_base::DOC_EXT = "doc";
-
-const string_ref postings_writer_base::POS_FORMAT_NAME = "iresearch_10_postings_positions";
-const string_ref postings_writer_base::POS_EXT = "pos";
-
-const string_ref postings_writer_base::PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
-const string_ref postings_writer_base::PAY_EXT = "pay";
-
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 void postings_writer_base::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
@@ -1933,12 +1917,12 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
 // ----------------------------------------------------------------------------
 
 struct index_meta_writer final: public irs::index_meta_writer {
-  static const string_ref FORMAT_NAME;
-  static const string_ref FORMAT_PREFIX;
-  static const string_ref FORMAT_PREFIX_TMP;
+  static constexpr string_ref FORMAT_NAME = "segments_";
+  static constexpr string_ref FORMAT_PREFIX = "pending_segments_";
+  static constexpr string_ref FORMAT_PREFIX_TMP = "iresearch_10_index_meta";
 
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = 1;
 
   enum { HAS_PAYLOAD = 1 };
 
@@ -1980,13 +1964,6 @@ template<>
 std::string file_name<irs::index_meta_reader, index_meta>(const index_meta& meta) {
   return file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
 }
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref index_meta_writer::FORMAT_PREFIX = "segments_";
-const string_ref index_meta_writer::FORMAT_PREFIX_TMP = "pending_segments_";
-const string_ref index_meta_writer::FORMAT_NAME = "iresearch_10_index_meta";
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 std::string index_meta_writer::filename(const index_meta& meta) const {
   return file_name<irs::index_meta_reader>(meta);
@@ -2207,11 +2184,11 @@ void index_meta_reader::read(
 // ----------------------------------------------------------------------------
 
 struct segment_meta_writer final : public irs::segment_meta_writer{
-  static const string_ref FORMAT_EXT;
-  static const string_ref FORMAT_NAME;
+  static constexpr string_ref FORMAT_EXT = "sm";
+  static constexpr string_ref FORMAT_NAME = "iresearch_10_segment_meta";
 
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = 1;
 
   enum {
     HAS_COLUMN_STORE = 1,
@@ -2237,12 +2214,6 @@ template<>
 std::string file_name<irs::segment_meta_writer, segment_meta>(const segment_meta& meta) {
   return irs::file_name(meta.name, meta.version, segment_meta_writer::FORMAT_EXT);
 }
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref segment_meta_writer::FORMAT_EXT = "sm";
-const string_ref segment_meta_writer::FORMAT_NAME = "iresearch_10_segment_meta";
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 void segment_meta_writer::write(directory& dir, std::string& meta_file, const segment_meta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
@@ -2391,35 +2362,25 @@ void segment_meta_reader::read(
 
 class document_mask_writer final: public irs::document_mask_writer {
  public:
-  static const string_ref FORMAT_EXT;
-  static const string_ref FORMAT_NAME;
+  static constexpr string_ref FORMAT_EXT = "iresearch_10_doc_mask";
+  static constexpr string_ref FORMAT_NAME = "doc_mask";
 
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = FORMAT_MIN;
 
   virtual ~document_mask_writer() = default;
 
-  virtual std::string filename(
-    const segment_meta& meta
-  ) const override;
+  virtual std::string filename(const segment_meta& meta) const override;
 
-  virtual void write(
-    directory& dir,
-    const segment_meta& meta,
-    const document_mask& docs_mask
-  ) override;
+  virtual void write(directory& dir,
+                     const segment_meta& meta,
+                     const document_mask& docs_mask) override;
 }; // document_mask_writer
 
 template<>
 std::string file_name<irs::document_mask_writer, segment_meta>(const segment_meta& meta) {
   return file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
 }
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref document_mask_writer::FORMAT_NAME = "iresearch_10_doc_mask";
-const string_ref document_mask_writer::FORMAT_EXT = "doc_mask";
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 std::string document_mask_writer::filename(const segment_meta& meta) const {
   return file_name<irs::document_mask_writer>(meta);
@@ -2428,8 +2389,7 @@ std::string document_mask_writer::filename(const segment_meta& meta) const {
 void document_mask_writer::write(
     directory& dir,
     const segment_meta& meta,
-    const document_mask& docs_mask
-) {
+    const document_mask& docs_mask) {
   const auto filename = file_name<irs::document_mask_writer>(meta);
   auto out = dir.create(filename);
 
@@ -2540,11 +2500,11 @@ void file_name(std::string& buf, const M& meta); // forward declaration
 
 class meta_writer final : public irs::column_meta_writer {
  public:
-  static const string_ref FORMAT_NAME;
-  static const string_ref FORMAT_EXT;
+  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnmeta";
+  static constexpr string_ref FORMAT_EXT = "cm";
 
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = 1;
 
   explicit meta_writer(int32_t version) noexcept
     : version_(version) {
@@ -2563,16 +2523,9 @@ class meta_writer final : public irs::column_meta_writer {
   int32_t version_;
 }; // meta_writer
 
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
-const string_ref meta_writer::FORMAT_EXT = "cm";
-MSVC2015_ONLY(__pragma(warning(pop)))
-
 template<>
 std::string file_name<column_meta_writer, segment_meta>(
-    const segment_meta& meta
-) {
+    const segment_meta& meta) {
   return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
 }
 
@@ -2640,8 +2593,7 @@ class meta_reader final : public irs::column_meta_reader {
     const directory& dir,
     const segment_meta& meta,
     size_t& count,
-    field_id& max_id
-  ) override;
+    field_id& max_id) override;
   virtual bool read(column_meta& column) override;
 
  private:
@@ -2655,8 +2607,7 @@ bool meta_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
     size_t& count,
-    field_id& max_id
-) {
+    field_id& max_id) {
   const auto filename = file_name<column_meta_writer>(meta);
 
   bool exists;
@@ -2772,8 +2723,8 @@ bool meta_reader::read(column_meta& column) {
 // ...
 // |Footer|
 
-const uint32_t INDEX_BLOCK_SIZE = 1024;
-const size_t MAX_DATA_BLOCK_SIZE = 8192;
+constexpr uint32_t INDEX_BLOCK_SIZE = 1024;
+constexpr size_t MAX_DATA_BLOCK_SIZE = 8192;
 
 /// @brief Column flags
 /// @note by default we treat columns as a variable length sparse columns
@@ -3035,11 +2986,11 @@ class index_block {
 //////////////////////////////////////////////////////////////////////////////
 class writer final : public irs::columnstore_writer {
  public:
-  static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = 1;
+  static constexpr int32_t FORMAT_MIN = 0;
+  static constexpr int32_t FORMAT_MAX = 1;
 
-  static const string_ref FORMAT_NAME;
-  static const string_ref FORMAT_EXT;
+  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnstore";
+  static constexpr string_ref FORMAT_EXT = "cs";
 
   explicit writer(int32_t version) noexcept
     : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
@@ -3239,12 +3190,6 @@ template<>
 std::string file_name<columnstore_writer, segment_meta>(const segment_meta& meta) {
   return file_name(meta.name, columns::writer::FORMAT_EXT);
 }
-
-MSVC2015_ONLY(__pragma(warning(push)))
-MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
-const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
-const string_ref writer::FORMAT_EXT = "cs";
-MSVC2015_ONLY(__pragma(warning(pop)))
 
 void writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
@@ -5069,8 +5014,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     *stream,
     writer::FORMAT_NAME,
     writer::FORMAT_MIN,
-    writer::FORMAT_MAX
-  );
+    writer::FORMAT_MAX);
 
   encryption::stream::ptr cipher;
 
