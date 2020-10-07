@@ -207,6 +207,7 @@ class fst_builder : util::noncopyable {
     fst_.SetFinal(final, weight_t::One());
 
     // reset stats
+    stats_ = {};
     stats_.num_states = 1;
     stats_.num_arcs = 0;
     stats_(weight_t::One());

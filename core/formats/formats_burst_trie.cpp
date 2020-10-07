@@ -2388,7 +2388,7 @@ void field_writer::end_field(
 
 #ifdef IRESEARCH_DEBUG
   // ensure evaluated stats are correct
-  struct fst_stats stats;
+  struct fst_stats stats{};
   for (fst::StateIterator<vector_byte_fst> states(fst); !states.Done(); states.Next()) {
     const auto stateid = states.Value();
     ++stats.num_states;
@@ -2398,7 +2398,7 @@ void field_writer::end_field(
       stats(arcs.Value().weight);
     }
   }
-  //assert(stats == fst_stats);
+  assert(stats == fst_stats);
 #endif
 
   // write FST
