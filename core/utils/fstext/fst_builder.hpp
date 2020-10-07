@@ -211,6 +211,7 @@ class fst_builder : util::noncopyable {
     stats_.num_arcs = 0;
     stats_(weight_t::One());
 
+    states_.clear();
     states_map_.reset();
     last_ = {};
     start_out_ = weight_t{};

@@ -190,7 +190,8 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     return new ImmutableFst<A>(*this, safe);
   }
 
-  static ImmutableFst<A>* Read(irs::data_input& strm) {
+  static ImmutableFst<A>* Read(irs::data_input& strm,
+                               FstReadOptions const& opts = FstReadOptions{}) {
     auto impl = Impl::Read(strm);
     return impl ? new ImmutableFst<A>(std::move(impl)) : nullptr;
   }

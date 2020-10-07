@@ -233,17 +233,15 @@ class entry : private util::noncopyable {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_reader
 ///////////////////////////////////////////////////////////////////////////////
-class term_reader : public irs::term_reader,
-                    private util::noncopyable {
+class term_reader_base : public irs::term_reader,
+                         private util::noncopyable {
  public:
-  term_reader() = default;
-  term_reader(term_reader&& rhs) noexcept;
-  virtual ~term_reader();
+  term_reader_base() = default;
+  term_reader_base(term_reader_base&& rhs) = default;
+  term_reader_base& operator=(term_reader_base&&) = delete;
 
-  void prepare(std::istream& in, const feature_map_t& features, field_reader& owner);
+  virtual void prepare(std::istream& in, const feature_map_t& features, field_reader& owner);
 
-  virtual seek_term_iterator::ptr iterator() const override;
-  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
   virtual const field_meta& meta() const noexcept override { return field_; }
   virtual size_t size() const noexcept override { return terms_count_; }
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
@@ -266,8 +264,30 @@ class term_reader : public irs::term_reader,
   frequency freq_; // total term freq
   frequency* pfreq_{};
   field_meta field_;
-  vector_byte_fst* fst_{}; // TODO: use compact fst here!!!
   field_reader* owner_;
+}; // term_reader_base
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class term_reader
+///////////////////////////////////////////////////////////////////////////////
+class term_reader : public term_reader_base {
+ public:
+  term_reader() = default;
+  term_reader(term_reader&& rhs) noexcept;
+  virtual ~term_reader();
+
+  virtual void prepare(
+    std::istream& in, const feature_map_t& features,
+    field_reader& owner) override;
+
+  virtual seek_term_iterator::ptr iterator() const override;
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
+
+ private:
+  friend class term_iterator_base;
+  friend class term_reader_visitor;
+
+  vector_byte_fst* fst_{}; // TODO: use compact fst here!!!
 }; // term_reader
 
 ////////////////////////////////////////////////////////////////////////////////

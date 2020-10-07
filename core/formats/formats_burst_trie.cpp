@@ -435,6 +435,11 @@ class block_iterator : util::noncopyable {
   static constexpr uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
+
+  block_iterator(bytes_ref header, size_t prefix)
+    : block_iterator(byte_weight(header), prefix) {
+  }
+
   block_iterator(uint64_t start, size_t prefix) noexcept
     : start_(start),
       cur_start_(start),
@@ -634,11 +639,6 @@ class term_iterator_base
     return owner_->field_;
   }
 
-  vector_byte_fst& fst() const noexcept {
-    assert(owner_ && owner_->fst_);
-    return *owner_->fst_;
-  }
-
   const term_reader* owner_;
   irs::encryption::stream* terms_cipher_;
   mutable version10::term_meta state_;
@@ -666,11 +666,16 @@ index_input& term_iterator_base::terms_input() const {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
+template<typename FST>
 class term_iterator final : public term_iterator_base {
  public:
-  explicit term_iterator(const term_reader& owner)
+  using weight_t = typename FST::Weight;
+  using stateid_t = typename FST::StateId;
+
+  explicit term_iterator(const term_reader& owner, const FST& fst)
     : term_iterator_base(owner, nullptr),
-      matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
+      fst_(&fst),
+      matcher_(&fst, fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
   }
 
@@ -702,14 +707,12 @@ class term_iterator final : public term_iterator_base {
   }
 
  private:
-  typedef fst::SortedMatcher<vector_byte_fst> sorted_matcher_t;
+  typedef fst::SortedMatcher<FST> sorted_matcher_t;
   typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
 
   friend class block_iterator;
 
   struct arc {
-    typedef fst_byte_builder::stateid_t stateid_t;
-
     arc() = default;
 
     arc(arc&&) = default;
@@ -730,7 +733,7 @@ class term_iterator final : public term_iterator_base {
   typedef std::deque<block_iterator> block_stack_t;
 
   ptrdiff_t seek_cached(
-    size_t& prefix, arc::stateid_t& state,
+    size_t& prefix, stateid_t& state,
     byte_weight& weight, const bytes_ref& term);
 
   /// @brief Seek to the closest block which contain a specified term
@@ -769,6 +772,7 @@ class term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
+  const FST* fst_;
   matcher_t matcher_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
@@ -778,11 +782,14 @@ class term_iterator final : public term_iterator_base {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
+template<typename FST>
 class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner,
+                                   const FST& fst,
                                    automaton_table_matcher& matcher)
     : term_iterator_base(owner, &payload_),
+      fst_(&fst),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
     // init payload value
@@ -921,6 +928,7 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
+  const FST* fst_;
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
@@ -929,13 +937,13 @@ class automaton_term_iterator final : public term_iterator_base {
   payload payload_; // payload of the matched automaton state
 }; // automaton_term_iterator
 
-bool automaton_term_iterator::next() {
+template<typename FST>
+bool automaton_term_iterator<FST>::next() {
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
     if (term_.empty()) {
       // iterator at the beginning
-      const auto& fst = this->fst();
-      cur_block_ = push_block(fst.Final(fst.Start()), 0, acceptor_->Start());
+      cur_block_ = push_block(fst_->Final(fst_->Start()), 0, acceptor_->Start());
       cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
@@ -1428,13 +1436,13 @@ void block_iterator::reset() {
 // --SECTION--                                      term_iterator implementation
 // -----------------------------------------------------------------------------
 
-bool term_iterator::next() {
+template<typename FST>
+bool term_iterator<FST>::next() {
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
     if (term_.empty()) {
       // iterator at the beginning
-      const auto& fst = this->fst();
-      cur_block_ = push_block(fst.Final(fst.Start()), 0);
+      cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
@@ -1500,8 +1508,9 @@ bool term_iterator::next() {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-ptrdiff_t term_iterator::seek_cached( 
-    size_t& prefix, arc::stateid_t& state,
+template<typename FST>
+ptrdiff_t term_iterator<FST>::seek_cached(
+    size_t& prefix, stateid_t& state,
     byte_weight& weight, const bytes_ref& target) {
   assert(!block_stack_.empty());
   const byte_type* pterm = term_.c_str();
@@ -1549,13 +1558,14 @@ ptrdiff_t term_iterator::seek_cached(
   return cmp;
 }
 
-bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
-  assert(fst().GetImpl());
+template<typename FST>
+bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
+  assert(fst_->GetImpl());
 
-  auto& fst = *this->fst().GetImpl();
+  auto& fst = *fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
-  arc::stateid_t state = fst.Start(); // start state
+  stateid_t state = fst.Start(); // start state
   weight_.Clear(); // clear aggregated fst output
 
   if (cur_block_) {
@@ -1585,7 +1595,7 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
     const auto& arc = matcher_.Value();
 
     term_ += byte_type(arc.ilabel); // aggregate arc label
-    weight_.PushBack(arc.weight); // aggregate arc weight
+    weight_.PushBack(arc.weight.begin(), arc.weight.end()); // aggregate arc weight
     ++prefix;
 
     const auto& weight = fst.FinalRef(arc.nextstate);
@@ -1621,7 +1631,8 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   return false;
 }
 
-SeekResult term_iterator::seek_equal(const bytes_ref& term) {
+template<typename FST>
+SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -1649,7 +1660,8 @@ SeekResult term_iterator::seek_equal(const bytes_ref& term) {
   return cur_block_->scan_to_term(term, append_suffix);
 }
 
-SeekResult term_iterator::seek_ge(const bytes_ref& term) {
+template<typename FST>
+SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -1708,38 +1720,8 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
 // --SECTION--                                        term_reader implementation
 // -----------------------------------------------------------------------------
 
-term_reader::term_reader(term_reader&& rhs) noexcept
-  : min_term_(std::move(rhs.min_term_)),
-    max_term_(std::move(rhs.max_term_)),
-    terms_count_(rhs.terms_count_),
-    doc_count_(rhs.doc_count_),
-    doc_freq_(rhs.doc_freq_),
-    term_freq_(rhs.term_freq_),
-    field_(std::move(rhs.field_)),
-    fst_(std::move(rhs.fst_)),
-    owner_(rhs.owner_) {
-  min_term_ref_ = min_term_;
-  max_term_ref_ = max_term_;
-  rhs.min_term_ref_ = bytes_ref::NIL;
-  rhs.max_term_ref_ = bytes_ref::NIL;
-  rhs.terms_count_ = 0;
-  rhs.doc_count_ = 0;
-  rhs.doc_freq_ = 0;
-  rhs.term_freq_ = 0;
-  rhs.fst_ = nullptr;
-  rhs.owner_ = nullptr;
-}
-
-seek_term_iterator::ptr term_reader::iterator() const {
-  return memory::make_managed<detail::term_iterator>(*this);
-}
-
-seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
-  return memory::make_managed<detail::automaton_term_iterator>(*this, matcher);
-}
-
-void term_reader::prepare(
-    std::istream& in, 
+void term_reader_base::prepare(
+    std::istream& in,
     const feature_map_t& feature_map,
     field_reader& owner) {
   // read field metadata
@@ -1762,24 +1744,49 @@ void term_reader::prepare(
     pfreq_ = &freq_;
   }
 
+  owner_ = &owner;
+}
+
+attribute* term_reader_base::get_mutable(type_info::type_id type) noexcept {
+  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        term_reader implementation
+// -----------------------------------------------------------------------------
+
+term_reader::term_reader(term_reader&& rhs) noexcept
+  : term_reader_base(std::move(rhs)),
+    fst_(std::move(rhs.fst_)) {
+  rhs.fst_ = nullptr;
+}
+
+seek_term_iterator::ptr term_reader::iterator() const {
+  return memory::make_managed<detail::term_iterator<vector_byte_fst>>(*this, *fst_);
+}
+
+seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
+  return memory::make_managed<detail::automaton_term_iterator<vector_byte_fst>>(*this, *fst_, matcher);
+}
+
+void term_reader::prepare(
+    std::istream& in, 
+    const feature_map_t& feature_map,
+    field_reader& owner) {
+  term_reader_base::prepare(in, feature_map, owner);
+
   // read FST
   fst_ = vector_byte_fst::Read(in, fst_read_options());
 
   if (!fst_) {
     throw irs::index_error(string_utils::to_string(
       "failed to read term index for field '%s'",
-      field_.name.c_str()));
+      meta().name.c_str()));
   }
-
-  owner_ = &owner;
 }
 
 term_reader::~term_reader() {
   delete fst_;
-}
-
-attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
-  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2391,7 +2398,7 @@ void field_writer::end_field(
       stats(arcs.Value().weight);
     }
   }
-  assert(stats == fst_stats);
+  //assert(stats == fst_stats);
 #endif
 
   // write FST
