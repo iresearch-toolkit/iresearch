@@ -138,7 +138,7 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
   // read states & arcs
   auto* weight = weights.get();
   auto* arc = arcs.get();
-  for (auto* state = states.get(), end = state + nstates; state != end; ++state) {
+  for (auto state = states.get(), end = state + nstates; state != end; ++state) {
     state->arcs = arc;
     state->narcs = stream.read_byte(); // FIXME total number of arcs can be encoded with 1 byte
     state->weight = { weight, stream.read_vlong() };
