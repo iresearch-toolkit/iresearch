@@ -69,6 +69,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
   Weight Final(StateId s) const noexcept { return states_[s].weight; }
 
+  const Weight& FinalRef(StateId s) const noexcept { return states_[s].weight; }
+
   StateId NumStates() const noexcept { return nstates_; }
 
   size_t NumArcs(StateId s) const noexcept { return states_[s].narcs; }
@@ -190,10 +192,22 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     return new ImmutableFst<A>(*this, safe);
   }
 
-  static ImmutableFst<A>* Read(irs::data_input& strm,
-                               FstReadOptions const& opts = FstReadOptions{}) {
+  static ImmutableFst<A>* Read(irs::data_input& strm) {
     auto impl = Impl::Read(strm);
     return impl ? new ImmutableFst<A>(std::move(impl)) : nullptr;
+  }
+
+  // for OpenFST API compliance
+  static ImmutableFst<A>* Read(std::istream& strm,
+                               const FstReadOptions& /*opts*/) {
+#ifdef IRESEARCH_DEBUG
+    auto* rdbuf = dynamic_cast<irs::input_buf*>(strm.rdbuf());
+#else
+    auto* rdbuf = static_cast<irs::input_buf*>(strm.rdbuf());
+#endif
+    assert(rdbuf && rdbuf->internal());
+
+    return Read(*rdbuf->internal());
   }
 
   template<typename FST, typename Stats>
@@ -209,13 +223,13 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     GetImpl()->InitArcIterator(s, data);
   }
 
+  using ImplToFst<Impl, ExpandedFst<Arc>>::GetImpl;
+
  private:
   explicit ImmutableFst(std::shared_ptr<Impl> impl)
       : ImplToExpandedFst<Impl>(impl) {}
 
-  using ImplToFst<Impl, ExpandedFst<Arc>>::GetImpl;
   using ImplToExpandedFst<ImmutableFstImpl<A>>::Write;
-  using ImplToExpandedFst<ImmutableFstImpl<A>>::Read;
 
   ImmutableFst(const ImmutableFst&) = delete;
   ImmutableFst& operator=(const ImmutableFst&) = delete;

@@ -80,7 +80,7 @@ namespace {
 using namespace irs;
 
 // name of the module holding different formats
-const string_ref MODULE_NAME = "10";
+constexpr string_ref MODULE_NAME = "10";
 
 struct format_traits {
   static constexpr uint32_t BLOCK_SIZE = 128;
@@ -5382,6 +5382,8 @@ class format10 : public irs::version10::format {
   }
 }; // format10
 
+const ::format10 FORMAT10_INSTANCE;
+
 index_meta_writer::ptr format10::get_index_meta_writer() const {
   return memory::make_unique<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MIN));
@@ -5423,15 +5425,14 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
 }
 
 field_writer::ptr format10::get_field_writer(bool volatile_state) const {
-  return memory::make_unique<burst_trie::field_writer>(
+  return burst_trie::make_writer(
+    burst_trie::Version::MIN,
     get_postings_writer(volatile_state),
-    volatile_state,
-    burst_trie::field_writer::Version::MIN);
+    volatile_state);
 }
 
 field_reader::ptr format10::get_field_reader() const  {
-  return memory::make_unique<burst_trie::field_reader>(
-    get_postings_reader());
+  return burst_trie::make_reader(get_postings_reader());
 }
 
 column_meta_writer::ptr format10::get_column_meta_writer() const {
@@ -5467,10 +5468,8 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format10::make() {
-  static const ::format10 INSTANCE;
-
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT10_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
@@ -5491,7 +5490,7 @@ class format11 : public format10 {
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
@@ -5503,16 +5502,18 @@ class format11 : public format10 {
   }
 }; // format11
 
+const ::format11 FORMAT11_INSTANCE;
+
 index_meta_writer::ptr format11::get_index_meta_writer() const {
   return memory::make_unique<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MAX));
 }
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
-  return memory::make_unique<burst_trie::field_writer>(
+  return burst_trie::make_writer(
+    burst_trie::Version::ENCRYPTION_MIN,
     get_postings_writer(volatile_state),
-    volatile_state,
-    burst_trie::field_writer::Version::ENCRYPTION_MIN);
+    volatile_state);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
@@ -5529,10 +5530,8 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
 }
 
 /*static*/ irs::format::ptr format11::make() {
-  static const ::format11 INSTANCE;
-
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT11_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
@@ -5559,6 +5558,8 @@ class format12 : public format11 {
   }
 }; // format12
 
+const ::format12 FORMAT12_INSTANCE;
+
 columnstore_writer::ptr format12::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>(
     int32_t(columns::writer::FORMAT_MAX)
@@ -5566,10 +5567,8 @@ columnstore_writer::ptr format12::get_columnstore_writer() const {
 }
 
 /*static*/ irs::format::ptr format12::make() {
-  static const ::format12 INSTANCE;
-
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT12_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
@@ -5597,6 +5596,8 @@ class format13 : public format12 {
   }
 };
 
+const ::format13 FORMAT13_INSTANCE;
+
 irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_POSITIONS_ZEROBASED;
 
@@ -5615,11 +5616,48 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
   static const ::format13 INSTANCE;
 
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT13_INSTANCE);
 }
 
-
 REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format14
+// ----------------------------------------------------------------------------
+
+class format14 : public format13 {
+ public:
+  static constexpr string_ref type_name() noexcept {
+    return "1_4";
+  }
+
+  DECLARE_FACTORY();
+
+  format14() noexcept : format13(irs::type<format14>::get()) { }
+
+  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+
+ protected:
+  explicit format14(const irs::type_info& type) noexcept
+    : format13(type) {
+  }
+};
+
+const ::format14 FORMAT14_INSTANCE;
+
+irs::field_writer::ptr format14::get_field_writer(bool volatile_state) const {
+  return burst_trie::make_writer(
+    burst_trie::Version::MAX,
+    get_postings_writer(volatile_state),
+    volatile_state);
+}
+
+/*static*/ irs::format::ptr format14::make() {
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &FORMAT14_INSTANCE);
+}
+
+REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                      format12sse
@@ -5659,6 +5697,8 @@ class format12simd final : public format12 {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 }; // format12simd
 
+const ::format12simd FORMAT12SIMD_INSTANCE;
+
 irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
 
@@ -5674,10 +5714,8 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
-  static const ::format12simd INSTANCE;
-
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT12SIMD_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
@@ -5687,7 +5725,7 @@ REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 // --SECTION--                                                      format13sse
 // ----------------------------------------------------------------------------
 
-class format13simd final : public format13 {
+class format13simd : public format13 {
  public:
   static constexpr string_ref type_name() noexcept {
     return "1_3simd";
@@ -5699,7 +5737,14 @@ class format13simd final : public format13 {
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
+
+ protected:
+  explicit format13simd(const irs::type_info& type) noexcept
+    : format13(type) {
+  }
 }; // format13simd
+
+const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
@@ -5716,13 +5761,49 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format13simd::make() {
-  static const ::format13simd INSTANCE;
-
   // aliasing constructor
-  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT13SIMD_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format14
+// ----------------------------------------------------------------------------
+
+class format14simd : public format13simd {
+ public:
+  static constexpr string_ref type_name() noexcept {
+    return "1_4simd";
+  }
+
+  DECLARE_FACTORY();
+
+  format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
+
+  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+
+ protected:
+  explicit format14simd(const irs::type_info& type) noexcept
+    : format13simd(type) {
+  }
+};
+
+const ::format14 FORMAT14SIMD_INSTANCE;
+
+irs::field_writer::ptr format14simd::get_field_writer(bool volatile_state) const {
+  return burst_trie::make_writer(
+    burst_trie::Version::MAX,
+    get_postings_writer(volatile_state),
+    volatile_state);
+}
+
+/*static*/ irs::format::ptr format14simd::make() {
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
+}
+
+REGISTER_FORMAT_MODULE(::format14simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
 
@@ -5737,11 +5818,13 @@ void init() {
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
   REGISTER_FORMAT(::format13);
+  REGISTER_FORMAT(::format14);
 #ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12simd);
   REGISTER_FORMAT(::format13simd);
+  REGISTER_FORMAT(::format14simd);
 #endif // IRESEARCH_SSE2
-#endif
+#endif // IRESEARCH_DLL
 }
 
 // ----------------------------------------------------------------------------
