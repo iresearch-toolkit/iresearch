@@ -2362,8 +2362,8 @@ void segment_meta_reader::read(
 
 class document_mask_writer final: public irs::document_mask_writer {
  public:
-  static constexpr string_ref FORMAT_EXT = "iresearch_10_doc_mask";
-  static constexpr string_ref FORMAT_NAME = "doc_mask";
+  static constexpr string_ref FORMAT_NAME = "iresearch_10_doc_mask";
+  static constexpr string_ref FORMAT_EXT = "doc_mask";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = FORMAT_MIN;
