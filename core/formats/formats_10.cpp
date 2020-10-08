@@ -1917,9 +1917,9 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
 // ----------------------------------------------------------------------------
 
 struct index_meta_writer final: public irs::index_meta_writer {
-  static constexpr string_ref FORMAT_NAME = "segments_";
-  static constexpr string_ref FORMAT_PREFIX = "pending_segments_";
-  static constexpr string_ref FORMAT_PREFIX_TMP = "iresearch_10_index_meta";
+  static constexpr string_ref FORMAT_NAME = "iresearch_10_index_meta";
+  static constexpr string_ref FORMAT_PREFIX = "segments_";
+  static constexpr string_ref FORMAT_PREFIX_TMP = "pending_segments_";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 1;
