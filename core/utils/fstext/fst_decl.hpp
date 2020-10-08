@@ -36,7 +36,7 @@ template<typename Label>
 class StringRefWeight;
 
 template<typename W, typename L>
-class ILabelArc;
+struct ILabelArc;
 
 template<typename Arc>
 class ImmutableFst;
