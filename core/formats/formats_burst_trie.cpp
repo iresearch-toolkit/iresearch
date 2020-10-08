@@ -1209,8 +1209,6 @@ class term_reader_base : public irs::term_reader,
   virtual void prepare(index_input& in, const feature_map_t& features);
 
  private:
-  friend class term_reader_visitor;
-
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;
@@ -1218,7 +1216,6 @@ class term_reader_base : public irs::term_reader,
   uint64_t terms_count_;
   uint64_t doc_count_;
   uint64_t doc_freq_;
-  uint64_t term_freq_;
   frequency freq_; // total term freq
   frequency* pfreq_{};
   field_meta field_;
@@ -1855,7 +1852,7 @@ class term_iterator final : public term_iterator_base {
     term_iterator_base::seek(term, cookie);
 
     // reset seek state
-    sstate_.resize(0);
+    sstate_.clear();
 
     // mark block as invalid
     cur_block_ = nullptr;
@@ -1879,20 +1876,14 @@ class term_iterator final : public term_iterator_base {
 
   struct arc {
     arc() = default;
-
     arc(arc&&) = default;
     arc& operator=(arc&&) = delete;
-
-    arc(stateid_t state, const bytes_ref& weight, block_iterator* block)
-      : state(state), weight(weight), block(block) {
-    }
-
-    arc(stateid_t state, const byte_weight& weight, block_iterator* block)
+    arc(stateid_t state, const weight_t& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {
     }
 
     stateid_t state;
-    byte_weight weight; // FIXME it seems we can store just a reference
+    weight_t weight;
     block_iterator* block{};
   }; // arc
 
@@ -2048,8 +2039,9 @@ ptrdiff_t term_iterator<FST>::seek_cached(
     auto begin = sstate_.begin();
     auto end = begin + std::min(target.size(), sstate_.size());
 
-    for (;begin != end && *pterm == *ptarget; ++begin, ++pterm, ++ptarget) {
-      weight.PushBack(begin->weight);
+    for (; begin != end && *pterm == *ptarget; ++begin, ++pterm, ++ptarget) {
+      auto& state_weight = begin->weight;
+      weight.PushBack(state_weight.begin(), state_weight.end());
       state = begin->state;
       cur_block = begin->block;
     }
@@ -2138,7 +2130,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 
     // cache found arcs, we can reuse it in further seeks
     // avoiding relatively expensive FST lookups
-    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_); // FIXME it seems we can avoid copying of weight
+    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
 
     // proceed to the next state
     state = arc.nextstate;
@@ -2834,6 +2826,148 @@ irs::field_iterator::ptr field_reader::iterator() const {
     }, fields_);
 }
 
+//////////////////////////////////////////////////////////////////////////////////
+///// @class term_reader_visitor
+///// @brief implements generalized visitation logic for term dictionary
+//////////////////////////////////////////////////////////////////////////////////
+template<typename FST>
+class term_reader_visitor {
+ public:
+  explicit term_reader_visitor(
+      const FST& field,
+      index_input& terms_in,
+      encryption::stream* terms_in_cipher)
+    : fst_(&field),
+      terms_in_(terms_in.reopen()),
+      terms_in_cipher_(terms_in_cipher) {
+  }
+
+  template<typename Visitor>
+  void operator()(Visitor& visitor) {
+    block_iterator* cur_block = push_block(fst_->Final(fst_->Start()), 0);
+    cur_block->load(*terms_in_, terms_in_cipher_);
+    visitor.push_block(term_, *cur_block);
+
+    auto copy_suffix = [&cur_block, this](const byte_type* suffix, size_t suffix_size) {
+      copy(suffix, cur_block->prefix(), suffix_size);
+    };
+
+    while (true) {
+      while (cur_block->end()) {
+        if (cur_block->next_sub_block()) {
+          cur_block->load(*terms_in_, terms_in_cipher_);
+          visitor.sub_block(*cur_block);
+        } else if (&block_stack_.front() == cur_block) { // root
+          cur_block->reset();
+          return;
+        } else {
+          visitor.pop_block(*cur_block);
+          cur_block = pop_block();
+        }
+      }
+
+      while (!cur_block->end()) {
+        cur_block->next(copy_suffix);
+        switch (cur_block->type()) {
+          case ET_TERM:
+            visitor.push_term(term_);
+            break;
+          case ET_BLOCK:
+            cur_block = push_block(cur_block->block_start(), term_.size());
+            cur_block->load(*terms_in_, terms_in_cipher_);
+            visitor.push_block(term_, *cur_block);
+            break;
+          default:
+            assert(false);
+            break;
+        }
+      }
+    }
+  }
+
+ private:
+  void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
+    const auto size = prefix_size + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
+  }
+
+  block_iterator* pop_block() noexcept {
+    block_stack_.pop_back();
+    assert(!block_stack_.empty());
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(byte_weight&& out, size_t prefix) {
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
+    block_stack_.emplace_back(std::move(out), prefix);
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(uint64_t start, size_t prefix) {
+    block_stack_.emplace_back(start, prefix);
+    return &block_stack_.back();
+  }
+
+  const FST* fst_;
+  std::deque<block_iterator> block_stack_;
+  bytes_builder term_;
+  index_input::ptr terms_in_;
+  encryption::stream* terms_in_cipher_;
+}; // term_reader_visitor
+
+//////////////////////////////////////////////////////////////////////////////////
+///// @brief "Dumper" visitor for term_reader_visitor. Suitable for debugging needs.
+//////////////////////////////////////////////////////////////////////////////////
+class dumper : util::noncopyable {
+ public:
+  explicit dumper(std::ostream& out)
+    : out_(out) {
+  }
+
+  void push_term(const bytes_ref& term) {
+    indent();
+    out_ << "TERM|" << suffix(term) << "\n";
+  }
+
+  void push_block(const bytes_ref& term, const block_iterator& block) {
+    indent();
+    out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
+    indent_ += 2;
+    prefix_ = block.prefix();
+  }
+
+  void sub_block(const block_iterator& /*block*/){
+    indent();
+    out_ << "|\n";
+    indent();
+    out_ << "V\n";
+  };
+
+  void pop_block(const block_iterator& block) {
+    indent_ -= 2;
+    prefix_ -= block.prefix();
+  }
+
+ private:
+  void indent() {
+    for (size_t i = 0; i < indent_; ++i) {
+      out_ << " ";
+    }
+  }
+
+  string_ref suffix(const bytes_ref& term) {
+    return ref_cast<char>(bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
+  }
+
+  std::ostream& out_;
+  size_t indent_ = 0;
+  size_t prefix_ = 0;
+}; // dumper
+
 }
 
 namespace iresearch {
@@ -2852,170 +2986,3 @@ irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
 
 } // burst_trie
 } // iresearch
-
-//namespace iresearch {
-//namespace burst_trie {
-//namespace detail {
-//
-//class field_reader;
-//class fst_buffer;
-//class term_iterator_base;
-//class term_reader_visitor;
-//
-////////////////////////////////////////////////////////////////////////////////////
-/////// @brief dump term dictionary of a specified field to a provided stream in
-///////        a human readable format
-/////// @param field field to dump
-/////// @param out output stream
-////////////////////////////////////////////////////////////////////////////////////
-//[[maybe_unused]] void dump(const term_reader& field, std::ostream& out);
-//
-//} // detail
-//}
-//}
-
-//////////////////////////////////////////////////////////////////////////////////
-///// @class term_reader_visitor
-///// @brief implements generalized visitation logic for term dictionary
-//////////////////////////////////////////////////////////////////////////////////
-//class term_reader_visitor {
-// public:
-//  explicit term_reader_visitor(const term_reader& field)
-//    : fst_(field.fst_),
-//      terms_in_(field.owner_->terms_in_->reopen()),
-//      terms_in_cipher_(field.owner_->terms_in_cipher_.get()) {
-//  }
-//
-//  template<typename Visitor>
-//  void operator()(Visitor& visitor) {
-//    block_iterator* cur_block = push_block(fst_->Final(fst_->Start()), 0);
-//    cur_block->load(*terms_in_, terms_in_cipher_);
-//    visitor.push_block(term_, *cur_block);
-//
-//    auto copy_suffix = [&cur_block, this](const byte_type* suffix, size_t suffix_size) {
-//      copy(suffix, cur_block->prefix(), suffix_size);
-//    };
-//
-//    while (true) {
-//      while (cur_block->end()) {
-//        if (cur_block->next_sub_block()) {
-//          cur_block->load(*terms_in_, terms_in_cipher_);
-//          visitor.sub_block(*cur_block);
-//        } else if (&block_stack_.front() == cur_block) { // root
-//          cur_block->reset();
-//          return;
-//        } else {
-//          visitor.pop_block(*cur_block);
-//          cur_block = pop_block();
-//        }
-//      }
-//
-//      while (!cur_block->end()) {
-//        cur_block->next(copy_suffix);
-//        switch (cur_block->type()) {
-//          case ET_TERM:
-//            visitor.push_term(term_);
-//            break;
-//          case ET_BLOCK:
-//            cur_block = push_block(cur_block->block_start(), term_.size());
-//            cur_block->load(*terms_in_, terms_in_cipher_);
-//            visitor.push_block(term_, *cur_block);
-//            break;
-//          default:
-//            assert(false);
-//            break;
-//        }
-//      }
-//    }
-//  }
-//
-// private:
-//  void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
-//    const auto size = prefix_size + suffix_size;
-//    term_.oversize(size);
-//    term_.reset(size);
-//    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
-//  }
-//
-//  block_iterator* pop_block() noexcept {
-//    block_stack_.pop_back();
-//    assert(!block_stack_.empty());
-//    return &block_stack_.back();
-//  }
-//
-//  block_iterator* push_block(byte_weight&& out, size_t prefix) {
-//    // ensure final weight correctess
-//    assert(out.Size() >= MIN_WEIGHT_SIZE);
-//
-//    block_stack_.emplace_back(std::move(out), prefix);
-//    return &block_stack_.back();
-//  }
-//
-//  block_iterator* push_block(uint64_t start, size_t prefix) {
-//    block_stack_.emplace_back(start, prefix);
-//    return &block_stack_.back();
-//  }
-//
-//  const vector_byte_fst* fst_;
-//  std::deque<block_iterator> block_stack_;
-//  bytes_builder term_;
-//  index_input::ptr terms_in_;
-//  encryption::stream* terms_in_cipher_;
-//}; // term_reader_visitor
-//
-////////////////////////////////////////////////////////////////////////////////////
-/////// @brief dump term dictionary of a specified field to a provided stream in
-///////        a human readable format
-////////////////////////////////////////////////////////////////////////////////////
-//void dump(const term_reader& field, std::ostream& out) {
-//  class dumper : util::noncopyable {
-//   public:
-//    explicit dumper(std::ostream& out)
-//      : out_(out) {
-//    }
-//
-//    void push_term(const bytes_ref& term) {
-//      indent();
-//      out_ << "TERM|" << suffix(term) << "\n";
-//    }
-//
-//    void push_block(const bytes_ref& term, const block_iterator& block) {
-//      indent();
-//      out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
-//      indent_ += 2;
-//      prefix_ = block.prefix();
-//    }
-//
-//    void sub_block(const block_iterator& /*block*/){
-//      indent();
-//      out_ << "|\n";
-//      indent();
-//      out_ << "V\n";
-//    };
-//
-//    void pop_block(const block_iterator& block) {
-//      indent_ -= 2;
-//      prefix_ -= block.prefix();
-//    }
-//
-//   private:
-//    void indent() {
-//      for (size_t i = 0; i < indent_; ++i) {
-//        out_ << " ";
-//      }
-//    }
-//
-//    string_ref suffix(const bytes_ref& term) {
-//      return ref_cast<char>(bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
-//    }
-//
-//    std::ostream& out_;
-//    size_t indent_ = 0;
-//    size_t prefix_ = 0;
-//  };
-//
-//
-//  dumper dump(out);
-//  term_reader_visitor visitor(field);
-//  visitor(dump);
-//}
