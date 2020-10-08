@@ -1878,12 +1878,12 @@ class term_iterator final : public term_iterator_base {
     arc() = default;
     arc(arc&&) = default;
     arc& operator=(arc&&) = delete;
-    arc(stateid_t state, const weight_t& weight, block_iterator* block)
+    arc(stateid_t state, const bytes_ref& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {
     }
 
     stateid_t state;
-    weight_t weight;
+    bytes_ref weight;
     block_iterator* block{};
   }; // arc
 
