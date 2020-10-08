@@ -164,7 +164,7 @@ volatile_ref<Char>::ASSIGN_METHODS[] = {
 
 using volatile_byte_ref = volatile_ref<byte_type>;
 
-using feature_map_t = std::vector<type_info::type_id>;
+using feature_map_t = std::vector<irs::type_info::type_id>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class block_t
@@ -679,7 +679,7 @@ class field_writer final : public irs::field_writer {
 
   void push(const irs::bytes_ref& term);
 
-  std::unordered_map<type_info::type_id, size_t> feature_map_;
+  std::unordered_map<irs::type_info::type_id, size_t> feature_map_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -1076,7 +1076,7 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
   out.write_vlong(features.size());
   feature_map_.clear();
   feature_map_.reserve(features.size());
-  for (const type_info::type_id feature : features) {
+  for (const irs::type_info::type_id feature : features) {
     write_string(out, feature().name());
     feature_map_.emplace(feature, feature_map_.size());
   }
@@ -1204,7 +1204,7 @@ class term_reader_base : public irs::term_reader,
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
   virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
   virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override;
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override;
 
   virtual void prepare(index_input& in, const feature_map_t& features);
 
@@ -1244,7 +1244,7 @@ void term_reader_base::prepare(
   }
 }
 
-attribute* term_reader_base::get_mutable(type_info::type_id type) noexcept {
+attribute* term_reader_base::get_mutable(irs::type_info::type_id type) noexcept {
   return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
