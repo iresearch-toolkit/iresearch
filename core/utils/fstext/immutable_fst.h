@@ -55,13 +55,17 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   using internal::FstImpl<A>::SetProperties;
   using internal::FstImpl<A>::Properties;
 
-  constexpr static const char kType[] = "fst::fstext::immutable";
+  enum class Version : irs::byte_type {
+    MIN = 0
+  };
+
+  static constexpr const char kTypePrefix[] = "immutable";
 
   ImmutableFstImpl()
       : narcs_(0),
         nstates_(0),
         start_(kNoStateId) {
-    SetType(kType);
+    SetType(std::string(kTypePrefix) + "<" + Arc::Type() + ">");
     SetProperties(kNullProperties | kStaticProperties);
   }
 
@@ -125,6 +129,10 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
   auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
+  if (Version(stream.read_byte()) != Version::MIN) {
+    return nullptr;
+  }
+
   const uint64_t props = stream.read_long();
   const size_t total_weight_size = stream.read_long();
   const StateId start = stream.read_vint();
@@ -246,9 +254,10 @@ bool ImmutableFst<A>::Write(
 
   const auto properties =
     fst.Properties(kCopyProperties, true) |
-    fstext::ImmutableFstImpl<Arc>::kStaticProperties;
+    Impl::kStaticProperties;
 
   // write header
+  stream.write_byte(static_cast<irs::byte_type>(Impl::Version::MIN));
   stream.write_long(properties);
   stream.write_long(stats.total_weight_size);
   stream.write_vint(fst.Start());
@@ -259,8 +268,10 @@ bool ImmutableFst<A>::Write(
   // write states & arcs
   for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
     const StateId s = siter.Value();
+    const size_t narcs = impl->NumArcs(s);
 
-    stream.write_byte(static_cast<irs::byte_type>(impl->NumArcs(s) & 0xFF)); // FIXME make it optional
+    assert(narcs <= std::numeric_limits<irs::byte_type>::max());
+    stream.write_byte(static_cast<irs::byte_type>(narcs & 0xFF));
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
       stream.write_vlong(impl->FinalRef(s).Size());
     } else {
@@ -271,7 +282,7 @@ bool ImmutableFst<A>::Write(
       const auto& arc = aiter.Value();
 
       assert(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
-      stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF)); // FIXME make it optional?
+      stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
       stream.write_vint(arc.nextstate);
       stream.write_vlong(arc.weight.Size());
     }
@@ -294,10 +305,10 @@ bool ImmutableFst<A>::Write(
     }
 
     for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
-      const auto& arc = aiter.Value();
+      const auto& weight = aiter.Value().weight;
 
-      if (!arc.weight.Empty()) {
-        stream.write_bytes(arc.weight.c_str(), arc.weight.Size());
+      if (!weight.Empty()) {
+        stream.write_bytes(weight.c_str(), weight.Size());
       }
     }
   }
