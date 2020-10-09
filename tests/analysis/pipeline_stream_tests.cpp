@@ -46,7 +46,7 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
  public:
   pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload)
     : attributes{ {
-        { irs::type<irs::payload>::id(), payload == irs::bytes_ref::NIL ? nullptr : &payload_},
+        { irs::type<irs::payload>::id(), payload.null() ? nullptr : &payload_},
         { irs::type<irs::increment>::id(), &inc_},
         { irs::type<irs::offset>::id(), has_offset? &offs_: nullptr},
         { irs::type<irs::term_attribute>::id(), &term_}},
