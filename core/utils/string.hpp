@@ -188,6 +188,13 @@ class basic_string_ref {
   constexpr const char_type* begin() const noexcept{ return data_; }
   constexpr const char_type* end() const noexcept{ return data_ + size_; }
 
+  constexpr std::reverse_iterator<const char_type*> rbegin() const noexcept {
+    return std::make_reverse_iterator(end());
+  }
+  constexpr std::reverse_iterator<const char_type*> rend() const noexcept {
+    return std::make_reverse_iterator(begin());
+  }
+
   constexpr const char_type& back() const noexcept {
     return IRS_ASSERT(!empty()), data_[size()-1];
   }

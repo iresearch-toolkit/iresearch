@@ -212,8 +212,6 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   str_t str_;
 }; // StringLeftWeight
 
-
-
 template <typename Label>
 /*static*/ const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::Zero() {
   static const StringLeftWeight<Label> zero(static_cast<Label>(kStringInfinity)); // cast same as in FST

@@ -27,24 +27,35 @@
 
 namespace fst {
 
-template<typename Label> class StringLeftWeight;
+template<typename Label>
+class StringLeftWeight;
 
-namespace fsa {
+namespace fstext {
 
-template<typename Weight, typename Label>
-struct Transition;
+template<typename Label>
+class StringRefWeight;
 
-} // fsa
+template<typename W, typename L>
+struct ILabelArc;
+
+template<typename Arc>
+class ImmutableFst;
+
+} // fstext
 } // fst
 
 namespace iresearch {
 
-typedef fst::StringLeftWeight<byte_type> byte_weight;
-typedef fst::ArcTpl<byte_weight> byte_arc;
-typedef fst::VectorFst<byte_arc> vector_byte_fst;
+using byte_weight = fst::StringLeftWeight<byte_type>;
+using byte_arc = fst::ArcTpl<byte_weight>;
+using vector_byte_fst = fst::VectorFst<byte_arc>;
 
-template<typename Key, typename Weight> class fst_builder;
-typedef fst_builder<byte_type, vector_byte_fst> fst_byte_builder;
+using byte_ref_weight = fst::fstext::StringRefWeight<byte_type>;
+using byte_ref_arc = fst::fstext::ILabelArc<byte_ref_weight, int32_t>;
+using immutable_byte_fst = fst::fstext::ImmutableFst<byte_ref_arc>;
+
+template<typename Key, typename Weight, typename Stats>
+class fst_builder;
 
 }
 

@@ -44,8 +44,9 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include "automaton_decl.hpp"
-#include "string.hpp"
+#include "utils/automaton_decl.hpp"
+#include "utils/fstext/fst_utils.hpp"
+#include "utils/string.hpp"
 
 namespace fst {
 namespace fsa {
@@ -159,51 +160,6 @@ constexpr uint64_t EncodeRange(uint32_t v) noexcept {
   return EncodeRange(v, v);
 }
 
-template<typename Label>
-struct EmptyLabel {
-  constexpr EmptyLabel() noexcept = default;
-  constexpr EmptyLabel& operator=(Label) noexcept { return *this; }
-  constexpr bool operator==(EmptyLabel) const noexcept { return true; }
-  constexpr bool operator!=(EmptyLabel) const noexcept { return false; }
-  constexpr bool operator==(Label) const noexcept { return true; }
-  constexpr bool operator!=(Label) const noexcept { return false; }
-  constexpr bool operator<(EmptyLabel) const noexcept { return false; }
-  constexpr bool operator>(EmptyLabel) const noexcept { return false; }
-  constexpr operator Label() const noexcept { return kNoLabel; }
-  constexpr operator Label() noexcept { return kNoLabel; }
-  constexpr void Write(std::ostream&) const noexcept { }
-
-  friend constexpr bool operator==(Label, EmptyLabel) noexcept { return true; }
-  friend constexpr bool operator!=(Label, EmptyLabel) noexcept { return false; }
-  friend constexpr std::ostream& operator<<(std::ostream& strm, EmptyLabel) noexcept {
-    return strm;
-  }
-}; // EmptyLabel
-
-template<typename Weight>
-struct EmptyWeight {
-  using ReverseWeight = EmptyWeight;
-
-  constexpr EmptyWeight& operator=(Weight) noexcept { return *this; }
-
-  constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr EmptyWeight Quantize([[maybe_unused]]float delta = kDelta) const noexcept { return {};  }
-  constexpr operator Weight() const noexcept { return Weight::One(); }
-  constexpr operator Weight() noexcept { return Weight::One(); }
-  constexpr bool operator==(EmptyWeight) const noexcept { return true; }
-  constexpr bool operator!=(EmptyWeight) const noexcept { return false; }
-
-  std::ostream& Write(std::ostream& strm) const {
-    Weight::One().Write(strm);
-    return strm;
-  }
-
-  std::istream& Read(std::istream& strm) {
-    Weight().Read(strm);
-    return strm;
-  }
-}; // EmptyWeight
-
 template<typename W = BooleanWeight, typename L = int32_t>
 struct Transition {
   using Weight = W;
@@ -218,8 +174,8 @@ struct Transition {
   Label ilabel{fst::kNoLabel};
   union {
     StateId nextstate{fst::kNoStateId};
-    EmptyLabel<Label> olabel;
-    EmptyWeight<Weight> weight; // all arcs are trivial
+    fstext::EmptyLabel<Label> olabel;
+    fstext::EmptyWeight<Weight> weight; // all arcs are trivial
   };
 
   constexpr Transition() = default;
@@ -259,31 +215,14 @@ namespace std {
 
 template<typename T, typename W>
 inline void swap(::fst::fsa::RangeLabel<T>& lhs,
-                 typename ::fst::fsa::EmptyLabel<W>& /*rhs*/) noexcept {
+                 typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
-}
-
-template<typename W>
-inline void swap(int32_t& lhs, typename ::fst::fsa::EmptyLabel<W>& /*rhs*/) noexcept {
-  lhs = ::fst::kNoLabel;
-}
-
-template<typename W>
-inline void swap(typename ::fst::fsa::EmptyLabel<W>& /*lhs*/, int32_t& rhs) noexcept {
-  rhs = ::fst::kNoLabel;
 }
 
 template<typename T>
 struct hash<::fst::fsa::RangeLabel<T>> {
   size_t operator()(const ::fst::fsa::RangeLabel<T>& label) const noexcept {
     return hash<uint64_t>()(uint64_t(label.min) | uint64_t(label.max) << 32);
-  }
-};
-
-template<typename W>
-struct hash<typename ::fst::fsa::EmptyLabel<W>> {
-  size_t operator()(typename ::fst::fsa::EmptyLabel<W>) const noexcept {
-    return 0;
   }
 };
 
