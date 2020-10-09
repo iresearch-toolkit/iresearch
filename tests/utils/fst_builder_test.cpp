@@ -212,11 +212,17 @@ TEST(immutable_fst_test, read_write) {
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));
   ASSERT_EQ(fst.NumStates(), read_fst->NumStates());
+  ASSERT_EQ(fst.Start(), read_fst->Start());
   for (fst::StateIterator<decltype(fst)> it(fst); !it.Done(); it.Next()) {
-    ASSERT_EQ(fst.NumArcs(it.Value()), read_fst->NumArcs(it.Value()));
+    const auto s = it.Value();
+    ASSERT_EQ(fst.NumArcs(s), read_fst->NumArcs(s));
+    ASSERT_EQ(0, read_fst->NumInputEpsilons(s));
+    ASSERT_EQ(0, read_fst->NumOutputEpsilons(s));
+    ASSERT_EQ(static_cast<irs::bytes_ref>(fst.Final(s)),
+              static_cast<irs::bytes_ref>(read_fst->Final(s)));
 
-    fst::ArcIterator<decltype(fst)> expected_arcs(fst, it.Value());
-    fst::ArcIterator<irs::immutable_byte_fst> actual_arcs(*read_fst, it.Value());
+    fst::ArcIterator<decltype(fst)> expected_arcs(fst, s);
+    fst::ArcIterator<irs::immutable_byte_fst> actual_arcs(*read_fst, s);
     for (; !expected_arcs.Done(); expected_arcs.Next(), actual_arcs.Next()) {
       auto& expected_arc = expected_arcs.Value();
       auto& actual_arc = actual_arcs.Value();

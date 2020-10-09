@@ -55,10 +55,6 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   using internal::FstImpl<A>::SetProperties;
   using internal::FstImpl<A>::Properties;
 
-  enum class Version : irs::byte_type {
-    MIN = 0
-  };
-
   static constexpr const char kTypePrefix[] = "immutable";
 
   ImmutableFstImpl()
@@ -103,6 +99,10 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
  private:
   friend class ImmutableFst<Arc>;
+
+  enum class Version : irs::byte_type {
+    MIN = 0
+  };
 
   struct State {
     const Arc* arcs; // Start of state's arcs in *arcs_.
