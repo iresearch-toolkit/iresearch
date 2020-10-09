@@ -124,16 +124,18 @@ class volatile_ref : util::noncopyable {
 
   template<bool Volatile>
   void assign(const ref_t& str) {
-    if (Volatile) {
+    if constexpr (Volatile) {
       str_.assign(str.c_str(), str.size());
       ref_ = str_;
     } else {
       ref_ = str;
+      str_.clear();
     }
   }
 
   FORCE_INLINE void assign(const ref_t& str, bool Volatile) {
-    (this->*ASSIGN_METHODS[size_t(Volatile)])(str);
+    (Volatile ? volatile_ref<Char>::assign<true>(str)
+              : volatile_ref<Char>::assign<false>(str));
   }
 
   void assign(const ref_t& str, Char label) {
@@ -148,19 +150,9 @@ class volatile_ref : util::noncopyable {
   }
 
  private:
-  typedef void (volatile_ref::*assign_f)(const ref_t& str);
-  static const assign_f ASSIGN_METHODS[2];
-
   str_t str_;
   ref_t ref_{ ref_t::NIL };
 }; // volatile_ref
-
-template<typename Char>
-/*static*/ const typename volatile_ref<Char>::assign_f
-volatile_ref<Char>::ASSIGN_METHODS[] = {
-  &volatile_ref<Char>::assign<false>,
-  &volatile_ref<Char>::assign<true>
-};
 
 using volatile_byte_ref = volatile_ref<byte_type>;
 
