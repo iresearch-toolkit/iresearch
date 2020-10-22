@@ -76,7 +76,7 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_provider* /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const override {
     return prepare(rdr, ord, boost*this->boost(),
                    field(), options().term);
   }
