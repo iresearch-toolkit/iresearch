@@ -105,6 +105,9 @@ class ngram_similarity_doc_iterator final
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
+    if (doc_->value >= target) {
+      return doc_->value;
+    }
     const auto doc = approx_.seek(target);
 
     if (doc_limits::eof(doc) || check_serial_positions()) {
