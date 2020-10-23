@@ -1122,7 +1122,12 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
       ASSERT_EQ(*expected_it, docs->seek(*expected_it));
       // seek backward
       ASSERT_EQ(*expected_it, docs->seek((*expected_it) - 1));
-      expected_it++;
+      ++expected_it;
+      if (expected_it != std::end(expected)) {
+        //seek forward
+        ASSERT_EQ(*expected_it, docs->seek(*expected_it));
+        ++expected_it;
+      }
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
     ASSERT_FALSE(docs->next());
