@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -9337,6 +9337,51 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(256, it.value());
     ASSERT_EQ(1145, it.seek(1144));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
+TEST(block_disjunction_test, next_seek_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29, 54, 61 },
+      { 1, 5, 6, 67, 80, 84 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.is_default());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(5, it.seek(4));
+    ASSERT_EQ(5, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(67, it.seek(64));
+    ASSERT_EQ(67, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(80, it.value());
+    ASSERT_EQ(84, it.seek(83));
+    ASSERT_EQ(84, it.value());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
