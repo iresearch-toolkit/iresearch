@@ -1216,7 +1216,7 @@ TEST_P(tfidf_test, test_make) {
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
-    ASSERT_EQ(false, scr.use_boost_as_score());
+    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), scr.use_boost_as_score());
   }
 
   // invalid values (withNorms)
