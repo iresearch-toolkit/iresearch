@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "async_utils.hpp"
+
 #include <cassert>
 
 #include "log.hpp"
-#include "thread_utils.hpp"
-#include "async_utils.hpp"
 
 namespace {
 
@@ -83,7 +83,7 @@ read_write_mutex::read_write_mutex() noexcept
 read_write_mutex::~read_write_mutex() noexcept {
 #ifdef IRESEARCH_DEBUG
   // ensure mutex is not locked before destroying it
-  TRY_SCOPED_LOCK_NAMED(mutex_, lock);
+  auto lock = make_unique_lock(mutex_, std::try_to_lock);
   assert(lock && !concurrent_count_.load() && !exclusive_count_);
 #endif
 }
@@ -96,7 +96,7 @@ void read_write_mutex::lock_read() {
     return;
   }
 
-  SCOPED_LOCK_NAMED(mutex_, lock);
+  auto lock = make_unique_lock(mutex_);
 
   // yield if there is already a writer waiting
   // wait for notification (possibly with writers waiting) or no more writers waiting
@@ -113,7 +113,8 @@ void read_write_mutex::lock_write() {
     return;
   }
 
-  SCOPED_LOCK_NAMED(mutex_, lock);
+  auto lock = make_unique_lock(mutex_);
+
   ++exclusive_count_; // mark mutex with writer-waiting state
 
   // wait until lock is held exclusively by the current thread
@@ -126,13 +127,13 @@ void read_write_mutex::lock_write() {
   }
 
   --exclusive_count_;
-  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  VALGRIND_ONLY(auto lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 }
 
 bool read_write_mutex::owns_write() noexcept {
-  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  VALGRIND_ONLY(auto lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   return exclusive_owner_.load() == std::this_thread::get_id();
 }
 
@@ -144,7 +145,7 @@ bool read_write_mutex::try_lock_read() {
     return true;
   }
 
-  TRY_SCOPED_LOCK_NAMED(mutex_, lock);
+  auto lock = make_unique_lock(mutex_, std::try_to_lock);
 
   if (!lock || exclusive_count_) {
     return false;
@@ -163,13 +164,13 @@ bool read_write_mutex::try_lock_write() {
     return true;
   }
 
-  TRY_SCOPED_LOCK_NAMED(mutex_, lock);
+  auto lock = make_unique_lock(mutex_, std::try_to_lock);
 
   if (!lock || concurrent_count_) {
     return false;
   }
 
-  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  VALGRIND_ONLY(auto lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 
@@ -187,13 +188,13 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
       return;
     }
 
-    ADOPT_SCOPED_LOCK_NAMED(mutex_, lock);
+    auto lock = make_unique_lock(mutex_, std::adopt_lock);
 
     if (exclusive_only) {
       ++concurrent_count_; // acquire the read-lock
     }
 
-    VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
+    VALGRIND_ONLY(auto lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
     exclusive_owner_.store(std::thread::id());
     reader_cond_.notify_all(); // wake all reader and writers
     writer_cond_.notify_all(); // wake all reader and writers
@@ -221,7 +222,8 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   // guaranteed that we can succesfully acquire the mutex here. and if we don't,
   // there is no guarantee that the notify_all will wake up queued waiter.
 
-  TRY_SCOPED_LOCK_NAMED(mutex_, lock); // try to acquire mutex for use with cond
+  // try to acquire mutex for use with cond
+  auto lock = make_unique_lock(mutex_, std::try_to_lock);
 
   // wake only writers since this is a reader
   // wake even without lock since writer may be waiting in lock_write() on cond
@@ -229,12 +231,19 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   writer_cond_.notify_all();
 }
 
-thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/):
-  active_(0), max_idle_(max_idle), max_threads_(max_threads), state_(State::RUN) {
+thread_pool::thread_pool(
+    size_t max_threads /*= 0*/,
+    size_t max_idle /*= 0*/,
+    basic_string_ref<native_char_t> worker_prefix /*= ""*/)
+  : max_idle_(max_idle),
+    max_threads_(max_threads),
+    worker_prefix_(worker_prefix) {
 }
 
 thread_pool::~thread_pool() {
-  stop(true);
+  try {
+    stop(true);
+  } catch (...) { }
 }
 
 size_t thread_pool::max_idle() {
@@ -244,9 +253,11 @@ size_t thread_pool::max_idle() {
 }
 
 void thread_pool::max_idle(size_t value) {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  {
+    std::lock_guard<decltype(lock_)> lock(lock_);
 
-  max_idle_ = value;
+    max_idle_ = value;
+  }
   cond_.notify_all(); // wake any idle threads if they need termination
 }
 
@@ -255,13 +266,11 @@ void thread_pool::max_idle_delta(int delta) {
   auto max_idle = max_idle_ + delta;
 
   if (delta > 0 && max_idle < max_idle_) {
-      max_idle_ = std::numeric_limits<size_t>::max();
-  }
-  else if (delta < 0 && max_idle > max_idle_) {
-      max_idle_ = std::numeric_limits<size_t>::min();
-  }
-  else {
-      max_idle_ = max_idle;
+    max_idle_ = std::numeric_limits<size_t>::max();
+  } else if (delta < 0 && max_idle > max_idle_) {
+    max_idle_ = std::numeric_limits<size_t>::min();
+  } else {
+    max_idle_ = max_idle;
   }
 }
 
@@ -272,35 +281,39 @@ size_t thread_pool::max_threads() {
 }
 
 void thread_pool::max_threads(size_t value) {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  {
+    std::lock_guard<decltype(lock_)> lock(lock_);
 
-  max_threads_ = value;
+    max_threads_ = value;
 
-  // create extra thread if all threads are busy and can grow pool
-  if (State::ABORT != state_ && !queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
+    // create extra thread if all threads are busy and can grow pool
+    if (State::ABORT != state_ && !queue_.empty() &&
+        active_ == pool_.size() && pool_.size() < max_threads_) {
+      pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
+    }
   }
 
   cond_.notify_all(); // wake any idle threads if they need termination
 }
 
 void thread_pool::max_threads_delta(int delta) {
-  std::lock_guard<decltype(lock_)> lock(lock_);
-  auto max_threads = max_threads_ + delta;
+  {
+    std::lock_guard<decltype(lock_)> lock(lock_);
+    auto max_threads = max_threads_ + delta;
 
-  if (delta > 0 && max_threads < max_threads_) {
+    if (delta > 0 && max_threads < max_threads_) {
       max_threads_ = std::numeric_limits<size_t>::max();
-  }
-  else if (delta < 0 && max_threads > max_threads_) {
+    } else if (delta < 0 && max_threads > max_threads_) {
       max_threads_ = std::numeric_limits<size_t>::min();
-  }
-  else {
+    } else {
       max_threads_ = max_threads;
-  }
+    }
 
-  // create extra thread if all threads are busy and can grow pool
-  if (State::ABORT != state_ && !queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
+    // create extra thread if all threads are busy and can grow pool
+    if (State::ABORT != state_ && !queue_.empty() &&
+        active_ == pool_.size() && pool_.size() < max_threads_) {
+      pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
+    }
   }
 
   cond_.notify_all(); // wake any idle threads if they need termination
@@ -318,7 +331,7 @@ bool thread_pool::run(std::function<void()>&& fn) {
 
   // create extra thread if all threads are busy and can grow pool
   if (active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this);
+    pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
   }
 
   return true;
@@ -356,7 +369,9 @@ size_t thread_pool::threads() {
   return pool_.size();
 }
 
-void thread_pool::run() {
+void thread_pool::worker(const thread_name_t prefix) {
+  set_thread_name(prefix);
+
   std::unique_lock<decltype(lock_)> lock(lock_);
 
   ++active_;
@@ -371,7 +386,7 @@ void thread_pool::run() {
       // if have more tasks but no idle thread and can grow pool
       if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
         try {
-          pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this); // add one thread
+          pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str()); // add one thread
         } catch (std::bad_alloc&) {
           IR_LOG_EXCEPTION(); // log and ignore exception, new tasks will start new thread
         }
@@ -416,6 +431,7 @@ void thread_pool::run() {
     }
 
     if (State::RUN != state_) {
+      lock.unlock();
       cond_.notify_all(); // wake up thread_pool::stop(...)
     }
 

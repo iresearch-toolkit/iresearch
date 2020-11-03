@@ -27,6 +27,7 @@
 
 #include "gtest/gtest.h"
 #include "utils/async_utils.hpp"
+#include "utils/thread_utils.hpp"
 
 namespace tests {
   class async_utils_tests: public ::testing::Test {
@@ -644,3 +645,18 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
     ASSERT_EQ(0, pool.threads());
   }
 }
+
+#if !defined(_WIN32) || _WIN32_WINNT >= _WIN32_WINNT_WIN10
+TEST(thread_utils_test, get_set_name) {
+  const thread_name_t expected_name = "foo";
+  std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
+
+  std::thread thread([expected_name, &actual_name]()mutable{
+    EXPECT_TRUE(irs::set_thread_name(expected_name));
+    EXPECT_TRUE(irs::get_thread_name(actual_name));
+  });
+
+  thread.join();
+  ASSERT_EQ(expected_name, actual_name);
+}
+#endif
