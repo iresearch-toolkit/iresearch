@@ -552,6 +552,25 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
   }
 }
 
+TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
+  // test stop run pending
+  {
+    iresearch::async_utils::thread_pool pool(1, 0);
+    std::atomic<size_t> count(0);
+    std::mutex mutex;
+    auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
+    auto task2 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
+    std::unique_lock<std::mutex> lock(mutex);
+
+    pool.run(std::move(task1), 30ms);
+    pool.run(std::move(task2), 500ms);
+    std::this_thread::sleep_for(10000ms); // assume threads start within 10000msec (2 threads)
+    lock.unlock();
+    pool.stop(); // blocking call (thread runtime duration simulated via sleep)
+    ASSERT_EQ(2, count); // all tasks ran
+  }
+}
+
 TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   // test stop run pending
   {

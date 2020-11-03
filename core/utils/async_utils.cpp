@@ -335,9 +335,9 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 
     // create extra thread if all threads are busy and can grow pool
     if (active_ == pool_.size() && pool_.size() < max_threads_) {
+    std::cerr << "Spawned";
       pool_.emplace_back(&thread_pool::worker, this);
     }
-
   }
 
   cond_.notify_one();
@@ -390,11 +390,15 @@ void thread_pool::worker() {
     const auto now = clock_t::now();
     clock_t::duration sleep_time = 50ms;
 
+    std::cerr << "queue size " << queue_.size();
+
     // if are allowed to have running threads and have task to process
     if (State::ABORT != state_ && !queue_.empty() && pool_.size() <= max_threads_) {
       auto& top = queue_.top();
+    std::cerr << "prep";
 
       if (top.at <= now) {
+    std::cerr << "got one";
         auto fn = std::move(top.fn); // FIXME std::function move ctor isn't noexcept until c++20
 
         queue_.pop();
@@ -419,7 +423,13 @@ void thread_pool::worker() {
         lock.lock();
         continue;
       } else {
-        sleep_time = std::max(sleep_time, top.at - now);
+        --active_;
+        std::cerr << "sleep time " << sleep_time.count();
+        sleep_time = std::min(sleep_time, top.at - now);
+        std::cerr << "wait for " << top.at.time_since_epoch().count() << " " << now.time_since_epoch().count() << " " << sleep_time.count();
+        cond_.wait_for(lock, sleep_time);
+        ++active_;
+        continue;
       }
     }
 
@@ -429,7 +439,8 @@ void thread_pool::worker() {
     if (State::RUN == state_ && // thread pool is still running
         pool_.size() <= max_threads_ && // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      cond_.wait_for(lock, sleep_time);
+    std::cerr << "sleep!!! ";
+      cond_.wait(lock);
       ++active_;
       continue;
     }
@@ -437,6 +448,7 @@ void thread_pool::worker() {
     // ...........................................................................
     // too many idle threads
     // ...........................................................................
+    std::cerr << "bye";
 
     assert(lock.owns_lock());
 
