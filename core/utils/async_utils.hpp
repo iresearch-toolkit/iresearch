@@ -152,7 +152,7 @@ class IRESEARCH_API thread_pool {
   struct task {
     explicit task(
         std::function<void()>&& fn,
-        clock_t::time_point at = {})
+        clock_t::time_point at)
       : at(at), fn(std::move(fn)) {
     }
 

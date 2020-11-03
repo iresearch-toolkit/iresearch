@@ -394,8 +394,8 @@ void thread_pool::worker() {
     if (State::ABORT != state_ && !queue_.empty() && pool_.size() <= max_threads_) {
       auto& top = queue_.top();
 
-      if (top.at <= now)  {
-        auto fn = std::move(top.fn);
+      if (top.at <= now) {
+        auto fn = std::move(top.fn); // FIXME std::function move ctor isn't noexcept until c++20
 
         queue_.pop();
 
