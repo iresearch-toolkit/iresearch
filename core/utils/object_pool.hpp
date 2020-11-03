@@ -35,7 +35,6 @@
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
-
 namespace iresearch {
 
 template<typename T>
@@ -358,10 +357,12 @@ class bounded_object_pool {
 
  private:
   void wait_for_free_slots() const {
+    using namespace std::chrono_literals;
+
     auto lock = make_unique_lock(mutex_);
 
     if (free_list_.empty()) {
-      cond_.wait_for(lock, std::chrono::milliseconds(1000));
+      cond_.wait_for(lock, 1000ms);
     }
   }
 

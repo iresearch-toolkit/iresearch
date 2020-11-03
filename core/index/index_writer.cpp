@@ -78,8 +78,7 @@ struct flush_segment_context {
 };
 
 std::vector<irs::index_file_refs::ref_t> extract_refs(
-    const irs::ref_tracking_directory& dir
-) {
+    const irs::ref_tracking_directory& dir) {
   std::vector<irs::index_file_refs::ref_t> refs;
   // FIXME reserve
 
@@ -1905,6 +1904,8 @@ index_writer::active_segment_context index_writer::get_segment_context(
 
 index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
+  using namespace std::chrono_literals;
+
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
@@ -1954,9 +1955,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // because it was started by a different 'flush_context', i.e. by 'ctx'
     while (entry.segment_->active_count_.load()
            || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
-      ctx->pending_segment_context_cond_.wait_for(
-        lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
-      );
+      ctx->pending_segment_context_cond_.wait_for(lock, 1000ms); // arbitrary sleep interval
     }
 
     // FIXME TODO flush_all() blocks flush_context::emplace(...) and insert()/remove()/replace()

@@ -24,12 +24,16 @@
 #include "async_utils.hpp"
 
 #include <cassert>
+#include <functional>
 
 #include "log.hpp"
+#include "std.hpp"
+
+using namespace std::chrono_literals;
 
 namespace {
 
-const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(100);
+constexpr auto RW_MUTEX_WAIT_TIMEOUT = 100ms;
 
 }
 
@@ -234,10 +238,10 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
 thread_pool::thread_pool(
     size_t max_threads /*= 0*/,
     size_t max_idle /*= 0*/,
-    basic_string_ref<native_char_t> worker_prefix /*= ""*/)
+    basic_string_ref<native_char_t> worker_name /*= ""*/)
   : max_idle_(max_idle),
     max_threads_(max_threads),
-    worker_prefix_(worker_prefix) {
+    worker_name_(worker_name) {
 }
 
 thread_pool::~thread_pool() {
@@ -247,14 +251,14 @@ thread_pool::~thread_pool() {
 }
 
 size_t thread_pool::max_idle() {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
 
   return max_idle_;
 }
 
 void thread_pool::max_idle(size_t value) {
   {
-    std::lock_guard<decltype(lock_)> lock(lock_);
+    auto lock = make_lock_guard(lock_);
 
     max_idle_ = value;
   }
@@ -262,7 +266,7 @@ void thread_pool::max_idle(size_t value) {
 }
 
 void thread_pool::max_idle_delta(int delta) {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
   auto max_idle = max_idle_ + delta;
 
   if (delta > 0 && max_idle < max_idle_) {
@@ -275,21 +279,21 @@ void thread_pool::max_idle_delta(int delta) {
 }
 
 size_t thread_pool::max_threads() {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
 
   return max_threads_;
 }
 
 void thread_pool::max_threads(size_t value) {
   {
-    std::lock_guard<decltype(lock_)> lock(lock_);
+    auto lock = make_lock_guard(lock_);
 
     max_threads_ = value;
 
     // create extra thread if all threads are busy and can grow pool
     if (State::ABORT != state_ && !queue_.empty() &&
         active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
+      pool_.emplace_back(&thread_pool::worker, this);
     }
   }
 
@@ -298,7 +302,7 @@ void thread_pool::max_threads(size_t value) {
 
 void thread_pool::max_threads_delta(int delta) {
   {
-    std::lock_guard<decltype(lock_)> lock(lock_);
+    auto lock = make_lock_guard(lock_);
     auto max_threads = max_threads_ + delta;
 
     if (delta > 0 && max_threads < max_threads_) {
@@ -312,104 +316,120 @@ void thread_pool::max_threads_delta(int delta) {
     // create extra thread if all threads are busy and can grow pool
     if (State::ABORT != state_ && !queue_.empty() &&
         active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
+      pool_.emplace_back(&thread_pool::worker, this);
     }
   }
 
   cond_.notify_all(); // wake any idle threads if they need termination
 }
 
-bool thread_pool::run(std::function<void()>&& fn) {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/) {
+  {
+    auto lock = make_lock_guard(lock_);
 
-  if (State::RUN != state_) {
-    return false; // pool not active
+    if (State::RUN != state_) {
+      return false; // pool not active
+    }
+
+    queue_.emplace(std::move(fn), clock_t::now() + delay);
+
+    // create extra thread if all threads are busy and can grow pool
+    if (active_ == pool_.size() && pool_.size() < max_threads_) {
+      pool_.emplace_back(&thread_pool::worker, this);
+    }
+
   }
 
-  queue_.emplace(std::move(fn));
   cond_.notify_one();
-
-  // create extra thread if all threads are busy and can grow pool
-  if (active_ == pool_.size() && pool_.size() < max_threads_) {
-    pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str());
-  }
 
   return true;
 }
 
 void thread_pool::stop(bool skip_pending /*= false*/) {
-  std::unique_lock<decltype(lock_)> lock(lock_);
+  auto lock = make_unique_lock(lock_);
 
   if (State::RUN == state_) {
     state_ = skip_pending ? State::ABORT : State::FINISH;
   }
 
   // wait for all threads to terminate
-  while(!pool_.empty()) {
+  while (!pool_.empty()) {
     cond_.notify_all(); // wake all threads
-    cond_.wait_for(lock, std::chrono::milliseconds(100));
+    cond_.wait_for(lock, 100ms);
   }
 }
 
 size_t thread_pool::tasks_active() {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() {
-  std::lock_guard<decltype(lock_)> lock(lock_);
+  auto lock = make_lock_guard(lock_);
 
   return pool_.size();
 }
 
-void thread_pool::worker(const thread_name_t prefix) {
-  set_thread_name(prefix);
+void thread_pool::worker() {
+  if (!worker_name_.empty()) {
+    set_thread_name(worker_name_.c_str());
+  }
 
-  std::unique_lock<decltype(lock_)> lock(lock_);
+  auto lock = make_unique_lock(lock_);
 
   ++active_;
 
   for(;;) {
+    const auto now = clock_t::now();
+    clock_t::duration sleep_time = 50ms;
+
     // if are allowed to have running threads and have task to process
     if (State::ABORT != state_ && !queue_.empty() && pool_.size() <= max_threads_) {
-      auto fn = std::move(queue_.front());
+      auto& top = queue_.top();
 
-      queue_.pop();
+      if (top.at <= now)  {
+        auto fn = std::move(top.fn);
 
-      // if have more tasks but no idle thread and can grow pool
-      if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-        try {
-          pool_.emplace_back(&thread_pool::worker, this, worker_prefix_.c_str()); // add one thread
-        } catch (std::bad_alloc&) {
-          IR_LOG_EXCEPTION(); // log and ignore exception, new tasks will start new thread
+        queue_.pop();
+
+        // if have more tasks but no idle thread and can grow pool
+        if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
+          try {
+            pool_.emplace_back(&thread_pool::worker, this); // add one thread
+          } catch (...) {
+            IR_LOG_EXCEPTION(); // log and ignore exception, new tasks will start new thread
+          }
         }
+
+        lock.unlock();
+
+        try {
+          fn();
+        } catch (...) {
+          IR_LOG_EXCEPTION();
+        }
+
+        lock.lock();
+        continue;
+      } else {
+        sleep_time = std::max(sleep_time, top.at - now);
       }
-
-      lock.unlock();
-
-      try {
-        fn();
-      } catch (...) {
-        IR_LOG_EXCEPTION();
-      }
-
-      lock.lock();
-      continue;
     }
 
+    assert(lock.owns_lock());
     --active_;
 
     if (State::RUN == state_ && // thread pool is still running
         pool_.size() <= max_threads_ && // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      cond_.wait(lock);
+      cond_.wait_for(lock, sleep_time);
       ++active_;
       continue;
     }
@@ -418,16 +438,18 @@ void thread_pool::worker(const thread_name_t prefix) {
     // too many idle threads
     // ...........................................................................
 
-    auto this_id = std::this_thread::get_id();
+    assert(lock.owns_lock());
 
     // swap current thread handle with one at end of pool and remove end
-    for (size_t i = 0, count = pool_.size(); i < count; ++i) {
-      if (pool_[i].get_id() == this_id) {
-        pool_[i].swap(pool_.back()); // works even if same
-        pool_.back().detach();
-        pool_.pop_back();
-        break;
-      }
+    const auto it = std::find_if(
+      std::begin(pool_), std::end(pool_),
+      [this_id = std::this_thread::get_id()](const auto& thread) noexcept {
+        return thread.get_id() == this_id;
+    });
+
+    if (it != std::end(pool_)) {
+      it->detach();
+      irstd::swap_remove(pool_, it);
     }
 
     if (State::RUN != state_) {
