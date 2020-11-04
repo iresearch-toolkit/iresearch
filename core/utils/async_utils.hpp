@@ -128,6 +128,7 @@ class IRESEARCH_API thread_pool {
  public:
   using native_char_t = std::remove_pointer_t<thread_name_t>;
   using clock_t = std::chrono::steady_clock;
+  using func_t = std::function<void()>;
 
   explicit thread_pool(
     size_t max_threads = 0,
@@ -150,8 +151,6 @@ class IRESEARCH_API thread_pool {
   enum class State { ABORT, FINISH, RUN };
 
   struct task {
-    using task_fn = std::function<void()>;
-
     explicit task(
         std::function<void()>&& fn,
         clock_t::time_point at)
@@ -159,7 +158,7 @@ class IRESEARCH_API thread_pool {
     }
 
     clock_t::time_point at;
-    task_fn fn;
+    func_t fn;
 
     bool operator<(const task& rhs) const noexcept {
       return rhs.at < at;
