@@ -388,7 +388,6 @@ void thread_pool::worker() {
 
   for (;;) {
     const auto now = clock_t::now();
-    clock_t::duration sleep_time = 50ms;
 
     // if are allowed to have running threads and have task to process
     if (State::ABORT != state_ && !queue_.empty() && pool_.size() <= max_threads_) {
@@ -430,7 +429,7 @@ void thread_pool::worker() {
       } else {
         // we have some tasks pending tasks, let's wait
         --active_;
-        sleep_time = std::min(sleep_time, top.at - now);
+        const auto sleep_time = std::min(clock_t::duration(50ms), top.at - now);
         try { cond_.wait_for(lock, sleep_time); } catch (...) { }
         ++active_;
         continue;

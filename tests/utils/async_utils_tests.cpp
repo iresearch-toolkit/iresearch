@@ -422,7 +422,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
     std::condition_variable cond;
     notifying_counter count(cond, 2);
     std::mutex mutex;
-    auto task1 = [&mutex, &count]()->void { ++count; throw "error"; };
+    auto task1 = [&count]()->void { ++count; throw "error"; };
     auto task2 = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
     std::unique_lock<std::mutex> lock(mutex);
     std::mutex dummy_mutex;
