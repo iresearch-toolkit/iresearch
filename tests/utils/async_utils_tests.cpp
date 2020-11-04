@@ -564,8 +564,13 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
 
     pool.run(std::move(task1), 30ms);
     pool.run(std::move(task2), 500ms);
-    std::this_thread::sleep_for(10000ms); // assume threads start within 10000msec (2 threads)
     lock.unlock();
+
+    const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+    while (count.load() < 2) {
+      std::this_thread::sleep_for(100ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
     pool.stop(); // blocking call (thread runtime duration simulated via sleep)
     ASSERT_EQ(2, count); // all tasks ran
   }

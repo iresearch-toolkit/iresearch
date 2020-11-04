@@ -150,6 +150,8 @@ class IRESEARCH_API thread_pool {
   enum class State { ABORT, FINISH, RUN };
 
   struct task {
+    using task_fn = std::function<void()>;
+
     explicit task(
         std::function<void()>&& fn,
         clock_t::time_point at)
@@ -157,7 +159,7 @@ class IRESEARCH_API thread_pool {
     }
 
     clock_t::time_point at;
-    std::function<void()> fn;
+    task_fn fn;
 
     bool operator<(const task& rhs) const noexcept {
       return rhs.at < at;
