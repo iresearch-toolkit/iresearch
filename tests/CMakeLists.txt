@@ -103,6 +103,7 @@ set(IReSearch_tests_sources
   ./utils/locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
+  ./utils/regex_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
