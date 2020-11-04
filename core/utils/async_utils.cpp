@@ -394,7 +394,7 @@ void thread_pool::worker() {
       auto& top = queue_.top();
 
       if (top.at <= now) {
-        task::task_fn fn;
+        func_t fn;
 
         try {
           // std::function<...> move ctor isn't marked "noexcept" until c++20
