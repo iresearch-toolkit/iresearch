@@ -44,7 +44,7 @@ struct scanner_base {
     BACKREF,
     SUBEXPR_BEGIN,
     SUBEXPR_NO_GROUP_BEGIN,
-    SUBEXPR_NO_LOOKAHEAD_BEGIN, // neg if value_[0] == 'n'
+    SUBEXPR_LOOKAHEAD_BEGIN, // neg if value_[0] == 'n'
     SUBEXPR_END,
     BRACKET_BEGIN,
     BRACKET_NEG_BEGIN,
@@ -57,8 +57,8 @@ struct scanner_base {
     EQUIV_CLASS_NAME,
     OPT,
     OR,
-    CLOSURE0,
-    CLOSURE1,
+    CLOSURE_STAR,
+    CLOSURE_PLUS,
     LINE_BEGIN,
     LINE_END,
     WORD_BOUND, // neg if value_[0] == 'n'
@@ -79,8 +79,8 @@ struct scanner_base {
     {'^', Token::LINE_BEGIN},
     {'$', Token::LINE_END},
     {'.', Token::ANYCHAR},
-    {'*', Token::CLOSURE0},
-    {'+', Token::CLOSURE1},
+    {'*', Token::CLOSURE_STAR},
+    {'+', Token::CLOSURE_PLUS},
     {'?', Token::OPT},
     {'|', Token::OR},
     {'\n', Token::OR}, // grep and egrep
@@ -253,8 +253,8 @@ void scanner<Char>::scan_normal() {
           RegexErrorCode::ERROR_PARENTHESIS,
           "Invalid special open parenthesis.");
       }
-    } else if (_M_flags & regex_constants::nosubs) {
-      token_ = Token::SUBEXPR_NO_GROUP_BEGIN;
+    //} else if (_M_flags & regex_constants::nosubs) {
+    //  token_ = Token::SUBEXPR_NO_GROUP_BEGIN;
     } else {
       token_ = Token::SUBEXPR_BEGIN;
     }
@@ -273,11 +273,11 @@ void scanner<Char>::scan_normal() {
     state_ = State::IN_BRACE;
     token_ = Token::INTERVAL_BEGIN;
   } else if (c != ']' && c != '}') {
-    auto __it = TOKEN_TBL;
-    auto __narrowc = ctype_.narrow(c, '\0');
-    for (; __it->first != '\0'; ++__it)
-      if (__it->first == __narrowc) {
-        token_ = __it->second;
+    auto it = TOKEN_TBL;
+    auto narrowc = ctype_.narrow(c, '\0');
+    for (; it->first != '\0'; ++it)
+      if (it->first == narrowc) {
+        token_ = it->second;
         return;
       }
       assert(false);
@@ -379,11 +379,11 @@ void scanner<Char>::eat_escape_ecma() {
   }
 
   auto c = *current_++;
-  auto __pos = find_escape(ctype_.narrow(c, '\0'));
+  auto pos = find_escape(ctype_.narrow(c, '\0'));
 
-  if (__pos != nullptr && (c != 'b' || state_ == State::IN_BRACKET)) {
+  if (pos != nullptr && (c != 'b' || state_ == State::IN_BRACKET)) {
     token_ = Token::ORD_CHAR;
-    value_.assign(1, *__pos);
+    value_.assign(1, *pos);
   } else if (c == 'b') {
     token_ = Token::WORD_BOUND;
     value_.assign(1, 'p');
@@ -396,8 +396,7 @@ void scanner<Char>::eat_escape_ecma() {
            c == 'S' || c == 'w' || c == 'W') {
     token_ = Token::QUOTED_CLASS;
     value_.assign(1, c);
-  }
-  else if (c == 'c') {
+  } else if (c == 'c') {
     if (current_ == end_) {
       throw regex_error(
         RegexErrorCode::ERROR_ESCAPE,
@@ -408,7 +407,7 @@ void scanner<Char>::eat_escape_ecma() {
     value_.assign(1, *current_++);
   } else if (c == 'x' || c == 'u') {
     value_.erase();
-    for (int __i = 0; __i < (c == 'x' ? 2 : 4); __i++) {
+    for (int i = 0; i < (c == 'x' ? 2 : 4); i++) {
       if (current_ == end_
           || !ctype_.is(ctype_type::xdigit, *current_)) {
         throw regex_error(
@@ -433,7 +432,7 @@ void scanner<Char>::eat_escape_ecma() {
 }
 
 // Eats a character class or throws an exception.
-// __ch could be ':', '.' or '=', _M_current is the char after ']' when
+// ch could be ':', '.' or '=', _M_current is the char after ']' when
 // returning.
 template<typename Char>
 void scanner<Char>::eat_class(char ch) {
@@ -480,11 +479,11 @@ std::ostream& scanner<_CharT>::print(std::ostream& ostr) {
     case Token::CHAR_CLASS_NAME:
       ostr << "char-class-name \"" << value_ << "\"\n";
       break;
-    case Token::CLOSURE0:
-      ostr << "closure0\n";
+    case Token::CLOSURE_STAR:
+      ostr << "closure star\n";
       break;
-    case Token::CLOSURE1:
-      ostr << "closure1\n";
+    case Token::CLOSURE_PLUS:
+      ostr << "closure plus\n";
       break;
     case Token::COLLSYMBOL:
       ostr << "collsymbol \"" << value_ << "\"\n";
@@ -528,7 +527,7 @@ std::ostream& scanner<_CharT>::print(std::ostream& ostr) {
     case Token::SUBEXPR_NO_GROUP_BEGIN:
       ostr << "no grouping subexpr begin\n";
       break;
-    case Token::SUBEXPR_NO_LOOKAHEAD_BEGIN:
+    case Token::SUBEXPR_LOOKAHEAD_BEGIN:
       ostr << "lookahead subexpr begin\n";
       break;
     case Token::SUBEXPR_END:
