@@ -474,13 +474,10 @@ void thread_pool::worker() {
     if (State::RUN == state_ && // thread pool is still running
         pool_.size() <= max_threads_ && // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-    IR_FRMT_ERROR("WAITING %d, %d, %d", pool_.size(), active_, max_idle_);
       try { cond_.wait(lock); } catch (...) { }
       ++active_;
       continue;
     }
-
-    IR_FRMT_ERROR("BYEBYE %d, %d, %d", pool_.size(), active_, max_idle_);
 
     // ...........................................................................
     // too many idle threads
