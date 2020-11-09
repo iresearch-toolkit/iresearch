@@ -23,14 +23,17 @@
 #include "regex_utils.hpp"
 
 #include "shared.hpp"
-#include "regex_scanner.h"
+#include "utils/automaton_utils.hpp"
+#include "utils/regex_scanner.h"
 
 namespace {
+
+using namespace irs;
 
 class automaton_builder {
  public:
  private:
-  using Token = irs::scanner<irs::byte_type>::Token;
+  using Token = scanner<irs::byte_type>::Token;
 
   bool match(Token token) {
     if (token == scanner_.token()) {
@@ -43,16 +46,17 @@ class automaton_builder {
   void alternative();
   bool assertion();
   bool atom();
-  bool disjunction();
+  void disjunction();
   bool term();
   bool quantifier();
   bool bracket_expression();
   bool try_char();
 
-  irs::scanner<irs::byte_type> scanner_;
+  irs::scanner<byte_type> scanner_;
+  std::vector<automaton> stack_;
 };
 
-bool automaton_builder::disjunction() {
+void automaton_builder::disjunction() {
   alternative();
   while (match(Token::OR)) {
     // pop
@@ -100,6 +104,7 @@ bool automaton_builder::assertion() {
 
 bool automaton_builder::atom() {
   if (match(Token::ANYCHAR)) {
+    stack_
 
   } else if (try_char()) {
 

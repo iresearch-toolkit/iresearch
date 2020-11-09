@@ -34,57 +34,57 @@
 namespace iresearch {
 namespace detail {
 
-struct scanner_base {
   /// Token types returned from the scanner.
-  enum class Token : unsigned {
-    ANYCHAR,
-    ORD_CHAR,
-    OCT_NUM,
-    HEX_NUM,
-    BACKREF,
-    SUBEXPR_BEGIN,
-    SUBEXPR_NO_GROUP_BEGIN,
-    SUBEXPR_LOOKAHEAD_BEGIN, // neg if value_[0] == 'n'
-    SUBEXPR_END,
-    BRACKET_BEGIN,
-    BRACKET_NEG_BEGIN,
-    BRACKET_END,
-    INTERVAL_BEGIN,
-    INTERVAL_END,
-    QUOTED_CLASS,
-    CHAR_CLASS_NAME,
-    COLLSYMBOL,
-    EQUIV_CLASS_NAME,
-    OPT,
-    OR,
-    CLOSURE_STAR,
-    CLOSURE_PLUS,
-    LINE_BEGIN,
-    LINE_END,
-    WORD_BOUND, // neg if value_[0] == 'n'
-    COMMA,
-    DUP_COUNT,
-    END_OF_FILE,
-    BRACKET_DASH,
-    UNKNOWN = -1u
-  };
+enum class RegexToken : unsigned {
+  ANYCHAR,
+  ORD_CHAR,
+  OCT_NUM,
+  HEX_NUM,
+  BACKREF,
+  SUBEXPR_BEGIN,
+  SUBEXPR_NO_GROUP_BEGIN,
+  SUBEXPR_LOOKAHEAD_BEGIN, // neg if value_[0] == 'n'
+  SUBEXPR_END,
+  BRACKET_BEGIN,
+  BRACKET_NEG_BEGIN,
+  BRACKET_END,
+  INTERVAL_BEGIN,
+  INTERVAL_END,
+  QUOTED_CLASS,
+  CHAR_CLASS_NAME,
+  COLLSYMBOL,
+  EQUIV_CLASS_NAME,
+  OPT,
+  OR,
+  CLOSURE_STAR,
+  CLOSURE_PLUS,
+  LINE_BEGIN,
+  LINE_END,
+  WORD_BOUND, // neg if value_[0] == 'n'
+  COMMA,
+  DUP_COUNT,
+  END_OF_FILE,
+  BRACKET_DASH,
+  UNKNOWN = -1u
+};
 
-  enum class State {
-    NORMAL,
-    IN_BRACE,
-    IN_BRACKET,
-  };
+enum class RegexState {
+  NORMAL,
+  IN_BRACE,
+  IN_BRACKET,
+};
 
-  static constexpr std::pair<char, Token> TOKEN_TBL[9] = {
-    {'^', Token::LINE_BEGIN},
-    {'$', Token::LINE_END},
-    {'.', Token::ANYCHAR},
-    {'*', Token::CLOSURE_STAR},
-    {'+', Token::CLOSURE_PLUS},
-    {'?', Token::OPT},
-    {'|', Token::OR},
-    {'\n', Token::OR}, // grep and egrep
-    {'\0', Token::OR},
+struct regex_scanner_base {
+  static constexpr std::pair<char, RegexToken> TOKEN_TBL[9] = {
+    {'^', RegexToken::LINE_BEGIN},
+    {'$', RegexToken::LINE_END},
+    {'.', RegexToken::ANYCHAR},
+    {'*', RegexToken::CLOSURE_STAR},
+    {'+', RegexToken::CLOSURE_PLUS},
+    {'?', RegexToken::OPT},
+    {'|', RegexToken::OR},
+    {'\n', RegexToken::OR}, // grep and egrep
+    {'\0', RegexToken::OR},
   };
 
   static constexpr std::pair<char, char> ECMA_ESCAPE_TBL[8] = {
@@ -140,13 +140,13 @@ class regex_error final : public error_base {
 };
 
 template<typename Char>
-class scanner : public detail::scanner_base {
+class regex_scanner : public detail::regex_scanner_base {
  public:
   using iterator_type = const Char*;
   using string_type = std::basic_string<Char>;
   using ctype_type = const std::ctype<Char>;
 
-  scanner(iterator_type begin, iterator_type end, std::locale loc)
+  regex_scanner(iterator_type begin, iterator_type end, std::locale loc)
     : current_(begin), end_(end),
       ctype_(std::use_facet<ctype_type>(loc)) {
     next();
@@ -154,7 +154,7 @@ class scanner : public detail::scanner_base {
 
   void next();
 
-  Token token() const noexcept { return token_; }
+  RegexToken token() const noexcept { return token_; }
 
   const string_type& value() const noexcept { return value_; }
 
@@ -173,8 +173,8 @@ class scanner : public detail::scanner_base {
 
   void eat_class(char);
 
-  State state_{State::NORMAL};
-  Token token_;
+  RegexState state_{RegexState::NORMAL};
+  RegexToken token_;
   iterator_type current_;
   iterator_type end_;
   ctype_type& ctype_;
@@ -183,20 +183,20 @@ class scanner : public detail::scanner_base {
 }; // scanner
 
 template<typename Char>
-void scanner<Char>::next() {
+void regex_scanner<Char>::next() {
   if (current_ == end_) {
-    token_ = Token::END_OF_FILE;
+    token_ = RegexToken::END_OF_FILE;
     return;
   }
 
   switch (state_) {
-    case State::NORMAL:
+    case RegexState::NORMAL:
       scan_normal();
       break;
-    case State::IN_BRACKET:
+    case RegexState::IN_BRACKET:
       scan_in_bracket();
       break;
-    case State::IN_BRACE:
+    case RegexState::IN_BRACE:
       scan_in_brace();
       break;
   }
@@ -206,11 +206,11 @@ void scanner<Char>::next() {
 // 1) "\(", "\)", "\{" in basic. It's not escaping.
 // 2) "(?:", "(?=", "(?!" in ECMAScript.
 template<typename Char>
-void scanner<Char>::scan_normal() {
+void regex_scanner<Char>::scan_normal() {
   auto c = *current_++;
 
   if (std::strchr(ECMA_SPEC_CHAR, ctype_.narrow(c, ' ')) == nullptr) {
-    token_ = Token::ORD_CHAR;
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, c);
     return;
   }
@@ -239,14 +239,14 @@ void scanner<Char>::scan_normal() {
 
       if (*current_ == ':') {
         ++current_;
-        token_ = Token::SUBEXPR_NO_GROUP_BEGIN;
+        token_ = RegexToken::SUBEXPR_NO_GROUP_BEGIN;
       } else if (*current_ == '=') {
         ++current_;
-        token_ = Token::SUBEXPR_NO_LOOKAHEAD_BEGIN;
+        token_ = RegexToken::SUBEXPR_LOOKAHEAD_BEGIN;
         value_.assign(1, 'p');
       } else if (*current_ == '!') {
         ++current_;
-        token_ = Token::SUBEXPR_NO_LOOKAHEAD_BEGIN;
+        token_ = RegexToken::SUBEXPR_LOOKAHEAD_BEGIN;
         value_.assign(1, 'n');
       } else {
         throw regex_error(
@@ -256,22 +256,22 @@ void scanner<Char>::scan_normal() {
     //} else if (_M_flags & regex_constants::nosubs) {
     //  token_ = Token::SUBEXPR_NO_GROUP_BEGIN;
     } else {
-      token_ = Token::SUBEXPR_BEGIN;
+      token_ = RegexToken::SUBEXPR_BEGIN;
     }
   } else if (c == ')') {
-    token_ = Token::SUBEXPR_END;
+    token_ = RegexToken::SUBEXPR_END;
   } else if (c == '[') {
-    state_ = State::IN_BRACKET;
+    state_ = RegexState::IN_BRACKET;
     at_bracket_start_ = true;
     if (current_ != end_ && *current_ == '^') {
-      token_ = Token::BRACKET_NEG_BEGIN;
+      token_ = RegexToken::BRACKET_NEG_BEGIN;
       ++current_;
     } else {
-      token_ = Token::BRACKET_BEGIN;
+      token_ = RegexToken::BRACKET_BEGIN;
     }
   } else if (c == '{') {
-    state_ = State::IN_BRACE;
-    token_ = Token::INTERVAL_BEGIN;
+    state_ = RegexState::IN_BRACE;
+    token_ = RegexToken::INTERVAL_BEGIN;
   } else if (c != ']' && c != '}') {
     auto it = TOKEN_TBL;
     auto narrowc = ctype_.narrow(c, '\0');
@@ -282,7 +282,7 @@ void scanner<Char>::scan_normal() {
       }
       assert(false);
   } else {
-    token_ = Token::ORD_CHAR;
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, c);
   }
 }
@@ -291,7 +291,7 @@ void scanner<Char>::scan_normal() {
 // 1) different semantics of "[]" and "[^]".
 // 2) Escaping in bracket expr.
 template<typename Char>
-void scanner<Char>::scan_in_bracket() {
+void regex_scanner<Char>::scan_in_bracket() {
   if (current_ == end_) {
     throw regex_error(
       RegexErrorCode::ERROR_BRACKET,
@@ -301,7 +301,7 @@ void scanner<Char>::scan_in_bracket() {
   auto c = *current_++;
 
   if (c == '-') {
-    token_ = Token::BRACKET_DASH;
+    token_ = RegexToken::BRACKET_DASH;
   } else if (c == '[') {
     if (current_ == end_) {
       throw regex_error(
@@ -310,16 +310,16 @@ void scanner<Char>::scan_in_bracket() {
     }
 
     if (*current_ == '.') {
-      token_ = Token::COLLSYMBOL;
+      token_ = RegexToken::COLLSYMBOL;
       eat_class(*current_++);
     } else if (*current_ == ':') {
-      token_ = Token::CHAR_CLASS_NAME;
+      token_ = RegexToken::CHAR_CLASS_NAME;
       eat_class(*current_++);
     } else if (*current_ == '=') {
-      token_ = Token::EQUIV_CLASS_NAME;
+      token_ = RegexToken::EQUIV_CLASS_NAME;
       eat_class(*current_++);
     } else {
-      token_ = Token::ORD_CHAR;
+      token_ = RegexToken::ORD_CHAR;
       value_.assign(1, c);
     }
   }
@@ -327,13 +327,13 @@ void scanner<Char>::scan_in_bracket() {
   // literally. So "[]]" and "[^]]" are valid regexes. See the testcases
   // `*/empty_range.cc`.
   else if (c == ']' && (!at_bracket_start_)) {
-    token_ = Token::BRACKET_END;
-    state_ = State::NORMAL;
+    token_ = RegexToken::BRACKET_END;
+    state_ = RegexState::NORMAL;
   } else if (c == '\\') {
     // ECMAScript
     eat_escape_ecma();
   } else {
-    token_ = Token::ORD_CHAR;
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, c);
   }
   at_bracket_start_ = false;
@@ -342,7 +342,7 @@ void scanner<Char>::scan_in_bracket() {
 // Differences between styles:
 // 1) "\}" in basic style.
 template<typename Char>
-void scanner<Char>::scan_in_brace() {
+void regex_scanner<Char>::scan_in_brace() {
   if (current_ == end_) {
     throw regex_error(
       RegexErrorCode::ERROR_BRACE,
@@ -352,17 +352,17 @@ void scanner<Char>::scan_in_brace() {
   auto c = *current_++;
 
   if (ctype_.is(ctype_type::digit, c)) {
-    token_ = Token::DUP_COUNT;
+    token_ = RegexToken::DUP_COUNT;
     value_.assign(1, c);
     while (current_ != end_ && ctype_.is(ctype_type::digit, *current_)) {
       value_ += *current_++;
     }
   } else if (c == ',') {
-    token_ = Token::COMMA;
+    token_ = RegexToken::COMMA;
   // basic use \}.
   } else if (c == '}') {
-    state_ = State::NORMAL;
-    token_ = Token::INTERVAL_END;
+    state_ = RegexState::NORMAL;
+    token_ = RegexToken::INTERVAL_END;
   } else {
     throw regex_error(
       RegexErrorCode::ERROR_BADBRACE,
@@ -371,7 +371,7 @@ void scanner<Char>::scan_in_brace() {
 }
 
 template<typename Char>
-void scanner<Char>::eat_escape_ecma() {
+void regex_scanner<Char>::eat_escape_ecma() {
   if (current_ == end_) {
     throw regex_error(
       RegexErrorCode::ERROR_ESCAPE,
@@ -381,20 +381,20 @@ void scanner<Char>::eat_escape_ecma() {
   auto c = *current_++;
   auto pos = find_escape(ctype_.narrow(c, '\0'));
 
-  if (pos != nullptr && (c != 'b' || state_ == State::IN_BRACKET)) {
-    token_ = Token::ORD_CHAR;
+  if (pos != nullptr && (c != 'b' || state_ == RegexState::IN_BRACKET)) {
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, *pos);
   } else if (c == 'b') {
-    token_ = Token::WORD_BOUND;
+    token_ = RegexToken::WORD_BOUND;
     value_.assign(1, 'p');
   } else if (c == 'B') {
-    token_ = Token::WORD_BOUND;
+    token_ = RegexToken::WORD_BOUND;
     value_.assign(1, 'n');
   }
   // N3376 28.13
   else if (c == 'd' || c == 'D' || c == 's' ||
            c == 'S' || c == 'w' || c == 'W') {
-    token_ = Token::QUOTED_CLASS;
+    token_ = RegexToken::QUOTED_CLASS;
     value_.assign(1, c);
   } else if (c == 'c') {
     if (current_ == end_) {
@@ -403,7 +403,7 @@ void scanner<Char>::eat_escape_ecma() {
         "Unexpected end of regex when reading control code.");
     }
 
-    token_ = Token::ORD_CHAR;
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, *current_++);
   } else if (c == 'x' || c == 'u') {
     value_.erase();
@@ -416,7 +416,7 @@ void scanner<Char>::eat_escape_ecma() {
       }
       value_ += *current_++;
     }
-    token_ = Token::HEX_NUM;
+    token_ = RegexToken::HEX_NUM;
   }
   // ECMAScript recognizes multi-digit back-references.
   else if (ctype_.is(ctype_type::digit, c)) {
@@ -424,9 +424,9 @@ void scanner<Char>::eat_escape_ecma() {
     while (current_ != end_ && ctype_.is(ctype_type::digit, *current_)) {
       value_ += *current_++;
     }
-    token_ = Token::BACKREF;
+    token_ = RegexToken::BACKREF;
   } else {
-    token_ = Token::ORD_CHAR;
+    token_ = RegexToken::ORD_CHAR;
     value_.assign(1, c);
   }
 }
@@ -435,7 +435,7 @@ void scanner<Char>::eat_escape_ecma() {
 // ch could be ':', '.' or '=', _M_current is the char after ']' when
 // returning.
 template<typename Char>
-void scanner<Char>::eat_class(char ch) {
+void regex_scanner<Char>::eat_class(char ch) {
   for (value_.clear(); current_ != end_ && *current_ != ch;) {
     value_ += *current_++;
   }
@@ -459,90 +459,90 @@ void scanner<Char>::eat_class(char ch) {
 
 #ifdef IRESEARCH_DEBUG
 template<typename _CharT>
-std::ostream& scanner<_CharT>::print(std::ostream& ostr) {
+std::ostream& regex_scanner<_CharT>::print(std::ostream& ostr) {
   switch (token_) {
-    case Token::ANYCHAR:
+    case RegexToken::ANYCHAR:
       ostr << "any-character\n";
       break;
-    case Token::BACKREF:
+    case RegexToken::BACKREF:
       ostr << "backref\n";
       break;
-    case Token::BRACKET_BEGIN:
+    case RegexToken::BRACKET_BEGIN:
       ostr << "bracket-begin\n";
       break;
-    case Token::BRACKET_NEG_BEGIN:
+    case RegexToken::BRACKET_NEG_BEGIN:
       ostr << "bracket-neg-begin\n";
       break;
-    case Token::BRACKET_END:
+    case RegexToken::BRACKET_END:
       ostr << "bracket-end\n";
       break;
-    case Token::CHAR_CLASS_NAME:
+    case RegexToken::CHAR_CLASS_NAME:
       ostr << "char-class-name \"" << value_ << "\"\n";
       break;
-    case Token::CLOSURE_STAR:
+    case RegexToken::CLOSURE_STAR:
       ostr << "closure star\n";
       break;
-    case Token::CLOSURE_PLUS:
+    case RegexToken::CLOSURE_PLUS:
       ostr << "closure plus\n";
       break;
-    case Token::COLLSYMBOL:
+    case RegexToken::COLLSYMBOL:
       ostr << "collsymbol \"" << value_ << "\"\n";
       break;
-    case Token::COMMA:
+    case RegexToken::COMMA:
       ostr << "comma\n";
       break;
-    case Token::DUP_COUNT:
+    case RegexToken::DUP_COUNT:
       ostr << "dup count: " << value_ << "\n";
       break;
-    case Token::END_OF_FILE:
+    case RegexToken::END_OF_FILE:
       ostr << "EOF\n";
       break;
-    case Token::EQUIV_CLASS_NAME:
+    case RegexToken::EQUIV_CLASS_NAME:
       ostr << "equiv-class-name \"" << value_ << "\"\n";
       break;
-    case Token::INTERVAL_BEGIN:
+    case RegexToken::INTERVAL_BEGIN:
       ostr << "interval begin\n";
       break;
-    case Token::INTERVAL_END:
+    case RegexToken::INTERVAL_END:
       ostr << "interval end\n";
       break;
-    case Token::LINE_BEGIN:
+    case RegexToken::LINE_BEGIN:
       ostr << "line begin\n";
       break;
-    case Token::LINE_END:
+    case RegexToken::LINE_END:
       ostr << "line end\n";
       break;
-    case Token::OPT:
+    case RegexToken::OPT:
       ostr << "opt\n";
       break;
-    case Token::OR:
+    case RegexToken::OR:
       ostr << "or\n";
       break;
-    case Token::ORD_CHAR:
+    case RegexToken::ORD_CHAR:
       ostr << "ordinary character: \"" << value_ << "\"\n";
       break;
-    case Token::SUBEXPR_BEGIN:
+    case RegexToken::SUBEXPR_BEGIN:
       ostr << "subexpr begin\n";
       break;
-    case Token::SUBEXPR_NO_GROUP_BEGIN:
+    case RegexToken::SUBEXPR_NO_GROUP_BEGIN:
       ostr << "no grouping subexpr begin\n";
       break;
-    case Token::SUBEXPR_LOOKAHEAD_BEGIN:
+    case RegexToken::SUBEXPR_LOOKAHEAD_BEGIN:
       ostr << "lookahead subexpr begin\n";
       break;
-    case Token::SUBEXPR_END:
+    case RegexToken::SUBEXPR_END:
       ostr << "subexpr end\n";
       break;
-    case Token::UNKNOWN:
+    case RegexToken::UNKNOWN:
       ostr << "-- unknown token --\n";
       break;
-    case Token::OCT_NUM:
+    case RegexToken::OCT_NUM:
       ostr << "oct number " << value_ << "\n";
       break;
-    case Token::HEX_NUM:
+    case RegexToken::HEX_NUM:
       ostr << "hex number " << value_ << "\n";
       break;
-    case Token::QUOTED_CLASS:
+    case RegexToken::QUOTED_CLASS:
       ostr << "quoted class " << "\\" << value_ << "\n";
       break;
     default:
