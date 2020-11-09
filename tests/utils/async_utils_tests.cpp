@@ -564,15 +564,85 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
 
     pool.run(std::move(task1), 30ms);
     pool.run(std::move(task2), 500ms);
-    lock.unlock();
-
-    const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
-    while (count.load() < 2) {
-      std::this_thread::sleep_for(100ms);
-      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (1 != pool.tasks_pending() && 1 != pool.tasks_active()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
     }
+    lock.unlock();
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (count.load() < 2) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (pool.tasks_active()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    ASSERT_EQ(0, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(0, pool.threads());
     pool.stop(); // blocking call (thread runtime duration simulated via sleep)
     ASSERT_EQ(2, count); // all tasks ran
+    ASSERT_EQ(0, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(0, pool.threads());
+  }
+}
+
+TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
+  // test stop run pending
+  {
+    iresearch::async_utils::thread_pool pool(4, 2);
+    std::atomic<size_t> count(0);
+    std::mutex mutex;
+    auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } };
+    auto task2 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } };
+    auto task3 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } };
+    auto task4 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } };
+    std::unique_lock<std::mutex> lock(mutex);
+
+    pool.run(std::move(task1), 0ms);
+    pool.run(std::move(task2), 0ms);
+    pool.run(std::move(task3), 30ms);
+    pool.run(std::move(task4), 500ms);
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (count.load() < 4) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    lock.unlock();
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (pool.tasks_active()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (pool.tasks_pending()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    ASSERT_EQ(0, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(2, pool.threads());
+    pool.stop(); // blocking call (thread runtime duration simulated via sleep)
+    ASSERT_EQ(4, count); // all tasks ran
+    ASSERT_EQ(0, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(0, pool.threads());
   }
 }
 
