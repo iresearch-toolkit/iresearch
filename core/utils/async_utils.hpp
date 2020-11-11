@@ -141,20 +141,19 @@ class IRESEARCH_API thread_pool {
   size_t max_threads() const;
   void max_threads(size_t value);
   void max_threads_delta(int delta); // change value by delta
+
+  // 1st - max_threads(), 2nd - max_idle()
+  std::pair<size_t, size_t> limits() const;
+  void limits(size_t max_threads, size_t max_idle);
+
   bool run(std::function<void()>&& fn, clock_t::duration delay = {});
   void stop(bool skip_pending = false); // always a blocking call
   size_t tasks_active() const;
   size_t tasks_pending() const;
   size_t threads() const;
+  // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
+  std::tuple<size_t, size_t, size_t> stats() const;
 
-  void set_limits(size_t max_threads, size_t max_idle);
-
-  // 1st : tasks active()
-  // 2nd : tasks pending()
-  // 3rd : threads()
-  // 4th : max_threads()
-  // 5th : max_idle()
-  std::tuple<size_t, size_t, size_t, size_t, size_t> stats() const;
 
  private:
   enum class State { ABORT, FINISH, RUN };

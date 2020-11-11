@@ -362,8 +362,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
   }
 }
 
-
-void thread_pool::set_limits(size_t max_threads, size_t max_idle) {
+void thread_pool::limits(size_t max_threads, size_t max_idle) {
   {
     auto lock = make_lock_guard(lock_);
 
@@ -380,10 +379,16 @@ void thread_pool::set_limits(size_t max_threads, size_t max_idle) {
   cond_.notify_all(); // wake any idle threads if they need termination
 }
 
-std::tuple<size_t, size_t, size_t, size_t, size_t> thread_pool::stats() const {
+std::pair<size_t, size_t> thread_pool::limits() const {
   auto lock = make_lock_guard(lock_);
 
-  return { active_, queue_.size(), pool_.size(), max_threads_, max_idle_ };
+  return { max_threads_, max_idle_ };
+}
+
+std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
+  auto lock = make_lock_guard(lock_);
+
+  return { active_, queue_.size(), pool_.size()};
 }
 
 size_t thread_pool::tasks_active() const {
