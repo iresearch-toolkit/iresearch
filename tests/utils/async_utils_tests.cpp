@@ -380,7 +380,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 
   // test schedule 3 task sequential
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    iresearch::async_utils::thread_pool pool(1, 1);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -558,8 +558,16 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
     iresearch::async_utils::thread_pool pool(1, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
-    auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
-    auto task2 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
+    auto task1 = [&mutex, &count]()->void {
+      ++count;
+      { std::lock_guard<std::mutex> lock(mutex); }
+      std::this_thread::sleep_for(300ms);
+    };
+    auto task2 = [&mutex, &count]()->void {
+      ++count;
+      { std::lock_guard<std::mutex> lock(mutex); }
+      std::this_thread::sleep_for(300ms);
+    };
     std::unique_lock<std::mutex> lock(mutex);
 
     pool.run(std::move(task1), 30ms);

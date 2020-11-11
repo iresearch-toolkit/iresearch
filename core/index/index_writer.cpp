@@ -1497,11 +1497,11 @@ bool index_writer::consolidate(
     if (found != candidates.size()) {
       // not all candidates are valid
       IR_FRMT_DEBUG(
-        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', "
+        "found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
         committed_meta->generation(),
         found,
-        candidates.size()
-      );
+        candidates.size());
       return false;
     }
   }
@@ -1509,8 +1509,7 @@ bool index_writer::consolidate(
   IR_FRMT_TRACE(
     "Starting consolidation id='" IR_SIZE_T_SPECIFIER "':\n%s",
     run_id,
-    ::to_string(candidates).c_str()
-  );
+    ::to_string(candidates).c_str());
 
   // do lock-free merge
 
@@ -1587,8 +1586,7 @@ bool index_writer::consolidate(
               "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER
               "', not found segment %s in committed state",
               committed_meta->generation(),
-              candidate->name.c_str()
-            );
+              candidate->name.c_str());
             return false;
           }
         }
@@ -1604,12 +1602,11 @@ bool index_writer::consolidate(
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
         std::move(committed_meta), // consolidation context meta
-        std::move(merger) // merge context
-      );
+        std::move(merger)); // merge context
+
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
-        run_id
-      );
+        run_id);
     } else if (committed_meta == current_committed_meta) {
       // before new transaction was started:
       // no commits happened in since consolidation was started
@@ -1643,13 +1640,15 @@ bool index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: "
+        "Name='%s', docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "live_docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
         consolidation_meta.live_docs_count,
-        consolidation_meta.size
-      );
+        consolidation_meta.size);
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1671,12 +1670,12 @@ bool index_writer::consolidate(
         // at least one candidate is missing
         // can't finish consolidation
         IR_FRMT_DEBUG(
-          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', "
+          "found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
           run_id,
           consolidation_segment.meta.name.c_str(),
           res.second,
-          candidates.size()
-        );
+          candidates.size());
 
         return false;
       }
@@ -1688,10 +1687,10 @@ bool index_writer::consolidate(
         if (!map_removals(mappings, merger, cached_readers_, docs_mask)) {
           // consolidated segment has docs missing from current_committed_meta->segments()
           IR_FRMT_DEBUG(
-            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', due removed documents still present the consolidation candidates",
+            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', "
+            "due removed documents still present the consolidation candidates",
             run_id,
-            consolidation_segment.meta.name.c_str()
-          );
+            consolidation_segment.meta.name.c_str());
 
           return false;
         }
@@ -1732,13 +1731,15 @@ bool index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', "
+        "docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "live_docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
         consolidation_meta.live_docs_count,
-        consolidation_meta.size
-      );
+        consolidation_meta.size);
     }
   }
 
