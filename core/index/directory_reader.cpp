@@ -35,10 +35,9 @@ namespace {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
-  irs::index_meta& meta,
-  const irs::directory& dir,
-  const irs::format* codec
-) noexcept {
+    irs::index_meta& meta,
+    const irs::directory& dir,
+    const irs::format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -70,8 +69,6 @@ irs::index_file_refs::ref_t load_newest_index_meta(
 
       return ref;
     } catch (...) {
-      IR_LOG_EXCEPTION();
-
       return nullptr;
     }
   }
@@ -142,7 +139,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
 
     return newest.ref;
   } catch (...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
 
   return nullptr;
