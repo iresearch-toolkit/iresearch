@@ -508,6 +508,7 @@ index_input::ptr memory_directory::open(
 
     return nullptr;
   } catch(...) {
+    IR_FRMT_ERROR("Failed to open input file, path: %s", name.c_str());
   }
 
   return nullptr;

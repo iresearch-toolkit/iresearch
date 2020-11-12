@@ -69,6 +69,10 @@ irs::index_file_refs::ref_t load_newest_index_meta(
 
       return ref;
     } catch (...) {
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s'",
+        codec->type().name().c_str());
+
       return nullptr;
     }
   }

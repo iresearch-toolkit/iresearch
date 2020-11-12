@@ -654,6 +654,7 @@ bool fs_directory::sync(const std::string& name) noexcept {
 
     IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
   } catch (...) {
+    IR_FRMT_ERROR("Failed to sync file, name : %s", name.c_str());
   }
 
   return false;
