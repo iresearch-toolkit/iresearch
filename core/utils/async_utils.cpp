@@ -339,7 +339,12 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 
     // create extra thread if all threads are busy and can grow pool
     if (active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this);
+      try {
+        pool_.emplace_back(&thread_pool::worker, this);
+      } catch (...) {
+        queue_.pop();
+        return false;
+      }
     }
   }
 
@@ -349,11 +354,9 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 }
 
 void thread_pool::stop(bool skip_pending /*= false*/) {
-  auto lock = make_unique_lock(lock_);
+  state_ = skip_pending ? State::ABORT : State::FINISH;
 
-  if (State::RUN == state_) {
-    state_ = skip_pending ? State::ABORT : State::FINISH;
-  }
+  auto lock = make_unique_lock(lock_);
 
   // wait for all threads to terminate
   while (!pool_.empty()) {
@@ -460,15 +463,20 @@ void thread_pool::worker() {
           IR_FRMT_ERROR("Failed to execute task");
         }
 
-        lock.lock();
+        // try to reacquire the lock the pool is running
+        // need state_ to be std::atomic<...> as we need
+        // to check it without lock
+        do {
+          try {
+            lock.lock();
+            break;
+          } catch (...) { }
+        } while (State::RUN != state_);
+
         --active_;
       } else {
         // we have some tasks pending tasks, let's wait
-        try {
-          cond_.wait_until(lock, queue_.top().at);
-        } catch (...) {
-          break; // terminate thread
-        }
+        cond_.wait_until(lock, queue_.top().at);
       }
       continue;
     }
@@ -479,20 +487,18 @@ void thread_pool::worker() {
     if (State::RUN == state_ &&                // thread pool is still running
         pool_.size() <= max_threads_ &&        // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      try {
-        cond_.wait(lock);
-      } catch (...) {
-        break; // terminate thread
-      }
-
+      cond_.wait(lock);
       continue;
     }
 
-    // too many idle threadsb
+    // too many idle threads
     break;
   }
 
-  // swap current thread handle with one at end of pool and remove end
+  //////////////////////////////////////////////////////////////////////////////
+  /// thread shutdown
+  //////////////////////////////////////////////////////////////////////////////
+
   const auto it = std::find_if(
     std::begin(pool_), std::end(pool_),
     [this_id = std::this_thread::get_id()](const auto& thread) noexcept {

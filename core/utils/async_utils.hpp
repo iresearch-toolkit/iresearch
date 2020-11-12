@@ -184,7 +184,7 @@ class IRESEARCH_API thread_pool {
   std::vector<std::thread> pool_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
-  State state_{ State::RUN };
+  std::atomic<State> state_{ State::RUN };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // thread_pool
 
