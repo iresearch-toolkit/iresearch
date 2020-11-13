@@ -295,9 +295,9 @@ void append_segments_refs(
 }
 
 const std::string& write_document_mask(
-    iresearch::directory& dir,
-    iresearch::segment_meta& meta,
-    const iresearch::document_mask& docs_mask,
+    irs::directory& dir,
+    irs::segment_meta& meta,
+    const irs::document_mask& docs_mask,
     bool increment_version = true
 ) {
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
@@ -1352,7 +1352,7 @@ index_writer::ptr index_writer::make(
     } else {
       reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
-      file_refs.emplace_back(iresearch::directory_utils::reference(dir, segments_file));
+      file_refs.emplace_back(directory_utils::reference(dir, segments_file));
     }
   }
 
@@ -1531,7 +1531,7 @@ bool index_writer::consolidate(
 
     if (reader) {
       // merge_writer holds a reference to reader
-      merger.add(static_cast<irs::sub_reader::ptr>(reader));
+      merger.add(static_cast<sub_reader::ptr>(reader));
     }
   }
 

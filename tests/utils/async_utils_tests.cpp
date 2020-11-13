@@ -60,7 +60,7 @@ using namespace tests;
 using namespace std::chrono_literals;
 
 TEST_F(async_utils_tests, test_busywait_mutex_mt) {
-  typedef iresearch::async_utils::busywait_mutex mutex_t;
+  typedef irs::async_utils::busywait_mutex mutex_t;
   // lock + unlock
   {
     mutex_t mutex;
@@ -108,9 +108,9 @@ TEST_F(async_utils_tests, test_busywait_mutex_mt) {
 }
 
 TEST_F(async_utils_tests, test_read_write_mutex_mt) {
-  typedef iresearch::async_utils::read_write_mutex mutex_t;
-  typedef iresearch::async_utils::read_write_mutex::read_mutex r_mutex_t;
-  typedef iresearch::async_utils::read_write_mutex::write_mutex w_mutex_t;
+  typedef irs::async_utils::read_write_mutex mutex_t;
+  typedef irs::async_utils::read_write_mutex::read_mutex r_mutex_t;
+  typedef irs::async_utils::read_write_mutex::write_mutex w_mutex_t;
 
   // concurrent read lock
   {
@@ -368,7 +368,7 @@ TEST_F(async_utils_tests, test_read_write_mutex_mt) {
 TEST_F(async_utils_tests, test_thread_pool_run_mt) {
   // test schedule 1 task
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::thread_pool pool(1, 0);
     std::condition_variable cond;
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -380,7 +380,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 
   // test schedule 3 task sequential
   {
-    iresearch::async_utils::thread_pool pool(1, 1);
+    irs::async_utils::thread_pool pool(1, 1);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -399,7 +399,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 
   // test schedule 3 task parallel
   {
-    iresearch::async_utils::thread_pool pool(3, 0);
+    irs::async_utils::thread_pool pool(3, 0);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -408,9 +408,9 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
     auto task3 = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
     std::unique_lock<std::mutex> lock(mutex);
 
-    pool.run(std::move(task1));
-    pool.run(std::move(task2));
-    pool.run(std::move(task3));
+    ASSERT_TRUE(pool.run(std::move(task1)));
+    ASSERT_TRUE(pool.run(std::move(task2)));
+    ASSERT_TRUE(pool.run(std::move(task3)));
     ASSERT_TRUE(count || std::cv_status::no_timeout == cond.wait_for(lock, 1000ms) || count); // wait for all 3 tasks
     lock.unlock();
     pool.stop();
@@ -418,7 +418,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 
   // test schedule 1 task exception + 1 task
   {
-    iresearch::async_utils::thread_pool pool(1, 0, "foo");
+    irs::async_utils::thread_pool pool(1, 0, "foo");
     std::condition_variable cond;
     notifying_counter count(cond, 2);
     std::mutex mutex;
@@ -440,7 +440,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
   // test max threads
   {
-    iresearch::async_utils::thread_pool pool(0, 0);
+    irs::async_utils::thread_pool pool(0, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
@@ -464,7 +464,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 
   // test max threads delta grow
   {
-    iresearch::async_utils::thread_pool pool(0, 0);
+    irs::async_utils::thread_pool pool(0, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
@@ -484,7 +484,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 
   // test max threads delta
   {
-    iresearch::async_utils::thread_pool pool(1, 10);
+    irs::async_utils::thread_pool pool(1, 10);
 
     ASSERT_EQ(1, pool.max_threads());
     pool.max_threads_delta(1);
@@ -501,7 +501,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 
   // test max idle
   {
-    iresearch::async_utils::thread_pool pool(0, 0);
+    irs::async_utils::thread_pool pool(0, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex1;
     std::mutex mutex2;
@@ -537,7 +537,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 
   // test max idle delta
   {
-    iresearch::async_utils::thread_pool pool(10, 1);
+    irs::async_utils::thread_pool pool(10, 1);
 
     ASSERT_EQ(1, pool.max_idle());
     pool.max_idle_delta(1);
@@ -556,7 +556,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
   // test stop run pending
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::thread_pool pool(1, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void {
@@ -611,7 +611,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
 TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
   // test stop run pending
   {
-    iresearch::async_utils::thread_pool pool(4, 2);
+    irs::async_utils::thread_pool pool(4, 2);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } };
@@ -662,7 +662,7 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
 TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   // test stop run pending
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::thread_pool pool(1, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
@@ -679,7 +679,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test stop skip pending
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::thread_pool pool(1, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; { std::lock_guard<std::mutex> lock(mutex); } std::this_thread::sleep_for(300ms); };
@@ -696,7 +696,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test pool stop + run
   {
-    iresearch::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::thread_pool pool(1, 0);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]()->void { ++count; std::lock_guard<std::mutex> lock(mutex); };
@@ -757,9 +757,9 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   }
 }
 
-#if !defined(_WIN32) || _WIN32_WINNT >= _WIN32_WINNT_WIN10
 TEST(thread_utils_test, get_set_name) {
   const thread_name_t expected_name = "foo";
+#if !defined(_WIN32) || _WIN32_WINNT >= _WIN32_WINNT_WIN10
   std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
 
   std::thread thread([expected_name, &actual_name]()mutable{
@@ -769,5 +769,9 @@ TEST(thread_utils_test, get_set_name) {
 
   thread.join();
   ASSERT_EQ(expected_name, actual_name);
-}
+#else
+  std::thread thread([expected_name, &actual_name]()mutable{
+    EXPECT_FALSE(irs::set_thread_name(expected_name));
+  });
 #endif
+}
