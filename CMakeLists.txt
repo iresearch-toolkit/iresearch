@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
-cmake_policy(SET CMP0074 NEW)
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
 ################################################################################
 ### set required standard version
