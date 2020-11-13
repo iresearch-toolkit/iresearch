@@ -145,7 +145,7 @@ matrix:
     # Release build, shared library
     ############################################################################
     - os: linux
-      dist: trusty # gcc7 is not available in `precise`
+      dist: trusty # gcc8 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
@@ -198,7 +198,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install g++-8 valgrind
+        - travis_retry sudo apt-get install g++-9 valgrind
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -213,7 +213,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install g++-8 valgrind
+        - travis_retry sudo apt-get install g++-9 valgrind
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
