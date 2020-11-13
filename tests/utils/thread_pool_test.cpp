@@ -351,6 +351,48 @@ TEST(thread_pool_test, test_schedule_seq_mt) {
   ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
 }
 
+TEST(thread_pool_test, test_stop_long_ruuning_run_after_stop_mt) {
+  std::function<void()> func = []() { EXPECT_FALSE(true); };
+
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::atomic<size_t> count{0};
+  auto long_running_task = [&mtx, &count]() {
+    {
+      auto lock = irs::make_lock_guard(mtx);
+    }
+
+    std::this_thread::sleep_for(2s);
+    ++count;
+  };
+
+  // test stop run pending
+  irs::async_utils::thread_pool pool(1, 0);
+  {
+    auto lock = irs::make_lock_guard(mtx);
+    ASSERT_TRUE(pool.run(std::move(long_running_task)));
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (1 != pool.tasks_active()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    ASSERT_EQ(1, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(1, pool.threads());
+    ASSERT_EQ(std::make_tuple(size_t(1),size_t(0),size_t(1)), pool.stats());
+  }
+  ASSERT_FALSE(pool.run(std::function<void()>()));
+  pool.stop(); // blocking call (thread runtime duration simulated via sleep)
+  ASSERT_EQ(1, count);
+  ASSERT_FALSE(pool.run(std::move(func)));
+  ASSERT_EQ(0, pool.tasks_active());
+  ASSERT_EQ(0, pool.tasks_pending());
+  ASSERT_EQ(0, pool.threads());
+  ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
+}
+
 TEST(thread_pool_test, test_stop_run_pending_mt) {
   // test stop run pending
   irs::async_utils::thread_pool pool(4, 2);

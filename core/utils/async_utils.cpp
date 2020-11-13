@@ -328,6 +328,10 @@ void thread_pool::max_threads_delta(int delta) {
 }
 
 bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/) {
+  if (!fn) {
+    return false;
+  }
+
   {
     auto lock = make_lock_guard(lock_);
 
