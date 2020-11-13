@@ -27,6 +27,7 @@
 
 #include "gtest/gtest.h"
 #include "utils/async_utils.hpp"
+#include "utils/misc.hpp"
 
 namespace {
 
@@ -366,7 +367,6 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_after_stop_mt) {
     ++count;
   };
 
-  // test stop run pending
   irs::async_utils::thread_pool pool(1, 0);
   {
     auto lock = irs::make_lock_guard(mtx);
@@ -387,6 +387,63 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_after_stop_mt) {
   pool.stop(); // blocking call (thread runtime duration simulated via sleep)
   ASSERT_EQ(1, count);
   ASSERT_FALSE(pool.run(std::move(func)));
+  ASSERT_EQ(0, pool.tasks_active());
+  ASSERT_EQ(0, pool.tasks_pending());
+  ASSERT_EQ(0, pool.threads());
+  ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
+}
+
+TEST(thread_pool_test, test_stop_long_ruuning_run_skip_pending_mt) {
+  std::mutex mtx;
+  std::atomic<size_t> count{0};
+  auto long_running_task = [&mtx, &count]() {
+    {
+      auto lock = irs::make_lock_guard(mtx);
+    }
+
+    std::this_thread::sleep_for(2s);
+
+    ++count;
+  };
+
+  irs::async_utils::thread_pool pool(1, 0);
+  {
+    auto lock = irs::make_unique_lock(mtx);
+    ASSERT_TRUE(pool.run(std::move(long_running_task)));
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (1 != pool.tasks_active()) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    ASSERT_EQ(1, pool.tasks_active());
+    ASSERT_EQ(0, pool.tasks_pending());
+    ASSERT_EQ(1, pool.threads());
+    ASSERT_EQ(std::make_tuple(size_t(1),size_t(0),size_t(1)), pool.stats());
+
+    for (size_t i = 0; i < 100; ++i) {
+      ASSERT_TRUE(pool.run([&count](){++count;}, 10ms));
+    }
+
+    ASSERT_EQ(1, pool.tasks_active());
+    ASSERT_EQ(100, pool.tasks_pending());
+    ASSERT_EQ(1, pool.threads());
+    ASSERT_EQ(std::make_tuple(size_t(1),size_t(100),size_t(1)), pool.stats());
+
+    lock.unlock();
+    pool.stop(true);
+  }
+
+  {
+    const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+    while (pool.threads()) {
+      std::this_thread::sleep_for(100ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
+
+  ASSERT_EQ(1, count);
   ASSERT_EQ(0, pool.tasks_active());
   ASSERT_EQ(0, pool.tasks_pending());
   ASSERT_EQ(0, pool.threads());

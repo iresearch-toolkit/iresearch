@@ -367,6 +367,8 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
     cond_.notify_all(); // wake all threads
     cond_.wait_for(lock, 100ms);
   }
+
+  queue_ = {};
 }
 
 void thread_pool::limits(size_t max_threads, size_t max_idle) {
