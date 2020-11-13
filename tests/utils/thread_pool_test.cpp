@@ -284,6 +284,73 @@ TEST(thread_pool_test, test_stop_run_pending_delay_mt) {
   ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
 }
 
+TEST(thread_pool_test, test_schedule_seq_mt) {
+  // test stop run pending
+  irs::async_utils::thread_pool pool(1, 0);
+  size_t id(0);
+  std::mutex mutex;
+  std::condition_variable cond;
+  auto task1 = [&mutex, &cond, &id]()->void {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      id = 1;
+    }
+    cond.notify_one();
+    std::this_thread::sleep_for(301ms);
+  };
+  auto task2 = [&mutex, &cond, &id]()->void {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      id = 2;
+    }
+    cond.notify_one();
+    std::this_thread::sleep_for(300ms);
+  };
+  auto task3 = [&mutex, &cond, &id]()->void {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      id = 3;
+    }
+    cond.notify_one();
+    std::this_thread::sleep_for(301ms);
+  };
+  std::unique_lock<std::mutex> lock(mutex);
+  ASSERT_TRUE(pool.run(std::move(task1), 1000ms));
+  ASSERT_TRUE(pool.run(std::move(task2), 100ms));
+  ASSERT_TRUE(pool.run(std::move(task3), 500ms));
+  cond.wait_for(lock, 10s);
+  ASSERT_EQ(id, 2);
+  cond.wait_for(lock, 10s);
+  ASSERT_EQ(id, 3);
+  cond.wait_for(lock, 10s);
+  ASSERT_EQ(id, 1);
+
+  {
+    const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+    while (1 != pool.tasks_pending() && 1 != pool.tasks_active()) {
+      std::this_thread::sleep_for(100ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
+  lock.unlock();
+  {
+    const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+    while (pool.tasks_active()) {
+      std::this_thread::sleep_for(100ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
+  ASSERT_EQ(0, pool.tasks_active());
+  ASSERT_EQ(0, pool.tasks_pending());
+  ASSERT_EQ(0, pool.threads());
+  ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
+  pool.stop(); // blocking call (thread runtime duration simulated via sleep)
+  ASSERT_EQ(0, pool.tasks_active());
+  ASSERT_EQ(0, pool.tasks_pending());
+  ASSERT_EQ(0, pool.threads());
+  ASSERT_EQ(std::make_tuple(size_t(0),size_t(0),size_t(0)), pool.stats());
+}
+
 TEST(thread_pool_test, test_stop_run_pending_mt) {
   // test stop run pending
   irs::async_utils::thread_pool pool(4, 2);
