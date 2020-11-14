@@ -1292,7 +1292,7 @@ class block_disjunction final
       max_ = min_ + window();
       min_ = doc_limits::eof();
 
-      visit_and_purge([this, &empty](auto& it) mutable {
+      visit_and_purge([&empty](auto& it) mutable {
         // FIXME
         // for min match case we can skip the whole block if
         // we can't satisfy match_buf_.min_match_count() conditions, namely
