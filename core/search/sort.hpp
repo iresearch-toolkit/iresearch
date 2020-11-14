@@ -91,7 +91,7 @@ using merge_f = void(*)(const order_bucket* ctx,
 /// @class score_function
 /// @brief a convenient wrapper around score_f and score_ctx
 ////////////////////////////////////////////////////////////////////////////////
-class score_function : util::noncopyable {
+class IRESEARCH_API score_function : util::noncopyable {
  public:
   score_function() noexcept;
   score_function(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept

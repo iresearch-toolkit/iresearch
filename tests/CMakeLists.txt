@@ -232,6 +232,8 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
+  ${IResearch_TARGET_NAME}-scorer-tfidf-shared
+  ${IResearch_TARGET_NAME}-scorer-bm25-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )

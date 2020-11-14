@@ -27,7 +27,7 @@
 
 namespace iresearch {
 
-class bm25_sort : public sort {
+class IRESEARCH_API bm25_sort : public sort {
  public:
   using score_t = float_t;
 

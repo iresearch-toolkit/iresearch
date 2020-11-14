@@ -27,7 +27,7 @@
 
 namespace iresearch {
 
-class tfidf_sort : public sort {
+class IRESEARCH_API tfidf_sort : public sort {
 public:
   using score_t = float_t;
 
