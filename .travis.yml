@@ -449,6 +449,7 @@ script:
       # execute tests
       ulimit -n 5120 # required for MacOS (max-open-files = 16 threads * (100000/10000) commits * 8 segments-per-commit * 4 open-files-per-segment)
       ulimit -a
+      export LD_LIBRARY_PATH=${ICU_ROOT}/lib:${BOOST_ROOT}/lib:${LZ4_ROOT}/lib
       if ! travis_wait 120 python ../scripts/gtest-parallel/gtest_parallel.py ${TEST_PARAMS} ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ; then
         exit 1
       fi
