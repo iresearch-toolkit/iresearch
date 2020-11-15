@@ -391,7 +391,7 @@ install:
       cd ${DEPS_DIR}
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
-      git reset --hard 53739a805cfa6c77ff8496dc711dc1c106d987c1
+      git reset --hard a8d4a95adc4792f8bcff0aed6bb9b09b9ca3aab5
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
 
