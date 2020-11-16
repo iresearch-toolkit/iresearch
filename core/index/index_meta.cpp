@@ -202,4 +202,11 @@ bool index_meta::index_segment_t::operator!=(
   return filename != other.filename || meta != other.meta;
 }
 
+index_meta::index_segment_t& index_meta::index_segment_t::operator=(
+    index_segment_t&& other) noexcept {
+  filename = std::move(other.filename);
+  meta = std::move(other.meta);
+  return *this;
+}
+
 }
