@@ -70,7 +70,7 @@ find_path(ICU_INCLUDE_DIR
 )
 
 find_path(ICU_SRC_DIR_UCONV
-  ucnv.c
+  ucnv.cpp
   PATHS ${ICU_SEARCH_SRC_PATHS}
   PATH_SUFFIXES common
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
