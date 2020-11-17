@@ -429,8 +429,10 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-set(SIMD_LIBRARY_STATIC "simdcomp-static")
+if (USE_SIMDCOMP)
+  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+  set(SIMD_LIBRARY_STATIC "simdcomp-static")
+endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
@@ -493,8 +495,11 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
+
+if (USE_SIMDCOMP)
+  list(APPEND IRESEARCH_STATIC _DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
+endif()
 
 if (MSVC)
   foreach(ELEMENT
