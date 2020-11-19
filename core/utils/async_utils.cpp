@@ -453,9 +453,8 @@ void thread_pool::worker() {
 
   // hold a reference to ensure state is still alive
   auto shared_state = shared_state_;
-  auto& state = *shared_state;
 
-  auto lock = make_unique_lock(state.lock);
+  auto lock = make_unique_lock(shared_state->lock);
 
   while (State::ABORT != state_ && pool_.size() <= max_threads_) {
     if (!queue_.empty()) {
@@ -522,10 +521,10 @@ void thread_pool::worker() {
     if (const auto idle = pool_.size() - active_; idle <= max_idle_) {
       if (const auto run_state = state_.load();
           !queue_.empty() && State::ABORT != run_state) {
-        state.cond.wait_until(lock, queue_.top().at);
+        shared_state->cond.wait_until(lock, queue_.top().at);
       } else if (State::RUN == run_state) {
         assert(queue_.empty());
-        state.cond.wait(lock);
+        shared_state->cond.wait(lock);
       } else {
         assert(State::RUN != run_state);
         break; // termination requested
@@ -557,7 +556,7 @@ void thread_pool::worker() {
 
   if (State::RUN != state_) {
     lock.unlock();
-    state.cond.notify_all(); // wake up thread_pool::stop(...)
+    shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 
