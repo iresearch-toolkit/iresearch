@@ -410,7 +410,7 @@ bool thread_pool::maybe_spawn_worker() {
 
   if (!queue_.empty() &&
       active_ == pool_size && pool_size < max_threads_) {
-    pool_.emplace_back(&thread_pool::worker, this);
+    pool_.emplace_back(&thread_pool::worker, this, shared_state_);
     return true;
   }
   return false;
@@ -446,13 +446,13 @@ size_t thread_pool::threads() const {
   return pool_.size();
 }
 
-void thread_pool::worker() {
+
+void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
+  // hold a reference to 'shared_state_' ensure state is still alive
+
   if (!worker_name_.empty()) {
     set_thread_name(worker_name_.c_str());
   }
-
-  // hold a reference to ensure state is still alive
-  auto shared_state = shared_state_;
 
   auto lock = make_unique_lock(shared_state->lock);
 
