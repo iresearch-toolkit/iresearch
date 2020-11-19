@@ -468,6 +468,8 @@ void thread_pool::worker() {
           fn = std::move(top.fn);
         } catch (const std::bad_alloc&) {
           fprintf(stderr, "Failed to pop task from queue, skipping it");
+          queue_.pop();
+          continue;
         } catch (...) {
           IR_FRMT_WARN("Failed to pop task from queue, skipping it");
           queue_.pop();
