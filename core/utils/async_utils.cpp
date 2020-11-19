@@ -529,13 +529,11 @@ void thread_pool::worker() {
         assert(State::RUN != run_state);
         break; // termination requested
       }
-
-      assert(lock.owns_lock());
-
-      continue;
     } else {
       break; // too many idle threads
     }
+
+    assert(lock.owns_lock());
   }
 
   //////////////////////////////////////////////////////////////////////////////
