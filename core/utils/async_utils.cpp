@@ -353,7 +353,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
     try {
       maybe_spawn_worker();
     } catch (...) {
-      if (pool_.empty()) {
+      if (0 == threads_) {
         // failed to spawn a thread to execute a task
         queue_.pop();
         return false;
@@ -375,7 +375,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
     auto lock = make_unique_lock(state.lock);
 
     // wait for all threads to terminate
-    while (!pool_.empty()) {
+    while (threads_.load()) {
       state.cond.notify_all(); // wake all threads
       state.cond.wait_for(lock, 100ms);
     }
@@ -406,13 +406,24 @@ bool thread_pool::maybe_spawn_worker() {
   assert(state_ != State::ABORT);
 
   // create extra thread if all threads are busy and can grow pool
-  const size_t pool_size = pool_.size();
+  const size_t pool_size = threads_.load();
 
   if (!queue_.empty() &&
       active_ == pool_size && pool_size < max_threads_) {
-    pool_.emplace_back(&thread_pool::worker, this, shared_state_);
+
+    ++threads_;
+
+    try {
+      std::thread worker(&thread_pool::worker, this, shared_state_);
+      worker.detach();
+    } catch (...) {
+      --threads_;
+      return false;
+    }
+
     return true;
   }
+
   return false;
 }
 
@@ -425,7 +436,7 @@ std::pair<size_t, size_t> thread_pool::limits() const {
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return { active_, queue_.size(), pool_.size()};
+  return { active_, queue_.size(), threads_};
 }
 
 size_t thread_pool::tasks_active() const {
@@ -443,20 +454,30 @@ size_t thread_pool::tasks_pending() const {
 size_t thread_pool::threads() const {
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return pool_.size();
+  return threads_;
 }
 
 
 void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
   // hold a reference to 'shared_state_' ensure state is still alive
-
   if (!worker_name_.empty()) {
     set_thread_name(worker_name_.c_str());
   }
 
-  auto lock = make_unique_lock(shared_state->lock);
+  auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
 
-  while (State::ABORT != state_ && pool_.size() <= max_threads_) {
+  auto shutdown = make_finally([this, &lock, shared_state](){
+    --threads_;
+
+    if (State::RUN != state_) {
+      lock.unlock();
+      shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
+    }
+  });
+
+  lock.lock();
+
+  while (State::ABORT != state_ && threads_ <= max_threads_) {
     if (!queue_.empty()) {
       auto& top = queue_.top();
 
@@ -479,48 +500,43 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
         queue_.pop();
         ++active_;
 
-        // if have more tasks but no idle thread and can grow pool
-        try {
-          maybe_spawn_worker();
-        } catch (const std::bad_alloc&) {
-          fprintf(stderr, "Failed to allocate memory while spawning a worker");
-        } catch (const std::exception& e) {
-          IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
-        } catch (...) {
-          IR_FRMT_ERROR("Failed to grow pool");
-        }
+        {
+          auto dec = make_finally([this](){ --active_; });
 
-        lock.unlock();
-
-        try {
-          fn();
-        } catch (const std::bad_alloc&) {
-          fprintf(stderr, "Failed to allocate memory while executing task");
-        } catch (const std::exception& e) {
-          IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
-        } catch (...) {
-          IR_FRMT_ERROR("Failed to execute task");
-        }
-
-        // try to reacquire the lock the pool is running
-        // need state_ to be std::atomic<...> as we need
-        // to check it without lock
-        do {
+          // if have more tasks but no idle thread and can grow pool
           try {
-            lock.lock();
-            break;
-          } catch (...) { }
-        } while (State::RUN != state_);
+            maybe_spawn_worker();
+          } catch (const std::bad_alloc&) {
+            fprintf(stderr, "Failed to allocate memory while spawning a worker");
+          } catch (const std::exception& e) {
+            IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
+          } catch (...) {
+            IR_FRMT_ERROR("Failed to grow pool");
+          }
 
-        --active_;
+          lock.unlock();
+
+          try {
+            fn();
+          } catch (const std::bad_alloc&) {
+            fprintf(stderr, "Failed to allocate memory while executing task");
+          } catch (const std::exception& e) {
+            IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
+          } catch (...) {
+            IR_FRMT_ERROR("Failed to execute task");
+          }
+
+          lock.lock();
+        }
+
         continue;
       }
     }
 
     assert(lock.owns_lock());
-    assert(active_ <= pool_.size());
+    assert(active_ <= threads_);
 
-    if (const auto idle = pool_.size() - active_; idle <= max_idle_) {
+    if (const auto idle = threads_ - active_; idle <= max_idle_) {
       if (const auto run_state = state_.load();
           !queue_.empty() && State::ABORT != run_state) {
         shared_state->cond.wait_until(lock, queue_.top().at);
@@ -536,27 +552,6 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
     }
 
     assert(lock.owns_lock());
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// thread shutdown
-  //////////////////////////////////////////////////////////////////////////////
-
-  const auto it = std::find_if(
-    std::begin(pool_), std::end(pool_),
-    [this_id = std::this_thread::get_id()](const auto& thread) noexcept {
-      return thread.get_id() == this_id; });
-
-  if (it != std::end(pool_)) {
-    try {
-      it->detach();
-    } catch (...) { }
-    irstd::swap_remove(pool_, it);
-  }
-
-  if (State::RUN != state_) {
-    lock.unlock();
-    shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 
