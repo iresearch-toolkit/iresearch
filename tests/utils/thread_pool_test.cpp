@@ -54,7 +54,10 @@ TEST(thread_pool_test, test_run_1task_mt) {
   std::condition_variable cond;
   std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  auto task = [&mutex, &cond]()->void { std::lock_guard<std::mutex> lock(mutex); cond.notify_all(); };
+  auto task = [&mutex, &cond]()->void {
+    std::lock_guard<std::mutex> lock(mutex);
+    cond.notify_all();
+  };
 
   ASSERT_TRUE(pool.run(std::move(task)));
   ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms));
@@ -75,7 +78,7 @@ TEST(thread_pool_test, test_run_3tasks_seq_mt) {
   ASSERT_TRUE(pool.run(std::move(task1)));
   ASSERT_TRUE(pool.run(std::move(task2)));
   ASSERT_TRUE(pool.run(std::move(task3)));
-  ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // wait for all 3 tasks
+  ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 10000ms)); // wait for all 3 tasks
   pool.stop();
 }
 
@@ -132,6 +135,7 @@ TEST(thread_pool_test, test_max_threads_mt) {
   pool.run(std::move(task1));
   pool.run(std::move(task2));
   pool.run(std::move(task3));
+  ASSERT_EQ(3, pool.tasks_pending());
   pool.max_threads(2);
   std::this_thread::sleep_for(100ms); // assume threads start within 100msec
   ASSERT_EQ(2, count); // 2 tasks started
