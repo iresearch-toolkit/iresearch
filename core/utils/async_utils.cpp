@@ -402,23 +402,15 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
 
 bool thread_pool::maybe_spawn_worker() {
   assert(!shared_state_->lock.try_lock()); // lock must be held
-  assert(state_ != State::ABORT);
 
   // create extra thread if all threads are busy and can grow pool
   const size_t pool_size = threads_.load();
 
-  if (!queue_.empty() &&
-      active_ == pool_size && pool_size < max_threads_) {
+  if (!queue_.empty() && active_ == pool_size && pool_size < max_threads_) {
+    std::thread worker(&thread_pool::worker, this, shared_state_);
+    worker.detach();
 
     ++threads_;
-
-    try {
-      std::thread worker(&thread_pool::worker, this, shared_state_);
-      worker.detach();
-    } catch (...) {
-      --threads_;
-      return false;
-    }
 
     return true;
   }

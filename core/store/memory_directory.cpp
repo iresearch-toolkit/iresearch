@@ -534,14 +534,15 @@ bool memory_directory::rename(
   try {
     auto lock = make_lock_guard(mutex);
 
+    // prevent rehashing so we can re-use 'it' to erase an element
+    files_.reserve(files_.size() + 1);
+
     const auto it = files_.find(src);
 
     if (it == files_.end()) {
       return false;
     }
 
-    // prevent rehashing so we can re-use 'it' to erase an element
-    files_.reserve(files_.size() + 1);
     files_[dst] = std::move(it->second);
     files_.erase(it);
 
