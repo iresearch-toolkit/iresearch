@@ -178,7 +178,10 @@ class IRESEARCH_API thread_pool {
     }
   };
 
-  void worker(std::shared_ptr<shared_state> shared_state);
+  void worker(std::shared_ptr<shared_state> shared_state) noexcept;
+  void worker_impl(
+    std::unique_lock<std::mutex>& lock,
+    std::shared_ptr<shared_state> shared_state);
   bool maybe_spawn_worker();
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

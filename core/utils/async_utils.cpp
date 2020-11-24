@@ -371,13 +371,12 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
 
   decltype(queue_) empty;
   {
-    auto& state = *shared_state_;
-    auto lock = make_unique_lock(state.lock);
+    auto lock = make_unique_lock(shared_state_->lock);
 
     // wait for all threads to terminate
     while (threads_.load()) {
-      state.cond.notify_all(); // wake all threads
-      state.cond.wait_for(lock, 100ms);
+      shared_state_->cond.notify_all(); // wake all threads
+      shared_state_->cond.wait_for(lock, 100ms);
     }
 
     queue_.swap(empty);
@@ -457,24 +456,31 @@ size_t thread_pool::threads() const {
   return threads_;
 }
 
-
-void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
+void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
   // hold a reference to 'shared_state_' ensure state is still alive
   if (!worker_name_.empty()) {
     set_thread_name(worker_name_.c_str());
   }
 
-  auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
+  {
+    auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
 
-  auto shutdown = make_finally([this, &lock, shared_state](){
-    --threads_;
-
-    if (State::RUN != state_) {
-      lock.unlock();
-      shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
+    try {
+      worker_impl(lock, shared_state);
+    } catch (...) {
+      // NOOP
     }
-  });
 
+    --threads_;
+  }
+
+  if (State::RUN != state_) {
+    shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
+  }
+}
+
+void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
+                              std::shared_ptr<shared_state> shared_state) {
   lock.lock();
 
   while (State::ABORT != state_ && threads_ <= max_threads_) {
@@ -545,10 +551,10 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) {
         shared_state->cond.wait(lock);
       } else {
         assert(State::RUN != run_state);
-        break; // termination requested
+        return; // termination requested
       }
     } else {
-      break; // too many idle threads
+      return; // too many idle threads
     }
 
     assert(lock.owns_lock());
