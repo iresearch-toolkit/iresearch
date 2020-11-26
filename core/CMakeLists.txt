@@ -61,6 +61,13 @@ else()
   )
 endif()
 
+if (USE_SIMDCOMP)
+  # set SIMD specific sources
+  set(IResearch_core_simd_specific_sources
+    ./store/store_utils_simd.cpp
+  )
+endif()
+
 source_group("analysis" ./analysis/*)
 source_group("document" ./document/*)
 source_group("error" ./error/*)
@@ -131,7 +138,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
-  ./store/store_utils_simd.cpp
+  ${IResearch_core_simd_specific_sources}
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
   ./utils/attribute_store.cpp
@@ -498,7 +505,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
 )
 
 if (USE_SIMDCOMP)
-  list(APPEND IRESEARCH_STATIC _DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
+  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
 endif()
 
 if (MSVC)
