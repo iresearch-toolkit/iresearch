@@ -1405,7 +1405,7 @@ uint64_t index_writer::buffered_docs() const {
   return docs_in_ram;
 }
 
-bool index_writer::consolidate(
+index_writer::consolidation_result index_writer::consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec /*= nullptr*/,
     const merge_writer::flush_progress_t& progress /*= {}*/) {
@@ -1435,18 +1435,18 @@ bool index_writer::consolidate(
     switch (candidates.size()) {
       case 0:
         // nothing to consolidate
-        return true;
+        return { 0, ConsolidationError::OK };
       case 1: {
         const auto* segment = *candidates.begin();
 
         if (!segment) {
           // invalid candidate
-          return false;
+          return { 0, ConsolidationError::FAIL };
         }
 
         if (segment->live_docs_count == segment->docs_count) {
           // no deletes, nothing to consolidate
-          return true;
+          return { 0, ConsolidationError::OK };
         }
       }
     }
@@ -1455,7 +1455,7 @@ bool index_writer::consolidate(
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
       if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
-        return false;
+        return { 0, ConsolidationError::FAIL };
       }
     }
     try {
@@ -1502,7 +1502,7 @@ bool index_writer::consolidate(
         committed_meta->generation(),
         found,
         candidates.size());
-      return false;
+      return { 0, ConsolidationError::FAIL };
     }
   }
 
@@ -1513,6 +1513,8 @@ bool index_writer::consolidate(
 
   // do lock-free merge
 
+  consolidation_result result { candidates.size(),  ConsolidationError::FAIL };
+
   index_meta::index_segment_t consolidation_segment;
   consolidation_segment.meta.codec = codec_; // should use new codec
   consolidation_segment.meta.version = 0; // reset version for new segment
@@ -1520,7 +1522,7 @@ bool index_writer::consolidate(
 
   ref_tracking_directory dir(dir_); // track references for new segment
   merge_writer merger(dir, column_info_, comparator_);
-  merger.reserve(candidates.size());
+  merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
   for (const auto* segment : candidates) {
@@ -1537,7 +1539,8 @@ bool index_writer::consolidate(
 
   // we do not persist segment meta since some removals may come later
   if (!merger.flush(consolidation_segment, progress)) {
-    return false; // nothing to consolidate or consolidation failure
+    // nothing to consolidate or consolidation failure
+    return result;
   }
 
   // commit merge
@@ -1587,10 +1590,12 @@ bool index_writer::consolidate(
               "', not found segment %s in committed state",
               committed_meta->generation(),
               candidate->name.c_str());
-            return false;
+            return result;
           }
         }
       }
+
+      result.error = ConsolidationError::PENDING;
 
       // transaction has been started, we're somewhere in the middle
       auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
@@ -1677,7 +1682,7 @@ bool index_writer::consolidate(
           res.second,
           candidates.size());
 
-        return false;
+        return result;
       }
 
       // handle deletes if something changed
@@ -1692,7 +1697,7 @@ bool index_writer::consolidate(
             run_id,
             consolidation_segment.meta.name.c_str());
 
-          return false;
+          return result;
         }
 
         if (!docs_mask.empty()) {
@@ -1743,7 +1748,8 @@ bool index_writer::consolidate(
     }
   }
 
-  return true;
+  result.error = ConsolidationError::OK;
+  return result;
 }
 
 bool index_writer::import(
