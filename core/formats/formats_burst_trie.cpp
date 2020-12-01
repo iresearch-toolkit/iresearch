@@ -570,7 +570,7 @@ class fst_buffer : public vector_byte_fst {
   /// @class fst_stats
   /// @brief fst builder stats
   ///////////////////////////////////////////////////////////////////////////////
-  struct fst_stats : iresearch::fst_stats {
+  struct fst_stats : irs::fst_stats {
     size_t total_weight_size{};
 
     void operator()(const byte_weight& w) noexcept {
