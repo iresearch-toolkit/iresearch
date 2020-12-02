@@ -154,6 +154,10 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
     return std::distance(pos_, end_);
   }
 
+  bytes_ref buffer() const noexcept {
+    return { buf_.get(), buf_size_ };
+  }
+
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::unique_ptr<byte_type[]> buf_;

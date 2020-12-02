@@ -127,6 +127,7 @@ set(IResearch_core_sources
   ./store/directory.cpp 
   ./store/directory_attributes.cpp
   ./store/directory_cleaner.cpp
+  ./store/async_directory.cpp
   ./store/fs_directory.cpp
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
