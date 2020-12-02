@@ -210,64 +210,63 @@ matrix:
 
     ############################################################################
     # OSX 
-    # (disabled as Travis supports OSX builds for paid plans only)
     ############################################################################
 
-#    ############################################################################
-#    # Debug build, static library
-#    ############################################################################
-#    - os: osx
-#      osx_image: xcode9
-#      compiler: clang
-#      before_install:
-#        - brew update || true;
-#          brew install bison@2.7 || true;
-#      env:
-#        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-#        - BOOST_B2_ARGS="boost.locale.iconv=off"
-#        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
-#
-#    ############################################################################
-#    # Release build, static library
-#    ############################################################################
-#    - os: osx
-#      osx_image: xcode9
-#      compiler: clang
-#      before_install:
-#        - brew update || true;
-#          brew install bison@2.7 || true;
-#      env:
-#        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-#        - BOOST_B2_ARGS="boost.locale.iconv=off"
-#        - BUILD_TYPE="Release" STATIC_LIB="true"
-#
-#    ############################################################################
-#    # Debug build, shared library
-#    ############################################################################
-#    - os: osx
-#      osx_image: xcode9
-#      compiler: clang
-#      before_install:
-#        - brew update || true;
-#          brew install bison@2.7 || true;
-#      env:
-#        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-#        - BOOST_B2_ARGS="boost.locale.iconv=off"
-#        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
-#
-#    ############################################################################
-#    # Release build, shared library
-#    ############################################################################
-#    - os: osx
-#      osx_image: xcode9
-#      compiler: clang
-#      before_install:
-#        - brew update || true;
-#          brew install bison@2.7 || true;
-#      env:
-#        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-#        - BOOST_B2_ARGS="boost.locale.iconv=off"
-#        - BUILD_TYPE="Release"
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison@2.7 || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison@2.7 || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison@2.7 || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison@2.7 || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release"
 
 before_install:
   - eval "${SET_ENV}"
