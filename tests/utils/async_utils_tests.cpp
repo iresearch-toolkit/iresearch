@@ -107,7 +107,7 @@ TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   }
 }
 
-TEST_F(async_utils_tests, DISABLED_test_read_write_mutex_mt) {
+TEST_F(async_utils_tests, test_read_write_mutex_mt) {
   typedef irs::async_utils::read_write_mutex mutex_t;
   typedef irs::async_utils::read_write_mutex::read_mutex r_mutex_t;
   typedef irs::async_utils::read_write_mutex::write_mutex w_mutex_t;
