@@ -2550,9 +2550,8 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
       assert(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        out_cipher_->block_size()
-      );
+        encrypted_output::BUFFER_SIZE,
+        out_cipher_->block_size());
 
       out_ = index_output::make<encrypted_output>(
         std::move(out_),

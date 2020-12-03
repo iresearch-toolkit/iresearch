@@ -177,9 +177,9 @@ class fs_index_output : public buffered_index_output {
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
-    file_utils::handle_t handle(irs::file_utils::open(name, 
-                                                      irs::file_utils::OpenMode::Write,
-                                                      IR_FADVICE_NORMAL));
+    file_utils::handle_t handle(file_utils::open(name,
+                                                 file_utils::OpenMode::Write,
+                                                 IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -197,12 +197,8 @@ class fs_index_output : public buffered_index_output {
       return nullptr;
     }
 
-    const auto buf_size = buffer_size(handle.get());
-
     try {
-      return fs_index_output::make<fs_index_output>(
-        std::move(handle),
-        buf_size);
+      return fs_index_output::make<fs_index_output>(std::move(handle));
     } catch(...) {
     }
 
@@ -234,11 +230,12 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  fs_index_output(file_utils::handle_t&& handle, size_t buf_size) noexcept
-    : buffered_index_output(buf_size),
+  fs_index_output(file_utils::handle_t&& handle) noexcept
+    : buffered_index_output(buf_, sizeof buf_),
       handle(std::move(handle)) {
   }
 
+  byte_type buf_[1024];
   file_utils::handle_t handle;
   crc32c crc;
 }; // fs_index_output

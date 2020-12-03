@@ -112,17 +112,18 @@ IRESEARCH_API bool decrypt(
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
  public:
+  static const size_t BUFFER_SIZE = 1024;
+
   encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t buf_size
+    size_t num_buffers
   );
 
   encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
-    size_t buf_size
-  );
+    size_t num_buffers);
 
   virtual void flush() override final;
 

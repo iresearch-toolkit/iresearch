@@ -152,10 +152,10 @@ bool decrypt(
 encrypted_output::encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t buf_size)
+    size_t num_buffers)
   : out_(&out),
     cipher_(&cipher),
-    buf_size_(cipher.block_size() * std::max(size_t(1), buf_size)),
+    buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
     start_(0),
     pos_(buf_.get()),
@@ -166,8 +166,8 @@ encrypted_output::encrypted_output(
 encrypted_output::encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
-    size_t buf_size)
-  : encrypted_output(*out, cipher, buf_size) {
+    size_t num_buffers)
+  : encrypted_output(*out, cipher, num_buffers) {
   managed_out_ = std::move(out);
 }
 

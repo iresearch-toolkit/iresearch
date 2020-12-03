@@ -978,9 +978,8 @@ void field_writer::prepare(const irs::flush_state& state) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        index_out_cipher_->block_size()
-      );
+        encrypted_output::BUFFER_SIZE,
+        index_out_cipher_->block_size());
 
       index_out_ = index_output::make<encrypted_output>(
         std::move(index_out_),
