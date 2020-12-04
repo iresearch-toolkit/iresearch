@@ -398,7 +398,7 @@ class fs_index_input : public buffered_index_input {
   fs_index_input(const fs_index_input& rhs) noexcept
     : handle_(rhs.handle_),
       pool_size_(rhs.pool_size_),
-      pos_(rhs.pos_) {
+      pos_(rhs.file_pointer()) {
     buffered_index_input::reset(buf_, sizeof buf_, pos_);
   }
 
