@@ -108,17 +108,19 @@ IRESEARCH_API bool decrypt(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+///// @brief reasonable default value for a buffer serving encryption
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t DEFAULT_ENCRYPTION_BUFFER_SIZE = 1024;
+
+////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
  public:
-  static const size_t BUFFER_SIZE = 1024;
-
   encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t num_buffers
-  );
+    size_t num_buffers);
 
   encrypted_output(
     index_output::ptr&& out,
@@ -177,8 +179,6 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
 
 class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopyable {
  public:
-  static const size_t BUFFER_SIZE = 1024;
-
   encrypted_input(
     index_input& in,
     encryption::stream& cipher,

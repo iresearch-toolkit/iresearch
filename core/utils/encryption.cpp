@@ -328,7 +328,7 @@ int64_t encrypted_input::checksum(size_t offset) const {
   });
 
   crc32c crc;
-  byte_type buf[BUFFER_SIZE];
+  byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
 
   for (auto pos = begin; pos < end; ) {
     const auto to_read = (std::min)(end - pos, sizeof buf);
