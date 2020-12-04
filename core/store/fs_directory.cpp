@@ -39,19 +39,6 @@
 
 namespace {
 
-inline size_t buffer_size(void* file) noexcept {
-  UNUSED(file);
-  return 1024;
-//  auto block_size = irs::file_utils::block_size(file_no(file));
-//
-//  if (block_size < 0) {
-//    // fallback to default value
-//    block_size = 1024;
-//  }
-//
-//  return block_size;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix fadvice
 //////////////////////////////////////////////////////////////////////////////
