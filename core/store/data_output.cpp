@@ -53,15 +53,6 @@ output_buf::int_type output_buf::overflow(int_type c) {
 // --SECTION--                              buffered_index_output implementation
 // -----------------------------------------------------------------------------
 
-buffered_index_output::buffered_index_output(
-    byte_type* buf, size_t buf_size) noexcept
-  : buf_(buf),
-    pos_(buf),
-    end_(pos_ + buf_size),
-    start_(0),
-    buf_size_(buf_size) {
-}
-
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
     index_output::write_int(value);

@@ -231,8 +231,8 @@ class fs_index_output : public buffered_index_output {
 
  private:
   fs_index_output(file_utils::handle_t&& handle) noexcept
-    : buffered_index_output(buf_, sizeof buf_),
-      handle(std::move(handle)) {
+    : handle(std::move(handle)) {
+    buffered_index_output::reset(buf_, sizeof buf_);
   }
 
   byte_type buf_[1024];

@@ -405,8 +405,9 @@ TEST_P(encryption_test_case, encrypted_io) {
 TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   class buffered_output : public irs::buffered_index_output {
    public:
-    buffered_output(index_output& out)
-      : buffered_index_output(buf_, sizeof buf_), out_(&out) {
+    buffered_output(index_output& out) noexcept
+      : out_(&out) {
+      buffered_index_output::reset(buf_, sizeof buf_);
     }
 
     virtual int64_t checksum() const override {
