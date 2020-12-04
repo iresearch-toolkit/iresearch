@@ -2671,9 +2671,8 @@ bool meta_reader::prepare(
       assert(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
-        in_cipher_->block_size()
-      );
+        encrypted_input::BUFFER_SIZE,
+        in_cipher_->block_size());
 
       in_ = memory::make_unique<encrypted_input>(
         std::move(in_),

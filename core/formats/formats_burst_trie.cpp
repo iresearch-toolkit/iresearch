@@ -2733,7 +2733,7 @@ void field_reader::prepare(
       assert(index_in_cipher && index_in_cipher->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        encrypted_input::BUFFER_SIZE,
         index_in_cipher->block_size());
 
       index_in = memory::make_unique<encrypted_input>(

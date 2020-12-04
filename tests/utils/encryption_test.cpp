@@ -436,8 +436,9 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
   class buffered_input final : public irs::buffered_index_input {
    public:
-    buffered_input(index_input& in)
+    buffered_input(index_input& in) noexcept
       : in_(&in) {
+      irs::buffered_index_input::reset(buf_, sizeof buf_, 0);
     }
 
     const index_input& stream() {
@@ -477,6 +478,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     }
 
    private:
+    irs::byte_type buf_[1024];
     index_input* in_;
     size_t last_read_size_{};
   };
@@ -517,15 +519,15 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   {
     irs::memory_index_input in(out.file);
     buffered_input buf_in(in);
-    irs::encrypted_input enc_in(buf_in, *cipher, buffered_input::DEFAULT_BUFFER_SIZE/cipher->block_size());
+    irs::encrypted_input enc_in(buf_in, *cipher, irs::encrypted_input::BUFFER_SIZE/cipher->block_size());
 
-    for (size_t i = 0; i < 2*irs::encrypted_output::BUFFER_SIZE+1; ++i) {
+    for (size_t i = 0; i < 2*irs::encrypted_input::BUFFER_SIZE+1; ++i) {
       ASSERT_EQ(i, enc_in.read_vint());
       ASSERT_EQ(0, buf_in.remain()); // ensure no buffering
       if (buf_in.file_pointer() <= 3*irs::encrypted_output::BUFFER_SIZE) {
-        ASSERT_EQ(size_t(irs::encrypted_output::BUFFER_SIZE), buf_in.last_read_size());
+        ASSERT_EQ(size_t(irs::encrypted_input::BUFFER_SIZE), buf_in.last_read_size());
       } else {
-        ASSERT_EQ(buf_in.length() - 3*irs::encrypted_output::BUFFER_SIZE, buf_in.last_read_size());
+        ASSERT_EQ(buf_in.length() - 3*irs::encrypted_input::BUFFER_SIZE, buf_in.last_read_size());
       }
     }
   }

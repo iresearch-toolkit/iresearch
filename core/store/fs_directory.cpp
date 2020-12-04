@@ -249,11 +249,16 @@ class fs_index_input : public buffered_index_input {
   using buffered_index_input::read_internal;
 
   virtual int64_t checksum(size_t offset) const override final {
+    // "read_internal" modifies pos_
+    auto restore_position = make_finally([pos = this->pos_, this]() noexcept {
+      const_cast<fs_index_input*>(this)->pos_ = pos;
+    });
+
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
-    byte_type buf[DEFAULT_BUFFER_SIZE];
+    byte_type buf[sizeof buf_];
 
     for (auto pos = begin; pos < end; ) {
       const auto to_read = (std::min)(end - pos, sizeof buf);
@@ -289,7 +294,6 @@ class fs_index_input : public buffered_index_input {
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
 #endif
 
-
       return nullptr;
     }
 
@@ -314,12 +318,9 @@ class fs_index_input : public buffered_index_input {
 
     handle->size = size;
 
-    const auto buf_size = ::buffer_size(handle->handle.get());
-
     try {
       return ptr(new fs_index_input(
         std::move(handle),
-        buf_size,
         pool_size));
     } catch(...) {
     }
@@ -334,7 +335,7 @@ class fs_index_input : public buffered_index_input {
   virtual ptr reopen() const override;
 
  protected:
-  virtual void seek_internal(size_t pos) override {
+  virtual void seek_internal(size_t pos) override final {
     if (pos >= handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
@@ -344,7 +345,7 @@ class fs_index_input : public buffered_index_input {
     pos_ = pos;
   }
 
-  virtual size_t read_internal(byte_type* b, size_t len) override {
+  virtual size_t read_internal(byte_type* b, size_t len) override final {
     assert(b);
     assert(handle_->handle);
 
@@ -399,17 +400,24 @@ class fs_index_input : public buffered_index_input {
 
   fs_index_input(
       file_handle::ptr&& handle,
-      size_t buffer_size,
       size_t pool_size) noexcept
-    : buffered_index_input(buffer_size),
-      handle_(std::move(handle)),
+    : handle_(std::move(handle)),
       pool_size_(pool_size),
       pos_(0) {
     assert(handle_);
+    buffered_index_input::reset(buf_, sizeof buf_, 0);
+  }
+
+  fs_index_input(const fs_index_input& rhs) noexcept
+    : handle_(rhs.handle_),
+      pool_size_(rhs.pool_size_),
+      pos_(rhs.pos_) {
+    buffered_index_input::reset(buf_, sizeof buf_, pos_);
   }
 
   fs_index_input& operator=(const fs_index_input&) = delete;
 
+  byte_type buf_[1024];
   file_handle::ptr handle_; // shared file handle
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
   size_t pos_; // current input stream position
@@ -459,9 +467,7 @@ index_input::ptr pooled_fs_index_input::reopen() const {
   return ptr;
 }
 
-fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
-  const file_handle& src
-) const {
+fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle& src) const {
   // reserve a new handle from the pool
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
