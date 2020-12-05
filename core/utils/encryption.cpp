@@ -293,7 +293,7 @@ encrypted_input::encrypted_input(
     cipher_(&cipher),
     start_(in_->file_pointer()),
     length_(in_->length() - start_ - padding) {
-  assert(cipher.block_size() && buffer_size());
+  assert(cipher.block_size() && buf_size_);
   assert(in_ && in_->length() >= in_->file_pointer() + padding);
   buffered_index_input::reset(buf_.get(), buf_size_, 0);
 }

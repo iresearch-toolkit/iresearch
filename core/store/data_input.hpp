@@ -181,8 +181,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual uint64_t read_vlong() override final;
 
-  size_t buffer_size() const noexcept { return buf_size_; }
-
  protected:
   buffered_index_input() = default;
 

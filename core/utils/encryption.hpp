@@ -201,6 +201,8 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
 
   virtual int64_t checksum(size_t offset) const override final;
 
+  size_t buffer_size() const noexcept { return buf_size_; }
+
   const index_input& stream() const noexcept {
     return *in_;
   }
