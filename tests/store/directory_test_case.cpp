@@ -116,7 +116,8 @@ class directory_test_case : public tests::directory_test_case_base {
 
       ASSERT_TRUE(dir.exists(exists, name) && exists);
       uint64_t length;
-      EXPECT_TRUE(dir.length(length, name) && length == it->size());
+      EXPECT_TRUE(dir.length(length, name));
+      EXPECT_EQ(length, it->size());
 
       auto file = dir.open(name, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!file);
@@ -1235,6 +1236,7 @@ INSTANTIATE_TEST_CASE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(
+    &tests::async_directory,
     &tests::memory_directory,
     &tests::fs_directory,
     &tests::mmap_directory

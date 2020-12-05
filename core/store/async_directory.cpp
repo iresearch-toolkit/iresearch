@@ -108,8 +108,7 @@ class async_index_output : public buffered_index_output {
       throw io_error();
     }
 
-    io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()),
-                              b, len, this->file_pointer(), 0);
+    io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len, buffer_offset(), 0);
     sqe->user_data = reinterpret_cast<uint64_t>(b);
 
     int ret = io_uring_submit(ring_);

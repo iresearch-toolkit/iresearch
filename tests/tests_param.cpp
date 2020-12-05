@@ -23,11 +23,32 @@
 
 #include "tests_shared.hpp"
 #include "tests_param.hpp"
+#include "store/async_directory.hpp"
 #include "store/fs_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
 
 namespace tests {
+
+std::pair<std::shared_ptr<irs::directory>, std::string> async_directory(const test_base* test) {
+  std::shared_ptr<irs::directory> impl;
+
+  if (test) {
+    auto dir = test->test_dir();
+
+    dir /= "index";
+    dir.mkdir(false);
+
+    impl = std::shared_ptr<irs::async_directory>(
+      new irs::async_directory(dir.utf8()),
+      [dir](irs::fs_directory* p) {
+        dir.remove();
+        delete p;
+    });
+  }
+
+  return std::make_pair(impl, "async");
+}
 
 std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*) {
   return std::make_pair(

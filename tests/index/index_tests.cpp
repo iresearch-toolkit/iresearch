@@ -13682,6 +13682,7 @@ INSTANTIATE_TEST_CASE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
+      &tests::async_directory,
       tests::memory_directory,
       &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>

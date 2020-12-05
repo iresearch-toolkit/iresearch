@@ -143,9 +143,11 @@ size_t buffered_index_output::file_pointer() const {
 void buffered_index_output::flush() {
   assert(buf_ <= pos_);
   const auto size = size_t(std::distance(buf_, pos_));
-  flush_buffer(buf_, size);
-  start_ += size;
-  pos_ = buf_;
+  if (size) {
+    flush_buffer(buf_, size);
+    start_ += size;
+    pos_ = buf_;
+  }
 }
 
 void buffered_index_output::close() {

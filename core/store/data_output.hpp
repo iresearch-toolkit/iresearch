@@ -148,12 +148,13 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
     pos_ = buf;
     end_ = buf + size;
     buf_size_ = size;
-    start_ = 0;
   }
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
   byte_type* buffer() const noexcept { return buf_; }
+
+  size_t buffer_offset() const noexcept { return start_; }
 
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {

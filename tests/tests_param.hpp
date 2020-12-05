@@ -96,6 +96,7 @@ class rot13_encryption final : public irs::ctr_encryption {
 // -----------------------------------------------------------------------------
 
 typedef std::pair<std::shared_ptr<irs::directory>, std::string>(*dir_factory_f)(const test_base*);
+std::pair<std::shared_ptr<irs::directory>, std::string> async_directory(const test_base*);
 std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*);
 std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test);
 std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test);
