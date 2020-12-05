@@ -25,7 +25,8 @@
 
 #include "liburing.h"
 
-#include "mmap_directory.hpp"
+#include "store/mmap_directory.hpp"
+#include "utils/object_pool.hpp"
 
 namespace iresearch {
 
@@ -35,11 +36,22 @@ namespace iresearch {
 class IRESEARCH_API async_directory : public mmap_directory {
  public:
   explicit async_directory(const std::string& dir);
+  virtual ~async_directory();
 
-  virtual index_output::ptr create(
-    const std::string& name) const noexcept override final;
+  virtual index_output::ptr create(const std::string& name) noexcept override;
 
  private:
+  static constexpr size_t NUM_PAGES = 128;
+
+  struct buffer_deleter {
+    void operator()(byte_type* b) const noexcept {
+      ::free(b);
+    }
+  };
+
+  mutable concurrent_stack<byte_type*> free_pages_;
+  decltype(free_pages_)::node_type pages_[NUM_PAGES];
+  std::unique_ptr<byte_type, buffer_deleter> buffer_;
   mutable io_uring ring_;
 }; // async_directory
 
