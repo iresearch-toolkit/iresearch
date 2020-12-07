@@ -110,11 +110,11 @@ class noop_compressor final : compression::compressor {
     return ptr(ptr(), &INSTANCE);
   }
 
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) {
+  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) override {
     return bytes_ref(in, size);
   }
 
-  virtual void flush(data_output& /*out*/) { }
+  virtual void flush(data_output& /*out*/) override { }
 
  private:
   noop_compressor() = default;
