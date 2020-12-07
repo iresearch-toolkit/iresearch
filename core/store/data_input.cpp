@@ -157,6 +157,7 @@ size_t buffered_index_input::refill() {
     throw eof_error(); // read past eof
   }
 
+  assert(buf_);
   begin_ = buf_;
   end_ = begin_ + read_internal(buf_, data_size);
   start_ = data_start;
