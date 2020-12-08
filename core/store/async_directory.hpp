@@ -39,6 +39,7 @@ class IRESEARCH_API async_directory : public mmap_directory {
   virtual ~async_directory();
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
+//  virtual void sync(const std::string& name) override;
 
  private:
   static constexpr size_t NUM_PAGES = 128;

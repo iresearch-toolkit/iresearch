@@ -57,7 +57,7 @@ class crc32c {
 
  private:
   FORCE_INLINE const uint8_t* process_block_32(const void* buffer_begin, const void* buffer_end) noexcept {
-    const size_t BLOCK_SIZE = 8*sizeof(uint32_t);
+    constexpr size_t BLOCK_SIZE = 8*sizeof(uint32_t);
 
     const auto k = std::distance(
       reinterpret_cast<const uint8_t*>(buffer_begin),
