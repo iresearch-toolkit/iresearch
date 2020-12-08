@@ -159,6 +159,14 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return std::move(managed_out_);
   }
 
+  encrypted_output& operator=(byte_type b) {
+    write_byte(b);
+    return *this;
+  }
+  encrypted_output& operator*() noexcept { return *this; }
+  encrypted_output& operator++() noexcept { return *this; }
+  encrypted_output& operator++(int) noexcept { return *this; }
+
  private:
   /// @returns number of remaining bytes in the buffer
   FORCE_INLINE size_t remain() const {

@@ -142,6 +142,14 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
 
   virtual void write_long(int64_t v) override final;
 
+  buffered_index_output& operator=(byte_type b) {
+    write_byte(b);
+    return *this;
+  }
+  buffered_index_output& operator*() noexcept { return *this; }
+  buffered_index_output& operator++() noexcept { return *this; }
+  buffered_index_output& operator++(int) noexcept { return *this; }
+
  protected:
   void reset(byte_type* buf, size_t size) noexcept {
     buf_ = buf;
