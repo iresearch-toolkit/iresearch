@@ -656,6 +656,18 @@ TEST_P(directory_test_case, read_multiple_streams) {
 TEST_P(directory_test_case, string_read_write) {
   using namespace iresearch;
 
+  auto u32crc = [](irs::crc32c& crc, uint32_t v) {
+    irs::bstring tmp;
+    auto it = std::back_inserter(tmp);
+    irs::vwrite<uint32_t>(it, v);
+    crc.process_bytes(tmp.c_str(), tmp.size());
+  };
+
+  auto strcrc = [u32crc](irs::crc32c& crc, const auto& str) {
+    u32crc(crc, static_cast<uint32_t>(str.size()));
+    crc.process_bytes(str.c_str(), str.size());
+  };
+
   // strings are smaller than internal buffer size
   {
     // size=50
@@ -715,12 +727,16 @@ TEST_P(directory_test_case, string_read_write) {
 
     // write strings
     {
+      irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
       out->write_vint(strings.size());
+      u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
+        strcrc(crc, str);
       }
+      ASSERT_EQ(crc.checksum(), out->checksum());
     }
     
     // read strings
@@ -846,12 +862,16 @@ TEST_P(directory_test_case, string_read_write) {
 
     // write strings
     {
+      irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
       out->write_vint(strings.size());
+      u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
+        strcrc(crc, str);
       }
+      ASSERT_EQ(crc.checksum(), out->checksum());
     }
   
     // read strings
@@ -977,12 +997,16 @@ TEST_P(directory_test_case, string_read_write) {
 
     // write strings
     {
+      irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
       out->write_vint(strings.size());
+      u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
         write_string(*out, str.c_str(), str.size());
+        strcrc(crc, str);
       }
+      ASSERT_EQ(crc.checksum(), out->checksum());
     }
   
     // read strings
