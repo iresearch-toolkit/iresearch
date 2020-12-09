@@ -53,7 +53,7 @@ using namespace iresearch;
 class directory_test_case : public tests::directory_test_case_base {
  public:
   static void smoke_store(directory& dir) {
-    std::vector<std::string> names{
+    const std::string names[]{
       "spM42fEO88eDt2","jNIvCMksYwpoxN","Re5eZWCkQexrZn","jjj003oxVAIycv","N9IJuRjFSlO8Pa","OPGG6Ic3JYJyVY","ZDGVji8xtjh9zI","DvBDXbjKgIfPIk",
       "bZyCbyByXnGvlL","pvjGDbNcZGDmQ2","J7by8eYg0ZGbYw","6UZ856mrVW9DeD","Ny6bZIbGQ43LSU","oaYAsO0tXnNBkR","Fr97cjyQoTs9Pf","7rLKaQN4REFIgn",
       "EcFMetqynwG87T","oshFa26WK3gGSl","8keZ9MLvnkec8Q","HuiOGpLtqn79GP","Qnlj0JiQjBR3YW","k64uvviemlfM8p","32X34QY6JaCH3L","NcAU3Aqnn87LJW",
@@ -76,8 +76,11 @@ class directory_test_case : public tests::directory_test_case_base {
     };
 
     // Write contents
-    auto it = names.end();
+    irs::byte_type b = 1;
+    auto it = std::end(names);
     for (const auto& name : names) {
+      irs::byte_type buf[64*1024];
+      std::memset(buf, b, sizeof buf);
       --it;
       irs::crc32c crc;
 
@@ -85,12 +88,16 @@ class directory_test_case : public tests::directory_test_case_base {
       ASSERT_FALSE(!file);
       EXPECT_EQ(0, file->file_pointer());
 
-      file->write_bytes(reinterpret_cast<const byte_type*>(it->c_str()), static_cast<uint32_t>(it->size()));
-      crc.process_bytes(it->c_str(), it->size());
-
-      // check file_pointer
+      file->write_bytes(reinterpret_cast<const byte_type*>(it->c_str()), it->size());
       EXPECT_EQ(it->size(), file->file_pointer());
-      // check checksum
+      crc.process_bytes(it->c_str(), it->size());
+      file->write_bytes(buf, sizeof buf);
+      EXPECT_EQ(it->size() + sizeof buf, file->file_pointer());
+      crc.process_bytes(buf, sizeof buf);
+      file->write_byte(++b);
+      crc.process_byte(b);
+      EXPECT_EQ(it->size() + sizeof buf + 1, file->file_pointer());
+
       EXPECT_EQ(crc.checksum(), file->checksum());
 
       file->flush();
@@ -103,69 +110,102 @@ class directory_test_case : public tests::directory_test_case_base {
       return true;
     };
     ASSERT_TRUE(dir.visit(list_files));
-    EXPECT_EQ(files.size(), names.size());
+    EXPECT_EQ(files.size(), IRESEARCH_COUNTOF(names));
 
     // Read contents
-    it = names.end();
+    it = std::end(names);
     bstring buf;
 
+    b = 1;
     for (const auto& name : names) {
       --it;
       irs::crc32c crc;
       bool exists;
 
+      irs::byte_type readbuf[64*1024];
+      const auto expected_length = it->size() + sizeof readbuf + 1;
+
       ASSERT_TRUE(dir.exists(exists, name) && exists);
       uint64_t length;
       EXPECT_TRUE(dir.length(length, name));
-      EXPECT_EQ(length, it->size());
+      EXPECT_EQ(expected_length, length);
 
       auto file = dir.open(name, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!file);
       EXPECT_FALSE(file->eof());
       EXPECT_EQ(0, file->file_pointer());
-      EXPECT_EQ(file->length(), it->size());
+      EXPECT_EQ(expected_length, file->length());
 
       auto dup_file = file->dup();
       ASSERT_FALSE(!dup_file);
       ASSERT_EQ(0, dup_file->file_pointer());
       EXPECT_FALSE(dup_file->eof());
-      EXPECT_EQ(dup_file->length(), it->size());
+      EXPECT_EQ(expected_length, dup_file->length());
       auto reopened_file = file->reopen();
       ASSERT_FALSE(!reopened_file);
       ASSERT_EQ(0, reopened_file->file_pointer());
       EXPECT_FALSE(reopened_file->eof());
-      EXPECT_EQ(reopened_file->length(), it->size());
+      EXPECT_EQ(expected_length, reopened_file->length());
 
       const auto checksum = file->checksum(file->length());
 
-      buf.resize(it->size());
-      const auto read = file->read_bytes(&(buf[0]), it->size());
-      ASSERT_EQ(read, it->size());
-      ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
-
       {
-        buf.clear();
         buf.resize(it->size());
-        const auto read = dup_file->read_bytes(&(buf[0]), it->size());
+        auto read = file->read_bytes(&(buf[0]), it->size());
         ASSERT_EQ(read, it->size());
         ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+        read = file->read_bytes(readbuf, sizeof readbuf);
+        ASSERT_EQ(read, sizeof readbuf);
+        ASSERT_TRUE(
+          std::all_of(std::begin(readbuf), std::end(readbuf),
+                      [b](auto v) { return b == v; })
+        );
+        ASSERT_EQ(b+1, file->read_byte());
       }
 
       {
         buf.clear();
         buf.resize(it->size());
-        const auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+        auto read = dup_file->read_bytes(&(buf[0]), it->size());
         ASSERT_EQ(read, it->size());
         ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+        read = dup_file->read_bytes(readbuf, sizeof readbuf);
+        ASSERT_EQ(read, sizeof readbuf);
+        ASSERT_TRUE(
+          std::all_of(std::begin(readbuf), std::end(readbuf),
+                      [b](auto v) { return b == v; })
+        );
+        ASSERT_EQ(b+1, dup_file->read_byte());
+      }
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+        read = reopened_file->read_bytes(readbuf, sizeof readbuf);
+        ASSERT_EQ(read, sizeof readbuf);
+        ASSERT_TRUE(
+          std::all_of(std::begin(readbuf), std::end(readbuf),
+                      [b](auto v) { return b == v; })
+        );
+        ASSERT_EQ(b+1, reopened_file->read_byte());
       }
 
       crc.process_bytes(buf.c_str(), buf.size());
+      crc.process_bytes(readbuf, sizeof readbuf);
+      crc.process_byte(b+1);
+      ++b;
 
       EXPECT_TRUE(file->eof());
       // check checksum
       EXPECT_EQ(crc.checksum(), checksum);
       // check that this is the end of the file
-      EXPECT_EQ(file->length(), file->file_pointer());
+      EXPECT_EQ(expected_length, file->file_pointer());
     }
 
     for (const auto& name : names) {
