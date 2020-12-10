@@ -1036,8 +1036,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), (int32_t)(data_utf8_ref.size()))
-  );
+    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // tokenise the unicode data
