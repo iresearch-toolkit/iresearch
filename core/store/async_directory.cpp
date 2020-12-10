@@ -33,9 +33,7 @@
 #include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
 
-namespace {
-
-using namespace irs;
+namespace iresearch {
 
 constexpr size_t PAGE_SIZE = 4096;
 constexpr size_t PAGE_ALIGNEMNT = 4096;
@@ -44,52 +42,33 @@ constexpr size_t QUEUE_SIZE = 1024;
 //////////////////////////////////////////////////////////////////////////////
 /// @class async_index_output
 //////////////////////////////////////////////////////////////////////////////
-class async_index_output : public buffered_index_output {
+class async_index_output final : public index_output {
  public:
   DEFINE_FACTORY_INLINE(async_index_output);
 
-  static index_output::ptr open(const file_path_t name, io_uring& ring, concurrent_stack<byte_type*>& pages) noexcept {
-    assert(name);
+  static index_output::ptr open(
+    const file_path_t name,
+    async_directory& dir) noexcept;
 
-    file_utils::handle_t handle(
-      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
-
-    if (nullptr == handle) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
-
-#ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
-#else
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
-#endif
-
-      return nullptr;
-    }
-
-    auto* buf = pages.pop();
-
-    if (!buf) {
-      // FIXME
-      return nullptr;
-    }
-
-    try {
-      return async_index_output::make<async_index_output>(
-        ring, std::move(handle), buf, pages);
-    } catch(...) {
-    }
-
-    return nullptr;
+  virtual void write_int(int32_t value) override;
+  virtual void write_long(int64_t value) override;
+  virtual void write_vint(uint32_t v) override;
+  virtual void write_vlong(uint64_t v) override;
+  virtual void write_byte(byte_type b) override;
+  virtual void write_bytes(const byte_type* b, size_t length) override;
+  virtual size_t file_pointer() const override {
+    assert(buf_->value <= pos_);
+    return start_ + size_t(std::distance(buf_->value, pos_));
   }
+  virtual void flush() override;
 
   virtual void close() override {
-    buffered_index_output::close();
-    pages_->push(*buf_);
-    handle_.reset(nullptr);
+    auto reset = irs::make_finally([this](){
+      dir_->free_pages_.push(*buf_);
+      handle_.reset(nullptr);
+    });
+
+    flush();
   }
 
   virtual int64_t checksum() const override {
@@ -97,106 +76,200 @@ class async_index_output : public buffered_index_output {
     return crc_.checksum();
   }
 
-
-  virtual void write_bytes(const byte_type* b, size_t length) override;
-
- protected:
-  virtual void flush_buffer(const byte_type* b, size_t len) override;
-
  private:
   using node_type = concurrent_stack<byte_type*>::node_type;
 
   async_index_output(
-      io_uring& ring, file_utils::handle_t&& handle,
-      concurrent_stack<byte_type*>::node_type* buf,
-      concurrent_stack<byte_type*>& pages) noexcept
-    : ring_(&ring),
+      async_directory& dir,
+      file_utils::handle_t&& handle,
+      concurrent_stack<byte_type*>::node_type* buf) noexcept
+    : dir_(&dir),
       buf_(buf),
-      pages_(&pages),
       handle_(std::move(handle)) {
-    buffered_index_output::reset(buf->value, PAGE_SIZE);
+    reset(buf->value);
   }
 
-  io_uring* ring_;
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(pos_, end_);
+  }
+
+  void reset(byte_type* buf) {
+    pos_ = buf;
+    end_ = buf + PAGE_SIZE;
+  }
+
+  async_directory* dir_;
   node_type* buf_;
-  concurrent_stack<byte_type*>* pages_;
   file_utils::handle_t handle_;
   crc32c crc_;
+
+  byte_type* pos_{ }; // current position in the buffer
+  byte_type* end_{ }; // end of the valid bytes in the buffer
+  size_t start_{}; // position of the buffer in file
 }; // async_index_output
 
+/*static*/ index_output::ptr async_index_output::open(
+    const file_path_t name, async_directory& dir) noexcept {
+  assert(name);
 
-void async_index_output::flush_buffer(const byte_type* b, size_t len) {
-  assert(handle_);
+  file_utils::handle_t handle(
+    file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
-  io_uring_sqe* sqe = io_uring_get_sqe(ring_);
+  if (nullptr == handle) {
+    typedef std::remove_pointer<file_path_t>::type char_t;
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string path;
 
-  if (!sqe) {
-    throw io_error("failed to get sqe");
+    irs::locale_utils::append_external<char_t>(path, name, locale);
+
+#ifdef _WIN32
+    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
+#else
+    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+#endif
+
+    return nullptr;
   }
 
-  io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len, buffer_offset(), 0);
-  sqe->user_data = reinterpret_cast<uint64_t>(b);
+  auto* buf = dir.get_page();
 
-  int ret = io_uring_submit(ring_);
-  if (ret < 0) {
-    throw io_error(string_utils::to_string(
-      "failed to submit write request of '" IR_SIZE_T_SPECIFIER "' bytes, error %d", len, -ret));
+  if (!buf) {
+    // FIXME
+    return nullptr;
   }
 
-  crc_.process_bytes(b, len);
-
-  io_uring_cqe* cqe;
-  ret = io_uring_wait_cqe(ring_, &cqe);
-
-  if (ret < 0) {
-    // FIXME get another page from stack,
-    //   if no pages are available either allocate and
-    //   register another chunk or wait for completion
-
-    throw io_error(string_utils::to_string(
-      "failed to retrieve a cqe, error %d", -ret));
+  try {
+    return index_output::make<async_index_output>(dir, std::move(handle), buf);
+  } catch(...) {
   }
 
-  if (cqe->res < 0) {
-    throw io_error(string_utils::to_string(
-      "async i/o operation failed, error %d", -cqe->res));
-  }
-
-  static_assert(sizeof(byte_type*) == sizeof(decltype(cqe->user_data)));
-  auto* buf = reinterpret_cast<byte_type*>(cqe->user_data);
-  buf_->value = buf;
-  buffered_index_output::reset(buf, PAGE_SIZE);
-  io_uring_cqe_seen(ring_, cqe);
+  return nullptr;
 }
 
+void async_index_output::write_int(int32_t value) {
+  if (remain() < sizeof(uint32_t)) {
+    irs::write<uint32_t>(*this, value);
+  } else {
+    irs::write<uint32_t>(pos_, value);
+  }
+}
+
+void async_index_output::write_long(int64_t value) {
+  if (remain() < sizeof(uint64_t)) {
+    irs::write<uint64_t>(*this, value);
+  } else {
+    irs::write<uint64_t>(pos_, value);
+  }
+}
+
+void async_index_output::write_vint(uint32_t v) {
+  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
+    irs::vwrite<uint32_t>(*this, v);
+  } else {
+    irs::vwrite<uint32_t>(pos_, v);
+  }
+}
+
+void async_index_output::write_vlong(uint64_t v) {
+  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
+    irs::vwrite<uint64_t>(*this, v);
+  } else {
+    irs::vwrite<uint64_t>(pos_, v);
+  }
+}
+
+void async_index_output::write_byte(byte_type b) {
+  if (pos_ >= end_) {
+    flush();
+  }
+
+  *pos_++ = b;
+}
+
+void async_index_output::flush() {
+  assert(handle_);
+
+  auto* buf = buf_->value;
+  const auto size = size_t(std::distance(buf, pos_));
+
+  if (!size) {
+    return;
+  }
+
+  io_uring_sqe* sqe = dir_->get_sqe();
+
+  io_uring_prep_write_fixed(
+    sqe, handle_cast(handle_.get()),
+    buf, size, start_, 0);
+  sqe->user_data = reinterpret_cast<uint64_t>(buf_);
+
+  dir_->submit();
+
+  start_ += size;
+  crc_.process_bytes(buf_->value, size);
+
+  buf_ = dir_->get_buffer();
+
+  assert(buf_);
+  reset(buf_->value);
+}
 
 void async_index_output::write_bytes(const byte_type* b, size_t length) {
   assert(pos_ <= end_);
   auto left = size_t(std::distance(pos_, end_));
 
-  // is there enough space in the buffer?
   if (left > length) {
-    // we add the data to the end of the buffer
     std::memcpy(pos_, b, length);
     pos_ += length;
   } else {
-    // we fill/flush the buffer (until the input is written)
-    size_t slice_pos_ = 0; // pos_ition in the input data
+    auto* buf = buf_->value;
 
-    while (slice_pos_ < length) {
-      auto slice_len = std::min(length - slice_pos_, left);
-
-      std::memcpy(pos_, b + slice_pos_, slice_len);
-      slice_pos_ += slice_len;
-      pos_ += slice_len;
-
-      // if the buffer is full, flush it
-      left -= slice_len;
-      if (pos_ == end_) {
-        flush();
-        left = buf_size_;
-      }
+    std::memcpy(pos_, b, left);
+    pos_ += left;
+    {
+      auto* buf = buf_->value;
+      io_uring_sqe* sqe = dir_->get_sqe();
+      io_uring_prep_write_fixed(
+        sqe, handle_cast(handle_.get()),
+        buf, PAGE_SIZE, start_, 0);
+      sqe->user_data = reinterpret_cast<uint64_t>(buf_);
     }
+    length -= left;
+    b += left;
+    start_ += PAGE_SIZE;
+
+    auto* borig = b;
+    const size_t count = length / PAGE_SIZE;
+    for (size_t i = count; i; --i) {
+      buf_ = dir_->get_buffer();
+      assert(buf_);
+      pos_ = buf_->value;
+      std::memcpy(pos_, b, PAGE_SIZE);
+      {
+        auto* buf = buf_->value;
+        io_uring_sqe* sqe = dir_->get_sqe();
+        io_uring_prep_write_fixed(
+          sqe, handle_cast(handle_.get()),
+          buf, PAGE_SIZE, start_, 0);
+        sqe->user_data = reinterpret_cast<uint64_t>(buf_);
+      }
+      b += PAGE_SIZE;
+      start_ += PAGE_SIZE;
+    }
+
+    dir_->submit();
+
+    const size_t processed = PAGE_SIZE*count;
+    crc_.process_bytes(buf, PAGE_SIZE);
+    crc_.process_bytes(borig, count*PAGE_SIZE);
+
+    buf_ = dir_->get_buffer();
+    reset(buf_->value);
+
+    length -= processed;
+    std::memcpy(pos_, b, length);
+    pos_ += length;
   }
 }
 
@@ -209,12 +282,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 async_directory::async_directory(const std::string& path)
-  : mmap_directory(path) {
-  // FIXME move out from ctor
-  if (io_uring_queue_init(QUEUE_SIZE, &ring_, 0)) {
-    throw not_supported();
-  }
-
+  : mmap_directory(path),
+    ring_(QUEUE_SIZE, 0) {
   void* mem = nullptr;
   constexpr size_t BUF_SIZE = NUM_PAGES*PAGE_SIZE;
 
@@ -235,13 +304,9 @@ async_directory::async_directory(const std::string& path)
   iovec.iov_base = mem;
   iovec.iov_len = BUF_SIZE;
 
-  if (io_uring_register_buffers(&ring_, &iovec, 1)) {
+  if (io_uring_register_buffers(&ring_.ring, &iovec, 1)) {
     throw illegal_state();
   }
-}
-
-async_directory::~async_directory() {
-  io_uring_queue_exit(&ring_);
 }
 
 index_output::ptr async_directory::create(
@@ -254,7 +319,94 @@ index_output::ptr async_directory::create(
     return nullptr;
   }
 
-  return async_index_output::open(path.c_str(), ring_, free_pages_);
+  return async_index_output::open(path.c_str(), *this);
+}
+
+io_uring_sqe* async_directory::get_sqe() {
+  io_uring_sqe* sqe = io_uring_get_sqe(&ring_.ring);
+
+  while (!sqe) {
+    void* data = deque(true);
+    sqe = io_uring_get_sqe(&ring_.ring);
+
+    if (data) {
+      free_pages_.push(*reinterpret_cast<node_type*>(data));
+    }
+  }
+
+  return sqe;
+}
+
+void* async_directory::deque(bool wait) {
+  io_uring_cqe* cqe;
+  const int ret = wait
+    ? io_uring_wait_cqe(&ring_.ring, &cqe)
+    : io_uring_peek_cqe(&ring_.ring, &cqe);
+
+  if (ret < 0) {
+    if (ret != -EAGAIN) {
+      throw io_error(string_utils::to_string(
+        "failed to peek a request, error %d", -ret));
+    }
+
+    return nullptr;
+  }
+
+  if (cqe->res < 0) {
+    throw io_error(string_utils::to_string(
+      "async i/o operation failed, error %d", -cqe->res));
+  }
+
+  void* data = io_uring_cqe_get_data(cqe);
+  io_uring_cqe_seen(&ring_.ring, cqe);
+
+  return data;
+}
+
+async_directory::node_type* async_directory::get_buffer() {
+  void* data = deque(false);
+
+  while (!data) {
+    data = free_pages_.pop();
+
+    if (data) {
+      break;
+    }
+
+    data = deque(true);
+  }
+
+  return reinterpret_cast<node_type*>(data);
+}
+
+void async_directory::submit() {
+  int ret = io_uring_submit(&ring_.ring);
+  if (ret < 0) {
+    throw io_error(string_utils::to_string(
+      "failed to submit write request, error %d", -ret));
+  }
+}
+
+void async_directory::drain() {
+  io_uring_sqe* sqe = get_sqe();
+  assert(sqe);
+
+  io_uring_prep_nop(sqe);
+  sqe->flags |= (IOSQE_IO_LINK | IOSQE_IO_DRAIN);
+  sqe->user_data = 0;
+
+  submit();
+
+  // FIXME how to exit properly?
+  for (;;) {
+    void* data = deque(true);
+
+    if (!data) {
+      break;
+    }
+
+    free_pages_.push(*reinterpret_cast<node_type*>(data));
+  }
 }
 
 //bool async_directory::sync(const std::string& name) noexcept {

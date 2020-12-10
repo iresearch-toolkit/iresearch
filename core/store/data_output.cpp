@@ -152,7 +152,7 @@ void buffered_index_output::flush() {
 
 void buffered_index_output::close() {
   if (pos_ > buf_) {
-    flush();
+    flush_buffer(buf_, size_t(std::distance(buf_, pos_)));
   }
   start_ = 0;
   pos_ = buf_;

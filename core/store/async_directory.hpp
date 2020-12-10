@@ -36,13 +36,29 @@ namespace iresearch {
 class IRESEARCH_API async_directory : public mmap_directory {
  public:
   explicit async_directory(const std::string& dir);
-  virtual ~async_directory();
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
 //  virtual void sync(const std::string& name) override;
 
+  void drain();
+
  private:
   static constexpr size_t NUM_PAGES = 128;
+
+  class uring {
+   public:
+    uring(size_t queue_size, unsigned flags = 0) {
+      if (io_uring_queue_init(queue_size, &ring, flags)) {
+        throw not_supported();
+      }
+    }
+
+    ~uring() {
+      io_uring_queue_exit(&ring);
+    }
+
+    io_uring ring;
+  };
 
   struct buffer_deleter {
     void operator()(byte_type* b) const noexcept {
@@ -50,10 +66,21 @@ class IRESEARCH_API async_directory : public mmap_directory {
     }
   };
 
+  using node_type = concurrent_stack<byte_type*>::node_type;
+  friend class async_index_output;
+
+  node_type* get_page() {
+    return free_pages_.pop();
+  }
+  io_uring_sqe* get_sqe();
+  void* deque(bool wait);
+  node_type* get_buffer();
+  void submit();
+
   mutable concurrent_stack<byte_type*> free_pages_;
   decltype(free_pages_)::node_type pages_[NUM_PAGES];
   std::unique_ptr<byte_type, buffer_deleter> buffer_;
-  mutable io_uring ring_;
+  mutable uring ring_;
 }; // async_directory
 
 }
