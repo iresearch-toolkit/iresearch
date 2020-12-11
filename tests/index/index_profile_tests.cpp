@@ -531,6 +531,7 @@ INSTANTIATE_TEST_CASE_P(
   index_profile_test_case,
   ::testing::Combine(
     ::testing::Values(
+      &tests::async_directory,
       &tests::memory_directory,
       &tests::fs_directory,
       &tests::mmap_directory

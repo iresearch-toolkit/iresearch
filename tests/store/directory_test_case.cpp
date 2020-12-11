@@ -101,11 +101,6 @@ class directory_test_case : public tests::directory_test_case_base {
       file->flush();
     }
 
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(&dir);
-      if (impl) impl->drain();
-    }
-
     // Check files count
     std::vector<std::string> files;
     auto list_files = [&files] (std::string& name) {
@@ -277,11 +272,6 @@ class directory_test_case : public tests::directory_test_case_base {
         out->flush();
       }
 
-      {
-        auto* impl = dynamic_cast<irs::async_directory*>(&dir);
-        if (impl) impl->drain();
-      }
-
       // read from file
       {
         byte_type buf[1024 + 691]{}; // 1024 + 691 from above
@@ -330,11 +320,6 @@ TEST_P(directory_test_case, rename) {
     stream1->write_int(2);
     stream1->flush();
   }
-
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
-    }
 
   {
     bool res = false;
@@ -514,11 +499,6 @@ TEST_P(directory_test_case, read_multiple_streams) {
     out->write_vint(50000);
   }
 
-  {
-    auto impl = std::dynamic_pointer_cast<irs::async_directory>(dir_);
-    if (impl) impl->drain();
-  }
-
   // read data
   {
     auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
@@ -630,11 +610,6 @@ TEST_P(directory_test_case, read_multiple_streams) {
       for (uint32_t i = 0; i < 10000; ++i) {
         out->write_vint(i);
       }
-    }
-
-    {
-      auto impl = std::dynamic_pointer_cast<irs::async_directory>(dir_);
-      if (impl) impl->drain();
     }
 
     auto in = dir_->open("test_async", irs::IOAdvice::NORMAL);
@@ -760,10 +735,6 @@ TEST_P(directory_test_case, string_read_write) {
         strcrc(crc, str);
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
-    }
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
     }
 
     // read strings
@@ -900,10 +871,6 @@ TEST_P(directory_test_case, string_read_write) {
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
     }
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
-    }
 
     // read strings
     {
@@ -1038,10 +1005,6 @@ TEST_P(directory_test_case, string_read_write) {
         strcrc(crc, str);
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
-    }
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
     }
 
     // read strings
@@ -1208,10 +1171,6 @@ TEST_P(directory_test_case, smoke_index_io) {
 
     write_string(*out, str.c_str(), str.size());
   }
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
-    }
 
   // read from file
   {
@@ -1314,11 +1273,6 @@ TEST_P(directory_test_case, directory_size) {
     file->write_int(100);
     file->flush();
   }
-
-    {
-      auto* impl = dynamic_cast<irs::async_directory*>(dir_.get());
-      if (impl) impl->drain();
-    }
 
   // visit directory
   {
