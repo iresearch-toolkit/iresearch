@@ -1112,9 +1112,15 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     ASSERT_EQ(&buf[1], buf_cnext);
     ASSERT_EQ(&out[1], out_next);
 
+
     for (size_t i = 0, count = 1; i < count; ++i) {
+#ifndef _MSC_VER
       ASSERT_EQ(error[i], out[i]);
+#else
+      ASSERT_EQ(cp1251[i], out[i]);
+#endif
     }
+
 
     ASSERT_EQ(
       std::codecvt_base::ok, // MSVC doesn't follow the specification of declaring 'result'
@@ -1123,9 +1129,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
 
     ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
-
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+#ifndef _MSC_VER
       ASSERT_EQ(error[i], out[i]);
+#else
+      ASSERT_EQ(cp1251[i], out[i]);
+#endif
     }
   }
 
@@ -1165,9 +1174,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
     );
     ASSERT_EQ(&buf[1], buf_cnext);
     ASSERT_EQ(&out[1], out_next);
-
     for (size_t i = 0, count = 1; i < count; ++i) {
+#ifndef _MSC_VER
       ASSERT_EQ(error[i], out[i]);
+#else
+      ASSERT_EQ(cp1251[i], out[i]);
+#endif
     }
 
     ASSERT_EQ(
@@ -1177,9 +1189,12 @@ TEST_F(LocaleUtilsTestSuite, test_locale_codecvt_conversion_single_byte_non_unic
 
     ASSERT_EQ(buf + IRESEARCH_COUNTOF(buf), buf_cnext);
     ASSERT_EQ(out + IRESEARCH_COUNTOF(out), out_next);
-
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out); i < count; ++i) {
+#ifndef _MSC_VER
       ASSERT_EQ(error[i], out[i]);
+#else
+      ASSERT_EQ(cp1251[i], out[i]);
+#endif
     }
   }
 
