@@ -24,6 +24,7 @@
 
 #include "shared.hpp"
 #include "common.hpp"
+#include "store/async_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/fs_directory.hpp"
 
@@ -35,6 +36,10 @@ namespace {
 typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
 
 const std::unordered_map<std::string, factory_f> FACTORIES {
+  { "async",
+    [](const std::string& path) {
+      return irs::memory::make_unique<irs::async_directory>(path); }
+  },
   { "mmap",
     [](const std::string& path) {
       return irs::memory::make_unique<irs::mmap_directory>(path); }
