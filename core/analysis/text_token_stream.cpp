@@ -193,9 +193,15 @@ bool get_stopwords(
 
     if (!stopword_path.exists_directory(result) || !result
         || !(stopword_path /= language).exists_directory(result) || !result) {
-      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
-
-      return !custom_stopword_path;
+      if (custom_stopword_path) {
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
+        return false;
+      } else {
+        IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
+                      "Analyzer will continue without stopwords",
+                      stopword_path.utf8().c_str());
+        return true;
+      }
     }
 
     irs::analysis::text_token_stream::stopwords_t stopwords;
