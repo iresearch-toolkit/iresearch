@@ -418,6 +418,8 @@ int put(
 
   // stream reader thread
   thread_pool.run([&batch_provider, lines_max, batch_size, &stream]()->void {
+    irs::set_thread_name("reader");
+
     SCOPED_TIMER("Stream read total time");
     auto lock = irs::make_unique_lock(batch_provider.mutex_);
 
@@ -448,10 +450,12 @@ int put(
   // commiter thread
   if (commit_interval_ms) {
     thread_pool.run([&consolidation_cv, &consolidation_mutex, &batch_provider, commit_interval_ms, &writer, consolidation_threads]()->void {
+      irs::set_thread_name("committer");
+
       while (!batch_provider.done_.load()) {
         {
+          std::cout << "[COMMIT]" << std::endl; // break indexer thread output by commit
           SCOPED_TIMER("Commit time");
-          std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
           writer->commit();
         }
 
@@ -472,6 +476,8 @@ int put(
 
   for (size_t i = consolidation_threads; i; --i) {
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
+      irs::set_thread_name("consolidater");
+
       while (!batch_provider.done_.load()) {
         {
           auto lock = irs::make_unique_lock(consolidation_mutex);
@@ -482,6 +488,7 @@ int put(
         }
 
         {
+          std::cout << "[CONSOLIDATE]" << std::flush;
           SCOPED_TIMER("Consolidation time");
           writer->consolidate(policy);
         }
@@ -497,6 +504,8 @@ int put(
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
     thread_pool.run([&batch_provider, &writer]()->void {
+      irs::set_thread_name("indexer");
+
       std::vector<std::string> buf;
       WikiDoc doc;
 
@@ -508,7 +517,7 @@ int put(
         do {
           auto builder = ctx.insert();
 
-          doc.fill(&(buf[i]));
+          doc.fill(const_cast<std::string*>(buf.data()));
 
           for (auto& field: doc.elements) {
             builder.insert<irs::Action::INDEX>(*field);
@@ -528,8 +537,8 @@ int put(
   thread_pool.stop();
 
   {
+    std::cout << "[COMMIT]" << std::endl; // break indexer thread output by commit
     SCOPED_TIMER("Commit time");
-    std::cout << "COMMIT" << std::endl; // break indexer thread output by commit
     writer->commit();
   }
 
