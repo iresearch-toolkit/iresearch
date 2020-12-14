@@ -197,7 +197,7 @@ bool get_stopwords(
         IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
         return false;
       } else {
-        IR_FRMT_TRACE("Failed to load stopwords from default path: %s."
+        IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
                       "Analyzer will continue without stopwords",
                       stopword_path.utf8().c_str());
         return true;
