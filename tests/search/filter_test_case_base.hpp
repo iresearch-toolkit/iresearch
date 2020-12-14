@@ -615,6 +615,7 @@ class filter_test_case_base : public index_test_base {
           );
         }
       }
+      ASSERT_FALSE(docs->next());
     }
 
     std::vector<irs::doc_id_t> result;
@@ -652,6 +653,7 @@ class filter_test_case_base : public index_test_base {
         // put score attributes to iterator
         result.push_back(docs->value());
       }
+      ASSERT_FALSE(docs->next());
     }
   }
 };
