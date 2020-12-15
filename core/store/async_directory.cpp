@@ -303,7 +303,7 @@ class async_index_output final : public index_output {
     });
 
     flush();
-    async_->drain(true);
+//    async_->drain(true);
   }
 
   virtual int64_t checksum() const override {
@@ -567,7 +567,7 @@ bool async_directory::sync(const std::string** name, size_t size) noexcept {
       }
 
       io_uring_prep_fsync(sqe, handle_cast(request.first.get()), 0);
-      sqe->user_data = 1;
+      sqe->user_data = 0;
       request.second = async->get_sqe();
     }
 
