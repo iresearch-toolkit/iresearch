@@ -1087,6 +1087,7 @@ class IRESEARCH_API index_writer
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::vector<const std::string*> files_to_sync_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;
