@@ -28,40 +28,25 @@
 namespace iresearch {
 
 bitset_doc_iterator::bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& ord) noexcept
-  : attributes{{
-      { type<document>::id(), &doc_   },
-      { type<cost>::id(),     &cost_  },
-      { type<score>::id(),    &score_ },
-    }},
-    cost_(set.count()),
+    const bitset::word_t* begin,
+    const bitset::word_t* end) noexcept
+  : cost_(bitset::count(begin, end)),
     doc_(cost_.estimate()
       ? doc_limits::invalid()
       : doc_limits::eof()),
-    score_(ord),
-    begin_(set.begin()),
-    end_(set.end()),
+    begin_(begin),
+    end_(end),
     next_(begin_) {
+  assert(begin_ <= end_);
 }
 
-bitset_doc_iterator::bitset_doc_iterator(
-      const sub_reader& reader,
-      const byte_type* stats,
-      const bitset& set,
-      const order::prepared& order,
-      boost_t boost)
-  : bitset_doc_iterator(set, order) {
-  // prepare score
-  if (!order.empty()) {
-    order::prepared::scorers scorers(
-      order, reader, empty_term_reader(cost_.estimate()),
-      stats, score_.data(),
-      *this, // doc_iterator attributes
-      boost);
-
-    irs::reset(score_, std::move(scorers));
+attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
+  if (type<document>::id() == id) {
+    return &doc_;
   }
+
+  return type<cost>::id() == id
+    ? &cost_ : nullptr;
 }
 
 bool bitset_doc_iterator::next() noexcept {

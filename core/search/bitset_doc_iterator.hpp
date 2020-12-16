@@ -33,34 +33,23 @@
 namespace iresearch {
 
 class bitset_doc_iterator
-  : public frozen_attributes<3, doc_iterator>,
+  : public doc_iterator,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set) noexcept
-    : bitset_doc_iterator(set, order::prepared::unordered()) {
-  }
-
   bitset_doc_iterator(
-    const sub_reader& reader,
-    const byte_type* stats,
-    const bitset& set,
-    const order::prepared& order,
-    boost_t boost);
+    const bitset::word_t* begin,
+    const bitset::word_t* end) noexcept;
 
   virtual bool next() noexcept override final;
   virtual doc_id_t seek(doc_id_t target) noexcept override final;
   virtual doc_id_t value() const noexcept override final { return doc_.value; }
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override final;
 
  private:
   using word_t = bitset::word_t;
 
-  bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& ord) noexcept;
-
   cost cost_;
   document doc_;
-  score score_;
   const word_t* begin_;
   const word_t* end_;
   const word_t* next_;
