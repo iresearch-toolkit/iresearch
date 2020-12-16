@@ -32,11 +32,11 @@
 
 namespace iresearch {
 
-class bitset_doc_iterator final
+class bitset_doc_iterator
   : public frozen_attributes<3, doc_iterator>,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set)
+  explicit bitset_doc_iterator(const bitset& set) noexcept
     : bitset_doc_iterator(set, order::prepared::unordered()) {
   }
 
@@ -47,14 +47,16 @@ class bitset_doc_iterator final
     const order::prepared& order,
     boost_t boost);
 
-  virtual bool next() noexcept override;
-  virtual doc_id_t seek(doc_id_t target) noexcept override;
-  virtual doc_id_t value() const noexcept override { return doc_.value; }
+  virtual bool next() noexcept override final;
+  virtual doc_id_t seek(doc_id_t target) noexcept override final;
+  virtual doc_id_t value() const noexcept override final { return doc_.value; }
 
  private:
   using word_t = bitset::word_t;
 
-  bitset_doc_iterator(const bitset& set, const order::prepared& ord);
+  bitset_doc_iterator(
+    const bitset& set,
+    const order::prepared& ord) noexcept;
 
   cost cost_;
   document doc_;

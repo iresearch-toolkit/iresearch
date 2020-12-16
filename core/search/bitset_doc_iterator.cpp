@@ -27,8 +27,9 @@
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
-                                         const order::prepared& ord)
+bitset_doc_iterator::bitset_doc_iterator(
+    const bitset& set,
+    const order::prepared& ord) noexcept
   : attributes{{
       { type<document>::id(), &doc_   },
       { type<cost>::id(),     &cost_  },
