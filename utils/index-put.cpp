@@ -162,7 +162,7 @@ struct Doc {
 
     virtual bool write(irs::data_output& out) const = 0;
 
-    virtual ~Field() {}
+    virtual ~Field() = default;
   };
 
   struct StringField : public Field {
