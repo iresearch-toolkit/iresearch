@@ -67,8 +67,8 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
     assert(!states_.empty());
   }
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
-    return type<score>::id() == id
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    return irs::type<score>::id() == id
       ? &score_
       : bitset_doc_iterator::get_mutable(id);
   }
