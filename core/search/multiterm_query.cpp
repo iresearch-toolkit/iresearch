@@ -32,13 +32,21 @@ using namespace irs;
 
 class bitset_iterator final : public bitset_doc_iterator {
  public:
-  explicit bitset_iterator(bitset&& set)
-    : bitset_doc_iterator(set),
+  explicit bitset_iterator(bitset&& set, const irs::order::prepared& ord)
+    : bitset_doc_iterator(set.begin(), set.end()),
+      score_(ord),
       set_(std::move(set)) {
   }
 
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+    return id == type<score>::id()
+      ? &score_
+      : bitset_doc_iterator::get_mutable(id);
+  }
+
  private:
-  irs::bitset set_;
+  score score_;
+  bitset set_;
 };
 
 template<typename DocIterator>
@@ -112,7 +120,7 @@ doc_iterator::ptr multiterm_query::execute(
       // since we don't want to emit doc_limits::invalid()
       assert(set.any() && !set.test(0));
 
-      unscored_docs = memory::make_managed<::bitset_iterator>(std::move(set));
+      unscored_docs = memory::make_managed<::bitset_iterator>(std::move(set), ord);
       unscored_docs_estimation = set.count();
     }
   }

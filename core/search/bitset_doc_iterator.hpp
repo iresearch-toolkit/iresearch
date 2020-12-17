@@ -43,7 +43,7 @@ class bitset_doc_iterator
   virtual bool next() noexcept override final;
   virtual doc_id_t seek(doc_id_t target) noexcept override final;
   virtual doc_id_t value() const noexcept override final { return doc_.value; }
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override final;
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override;
 
  private:
   using word_t = bitset::word_t;
