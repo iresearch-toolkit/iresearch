@@ -91,6 +91,7 @@ bool lazy_bitset_iterator::refill(
     return false;
   }
 
+  const auto& features = flags::empty_instance();
   set_.reset(segment_->docs_count() + irs::doc_limits::min());
 
   bool has_bit_set = false;
@@ -100,7 +101,7 @@ bool lazy_bitset_iterator::refill(
       continue; // internal error
     }
 
-    auto docs = terms_->postings(flags::empty_instance());
+    auto docs = terms_->postings(features);
 
     if (IRS_LIKELY(docs)) {
       has_bit_set |= fill(set_, *docs);
