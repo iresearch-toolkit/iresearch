@@ -54,7 +54,7 @@ class bitset_doc_iterator
   virtual attribute* get_mutable(type_info::type_id id) noexcept override;
 
  protected:
-  explicit bitset_doc_iterator(cost::cost_t cost)
+  explicit bitset_doc_iterator(cost::cost_t cost) noexcept
     : cost_(cost),
       doc_(doc_limits::invalid()),
       begin_(nullptr),
