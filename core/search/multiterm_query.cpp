@@ -23,31 +23,13 @@
 #include "multiterm_query.hpp"
 
 #include "shared.hpp"
-#include "bitset_doc_iterator.hpp"
-#include "disjunction.hpp"
+#include "search/bitset_doc_iterator.hpp"
+#include "search/disjunction.hpp"
+#include "utils/range.hpp"
 
 namespace {
 
 using namespace irs;
-
-class bitset_iterator final : public bitset_doc_iterator {
- public:
-  explicit bitset_iterator(bitset&& set, const irs::order::prepared& ord)
-    : bitset_doc_iterator(set.begin(), set.end()),
-      score_(ord),
-      set_(std::move(set)) {
-  }
-
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
-    return id == type<score>::id()
-      ? &score_
-      : bitset_doc_iterator::get_mutable(id);
-  }
-
- private:
-  score score_;
-  bitset set_;
-};
 
 template<typename DocIterator>
 bool fill(bitset& bs, DocIterator& it) {
@@ -67,6 +49,77 @@ bool fill(bitset& bs, DocIterator& it) {
   }
 
   return has_docs;
+}
+
+class lazy_bitset_iterator final : public bitset_doc_iterator {
+ public:
+  lazy_bitset_iterator(
+      const sub_reader& segment,
+      seek_term_iterator::ptr&& terms,
+      const order::prepared& ord,
+      const std::vector<multiterm_state::unscored_term_state>& states,
+      cost::cost_t estimation) noexcept
+    : bitset_doc_iterator(estimation),
+      score_(ord),
+      terms_(std::move(terms)),
+      segment_(&segment),
+      states_(states.data(), states.size()) {
+    assert(!states_.empty());
+  }
+
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+    return type<score>::id() == id
+      ? &score_
+      : bitset_doc_iterator::get_mutable(id);
+  }
+
+ protected:
+  virtual bool refill(const bitset::word_t** begin, const bitset::word_t** end) override;
+
+ private:
+  bitset set_;
+  score score_;
+  seek_term_iterator::ptr terms_;
+  const sub_reader* segment_;
+  range<const multiterm_state::unscored_term_state> states_;
+}; // lazy_bitset_iterator
+
+bool lazy_bitset_iterator::refill(
+    const bitset::word_t** begin,
+    const bitset::word_t** end) {
+  if (!terms_) {
+    return false;
+  }
+
+  set_.reset(segment_->docs_count() + irs::doc_limits::min());
+
+  bool has_bit_set = false;
+  for (auto& cookie : states_) {
+    assert(cookie);
+    if (!terms_->seek(bytes_ref::NIL, *cookie)) {
+      continue; // internal error
+    }
+
+    auto docs = terms_->postings(flags::empty_instance());
+
+    if (IRS_LIKELY(docs)) {
+      has_bit_set |= fill(set_, *docs);
+    }
+  }
+
+  terms_ = nullptr; // seal iterator
+
+  if (has_bit_set) {
+    // ensure first bit isn't set,
+    // since we don't want to emit doc_limits::invalid()
+    assert(set_.any() && !set_.test(0));
+
+    *begin = set_.begin();
+    *end = set_.end();
+    return true;
+  }
+
+  return false;
 }
 
 }
@@ -95,42 +148,15 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  doc_iterator::ptr unscored_docs;
-  cost::cost_t unscored_docs_estimation = state->unscored_states_estimation;
-
-  if (!state->unscored_terms.empty()) {
-    bitset set(segment.docs_count() + irs::doc_limits::min());
-
-    bool has_bit_set = false;
-    for (auto& cookie : state->unscored_terms) {
-      assert(cookie);
-      if (!terms->seek(bytes_ref::NIL, *cookie)) {
-        return doc_iterator::empty(); // internal error
-      }
-
-      auto docs = terms->postings(flags::empty_instance());
-
-      if (IRS_LIKELY(docs)) {
-        has_bit_set |= fill(set, *docs);
-      }
-    }
-
-    if (has_bit_set) {
-      // ensure first bit isn't set,
-      // since we don't want to emit doc_limits::invalid()
-      assert(set.any() && !set.test(0));
-
-      unscored_docs = memory::make_managed<::bitset_iterator>(std::move(set), ord);
-      unscored_docs_estimation = set.count();
-    }
-  }
-
-  disjunction_t::doc_iterators_t itrs(state->scored_states.size() + size_t(nullptr != unscored_docs));
-  auto it = itrs.begin();
-
   // get required features for order
   auto& features = ord.features();
   auto& stats = this->stats();
+
+  const bool has_unscored_terms = !state->unscored_terms.empty();
+
+  disjunction_t::doc_iterators_t itrs(
+    state->scored_states.size() + size_t(has_unscored_terms));
+  auto it = itrs.begin();
 
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
@@ -165,8 +191,13 @@ doc_iterator::ptr multiterm_query::execute(
     ++it;
   }
 
-  if (unscored_docs) {
-    *it = std::move(unscored_docs);
+  if (has_unscored_terms) {
+    *it = {
+      memory::make_managed<::lazy_bitset_iterator>(
+        segment, std::move(terms), ord,
+        state->unscored_terms,
+        state->unscored_states_estimation)
+    };
     ++it;
   }
 
@@ -177,12 +208,12 @@ doc_iterator::ptr multiterm_query::execute(
   if (ord.empty()) {
     return make_disjunction<disjunction_t>(
       std::move(itrs), ord, merge_type_,
-      state->scored_states_estimation + unscored_docs_estimation);
+      state->estimation());
   }
 
   return make_disjunction<scored_disjunction_t>(
     std::move(itrs), ord, merge_type_,
-    state->scored_states_estimation + unscored_docs_estimation);
+    state->estimation());
 }
 
 } // ROOT

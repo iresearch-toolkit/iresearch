@@ -37,15 +37,45 @@ class bitset_doc_iterator
     private util::noncopyable {
  public:
   bitset_doc_iterator(
-    const bitset::word_t* begin,
-    const bitset::word_t* end) noexcept;
+      const bitset::word_t* begin,
+      const bitset::word_t* end) noexcept
+    : cost_(bitset::count(begin, end)),
+      doc_(cost_.estimate()
+        ? doc_limits::invalid()
+        : doc_limits::eof()),
+      begin_(begin),
+      end_(end) {
+    reset();
+  }
 
   virtual bool next() noexcept override final;
   virtual doc_id_t seek(doc_id_t target) noexcept override final;
   virtual doc_id_t value() const noexcept override final { return doc_.value; }
   virtual attribute* get_mutable(type_info::type_id id) noexcept override;
 
+ protected:
+  bitset_doc_iterator(cost::cost_t cost)
+    : cost_(cost),
+      doc_(doc_limits::invalid()),
+      begin_(nullptr),
+      end_(nullptr) {
+    reset();
+  }
+
+  virtual bool refill(const bitset::word_t** /*begin*/,
+                      const bitset::word_t** /*end*/) {
+    return false;
+  }
+
  private:
+  // assume begin_, end_ are set
+  void reset() noexcept {
+    next_ = begin_;
+    word_ = 0;
+    base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
+    assert(begin_ <= end_);
+  }
+
   using word_t = bitset::word_t;
 
   cost cost_;

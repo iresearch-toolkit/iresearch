@@ -27,19 +27,6 @@
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(
-    const bitset::word_t* begin,
-    const bitset::word_t* end) noexcept
-  : cost_(bitset::count(begin, end)),
-    doc_(cost_.estimate()
-      ? doc_limits::invalid()
-      : doc_limits::eof()),
-    begin_(begin),
-    end_(end),
-    next_(begin_) {
-  assert(begin_ <= end_);
-}
-
 attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
   if (type<document>::id() == id) {
     return &doc_;
@@ -52,6 +39,11 @@ attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
 bool bitset_doc_iterator::next() noexcept {
   while (!word_) {
     if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
+
       doc_.value = doc_limits::eof();
       word_ = 0;
 
@@ -70,13 +62,22 @@ bool bitset_doc_iterator::next() noexcept {
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
-  next_ = begin_ + bitset::word(target);
+  while (1) {
+    next_ = begin_ + bitset::word(target);
 
-  if (next_ >= end_) {
-    doc_.value = doc_limits::eof();
-    word_ = 0;
+    if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
 
-    return doc_.value;
+      doc_.value = doc_limits::eof();
+      word_ = 0;
+
+      return doc_.value;
+    }
+
+    break;
   }
 
   base_ = doc_id_t(std::distance(begin_, next_) * bits_required<word_t>());
