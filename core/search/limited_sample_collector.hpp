@@ -90,7 +90,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       // state will not be scored
 
       state_.state->unscored_terms.emplace_back(state_.terms->cookie());
-      state_.state->unscored_states_estimation = *state_.docs_count;
+      state_.state->unscored_states_estimation += *state_.docs_count;
       return; // nothing to collect (optimization)
     }
 
