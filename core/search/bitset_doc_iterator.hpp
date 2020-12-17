@@ -83,8 +83,8 @@ class bitset_doc_iterator
   const word_t* begin_;
   const word_t* end_;
   const word_t* next_;
-  word_t word_{};
-  doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
+  word_t word_;
+  doc_id_t base_;
 }; // bitset_doc_iterator
 
 } // ROOT
