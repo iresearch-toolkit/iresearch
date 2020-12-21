@@ -34,6 +34,7 @@ struct attribute_ptr {
 
   attribute_ptr() = default;
   attribute_ptr(T& v) noexcept : ptr(&v) { }
+  attribute_ptr(T* v) noexcept : ptr(v) { }
 
   operator attribute_ptr<attribute>() const noexcept {
     return attribute_ptr<attribute>{*ptr};

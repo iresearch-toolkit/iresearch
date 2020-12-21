@@ -261,34 +261,28 @@ namespace detail {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class doc_iterator final
-  : public frozen_attributes<3, irs::doc_iterator> {
+class doc_iterator final : public irs::doc_iterator {
  public:
   doc_iterator() noexcept
-   : attributes{{
-       { type<document>::id(), &doc_ },
-       { type<frequency>::id(), nullptr },
-       { type<position>::id(), nullptr },
-     }},
-     freq_in_(EMPTY_POOL),
-     pfreq_(attributes::ref(type<frequency>::id())),
-     ppos_(attributes::ref(type<position>::id())) {
+   : freq_in_(EMPTY_POOL) {
   }
 
   // reset field
   void reset(const field_data& field) {
     field_ = &field;
-    *pfreq_ = nullptr;
-    *ppos_ = nullptr;
+    auto& freq = std::get<attribute_ptr<frequency>>(attrs_);
+    auto& pos = std::get<attribute_ptr<position>>(attrs_);
+    freq.ptr = nullptr;
+    pos.ptr = nullptr;
     has_cookie_ = false;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      *pfreq_ = &freq_;
+      freq.ptr = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        *ppos_ = &pos_;
+        pos.ptr = &pos_;
         has_cookie_ = field.prox_random_access();
       }
     }
@@ -305,7 +299,9 @@ class doc_iterator final
     freq_in_ = freq;
     posting_ = &posting;
 
-    if (*ppos_ && prox) {
+    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+
+    if (ppos.ptr && prox) {
       // reset positions only once,
       // as we need iterator for sequential reads
       pos_.reset(*prox);
@@ -318,6 +314,10 @@ class doc_iterator final
 
   size_t cost() const noexcept {
     return posting_->size;
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
@@ -345,7 +345,7 @@ class doc_iterator final
 
       posting_ = nullptr;
     } else {
-      if (*pfreq_) {
+      if (std::get<attribute_ptr<frequency>>(attrs_).ptr) {
         uint64_t delta;
 
         if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
@@ -373,6 +373,9 @@ class doc_iterator final
   }
 
  private:
+  using attributes_type = std::tuple<
+    attribute_ptr<frequency>, attribute_ptr<position>>;
+
   const field_data* field_{};
   uint64_t cookie_{};
   document doc_;
@@ -380,42 +383,32 @@ class doc_iterator final
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_{};
-  attribute** pfreq_{};
-  attribute** ppos_{};
+  attributes_type attrs_;
   bool has_cookie_{false}; // FIXME remove
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sorting_doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sorting_doc_iterator final
-    : public frozen_attributes<3, irs::doc_iterator> {
+class sorting_doc_iterator final : public irs::doc_iterator {
  public:
-  sorting_doc_iterator() noexcept
-   : attributes{{
-       { type<document>::id(), &doc_ },
-       { type<frequency>::id(), nullptr },
-       { type<position>::id(), nullptr },
-     }},
-     pfreq_(attributes::ref(type<frequency>::id())),
-     ppos_(attributes::ref(type<position>::id())) {
-  }
-
   // reset field
   void reset(const field_data& field) {
     assert(field.prox_random_access());
     byte_pool_ = &field.byte_writer_->parent();
 
-    *pfreq_ = nullptr;
-    *ppos_ = nullptr;
+    auto& pfreq = std::get<attribute_ptr<frequency>>(attrs_);
+    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    pfreq.ptr = nullptr;
+    ppos.ptr = nullptr;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      *pfreq_ = &freq_;
+      pfreq.ptr = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        *ppos_ = &pos_;
+        ppos.ptr = &pos_;
       }
     }
   }
@@ -442,9 +435,13 @@ class sorting_doc_iterator final
       reset_sparse(it, *freq, *docmap);
     }
 
-    doc_.value = irs::doc_limits::invalid();
+    std::get<document>(attrs_).value = irs::doc_limits::invalid();
     freq_.value = 0;
     it_ = docs_.begin();
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t seek(doc_id_t doc) noexcept override {
@@ -453,10 +450,12 @@ class sorting_doc_iterator final
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() noexcept override {
+    auto& value = std::get<document>(attrs_);
+
     while (it_ != docs_.end()) {
       if (doc_limits::eof(it_->doc)) {
         // skip invalid docs
@@ -465,7 +464,7 @@ class sorting_doc_iterator final
       }
 
       auto& doc = *it_;
-      doc_.value = doc.doc;
+      value.value = doc.doc;
       freq_.value = doc.freq;
 
       if (doc.cookie) {
@@ -478,12 +477,15 @@ class sorting_doc_iterator final
 
     }
 
-    doc_.value = doc_limits::eof();
+    value.value = doc_limits::eof();
     freq_.value = 0;
     return false;
   }
 
  private:
+  using attributes_type = std::tuple<
+    document, attribute_ptr<frequency>, attribute_ptr<position>>;
+
   struct doc_entry {
     doc_entry() = default;
     doc_entry(doc_id_t doc, uint32_t freq, uint64_t cookie) noexcept
@@ -555,11 +557,9 @@ class sorting_doc_iterator final
   const byte_block_pool* byte_pool_{};
   std::vector<doc_entry>::const_iterator it_;
   std::vector<doc_entry> docs_;
-  document doc_;
-  frequency freq_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
-  attribute** pfreq_{};
-  attribute** ppos_{};
+  frequency freq_;
+  attributes_type attrs_;
 }; // sorting_doc_iterator
 
 ////////////////////////////////////////////////////////////////////////////////
