@@ -87,9 +87,7 @@ struct score_iterator_adapter {
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
-class conjunction
-  : public frozen_attributes<3, doc_iterator>,
-    private score_ctx {
+class conjunction : public doc_iterator, private score_ctx {
  public:
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
@@ -125,12 +123,11 @@ class conjunction
       doc_iterators&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : attributes{{
-        { type<document>::id(), itrs.front_doc                     },
-        { type<cost>::id(),     irs::get_mutable<cost>(itrs.front) },
-        { type<score>::id(),    &score_                            },
-      }},
-      score_(ord),
+    : attrs_{
+        itrs.front_doc,
+        irs::get_mutable<cost>(itrs.front),
+        irs::score{}
+      },
       itrs_(std::move(itrs.itrs)),
       front_(itrs.front),
       front_doc_(itrs.front_doc),
@@ -147,6 +144,10 @@ class conjunction
 
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
 
   virtual doc_id_t value() const override final {
     return front_doc_->value;
@@ -169,10 +170,19 @@ class conjunction
   }
 
  private:
+  using attributes_type = std::tuple<
+    attribute_ptr<document>,
+    attribute_ptr<cost>,
+    score>;
+
   void prepare_score(const order::prepared& ord) {
     if (ord.empty()) {
       return;
     }
+
+    auto& score_ = std::get<irs::score>(attrs_);
+
+    score_.realloc(ord);
 
     // copy scores into separate container
     // to avoid extra checks
@@ -197,7 +207,7 @@ class conjunction
       case 2:
         score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = self.score_.data();
+          auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
           self.merger_(score_buf, self.score_vals_.data(), 2);
@@ -208,7 +218,7 @@ class conjunction
       case 3:
         score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = self.score_.data();
+          auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_[1] = self.scores_[1]->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
@@ -220,7 +230,7 @@ class conjunction
       default:
         score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = self.score_.data();
+          auto* score_buf = std::get<irs::score>(self.attrs_).data();
           auto* score_val = self.score_vals_.data();
           for (auto* it_score : self.scores_) {
             *score_val++ = it_score->evaluate();
@@ -264,7 +274,7 @@ class conjunction
     return target;
   }
 
-  score score_;
+  attributes_type attrs_;
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
   mutable std::vector<const irs::byte_type*> score_vals_;
