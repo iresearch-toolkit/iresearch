@@ -152,17 +152,10 @@ FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
 /// @class pos_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename Reader>
-class pos_iterator final
-    : public frozen_attributes<2, irs::position> {
+class pos_iterator final : public irs::position {
  public:
   pos_iterator()
-    : attributes{{
-        { type<offset>::id(), nullptr },
-        { type<payload>::id(), nullptr },
-      }},
-      prox_in_(EMPTY_POOL),
-      ppay_(attributes::ref(type<payload>::id())),
-      poffs_(attributes::ref(type<offset>::id())) {
+    : prox_in_(EMPTY_POOL) {
   }
 
   void clear() noexcept {
@@ -177,22 +170,24 @@ class pos_iterator final
     assert(features.check<frequency>());
 
     freq_ = &freq;
-    *poffs_ = nullptr;
-    *ppay_ = nullptr;
 
-    if (features.check<offset>()) {
-      *poffs_ = &offs_;
-    }
+    std::get<attribute_ptr<offset>>(attrs_).ptr = features.check<offset>()
+      ? &offs_
+      : nullptr;
 
-    if (features.check<payload>()) {
-      *ppay_ = &pay_;
-    }
+    std::get<attribute_ptr<payload>>(attrs_).ptr = features.check<payload>()
+      ? &pay_
+      : nullptr;
   }
 
   // reset value
   void reset(const Reader& prox) {
     clear();
     prox_in_ = prox;
+  }
+
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override final {
+    return irs::get_mutable(attrs_, id);
   }
 
   virtual bool next() override {
@@ -216,7 +211,7 @@ class pos_iterator final
     value_ += pos;
     assert(pos_limits::valid(value_));
 
-    if (*poffs_) {
+    if (std::get<attribute_ptr<offset>>(attrs_).ptr) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
       offs_.end = offs_.start + irs::vread<uint32_t>(prox_in_);
     }
@@ -231,13 +226,14 @@ class pos_iterator final
   }
 
  private:
+  using attributes_type = std::tuple<attribute_ptr<offset>, attribute_ptr<payload>>;
+
   Reader prox_in_;
   bstring payload_value_;
   const frequency* freq_{}; // number of term positions in a document
   payload pay_;
   offset offs_;
-  attribute** ppay_{};
-  attribute** poffs_{};
+  attributes_type attrs_;
   uint32_t pos_{}; // current position
 }; // pos_iterator
 
