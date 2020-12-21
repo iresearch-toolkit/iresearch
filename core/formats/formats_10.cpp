@@ -1545,18 +1545,19 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final
-    : public frozen_attributes<5, irs::doc_iterator> {
+class doc_iterator final : public irs::doc_iterator {
+ private:
+  using attributes_type = std::conditional_t<
+    IteratorTraits::frequency() && IteratorTraits::position(),
+      std::tuple<document, frequency, cost, score, position<IteratorTraits>>,
+      std::conditional_t<IteratorTraits::frequency(),
+        std::tuple<document, frequency, cost, score>,
+        std::tuple<document, cost, score>
+      >>;
+
  public:
   doc_iterator() noexcept
-    : attributes{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_    },
-        { type<score>::id(), &scr_    },
-        { type<frequency>::id(),     IteratorTraits::frequency() ? &freq_ : nullptr  },
-        { type<irs::position>::id(), IteratorTraits::position()  ? &pos_  : nullptr  },
-      }},
-      skip_levels_(1),
+    : skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
@@ -1607,7 +1608,7 @@ class doc_iterator final
       assert(!doc_in_->eof());
     }
 
-    cost_.value(term_state_.docs_count); // estimate iterator
+    std::get<cost>(attrs_).value(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
       assert(irs::get<frequency>(attrs));
@@ -1618,7 +1619,7 @@ class doc_iterator final
         state.pos_in = pos_in;
         state.pay_in = pay_in;
         state.term_state = &term_state_;
-        state.freq = &freq_.value;
+        state.freq = &std::get<frequency>(attrs_).value;
         state.features = features_;
         state.enc_buf = enc_buf_;
 
@@ -1631,7 +1632,7 @@ class doc_iterator final
         }
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
-        pos_.prepare(state);
+        std::get<position<IteratorTraits>>(attrs_).prepare(state);
       }
     }
 
@@ -1643,9 +1644,15 @@ class doc_iterator final
     }
   }
 
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
     }
 
     seek_to_block(target);
@@ -1654,7 +1661,7 @@ class doc_iterator final
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return doc_limits::eof();
       }
@@ -1663,39 +1670,41 @@ class doc_iterator final
     }
 
     while (begin_ < end_) {
-      doc_.value += *begin_++;
+      doc.value += *begin_++;
 
       if constexpr (!IteratorTraits::position()) {
-        if (doc_.value >= target) {
+        if (doc.value >= target) {
           if constexpr (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
             assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
-            freq_.value = doc_freq_[-1];
+            std::get<frequency>(attrs_).value = doc_freq_[-1];
           }
-          return doc_.value;
+          return doc.value;
         }
       } else {
         assert(IteratorTraits::frequency());
-        freq_.value = *doc_freq_++;
+        auto& freq = std::get<frequency>(attrs_);
+        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        freq.value = *doc_freq_++;
 
-        pos_.notify(freq_.value);
+        pos.notify(freq.value);
 
-        if (doc_.value >= target) {
-          pos_.clear();
-          return doc_.value;
+        if (doc.value >= target) {
+          pos.clear();
+          return doc.value;
         }
       }
     }
 
-    while (doc_.value < target) {
+    while (doc.value < target) {
       next();
     }
 
-    return doc_.value;
+    return doc.value;
   }
 
   virtual doc_id_t value() const noexcept final {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
 #if defined(_MSC_VER)
@@ -1706,11 +1715,13 @@ class doc_iterator final
 #endif
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1718,14 +1729,16 @@ class doc_iterator final
       refill();
     }
 
-    doc_.value += *begin_++; // update document attribute
+    doc.value += *begin_++; // update document attribute
 
     if constexpr (IteratorTraits::frequency()) {
-      freq_.value = *doc_freq_++; // update frequency attribute
+      auto& freq = std::get<frequency>(attrs_);
+      freq.value = *doc_freq_++; // update frequency attribute
 
       if constexpr (IteratorTraits::position()) {
-        pos_.notify(freq_.value);
-        pos_.clear();
+        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        pos.notify(freq.value);
+        pos.clear();
       }
     }
 
@@ -1813,16 +1826,15 @@ class doc_iterator final
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    if (!doc_limits::valid(doc_.value)) {
-      doc_.value = (doc_limits::min)();
+    if (auto& doc = std::get<document>(attrs_);
+        !doc_limits::valid(doc.value)) {
+      doc.value = (doc_limits::min)();
     }
 
     begin_ = docs_;
     doc_freq_ = doc_freqs_;
   }
 
-  irs::cost cost_;
-  irs::score scr_;
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
@@ -1834,12 +1846,10 @@ class doc_iterator final
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint32_t term_freq_{}; // total term frequency
-  document doc_;
-  frequency freq_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  position<IteratorTraits> pos_;
+  attributes_type attrs_;
 }; // doc_iterator
 
 template<typename IteratorTraits>
@@ -1902,11 +1912,11 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      doc_.value = last.doc;
+      std::get<document>(attrs_).value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
-        pos_.prepare(last); // notify positions
+        std::get<position<IteratorTraits>>(attrs_).prepare(last); // notify positions
       }
     }
   }
@@ -4302,8 +4312,11 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final
-    : public irs::frozen_attributes<4, irs::doc_iterator> {
+class column_iterator final : public irs::doc_iterator {
+ private:
+  using attributes_type = std::tuple<
+    document, cost, score, payload>;
+
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
@@ -4313,21 +4326,19 @@ class column_iterator final
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end)
-    : attributes{{
-        { irs::type<irs::document>::id(), &doc_    },
-        { irs::type<irs::cost>::id(),     &cost_   },
-        { irs::type<irs::score>::id(),    &score_  },
-        { irs::type<irs::payload>::id(),  &payload_ },
-      }},
-      cost_(column.size()),
-      begin_(begin),
+    : begin_(begin),
       seek_origin_(begin),
       end_(end),
       column_(&column) {
+    std::get<cost>(attrs_).value(column.size());
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
@@ -4343,7 +4354,7 @@ class column_iterator final
       while (next_block() && !block_.next()) { }
     }
 
-    doc_.value = block_.value();
+    std::get<document>(attrs_).value = block_.value();
     return value();
   }
 
@@ -4354,7 +4365,7 @@ class column_iterator final
       }
     }
 
-    doc_.value = block_.value();
+    std::get<document>(attrs_).value = block_.value();
     return true;
   }
 
@@ -4362,12 +4373,15 @@ class column_iterator final
   typedef typename column_t::refs_t refs_t;
 
   bool next_block() {
+    auto& doc = std::get<document>(attrs_);
+    auto& payload = std::get<irs::payload>(attrs_);
+
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
+      payload.value = bytes_ref::NIL;
+      doc.value = irs::doc_limits::eof();
 
       return false;
     }
@@ -4376,14 +4390,14 @@ class column_iterator final
       const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
 
       if (block_ != cached) {
-        block_.reset(cached, payload_);
+        block_.reset(cached, payload);
       }
     } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
+      payload.value = bytes_ref::NIL;
+      doc.value = irs::doc_limits::eof();
 
       throw;
     }
@@ -4394,10 +4408,7 @@ class column_iterator final
   }
 
   block_iterator_t block_;
-  irs::payload payload_;
-  irs::document doc_;
-  irs::cost cost_;
-  irs::score score_;
+  attributes_type attrs_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4866,56 +4877,60 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final :
-      public irs::frozen_attributes<3, irs::doc_iterator> {
+  class column_iterator final : public irs::doc_iterator {
+   private:
+    using attributes_type = std::tuple<
+      document, cost, score>;
+
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : attributes{{
-          { irs::type<irs::document>::id(), &value_  },
-          { irs::type<irs::cost>::id(),     &cost_   },
-          { irs::type<irs::score>::id(),    &score_  },
-        }},
-        cost_(column.size()),
-        min_(1 + column.min_),
+      : min_(1 + column.min_),
         max_(column.max()) {
+      std::get<cost>(attrs_).value(column.size());
+    }
+
+    virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+      return irs::get_mutable(attrs_, type);
     }
 
     virtual irs::doc_id_t value() const noexcept override {
-      return value_.value;
+      return std::get<document>(attrs_).value;
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
+      auto& value = std::get<document>(attrs_);
+
       if (doc < min_) {
-        if (!doc_limits::valid(value_.value)) {
+        if (!doc_limits::valid(value.value)) {
           next();
         }
 
-        return value();
+        return this->value();
       }
 
       min_ = doc;
       next();
 
-      return value_.value;
+      return value.value;
     }
 
     virtual bool next() noexcept override {
+      auto& value = std::get<document>(attrs_);
+
       if (min_ > max_) {
-        value_.value = doc_limits::eof();
+        value.value = doc_limits::eof();
 
         return false;
       }
 
 
-      value_.value = min_++;
+      value.value = min_++;
 
       return true;
     }
 
    private:
-    document value_;
-    irs::cost cost_;
-    irs::score score_;
+    attributes_type attrs_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
