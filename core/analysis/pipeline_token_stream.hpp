@@ -38,7 +38,8 @@ namespace analysis {
 /// @brief an analyser capable of chaining other analyzers
 ////////////////////////////////////////////////////////////////////////////////
 class pipeline_token_stream final
-  : public frozen_attributes<4, analyzer>, private util::noncopyable {
+  : public analyzer,
+    private util::noncopyable {
  public:
   using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
@@ -46,6 +47,9 @@ class pipeline_token_stream final
   static void init(); // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+    return irs::get_mutable(attrs_, id);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -94,12 +98,16 @@ class pipeline_token_stream final
     irs::analysis::analyzer::ptr analyzer;
   };
   using pipeline_t = std::vector<sub_analyzer_t>;
+  using attributes_type = std::tuple<
+    increment, attribute_ptr<term_attribute>,
+    attribute_ptr<offset>, attribute_ptr<payload>>;
+
   pipeline_t pipeline_;
   pipeline_t::iterator current_;
   pipeline_t::iterator top_;
   pipeline_t::iterator bottom_;
   offset offs_;
-  increment inc_;
+  attributes_type attrs_;
 };
 
 }
