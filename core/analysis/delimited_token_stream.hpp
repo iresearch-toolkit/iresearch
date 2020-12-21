@@ -36,7 +36,7 @@ namespace analysis {
 ///        RFC4180 (without starting new records on newlines)
 ////////////////////////////////////////////////////////////////////////////////
 class delimited_token_stream final
-    : public frozen_attributes<4, analyzer>,
+    : public analyzer,
       private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "delimiter"; }
@@ -44,18 +44,24 @@ class delimited_token_stream final
   static ptr make(const string_ref& delimiter);
 
   explicit delimited_token_stream(const irs::string_ref& delimiter);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
+  using attributes_type = std::tuple<
+    increment,
+    offset,        // token value with evaluated quotes
+    payload,       // raw token value
+    term_attribute>;
+
   bytes_ref data_;
   bytes_ref delim_;
   bstring delim_buf_;
-  increment inc_;
-  offset offset_;
-  payload payload_; // raw token value
-  term_attribute term_; // token value with evaluated quotes
   bstring term_buf_; // buffer for the last evaluated term
+  attributes_type attrs_;
 };
 
 } // analysis

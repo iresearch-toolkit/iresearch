@@ -323,12 +323,7 @@ namespace analysis {
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<text_token_normalizing_stream>::get()},
+  : analyzer{irs::type<text_token_normalizing_stream>::get()},
     state_(memory::make_unique<state_t>(options)),
     term_eof_(true) {
 }
@@ -460,10 +455,12 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // use the normalized value
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value = irs::ref_cast<irs::byte_type>(state_->term_buf);
-  offset_.start = 0;
-  offset_.end = data.size();
-  payload_.value = ref_cast<uint8_t>(data);
+  std::get<term_attribute>(attrs_).value = irs::ref_cast<irs::byte_type>(state_->term_buf);
+  std::get<offset>(attrs_) = {
+    .start = 0,
+    .end = static_cast<uint32_t>(data.size())
+  };
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   return true;

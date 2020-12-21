@@ -203,12 +203,7 @@ namespace iresearch {
 namespace analysis {
 
 token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<token_masking_stream>::get()},
+  : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {
 }
@@ -233,11 +228,14 @@ bool token_masking_stream::next() {
 }
 
 bool token_masking_stream::reset(const string_ref& data) {
-  offset_.start = 0;
-  offset_.end = data.size();
-  payload_.value = ref_cast<uint8_t>(data);
-  term_.value = irs::ref_cast<irs::byte_type>(data);
-  term_eof_ = mask_.find(term_.value) != mask_.end();
+  std::get<offset>(attrs_) = {
+    .start = 0,
+    .end = uint32_t(data.size()) };
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
+
+  auto& term = std::get<term_attribute>(attrs_);
+  term.value = irs::ref_cast<irs::byte_type>(data);
+  term_eof_ = mask_.find(term.value) != mask_.end();
 
   return true;
 }

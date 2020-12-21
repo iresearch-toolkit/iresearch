@@ -28,6 +28,28 @@
 #include "attribute_provider.hpp"
 
 namespace iresearch {
+namespace detail {
+
+template<size_t I, typename... T>
+constexpr attribute* get_mutable_helper(std::tuple<T...>& t, type_info::type_id id) noexcept {
+   auto& v = std::get<I>(t);
+   if (type<std::remove_reference_t<decltype(v)>>::id() == id) {
+     return &v;
+   }
+
+   if constexpr (I < std::tuple_size<std::tuple<T...>>::value - 1) {
+     return get_mutable_helper<I+1>(t, id);
+   } else {
+     return nullptr;
+   }
+}
+
+}
+
+template<typename... T>
+constexpr attribute* get_mutable(std::tuple<T...>& t, type_info::type_id id) noexcept {
+  return detail::get_mutable_helper<0>(t, id);
+}
 
 template<
   size_t Size,

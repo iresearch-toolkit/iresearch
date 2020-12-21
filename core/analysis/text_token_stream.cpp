@@ -913,12 +913,10 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offs_         },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<text_token_stream>::get()},
+text_token_stream::text_token_stream(
+    const options_t& options,
+    const stopwords_t& stopwords)
+  : analyzer{ irs::type<text_token_stream>::get() },
     state_(memory::make_unique<state_t>(options, stopwords)) {
 }
 
@@ -949,11 +947,13 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // reset term attribute
-  term_.value = bytes_ref::NIL;
+  std::get<term_attribute>(attrs_).value = bytes_ref::NIL;
 
   // reset offset attribute
-  offs_.start = integer_traits<uint32_t>::const_max;
-  offs_.end = integer_traits<uint32_t>::const_max;
+  std::get<offset>(attrs_) = {
+    .start = integer_traits<uint32_t>::const_max,
+    .end = integer_traits<uint32_t>::const_max
+  };
 
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
@@ -1054,7 +1054,7 @@ bool text_token_stream::reset(const string_ref& data) {
   state_->start = integer_traits<uint32_t>::const_max;
   state_->end = integer_traits<uint32_t>::const_max;
   state_->set_ngram_finished();
-  inc_.value = 1;
+  std::get<increment>(attrs_).value = 1;
 
   return true;
 }
@@ -1072,9 +1072,11 @@ bool text_token_stream::next() {
       }
     }
   } else if (next_word()) {
-    term_.value = state_->term;
-    offs_.start = state_->start;
-    offs_.end = state_->end;
+    std::get<term_attribute>(attrs_).value = state_->term;
+    std::get<offset>(attrs_) = {
+      .start = state_->start,
+      .end = state_->end
+    };
 
     return true;
   }
@@ -1111,10 +1113,12 @@ bool text_token_stream::next_ngram() {
   auto end = state_->term.end();
   assert(begin != end);
 
+  auto& inc = std::get<increment>(attrs_);
+
   // if there are no ngrams yet then a new word started
   if (state_->is_ngram_finished()) {
     state_->ngram.it = begin;
-    inc_.value = 1;
+    inc.value = 1;
     // find the first ngram > min
     do {
       state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
@@ -1122,7 +1126,7 @@ bool text_token_stream::next_ngram() {
              state_->ngram.it != end);
   } else {
     // not first ngram in a word
-    inc_.value = 0; // staying on the current pos
+    inc.value = 0; // staying on the current pos
     state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
     ++state_->ngram.length;
   }
@@ -1160,9 +1164,11 @@ bool text_token_stream::next_ngram() {
 
     auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
     term_buf_.assign(state_->term.c_str(), size);
-    term_.value = term_buf_;
-    offs_.start = state_->start;
-    offs_.end = state_->start + size;
+    std::get<term_attribute>(attrs_).value = term_buf_;
+    std::get<offset>(attrs_) = {
+      .start = state_->start,
+      .end = state_->start + size
+    };
 
     return true;
   }

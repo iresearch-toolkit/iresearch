@@ -35,9 +35,9 @@ namespace analysis {
 /// @brief an analyzer capable of masking the input, treated as a single token,
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class token_masking_stream
-  : public frozen_attributes<4, analyzer>,
-    util::noncopyable {
+class token_masking_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "mask"; }
 
@@ -45,16 +45,22 @@ class token_masking_stream
   static ptr make(const string_ref& mask);
 
   explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
-  private:
-   irs::increment inc_;
-   std::unordered_set<irs::bstring> mask_;
-   irs::offset offset_;
-   irs::payload payload_; // raw token value
-   irs::term_attribute term_; // token value with evaluated quotes
-   bool term_eof_;
+ private:
+  using attributes_type = std::tuple<
+    increment,
+    offset,
+    payload,         // raw token value
+    term_attribute>; // token value with evaluated quotes
+
+  std::unordered_set<irs::bstring> mask_;
+  attributes_type attrs_;
+  bool term_eof_;
 };
 
 } // analysis
