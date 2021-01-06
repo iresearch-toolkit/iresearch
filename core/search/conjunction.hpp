@@ -167,7 +167,7 @@ class conjunction : public doc_iterator, private score_ctx {
   }
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     attribute_ptr<document>,
     attribute_ptr<cost>,
     score>;
@@ -271,7 +271,7 @@ class conjunction : public doc_iterator, private score_ctx {
     return target;
   }
 
-  attributes_type attrs_;
+  attributes attrs_;
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
   mutable std::vector<const irs::byte_type*> score_vals_;

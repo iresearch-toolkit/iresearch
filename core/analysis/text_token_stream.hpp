@@ -83,14 +83,14 @@ class text_token_stream final
   bool next_ngram();
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     offset,
     term_attribute>;
 
   std::shared_ptr<state_t> state_;
   bstring term_buf_; // buffer for value if value cannot be referenced directly
-  attributes_type attrs_;
+  attributes attrs_;
 };
 
 } // analysis

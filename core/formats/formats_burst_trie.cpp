@@ -1810,7 +1810,7 @@ class term_iterator_base : public seek_term_iterator {
   }
 
  protected:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     version10::term_meta,
     attribute_ptr<frequency>,
     attribute_ptr<payload>>;
@@ -1826,7 +1826,7 @@ class term_iterator_base : public seek_term_iterator {
     return *field_;
   }
 
-  mutable attributes_type attrs_;
+  mutable attributes attrs_;
   const field_meta* field_;
   postings_reader* postings_;
   const index_input* terms_in_source_;

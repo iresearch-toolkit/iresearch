@@ -51,7 +51,7 @@ class delimited_token_stream final
   virtual bool reset(const string_ref& data) override;
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     offset,        // token value with evaluated quotes
     payload,       // raw token value
@@ -61,7 +61,7 @@ class delimited_token_stream final
   bytes_ref delim_;
   bstring delim_buf_;
   bstring term_buf_; // buffer for the last evaluated term
-  attributes_type attrs_;
+  attributes attrs_;
 };
 
 } // analysis

@@ -54,13 +54,13 @@ class text_token_stemming_stream final
   virtual bool reset(const irs::string_ref& data) override;
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     offset,
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-   attributes_type attrs_;
+   attributes attrs_;
    std::locale locale_;
    std::shared_ptr<sb_stemmer> stemmer_;
    std::string term_buf_; // buffer for the last evaluated term

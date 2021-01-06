@@ -91,7 +91,7 @@ class ngram_token_stream_base
    bool preserve_original() const noexcept { return options_.preserve_original; }
 
  protected:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     offset,
     term_attribute>;
@@ -100,7 +100,7 @@ class ngram_token_stream_base
 
    Options options_;
    bytes_ref data_; // data to process
-   attributes_type attrs_;
+   attributes attrs_;
    const byte_type* begin_{};
    const byte_type* data_end_{};
    const byte_type* ngram_end_{};

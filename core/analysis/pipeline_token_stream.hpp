@@ -98,7 +98,7 @@ class pipeline_token_stream final
     irs::analysis::analyzer::ptr analyzer;
   };
   using pipeline_t = std::vector<sub_analyzer_t>;
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     attribute_ptr<term_attribute>,
     attribute_ptr<offset>,
@@ -109,7 +109,7 @@ class pipeline_token_stream final
   pipeline_t::iterator top_;
   pipeline_t::iterator bottom_;
   offset offs_;
-  attributes_type attrs_;
+  attributes attrs_;
 };
 
 }

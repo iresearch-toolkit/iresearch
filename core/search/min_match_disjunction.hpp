@@ -245,7 +245,7 @@ class min_match_disjunction
   }
 
  private:
-  using attributes_type = std::tuple<document, cost, score>;
+  using attributes = std::tuple<document, cost, score>;
 
   void prepare_score(const order::prepared& ord) {
     if (ord.empty()) {
@@ -452,7 +452,7 @@ class min_match_disjunction
   mutable std::vector<const irs::byte_type*> scores_vals_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
-  attributes_type attrs_;
+  attributes attrs_;
   order::prepared::merger merger_;
 }; // min_match_disjunction
 

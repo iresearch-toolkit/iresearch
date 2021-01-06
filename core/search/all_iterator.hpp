@@ -73,10 +73,10 @@ class all_iterator final : public doc_iterator {
   }
 
  private:
-  using attributes_type = std::tuple<document, cost, score>;
+  using attributes = std::tuple<document, cost, score>;
 
   doc_id_t max_doc_; // largest valid doc_id
-  attributes_type attrs_;
+  attributes attrs_;
 }; // all_iterator
 
 } // ROOT

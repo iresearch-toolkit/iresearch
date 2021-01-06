@@ -1547,7 +1547,7 @@ struct position<IteratorTraits, false> : attribute {
 template<typename IteratorTraits>
 class doc_iterator final : public irs::doc_iterator {
  private:
-  using attributes_type = std::conditional_t<
+  using attributes = std::conditional_t<
     IteratorTraits::frequency() && IteratorTraits::position(),
       std::tuple<document, frequency, cost, score, position<IteratorTraits>>,
       std::conditional_t<IteratorTraits::frequency(),
@@ -1849,7 +1849,7 @@ class doc_iterator final : public irs::doc_iterator {
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  attributes_type attrs_;
+  attributes attrs_;
 }; // doc_iterator
 
 template<typename IteratorTraits>
@@ -4314,7 +4314,7 @@ class column
 template<typename Column>
 class column_iterator final : public irs::doc_iterator {
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     document, cost, score, payload>;
 
  public:
@@ -4408,7 +4408,7 @@ class column_iterator final : public irs::doc_iterator {
   }
 
   block_iterator_t block_;
-  attributes_type attrs_;
+  attributes attrs_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4879,7 +4879,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
  private:
   class column_iterator final : public irs::doc_iterator {
    private:
-    using attributes_type = std::tuple<
+    using attributes = std::tuple<
       document, cost, score>;
 
    public:
@@ -4930,7 +4930,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
    private:
-    attributes_type attrs_;
+    attributes attrs_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator

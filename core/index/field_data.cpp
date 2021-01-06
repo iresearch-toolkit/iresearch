@@ -226,14 +226,14 @@ class pos_iterator final : public irs::position {
   }
 
  private:
-  using attributes_type = std::tuple<attribute_ptr<offset>, attribute_ptr<payload>>;
+  using attributes = std::tuple<attribute_ptr<offset>, attribute_ptr<payload>>;
 
   Reader prox_in_;
   bstring payload_value_;
   const frequency* freq_{}; // number of term positions in a document
   payload pay_;
   offset offs_;
-  attributes_type attrs_;
+  attributes attrs_;
   uint32_t pos_{}; // current position
 }; // pos_iterator
 
@@ -373,7 +373,7 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     attribute_ptr<frequency>, attribute_ptr<position>>;
 
   const field_data* field_{};
@@ -383,7 +383,7 @@ class doc_iterator final : public irs::doc_iterator {
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
   const posting* posting_{};
-  attributes_type attrs_;
+  attributes attrs_;
   bool has_cookie_{false}; // FIXME remove
 };
 
@@ -483,7 +483,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     document, attribute_ptr<frequency>, attribute_ptr<position>>;
 
   struct doc_entry {
@@ -559,7 +559,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   std::vector<doc_entry> docs_;
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
   frequency freq_;
-  attributes_type attrs_;
+  attributes attrs_;
 }; // sorting_doc_iterator
 
 ////////////////////////////////////////////////////////////////////////////////

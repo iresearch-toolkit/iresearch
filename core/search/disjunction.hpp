@@ -385,11 +385,11 @@ class basic_disjunction final
     return no_score_value_.c_str();
   }
 
-  using attributes_type = std::tuple<document, score, cost>;
+  using attributes = std::tuple<document, score, cost>;
 
   mutable adapter lhs_;
   mutable adapter rhs_;
-  attributes_type attrs_;
+  attributes attrs_;
   bstring no_score_value_; // empty score value
   order::prepared::merger merger_;
 }; // basic_disjunction
@@ -644,7 +644,7 @@ class small_disjunction final
     last_hitched_doc_ = doc.value;
   }
 
-  using attributes_type = std::tuple<document, score, cost>;
+  using attributes = std::tuple<document, score, cost>;
   using iterator = typename doc_iterators_t::iterator;
 
   doc_id_t last_hitched_doc_{ doc_limits::invalid() };
@@ -652,7 +652,7 @@ class small_disjunction final
   iterator scored_begin_; // beginning of scored doc iterator range
   iterator begin_; // beginning of unscored doc iterators range
   iterator end_; // end of scored doc iterator range
-  attributes_type attrs_;
+  attributes attrs_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
   order::prepared::merger merger_;
 }; // small_disjunction
@@ -788,7 +788,7 @@ class disjunction final
  private:
   struct resolve_overload_tag{};
 
-  using attributes_type = std::tuple<document, score, cost>;
+  using attributes = std::tuple<document, score, cost>;
 
   template<typename Estimation>
   disjunction(
@@ -932,7 +932,7 @@ class disjunction final
   doc_iterators_t itrs_;
   heap_container heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
-  attributes_type attrs_;
+  attributes attrs_;
   order::prepared::merger merger_;
 }; // disjunction
 
@@ -1220,7 +1220,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   using min_match_buffer_type = detail::min_match_buffer<
     traits_type::min_match() ? window() : 0>;
 
-  using attributes_type = std::tuple<document, score, cost>;
+  using attributes = std::tuple<document, score, cost>;
 
   struct resolve_overload_tag{};
 
@@ -1422,7 +1422,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   doc_id_t doc_base_{doc_limits::invalid()};
   doc_id_t min_{doc_limits::min()}; // base doc id for the next mask
   doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
-  attributes_type attrs_;
+  attributes attrs_;
   size_t match_count_;
   size_t buf_offset_{}; // offset within a buffer
   score_buffer_type score_buf_;

@@ -499,7 +499,7 @@ class phrase_iterator final : public doc_iterator {
 
  private:
   // FIXME can store only 4 attrbiutes for non-volatile boost case
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     attribute_ptr<document>,
     cost,
     score,
@@ -508,7 +508,7 @@ class phrase_iterator final : public doc_iterator {
 
   Conjunction approx_; // first approximation (conjunction over all words in a phrase)
   Frequency freq_;
-  attributes_type attrs_;
+  attributes attrs_;
 }; // phrase_iterator
 
 } // ROOT

@@ -52,14 +52,14 @@ class token_masking_stream final
   virtual bool reset(const string_ref& data) override;
 
  private:
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     increment,
     offset,
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
   std::unordered_set<irs::bstring> mask_;
-  attributes_type attrs_;
+  attributes attrs_;
   bool term_eof_;
 };
 

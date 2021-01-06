@@ -153,7 +153,7 @@ class ngram_similarity_doc_iterator final
 
   using search_states_t = std::map<uint32_t, std::shared_ptr<search_state>, std::greater<uint32_t>>;
   using pos_temp_t = std::vector<std::pair<uint32_t, std::shared_ptr<search_state>>>;
-  using attributes_type = std::tuple<
+  using attributes = std::tuple<
     attribute_ptr<document>,
     frequency,
     cost,
@@ -164,7 +164,7 @@ class ngram_similarity_doc_iterator final
 
   std::vector<position_t> pos_;
   approximation approx_;
-  attributes_type attrs_;
+  attributes attrs_;
   std::set<size_t> used_pos_; // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;
   std::vector<size_t> pos_sequence_;
