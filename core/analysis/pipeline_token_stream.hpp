@@ -47,7 +47,7 @@ class pipeline_token_stream final
   static void init(); // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
   }
   virtual bool next() override;

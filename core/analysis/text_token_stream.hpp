@@ -68,11 +68,11 @@ class text_token_stream final
 
   static constexpr string_ref type_name() noexcept { return "text"; }
   static void init(); // for triggering registration in a static build
-  static ptr make(const irs::string_ref& locale);
+  static ptr make(const string_ref& locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;

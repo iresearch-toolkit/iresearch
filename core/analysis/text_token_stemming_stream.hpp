@@ -44,14 +44,14 @@ class text_token_stemming_stream final
  public:
   static constexpr string_ref type_name() noexcept { return "stem"; }
   static void init(); // for trigering registration in a static build
-  static ptr make(const irs::string_ref& locale);
+  static ptr make(const string_ref& locale);
 
   explicit text_token_stemming_stream(const std::locale& locale);
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(const irs::string_ref& data) override;
+  virtual bool reset(const string_ref& data) override;
 
  private:
   using attributes = std::tuple<

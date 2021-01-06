@@ -54,11 +54,11 @@ struct score_iterator_adapter {
     return it.get();
   }
 
-  const attribute* get(type_info::type_id type) const noexcept {
+  const attribute* get(irs::type_info::type_id type) const noexcept {
     return it->get(type);
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept {
     return it->get_mutable(type);
   }
 
@@ -142,7 +142,7 @@ class conjunction : public doc_iterator, private score_ctx {
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 

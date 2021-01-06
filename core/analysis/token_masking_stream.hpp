@@ -45,7 +45,7 @@ class token_masking_stream final
   static ptr make(const string_ref& mask);
 
   explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;

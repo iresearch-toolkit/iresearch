@@ -42,7 +42,7 @@ class all_iterator final : public doc_iterator {
     uint64_t docs_count,
     boost_t boost);
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
   }
 

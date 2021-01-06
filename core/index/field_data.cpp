@@ -186,7 +186,7 @@ class pos_iterator final : public irs::position {
     prox_in_ = prox;
   }
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override final {
     return irs::get_mutable(attrs_, id);
   }
 
@@ -316,7 +316,7 @@ class doc_iterator final : public irs::doc_iterator {
     return posting_->size;
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -440,7 +440,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     it_ = docs_.begin();
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -600,7 +600,7 @@ class term_iterator : public irs::term_iterator {
     return it_->first;
   }
 
-  virtual attribute* get_mutable(type_info::type_id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -718,7 +718,7 @@ class term_reader final : public irs::basic_term_reader,
     return memory::to_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual attribute* get_mutable(type_info::type_id) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 

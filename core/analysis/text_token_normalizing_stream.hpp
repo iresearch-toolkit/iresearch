@@ -53,7 +53,7 @@ class text_token_normalizing_stream final
   static ptr make(const string_ref& locale);
 
   explicit text_token_normalizing_stream(const options_t& options);
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;

@@ -43,8 +43,8 @@ class delimited_token_stream final
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& delimiter);
 
-  explicit delimited_token_stream(const irs::string_ref& delimiter);
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  explicit delimited_token_stream(const string_ref& delimiter);
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
