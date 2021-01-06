@@ -451,7 +451,7 @@ class phrase_iterator final : public doc_iterator {
     std::get<attribute_ptr<filter_boost>>(attrs_).ptr = freq_.boost();
 
     // FIXME find a better estimation
-    std::get<irs::cost>(attrs_).rule(
+    std::get<irs::cost>(attrs_).reset(
       [this](){ return cost::extract(approx_); });
 
     if (!ord.empty()) {

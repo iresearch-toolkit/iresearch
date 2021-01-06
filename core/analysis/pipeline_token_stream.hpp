@@ -99,8 +99,10 @@ class pipeline_token_stream final
   };
   using pipeline_t = std::vector<sub_analyzer_t>;
   using attributes_type = std::tuple<
-    increment, attribute_ptr<term_attribute>,
-    attribute_ptr<offset>, attribute_ptr<payload>>;
+    increment,
+    attribute_ptr<term_attribute>,
+    attribute_ptr<offset>,
+    attribute_ptr<payload>>;
 
   pipeline_t pipeline_;
   pipeline_t::iterator current_;

@@ -123,18 +123,15 @@ class conjunction : public doc_iterator, private score_ctx {
       doc_iterators&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : attrs_{
-        itrs.front_doc,
-        irs::get_mutable<cost>(itrs.front),
-        irs::score{}
-      },
-      itrs_(std::move(itrs.itrs)),
+    : itrs_(std::move(itrs.itrs)),
       front_(itrs.front),
       front_doc_(itrs.front_doc),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
+    std::get<attribute_ptr<document>>(attrs_) = itrs.front_doc;
+    std::get<attribute_ptr<cost>>(attrs_)     = irs::get_mutable<cost>(itrs.front);
 
     prepare_score(ord);
   }
@@ -180,9 +177,9 @@ class conjunction : public doc_iterator, private score_ctx {
       return;
     }
 
-    auto& score_ = std::get<irs::score>(attrs_);
+    auto& score = std::get<irs::score>(attrs_);
 
-    score_.realloc(ord);
+    score.realloc(ord);
 
     // copy scores into separate container
     // to avoid extra checks
@@ -199,13 +196,13 @@ class conjunction : public doc_iterator, private score_ctx {
     // prepare score
     switch (scores_.size()) {
       case 0:
-        assert(score_.is_default());
+        assert(score.is_default());
         break;
       case 1:
-        score_.reset(*scores_.front());
+        score.reset(*scores_.front());
         break;
       case 2:
-        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
@@ -216,7 +213,7 @@ class conjunction : public doc_iterator, private score_ctx {
         });
         break;
       case 3:
-        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
@@ -228,7 +225,7 @@ class conjunction : public doc_iterator, private score_ctx {
         });
         break;
       default:
-        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           auto* score_val = self.score_vals_.data();

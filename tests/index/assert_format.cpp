@@ -448,7 +448,7 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
     pos_(*this, features) {
   next_ = data_.postings.begin();
 
-  cost_.value(data_.postings.size());
+  cost_.reset(data_.postings.size());
   attrs_[irs::type<irs::cost>::id()] = &cost_;
 
   attrs_[irs::type<irs::document>::id()] = &doc_;

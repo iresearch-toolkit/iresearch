@@ -1748,15 +1748,15 @@ class term_iterator_base : public seek_term_iterator {
       const index_input& terms_in,
       irs::encryption::stream* terms_cipher,
       payload* pay = nullptr)
-    : attrs_(
-        {},
-        (field.features.check<frequency>()
-          ? freq_ : attribute_ptr<frequency>()),
-        pay),
-      field_(&field),
+    : field_(&field),
       postings_(&postings),
       terms_in_source_(&terms_in),
       terms_cipher_(terms_cipher) {
+    if (field.features.check<frequency>()) {
+      std::get<attribute_ptr<frequency>>(attrs_) = freq_;
+    }
+
+    std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
   // read attributes
@@ -1811,7 +1811,9 @@ class term_iterator_base : public seek_term_iterator {
 
  protected:
   using attributes_type = std::tuple<
-    version10::term_meta, attribute_ptr<frequency>, attribute_ptr<payload>>;
+    version10::term_meta,
+    attribute_ptr<frequency>,
+    attribute_ptr<payload>>;
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
     const auto size = prefix_size + suffix_size;

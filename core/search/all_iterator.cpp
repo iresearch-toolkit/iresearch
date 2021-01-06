@@ -32,7 +32,7 @@ all_iterator::all_iterator(
     uint64_t docs_count,
     boost_t boost)
   : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
-  std::get<cost>(attrs_).value(max_doc_);
+  std::get<cost>(attrs_).reset(max_doc_);
 
   if (!order.empty()) {
     auto& score = std::get<irs::score>(attrs_);

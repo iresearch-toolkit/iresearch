@@ -1608,7 +1608,7 @@ class doc_iterator final : public irs::doc_iterator {
       assert(!doc_in_->eof());
     }
 
-    std::get<cost>(attrs_).value(term_state_.docs_count); // estimate iterator
+    std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
       assert(irs::get<frequency>(attrs));
@@ -4330,7 +4330,7 @@ class column_iterator final : public irs::doc_iterator {
       seek_origin_(begin),
       end_(end),
       column_(&column) {
-    std::get<cost>(attrs_).value(column.size());
+    std::get<cost>(attrs_).reset(column.size());
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override {
@@ -4886,7 +4886,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     explicit column_iterator(const column_t& column) noexcept
       : min_(1 + column.min_),
         max_(column.max()) {
-      std::get<cost>(attrs_).value(column.size());
+      std::get<cost>(attrs_).reset(column.size());
     }
 
     virtual attribute* get_mutable(type_info::type_id type) noexcept override final {

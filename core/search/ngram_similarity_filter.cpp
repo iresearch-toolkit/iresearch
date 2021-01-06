@@ -74,7 +74,7 @@ class ngram_similarity_doc_iterator final
     assert(doc.ptr);
 
     // FIXME find a better estimation
-    std::get<cost>(attrs_).rule(
+    std::get<cost>(attrs_).reset(
       [this](){ return cost::extract(approx_); });
 
     if (!empty_order_) {

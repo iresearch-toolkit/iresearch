@@ -84,7 +84,7 @@ class min_match_disjunction
         return cost::extract(lhs, 0) < cost::extract(rhs, 0);
     });
 
-    std::get<cost>(attrs_).rule([this](){
+    std::get<cost>(attrs_).reset([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator_t& rhs) {
