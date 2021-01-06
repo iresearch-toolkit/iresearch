@@ -444,11 +444,9 @@ class phrase_iterator final : public doc_iterator {
       boost_t boost)
     : approx_(std::move(itrs)),
       freq_(std::move(pos), ord) {
-    auto& doc = std::get<attribute_ptr<document>>(attrs_);
-    doc.ptr = irs::get_mutable<document>(&approx_);;
-    assert(doc.ptr);
-    std::get<attribute_ptr<frequency>>(attrs_).ptr = freq_.freq();
-    std::get<attribute_ptr<filter_boost>>(attrs_).ptr = freq_.boost();
+    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
+    std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
+    std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(

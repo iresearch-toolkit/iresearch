@@ -69,9 +69,7 @@ class ngram_similarity_doc_iterator final
       min_match_count_(min_match_count),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
       empty_order_(ord.empty()) {
-    auto& doc = std::get<attribute_ptr<document>>(attrs_);
-    doc.ptr = irs::get_mutable<document>(&approx_);
-    assert(doc.ptr);
+    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
     std::get<cost>(attrs_).reset(

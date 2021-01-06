@@ -171,11 +171,11 @@ class pos_iterator final : public irs::position {
 
     freq_ = &freq;
 
-    std::get<attribute_ptr<offset>>(attrs_).ptr = features.check<offset>()
+    std::get<attribute_ptr<offset>>(attrs_) = features.check<offset>()
       ? &offs_
       : nullptr;
 
-    std::get<attribute_ptr<payload>>(attrs_).ptr = features.check<payload>()
+    std::get<attribute_ptr<payload>>(attrs_) = features.check<payload>()
       ? &pay_
       : nullptr;
   }
@@ -272,17 +272,17 @@ class doc_iterator final : public irs::doc_iterator {
     field_ = &field;
     auto& freq = std::get<attribute_ptr<frequency>>(attrs_);
     auto& pos = std::get<attribute_ptr<position>>(attrs_);
-    freq.ptr = nullptr;
-    pos.ptr = nullptr;
+    freq = nullptr;
+    pos = nullptr;
     has_cookie_ = false;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      freq.ptr = &freq_;
+      freq = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        pos.ptr = &pos_;
+        pos = &pos_;
         has_cookie_ = field.prox_random_access();
       }
     }
@@ -399,16 +399,16 @@ class sorting_doc_iterator final : public irs::doc_iterator {
 
     auto& pfreq = std::get<attribute_ptr<frequency>>(attrs_);
     auto& ppos = std::get<attribute_ptr<position>>(attrs_);
-    pfreq.ptr = nullptr;
-    ppos.ptr = nullptr;
+    pfreq = nullptr;
+    ppos = nullptr;
 
     auto& features = field.meta().features;
     if (features.check<frequency>()) {
-      pfreq.ptr = &freq_;
+      pfreq = &freq_;
 
       if (features.check<position>()) {
         pos_.reset(features, freq_);
-        ppos.ptr = &pos_;
+        ppos = &pos_;
       }
     }
   }

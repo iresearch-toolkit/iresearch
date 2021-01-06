@@ -28,6 +28,7 @@
 #include "attribute_provider.hpp"
 
 namespace iresearch {
+
 template<typename T>
 struct attribute_ptr {
   T* ptr{};
@@ -39,7 +40,7 @@ struct attribute_ptr {
   operator attribute_ptr<attribute>() const noexcept {
     return attribute_ptr<attribute>{*ptr};
   }
-};
+}; // attribute_ptr
 
 template<typename T>
 struct type<attribute_ptr<T>> : type<T> { };
