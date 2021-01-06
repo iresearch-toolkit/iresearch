@@ -350,10 +350,8 @@ bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
   term.value = bytes_ref::NIL;
 
   // reset offset attribute
-  offset = {
-    .start = integer_traits<uint32_t>::const_max,
-    .end = integer_traits<uint32_t>::const_max
-  };
+  offset.start = integer_traits<uint32_t>::const_max;
+  offset.end = integer_traits<uint32_t>::const_max;
 
   // reset stream
   data_ = ref_cast<byte_type>(value);
