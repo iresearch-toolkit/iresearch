@@ -1644,7 +1644,7 @@ class doc_iterator final : public irs::doc_iterator {
     }
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -4333,7 +4333,7 @@ class column_iterator final : public irs::doc_iterator {
     std::get<cost>(attrs_).reset(column.size());
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -4889,7 +4889,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       std::get<cost>(attrs_).reset(column.size());
     }
 
-    virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
+    virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
       return irs::get_mutable(attrs_, type);
     }
 

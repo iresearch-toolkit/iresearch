@@ -238,7 +238,8 @@ bool delimited_token_stream::next() {
   auto& payload = std::get<irs::payload>(attrs_);
   auto& term = std::get<term_attribute>(attrs_);
 
-  offset = { .start = start, .end = uint32_t(end) };
+  offset.start = start;
+  offset.end = uint32_t(end);
   payload.value = bytes_ref(data_.c_str(), size);
   term.value =  delim_.null() ? payload.value
                               : eval_term(term_buf_, payload.value);
@@ -251,10 +252,9 @@ bool delimited_token_stream::next() {
 bool delimited_token_stream::reset(const string_ref& data) {
   data_ = ref_cast<byte_type>(data);
 
-  std::get<irs::offset>(attrs_) = {
-    .start = 0,
-    .end = 0 - uint32_t(delim_.size()) // counterpart to computation in next() above
-  };
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = 0 - uint32_t(delim_.size()); // counterpart to computation in next() above
 
   return true;
 }

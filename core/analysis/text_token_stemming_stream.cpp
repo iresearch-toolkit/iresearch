@@ -240,10 +240,10 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     term_buf_ref = term_buf_;
   }
 
-  std::get<offset>(attrs_) = {
-    .start = 0,
-    .end = static_cast<uint32_t>(data.size())
-  };
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(data.size());
+
   std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 

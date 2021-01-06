@@ -313,10 +313,8 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
       term.value = marked_term_buffer_;
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
-      offset = {
-        .start = 0,
-        .end = uint32_t(data_.size())
-      };
+      offset.start = 0;
+      offset.end = uint32_t(data_.size());
       emit_original_ = EmitOriginal::None; // end marker is emitted last, so we are done emitting original
       inc.value = next_inc_val_;
       break;
@@ -327,10 +325,8 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.append(data_.begin(), data_end_);
       term.value = marked_term_buffer_;
       assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
-      offset = {
-        .start = 0,
-        .end = uint32_t(data_.size())
-      };
+      offset.start = 0;
+      offset.end = uint32_t(data_.size());
       emit_original_ = options_.end_marker.empty()? EmitOriginal::None : EmitOriginal::WithEndMarker;
       inc.value = next_inc_val_;
       break;

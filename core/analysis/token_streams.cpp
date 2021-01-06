@@ -54,10 +54,9 @@ string_token_stream::string_token_stream() noexcept
 bool string_token_stream::next() noexcept {
   const auto in_use = in_use_;
   std::get<term_attribute>(attrs_).value = value_;
-  std::get<offset>(attrs_) = {
-    .start = 0,
-    .end = static_cast<uint32_t>(value_.size())
-  };
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(value_.size());
   value_ = irs::bytes_ref::NIL;
   in_use_ = true;
   return !in_use;

@@ -950,10 +950,9 @@ bool text_token_stream::reset(const string_ref& data) {
   std::get<term_attribute>(attrs_).value = bytes_ref::NIL;
 
   // reset offset attribute
-  std::get<offset>(attrs_) = {
-    .start = integer_traits<uint32_t>::const_max,
-    .end = integer_traits<uint32_t>::const_max
-  };
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = integer_traits<uint32_t>::const_max;
+  offset.end = integer_traits<uint32_t>::const_max;
 
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
@@ -1073,10 +1072,10 @@ bool text_token_stream::next() {
     }
   } else if (next_word()) {
     std::get<term_attribute>(attrs_).value = state_->term;
-    std::get<offset>(attrs_) = {
-      .start = state_->start,
-      .end = state_->end
-    };
+
+    auto& offset = std::get<irs::offset>(attrs_);
+    offset.start = state_->start;
+    offset.end = state_->end;
 
     return true;
   }
@@ -1165,10 +1164,10 @@ bool text_token_stream::next_ngram() {
     auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
     term_buf_.assign(state_->term.c_str(), size);
     std::get<term_attribute>(attrs_).value = term_buf_;
-    std::get<offset>(attrs_) = {
-      .start = state_->start,
-      .end = state_->start + size
-    };
+
+    auto& offset = std::get<irs::offset>(attrs_);
+    offset.start = state_->start;
+    offset.end = state_->start + size;
 
     return true;
   }

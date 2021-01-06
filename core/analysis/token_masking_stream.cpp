@@ -228,9 +228,10 @@ bool token_masking_stream::next() {
 }
 
 bool token_masking_stream::reset(const string_ref& data) {
-  std::get<offset>(attrs_) = {
-    .start = 0,
-    .end = uint32_t(data.size()) };
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = uint32_t(data.size());
+
   std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
 
   auto& term = std::get<term_attribute>(attrs_);
