@@ -27,27 +27,84 @@
 
 #include "fst/matcher.h"
 #include "utils/misc.hpp"
+#include "utils/bit_utils.hpp"
 #include "utils/integer.hpp"
 #include "utils/std.hpp"
 
 namespace fst {
 
-template<typename F, bool MatchInput = true>
-std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
-  std::set<typename F::Arc::Label> labels;
-  for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
-    const auto state = siter.Value();
-    for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
-      const auto& arc = aiter.Value();
-      labels.emplace(MatchInput ? arc.ilabel : arc.olabel);
-    }
-  }
+template<typename F, bool MatchInput, bool ByteLabel>
+std::vector<typename F::Arc::Label> getStartLabels(
+    const F& fst, typename F::Arc::Label rho) {
+  using Label = typename F::Arc::Label;
 
-  return { labels.begin(), labels.end() };
+  if constexpr (ByteLabel) {
+    size_t bits[256 / irs::bits_required<size_t>()]{};
+    bool has_rho = false;
+
+    for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
+      const auto state = siter.Value();
+      for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
+        const auto& arc = aiter.Value();
+        const auto& label = MatchInput ? arc.ilabel : arc.olabel;
+
+        if (label == rho) {
+          has_rho = true;
+        } else {
+          assert(label <= std::numeric_limits<irs::byte_type>::max());
+
+          irs::set_bit(bits[label / irs::bits_required<size_t>()],
+                       label % irs::bits_required<size_t>());
+        }
+      }
+    }
+
+    const size_t size = irs::math::math_traits<size_t>::pop(bits[0]) +
+                        irs::math::math_traits<size_t>::pop(bits[1]) +
+                        irs::math::math_traits<size_t>::pop(bits[2]) +
+                        irs::math::math_traits<size_t>::pop(bits[3]) +
+                        size_t(has_rho);
+
+    std::vector<Label> labels(size);
+    auto begin = labels.begin();
+    Label offset = 0;
+
+    std::for_each(
+      std::begin(bits), std::end(bits),
+      [&offset, &begin](size_t word) {
+        for (size_t j = 0; j < irs::bits_required<size_t>(); ++j) {
+          if (irs::check_bit(word, j)) {
+            *begin = offset + static_cast<Label>(j);
+            ++begin;
+          }
+        }
+        offset += irs::bits_required<size_t>();
+    });
+
+    if (has_rho) {
+      *begin = rho;
+    }
+
+    return labels;
+  } else {
+    std::set<Label> labels;
+    for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
+      const auto state = siter.Value();
+      for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
+        const auto& arc = aiter.Value();
+        labels.emplace(MatchInput ? arc.ilabel : arc.olabel);
+      }
+    }
+    return { labels.begin(), labels.end() };
+  }
 }
 
-template<typename F, size_t CacheSize = 256, bool MatchInput = true>
-class TableMatcher final : public MatcherBase<typename F::Arc> {
+template<
+  typename F,             // automaton
+  size_t CacheSize = 256, // size of a table for cached label offsets
+  bool MatchInput = true, // label to match
+  bool ByteLabel = false  // byte automaton is defined over alphabet {0..256, Rho}
+> class TableMatcher final : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
   using Arc = typename FST::Arc;
@@ -69,7 +126,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     | kAcceptor;
 
   explicit TableMatcher(const FST& fst, Label rho, bool test_props)
-    : start_labels_(fst::getStartLabels<F, MatchInput>(fst)),
+    : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst, rho)),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       rho_(rho), fst_(&fst),
       error_(fst.Properties(FST_PROPERTIES, test_props) != FST_PROPERTIES) {

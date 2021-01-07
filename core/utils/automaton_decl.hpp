@@ -33,7 +33,7 @@ class VectorState;
 template <class Arc, class State>
 class VectorFst;
 
-template<typename F, size_t CacheSize, bool MatchInput>
+template<typename F, size_t CacheSize, bool MatchInput, bool ByteLabel>
 class TableMatcher;
 
 namespace fsa {
@@ -56,7 +56,7 @@ namespace iresearch {
 
 using automaton = fst::fsa::Automaton<>;
 
-using automaton_table_matcher = fst::TableMatcher<automaton, 256, true>;
+using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 
 }
 
