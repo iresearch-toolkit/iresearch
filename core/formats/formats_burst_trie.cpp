@@ -2477,6 +2477,12 @@ bool automaton_term_iterator<FST>::next() {
       assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
       state = arc->nextstate;
 
+      // FIXME
+      if (state == 0) {
+          match = POP; // pop current block
+        return;
+      }
+
 #ifdef IRESEARCH_DEBUG
       matcher_->SetState(cur_block_->acceptor_state());
       assert(matcher_->Find(*begin));
@@ -2497,6 +2503,11 @@ bool automaton_term_iterator<FST>::next() {
     }
 
     assert(begin == end);
+
+    // FIXME
+    if (state == 0) {
+      return;
+    }
 
     switch (cur_block_->type()) {
       case ET_TERM: {
