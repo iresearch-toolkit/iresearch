@@ -34,10 +34,18 @@
 
 namespace iresearch {
 
+#ifdef IRESEARCH_DEBUG
+constexpr bool TEST_AUTOMATON_PROPS = true;
+#else
+constexpr bool TEST_AUTOMATON_PROPS = false;
+#endif
+
 struct filter_visitor;
 
-inline automaton_table_matcher make_automaton_matcher(const automaton& a) {
-  return automaton_table_matcher(a, fst::fsa::kRho);
+inline automaton_table_matcher make_automaton_matcher(
+    const automaton& a,
+    bool test_props = TEST_AUTOMATON_PROPS) {
+  return automaton_table_matcher(a, fst::fsa::kRho, test_props);
 }
 
 template<typename Char, typename Matcher>
@@ -383,8 +391,8 @@ class IRESEARCH_API utf8_transitions_builder {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error
 //////////////////////////////////////////////////////////////////////////////
-inline bool validate(const automaton& a) {
-  if (fst::kError == a.Properties(automaton_table_matcher::FST_PROPERTIES, true)) {
+inline bool validate(const automaton& a, bool test_props = TEST_AUTOMATON_PROPS) {
+  if (fst::kError == a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props)) {
     IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                   "got the following properties " IR_UINT64_T_SPECIFIER "",
                   a.Properties(automaton_table_matcher::FST_PROPERTIES, false));

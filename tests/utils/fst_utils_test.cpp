@@ -44,7 +44,7 @@ TEST(fst_table_matcher_test, test_properties) {
     a.AddState(); // 1
     a.EmplaceArc(1, 1, 0);
     a.EmplaceArc(1, 1, 0);
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
@@ -59,7 +59,7 @@ TEST(fst_table_matcher_test, test_properties) {
     a.InitArcIterator(1, &data);
     const_cast<fst::fsa::Transition<>&>(data.arcs[0]).olabel = fst::kNoLabel;
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
   }
 }
@@ -68,7 +68,7 @@ TEST(fst_table_matcher_test, test_matcher) {
   // create matcher with an empty automaton
   {
     fst::fsa::Automaton<> a;
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -95,7 +95,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     a.AddState();
     a.EmplaceArc(1, 42, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -158,7 +158,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     a.EmplaceArc(1, 42, 0);
     a.EmplaceArc(1, fst::fsa::kRho, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::fsa::kRho);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::fsa::kRho, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -264,7 +264,7 @@ TEST(fst_table_matcher_test, test_matcher) {
       using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton<>>;
 
       expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
-      matcher_t matcher(a, fst::fsa::kRho);
+      matcher_t matcher(a, fst::fsa::kRho, true);
       for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
         expected_matcher.SetState(state);
         matcher.SetState(state);

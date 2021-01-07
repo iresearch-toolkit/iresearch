@@ -68,11 +68,11 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
     | kAcceptor;
 
-  explicit TableMatcher(const FST& fst, Label rho)
+  explicit TableMatcher(const FST& fst, Label rho, bool test_props)
     : start_labels_(fst::getStartLabels<F, MatchInput>(fst)),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       rho_(rho), fst_(&fst),
-      error_(fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES) {
+      error_(fst.Properties(FST_PROPERTIES, test_props) != FST_PROPERTIES) {
     const size_t numLabels = start_labels_.size();
 
     // initialize transition table
