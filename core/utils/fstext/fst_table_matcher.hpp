@@ -129,7 +129,7 @@ template<
     : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst, rho)),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       rho_(rho), fst_(&fst),
-      error_(fst.Properties(FST_PROPERTIES, test_props) != FST_PROPERTIES) {
+      error_(test_props && (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
     const size_t numLabels = start_labels_.size();
 
     // initialize transition table
