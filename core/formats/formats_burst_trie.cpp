@@ -2262,7 +2262,8 @@ class automaton_term_iterator final : public term_iterator_base {
     : term_iterator_base(field, postings, terms_in, terms_cipher, &payload_),
       fst_(&fst),
       acceptor_(&matcher.GetFst()),
-      matcher_(&matcher) {
+      matcher_(&matcher),
+      sink_(matcher.sink()) {
     // init payload value
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
@@ -2309,7 +2310,7 @@ class automaton_term_iterator final : public term_iterator_base {
     }
 
     const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
-      // FIXME: binary search???
+      // linear search is faster for a small number of arcs
       for (;begin_ != end_; ++begin_) {
         if (label <= begin_->ilabel) {
           return label == begin_->ilabel ? begin_ : rho_;
@@ -2425,6 +2426,7 @@ class automaton_term_iterator final : public term_iterator_base {
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;
   payload payload_; // payload of the matched automaton state
+  automaton::StateId sink_;
 }; // automaton_term_iterator
 
 template<typename FST>
@@ -2487,8 +2489,7 @@ bool automaton_term_iterator<FST>::next() {
       assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
       state = arc->nextstate;
 
-      // FIXME
-      if (state == 0) {
+      if (state == sink_) {
         return;
       }
 
@@ -2513,8 +2514,7 @@ bool automaton_term_iterator<FST>::next() {
 
     assert(begin == end);
 
-    // FIXME
-    if (state == 0) {
+    if (state == sink_) {
       return;
     }
 

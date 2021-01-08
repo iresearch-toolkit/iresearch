@@ -140,6 +140,11 @@ template<
 
       fst.InitArcIterator(state, &data);
 
+      if (!data.narcs) {
+        sink_ = state;
+        continue;
+      }
+
       // fill rho transitions if any
       {
         std::reverse_iterator<decltype(data.arcs)> rbegin(data.arcs + data.narcs);
@@ -158,6 +163,7 @@ template<
       auto arc_end = data.arcs + data.narcs;
       auto label = start_labels_.begin();
       auto label_end = start_labels_.end();
+
       for (; arc != arc_end && label != label_end;) {
         for (; arc != arc_end && get_label(*arc) < *label; ++arc) { }
 
@@ -305,6 +311,8 @@ template<
     return inprops | (error_ ? kError : 0);
   }
 
+  StateId sink() const noexcept { return sink_; }
+
  private:
   template<typename Arc>
   static typename Arc::Label get_label(Arc& arc) {
@@ -331,6 +339,7 @@ template<
   std::vector<Label> start_labels_;
   std::vector<StateId> transitions_;
   Arc arc_;
+  StateId sink_{fst::kNoStateId};    // sink state
   Label rho_;
   const FST* fst_;                   // FST for matching
   const Label* state_begin_{};       // Matcher state begin
