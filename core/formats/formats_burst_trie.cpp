@@ -2479,7 +2479,6 @@ bool automaton_term_iterator<FST>::next() {
 
       // FIXME
       if (state == 0) {
-          match = POP; // pop current block
         return;
       }
 
