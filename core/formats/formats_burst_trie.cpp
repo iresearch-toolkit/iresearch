@@ -2457,51 +2457,64 @@ bool automaton_term_iterator<FST>::next() {
   automaton::StateId state;
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
+    auto& arcs = cur_block_->arcs();
+    assert(!arcs.done());
+
     match = SKIP;
-    state = cur_block_->acceptor_state();
+    if (fst::fsa::kRho == arcs.value()->ilabel) {
+      state = arcs.value()->nextstate;
+    } else {
+      state = cur_block_->acceptor_state();
 
-    const auto* begin = suffix;
-    const auto* end = begin + suffix_size;
+      const auto* begin = suffix;
+      const auto* end = begin + suffix_size;
 
-    if (begin != end) {
-      const auto* arc = cur_block_->arcs().seek(*begin);
+      if (begin != end) {
+        const int32_t lead_label = *begin;
 
-      if (!arc) {
-        if (cur_block_->arcs().done()) {
-          match = POP; // pop current block
-        }
-
-        return;
-      }
-
-      assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
-      state = arc->nextstate;
-
-      // FIXME
-      if (state == 0) {
-        return;
-      }
-
-#ifdef IRESEARCH_DEBUG
-      matcher_->SetState(cur_block_->acceptor_state());
-      assert(matcher_->Find(*begin));
-      assert(matcher_->Value().nextstate == state);
-#endif
-
-      ++begin; // already match first suffix label
-
-      for (matcher_->SetState(state); begin < end; ++begin) {
-        if (!matcher_->Find(*begin)) {
-          // suffix doesn't match
+        if (lead_label < arcs.value()->ilabel) {
           return;
         }
 
-        state = matcher_->Value().nextstate;
-        matcher_->SetState(state);
-      }
-    }
+        const auto* arc = cur_block_->arcs().seek(lead_label);
 
-    assert(begin == end);
+        if (!arc) {
+          if (arcs.done()) {
+            match = POP; // pop current block
+          }
+
+          return;
+        }
+
+        assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
+        state = arc->nextstate;
+
+        // FIXME
+        if (state == 0) {
+          return;
+        }
+
+  #ifdef IRESEARCH_DEBUG
+        matcher_->SetState(cur_block_->acceptor_state());
+        assert(matcher_->Find(*begin));
+        assert(matcher_->Value().nextstate == state);
+  #endif
+
+        ++begin; // already match first suffix label
+
+        for (matcher_->SetState(state); begin < end; ++begin) {
+          if (!matcher_->Find(*begin)) {
+            // suffix doesn't match
+            return;
+          }
+
+          state = matcher_->Value().nextstate;
+          matcher_->SetState(state);
+        }
+      }
+
+      assert(begin == end);
+    }
 
     // FIXME
     if (state == 0) {
