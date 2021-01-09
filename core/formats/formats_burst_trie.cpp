@@ -2262,8 +2262,7 @@ class automaton_term_iterator final : public term_iterator_base {
     : term_iterator_base(field, postings, terms_in, terms_cipher, &payload_),
       fst_(&fst),
       acceptor_(&matcher.GetFst()),
-      matcher_(&matcher),
-      sink_(matcher.sink()) {
+      matcher_(&matcher) {
     // init payload value
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
@@ -2426,7 +2425,6 @@ class automaton_term_iterator final : public term_iterator_base {
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;
   payload payload_; // payload of the matched automaton state
-  automaton::StateId sink_;
 }; // automaton_term_iterator
 
 template<typename FST>
@@ -2460,7 +2458,11 @@ bool automaton_term_iterator<FST>::next() {
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
     auto& arcs = cur_block_->arcs();
-    assert(!arcs.done());
+
+    if (arcs.done()) {
+      match = POP;
+      return;
+    }
 
     match = SKIP;
     state = cur_block_->acceptor_state();
@@ -2476,7 +2478,7 @@ bool automaton_term_iterator<FST>::next() {
         return;
       }
 
-      const auto* arc = cur_block_->arcs().seek(lead_label);
+      const auto* arc = arcs.seek(lead_label);
 
       if (!arc) {
         if (arcs.done()) {
@@ -2488,10 +2490,6 @@ bool automaton_term_iterator<FST>::next() {
 
       assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
       state = arc->nextstate;
-
-      if (state == sink_) {
-        return;
-      }
 
 #ifdef IRESEARCH_DEBUG
       matcher_->SetState(cur_block_->acceptor_state());
@@ -2513,10 +2511,6 @@ bool automaton_term_iterator<FST>::next() {
     }
 
     assert(begin == end);
-
-    if (state == sink_) {
-      return;
-    }
 
     switch (cur_block_->type()) {
       case ET_TERM: {

@@ -141,7 +141,6 @@ template<
       fst.InitArcIterator(state, &data);
 
       if (!data.narcs) {
-        sink_ = state;
         continue;
       }
 
@@ -311,8 +310,6 @@ template<
     return inprops | (error_ ? kError : 0);
   }
 
-  StateId sink() const noexcept { return sink_; }
-
  private:
   template<typename Arc>
   static typename Arc::Label get_label(Arc& arc) {
@@ -339,7 +336,6 @@ template<
   std::vector<Label> start_labels_;
   std::vector<StateId> transitions_;
   Arc arc_;
-  StateId sink_{fst::kNoStateId};    // sink state
   Label rho_;
   const FST* fst_;                   // FST for matching
   const Label* state_begin_{};       // Matcher state begin
