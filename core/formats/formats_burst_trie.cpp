@@ -2414,17 +2414,6 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
-    fst::ArcIteratorData<automaton::Arc> data;
-    acceptor_->InitArcIterator(state, &data);
-
-    if (data.narcs) {
-      block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
-    }
-
-    return &block_stack_.back();
-  }
-
   const FST* fst_;
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
@@ -2539,9 +2528,18 @@ bool automaton_term_iterator<FST>::next() {
         }
       } break;
       case ET_BLOCK: {
-        copy(suffix, cur_block_->prefix(), suffix_size);
-        cur_block_ = push_block(cur_block_->block_start(), term_.size(), state);
-        cur_block_->load(terms_input(), terms_cipher());
+        fst::ArcIteratorData<automaton::Arc> data;
+        acceptor_->InitArcIterator(state, &data);
+
+        if (data.narcs) {
+          copy(suffix, cur_block_->prefix(), suffix_size);
+
+          block_stack_.emplace_back(cur_block_->block_start(), term_.size(),
+                                    state, data.arcs, data.narcs);
+
+          cur_block_ = &block_stack_.back();
+          cur_block_->load(terms_input(), terms_cipher());
+        }
       } break;
       default: {
         assert(false);
