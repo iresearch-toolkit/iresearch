@@ -2471,21 +2471,28 @@ bool automaton_term_iterator<FST>::next() {
     const auto* end = begin + suffix_size;
 
     if (begin != end) {
-      const int32_t lead_label = *begin;
+      assert(!arcs.done());
 
-      if (fst::fsa::kRho != arcs.value()->ilabel &&
-          lead_label < arcs.value()->ilabel) {
-        return;
-      }
+      const auto* arc = arcs.value();
 
-      const auto* arc = arcs.seek(lead_label);
+      if (arc->ilabel != fst::fsa::kRho) {
+        const int32_t lead_label = *begin;
 
-      if (!arc) {
-        if (arcs.done()) {
-          match = POP; // pop current block
+        if (lead_label < arc->ilabel) {
+          return;
         }
 
-        return;
+        if (lead_label > arc->ilabel) {
+          arc = arcs.seek(lead_label);
+
+          if (!arc) {
+            if (arcs.done()) {
+              match = POP; // pop current block
+            }
+
+            return;
+          }
+        }
       }
 
       assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
