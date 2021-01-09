@@ -1276,12 +1276,12 @@ class block_iterator : util::noncopyable {
   }
 
   template<typename Reader>
-  void next(Reader& reader) {
+  void next(Reader&& reader) {
     assert(!dirty_ && cur_ent_ < ent_count_);
     if (leaf_) {
-      read_entry_leaf(reader);
+      read_entry_leaf(std::forward<Reader>(reader));
     } else {
-      read_entry_nonleaf(reader);
+      read_entry_nonleaf(std::forward<Reader>(reader));
     }
     ++cur_ent_;
   }
@@ -1325,7 +1325,7 @@ class block_iterator : util::noncopyable {
 
  private:
   template<typename Reader>
-  void read_entry_leaf(Reader& reader) {
+  void read_entry_leaf(Reader&& reader) {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
@@ -1339,7 +1339,7 @@ class block_iterator : util::noncopyable {
   }
 
   template<typename Reader>
-  void read_entry_nonleaf(Reader& reader);
+  void read_entry_nonleaf(Reader&& reader);
 
   SeekResult scan_to_term_nonleaf(const bytes_ref& term);
   SeekResult scan_to_term_leaf(const bytes_ref& term);
@@ -1460,7 +1460,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 }
 
 template<typename Reader>
-void block_iterator::read_entry_nonleaf(Reader& reader) {
+void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
   cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
