@@ -2369,6 +2369,7 @@ class automaton_term_iterator final : public term_iterator_base {
       : ::block_iterator(start, prefix),
         arcs_(arcs, narcs),
         state_(state) {
+      assert(narcs);
     }
 
    public:
@@ -2396,6 +2397,7 @@ class automaton_term_iterator final : public term_iterator_base {
     acceptor_->InitArcIterator(state, &data);
 
     block_stack_.emplace_back(out, prefix, state, data.arcs, data.narcs);
+
     return &block_stack_.back();
   }
 
@@ -2407,6 +2409,7 @@ class automaton_term_iterator final : public term_iterator_base {
     acceptor_->InitArcIterator(state, &data);
 
     block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
+
     return &block_stack_.back();
   }
 
@@ -2414,7 +2417,10 @@ class automaton_term_iterator final : public term_iterator_base {
     fst::ArcIteratorData<automaton::Arc> data;
     acceptor_->InitArcIterator(state, &data);
 
-    block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
+    if (data.narcs) {
+      block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
+    }
+
     return &block_stack_.back();
   }
 
@@ -2457,13 +2463,6 @@ bool automaton_term_iterator<FST>::next() {
   automaton::StateId state;
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
-    auto& arcs = cur_block_->arcs();
-
-    if (arcs.done()) {
-      match = POP;
-      return;
-    }
-
     match = SKIP;
     state = cur_block_->acceptor_state();
 
@@ -2471,6 +2470,7 @@ bool automaton_term_iterator<FST>::next() {
     const auto* end = begin + suffix_size;
 
     if (begin != end) {
+      auto& arcs = cur_block_->arcs();
       assert(!arcs.done());
 
       const auto* arc = arcs.value();
