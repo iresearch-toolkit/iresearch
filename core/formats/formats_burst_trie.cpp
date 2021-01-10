@@ -2264,6 +2264,9 @@ class automaton_term_iterator final : public term_iterator_base {
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher),
       sink_(matcher.sink()) {
+    assert(fst::kNoStateId != acceptor_->Start());
+    assert(acceptor_->NumArcs(acceptor_->Start()));
+
     // init payload value
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
@@ -2391,11 +2394,12 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   block_iterator* push_block(const bytes_ref& out, size_t prefix, automaton::StateId state) {
-    // ensure final weight correctess
+    // ensure final weight correctness
     assert(out.size() >= MIN_WEIGHT_SIZE);
 
     fst::ArcIteratorData<automaton::Arc> data;
     acceptor_->InitArcIterator(state, &data);
+    assert(data.narcs); // ensured by term_reader::iterator(...)
 
     block_stack_.emplace_back(out, prefix, state, data.arcs, data.narcs);
 
@@ -2403,11 +2407,12 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   block_iterator* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
-    // ensure final weight correctess
+    // ensure final weight correctness
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
     fst::ArcIteratorData<automaton::Arc> data;
     acceptor_->InitArcIterator(state, &data);
+    assert(data.narcs); // ensured by term_reader::iterator(...)
 
     block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
 
@@ -2429,7 +2434,6 @@ bool automaton_term_iterator<FST>::next() {
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
     if (term_.empty()) {
-      // iterator at the beginning
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0, acceptor_->Start());
       cur_block_->load(terms_input(), terms_cipher());
     } else {
@@ -2673,6 +2677,23 @@ class field_reader final : public irs::field_reader {
     }
 
     virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override {
+      auto& acceptor = matcher.GetFst();
+
+      const auto start = acceptor.Start();
+
+      if (fst::kNoStateId == start) {
+        return seek_term_iterator::empty();
+      }
+
+      if (!acceptor.NumArcs(start)) {
+        if (acceptor.Final(start)) {
+          // match all
+          return this->iterator();
+        }
+
+        return seek_term_iterator::empty();
+      }
+
       return memory::make_managed<automaton_term_iterator<FST>>(
         meta(), *owner_->pr_, *owner_->terms_in_,
         owner_->terms_in_cipher_.get(), *fst_, matcher);
