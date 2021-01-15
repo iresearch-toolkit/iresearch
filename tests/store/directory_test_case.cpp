@@ -201,21 +201,11 @@ class directory_test_case : public tests::directory_test_case_base {
       }
 
       {
-      auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
-      ASSERT_FALSE(!in);
+        auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(!in);
 
-        // read from file
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(0, read);
-        } catch (const eof_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
-        }
-
-        // checksum empty file
+        ASSERT_THROW(in->read_byte(), irs::eof_error);
+        ASSERT_THROW(in->read_bytes(buf, sizeof buf), irs::eof_error);
         ASSERT_EQ(0, in->checksum(0));
         ASSERT_EQ(0, in->checksum(42));
       }
