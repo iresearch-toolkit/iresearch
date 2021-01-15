@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
+#include "formats/format_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace tests {
@@ -3186,6 +3187,94 @@ TEST_P(format_test_case, document_mask_rw) {
       EXPECT_EQ(1, expected.erase(id));
     }
     EXPECT_TRUE(expected.empty());
+  }
+}
+
+TEST_P(format_test_case, format_utils_checksum) {
+  {
+    auto stream = dir().create("file");
+    ASSERT_NE(nullptr, stream);
+    irs::format_utils::write_header(*stream, "test", 42);
+    irs::format_utils::write_footer(*stream);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    int64_t expected_checksum;
+    {
+      auto dup = stream->dup();
+      ASSERT_NE(nullptr, dup);
+      expected_checksum = dup->checksum(dup->length() - sizeof(int64_t));
+    }
+
+    ASSERT_EQ(expected_checksum, irs::format_utils::checksum(*stream));
+  }
+
+  {
+    auto stream = dir().create("empty_file");
+    ASSERT_NE(nullptr, stream);
+  }
+
+  {
+    auto stream = dir().open("empty_file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::checksum(*stream), irs::index_error);
+  }
+}
+
+TEST_P(format_test_case, format_utils_header_footer) {
+  {
+    auto stream = dir().create("file");
+    ASSERT_NE(nullptr, stream);
+    irs::format_utils::write_header(*stream, "test", 42);
+    irs::format_utils::write_footer(*stream);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    int64_t expected_checksum;
+    {
+      auto dup = stream->dup();
+      ASSERT_NE(nullptr, dup);
+      expected_checksum = dup->checksum(dup->length() - sizeof(int64_t));
+    }
+
+    ASSERT_EQ(42, irs::format_utils::check_header(*stream, "test", 41, 43));
+    ASSERT_EQ(expected_checksum, irs::format_utils::check_footer(*stream, expected_checksum));
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(42, irs::format_utils::check_header(*stream, "test", 41, 43));
+    ASSERT_THROW(irs::format_utils::check_footer(*stream, 0), irs::index_error);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "invalid", 41, 43), irs::index_error);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "test", 43, 43), irs::index_error);
+  }
+
+  {
+    auto stream = dir().create("empty_file");
+    ASSERT_NE(nullptr, stream);
+  }
+
+  {
+    auto stream = dir().open("empty_file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "invalid", 41, 43), irs::index_error);
   }
 }
 

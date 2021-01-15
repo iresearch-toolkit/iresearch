@@ -190,7 +190,7 @@ class directory_test_case : public tests::directory_test_case_base {
     ASSERT_TRUE(l->unlock());
     ASSERT_TRUE(l->is_locked(locked) && !locked);
 
-    // Check read_bytes on empty file
+    // empty file
     {
       byte_type buf[10];
 
@@ -200,11 +200,11 @@ class directory_test_case : public tests::directory_test_case_base {
         ASSERT_FALSE(!out);
       }
 
-      // read from file
       {
-        auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
-        ASSERT_FALSE(!in);
+      auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
+      ASSERT_FALSE(!in);
 
+        // read from file
         size_t read = std::numeric_limits<size_t>::max();
         try {
           read = in->read_bytes(buf, sizeof buf);
@@ -214,6 +214,10 @@ class directory_test_case : public tests::directory_test_case_base {
         } catch (...) {
           ASSERT_TRUE(false);
         }
+
+        // checksum empty file
+        ASSERT_EQ(0, in->checksum(0));
+        ASSERT_EQ(0, in->checksum(42));
       }
 
       ASSERT_TRUE(dir.remove("empty_file"));
