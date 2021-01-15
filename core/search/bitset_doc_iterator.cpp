@@ -27,7 +27,7 @@
 
 namespace iresearch {
 
-attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
+attribute* bitset_doc_iterator::get_mutable(irs::type_info::type_id id) noexcept {
   if (type<document>::id() == id) {
     return &doc_;
   }

@@ -1740,8 +1740,7 @@ void block_iterator::reset() {
 /// @class term_iterator_base
 /// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator_base
-    : public frozen_attributes<3, seek_term_iterator> {
+class term_iterator_base : public seek_term_iterator {
  public:
   explicit term_iterator_base(
       const field_meta& field,
@@ -1749,24 +1748,28 @@ class term_iterator_base
       const index_input& terms_in,
       irs::encryption::stream* terms_cipher,
       payload* pay = nullptr)
-    : attributes{{
-        { type<version10::term_meta>::id(), &state_ },
-        { type<frequency>::id(), field.features.check<frequency>() ? &freq_ : nullptr },
-        { type<payload>::id(), pay }
-      }},
-      field_(&field),
+    : field_(&field),
       postings_(&postings),
       terms_in_source_(&terms_in),
       terms_cipher_(terms_cipher) {
+    if (field.features.check<frequency>()) {
+      std::get<attribute_ptr<frequency>>(attrs_) = freq_;
+    }
+
+    std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
   // read attributes
   void read(block_iterator& it) {
-    it.load_data(*field_, *this, state_, *postings_);
+    it.load_data(*field_, *this, std::get<version10::term_meta>(attrs_), *postings_);
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
-    return ::cookie::make(state_, freq_.value);
+    return ::cookie::make(std::get<version10::term_meta>(attrs_), freq_.value);
   }
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
@@ -1781,7 +1784,7 @@ class term_iterator_base
 #endif // IRESEARCH_DEBUG
 
     // copy state
-    state_ = state.meta;
+    std::get<version10::term_meta>(attrs_) = state.meta;
     freq_.value = state.term_freq;
 
     // copy term
@@ -1793,7 +1796,9 @@ class term_iterator_base
 
   doc_iterator::ptr postings(block_iterator* it, const flags& features) const {
     if (it) {
-      it->load_data(*field_, const_cast<term_iterator_base&>(*this), state_, *postings_); // read attributes
+      it->load_data(
+        *field_, const_cast<term_iterator_base&>(*this),
+        std::get<version10::term_meta>(attrs_), *postings_); // read attributes
     }
     return postings_->iterator(field_->features, *this, features);
   }
@@ -1805,6 +1810,11 @@ class term_iterator_base
   }
 
  protected:
+  using attributes = std::tuple<
+    version10::term_meta,
+    attribute_ptr<frequency>,
+    attribute_ptr<payload>>;
+
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
     const auto size = prefix_size + suffix_size;
     term_.oversize(size);
@@ -1816,11 +1826,11 @@ class term_iterator_base
     return *field_;
   }
 
+  mutable attributes attrs_;
   const field_meta* field_;
   postings_reader* postings_;
   const index_input* terms_in_source_;
   irs::encryption::stream* terms_cipher_;
-  mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
   bytes_builder term_;
@@ -2009,7 +2019,7 @@ bool term_iterator<FST>::next() {
     } else {
       const uint64_t start = cur_block_->start();
       cur_block_ = pop_block();
-      state_ = cur_block_->state();
+      std::get<version10::term_meta>(attrs_) = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
         assert(cur_block_->prefix() < term_.size());
@@ -2555,7 +2565,7 @@ bool automaton_term_iterator<FST>::next() {
       } else {
         const uint64_t start = cur_block_->start();
         cur_block_ = pop_block();
-        state_ = cur_block_->state();
+        std::get<version10::term_meta>(attrs_) = cur_block_->state();
         if (cur_block_->dirty() || cur_block_->block_start() != start) {
           // here we're currently at non block that was not loaded yet
           assert(cur_block_->prefix() < term_.size());

@@ -36,7 +36,7 @@ namespace iresearch {
 namespace analysis {
 
 class text_token_stream final
-  : public frozen_attributes<3, analyzer>,
+  : public analyzer,
     private util::noncopyable {
  public:
   typedef std::unordered_set<std::string> stopwords_t;
@@ -68,10 +68,13 @@ class text_token_stream final
 
   static constexpr string_ref type_name() noexcept { return "text"; }
   static void init(); // for triggering registration in a static build
-  static ptr make(const irs::string_ref& locale);
+  static ptr make(const string_ref& locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -80,11 +83,14 @@ class text_token_stream final
   bool next_ngram();
 
  private:
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>;
+
   std::shared_ptr<state_t> state_;
   bstring term_buf_; // buffer for value if value cannot be referenced directly
-  offset offs_;
-  increment inc_;
-  term_attribute term_;
+  attributes attrs_;
 };
 
 } // analysis
