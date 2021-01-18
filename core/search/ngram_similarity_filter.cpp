@@ -66,32 +66,30 @@ class ngram_similarity_doc_iterator final
       const order::prepared& ord = order::prepared::unordered())
     : pos_(itrs.begin(), itrs.end()),
       approx_(std::move(itrs), min_match_count), // we are not interested in disjunction`s scoring
-      doc_(irs::get_mutable<document>(&approx_)),
-      attrs_{{
-        { type<document>::id(),     doc_           },
-        { type<frequency>::id(),    &seq_freq_     },
-        { type<cost>::id(),         &cost_         },
-        { type<score>::id(),        &score_        },
-        { type<filter_boost>::id(), &filter_boost_ },
-      }},
       min_match_count_(min_match_count),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
-      cost_([this](){ return cost::extract(approx_); }), // FIXME find a better estimation
-      score_(ord),
       empty_order_(ord.empty()) {
-    assert(doc_);
+    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
+
+    // FIXME find a better estimation
+    std::get<cost>(attrs_).reset(
+      [this](){ return cost::extract(approx_); });
 
     if (!empty_order_) {
+      auto& score = std::get<irs::score>(attrs_);
+
+      score.realloc(ord);
+
       order::prepared::scorers scorers(
         ord, segment, field, stats,
-        score_.data(), *this, boost);
+        score.data(), *this, boost);
 
-      irs::reset(score_, std::move(scorers));
+      irs::reset(score, std::move(scorers));
     }
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    return attrs_.get_mutable(type);
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual bool next() override {
@@ -101,10 +99,12 @@ class ngram_similarity_doc_iterator final
   }
 
   virtual doc_id_t value() const override {
-    return doc_->value;
+    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
+    auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
+
     if (doc_->value >= target) {
       return doc_->value;
     }
@@ -153,23 +153,24 @@ class ngram_similarity_doc_iterator final
 
   using search_states_t = std::map<uint32_t, std::shared_ptr<search_state>, std::greater<uint32_t>>;
   using pos_temp_t = std::vector<std::pair<uint32_t, std::shared_ptr<search_state>>>;
+  using attributes = std::tuple<
+    attribute_ptr<document>,
+    frequency,
+    cost,
+    score,
+    filter_boost>;
 
   bool check_serial_positions();
 
   std::vector<position_t> pos_;
   approximation approx_;
-  document* doc_;
-  frozen_attributes<5, attribute_provider> attrs_;
+  attributes attrs_;
   std::set<size_t> used_pos_; // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;
   std::vector<size_t> pos_sequence_;
-  frequency seq_freq_; // longest sequence frequency
-  filter_boost filter_boost_;
   size_t min_match_count_;
   search_states_t search_buf_;
   boost_t total_terms_count_;
-  cost cost_;
-  score score_;
   bool empty_order_;
 };
 
@@ -177,6 +178,10 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
   size_t potential = approx_.match_count(); // how long max sequence could be in the best case
   search_buf_.clear();
   size_t longest_sequence_len = 0;
+
+  auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
+  auto& seq_freq_ = std::get<frequency>(attrs_);
+
   seq_freq_.value = 0;
   for (const auto& pos_iterator : pos_) {
     if (pos_iterator.doc->value == doc_->value) {
@@ -348,7 +353,8 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
     }
     seq_freq_.value = freq;
     assert(!pos_.empty());
-    filter_boost_.value = static_cast<boost_t>(longest_sequence_len) / total_terms_count_;
+    std::get<filter_boost>(attrs_).value
+      = static_cast<boost_t>(longest_sequence_len) / total_terms_count_;
   }
   return longest_sequence_len >= min_match_count_;
 }

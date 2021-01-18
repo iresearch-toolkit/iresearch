@@ -190,7 +190,7 @@ class directory_test_case : public tests::directory_test_case_base {
     ASSERT_TRUE(l->unlock());
     ASSERT_TRUE(l->is_locked(locked) && !locked);
 
-    // Check read_bytes on empty file
+    // empty file
     {
       byte_type buf[10];
 
@@ -200,20 +200,15 @@ class directory_test_case : public tests::directory_test_case_base {
         ASSERT_FALSE(!out);
       }
 
-      // read from file
       {
         auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
         ASSERT_FALSE(!in);
+        ASSERT_TRUE(in->eof());
 
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(0, read);
-        } catch (const eof_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
-        }
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->checksum(0));
+        ASSERT_EQ(0, in->checksum(42));
       }
 
       ASSERT_TRUE(dir.remove("empty_file"));
@@ -237,20 +232,17 @@ class directory_test_case : public tests::directory_test_case_base {
       {
         byte_type buf[1024 + 691]{}; // 1024 + 691 from above
         auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(in->eof());
         size_t expected = sizeof buf;
         ASSERT_FALSE(!in);
         ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
 
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          expected = in->length() - sizeof buf; // 'sizeof buf' already read above
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(expected, read);
-        } catch (const io_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
-        }
+        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+        const size_t read = in->read_bytes(buf, sizeof buf);
+        ASSERT_EQ(expected, read);
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
       }
 
       ASSERT_TRUE(dir.remove("nonempty_file"));

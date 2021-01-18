@@ -144,7 +144,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       last_(last),
       stats_(stats),
       doc_(irs::doc_limits::invalid()) {
-    est_.value(std::distance(first_, last_));
+    est_.reset(std::distance(first_, last_));
     attrs_[irs::type<irs::cost>::id()] = &est_;
     attrs_[irs::type<irs::document>::id()] = &doc_;
 
@@ -1260,7 +1260,7 @@ DEFINE_FACTORY_DEFAULT(unestimated)
 struct estimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
-      cost.rule([est, evaluated]() {
+      cost.reset([est, evaluated]() {
         *evaluated = true;
         return est;
       });

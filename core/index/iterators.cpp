@@ -36,8 +36,8 @@ namespace {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
   empty_doc_iterator() noexcept
-    : doc{irs::doc_limits::eof()} {
-    cost.value(0);
+    : cost(0),
+      doc{irs::doc_limits::eof()} {
   }
 
   virtual irs::doc_id_t value() const override {

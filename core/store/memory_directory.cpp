@@ -100,6 +100,10 @@ index_input::ptr memory_index_input::dup() const {
 }
 
 int64_t memory_index_input::checksum(size_t offset) const {
+  if (!file_->length()) {
+    return 0;
+  }
+
   crc32c crc;
 
   auto buffer_idx = file_->buffer_offset(file_pointer());
