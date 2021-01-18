@@ -79,10 +79,15 @@ int32_t check_header(
     index_input& in, 
     const string_ref& req_format,
     int32_t min_ver, int32_t max_ver) {
-  const size_t left = in.length() - in.file_pointer();
+  const ptrdiff_t left = in.length() - in.file_pointer();
+
+  if (left < 0) {
+    throw illegal_state();
+  }
+
   const size_t expected = header_length(req_format);
 
-  if (left < expected) {
+  if (static_cast<size_t>(left) < expected) {
     throw index_error(string_utils::to_string(
       "while checking header, error: only '" IR_SIZE_T_SPECIFIER
       "' bytes left out of '" IR_SIZE_T_SPECIFIER "'",
