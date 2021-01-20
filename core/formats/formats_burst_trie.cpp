@@ -1745,12 +1745,10 @@ class term_iterator_base : public seek_term_iterator {
   explicit term_iterator_base(
       const field_meta& field,
       postings_reader& postings,
-      const index_input& terms_in,
       irs::encryption::stream* terms_cipher,
       payload* pay = nullptr)
     : field_(&field),
       postings_(&postings),
-      terms_in_source_(&terms_in),
       terms_cipher_(terms_cipher) {
     if (field.features.check<frequency>()) {
       std::get<attribute_ptr<frequency>>(attrs_) = freq_;
@@ -1829,28 +1827,11 @@ class term_iterator_base : public seek_term_iterator {
   mutable attributes attrs_;
   const field_meta* field_;
   postings_reader* postings_;
-  const index_input* terms_in_source_;
   irs::encryption::stream* terms_cipher_;
   frequency freq_;
-  mutable index_input::ptr terms_in_;
   bytes_builder term_;
   byte_weight weight_; // aggregated fst output
 }; // term_iterator_base
-
-index_input& term_iterator_base::terms_input() const {
-  if (!terms_in_) {
-    terms_in_ = terms_in_source_->reopen(); // reopen thread-safe stream
-
-    if (!terms_in_) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
-
-      throw io_error("failed to reopen terms input");
-    }
-  }
-
-  return *terms_in_;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -1867,7 +1848,8 @@ class term_iterator final : public term_iterator_base {
       const index_input& terms_in,
       irs::encryption::stream* terms_cipher,
       const FST& fst)
-    : term_iterator_base(field, postings, terms_in, terms_cipher, nullptr),
+    : term_iterator_base(field, postings, terms_cipher, nullptr),
+      terms_in_source_(&terms_in),
       fst_(&fst),
       matcher_(&fst, fst::MATCH_INPUT) { // pass pointer to avoid copying FST
   }
@@ -1971,6 +1953,26 @@ class term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
+  // as term_iterator is usually used by prepared queries
+  // to access term metadata by stored cookie, we initialize
+  // term dictionary stream in lazy fashion
+  index_input& terms_input() const {
+    if (!terms_in_) {
+      terms_in_ = terms_in_source_->reopen(); // reopen thread-safe stream
+
+      if (!terms_in_) {
+        // implementation returned wrong pointer
+        IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+
+        throw io_error("failed to reopen terms input");
+      }
+    }
+
+    return *terms_in_;
+  }
+
+  const index_input* terms_in_source_;
+  mutable index_input::ptr terms_in_;
   const FST* fst_;
   matcher_t matcher_;
   seek_state_t sstate_;
@@ -2265,15 +2267,17 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const field_meta& field,
                                    postings_reader& postings,
-                                   const index_input& terms_in,
+                                   index_input::ptr&& terms_in,
                                    irs::encryption::stream* terms_cipher,
                                    const FST& fst,
                                    automaton_table_matcher& matcher)
-    : term_iterator_base(field, postings, terms_in, terms_cipher, &payload_),
+    : term_iterator_base(field, postings, terms_cipher, &payload_),
+      terms_in_(std::move(terms_in)),
       fst_(&fst),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher),
       sink_(matcher.sink()) {
+    assert(terms_in_);
     assert(fst::kNoStateId != acceptor_->Start());
     assert(acceptor_->NumArcs(acceptor_->Start()));
 
@@ -2429,6 +2433,16 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
+  // automaton_term_iterator usually accesses many term blocks and
+  // isn't used by prepared statements for accessing term metadata,
+  // therefore we prefer greedy strategy for term dictionary stream
+  // initialization
+  index_input& terms_input() const noexcept {
+    assert(terms_in_);
+    return *terms_in_;
+  }
+
+  index_input::ptr terms_in_;
   const FST* fst_;
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
@@ -2704,8 +2718,17 @@ class field_reader final : public irs::field_reader {
         return seek_term_iterator::empty();
       }
 
+      auto terms_in = owner_->terms_in_->reopen();
+
+      if (!terms_in) {
+        // implementation returned wrong pointer
+        IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+
+        throw io_error("failed to reopen terms input"); // FIXME
+      }
+
       return memory::make_managed<automaton_term_iterator<FST>>(
-        meta(), *owner_->pr_, *owner_->terms_in_,
+        meta(), *owner_->pr_, std::move(terms_in),
         owner_->terms_in_cipher_.get(), *fst_, matcher);
     }
 
