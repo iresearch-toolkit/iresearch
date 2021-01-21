@@ -1833,6 +1833,10 @@ class term_iterator_base : public seek_term_iterator {
   byte_weight weight_; // aggregated fst output
 }; // term_iterator_base
 
+// use explicit matcher to avoid implicit loops
+template<typename FST>
+using explicit_matcher = fst::explicit_matcher<fst::SortedMatcher<FST>>;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
 ///////////////////////////////////////////////////////////////////////////////
@@ -1882,9 +1886,6 @@ class term_iterator final : public term_iterator_base {
   }
 
  private:
-  typedef fst::SortedMatcher<FST> sorted_matcher_t;
-  typedef fst::explicit_matcher<sorted_matcher_t> matcher_t; // avoid implicit loops
-
   friend class block_iterator;
 
   struct arc {
@@ -1974,7 +1975,7 @@ class term_iterator final : public term_iterator_base {
   const index_input* terms_in_source_;
   mutable index_input::ptr terms_in_;
   const FST* fst_;
-  matcher_t matcher_;
+  explicit_matcher<FST> matcher_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
@@ -2276,6 +2277,7 @@ class automaton_term_iterator final : public term_iterator_base {
       fst_(&fst),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher),
+      fst_matcher_(&fst, fst::MATCH_INPUT),
       sink_(matcher.sink()) {
     assert(terms_in_);
     assert(fst::kNoStateId != acceptor_->Start());
@@ -2365,38 +2367,51 @@ class automaton_term_iterator final : public term_iterator_base {
 
   class block_iterator : public ::block_iterator {
    public:
-    block_iterator(const bytes_ref& out, size_t prefix,
-                   automaton::StateId state,
+    block_iterator(const bytes_ref& out,
+                   size_t prefix, size_t weight_prefix,
+                   automaton::StateId state, typename FST::StateId fst_state,
                    const automaton::Arc* arcs, size_t narcs) noexcept
       : ::block_iterator(out, prefix),
         arcs_(arcs, narcs),
-        state_(state) {
+        weight_prefix_(weight_prefix),
+        state_(state),
+        fst_state_(fst_state) {
     }
 
-    block_iterator(byte_weight&& out, size_t prefix,
-                   automaton::StateId state,
+    block_iterator(byte_weight&& out,
+                   size_t prefix, size_t weight_prefix,
+                   automaton::StateId state, typename FST::StateId fst_state,
                    const automaton::Arc* arcs, size_t narcs) noexcept
       : ::block_iterator(std::move(out), prefix),
         arcs_(arcs, narcs),
-        state_(state) {
+        weight_prefix_(weight_prefix),
+        state_(state),
+        fst_state_(fst_state) {
     }
 
-    block_iterator(uint64_t start, size_t prefix,
-                automaton::StateId state,
-                const automaton::Arc* arcs, size_t narcs) noexcept
+    block_iterator(uint64_t start,
+                   size_t prefix, size_t weight_prefix,
+                   automaton::StateId state, typename FST::StateId fst_state,
+                   const automaton::Arc* arcs, size_t narcs) noexcept
       : ::block_iterator(start, prefix),
         arcs_(arcs, narcs),
-        state_(state) {
+        weight_prefix_(weight_prefix),
+        state_(state),
+        fst_state_(fst_state) {
       assert(narcs);
     }
 
    public:
     arc_matcher& arcs() noexcept { return arcs_; }
     automaton::StateId acceptor_state() const noexcept { return state_; }
+    typename FST::StateId fst_state() const noexcept { return fst_state_; }
+    size_t weight_prefix() const noexcept { return weight_prefix_; }
 
    private:
     arc_matcher arcs_;
+    size_t weight_prefix_;
     automaton::StateId state_;  // state to which current block belongs
+    typename FST::StateId fst_state_;
   }; // block_iterator
 
   typedef std::deque<block_iterator> block_stack_t;
@@ -2407,7 +2422,10 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(const bytes_ref& out, size_t prefix, automaton::StateId state) {
+  block_iterator* push_block(
+      const bytes_ref& out,
+      size_t prefix, size_t weight_prefix,
+      automaton::StateId state, typename FST::StateId fst_state) {
     // ensure final weight correctness
     assert(out.size() >= MIN_WEIGHT_SIZE);
 
@@ -2415,20 +2433,7 @@ class automaton_term_iterator final : public term_iterator_base {
     acceptor_->InitArcIterator(state, &data);
     assert(data.narcs); // ensured by term_reader::iterator(...)
 
-    block_stack_.emplace_back(out, prefix, state, data.arcs, data.narcs);
-
-    return &block_stack_.back();
-  }
-
-  block_iterator* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
-    // ensure final weight correctness
-    assert(out.Size() >= MIN_WEIGHT_SIZE);
-
-    fst::ArcIteratorData<automaton::Arc> data;
-    acceptor_->InitArcIterator(state, &data);
-    assert(data.narcs); // ensured by term_reader::iterator(...)
-
-    block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
+    block_stack_.emplace_back(out, prefix, weight_prefix, state, fst_state, data.arcs, data.narcs);
 
     return &block_stack_.back();
   }
@@ -2446,6 +2451,8 @@ class automaton_term_iterator final : public term_iterator_base {
   const FST* fst_;
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
+  explicit_matcher<FST> fst_matcher_;
+  byte_weight weight_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;
@@ -2455,10 +2462,14 @@ class automaton_term_iterator final : public term_iterator_base {
 
 template<typename FST>
 bool automaton_term_iterator<FST>::next() {
+  assert(fst_matcher_.GetFst().GetImpl());
+  auto& fst = *fst_matcher_.GetFst().GetImpl();
+
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
     if (term_.empty()) {
-      cur_block_ = push_block(fst_->Final(fst_->Start()), 0, acceptor_->Start());
+      const auto fst_start = fst.Start();
+      cur_block_ = push_block(fst.Final(fst_start), 0, 0, acceptor_->Start(), fst_start);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
@@ -2481,7 +2492,7 @@ bool automaton_term_iterator<FST>::next() {
 
   automaton::StateId state;
 
-  auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
+  auto read_suffix = [this, &match, &state, &fst](const byte_type* suffix, size_t suffix_size) {
     match = SKIP;
     state = cur_block_->acceptor_state();
 
@@ -2562,10 +2573,36 @@ bool automaton_term_iterator<FST>::next() {
         if (data.narcs) {
           copy(suffix, cur_block_->prefix(), suffix_size);
 
-          block_stack_.emplace_back(cur_block_->block_start(), term_.size(),
-                                    state, data.arcs, data.narcs);
+          weight_.Resize(cur_block_->weight_prefix());
+          auto fst_state = cur_block_->fst_state();
+          auto* begin = term_.begin() + cur_block_->prefix();
+          auto* end = term_.end();
 
+          for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
+            [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
+            assert(found);
+
+            const auto& arc = fst_matcher_.Value();
+            fst_state = arc.nextstate;
+            fst_matcher_.SetState(fst_state);
+            weight_.PushBack(arc.weight.begin(), arc.weight.end());
+          }
+
+          const auto& weight = fst.FinalRef(fst_state);
+          assert(!weight.Empty() || fst_buffer::fst_byte_builder::final == fst_state);
+          const auto weight_prefix = weight_.Size();
+          weight_.PushBack(weight.begin(), weight.end());
+
+          block_stack_.emplace_back(
+            static_cast<bytes_ref>(weight_), term_.size(), weight_prefix,
+            state, fst_state, data.arcs, data.narcs);
+          assert(cur_block_->block_start() == block_stack_.back().start());
           cur_block_ = &block_stack_.back();
+
+          if (!acceptor_->Final(state))  {
+            cur_block_->scan_to_sub_block(data.arcs->ilabel);
+          }
+
           cur_block_->load(terms_input(), terms_cipher());
         }
       } break;
