@@ -2321,6 +2321,37 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
  private:
+  class fst_arc_matcher {
+   public:
+    fst_arc_matcher(const FST& fst, typename FST::StateId state) noexcept {
+      fst::ArcIteratorData<typename FST::Arc> data;
+      fst.InitArcIterator(state, &data);
+      begin_ = data.arcs;
+      end_ = begin_ + data.narcs;
+    }
+
+    void seek(typename FST::Arc::Label label) noexcept {
+      // linear search is faster for a small number of arcs
+      for (; begin_ != end_; ++begin_) {
+        if (label <= begin_->ilabel) {
+          break;
+        }
+      }
+    }
+
+    const typename FST::Arc* value() const noexcept {
+      return begin_;
+    }
+
+    bool done() const noexcept {
+      return begin_ == end_;
+    }
+
+   private:
+    const typename FST::Arc* begin_;  // current arc
+    const typename FST::Arc* end_;    // end of arcs range
+  }; // fst_arc__matcher
+
   class arc_matcher {
    public:
     arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
@@ -2363,45 +2394,24 @@ class automaton_term_iterator final : public term_iterator_base {
     const automaton::Arc* begin_;  // current arc
     const automaton::Arc* end_;    // end of arcs range
     const automaton::Arc* rho_{};  // rho arc if present
-  }; // begin_matcher
+  }; // arc_matcher
 
   class block_iterator : public ::block_iterator {
    public:
-    block_iterator(const bytes_ref& out,
+    block_iterator(const bytes_ref& out, const FST& fst,
                    size_t prefix, size_t weight_prefix,
                    automaton::StateId state, typename FST::StateId fst_state,
                    const automaton::Arc* arcs, size_t narcs) noexcept
       : ::block_iterator(out, prefix),
         arcs_(arcs, narcs),
+        fst_arcs_(fst, fst_state),
         weight_prefix_(weight_prefix),
         state_(state),
         fst_state_(fst_state) {
-    }
-
-    block_iterator(byte_weight&& out,
-                   size_t prefix, size_t weight_prefix,
-                   automaton::StateId state, typename FST::StateId fst_state,
-                   const automaton::Arc* arcs, size_t narcs) noexcept
-      : ::block_iterator(std::move(out), prefix),
-        arcs_(arcs, narcs),
-        weight_prefix_(weight_prefix),
-        state_(state),
-        fst_state_(fst_state) {
-    }
-
-    block_iterator(uint64_t start,
-                   size_t prefix, size_t weight_prefix,
-                   automaton::StateId state, typename FST::StateId fst_state,
-                   const automaton::Arc* arcs, size_t narcs) noexcept
-      : ::block_iterator(start, prefix),
-        arcs_(arcs, narcs),
-        weight_prefix_(weight_prefix),
-        state_(state),
-        fst_state_(fst_state) {
-      assert(narcs);
     }
 
    public:
+    fst_arc_matcher& fst_arcs() noexcept { return fst_arcs_; }
     arc_matcher& arcs() noexcept { return arcs_; }
     automaton::StateId acceptor_state() const noexcept { return state_; }
     typename FST::StateId fst_state() const noexcept { return fst_state_; }
@@ -2409,6 +2419,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
    private:
     arc_matcher arcs_;
+    fst_arc_matcher fst_arcs_;
     size_t weight_prefix_;
     automaton::StateId state_;  // state to which current block belongs
     typename FST::StateId fst_state_;
@@ -2423,7 +2434,7 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   block_iterator* push_block(
-      const bytes_ref& out,
+      const bytes_ref& out, const FST& fst,
       size_t prefix, size_t weight_prefix,
       automaton::StateId state, typename FST::StateId fst_state) {
     // ensure final weight correctness
@@ -2433,7 +2444,7 @@ class automaton_term_iterator final : public term_iterator_base {
     acceptor_->InitArcIterator(state, &data);
     assert(data.narcs); // ensured by term_reader::iterator(...)
 
-    block_stack_.emplace_back(out, prefix, weight_prefix, state, fst_state, data.arcs, data.narcs);
+    block_stack_.emplace_back(out, fst, prefix, weight_prefix, state, fst_state, data.arcs, data.narcs);
 
     return &block_stack_.back();
   }
@@ -2452,6 +2463,8 @@ class automaton_term_iterator final : public term_iterator_base {
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
   explicit_matcher<FST> fst_matcher_;
+  const typename FST::Arc* arc_begin_;
+  const typename FST::Arc* arc_end_;
   byte_weight weight_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
@@ -2469,7 +2482,7 @@ bool automaton_term_iterator<FST>::next() {
   if (!cur_block_) {
     if (term_.empty()) {
       const auto fst_start = fst.Start();
-      cur_block_ = push_block(fst.Final(fst_start), 0, 0, acceptor_->Start(), fst_start);
+      cur_block_ = push_block(fst.Final(fst_start), *fst_, 0, 0, acceptor_->Start(), fst_start);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
@@ -2575,17 +2588,24 @@ bool automaton_term_iterator<FST>::next() {
 
           weight_.Resize(cur_block_->weight_prefix());
           auto fst_state = cur_block_->fst_state();
-          auto* begin = term_.begin() + cur_block_->prefix();
-          auto* end = term_.end();
 
-          for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
-            [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
-            assert(found);
+          if (const auto* begin = suffix; begin < end) {
+            auto& fst_arcs = cur_block_->fst_arcs();
+            fst_arcs.seek(*begin++);
+            assert(!fst_arcs.done());
+            const auto* arc = fst_arcs.value();
+            weight_.PushBack(arc->weight.begin(), arc->weight.end());
 
-            const auto& arc = fst_matcher_.Value();
-            fst_state = arc.nextstate;
-            fst_matcher_.SetState(fst_state);
-            weight_.PushBack(arc.weight.begin(), arc.weight.end());
+            fst_state = fst_arcs.value()->nextstate;
+            for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
+              [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
+              assert(found);
+
+              const auto& arc = fst_matcher_.Value();
+              fst_state = arc.nextstate;
+              fst_matcher_.SetState(fst_state);
+              weight_.PushBack(arc.weight.begin(), arc.weight.end());
+            }
           }
 
           const auto& weight = fst.FinalRef(fst_state);
@@ -2594,7 +2614,7 @@ bool automaton_term_iterator<FST>::next() {
           weight_.PushBack(weight.begin(), weight.end());
 
           block_stack_.emplace_back(
-            static_cast<bytes_ref>(weight_), term_.size(), weight_prefix,
+            static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
             state, fst_state, data.arcs, data.narcs);
           assert(cur_block_->block_start() == block_stack_.back().start());
           cur_block_ = &block_stack_.back();
