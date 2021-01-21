@@ -2463,8 +2463,6 @@ class automaton_term_iterator final : public term_iterator_base {
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
   explicit_matcher<FST> fst_matcher_;
-  const typename FST::Arc* arc_begin_;
-  const typename FST::Arc* arc_end_;
   byte_weight weight_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
