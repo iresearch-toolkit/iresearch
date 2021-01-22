@@ -826,7 +826,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   const size_t begin = end - count;
   size_t block_start = begin; // begin of current block to write
 
-  size_t min_suffix = integer_traits<size_t>::const_max;
+  size_t min_suffix = std::numeric_limits<size_t>::max();
   size_t max_suffix = 0;
 
   int16_t last_label = block_t::INVALID_LABEL; // last lead suffix label
@@ -853,7 +853,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
-        min_suffix = integer_traits<size_t>::const_max;
+        min_suffix = std::numeric_limits<size_t>::max();
         max_suffix = 0;
       }
 
@@ -1244,7 +1244,7 @@ attribute* term_reader_base::get_mutable(irs::type_info::type_id type) noexcept 
 ///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
-  static constexpr uint64_t UNDEFINED = integer_traits<uint64_t>::const_max;
+  static constexpr uint64_t UNDEFINED = std::numeric_limits<uint64_t>::max();
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
 
@@ -2242,6 +2242,88 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @class automaton_arc_matcher
+///////////////////////////////////////////////////////////////////////////////
+class automaton_arc_matcher {
+ public:
+  automaton_arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
+    : begin_(arcs), end_(arcs + narcs),
+      rho_(rho_arc(begin_, end_)) {
+  }
+
+  const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
+    // linear search is faster for a small number of arcs
+    for (;begin_ != end_; ++begin_) {
+      if (label <= begin_->ilabel) {
+        return label == begin_->ilabel ? begin_ : rho_;
+      }
+    }
+
+    return nullptr;
+  }
+
+  const automaton::Arc* value() const noexcept {
+    return begin_;
+  }
+
+  bool done() const noexcept {
+    return begin_ == end_;
+  }
+
+ private:
+  static const automaton::Arc* rho_arc(const automaton::Arc* begin,
+                                       const automaton::Arc* end) noexcept {
+    if (begin != end) {
+      auto* back = end-1;
+      if (back->ilabel == fst::fsa::kRho) {
+        return back;
+      }
+    }
+
+    return nullptr;
+  }
+
+  const automaton::Arc* begin_;  // current arc
+  const automaton::Arc* end_;    // end of arcs range
+  const automaton::Arc* rho_{};  // rho arc if present
+}; // automaton_arc_matcher
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class fst_arc_matcher
+///////////////////////////////////////////////////////////////////////////////
+template<typename FST>
+class fst_arc_matcher {
+ public:
+  fst_arc_matcher(const FST& fst, typename FST::StateId state) noexcept {
+    fst::ArcIteratorData<typename FST::Arc> data;
+    fst.InitArcIterator(state, &data);
+    begin_ = data.arcs;
+    end_ = begin_ + data.narcs;
+  }
+
+  void seek(typename FST::Arc::Label label) noexcept {
+    // linear search is faster for a small number of arcs
+    for (; begin_ != end_; ++begin_) {
+      if (label <= begin_->ilabel) {
+        break;
+      }
+    }
+  }
+
+  const typename FST::Arc* value() const noexcept {
+    return begin_;
+  }
+
+  bool done() const noexcept {
+    return begin_ == end_;
+  }
+
+ private:
+  const typename FST::Arc* begin_;  // current arc
+  const typename FST::Arc* end_;    // end of arcs range
+}; // fst_arc_matcher
+
+///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename FST>
@@ -2302,81 +2384,6 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
  private:
-  class fst_arc_matcher {
-   public:
-    fst_arc_matcher(const FST& fst, typename FST::StateId state) noexcept {
-      fst::ArcIteratorData<typename FST::Arc> data;
-      fst.InitArcIterator(state, &data);
-      begin_ = data.arcs;
-      end_ = begin_ + data.narcs;
-    }
-
-    void seek(typename FST::Arc::Label label) noexcept {
-      // linear search is faster for a small number of arcs
-      for (; begin_ != end_; ++begin_) {
-        if (label <= begin_->ilabel) {
-          break;
-        }
-      }
-    }
-
-    const typename FST::Arc* value() const noexcept {
-      return begin_;
-    }
-
-    bool done() const noexcept {
-      return begin_ == end_;
-    }
-
-   private:
-    const typename FST::Arc* begin_;  // current arc
-    const typename FST::Arc* end_;    // end of arcs range
-  }; // fst_arc__matcher
-
-  class arc_matcher {
-   public:
-    arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
-      : begin_(arcs), end_(arcs + narcs),
-        rho_(rho_arc(begin_, end_)) {
-    }
-
-    const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
-      // linear search is faster for a small number of arcs
-      for (;begin_ != end_; ++begin_) {
-        if (label <= begin_->ilabel) {
-          return label == begin_->ilabel ? begin_ : rho_;
-        }
-      }
-
-      return nullptr;
-    }
-
-    const automaton::Arc* value() const noexcept {
-      return begin_;
-    }
-
-    bool done() const noexcept {
-      return begin_ == end_;
-    }
-
-   private:
-    static const automaton::Arc* rho_arc(const automaton::Arc* begin,
-                                         const automaton::Arc* end) noexcept {
-      if (begin != end) {
-        auto* back = end-1;
-        if (back->ilabel == fst::fsa::kRho) {
-          return back;
-        }
-      }
-
-      return nullptr;
-    }
-
-    const automaton::Arc* begin_;  // current arc
-    const automaton::Arc* end_;    // end of arcs range
-    const automaton::Arc* rho_{};  // rho arc if present
-  }; // arc_matcher
-
   class block_iterator : public ::block_iterator {
    public:
     block_iterator(const bytes_ref& out, const FST& fst,
@@ -2392,21 +2399,19 @@ class automaton_term_iterator final : public term_iterator_base {
     }
 
    public:
-    fst_arc_matcher& fst_arcs() noexcept { return fst_arcs_; }
-    arc_matcher& arcs() noexcept { return arcs_; }
+    fst_arc_matcher<FST>& fst_arcs() noexcept { return fst_arcs_; }
+    automaton_arc_matcher& arcs() noexcept { return arcs_; }
     automaton::StateId acceptor_state() const noexcept { return state_; }
     typename FST::StateId fst_state() const noexcept { return fst_state_; }
     size_t weight_prefix() const noexcept { return weight_prefix_; }
 
    private:
-    arc_matcher arcs_;
-    fst_arc_matcher fst_arcs_;
+    automaton_arc_matcher arcs_;
+    fst_arc_matcher<FST> fst_arcs_;
     size_t weight_prefix_;
     automaton::StateId state_;  // state to which current block belongs
     typename FST::StateId fst_state_;
   }; // block_iterator
-
-  typedef std::deque<block_iterator> block_stack_t;
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
@@ -2445,7 +2450,7 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   explicit_matcher<FST> fst_matcher_;
   byte_weight weight_;
-  block_stack_t block_stack_;
+  std::deque<block_iterator> block_stack_;
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;
   payload payload_; // payload of the matched automaton state
@@ -2634,7 +2639,7 @@ bool automaton_term_iterator<FST>::next() {
           if (arc && arc->ilabel == fst::fsa::kRho) {
             cur_block_->next_sub_block();
           } else {
-            assert(arcs.value()->ilabel <= integer_traits<byte_type>::const_max);
+            assert(arcs.value()->ilabel <= std::numeric_limits<byte_type>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->ilabel));
           }
         } else {
