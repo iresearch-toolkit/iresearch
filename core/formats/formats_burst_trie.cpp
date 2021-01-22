@@ -1302,6 +1302,7 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
+    assert(term.size() >= prefix_);
     assert(!dirty_);
 
     const auto [suffix_length, res] = leaf_
@@ -1463,10 +1464,7 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
   size_t suffix_length;
-  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length)
-    ? ET_BLOCK
-    : ET_TERM;
-
+  cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length));
   suffix_ = suffix_begin_;
   suffix_begin_ += suffix_length;
 #ifdef IRESEARCH_DEBUG
@@ -1490,9 +1488,13 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
 std::pair<size_t, SeekResult> block_iterator::scan_to_term_leaf(const bytes_ref& term) {
   assert(leaf_);
   assert(!dirty_);
+  assert(term.size() >= prefix_);
 
+  const size_t term_suffix_length = term.size() - prefix_;
+  const byte_type* term_suffix = term.c_str() + prefix_;
   size_t suffix_length{};
   cur_type_ = ET_TERM; // leaf block contains terms only
+
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     ++term_count_;
@@ -1506,33 +1508,20 @@ std::pair<size_t, SeekResult> block_iterator::scan_to_term_leaf(const bytes_ref&
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 
-    const byte_type* suffix = suffix_;
-    const byte_type* target = term.c_str() + prefix_;
-    const size_t target_len = prefix_ + suffix_length;
-    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
+    ptrdiff_t cmp = std::memcmp(
+      suffix_, term_suffix,
+      std::min(suffix_length, term_suffix_length));
 
-    ptrdiff_t cmp;
-    for (bool stop = false;;) {
-      if (target < target_end) {
-        cmp = *suffix - *target;
-        ++target;
-        ++suffix;
-      } else {
-        assert(target == target_end);
-        cmp = target_len - term.size();
-        stop = true;
-      }
+    if (cmp == 0) {
+      cmp = suffix_length - term_suffix_length;
+    }
 
-      if (cmp < 0) {
-        // we before the target, move to next entry
-        break;
-      } else if (cmp > 0) {
-        // we after the target, not found
-        return { suffix_length, SeekResult::NOT_FOUND };
-      } else if (stop) { // && cmp == 0
-        // match!
-        return { suffix_length, SeekResult::FOUND };
-      }
+    if (cmp > 0) {
+      // we after the target, not found
+      return { suffix_length, SeekResult::NOT_FOUND };
+    } else if (cmp == 0) {
+      // match!
+      return { suffix_length, SeekResult::FOUND };
     }
   }
 
@@ -1543,12 +1532,15 @@ std::pair<size_t, SeekResult> block_iterator::scan_to_term_leaf(const bytes_ref&
 std::pair<size_t, SeekResult> block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
   assert(!leaf_);
   assert(!dirty_);
+  assert(term.size() >= prefix_);
 
+  const size_t term_suffix_length = term.size() - prefix_;
+  const byte_type* term_suffix = term.c_str() + prefix_;
   size_t suffix_length{};
+
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length));
-//        ? ET_BLOCK : ET_TERM;
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
@@ -1564,33 +1556,20 @@ std::pair<size_t, SeekResult> block_iterator::scan_to_term_nonleaf(const bytes_r
       default: assert(false); break;
     }
 
-    const byte_type* suffix = suffix_;
-    const size_t target_len = prefix_ + suffix_length;
-    const byte_type* target = term.c_str() + prefix_;
-    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
+    ptrdiff_t cmp = std::memcmp(
+      suffix_, term_suffix,
+      std::min(suffix_length, term_suffix_length));
 
-    ptrdiff_t cmp;
-    for (bool stop = false;;) {
-      if (target < target_end) {
-        cmp = *suffix - *target;
-        ++target;
-        ++suffix;
-      } else {
-        assert(target == target_end);
-        cmp = target_len - term.size();
-        stop = true;
-      }
+    if (cmp == 0) {
+      cmp = suffix_length - term_suffix_length;
+    }
 
-      if (cmp < 0) {
-        // we before the target, move to next entry
-        break;
-      } else if (cmp > 0) {
-        // we after the target, not found
-        return { suffix_length, SeekResult::NOT_FOUND };
-      } else if (stop) { // && cmp == 0
-        // match!
-        return { suffix_length, SeekResult::FOUND };
-      }
+    if (cmp > 0) {
+      // we after the target, not found
+      return { suffix_length, SeekResult::NOT_FOUND };
+    } else if (cmp == 0) {
+      // match!
+      return { suffix_length, SeekResult::FOUND };
     }
   }
 
@@ -1656,8 +1635,7 @@ void block_iterator::scan_to_block(uint64_t start) {
   const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length)
-        ? ET_BLOCK : ET_TERM;
+    const auto type = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length));
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
