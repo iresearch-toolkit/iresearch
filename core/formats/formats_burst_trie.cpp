@@ -1304,11 +1304,11 @@ class block_iterator : util::noncopyable {
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
     assert(!dirty_);
 
-    const SeekResult res = leaf_
+    const auto [suffix_length, res] = leaf_
       ? scan_to_term_leaf(term)
       : scan_to_term_nonleaf(term);
 
-    reader(suffix_, suffix_length_);
+    reader(suffix_, suffix_length);
 
     return res;
   }
@@ -1329,10 +1329,10 @@ class block_iterator : util::noncopyable {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
-    suffix_length_ = vread<uint64_t>(suffix_begin_);
+    const size_t suffix_length = vread<uint64_t>(suffix_begin_);
     suffix_ = suffix_begin_;
-    reader(suffix_, suffix_length_);
-    suffix_begin_ += suffix_length_;
+    reader(suffix_, suffix_length);
+    suffix_begin_ += suffix_length;
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
@@ -1341,8 +1341,8 @@ class block_iterator : util::noncopyable {
   template<typename Reader>
   void read_entry_nonleaf(Reader&& reader);
 
-  SeekResult scan_to_term_nonleaf(const bytes_ref& term);
-  SeekResult scan_to_term_leaf(const bytes_ref& term);
+  std::pair<size_t, SeekResult> scan_to_term_nonleaf(const bytes_ref& term);
+  std::pair<size_t, SeekResult> scan_to_term_leaf(const bytes_ref& term);
 
   byte_weight header_; // block header
   bstring suffix_block_; // suffix data block
@@ -1356,7 +1356,6 @@ class block_iterator : util::noncopyable {
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif // IRESEARCH_DEBUG
   const byte_type* suffix_{}; // current suffix
-  uint64_t suffix_length_{}; // current suffix length
   version10::term_meta state_;
   uint64_t cur_ent_{}; // current entry in a block
   uint64_t ent_count_{}; // number of entries in a current block
@@ -1463,12 +1462,13 @@ template<typename Reader>
 void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
-  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+  size_t suffix_length;
+  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length)
     ? ET_BLOCK
     : ET_TERM;
 
   suffix_ = suffix_begin_;
-  suffix_begin_ += suffix_length_;
+  suffix_begin_ += suffix_length;
 #ifdef IRESEARCH_DEBUG
   assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
@@ -1480,34 +1480,35 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   }
 
   // read after state is updated
-  reader(suffix_, suffix_length_);
+  reader(suffix_, suffix_length);
 
 #ifdef IRESEARCH_DEBUG
   assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 }
 
-SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
+std::pair<size_t, SeekResult> block_iterator::scan_to_term_leaf(const bytes_ref& term) {
   assert(leaf_);
   assert(!dirty_);
 
+  size_t suffix_length{};
+  cur_type_ = ET_TERM; // leaf block contains terms only
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     ++term_count_;
-    cur_type_ = ET_TERM;
-    suffix_length_ = vread<uint64_t>(suffix_begin_);
+    suffix_length = vread<uint64_t>(suffix_begin_);
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_; // start of the current suffix
-    suffix_begin_ += suffix_length_; // skip to the next term
+    suffix_begin_ += suffix_length; // skip to the next term
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 
     const byte_type* suffix = suffix_;
     const byte_type* target = term.c_str() + prefix_;
-    const size_t target_len = prefix_ + suffix_length_;
+    const size_t target_len = prefix_ + suffix_length;
     const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
 
     ptrdiff_t cmp;
@@ -1527,31 +1528,32 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
         break;
       } else if (cmp > 0) {
         // we after the target, not found
-        return SeekResult::NOT_FOUND;
+        return { suffix_length, SeekResult::NOT_FOUND };
       } else if (stop) { // && cmp == 0
         // match!
-        return SeekResult::FOUND;
+        return { suffix_length, SeekResult::FOUND };
       }
     }
   }
 
   // we have reached the end of the block
-  return SeekResult::END;
+  return { suffix_length, SeekResult::END };
 }
 
-SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
+std::pair<size_t, SeekResult> block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
   assert(!leaf_);
   assert(!dirty_);
 
+  size_t suffix_length{};
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
-        ? ET_BLOCK : ET_TERM;
+    cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length));
+//        ? ET_BLOCK : ET_TERM;
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_;
-    suffix_begin_ += suffix_length_; // skip to the next entry
+    suffix_begin_ += suffix_length; // skip to the next entry
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
@@ -1563,7 +1565,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
     }
 
     const byte_type* suffix = suffix_;
-    const size_t target_len = prefix_ + suffix_length_;
+    const size_t target_len = prefix_ + suffix_length;
     const byte_type* target = term.c_str() + prefix_;
     const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
 
@@ -1584,16 +1586,16 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
         break;
       } else if (cmp > 0) {
         // we after the target, not found
-        return SeekResult::NOT_FOUND;
+        return { suffix_length, SeekResult::NOT_FOUND };
       } else if (stop) { // && cmp == 0
         // match!
-        return SeekResult::FOUND;
+        return { suffix_length, SeekResult::FOUND };
       }
     }
   }
 
   // we have reached the end of the block
-  return SeekResult::END;
+  return { suffix_length, SeekResult::END };
 }
 
 void block_iterator::scan_to_sub_block(byte_type label) {
@@ -1650,16 +1652,17 @@ void block_iterator::scan_to_block(uint64_t start) {
     return;
   }
 
+  size_t suffix_length;
   const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length)
         ? ET_BLOCK : ET_TERM;
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_;
-    suffix_begin_ += suffix_length_;
+    suffix_begin_ += suffix_length;
 #ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
