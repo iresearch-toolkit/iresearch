@@ -40,22 +40,26 @@ namespace fsa {
 
 class BooleanWeight;
 
-template<typename W, typename L>
+template<typename V, typename T>
+struct RangeLabel;
+
+template<typename L, typename W>
 struct Transition;
 
-template<typename W, typename L>
-using AutomatonState = VectorState<Transition<W, L>, std::allocator<Transition<W, L>>>;
+template<typename L, typename W>
+using AutomatonState = VectorState<Transition<L, W>, std::allocator<Transition<L, W>>>;
 
-template<typename W = BooleanWeight, typename L = int32_t>
-using Automaton = VectorFst<Transition<W, L>, AutomatonState<W, L>>;
+template<typename L = int32_t, typename W = BooleanWeight>
+using Automaton = VectorFst<Transition<L, W>, AutomatonState<L, W>>;
 
 } // fsa
 } // fst
 
 namespace iresearch {
 
-using automaton = fst::fsa::Automaton<>;
-using rautomaton = fst::fsa::Automaton<fst::fsa::BooleanWeight, int64_t>;
+using automaton = fst::fsa::Automaton<int32_t>;
+using rautomaton = fst::fsa::Automaton<int64_t>;
+using range_label = fst::fsa::RangeLabel<int32_t, int64_t>;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 

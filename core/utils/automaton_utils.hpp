@@ -601,7 +601,7 @@ inline rautomaton make_char_range(const rautomaton::Arc::Label c) {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  a.EmplaceArc(0, fst::fsa::EncodeRange(c), 1);
+  a.EmplaceArc(0, range_label(c), 1);
   return a;
 }
 

@@ -25,8 +25,6 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/wildcard_utils.hpp"
-#include "fstext/determinize-star.h"
-#include "draw-impl.h"
 
 #include <fstream>
 
@@ -57,38 +55,6 @@ class wildcard_utils_test : public test_base {
 
 TEST_F(wildcard_utils_test, match_wildcard) {
   {
-//    irs::rautomaton ra;
-//    ra.SetStart(ra.AddState()); // 0
-//    ra.AddState();              // 1
-//    ra.AddState();              // 2
-//    ra.SetFinal(ra.AddState()); // 3
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('a', 'c'), 1);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('a', 'b'), 2);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('a', 'a'), 1);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('b', 'b'), 1);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('c', 'c'), 1);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('a', 'a'), 2);
-////    ra.EmplaceArc(0, fst::fsa::EncodeRange('b', 'b'), 2);
-//    ra.EmplaceArc(0, fst::fsa::EncodeRange('a', 'g'), 1);
-//    ra.EmplaceArc(0, fst::fsa::EncodeRange('b', 'c'), 2);
-//    ra.EmplaceArc(1, fst::fsa::EncodeRange('c'), 3);
-//    ra.EmplaceArc(2, fst::fsa::EncodeRange('d'), 3);
-//
-//    {
-//      std::ofstream f;
-//      f.open("nfa");
-//      fst::drawFst(ra, f);
-//    }
-//
-//    irs::rautomaton dfa;
-//    fst::DeterminizeStar(ra, &dfa);
-//
-//    {
-//      std::ofstream f;
-//      f.open("dfa");
-//      fst::drawFst(dfa, f);
-//    }
-//
     auto a = irs::from_wildcard_range("%rc%");
     assert_properties(a);
 

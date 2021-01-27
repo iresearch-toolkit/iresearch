@@ -26,152 +26,61 @@
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
 
 TEST(fst_table_matcher_test, static_const) {
-  static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton<>>::MATCH_TYPE, "assertion failed");
+  static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton<int64_t>>::MATCH_TYPE, "assertion failed");
   static_assert(fst::kNoIEpsilons | fst::kIDeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<>>::MATCH_TYPE, "assertion failed");
-  static_assert(fst::MATCH_OUTPUT == fst::TableMatcher<fst::fsa::Automaton<>, 256, false>::MATCH_TYPE, "assertion failed");
+  static_assert(fst::MATCH_OUTPUT == fst::TableMatcher<fst::fsa::Automaton<int64_t>, 256, false>::MATCH_TYPE, "assertion failed");
   static_assert(fst::kNoOEpsilons | fst::kODeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<>, 256, false>::MATCH_TYPE, "assertion failed");
-  static_assert(std::is_same<fst::fsa::Automaton<>, fst::TableMatcher<fst::fsa::Automaton<>>::FST>::value, "assertion failed");
-  static_assert(std::is_same<fst::fsa::Transition<>,fst::TableMatcher<fst::fsa::Automaton<>>::Arc>::value, "assertion failed");
-  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::Label>::value, "assertion failed");
-  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::StateId>::value, "assertion failed");
+  static_assert(std::is_same<fst::fsa::Automaton<int64_t>, fst::TableMatcher<fst::fsa::Automaton<int64_t>>::FST>::value, "assertion failed");
+  static_assert(std::is_same<fst::fsa::Transition<int64_t>,fst::TableMatcher<fst::fsa::Automaton<int64_t>>::Arc>::value, "assertion failed");
+  static_assert(std::is_same<int64_t,fst::TableMatcher<fst::fsa::Automaton<int64_t>>::Label>::value, "assertion failed");
+  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<int64_t>>::StateId>::value, "assertion failed");
   static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton<>>::Weight>::value, "assertion failed");
 }
 
 TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
-    fst::fsa::Automaton<> a;
+    fst::fsa::Automaton<int64_t> a;
     a.AddState(); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 1, 0);
     a.EmplaceArc(1, 1, 0);
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    ASSERT_EQ(fst::kError, matcher.Properties(0));
+  }
+
+  // non-deterministic
+  {
+    fst::fsa::Automaton<int64_t> a;
+    a.AddState(); // 0
+    a.AddState(); // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1, 21), 0);
+    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
   // acceptor, regardless of specified arc weights
   {
-    fst::fsa::Automaton<> a;
+    fst::fsa::Automaton<int64_t> a;
     a.AddState(); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 1, 0);
     a.EmplaceArc(1, 2, 0);
-    fst::ArcIteratorData<fst::fsa::Transition<>> data;
+    fst::ArcIteratorData<decltype(a)::Arc> data;
     a.InitArcIterator(1, &data);
-    const_cast<fst::fsa::Transition<>&>(data.arcs[0]).olabel = fst::kNoLabel;
+    const_cast<decltype(a)::Arc&>(data.arcs[0]).olabel = fst::kNoLabel;
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
   }
 }
 
 TEST(fst_table_matcher_test, test_matcher) {
-//  // complex automaton
-//  {
-//    fst::fsa::Automaton<> a;
-//
-//    // build automaton
-//    {
-//      auto from = a.AddState();
-//      auto add_state = [&a, &from](fst::fsa::Automaton<>::Arc::Label min,
-//                                  fst::fsa::Automaton<>::Arc::Label max,
-//                                  int step) mutable {
-//        auto to = a.AddState();
-//
-//        for (; min < max; min += step) {
-//          a.EmplaceArc(from, min, to);
-//        }
-//
-//        from = to;
-//      };
-//
-//      a.SetStart(from);        // state: 0
-//      add_state(1, 1024, 3);   // state: 1
-//      add_state(512, 2048, 7); // state: 2
-//      add_state(152, 512, 11); // state: 3
-//      add_state(1, 2, 1);      // state: 4
-//      a.SetFinal(from);        // state: 5
-//    }
-//
-//    // check automaton
-//    {
-//      using matcher_t = fst::TableMatcher<fst::fsa::Automaton<>>;
-//      using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton<>>;
-//
-//      expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
-//      matcher_t matcher(a, fst::fsa::kRho, true);
-//      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
-//        expected_matcher.SetState(state);
-//        matcher.SetState(state);
-//
-//        for (matcher_t::Label min = 1, max = 2049; min < max; ++min) {
-//          const auto found = expected_matcher.Find(min);
-//          ASSERT_EQ(found, matcher.Find(min));
-//          if (found) {
-//            ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
-//          }
-//        }
-//      }
-//    }
-//  }
-
-  // complex automaton
-  {
-    fst::fsa::Automaton<fst::fsa::BooleanWeight, int64_t> a;
-
-    // build automaton
-    {
-      auto from = a.AddState();
-      auto add_state = [&a, &from](uint32_t min, uint32_t max, int step) mutable {
-        auto to = a.AddState();
-
-        for (; min < max; min += step) {
-          a.EmplaceArc(from, fst::fsa::EncodeRange(min, min), to);
-        }
-
-        from = to;
-      };
-
-      a.SetStart(from);        // state: 0
-      add_state(1, 1024, 3);   // state: 1
-      add_state(512, 2048, 7); // state: 2
-      add_state(152, 512, 11); // state: 3
-//      add_state(1, 2, 1);      // state: 4
-      {
-        auto to = a.AddState();
-        a.EmplaceArc(from, fst::fsa::EncodeRange(1, 2), to);
-        from = to;
-      }
-
-      a.SetFinal(from);        // state: 5
-    }
-
-    // check automaton
-    {
-      using matcher_t = fst::TableMatcher<decltype(a)>;
-      using expected_matcher_t = fst::SortedRangeExplicitMatcher<decltype(a)>;
-
-      expected_matcher_t expected_matcher(&a);
-      matcher_t matcher(a, fst::fsa::kRho, true);
-      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
-        expected_matcher.SetState(state);
-        matcher.SetState(state);
-
-        for (matcher_t::Label min = 1, max = 2049; min < max; ++min) {
-          const auto found = expected_matcher.Find(min);
-          ASSERT_EQ(found, matcher.Find(min));
-          if (found) {
-            ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
-          }
-        }
-      }
-    }
-  }
-
   // create matcher with an empty automaton
   {
-    fst::fsa::Automaton<> a;
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
+    fst::fsa::Automaton<int64_t> a;
+    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -180,7 +89,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_EQ(fst::MATCH_INPUT, matcher.Type(false));
     ASSERT_EQ(fst::MATCH_INPUT, matcher.Type(true));
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<decltype(a)>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -193,12 +102,12 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // create matcher with non-empty automaton
   {
-    fst::fsa::Automaton<> a;
+    fst::fsa::Automaton<int64_t> a;
     a.SetFinal(a.AddState());
     a.AddState();
     a.EmplaceArc(1, 42, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -223,7 +132,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<decltype(a)>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -255,13 +164,13 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // create matcher with non-empty automaton with rho transitions
   {
-    fst::fsa::Automaton<> a;
+    fst::fsa::Automaton<int64_t> a;
     a.SetFinal(a.AddState()); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 42, 0);
     a.EmplaceArc(1, fst::fsa::kRho, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::fsa::kRho, true);
+    fst::TableMatcher<decltype(a)> matcher(a, fst::fsa::kRho, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -297,7 +206,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_TRUE(matcher.Done());
 
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<decltype(a)>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -336,18 +245,16 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // complex automaton
   {
-    fst::fsa::Automaton<> a;
+    fst::fsa::Automaton<int64_t> a;
 
     // build automaton
     {
       auto from = a.AddState();
-      auto add_state = [&a, &from](fst::fsa::Automaton<>::Arc::Label min,
-                                  fst::fsa::Automaton<>::Arc::Label max,
-                                  int step) mutable {
+      auto add_state = [&a, &from](uint32_t min, uint32_t max, int step) mutable {
         auto to = a.AddState();
 
         for (; min < max; min += step) {
-          a.EmplaceArc(from, min, to);
+          a.EmplaceArc(from, fst::fsa::RangeLabel<int32_t, int64_t>(min), to);
         }
 
         from = to;
@@ -357,18 +264,25 @@ TEST(fst_table_matcher_test, test_matcher) {
       add_state(1, 1024, 3);   // state: 1
       add_state(512, 2048, 7); // state: 2
       add_state(152, 512, 11); // state: 3
-      add_state(1, 2, 1);      // state: 4
+      {                        // state: 4
+        auto to = a.AddState();
+        a.EmplaceArc(from, fst::fsa::RangeLabel<int32_t, int64_t>(1, 2), to);
+        a.EmplaceArc(from, fst::fsa::RangeLabel<int32_t, int64_t>(17, 167), to);
+        a.EmplaceArc(from, fst::fsa::RangeLabel<int32_t, int64_t>(178, 1023), to);
+        from = to;
+      }
+
       a.SetFinal(from);        // state: 5
     }
 
     // check automaton
     {
-      using matcher_t = fst::TableMatcher<fst::fsa::Automaton<>>;
-      using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton<>>;
+      using matcher_t = fst::TableMatcher<decltype(a)>;
+      using expected_matcher_t = fst::SortedRangeExplicitMatcher<decltype(a)>;
 
-      expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
+      expected_matcher_t expected_matcher(&a);
       matcher_t matcher(a, fst::fsa::kRho, true);
-      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
+      for (decltype(a)::StateId state = 0; state < a.NumStates(); ++state) {
         expected_matcher.SetState(state);
         matcher.SetState(state);
 

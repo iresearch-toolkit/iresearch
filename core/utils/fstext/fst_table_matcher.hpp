@@ -136,7 +136,7 @@ template<
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
       fst_(&fst),
       error_(test_props && (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
-    assert(!labels.empty());
+    assert(!start_labels_.empty());
 
     // initialize transition table
     ArcIteratorData<Arc> data;
@@ -229,17 +229,14 @@ template<
 
   virtual bool Find(Label label) noexcept final {
     assert(!error_);
+
     const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
                                  ? cached_label_offsets_[size_t(label)]
                                  : find_label_offset(label));
 
-    if (label_offset == num_labels_) {
-      state_ = state_end_;
-      return false;
-    }
-
     state_ = state_begin_ + label_offset;
     assert(state_ < state_end_);
+
     arc_.nextstate = *state_;
     return arc_.nextstate != kNoStateId;
   }
@@ -307,15 +304,13 @@ template<
   }
 
   size_t find_label_offset(Label label) const noexcept {
-    const auto it = std::lower_bound(start_labels_.begin(), start_labels_.end(), label);
+    const auto it = std::lower_bound(
+      start_labels_.rbegin(), start_labels_.rend(),
+      label, std::greater<>());
 
-    if (it == start_labels_.end() || *it != label) {
-      return num_labels_;
-    }
-
-    assert(it != start_labels_.end());
-    assert(start_labels_.begin() <= it);
-    return size_t(std::distance(start_labels_.begin(), it));
+    assert(it != start_labels_.rend()); // we cover the whole range
+    assert(start_labels_.rbegin() <= it);
+    return size_t(std::distance(start_labels_.begin(), it.base())) - 1;
   }
 
   size_t cached_label_offsets_[CacheSize]{};

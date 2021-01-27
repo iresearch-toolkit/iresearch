@@ -131,28 +131,8 @@ class BooleanWeight {
   PayloadType p_{};
 };
 
-template<typename T>
-struct RangeLabel {
-  using ValueType = T;
-
-  constexpr RangeLabel() noexcept = default;
-
-  constexpr RangeLabel(ValueType label) noexcept
-    : min(label), max(label) {
-  }
-  constexpr RangeLabel(ValueType min, ValueType max) noexcept
-    : min(min), max(max) {
-  }
-  friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
-    strm << '[' << l.min << ".." << l.max << ']';
-    return strm;
-  }
-
-  ValueType min{kNoLabel};
-  ValueType max{kNoLabel};
-}; // RangeLabel
-
 constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
+  assert(min <= max);
   return uint64_t(min) << 32 | uint64_t(max);
 }
 
@@ -167,7 +147,33 @@ constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
   };
 }
 
-template<typename W = BooleanWeight, typename L = int32_t>
+template<typename V = int32_t, typename T = int64_t>
+struct RangeLabel {
+  static_assert(std::is_integral_v<T>);
+  static_assert(std::is_integral_v<V>);
+  static_assert(sizeof(T) == 2*sizeof(V));
+
+  using ValueType = V;
+  using LabelType = T;
+
+  constexpr explicit RangeLabel(ValueType min) noexcept
+    : RangeLabel(min, min) {
+  }
+
+  constexpr RangeLabel(ValueType min, ValueType max) noexcept
+    : value(EncodeRange(min, max)) {
+  }
+
+  friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
+    const auto [min, max] = DecodeRange(l.value);
+    strm << '[' << min << ".." << max << ']';
+    return strm;
+  }
+
+  LabelType value{};
+}; // RangeLabel
+
+template<typename L = int32_t, typename W = BooleanWeight>
 struct Transition {
   using Weight = W;
   using Label = L;
@@ -186,6 +192,12 @@ struct Transition {
   };
 
   constexpr Transition() = default;
+
+  template<typename T>
+  constexpr Transition(RangeLabel<T, L> ilabel, StateId nextstate)
+    : ilabel(ilabel.value),
+      nextstate(nextstate) {
+  }
 
   constexpr Transition(Label ilabel, StateId nextstate)
     : ilabel(ilabel),

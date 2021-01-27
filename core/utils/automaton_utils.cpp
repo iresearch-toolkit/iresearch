@@ -184,21 +184,21 @@ void utf8_emplace_arc_range(
     rautomaton::StateId to) {
   switch (label.size()) {
     case 1: {
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), to);
+      a.EmplaceArc(from, range_label(label[0]), to);
       return;
     }
     case 2: {
       const auto s0 = a.AddState();
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), to);
+      a.EmplaceArc(from, range_label(label[0]), s0);
+      a.EmplaceArc(s0, range_label(label[1]), to);
       return;
     }
     case 3: {
       const auto s0 = a.AddState();
       const auto s1 = a.AddState();
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), to);
+      a.EmplaceArc(from, range_label(label[0]), s0);
+      a.EmplaceArc(s0, range_label(label[1]), s1);
+      a.EmplaceArc(s1, range_label(label[2]), to);
       return;
     }
     case 4: {
@@ -206,10 +206,10 @@ void utf8_emplace_arc_range(
       const auto s1 = s0 + 1;
       const auto s2 = s0 + 2;
       a.AddStates(3);
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), s2);
-      a.EmplaceArc(s2, fst::fsa::EncodeRange(label[3]), to);
+      a.EmplaceArc(from, range_label(label[0]), s0);
+      a.EmplaceArc(s0, range_label(label[1]), s1);
+      a.EmplaceArc(s1, range_label(label[2]), s2);
+      a.EmplaceArc(s2, range_label(label[3]), to);
       return;
     }
   }
@@ -224,13 +224,13 @@ void utf8_emplace_rho_arc_range(
 
   // add rho transitions
   a.ReserveArcs(from, 4);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(0, 127), to);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(192, 223), id);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(224, 239), id + 1);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(240, 255), id + 2);
+  a.EmplaceArc(from, range_label(0, 127), to);
+  a.EmplaceArc(from, range_label(192, 223), id);
+  a.EmplaceArc(from, range_label(224, 239), id + 1);
+  a.EmplaceArc(from, range_label(240, 255), id + 2);
 
   // connect intermediate states of default multi-byte UTF8 sequence
-  const auto label = fst::fsa::EncodeRange(128, 191);
+  constexpr auto label = range_label(128, 191);
   a.EmplaceArc(id, label, to);
   a.EmplaceArc(id + 1, label, id);
   a.EmplaceArc(id + 2, label, id + 1);
