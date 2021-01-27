@@ -46,7 +46,7 @@ struct filter_visitor;
 inline automaton_table_matcher make_automaton_matcher(
     const automaton& a,
     bool test_props = TEST_AUTOMATON_PROPS) {
-  return automaton_table_matcher(a, fst::fsa::kRho, test_props);
+  return automaton_table_matcher(a, test_props);
 }
 
 template<typename Char, typename Matcher>

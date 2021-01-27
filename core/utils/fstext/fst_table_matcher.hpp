@@ -129,7 +129,7 @@ template<
     | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
     | kAcceptor;
 
-  explicit TableMatcher(const FST& fst, Label rho, bool test_props)
+  explicit TableMatcher(const FST& fst, bool test_props)
     : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst)),
       num_labels_(start_labels_.size()),
       transitions_(fst.NumStates()*num_labels_, kNoStateId),

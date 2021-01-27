@@ -43,9 +43,9 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<int64_t> a;
     a.AddState(); // 0
     a.AddState(); // 1
-    a.EmplaceArc(1, 1, 0);
-    a.EmplaceArc(1, 1, 0);
-    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1), 0);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
@@ -56,7 +56,7 @@ TEST(fst_table_matcher_test, test_properties) {
     a.AddState(); // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1, 21), 0);
-    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
@@ -65,13 +65,13 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<int64_t> a;
     a.AddState(); // 0
     a.AddState(); // 1
-    a.EmplaceArc(1, 1, 0);
-    a.EmplaceArc(1, 2, 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel<int32_t, int64_t>(2), 0);
     fst::ArcIteratorData<decltype(a)::Arc> data;
     a.InitArcIterator(1, &data);
     const_cast<decltype(a)::Arc&>(data.arcs[0]).olabel = fst::kNoLabel;
 
-    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
   }
 }
@@ -80,7 +80,7 @@ TEST(fst_table_matcher_test, test_matcher) {
   // create matcher with an empty automaton
   {
     fst::fsa::Automaton<int64_t> a;
-    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -105,9 +105,9 @@ TEST(fst_table_matcher_test, test_matcher) {
     fst::fsa::Automaton<int64_t> a;
     a.SetFinal(a.AddState());
     a.AddState();
-    a.EmplaceArc(1, 42, 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(42, 42), 0);
 
-    fst::TableMatcher<decltype(a)> matcher(a, fst::kNoLabel, true);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -162,15 +162,15 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_TRUE(copy->Done());
   }
 
-  // create matcher with non-empty automaton with rho transitions
+  // create matcher with non-empty automaton and range
   {
     fst::fsa::Automaton<int64_t> a;
     a.SetFinal(a.AddState()); // 0
     a.AddState(); // 1
-    a.EmplaceArc(1, 42, 0);
-    a.EmplaceArc(1, fst::fsa::kRho, 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(42), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(42, 255), 0);
 
-    fst::TableMatcher<decltype(a)> matcher(a, fst::fsa::kRho, true);
+    fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -281,7 +281,7 @@ TEST(fst_table_matcher_test, test_matcher) {
       using expected_matcher_t = fst::SortedRangeExplicitMatcher<decltype(a)>;
 
       expected_matcher_t expected_matcher(&a);
-      matcher_t matcher(a, fst::fsa::kRho, true);
+      matcher_t matcher(a, true);
       for (decltype(a)::StateId state = 0; state < a.NumStates(); ++state) {
         expected_matcher.SetState(state);
         matcher.SetState(state);
