@@ -55,6 +55,7 @@ using Automaton = VectorFst<Transition<W, L>, AutomatonState<W, L>>;
 namespace iresearch {
 
 using automaton = fst::fsa::Automaton<>;
+using rautomaton = fst::fsa::Automaton<fst::fsa::BooleanWeight, int64_t>;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 

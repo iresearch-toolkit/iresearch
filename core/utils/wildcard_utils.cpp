@@ -33,6 +33,7 @@
 #endif
 
 #include "fstext/determinize-star.h"
+#include "draw-impl.h"
 
 #if defined(_MSC_VER)
   // NOOP
@@ -217,6 +218,123 @@ automaton from_wildcard(const bytes_ref& expr) {
 //  fst::Minimize(&dfa);
 
   utf8_expand_labels(dfa);
+
+#ifdef IRESEARCH_DEBUG
+  // ensure resulting automaton is sorted and deterministic
+  static constexpr auto EXPECTED_DFA_PROPERTIES =
+    fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
+
+  assert(EXPECTED_DFA_PROPERTIES == dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
+  UNUSED(EXPECTED_DFA_PROPERTIES);
+#endif
+
+  return dfa;
+}
+
+rautomaton from_wildcard_range(const bytes_ref& expr) {
+  // need this variable to preserve valid address
+  // for cases with match all and  terminal escape
+  // character (%\\)
+  const byte_type c = WildcardMatch::ESCAPE;
+
+  bool escaped = false;
+  std::vector<rautomaton> parts;
+  parts.reserve(expr.size() / 2); // reserve some space
+
+  auto append_char = [&](const bytes_ref& label) {
+    parts.emplace_back(make_char_range(label));
+    escaped = false;
+  };
+
+  const auto* label_begin = expr.begin();
+  const auto* end = expr.end();
+
+  while (label_begin < end) {
+    const auto label_length = utf8_utils::cp_length(*label_begin);
+    const auto label_end = label_begin + label_length;
+
+    if (!label_length || label_end > end) {
+      // invalid UTF-8 sequence
+      return {};
+    }
+
+    switch (*label_begin) {
+      case WildcardMatch::ANY_STRING: {
+        if (escaped) {
+          append_char({label_begin, label_length});
+        } else {
+          parts.emplace_back(make_all_range());
+        }
+        break;
+      }
+      case WildcardMatch::ANY_CHAR: {
+        if (escaped) {
+          append_char({label_begin, label_length});
+        } else {
+          parts.emplace_back(make_any_range());
+        }
+        break;
+      }
+      case WildcardMatch::ESCAPE: {
+        if (escaped) {
+          append_char({label_begin, label_length});
+        } else {
+          escaped = !escaped;
+        }
+        break;
+      }
+      default: {
+        if (escaped) {
+          // a backslash followed by no special character
+          parts.emplace_back(make_char_range({&c, 1}));
+        }
+        append_char({label_begin, label_length});
+        break;
+      }
+    }
+
+    label_begin = label_end;
+  }
+
+  if (escaped) {
+    // a non-terminated escape sequence
+    parts.emplace_back(make_char_range({&c, 1}));
+  }
+
+  rautomaton nfa;
+  nfa.SetStart(nfa.AddState());
+  nfa.SetFinal(0, true);
+
+  for (auto begin = parts.rbegin(), end = parts.rend(); begin != end; ++begin) {
+    // prefer prepending version of fst::Concat(...) as the cost of concatenation
+    // is linear in the sum of the size of the input FSAs
+    fst::Concat(*begin, &nfa);
+  }
+
+#ifdef IRESEARCH_DEBUG
+  // ensure nfa is sorted
+  static constexpr auto EXPECTED_NFA_PROPERTIES =
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kAcceptor | fst::kUnweighted;
+
+  assert(EXPECTED_NFA_PROPERTIES == nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+  UNUSED(EXPECTED_NFA_PROPERTIES);
+#endif
+
+  // nfa has only 1 arc per state
+  nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
+
+  rautomaton dfa;
+  if (fst::DeterminizeStar(nfa, &dfa)) {
+    // nfa isn't fully determinized
+    return {};
+  }
+
+    {
+      std::ofstream f;
+      f.open("nfa");
+      fst::drawFst(nfa, f);
+    }
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic

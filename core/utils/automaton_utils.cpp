@@ -178,10 +178,10 @@ void utf8_emplace_arc(
 }
 
 void utf8_emplace_arc_range(
-    automaton& a,
-    automaton::StateId from,
+    rautomaton& a,
+    rautomaton::StateId from,
     const bytes_ref& label,
-    automaton::StateId to) {
+    rautomaton::StateId to) {
   switch (label.size()) {
     case 1: {
       a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), to);
@@ -216,13 +216,14 @@ void utf8_emplace_arc_range(
 }
 
 void utf8_emplace_rho_arc_range(
-    automaton& a,
-    automaton::StateId from,
-    automaton::StateId to) {
+    rautomaton& a,
+    rautomaton::StateId from,
+    rautomaton::StateId to) {
   const auto id = a.NumStates(); // stated ids are sequential
   a.AddStates(3);
 
   // add rho transitions
+  a.ReserveArcs(from, 4);
   a.EmplaceArc(from, fst::fsa::EncodeRange(0, 127), to);
   a.EmplaceArc(from, fst::fsa::EncodeRange(192, 223), id);
   a.EmplaceArc(from, fst::fsa::EncodeRange(224, 239), id + 1);

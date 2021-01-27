@@ -28,6 +28,7 @@
 #include "utils/automaton.hpp"
 #include "utils/fstext/fst_states_map.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
@@ -72,6 +73,14 @@ inline automaton::Weight accept(const Automaton& a, const basic_string_ref<Char>
   typedef fst::RhoMatcher<fst::SortedMatcher<Automaton>> matcher_t;
 
   matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
+  return match(matcher, target);
+}
+
+template<typename Char>
+inline automaton::Weight accept(const rautomaton& a, const basic_string_ref<Char>& target) {
+  using matcher_t = fst::SortedRangeExplicitMatcher<rautomaton, fst::MatchType::MATCH_INPUT>;
+
+  matcher_t matcher(&a);
   return match(matcher, target);
 }
 
@@ -142,6 +151,71 @@ class automaton_term_iterator final : public seek_term_iterator {
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
 }; // automaton_term_iterator
+
+class rautomaton_term_iterator final : public seek_term_iterator {
+ public:
+  rautomaton_term_iterator(const rautomaton& a, seek_term_iterator::ptr&& it)
+    : a_(&a), matcher_(a_), it_(std::move(it)) {
+    assert(it_);
+    value_ = &it_->value();
+  }
+
+  virtual const bytes_ref& value() const noexcept override {
+    return *value_;
+  }
+
+  virtual doc_iterator::ptr postings(const flags& features) const override {
+    return it_->postings(features);
+  }
+
+  virtual void read() override {
+    it_->read();
+  }
+
+  virtual bool next() override {
+    bool next = it_->next();
+
+    while (next && !accept()) {
+      next = it_->next();
+    }
+
+    return next;
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
+  }
+
+  virtual SeekResult seek_ge(const bytes_ref& target) override {
+    it_->seek_ge(target);
+
+    if (accept()) {
+      return SeekResult::FOUND;
+    }
+
+    return next() ? SeekResult::NOT_FOUND : SeekResult::END;
+  }
+
+  virtual bool seek(const bytes_ref& target) override {
+    return SeekResult::FOUND == seek_ge(target);
+  }
+
+  virtual bool seek(const bytes_ref& target, const seek_cookie& cookie) override {
+    return it_->seek(target, cookie);
+  }
+
+  virtual seek_cookie::ptr cookie() const override {
+    return it_->cookie();
+  }
+
+ private:
+  bool accept() { return irs::match(matcher_, *value_); }
+
+  const rautomaton* a_;
+  fst::SortedRangeExplicitMatcher<rautomaton> matcher_;
+  seek_term_iterator::ptr it_;
+  const bytes_ref* value_;
+}; // rautomaton_term_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class utf8_transitions_builder
@@ -445,10 +519,10 @@ IRESEARCH_API void utf8_emplace_arc(
   automaton::StateId to);
 
 IRESEARCH_API void utf8_emplace_arc_range(
-  automaton& a,
-  automaton::StateId from,
+  rautomaton& a,
+  rautomaton::StateId from,
   const bytes_ref& label,
-  automaton::StateId to);
+  rautomaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source (from)
@@ -477,9 +551,9 @@ IRESEARCH_API void utf8_emplace_rho_arc_expand(
   automaton::StateId to);
 
 IRESEARCH_API void utf8_emplace_rho_arc_range(
-  automaton& a,
-  automaton::StateId from,
-  automaton::StateId to);
+  rautomaton& a,
+  rautomaton::StateId from,
+  rautomaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief modifies a specified UTF-8 automaton to an equivalent one that is
@@ -518,6 +592,39 @@ inline automaton make_any() {
 
 inline automaton make_all() {
   automaton a = make_any();
+  fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
+  return a;
+};
+
+inline rautomaton make_char_range(const rautomaton::Arc::Label c) {
+  rautomaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  a.EmplaceArc(0, fst::fsa::EncodeRange(c), 1);
+  return a;
+}
+
+inline rautomaton make_char_range(const bytes_ref& c) {
+  rautomaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_arc_range(a, 0, c, 1);
+  return a;
+}
+
+inline rautomaton make_any_range() {
+  rautomaton a;
+  a.AddStates(2);
+  a.SetStart(0);
+  a.SetFinal(1);
+  utf8_emplace_rho_arc_range(a, 0, 1);
+  return a;
+}
+
+inline rautomaton make_all_range() {
+  rautomaton a = make_any_range();
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };

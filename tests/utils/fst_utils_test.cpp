@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 #include "utils/automaton.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/fstext/fst_sorted_range_matcher.hpp"
 
 TEST(fst_table_matcher_test, static_const) {
   static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton<>>::MATCH_TYPE, "assertion failed");
@@ -65,6 +66,108 @@ TEST(fst_table_matcher_test, test_properties) {
 }
 
 TEST(fst_table_matcher_test, test_matcher) {
+//  // complex automaton
+//  {
+//    fst::fsa::Automaton<> a;
+//
+//    // build automaton
+//    {
+//      auto from = a.AddState();
+//      auto add_state = [&a, &from](fst::fsa::Automaton<>::Arc::Label min,
+//                                  fst::fsa::Automaton<>::Arc::Label max,
+//                                  int step) mutable {
+//        auto to = a.AddState();
+//
+//        for (; min < max; min += step) {
+//          a.EmplaceArc(from, min, to);
+//        }
+//
+//        from = to;
+//      };
+//
+//      a.SetStart(from);        // state: 0
+//      add_state(1, 1024, 3);   // state: 1
+//      add_state(512, 2048, 7); // state: 2
+//      add_state(152, 512, 11); // state: 3
+//      add_state(1, 2, 1);      // state: 4
+//      a.SetFinal(from);        // state: 5
+//    }
+//
+//    // check automaton
+//    {
+//      using matcher_t = fst::TableMatcher<fst::fsa::Automaton<>>;
+//      using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton<>>;
+//
+//      expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
+//      matcher_t matcher(a, fst::fsa::kRho, true);
+//      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
+//        expected_matcher.SetState(state);
+//        matcher.SetState(state);
+//
+//        for (matcher_t::Label min = 1, max = 2049; min < max; ++min) {
+//          const auto found = expected_matcher.Find(min);
+//          ASSERT_EQ(found, matcher.Find(min));
+//          if (found) {
+//            ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
+//          }
+//        }
+//      }
+//    }
+//  }
+
+  // complex automaton
+  {
+    fst::fsa::Automaton<fst::fsa::BooleanWeight, int64_t> a;
+
+    // build automaton
+    {
+      auto from = a.AddState();
+      auto add_state = [&a, &from](uint32_t min, uint32_t max, int step) mutable {
+        auto to = a.AddState();
+
+        for (; min < max; min += step) {
+          a.EmplaceArc(from, fst::fsa::EncodeRange(min, min), to);
+        }
+
+        from = to;
+      };
+
+      a.SetStart(from);        // state: 0
+      add_state(1, 1024, 3);   // state: 1
+      add_state(512, 2048, 7); // state: 2
+      add_state(152, 512, 11); // state: 3
+//      add_state(1, 2, 1);      // state: 4
+      {
+        auto to = a.AddState();
+        a.EmplaceArc(from, fst::fsa::EncodeRange(1, 2), to);
+        from = to;
+      }
+
+      a.SetFinal(from);        // state: 5
+    }
+
+    // check automaton
+    {
+      using matcher_t = fst::TableMatcher<decltype(a)>;
+      using expected_matcher_t = fst::SortedRangeExplicitMatcher<decltype(a)>;
+
+      expected_matcher_t expected_matcher(&a);
+      matcher_t matcher(a, fst::fsa::kRho, true);
+      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
+        expected_matcher.SetState(state);
+        matcher.SetState(state);
+
+        for (matcher_t::Label min = 1, max = 2049; min < max; ++min) {
+          const auto found = expected_matcher.Find(min);
+          ASSERT_EQ(found, matcher.Find(min));
+          if (found) {
+            ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
+          }
+        }
+      }
+    }
+  }
+
   // create matcher with an empty automaton
   {
     fst::fsa::Automaton<> a;

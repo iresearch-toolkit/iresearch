@@ -160,6 +160,13 @@ constexpr uint64_t EncodeRange(uint32_t v) noexcept {
   return EncodeRange(v, v);
 }
 
+constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
+  return {
+    static_cast<uint32_t>(label >> 32),
+    static_cast<uint32_t>(label & UINT64_C(0xFFFFFFFF))
+  };
+}
+
 template<typename W = BooleanWeight, typename L = int32_t>
 struct Transition {
   using Weight = W;

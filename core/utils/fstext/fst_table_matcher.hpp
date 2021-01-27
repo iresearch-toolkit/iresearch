@@ -26,6 +26,7 @@
 #include <algorithm>
 
 #include "fst/matcher.h"
+#include "utils/automaton.hpp" // FIXME
 #include "utils/misc.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/integer.hpp"
@@ -33,40 +34,40 @@
 
 namespace fst {
 
+
 template<typename F, bool MatchInput, bool ByteLabel>
-std::vector<typename F::Arc::Label> getStartLabels(
-    const F& fst, typename F::Arc::Label rho) {
+std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
   using Label = typename F::Arc::Label;
 
   if constexpr (ByteLabel) {
     size_t bits[256 / irs::bits_required<size_t>()]{};
-    bool has_rho = false;
 
     for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
-        const auto& label = MatchInput ? arc.ilabel : arc.olabel;
+        auto [min, max] = fsa::DecodeRange(MatchInput ? arc.ilabel : arc.olabel);
+        assert(min <= std::numeric_limits<irs::byte_type>::max());
+        assert(max <= std::numeric_limits<irs::byte_type>::max());
+        max += decltype(max)(max < std::numeric_limits<irs::byte_type>::max());
 
-        if (label == rho) {
-          has_rho = true;
-        } else {
-          assert(label <= std::numeric_limits<irs::byte_type>::max());
-
-          irs::set_bit(bits[label / irs::bits_required<size_t>()],
-                       label % irs::bits_required<size_t>());
-        }
+        irs::set_bit(bits[min / irs::bits_required<size_t>()],
+                     min % irs::bits_required<size_t>());
+        irs::set_bit(bits[max / irs::bits_required<size_t>()],
+                     max % irs::bits_required<size_t>());
       }
     }
 
     const size_t size = irs::math::math_traits<size_t>::pop(bits[0]) +
                         irs::math::math_traits<size_t>::pop(bits[1]) +
                         irs::math::math_traits<size_t>::pop(bits[2]) +
-                        irs::math::math_traits<size_t>::pop(bits[3]) +
-                        size_t(has_rho);
+                        irs::math::math_traits<size_t>::pop(bits[3]);
 
-    std::vector<Label> labels(size);
+    std::vector<Label> labels(1 + size);
     auto begin = labels.begin();
+    *begin = 0;
+    ++begin;
+
     Label offset = 0;
 
     std::for_each(
@@ -81,18 +82,21 @@ std::vector<typename F::Arc::Label> getStartLabels(
         offset += irs::bits_required<size_t>();
     });
 
-    if (has_rho) {
-      *begin = rho;
-    }
-
     return labels;
   } else {
-    std::set<Label> labels;
+    std::set<Label> labels{0};
+
     for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
-        labels.emplace(MatchInput ? arc.ilabel : arc.olabel);
+        auto [min, max] = fsa::DecodeRange(MatchInput ? arc.ilabel : arc.olabel);
+        assert(min <= std::numeric_limits<uint32_t>::max());
+        assert(max <= std::numeric_limits<uint32_t>::max());
+        max += decltype(max)(max < std::numeric_limits<uint32_t>::max());
+
+        labels.emplace(min);
+        labels.emplace(max);
       }
     }
     return { labels.begin(), labels.end() };
@@ -126,15 +130,16 @@ template<
     | kAcceptor;
 
   explicit TableMatcher(const FST& fst, Label rho, bool test_props)
-    : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst, rho)),
+    : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst)),
+      num_labels_(start_labels_.size()),
+      transitions_(fst.NumStates()*num_labels_, kNoStateId),
       arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
-      rho_(rho), fst_(&fst),
+      fst_(&fst),
       error_(test_props && (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
-    const size_t numLabels = start_labels_.size();
+    assert(!labels.empty());
 
     // initialize transition table
     ArcIteratorData<Arc> data;
-    transitions_.resize(fst.NumStates()*numLabels , kNoStateId);
     for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
       const auto state = siter.Value();
 
@@ -147,42 +152,22 @@ template<
         continue;
       }
 
-      // fill rho transitions if any
-      {
-        std::reverse_iterator<decltype(data.arcs)> rbegin(data.arcs + data.narcs);
-        std::reverse_iterator<decltype(data.arcs)> rend(data.arcs);
-
-        for (; rbegin != rend; ++rbegin) {
-          if (rho_ == get_label(*rbegin)) {
-            std::fill_n(transitions_.begin() + state*numLabels, numLabels, rbegin->nextstate);
-            break;
-          }
-        }
-      }
-
       // fill existing transitions
       auto arc = data.arcs;
       auto arc_end = data.arcs + data.narcs;
       auto label = start_labels_.begin();
-      auto label_end = start_labels_.end();
+      auto* state_transitions = transitions_.data() + state*num_labels_;
 
-      for (; arc != arc_end && label != label_end;) {
-        for (; arc != arc_end && get_label(*arc) < *label; ++arc) { }
+      for (; arc != arc_end && label != start_labels_.end(); ++arc) {
+        const auto range = fsa::DecodeRange(get_label(*arc));
+        assert(range.first <= range.second);
 
-        if (arc == arc_end) {
-          break;
-        }
+        label = std::find(label, start_labels_.end(), range.first);
+        assert(label != start_labels_.end());
 
-        for (; label != label_end  && get_label(*arc) > *label; ++label) { }
-
-        if (label == label_end) {
-          break;
-        }
-
-        if (get_label(*arc) == *label) {
-          transitions_[state*numLabels + std::distance(start_labels_.begin(), label)] = arc->nextstate;
-          ++label;
-          ++arc;
+        auto* label_transitions = state_transitions + std::distance(start_labels_.begin(), label);
+        for ( ; label != start_labels_.end()&& range.second >= *label; ++label) {
+          *label_transitions++ = arc->nextstate;
         }
       }
     }
@@ -192,18 +177,18 @@ template<
     // for (size_t i = 0; i < CacheSize; ++i) {
     //   cached_label_offsets_[i] = find_label_offset(i);
     // }
-    auto begin = start_labels_.begin();
+    auto begin = start_labels_.begin() + 1;
     auto end = start_labels_.end();
-    for (size_t i = 0, offset = 0;
-         i < IRESEARCH_COUNTOF(cached_label_offsets_); ++i) {
+    size_t i = 0;
+    size_t offset = 0;
+    for (; i < IRESEARCH_COUNTOF(cached_label_offsets_); ++i) {
       if (begin != end && size_t(*begin) == i) {
-        cached_label_offsets_[i] = offset;
         ++offset;
         ++begin;
-      } else {
-        cached_label_offsets_[i] = numLabels;
       }
+      cached_label_offsets_[i] = offset;
     }
+    std::fill(cached_label_offsets_ + i, std::end(cached_label_offsets_), offset);
   }
 
   virtual TableMatcher* Copy(bool) const override {
@@ -236,25 +221,21 @@ template<
 
   virtual void SetState(StateId s) noexcept final {
     assert(!error_);
-    assert(s*start_labels_.size() < transitions_.size());
-    state_begin_ = transitions_.data() + s*start_labels_.size();
+    assert(s*num_labels_ < transitions_.size());
+    state_begin_ = transitions_.data() + s*num_labels_;
     state_ = state_begin_;
-    state_end_ = state_begin_ + start_labels_.size();
+    state_end_ = state_begin_ + num_labels_;
   }
 
   virtual bool Find(Label label) noexcept final {
     assert(!error_);
-    auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
-                           ? cached_label_offsets_[size_t(label)]
-                           : find_label_offset(label));
+    const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+                                 ? cached_label_offsets_[size_t(label)]
+                                 : find_label_offset(label));
 
-    if (label_offset == start_labels_.size()) {
-      if (start_labels_.back() != rho_) {
-        state_ = state_end_;
-        return false;
-      }
-
-      label_offset = start_labels_.size() - 1;
+    if (label_offset == num_labels_) {
+      state_ = state_end_;
+      return false;
     }
 
     state_ = state_begin_ + label_offset;
@@ -329,7 +310,7 @@ template<
     const auto it = std::lower_bound(start_labels_.begin(), start_labels_.end(), label);
 
     if (it == start_labels_.end() || *it != label) {
-      return start_labels_.size();
+      return num_labels_;
     }
 
     assert(it != start_labels_.end());
@@ -339,14 +320,14 @@ template<
 
   size_t cached_label_offsets_[CacheSize]{};
   std::vector<Label> start_labels_;
+  size_t num_labels_;
   std::vector<StateId> transitions_;
   Arc arc_;
-  Label rho_;
   StateId sink_{ fst::kNoStateId };  // sink state
   const FST* fst_;                   // FST for matching
-  const Label* state_begin_{};       // Matcher state begin
-  const Label* state_end_{};         // Matcher state end
-  const Label* state_{};             // Matcher current state
+  const StateId* state_begin_{};       // Matcher state begin
+  const StateId* state_end_{};         // Matcher state end
+  const StateId* state_{};             // Matcher current state
   bool error_;                       // Matcher validity
 }; // TableMatcher
 

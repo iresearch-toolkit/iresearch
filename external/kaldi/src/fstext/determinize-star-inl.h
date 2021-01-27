@@ -31,6 +31,8 @@ using std::unordered_map;
 #include <vector>
 #include <climits>
 
+#include "utils/automaton.hpp"
+
 namespace fst {
 
 // This class maps back and forth from/to integer id's to sequences of strings.
@@ -255,7 +257,10 @@ template<class F> class DeterminizerStar {
     InputStateId state;
     StringId string;
     Weight weight;
-    bool operator != (const Element &other) const  {
+    bool operator==(const Element &other) const {
+      return !(*this != other);
+    }
+    bool operator!=(const Element &other) const  {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
@@ -492,15 +497,18 @@ template<class F> class DeterminizerStar {
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
   void ProcessTransitions(const std::vector<Element> &closed_subset, OutputStateId state) {
-    std::vector<std::pair<Label, Element> > all_elems;
+    std::vector<std::pair<std::pair<Label, bool>, Element> > all_elems;
+
+    std::map<std::pair<Label, bool>, std::vector<Element>> map;
+
+
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
       for (const Element& elem : closed_subset) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
-            std::pair<Label, Element> this_pr;
-            this_pr.first = arc.ilabel;
+            std::pair<std::pair<Label, bool>, Element> this_pr;
             Element &next_elem(this_pr.second);
             next_elem.state = arc.nextstate;
             next_elem.weight = Times(elem.weight, arc.weight);
@@ -513,62 +521,81 @@ template<class F> class DeterminizerStar {
               seq.push_back(arc.olabel);
               next_elem.string = repository_.IdOfSeq(seq);
             }
-            all_elems.push_back(this_pr);
+            auto [min, max] = fst::fsa::DecodeRange(arc.ilabel);
+//            map[{min,false}].push_back(next_elem);
+//            map[{max,true}].push_back(next_elem);
+            while (min <= max) {
+              this_pr.first = { min, false };
+              all_elems.push_back(this_pr);
+              ++min;
+            }
+//            this_pr.first = { min, false };
+//            all_elems.push_back(this_pr);
+//            this_pr.first = { max, true };
+//            all_elems.push_back(this_pr);
           }
         }
       }
     }
     // now sorted first on input label, then on state.
     std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
-      if (p1.first < p2.first) {
+      if (p1.first.first < p2.first.first) {
         return true;
-      } else if (p1.first > p2.first) {
+      } else if (p1.first.first > p2.first.first) {
         return false;
       } else {
         return p1.second.state < p2.second.state;
       }
     });
 
+//    auto next = map.begin();
+//    auto end = map.end();
+//
+//    while (next != end) {
+//      auto cur = next++;
+//      if (next == end) {
+//        ProcessTransition(state, fst::fsa::EncodeRange(cur->first.first), &cur->second);
+//        break;
+//      }
+//
+//      if (!cur.first.first &&
+//
+//
+//    }
+
+
+//    while (begin != end) {
+//      auto cur = begin++;
+//
+//      if (begin != end) {
+//        ProcessTransition(state, fst::fsa::EncodeRange(min, begin->first - 1), &cur->second);
+//        min = begin->first;
+//        cur = begin++;
+//
+//        if (begin == end) {
+//          ProcessTransition(state, fst::fsa::EncodeRange(min), &cur->second);
+//        }
+//      } else {
+//        ProcessTransition(state, fst::fsa::EncodeRange(min), &cur->second);
+//      }
+//    }
+
     auto begin = all_elems.begin();
     const auto end = all_elems.end();
 
-    // where rho transitions start
-    const auto rho = std::find_if(all_elems.rbegin(), all_elems.rend(),
-      [](const auto& v) noexcept {
-        return v.first != std::numeric_limits<Label>::max(); }).base();
+    std::vector<Element> min_subset;
 
-    std::vector<Element> this_subset;
-
-    while (begin < rho) {
+    while (begin < end) {
       // Process ranges that share the same input symbol.
-      const Label ilabel = begin->first;
-      this_subset.clear();
-
-      while (begin < rho && begin->first == ilabel) {
-        this_subset.push_back(begin->second);
+      const Label min = begin->first.first;
+      min_subset.clear();
+      while (begin < end && begin->first.first == min) {
+        min_subset.push_back(begin->second);
         begin++;
       }
 
-      // add rho transitions as they would labeled with the same ilabel
-      std::for_each(rho, end, [&this_subset](const auto& value) {
-        assert(value.first == RhoLabel);
-        this_subset.push_back(value.second);
-      });
-
       // We now have a subset for this ilabel.
-      ProcessTransition(state, ilabel, &this_subset);
-    }
-
-    // explicitly add rho transitions
-    this_subset.clear();
-    std::for_each(rho, end, [&this_subset](const auto& value) {
-      assert(value.first == RhoLabel);
-      this_subset.push_back(value.second);
-    });
-
-    // We now have a subset for RhoLabel
-    if (!this_subset.empty()) {
-      ProcessTransition(state, RhoLabel, &this_subset);
+      ProcessTransition(state, fst::fsa::EncodeRange(min, min), &min_subset);
     }
   }
 
@@ -987,13 +1014,32 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
           ofst->AddArc(cur_state, arc);
           cur_state = next_state;
         }
-        // Add the final arc in the sequence.
+
         Arc arc;
         arc.nextstate = temp_arc.nextstate;
         arc.weight = (seq.size() <= 1 ? temp_arc.weight : Weight::One());
         arc.ilabel = (seq.size() <= 1 ? temp_arc.ilabel : 0);
         arc.olabel = (seq.size() > 0 ? seq.back() : 0);
-        ofst->AddArc(cur_state, arc);
+//        ofst->AddArc(cur_state, arc);
+
+        fst::ArcIteratorData<Arc> data;
+        ofst->InitArcIterator(cur_state, &data);
+        if (data.narcs) {
+          auto& a = data.arcs[data.narcs - 1];
+          const auto [min, max] = fst::fsa::DecodeRange(arc.ilabel);
+          const auto [min1, max1] = fst::fsa::DecodeRange(a.ilabel);
+
+          if (arc.nextstate == a.nextstate &&
+             (min - max1 <= 1)) {
+            const_cast<Arc&>(a).ilabel = fst::fsa::EncodeRange(min1, max);
+          } else {
+            ofst->AddArc(cur_state, arc);
+          }
+        } else {
+          // Add the final arc in the sequence.
+          ofst->AddArc(cur_state, arc);
+        }
+
       }
     }
     // Free up memory.  Do this inside the loop as ofst is also allocating memory
