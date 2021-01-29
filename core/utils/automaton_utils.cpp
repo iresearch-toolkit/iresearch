@@ -378,6 +378,7 @@ void utf8_transitions_builder::insert(
     auto& p = states_[i - 1];
     auto& arcs = p.arcs;
 
+    // FIXME maybe store only number of rho arcs rather than adding them a vector
     const auto rho_state = rho_states_[size - i];
     if (rho_state != fst::kNoStateId) {
       const auto min = arcs.empty()
@@ -389,6 +390,7 @@ void utf8_transitions_builder::insert(
       }
     }
 
+    // FIXME we can potentially expand last arc range rather than adding a new transition
     arcs.emplace_back(range_label(ch), &states_[i]);
     p.rho_id = rho_state;
   }
@@ -443,21 +445,13 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
     for (; arc != end && min <= max; ++arc) {
       assert(min <= arc->label); // ensure arcs are sorted
 
-//      if (min < arc->label) {
-//        // FIXME we can potentially expand last arc range rather than adding a new transition
-//        a.EmplaceArc(from, range_label(min, arc->label).value - range_label(0, 1).value, rho_state);
-//      }
-
+      // FIXME we can potentially expand last arc range rather than adding a new transition
       a.EmplaceArc(from, arc->label, arc->id);
       min = arc->label;
     }
 
     if (arc != end) {
-#ifdef IRESEARCH_DEBUG
-      const auto range = fst::fsa::DecodeRange(arc->label);
-      assert(range.first == range.second);
-#endif
-      min = arc->label + range_label(1, 1);
+      min += range_label(1, 1);
     }
 
     if (min < max) {
@@ -469,34 +463,6 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
   add_arcs(range_label(192), range_label(223), rho_states_[1]);
   add_arcs(range_label(224), range_label(239), rho_states_[2]);
   add_arcs(range_label(240), range_label(255), rho_states_[3]);
-
-//  for (; arc != end && min < utf8_utils::MIN_2BYTES_CODE_POINT; ++arc) {
-//    assert(min <= arc->label); // ensure arcs are sorted
-//
-//    if (min < arc->label) {
-//      // FIXME we can potentially expand last arc range rather than adding a new transition
-//      a.EmplaceArc(from, range_label(min, arc->label - 1), rho_states_[0]);
-//    }
-//
-//    a.EmplaceArc(from, range_label(arc->label), arc->id);
-//
-//    min = arc->label;
-//  }
-//
-//  size_t rho_stated_idx = 0;
-//  for (const auto& arc : root.arcs) {
-//    assert(arc.label < 256);
-//    assert(min <= arc.label); // ensure arcs are sorted
-//
-//    if (min < arc.label) {
-//      // FIXME we can potentially expand last arc range rather than adding a new transition
-//      a.EmplaceArc(from, range_label(min, arc.label - 1), rho_states_[0]);
-//    }
-//
-//    a.EmplaceArc(from, range_label(arc.label), arc.id);
-//
-//    min = arc.label;
-//  }
 
   root.clear();
 

@@ -429,6 +429,7 @@ class IRESEARCH_API utf8_transitions_builder {
         fst.SetFinal(id, *weight_);
       }
 
+      // FIXME we can potentially expand last arc range rather than adding a new transition
       for (const auto& a : s.arcs) {
         fst.EmplaceArc(id, a.label, a.id);
       }
