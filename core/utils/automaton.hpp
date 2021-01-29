@@ -147,21 +147,45 @@ constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
   };
 }
 
-template<typename V = int32_t, typename T = int64_t>
-struct RangeLabel {
-  static_assert(std::is_integral_v<T>);
-  static_assert(std::is_integral_v<V>);
-  static_assert(sizeof(T) == 2*sizeof(V));
+template<typename T>
+struct RangeLabel;
 
-  using ValueType = V;
-  using LabelType = T;
+template<>
+struct RangeLabel<int32_t> {
+  using RangeType = int32_t;
+  using BoundaryType = int32_t;
 
-  constexpr explicit RangeLabel(ValueType min) noexcept
+  constexpr explicit RangeLabel(BoundaryType value) noexcept
+    : value(value) {
+  }
+
+  constexpr operator RangeType() const noexcept {
+    return value;
+  }
+
+  friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
+    strm << '[' << l.value << ".." << l.value << ']';
+    return strm;
+  }
+
+  RangeType value;
+}; // RangeLabel
+
+template<>
+struct RangeLabel<int64_t> {
+  using RangeType = int64_t;
+  using BoundaryType = uint32_t;
+
+  constexpr explicit RangeLabel(BoundaryType min) noexcept
     : RangeLabel(min, min) {
   }
 
-  constexpr RangeLabel(ValueType min, ValueType max) noexcept
+  constexpr RangeLabel(BoundaryType min, BoundaryType max) noexcept
     : value(EncodeRange(min, max)) {
+  }
+
+  constexpr operator RangeType() const noexcept {
+    return value;
   }
 
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
@@ -170,7 +194,7 @@ struct RangeLabel {
     return strm;
   }
 
-  LabelType value{};
+  RangeType value;
 }; // RangeLabel
 
 template<typename L = int32_t, typename W = BooleanWeight>
@@ -194,7 +218,7 @@ struct Transition {
   constexpr Transition() = default;
 
   template<typename T>
-  constexpr Transition(RangeLabel<T, L> ilabel, StateId nextstate)
+  constexpr Transition(RangeLabel<T> ilabel, StateId nextstate)
     : ilabel(ilabel.value),
       nextstate(nextstate) {
   }
@@ -219,13 +243,8 @@ struct Transition {
 
 static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
 
-constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
-constexpr const int32_t kPhi   = kRho - 1; // match rest + don't consume symbol
-constexpr const int32_t kSigma = kPhi - 1; // match all + consume symbol
 
-constexpr const int32_t kMinLabel = 0;
-constexpr const int32_t kMaxLabel = kSigma - 1;
 
 } // fsa
 } // fst
@@ -262,14 +281,5 @@ struct hash<::fst::fsa::RangeLabel<T>> {
 #elif defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
-
-namespace fst {
-namespace fsa {
-
-template<typename W, typename L>
-using AutomatonMatcher = SortedMatcher<Automaton<W, L>>;
-
-}
-}
 
 #endif // IRESEARCH_AUTOMATON_H

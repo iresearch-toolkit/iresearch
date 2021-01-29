@@ -25,7 +25,6 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/wildcard_utils.hpp"
-#include "draw-impl.h"
 
 #include <fstream>
 
@@ -35,15 +34,6 @@
 
 class wildcard_utils_test : public test_base {
  protected:
-  static void assert_properties(const irs::automaton& a) {
-    constexpr auto EXPECTED_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted |
-      fst::kIDeterministic |
-      fst::kAcceptor | fst::kUnweighted;
-
-    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
-  }
-
   static void assert_properties(const irs::rautomaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
       fst::kILabelSorted | fst::kOLabelSorted |

@@ -662,7 +662,8 @@ automaton make_levenshtein_automaton(
         a.EmplaceArc(state.from, arc.first.front(), arc.second);
       }
     } else {
-      builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
+      //FIXME
+      //builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
     }
   }
 

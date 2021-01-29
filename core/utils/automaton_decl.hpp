@@ -40,7 +40,7 @@ namespace fsa {
 
 class BooleanWeight;
 
-template<typename V, typename T>
+template<typename T>
 struct RangeLabel;
 
 template<typename L, typename W>
@@ -59,9 +59,10 @@ namespace iresearch {
 
 using automaton = fst::fsa::Automaton<int32_t>;
 using rautomaton = fst::fsa::Automaton<int64_t>;
-using range_label = fst::fsa::RangeLabel<int32_t, int64_t>;
+using range_label = fst::fsa::RangeLabel<int64_t>;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
+using rautomaton_table_matcher = fst::TableMatcher<rautomaton, 256, true, true>;
 
 }
 
