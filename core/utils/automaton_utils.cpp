@@ -450,21 +450,26 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
   a.ReserveArcs(from, root.arcs.size());
 
   auto add_arcs = [&a, from, arc = root.arcs.begin(), end = root.arcs.end()](
-      rautomaton::Arc::Label min,
-      rautomaton::Arc::Label max,
+      uint32_t min, uint32_t max,
       rautomaton::StateId rho_state) mutable {
     assert(min < max);
 
-    for (; arc != end && arc->label <= max; ++arc) {
-      assert(min <= arc->label); // ensure arcs are sorted
+    for (; arc != end && arc->max <= max; ++arc) {
+      // ensure arcs are sorted
+      assert(min <= arc->min);
 
-      if (min < arc->label) {
+      // ensure all arcs denote a single char, otherwise
+      // we have to use "arc->min" below which is a bit more
+      // expensive to access
+      assert(arc->min == arc->max);
+
+      if (min < arc->max) {
         a.EmplaceArc(from, range_label(min, arc->max - 1), rho_state);
       }
 
       // FIXME we can potentially expand last arc range rather than adding a new transition
       a.EmplaceArc(from, arc->label, arc->id);
-      min = arc->label + range_label(1, 1);
+      min = arc->max + 1;
     }
 
     if (min < max) {
@@ -472,10 +477,10 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
     }
   };
 
-  add_arcs(range_label(MIN), range_label(127), rho_states_[0]);
-  add_arcs(range_label(192), range_label(223), rho_states_[1]);
-  add_arcs(range_label(224), range_label(239), rho_states_[2]);
-  add_arcs(range_label(240), range_label(255), rho_states_[3]);
+  add_arcs(MIN, 127, rho_states_[0]);
+  add_arcs(192, 223, rho_states_[1]);
+  add_arcs(224, 239, rho_states_[2]);
+  add_arcs(240, 255, rho_states_[3]);
 
   root.clear();
 
