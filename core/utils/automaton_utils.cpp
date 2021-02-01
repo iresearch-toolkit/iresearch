@@ -362,6 +362,26 @@ void utf8_emplace_rho_arc(
   a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
 }
 
+void utf8_transitions_builder::minimize(rautomaton& a, size_t prefix) {
+  assert(prefix > 0);
+
+  for (size_t i = last_.size(); i >= prefix; --i) {
+    state& s = states_[i];
+    state& p = states_[i - 1];
+    assert(!p.arcs.empty());
+
+    if (s.id == fst::kNoStateId) {
+      // here we deal with rho transition only for
+      // intermediate states, i.e. char range is [128;191]
+      s.add_rho_arc(128, 192, rho_states_[last_.size() - i]);
+    }
+
+    p.arcs.back().id = states_map_.insert(s, a); // finalize state
+
+    s.clear();
+  }
+}
+
 void utf8_transitions_builder::insert(
     rautomaton& a,
     const byte_type* label,
@@ -376,23 +396,16 @@ void utf8_transitions_builder::insert(
   for (size_t i = prefix; i <= size; ++i) {
     const auto ch = label[i - 1];
     auto& p = states_[i - 1];
-    auto& arcs = p.arcs;
+    assert(i == 1 || p.id == fst::kNoStateId); // root state is already a part of automaton
 
-    // FIXME maybe store only number of rho arcs rather than adding them a vector
-    const auto rho_state = rho_states_[size - i];
-    if (rho_state != fst::kNoStateId) {
-      const auto min = arcs.empty()
-        ? (1 == i ? 1 : 128)
-        : fst::fsa::DecodeRange(arcs.back().label).second + 1;
-
-      if (min < ch) {
-        arcs.emplace_back(range_label(min, ch - 1), rho_state);
-      }
+    if (p.id == fst::kNoStateId) {
+      // here we deal with rho transition only for
+      // intermediate states, i.e. char range is [128;191]
+      p.add_rho_arc(128, ch, rho_states_[size - i]);
     }
 
     // FIXME we can potentially expand last arc range rather than adding a new transition
-    arcs.emplace_back(range_label(ch), &states_[i]);
-    p.rho_id = rho_state;
+    p.arcs.emplace_back(range_label(ch), &states_[i]);
   }
 
   const bool is_final = last_.size() != size || prefix != (size + 1);
@@ -408,9 +421,7 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
     // ensure everything is cleaned up
     assert(std::all_of(
       std::begin(states_), std::end(states_), [](const state& s) noexcept {
-        return s.arcs.empty() &&
-          s.id == fst::kNoStateId &&
-          s.rho_id == fst::kNoStateId;
+        return s.arcs.empty() && s.id == fst::kNoStateId;
     }));
   });
 #endif
@@ -442,16 +453,18 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
       rautomaton::Arc::Label min,
       rautomaton::Arc::Label max,
       rautomaton::StateId rho_state) mutable {
-    for (; arc != end && min <= max; ++arc) {
+    assert(min < max);
+
+    for (; arc != end && arc->label <= max; ++arc) {
       assert(min <= arc->label); // ensure arcs are sorted
+
+      if (min < arc->label) {
+        a.EmplaceArc(from, range_label(min, arc->max - 1), rho_state);
+      }
 
       // FIXME we can potentially expand last arc range rather than adding a new transition
       a.EmplaceArc(from, arc->label, arc->id);
-      min = arc->label;
-    }
-
-    if (arc != end) {
-      min += range_label(1, 1);
+      min = arc->label + range_label(1, 1);
     }
 
     if (min < max) {

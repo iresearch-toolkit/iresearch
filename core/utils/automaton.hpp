@@ -131,15 +131,6 @@ class BooleanWeight {
   PayloadType p_{};
 };
 
-constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
-  assert(min <= max);
-  return uint64_t(min) << 32 | uint64_t(max);
-}
-
-constexpr uint64_t EncodeRange(uint32_t v) noexcept {
-  return EncodeRange(v, v);
-}
-
 constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
   return {
     static_cast<uint32_t>(label >> 32),
@@ -181,7 +172,7 @@ struct RangeLabel<int64_t> {
   }
 
   constexpr RangeLabel(BoundaryType min, BoundaryType max) noexcept
-    : value(EncodeRange(min, max)) {
+    : max(max), min(min) {
   }
 
   constexpr operator RangeType() const noexcept {
@@ -189,12 +180,17 @@ struct RangeLabel<int64_t> {
   }
 
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
-    const auto [min, max] = DecodeRange(l.value);
-    strm << '[' << min << ".." << max << ']';
+    strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
 
-  RangeType value;
+  union {
+    RangeType value;
+    struct {
+      BoundaryType max;
+      BoundaryType min;
+    };
+  };
 }; // RangeLabel
 
 template<typename L = int32_t, typename W = BooleanWeight>
@@ -208,7 +204,13 @@ struct Transition {
     return type;
   }
 
-  Label ilabel{fst::kNoLabel};
+  union {
+    Label ilabel{fst::kNoLabel};
+    struct {
+      uint32_t max;
+      uint32_t min;
+    };
+  };
   union {
     StateId nextstate{fst::kNoStateId};
     fstext::EmptyLabel<Label> olabel;
@@ -241,7 +243,7 @@ struct Transition {
   }
 }; // Transition
 
-static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
+//static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
 
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
 

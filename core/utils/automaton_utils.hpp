@@ -32,6 +32,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
+#include "draw-impl.h"
 
 namespace iresearch {
 
@@ -297,41 +298,35 @@ class IRESEARCH_API utf8_transitions_builder {
       state* target;
       rautomaton::StateId id;
     };
-    rautomaton::Arc::Label label;
+    union {
+      rautomaton::Arc::Label label;
+      struct {
+        uint32_t max;
+        uint32_t min;
+      };
+    };
   }; // arc
 
   struct state : private util::noncopyable {
-    state() = default;
-    state(state&& rhs) = default;
-    state& operator=(state&&) = delete;
-
     void clear() noexcept {
-      rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
       arcs.clear();
     }
 
-    rautomaton::Arc::Label rho_label() const noexcept {
-       if (rho_id == fst::kNoStateId) {
-         return 0;
-       }
+    void add_rho_arc(uint32_t min, uint32_t max, rautomaton::StateId rho_state) {
+      if (fst::kNoStateId == rho_state) {
+        return;
+      }
 
-       // here we deal with intermediate UTF8 states only
-       const auto min = arcs.empty()
-         ? 128
-         : fst::fsa::DecodeRange(arcs.back().label).second + 1;
-       assert(min >= 128);
-       constexpr auto max = 192;
+      if (!arcs.empty()) {
+        min = arcs.back().max + 1;
+      }
 
-       if (IRS_LIKELY(min < max)) {
-         return range_label(min, max).value;
-       }
-
-       assert(false);
-       return 0;
+      if (min < max) {
+        arcs.emplace_back(range_label(min, max - 1), rho_state);
+      }
     }
 
-    rautomaton::StateId rho_id{fst::kNoStateId};
     rautomaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
@@ -350,14 +345,6 @@ class IRESEARCH_API utf8_transitions_builder {
       for (auto& arc: arcs) {
         hash = hash_combine(hash, arc.label);
         hash = hash_combine(hash, arc.id);
-      }
-
-      if (s.rho_id != fst::kNoStateId) {
-        const auto rho_label = s.rho_label();
-        if (rho_label) {
-          hash = hash_combine(hash, rho_label);
-          hash = hash_combine(hash, s.rho_id);
-        }
       }
 
       return hash;
@@ -390,9 +377,7 @@ class IRESEARCH_API utf8_transitions_builder {
       fst::ArcIteratorData<rautomaton::Arc> rarcs;
       fst.InitArcIterator(rhs, &rarcs);
 
-      const size_t has_rho = lhs.rho_id != fst::kNoStateId;
-
-      if (lhs.arcs.size() + has_rho != rarcs.narcs) {
+      if (lhs.arcs.size() != rarcs.narcs) {
         return false;
       }
 
@@ -402,13 +387,6 @@ class IRESEARCH_API utf8_transitions_builder {
           return false;
         }
         ++rarc;
-      }
-
-      if (has_rho) {
-       const auto rho_label = lhs.rho_label();
-       if (lhs.rho_id != rarc->nextstate || rho_label != rarc->ilabel) {
-         return false;
-       }
       }
 
       return true;
@@ -429,16 +407,8 @@ class IRESEARCH_API utf8_transitions_builder {
         fst.SetFinal(id, *weight_);
       }
 
-      // FIXME we can potentially expand last arc range rather than adding a new transition
       for (const auto& a : s.arcs) {
         fst.EmplaceArc(id, a.label, a.id);
-      }
-
-      if (s.rho_id != fst::kNoStateId) {
-        const auto rho_label = s.rho_label();
-        if (rho_label) {
-          fst.EmplaceArc(id, rho_label, s.rho_id);
-        }
       }
 
       return id;
@@ -453,19 +423,8 @@ class IRESEARCH_API utf8_transitions_builder {
     state_emplace, state_hash,
     state_equal, fst::kNoStateId>;
 
-  void minimize(rautomaton& a, size_t prefix) {
-    assert(prefix > 0);
+  void minimize(rautomaton& a, size_t prefix);
 
-    for (size_t i = last_.size(); i >= prefix; --i) {
-      state& s = states_[i];
-      state& p = states_[i - 1];
-      assert(!p.arcs.empty());
-
-      p.arcs.back().id = states_map_.insert(s, a);
-
-      s.clear();
-    }
-  }
 
   void insert(rautomaton& a,
               const byte_type* label_data,
@@ -474,6 +433,7 @@ class IRESEARCH_API utf8_transitions_builder {
 
   void finish(rautomaton& a, rautomaton::StateId from);
 
+  // FIXME use a memory pool for arcs
   rautomaton::Weight weight_;
   rautomaton::StateId rho_states_[4];
   state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1]; // +1 for root state
