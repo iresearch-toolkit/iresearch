@@ -183,7 +183,7 @@ void utf8_emplace_arc_range(
 
   const auto s0 = id + 3;
   const uint32_t lead = label.front();
-  add_arcs(MIN, 127, lead, from, to, rho_states[0]);
+  add_arcs(0, 127, lead, from, to, rho_states[0]);
   add_arcs(192, 223, lead, from, s0, rho_states[1]);
   add_arcs(224, 239, lead, from, s0, rho_states[2]);
   add_arcs(240, 255, lead, from, s0, rho_states[3]);
@@ -557,7 +557,7 @@ void utf8_transitions_builder::finish(rautomaton& a, automaton::StateId from) {
     }
   };
 
-  add_arcs(MIN, 127, rho_states_[0]);
+  add_arcs(0, 127, rho_states_[0]);
   add_arcs(192, 223, rho_states_[1]);
   add_arcs(224, 239, rho_states_[2]);
   add_arcs(240, 255, rho_states_[3]);
