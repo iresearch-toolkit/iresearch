@@ -140,16 +140,26 @@ constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
 }
 
 struct RangeLabel {
+  static constexpr RangeLabel fromRange(uint32_t min, uint32_t max) noexcept {
+    return RangeLabel{min, max};
+  }
+  static constexpr RangeLabel fromRange(uint32_t min) noexcept {
+    return fromRange(min, min);
+  }
+  static constexpr RangeLabel fromLabel(int64_t label) noexcept {
+    return RangeLabel{label};
+  }
+
   constexpr RangeLabel() noexcept
     : ilabel{fst::kNoLabel} {
   }
 
-  constexpr explicit RangeLabel(uint32_t min) noexcept
-    : RangeLabel(min, min) {
+  constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
+    : max{max}, min{min} {
   }
 
-  constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
-    : max(max), min(min) {
+  constexpr explicit RangeLabel(int64_t ilabel) noexcept
+    : ilabel{ilabel} {
   }
 
   constexpr operator int64_t() const noexcept {
@@ -168,13 +178,6 @@ struct RangeLabel {
       uint32_t min;
     };
   };
-
- protected:
-  // FIXME
-  constexpr explicit RangeLabel(int64_t ilabel, std::nullptr_t) noexcept
-    : ilabel(ilabel) {
-  }
-
 }; // RangeLabel
 
 template<typename W = BooleanWeight>
@@ -197,25 +200,25 @@ struct Transition : RangeLabel {
   constexpr Transition() = default;
 
   constexpr Transition(RangeLabel ilabel, StateId nextstate)
-    : RangeLabel(ilabel, nullptr),
+    : RangeLabel{ilabel},
       nextstate(nextstate) {
   }
 
   constexpr Transition(Label ilabel, StateId nextstate)
-    : RangeLabel(ilabel),
-      nextstate(nextstate) {
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
-    : RangeLabel(ilabel),
-      nextstate(nextstate) {
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, StateId nextstate)
-    : RangeLabel(ilabel),
-      nextstate(nextstate) {
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 }; // Transition
 

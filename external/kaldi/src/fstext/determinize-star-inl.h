@@ -521,10 +521,12 @@ template<class F> class DeterminizerStar {
               seq.push_back(arc.olabel);
               next_elem.string = repository_.IdOfSeq(seq);
             }
-            auto [min, max] = fst::fsa::DecodeRange(arc.ilabel);
+
+            const fst::fsa::RangeLabel label(arc.ilabel);
+
 //            map[{min,false}].push_back(next_elem);
 //            map[{max,true}].push_back(next_elem);
-            while (min <= max) {
+            for (auto min = label.min; min <= label.max; ) {
               this_pr.first = { min, false };
               all_elems.push_back(this_pr);
               ++min;
@@ -595,7 +597,7 @@ template<class F> class DeterminizerStar {
       }
 
       // We now have a subset for this ilabel.
-      ProcessTransition(state, irs::range_label(min), &min_subset);
+      ProcessTransition(state, irs::range_label::fromRange(min), &min_subset);
     }
   }
 
@@ -1031,7 +1033,7 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
 
           if (arc.nextstate == a.nextstate &&
              (min - max1 <= 1)) {
-            const_cast<Arc&>(a).ilabel = irs::range_label(min1, max);
+            const_cast<Arc&>(a).ilabel = irs::range_label{min1, max};
           } else {
             ofst->AddArc(cur_state, arc);
           }

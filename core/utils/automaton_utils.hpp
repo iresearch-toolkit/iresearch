@@ -247,7 +247,7 @@ class IRESEARCH_API utf8_transitions_builder {
       }
 
       if (min < max) {
-        arcs.emplace_back(range_label(min, max - 1), rho_state);
+        arcs.emplace_back(range_label{min, max - 1}, rho_state);
       }
     }
 
@@ -456,7 +456,7 @@ inline automaton make_char(const uint32_t c) {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  a.EmplaceArc(0, range_label(c), 1);
+  a.EmplaceArc(0, range_label::fromRange(c), 1);
   return a;
 }
 

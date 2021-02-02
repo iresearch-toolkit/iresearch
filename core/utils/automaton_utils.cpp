@@ -57,16 +57,16 @@ void utf8_emplace_arc(
       automaton::StateId to,
       automaton::StateId rho) mutable {
     if (label < min || label > max) {
-      a.EmplaceArc(from, range_label(min, max), rho);
+      a.EmplaceArc(from, range_label{min, max}, rho);
       return;
     }
 
     if (min < label) {
-      a.EmplaceArc(from, range_label(min, label - 1), rho);
+      a.EmplaceArc(from, range_label{min, label - 1}, rho);
     }
-    a.EmplaceArc(from, range_label(label), to);
+    a.EmplaceArc(from, range_label{label, label}, to);
     if (++label < max) {
-      a.EmplaceArc(from, range_label(label, max), rho);
+      a.EmplaceArc(from, range_label{label, max}, rho);
     }
   };
 
@@ -115,21 +115,21 @@ void utf8_emplace_arc(
     automaton::StateId to) {
   switch (label.size()) {
     case 1: {
-      a.EmplaceArc(from, range_label(label[0]), to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), to);
       return;
     }
     case 2: {
       const auto s0 = a.AddState();
-      a.EmplaceArc(from, range_label(label[0]), s0);
-      a.EmplaceArc(s0, range_label(label[1]), to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), to);
       return;
     }
     case 3: {
       const auto s0 = a.AddState();
       const auto s1 = a.AddState();
-      a.EmplaceArc(from, range_label(label[0]), s0);
-      a.EmplaceArc(s0, range_label(label[1]), s1);
-      a.EmplaceArc(s1, range_label(label[2]), to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), s1);
+      a.EmplaceArc(s1, range_label::fromRange(label[2]), to);
       return;
     }
     case 4: {
@@ -137,10 +137,10 @@ void utf8_emplace_arc(
       const auto s1 = s0 + 1;
       const auto s2 = s0 + 2;
       a.AddStates(3);
-      a.EmplaceArc(from, range_label(label[0]), s0);
-      a.EmplaceArc(s0, range_label(label[1]), s1);
-      a.EmplaceArc(s1, range_label(label[2]), s2);
-      a.EmplaceArc(s2, range_label(label[3]), to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), s1);
+      a.EmplaceArc(s1, range_label::fromRange(label[2]), s2);
+      a.EmplaceArc(s2, range_label::fromRange(label[3]), to);
       return;
     }
   }
@@ -155,13 +155,13 @@ void utf8_emplace_rho_arc(
 
   // add rho transitions
   a.ReserveArcs(from, 4);
-  a.EmplaceArc(from, range_label(0, 127), to);
-  a.EmplaceArc(from, range_label(192, 223), id);
-  a.EmplaceArc(from, range_label(224, 239), id + 1);
-  a.EmplaceArc(from, range_label(240, 255), id + 2);
+  a.EmplaceArc(from, range_label{0, 127}, to);
+  a.EmplaceArc(from, range_label{192, 223}, id);
+  a.EmplaceArc(from, range_label{224, 239}, id + 1);
+  a.EmplaceArc(from, range_label{240, 255}, id + 2);
 
   // connect intermediate states of default multi-byte UTF8 sequence
-  constexpr auto label = range_label(128, 191);
+  constexpr auto label = range_label{128, 191};
   a.EmplaceArc(id, label, to);
   a.EmplaceArc(id + 1, label, id);
   a.EmplaceArc(id + 2, label, id + 1);
@@ -314,7 +314,7 @@ void utf8_transitions_builder::insert(
     }
 
     // FIXME we can potentially expand last arc range rather than adding a new transition
-    p.arcs.emplace_back(range_label(ch), &states_[i]);
+    p.arcs.emplace_back(range_label::fromRange(ch), &states_[i]);
   }
 
   const bool is_final = last_.size() != size || prefix != (size + 1);
@@ -373,7 +373,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
       assert(arc->min == arc->max);
 
       if (min < arc->max) {
-        a.EmplaceArc(from, range_label(min, arc->max - 1), rho_state);
+        a.EmplaceArc(from, range_label{min, arc->max - 1}, rho_state);
       }
 
       // FIXME we can potentially expand last arc range rather than adding a new transition
@@ -382,7 +382,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     }
 
     if (min < max) {
-      a.EmplaceArc(from, range_label(min, max), rho_state);
+      a.EmplaceArc(from, range_label{min, max}, rho_state);
     }
   };
 
@@ -394,7 +394,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   root.clear();
 
   // connect intermediate states of default multi-byte UTF8 sequence
-  constexpr auto label = range_label(128, 191);
+  constexpr auto label = range_label{128, 191};
   a.EmplaceArc(rho_states_[1], label, rho_states_[0]);
   a.EmplaceArc(rho_states_[2], label, rho_states_[1]);
   a.EmplaceArc(rho_states_[3], label, rho_states_[2]);

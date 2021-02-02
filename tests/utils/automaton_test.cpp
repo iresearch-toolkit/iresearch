@@ -432,10 +432,10 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(4, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(0, 127), finish);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(192, 223), intermediate0);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(224, 239), intermediate1);
-      assert_arc(actual_arcs.arcs[3], irs::range_label(240, 255), intermediate2);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{0, 127}, finish);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{192, 223}, intermediate0);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{224, 239}, intermediate1);
+      assert_arc(actual_arcs.arcs[3], irs::range_label{240, 255}, intermediate2);
     }
 
     // arcs from 'intermediate0'
@@ -443,7 +443,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), finish);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
     }
 
     // arcs from 'intermediate1'
@@ -451,7 +451,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -459,7 +459,7 @@ TEST_F(utf8_transitions_builder_test, no_arcs) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish0'
@@ -525,10 +525,10 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(4, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(0, 127), finish);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(192, 223), intermediate0);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(224, 239), intermediate1);
-      assert_arc(actual_arcs.arcs[3], irs::range_label(240, 255), intermediate2);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{0, 127}, finish);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{192, 223}, intermediate0);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{224, 239}, intermediate1);
+      assert_arc(actual_arcs.arcs[3], irs::range_label{240, 255}, intermediate2);
     }
 
     // arcs from 'intermediate0'
@@ -536,7 +536,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), finish);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
     }
 
     // arcs from 'intermediate1'
@@ -544,7 +544,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -552,7 +552,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish0'
@@ -596,7 +596,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       auto* actual_arc = actual_arcs.arcs;
       for (auto& arc : arcs) {
         ASSERT_EQ(1, arc.first.size());
-        assert_arc(*actual_arc, irs::range_label(arc.first[0]), arc.second);
+        assert_arc(*actual_arc, irs::range_label::fromRange(arc.first[0]), arc.second);
         ++actual_arc;
       }
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
@@ -650,15 +650,15 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
 
       auto* actual_arc = actual_arcs.arcs;
       auto expected_arc = arcs.begin();
-      irs::automaton::Arc::Label min = 0;
+      uint32_t min = 0;
 
       while (expected_arc != arcs.end()) {
         ASSERT_LT(min, 128);
         if (min < expected_arc->first[0]) {
-          assert_arc(*actual_arc, irs::range_label(min, expected_arc->first[0]-1), actual_arc->nextstate);
+          assert_arc(*actual_arc, irs::range_label{min, uint32_t(expected_arc->first[0])-1}, actual_arc->nextstate);
           ++actual_arc;
         }
-        assert_arc(*actual_arc, irs::range_label(expected_arc->first[0]), actual_arc->nextstate);
+        assert_arc(*actual_arc, irs::range_label::fromRange(expected_arc->first[0]), actual_arc->nextstate);
         min = expected_arc->first[0] + 1;
         ++actual_arc;
         ++expected_arc;
@@ -666,16 +666,16 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
 
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
       ASSERT_LT(min, 128);
-      assert_arc(*actual_arc, irs::range_label(min, 127), finish1);
+      assert_arc(*actual_arc, irs::range_label{min, 127}, finish1);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label(192, 223), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label(224, 239), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
       ++actual_arc;
       ASSERT_NE(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
-      assert_arc(*actual_arc, irs::range_label(240, 255), intermediate2);
+      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -685,7 +685,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), finish1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish1);
     }
 
     // arcs from 'intermediate1'
@@ -693,7 +693,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -701,7 +701,7 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish0'
@@ -758,26 +758,26 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
     assert_properties(a);
 
     std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton {
-      { { irs::range_label(48),  1  }, { irs::range_label(55),  2  },
-        { irs::range_label(85),  1  }, { irs::range_label(97),  1  },
-        { irs::range_label(98),  2  }, { irs::range_label(209), 3  },
-        { irs::range_label(226), 6  }, { irs::range_label(227), 8  },
-        { irs::range_label(245), 11 }, { irs::range_label(254), 11 },
-        { irs::range_label(255), 14 }                                       },
+      { { irs::range_label::fromRange(48),  1  }, { irs::range_label::fromRange(55),  2  },
+        { irs::range_label::fromRange(85),  1  }, { irs::range_label::fromRange(97),  1  },
+        { irs::range_label::fromRange(98),  2  }, { irs::range_label::fromRange(209), 3  },
+        { irs::range_label::fromRange(226), 6  }, { irs::range_label::fromRange(227), 8  },
+        { irs::range_label::fromRange(245), 11 }, { irs::range_label::fromRange(254), 11 },
+        { irs::range_label::fromRange(255), 14 }                                       },
       {                                                                           },
       {                                                                           },
-      { { irs::range_label(134), 1  }, { irs::range_label(144), 1 }   },
-      { { irs::range_label(150), 2  }                                       },
-      { { irs::range_label(150), 2  }, { irs::range_label(151), 2 }   },
-      { { irs::range_label(133), 4  }, { irs::range_label(158), 5 }   },
-      { { irs::range_label(151), 2  }                                       },
-      { { irs::range_label(133), 7  }, { irs::range_label(158), 7 }   },
-      { { irs::range_label(134), 2  }                                       },
-      { { irs::range_label(151), 9  }                                       },
-      { { irs::range_label(133), 10 }                                       },
-      { { irs::range_label(134), 2  }, { irs::range_label(150), 2 }   },
-      { { irs::range_label(151), 12 }                                       },
-      { { irs::range_label(133), 13 }                                       },
+      { { irs::range_label::fromRange(134), 1  }, { irs::range_label::fromRange(144), 1 }   },
+      { { irs::range_label::fromRange(150), 2  }                                       },
+      { { irs::range_label::fromRange(150), 2  }, { irs::range_label::fromRange(151), 2 }   },
+      { { irs::range_label::fromRange(133), 4  }, { irs::range_label::fromRange(158), 5 }   },
+      { { irs::range_label::fromRange(151), 2  }                                       },
+      { { irs::range_label::fromRange(133), 7  }, { irs::range_label::fromRange(158), 7 }   },
+      { { irs::range_label::fromRange(134), 2  }                                       },
+      { { irs::range_label::fromRange(151), 9  }                                       },
+      { { irs::range_label::fromRange(133), 10 }                                       },
+      { { irs::range_label::fromRange(134), 2  }, { irs::range_label::fromRange(150), 2 }   },
+      { { irs::range_label::fromRange(151), 12 }                                       },
+      { { irs::range_label::fromRange(133), 13 }                                       },
     };
 
     assert_automaton(a, expected_automaton);
@@ -823,26 +823,26 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
     assert_properties(a);
 
     std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton {
-      { { irs::range_label(48),  1  }, { irs::range_label(55),  2  },
-        { irs::range_label(85),  1  }, { irs::range_label(97),  1  },
-        { irs::range_label(98),  2  }, { irs::range_label(209), 3  },
-        { irs::range_label(226), 6  }, { irs::range_label(227), 8  },
-        { irs::range_label(245), 11 }, { irs::range_label(254), 11 },
-        { irs::range_label(255), 14 }                                       },
+      { { irs::range_label::fromRange(48),  1  }, { irs::range_label::fromRange(55),  2  },
+        { irs::range_label::fromRange(85),  1  }, { irs::range_label::fromRange(97),  1  },
+        { irs::range_label::fromRange(98),  2  }, { irs::range_label::fromRange(209), 3  },
+        { irs::range_label::fromRange(226), 6  }, { irs::range_label::fromRange(227), 8  },
+        { irs::range_label::fromRange(245), 11 }, { irs::range_label::fromRange(254), 11 },
+        { irs::range_label::fromRange(255), 14 }                                       },
       {                                                                           },
       {                                                                           },
-      { { irs::range_label(134), 1  }, { irs::range_label(144), 1 }   },
-      { { irs::range_label(150), 2  }                                       },
-      { { irs::range_label(150), 2  }, { irs::range_label(151), 2 }   },
-      { { irs::range_label(133), 4  }, { irs::range_label(158), 5 }   },
-      { { irs::range_label(151), 2  }                                       },
-      { { irs::range_label(133), 7  }, { irs::range_label(158), 7 }   },
-      { { irs::range_label(134), 2  }                                       },
-      { { irs::range_label(151), 9  }                                       },
-      { { irs::range_label(133), 10 }                                       },
-      { { irs::range_label(134), 2  }, { irs::range_label(150), 2 }   },
-      { { irs::range_label(151), 12 }                                       },
-      { { irs::range_label(133), 13 }                                       },
+      { { irs::range_label::fromRange(134), 1  }, { irs::range_label::fromRange(144), 1 }   },
+      { { irs::range_label::fromRange(150), 2  }                                       },
+      { { irs::range_label::fromRange(150), 2  }, { irs::range_label::fromRange(151), 2 }   },
+      { { irs::range_label::fromRange(133), 4  }, { irs::range_label::fromRange(158), 5 }   },
+      { { irs::range_label::fromRange(151), 2  }                                       },
+      { { irs::range_label::fromRange(133), 7  }, { irs::range_label::fromRange(158), 7 }   },
+      { { irs::range_label::fromRange(134), 2  }                                       },
+      { { irs::range_label::fromRange(151), 9  }                                       },
+      { { irs::range_label::fromRange(133), 10 }                                       },
+      { { irs::range_label::fromRange(134), 2  }, { irs::range_label::fromRange(150), 2 }   },
+      { { irs::range_label::fromRange(151), 12 }                                       },
+      { { irs::range_label::fromRange(133), 13 }                                       },
     };
 
     assert_automaton(a, expected_automaton);
@@ -868,7 +868,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
      irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
 
      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
-       { { irs::range_label(0x61), 1 } },
+       { { irs::range_label::fromRange(0x61), 1 } },
        { }
      };
 
@@ -894,9 +894,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
      irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
 
      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
-       { { irs::range_label(0xD0), 2 } },
+       { { irs::range_label::fromRange(0xD0), 2 } },
        { },
-       { { irs::range_label(0xBF), 1 } },
+       { { irs::range_label::fromRange(0xBF), 1 } },
      };
 
      assert_properties(a);
@@ -921,10 +921,10 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
      irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
 
      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
-       { { irs::range_label(0xE2), 2 } },
+       { { irs::range_label::fromRange(0xE2), 2 } },
        { },
-       { { irs::range_label(0x9E), 3 } },
-       { { irs::range_label(0x96), 1 } },
+       { { irs::range_label::fromRange(0x9E), 3 } },
+       { { irs::range_label::fromRange(0x96), 1 } },
      };
 
      assert_properties(a);
@@ -949,11 +949,11 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
      irs::utf8_emplace_arc(a, start, fst::kNoStateId, irs::ref_cast<irs::byte_type>(label), finish);
 
      const std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton{
-       { { irs::range_label(0xF0), 2 } },
+       { { irs::range_label::fromRange(0xF0), 2 } },
        { },
-       { { irs::range_label(0x9F), 3 } },
-       { { irs::range_label(0x98), 4 } },
-       { { irs::range_label(0x81), 1 } },
+       { { irs::range_label::fromRange(0x9F), 3 } },
+       { { irs::range_label::fromRange(0x98), 4 } },
+       { { irs::range_label::fromRange(0x81), 1 } },
      };
 
      assert_properties(a);
@@ -993,17 +993,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(6, actual_arcs.narcs);
 
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label(0, 'a' - 1), def);
+      assert_arc(*actual_arc, irs::range_label{0, 'a' - 1}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label('a'), finish);
+      assert_arc(*actual_arc, irs::range_label{'a'}, finish);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label('a' + 1, 127), def);
+      assert_arc(*actual_arc, irs::range_label{'a' + 1, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(192, 223), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(224, 239), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(240, 255), intermediate2);
+      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1013,7 +1013,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1021,7 +1021,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1029,7 +1029,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1077,17 +1077,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(6, actual_arcs.narcs);
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label(0, 127), def);
+      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(192, 207), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{192, 207}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(208, 208), intermediate2 + 1);
+      assert_arc(*actual_arc, irs::range_label{208, 208}, intermediate2 + 1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(209, 223), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{209, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(224, 239), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(240, 255), intermediate2);
+      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1097,8 +1097,8 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(2, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 190), def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(191), finish);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 190}, def);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{191}, finish);
     }
 
     // arcs from 'intermediate0'
@@ -1106,7 +1106,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1114,7 +1114,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1122,7 +1122,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1170,17 +1170,17 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(start, &actual_arcs);
       ASSERT_EQ(6, actual_arcs.narcs);
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label(0, 127), def);
+      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(192, 223), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(224, 225), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{224, 225}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(226, 226), intermediate2+1);
+      assert_arc(*actual_arc, irs::range_label{226, 226}, intermediate2+1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(227, 239), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{227, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(240, 255), intermediate2);
+      assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1190,9 +1190,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 157), intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(158), intermediate2+2);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(159, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 157}, intermediate0);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{158}, intermediate2+2);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{159, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2+2'
@@ -1200,9 +1200,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 149), def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(150), finish);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(151, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 149}, def);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{150}, finish);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{151, 191}, def);
     }
 
     // arcs from 'intermediate0'
@@ -1210,7 +1210,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1218,7 +1218,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1226,7 +1226,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1275,15 +1275,15 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(5, actual_arcs.narcs);
 
       auto* actual_arc = actual_arcs.arcs;
-      assert_arc(*actual_arc, irs::range_label(0, 127), def);
+      assert_arc(*actual_arc, irs::range_label{0, 127}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(192, 223), intermediate0);
+      assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(224, 239), intermediate1);
+      assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(240), intermediate2+1);
+      assert_arc(*actual_arc, irs::range_label{240}, intermediate2+1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label(241, 255), intermediate2);
+      assert_arc(*actual_arc, irs::range_label{241, 255}, intermediate2);
       ++actual_arc;
       ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
     }
@@ -1293,9 +1293,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 158), intermediate1);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(159), intermediate2+2);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(160, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 158}, intermediate1);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{159}, intermediate2+2);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{160, 191}, intermediate1);
     }
 
     // arcs from 'intermediate2+2'
@@ -1303,9 +1303,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 151), intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(152), intermediate2+3);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(153, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 151}, intermediate0);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{152}, intermediate2+3);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{153, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2+3'
@@ -1313,9 +1313,9 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2+3, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 128), def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label(129), finish);
-      assert_arc(actual_arcs.arcs[2], irs::range_label(130, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 128}, def);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{129}, finish);
+      assert_arc(actual_arcs.arcs[2], irs::range_label{130, 191}, def);
     }
 
     // arcs from 'intermediate0'
@@ -1323,7 +1323,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate0, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), def);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, def);
     }
 
     // arcs from 'intermediate1'
@@ -1331,7 +1331,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate1, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
     }
 
     // arcs from 'intermediate2'
@@ -1339,7 +1339,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
       a.InitArcIterator(intermediate2, &actual_arcs);
       ASSERT_EQ(1, actual_arcs.narcs);
-      assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+      assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
     }
 
     // arcs from 'finish'
@@ -1382,13 +1382,13 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
      a.InitArcIterator(start, &actual_arcs);
      ASSERT_EQ(4, actual_arcs.narcs);
      auto* actual_arc = actual_arcs.arcs;
-     assert_arc(*actual_arc, irs::range_label(0, 127), finish);
+     assert_arc(*actual_arc, irs::range_label{0, 127}, finish);
      ++actual_arc;
-     assert_arc(*actual_arc, irs::range_label(192, 223), intermediate0);
+     assert_arc(*actual_arc, irs::range_label{192, 223}, intermediate0);
      ++actual_arc;
-     assert_arc(*actual_arc, irs::range_label(224, 239), intermediate1);
+     assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
      ++actual_arc;
-     assert_arc(*actual_arc, irs::range_label(240, 255), intermediate2);
+     assert_arc(*actual_arc, irs::range_label{240, 255}, intermediate2);
      ++actual_arc;
      ASSERT_EQ(actual_arc, actual_arcs.arcs + actual_arcs.narcs);
    }
@@ -1398,7 +1398,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
      a.InitArcIterator(intermediate0, &actual_arcs);
      ASSERT_EQ(1, actual_arcs.narcs);
-     assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), finish);
+     assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, finish);
    }
 
    // arcs from 'intermediate1'
@@ -1406,7 +1406,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
      a.InitArcIterator(intermediate1, &actual_arcs);
      ASSERT_EQ(1, actual_arcs.narcs);
-     assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate0);
+     assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate0);
    }
 
    // arcs from 'intermediate2'
@@ -1414,7 +1414,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
      fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
      a.InitArcIterator(intermediate2, &actual_arcs);
      ASSERT_EQ(1, actual_arcs.narcs);
-     assert_arc(actual_arcs.arcs[0], irs::range_label(128, 191), intermediate1);
+     assert_arc(actual_arcs.arcs[0], irs::range_label{128, 191}, intermediate1);
    }
 
    // arcs from 'finish0'

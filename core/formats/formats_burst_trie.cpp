@@ -2622,13 +2622,13 @@ bool automaton_term_iterator<FST>::next() {
             continue;
           }
 
-//          if (arc && arc->ilabel == fst::fsa::kRho) {
-//            cur_block_->next_sub_block();
-//          } else {
 //FIXME
+          if (arc) {
+            cur_block_->next_sub_block();
+          } else {
             assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
-//          }
+          }
         } else {
           cur_block_->next_sub_block();
         }
