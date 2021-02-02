@@ -50,26 +50,17 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   // This doesn't copy the FST.
   SortedRangeExplicitMatcher(const FST *fst, Label binary_label = 1)
       : fst_(*fst),
-        state_(kNoStateId),
-        aiter_(nullptr),
         binary_label_(binary_label),
-        match_label_(kNoLabel),
-        narcs_(0),
-        error_(false),
-        aiter_pool_(1) {
+        error_(false) {
   }
 
   // This makes a copy of the FST.
   SortedRangeExplicitMatcher(const SortedRangeExplicitMatcher<FST> &matcher, bool safe = false)
       : owned_fst_(matcher.fst_.Copy(safe)),
         fst_(*owned_fst_),
-        state_(kNoStateId),
-        aiter_(nullptr),
         binary_label_(matcher.binary_label_),
-        match_label_(kNoLabel),
-        narcs_(0),
-        error_(matcher.error_),
-        aiter_pool_(1) {}
+        error_(matcher.error_) {
+   }
 
   ~SortedRangeExplicitMatcher() override { Destroy(aiter_, &aiter_pool_); }
 
@@ -183,16 +174,16 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   bool LinearSearch();
   bool Search();
 
-  std::unique_ptr<const FST> owned_fst_;   // FST ptr if owned.
-  const FST &fst_;           // FST for matching.
-  StateId state_;            // Matcher state.
-  ArcIterator<FST> *aiter_;  // Iterator for current state.
-  Label binary_label_;       // Least label for binary search.
-  Label match_label_;        // Current label to be matched.
-  size_t narcs_;             // Current state arc count.
-  MemoryPool<ArcIterator<FST>> aiter_pool_;  // Pool of arc iterators.
-  bool exact_match_;         // Exact match or lower bound?
-  bool error_;               // Error encountered?
+  std::unique_ptr<const FST> owned_fst_;       // FST ptr if owned.
+  const FST &fst_;                             // FST for matching.
+  StateId state_{kNoStateId};                  // Matcher state.
+  ArcIterator<FST> *aiter_{};                  // Iterator for current state.
+  Label binary_label_;                         // Least label for binary search.
+  Label match_label_{kNoLabel};                // Current label to be matched.
+  size_t narcs_{0};                            // Current state arc count.
+  MemoryPool<ArcIterator<FST>> aiter_pool_{1}; // Pool of arc iterators.
+  bool exact_match_;                           // Exact match or lower bound?
+  bool error_;                                 // Error encountered?
 };
 
 // Returns true iff match to match_label_. The arc iterator is positioned at the

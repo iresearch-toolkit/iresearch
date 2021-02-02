@@ -26,15 +26,13 @@
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/wildcard_utils.hpp"
 
-#include <fstream>
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           wildcard_automaton_test
 // -----------------------------------------------------------------------------
 
 class wildcard_utils_test : public test_base {
  protected:
-  static void assert_properties(const irs::rautomaton& a) {
+  static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
       fst::kILabelSorted | fst::kOLabelSorted |
       fst::kIDeterministic |
@@ -46,7 +44,7 @@ class wildcard_utils_test : public test_base {
 
 TEST_F(wildcard_utils_test, match_wildcard) {
   {
-    auto a = irs::from_wildcard_range("%rc%");
+    auto a = irs::from_wildcard("%rc%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -54,7 +52,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%rc%");
+    auto a = irs::from_wildcard("%rc%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -62,7 +60,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%bcebce%");
+    auto a = irs::from_wildcard("%bcebce%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -70,7 +68,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%bcebcd%");
+    auto a = irs::from_wildcard("%bcebcd%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -78,7 +76,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%bcebced%");
+    auto a = irs::from_wildcard("%bcebced%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -88,7 +86,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%bcebce");
+    auto a = irs::from_wildcard("%bcebce");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -98,7 +96,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%rrc%");
+    auto a = irs::from_wildcard("%rrc%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -106,7 +104,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%arc%");
+    auto a = irs::from_wildcard("%arc%");
     assert_properties(a);
 
     ASSERT_FALSE(irs::accept<irs::byte_type>(a,
@@ -114,7 +112,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%aca%");
+    auto a = irs::from_wildcard("%aca%");
     assert_properties(a);
 
     ASSERT_FALSE(irs::accept<irs::byte_type>(a,
@@ -122,7 +120,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%r_c%");
+    auto a = irs::from_wildcard("%r_c%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -138,7 +136,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%_r_c%");
+    auto a = irs::from_wildcard("%_r_c%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -147,7 +145,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed from wikipedia
   {
-    auto a = irs::from_wildcard_range("%a%_r_c%");
+    auto a = irs::from_wildcard("%a%_r_c%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -156,7 +154,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%bce_bc");
+    auto a = irs::from_wildcard("%a%bce_bc");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -170,7 +168,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%bc__bc");
+    auto a = irs::from_wildcard("%a%bc__bc");
     assert_properties(a);
 
     ASSERT_FALSE(irs::accept<irs::byte_type>(a,
@@ -186,7 +184,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%bc_bc");
+    auto a = irs::from_wildcard("%a%bc_bc");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -202,7 +200,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%b_b");
+    auto a = irs::from_wildcard("%a%b_b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -216,7 +214,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%b__b");
+    auto a = irs::from_wildcard("%a%b__b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -234,7 +232,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%bce___bce");
+    auto a = irs::from_wildcard("%a%bce___bce");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -249,7 +247,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   {
 
-    auto a = irs::from_wildcard_range("%a%bce____bce");
+    auto a = irs::from_wildcard("%a%bce____bce");
     assert_properties(a);
 
     ASSERT_FALSE(irs::accept<irs::byte_type>(a,
@@ -257,7 +255,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%b___b");
+    auto a = irs::from_wildcard("%a%b___b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -275,7 +273,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%bce_____b");
+    auto a = irs::from_wildcard("%a%bce_____b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -283,7 +281,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%__b_b");
+    auto a = irs::from_wildcard("%a%__b_b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -297,7 +295,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%__b_b");
+    auto a = irs::from_wildcard("%a%__b_b");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -311,7 +309,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   {
-    auto a = irs::from_wildcard_range("%a%_bce____def___b%");
+    auto a = irs::from_wildcard("%a%_bce____def___b%");
     assert_properties(a);
 
     ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -320,7 +318,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%bce_b");
+    auto a = irs::from_wildcard("a%bce_b");
     assert_properties(a);
 
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
@@ -337,7 +335,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%bce_d");
+    auto a = irs::from_wildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -352,8 +350,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard_range("%b%");
-    auto rhs = irs::from_wildcard_range("%b%%%");
+    auto lhs = irs::from_wildcard("%b%");
+    auto rhs = irs::from_wildcard("%b%%%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -365,8 +363,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard_range("b%%%%%s");
-    auto rhs = irs::from_wildcard_range("b%%%s");
+    auto lhs = irs::from_wildcard("b%%%%%s");
+    auto rhs = irs::from_wildcard("b%%%s");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -378,8 +376,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // check automaton structure
   {
-    auto lhs = irs::from_wildcard_range("b%%__%%%s%");
-    auto rhs = irs::from_wildcard_range("b%%%%%%%__%%%%%%%%s%");
+    auto lhs = irs::from_wildcard("b%%__%%%s%");
+    auto rhs = irs::from_wildcard("b%%%%%%%__%%%%%%%%s%");
     ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
     assert_properties(lhs);
     assert_properties(rhs);
@@ -391,7 +389,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // nil string
   {
-    auto a = irs::from_wildcard_range(irs::string_ref::NIL);
+    auto a = irs::from_wildcard(irs::string_ref::NIL);
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -400,7 +398,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // empty string
   {
-    auto a = irs::from_wildcard_range(irs::string_ref::EMPTY);
+    auto a = irs::from_wildcard(irs::string_ref::EMPTY);
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -410,7 +408,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // any or empty string
   {
-    auto a = irs::from_wildcard_range("%");
+    auto a = irs::from_wildcard("%");
 
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
@@ -424,7 +422,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // any or empty string
   {
-    auto a = irs::from_wildcard_range("%%");
+    auto a = irs::from_wildcard("%%");
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_TRUE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -441,7 +439,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // any char
   {
-    auto a = irs::from_wildcard_range("_");
+    auto a = irs::from_wildcard("_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -456,7 +454,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // two any chars
   {
-    auto a = irs::from_wildcard_range("__");
+    auto a = irs::from_wildcard("__");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -475,7 +473,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // any char (suffix)
   {
-    auto a = irs::from_wildcard_range("a_");
+    auto a = irs::from_wildcard("a_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -488,7 +486,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // any char (prefix)
   {
-    auto a = irs::from_wildcard_range("_a");
+    auto a = irs::from_wildcard("_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -503,7 +501,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // escaped '_'
   {
-    auto a = irs::from_wildcard_range("\\_a");
+    auto a = irs::from_wildcard("\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -514,7 +512,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // escaped '\'
   {
-    auto a = irs::from_wildcard_range("\\\\\\_a");
+    auto a = irs::from_wildcard("\\\\\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -526,7 +524,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // escaped 'a'
   {
-    auto a = irs::from_wildcard_range("\\a");
+    auto a = irs::from_wildcard("\\a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -537,7 +535,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // nonterminated '\'
   {
-    auto a = irs::from_wildcard_range("a\\");
+    auto a = irs::from_wildcard("a\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -548,7 +546,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // escaped '%'
   {
-    auto a = irs::from_wildcard_range("\\\\\\%a");
+    auto a = irs::from_wildcard("\\\\\\%a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -559,7 +557,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // prefix
   {
-    auto a = irs::from_wildcard_range("foo%");
+    auto a = irs::from_wildcard("foo%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -574,7 +572,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // prefix
   {
-    auto a = irs::from_wildcard_range("foo\\%");
+    auto a = irs::from_wildcard("foo\\%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -590,7 +588,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%foo");
+    auto a = irs::from_wildcard("a%foo");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -611,7 +609,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%foo%boo");
+    auto a = irs::from_wildcard("a%foo%boo");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -622,7 +620,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // suffix
   {
-    auto a = irs::from_wildcard_range("%foo");
+    auto a = irs::from_wildcard("%foo");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -643,7 +641,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // prefix
   {
-    auto a = irs::from_wildcard_range("v%%");
+    auto a = irs::from_wildcard("v%%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -655,7 +653,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // suffix
   {
-    auto a = irs::from_wildcard_range("%ffoo");
+    auto a = irs::from_wildcard("%ffoo");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -672,7 +670,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%a");
+    auto a = irs::from_wildcard("a%a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -688,7 +686,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("_%a_%_a_%");
+    auto a = irs::from_wildcard("_%a_%_a_%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -698,7 +696,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, invalid UTF8-sequence
   {
-    auto a = irs::from_wildcard_range("\x5F\x25\xE2\x9E\x61\x5F\x25\x5F\xE2\x9E\x61\x5F\x25");
+    auto a = irs::from_wildcard("\x5F\x25\xE2\x9E\x61\x5F\x25\x5F\xE2\x9E\x61\x5F\x25");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -708,7 +706,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("\x5F\x25\xE2\x9E\x9E\x5F\x25\x5F\xE2\x9E\x9E\x5F\x25");
+    auto a = irs::from_wildcard("\x5F\x25\xE2\x9E\x9E\x5F\x25\x5F\xE2\x9E\x9E\x5F\x25");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -720,7 +718,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, invalid UTF8-sequence
   {
-    auto a = irs::from_wildcard_range("\xE2\x9E\x61\x25\xE2\x9E\x61");
+    auto a = irs::from_wildcard("\xE2\x9E\x61\x25\xE2\x9E\x61");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -736,7 +734,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("\xE2\x9E\x9E\x25\xE2\x9E\x9E");
+    auto a = irs::from_wildcard("\xE2\x9E\x9E\x25\xE2\x9E\x9E");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -754,7 +752,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%bce_d");
+    auto a = irs::from_wildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -776,7 +774,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("b%d%a");
+    auto a = irs::from_wildcard("b%d%a");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -788,7 +786,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%b%d");
+    auto a = irs::from_wildcard("a%b%d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -799,7 +797,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%b%db");
+    auto a = irs::from_wildcard("a%b%db");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -811,7 +809,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("%_");
+    auto a = irs::from_wildcard("%_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -824,7 +822,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, terminal "\\"
   {
-    auto a = irs::from_wildcard_range("%\\\\");
+    auto a = irs::from_wildcard("%\\\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -838,7 +836,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, terminal "\\"
   {
-    auto a = irs::from_wildcard_range("%_\\\\");
+    auto a = irs::from_wildcard("%_\\\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -852,7 +850,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, non-terminated "\\"
   {
-    auto a = irs::from_wildcard_range("%\\");
+    auto a = irs::from_wildcard("%\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -866,7 +864,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed, non-terminated "\\"
   {
-    auto a = irs::from_wildcard_range("%_\\");
+    auto a = irs::from_wildcard("%_\\");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -880,7 +878,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("%_d");
+    auto a = irs::from_wildcard("%_d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -894,7 +892,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("%_%_%d");
+    auto a = irs::from_wildcard("%_%_%d");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -919,7 +917,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("%_%_%d%");
+    auto a = irs::from_wildcard("%_%_%d%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -942,7 +940,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("%%_");
+    auto a = irs::from_wildcard("%%_");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -955,7 +953,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("_%");
+    auto a = irs::from_wildcard("_%");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -968,7 +966,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%_b");
+    auto a = irs::from_wildcard("a%_b");
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("ababab"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abababbbb"))));
@@ -980,7 +978,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("a%_b%");
+    auto a = irs::from_wildcard("a%_b%");
     assert_properties(a);
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abababc"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("abababcababab"))));
@@ -993,7 +991,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("v%%c");
+    auto a = irs::from_wildcard("v%%c");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -1005,7 +1003,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
   // mixed
   {
-    auto a = irs::from_wildcard_range("v%c");
+    auto a = irs::from_wildcard("v%c");
     assert_properties(a);
     ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref(""))));
     ASSERT_FALSE(irs::accept<char>(a, irs::string_ref::NIL));
@@ -1016,9 +1014,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   }
 
   // invalid UTF-8 sequence
-  ASSERT_EQ(0, irs::from_wildcard_range("\xD0").NumStates());
-  ASSERT_EQ(0, irs::from_wildcard_range("\xE2\x9E").NumStates());
-  ASSERT_EQ(0, irs::from_wildcard_range("\xF0\x9F\x98").NumStates());
+  ASSERT_EQ(0, irs::from_wildcard("\xD0").NumStates());
+  ASSERT_EQ(0, irs::from_wildcard("\xE2\x9E").NumStates());
+  ASSERT_EQ(0, irs::from_wildcard("\xF0\x9F\x98").NumStates());
 }
 
 TEST_F(wildcard_utils_test, wildcard_type) {

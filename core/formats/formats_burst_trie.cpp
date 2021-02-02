@@ -2247,15 +2247,18 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 class automaton_arc_matcher {
  public:
   automaton_arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
-    : begin_(arcs), end_(arcs + narcs),
-      rho_(rho_arc(begin_, end_)) {
+    : begin_(arcs), end_(arcs + narcs) {
   }
 
-  const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
+  const automaton::Arc* seek(uint32_t label) noexcept {
+    assert(begin_ != end_ && label >= begin_->min);
+
     // linear search is faster for a small number of arcs
     for (;begin_ != end_; ++begin_) {
       if (label <= begin_->ilabel) {
-        return label == begin_->ilabel ? begin_ : rho_;
+        return (begin_->min <= label && label <= begin_->max)
+          ? begin_
+          : nullptr;
       }
     }
 
@@ -2271,21 +2274,8 @@ class automaton_arc_matcher {
   }
 
  private:
-  static const automaton::Arc* rho_arc(const automaton::Arc* begin,
-                                       const automaton::Arc* end) noexcept {
-    if (begin != end) {
-      auto* back = end-1;
-      if (back->ilabel == fst::fsa::kRho) {
-        return back;
-      }
-    }
-
-    return nullptr;
-  }
-
   const automaton::Arc* begin_;  // current arc
   const automaton::Arc* end_;    // end of arcs range
-  const automaton::Arc* rho_{};  // rho arc if present
 }; // automaton_arc_matcher
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2502,27 +2492,23 @@ bool automaton_term_iterator<FST>::next() {
 
       const auto* arc = arcs.value();
 
-      if (arc->ilabel != fst::fsa::kRho) {
-        const int32_t lead_label = *begin;
+      const uint32_t lead_label = *begin;
 
-        if (lead_label < arc->ilabel) {
-          return;
-        }
-
-        if (lead_label > arc->ilabel) {
-          arc = arcs.seek(lead_label);
-
-          if (!arc) {
-            if (arcs.done()) {
-              match = POP; // pop current block
-            }
-
-            return;
-          }
-        }
+      if (lead_label < arc->min) {
+        return;
       }
 
-      assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
+      arc = arcs.seek(lead_label);
+
+      if (!arc) {
+        if (arcs.done()) {
+          match = POP; // pop current block
+        }
+
+        return;
+      }
+
+      assert(*begin >= arc->min && *begin <= arc->max);
       state = arc->nextstate;
 
       if (state == sink_) {
@@ -2636,12 +2622,13 @@ bool automaton_term_iterator<FST>::next() {
             continue;
           }
 
-          if (arc && arc->ilabel == fst::fsa::kRho) {
-            cur_block_->next_sub_block();
-          } else {
-            assert(arcs.value()->ilabel <= std::numeric_limits<byte_type>::max());
-            cur_block_->scan_to_sub_block(byte_type(arcs.value()->ilabel));
-          }
+//          if (arc && arc->ilabel == fst::fsa::kRho) {
+//            cur_block_->next_sub_block();
+//          } else {
+//FIXME
+            assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
+            cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
+//          }
         } else {
           cur_block_->next_sub_block();
         }

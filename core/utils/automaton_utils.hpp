@@ -69,17 +69,9 @@ inline automaton::Weight match(
                       : automaton::Weight::Zero();
 }
 
-template<typename Char, typename Automaton>
-inline automaton::Weight accept(const Automaton& a, const basic_string_ref<Char>& target) {
-  typedef fst::RhoMatcher<fst::SortedMatcher<Automaton>> matcher_t;
-
-  matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
-  return match(matcher, target);
-}
-
 template<typename Char>
-inline automaton::Weight accept(const rautomaton& a, const basic_string_ref<Char>& target) {
-  using matcher_t = fst::SortedRangeExplicitMatcher<rautomaton, fst::MatchType::MATCH_INPUT>;
+inline automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
+  using matcher_t = fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
   matcher_t matcher(&a);
   return match(matcher, target);
@@ -88,74 +80,6 @@ inline automaton::Weight accept(const rautomaton& a, const basic_string_ref<Char
 class automaton_term_iterator final : public seek_term_iterator {
  public:
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
-    : a_(&a), matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho), it_(std::move(it)) {
-    assert(it_);
-    value_ = &it_->value();
-  }
-
-  virtual const bytes_ref& value() const noexcept override {
-    return *value_;
-  }
-
-  virtual doc_iterator::ptr postings(const flags& features) const override {
-    return it_->postings(features);
-  }
-
-  virtual void read() override {
-    it_->read();
-  }
-
-  virtual bool next() override {
-    bool next = it_->next();
-
-    while (next && !accept()) {
-      next = it_->next();
-    }
-
-    return next;
-  }
-
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    return it_->get_mutable(type);
-  }
-
-  virtual SeekResult seek_ge(const bytes_ref& target) override {
-    it_->seek_ge(target);
-
-    if (accept()) {
-      return SeekResult::FOUND;
-    }
-
-    return next() ? SeekResult::NOT_FOUND : SeekResult::END;
-  }
-
-  virtual bool seek(const bytes_ref& target) override {
-    return SeekResult::FOUND == seek_ge(target);
-  }
-
-  virtual bool seek(const bytes_ref& target, const seek_cookie& cookie) override {
-    return it_->seek(target, cookie);
-  }
-
-  virtual seek_cookie::ptr cookie() const override {
-    return it_->cookie();
-  }
-
- private:
-  using automaton_matcher_t = fst::SortedMatcher<automaton>;
-  using matcher_t = fst::RhoMatcher<automaton_matcher_t>;
-
-  bool accept() { return irs::match(matcher_, *value_); }
-
-  const automaton* a_;
-  matcher_t matcher_;
-  seek_term_iterator::ptr it_;
-  const bytes_ref* value_;
-}; // automaton_term_iterator
-
-class rautomaton_term_iterator final : public seek_term_iterator {
- public:
-  rautomaton_term_iterator(const rautomaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
     assert(it_);
     value_ = &it_->value();
@@ -212,8 +136,8 @@ class rautomaton_term_iterator final : public seek_term_iterator {
  private:
   bool accept() { return irs::match(matcher_, *value_); }
 
-  const rautomaton* a_;
-  fst::SortedRangeExplicitMatcher<rautomaton> matcher_;
+  const automaton* a_;
+  fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
 }; // rautomaton_term_iterator
@@ -231,9 +155,9 @@ class IRESEARCH_API utf8_transitions_builder {
   }
 
   template<typename Iterator>
-  void insert(rautomaton& a,
-              rautomaton::StateId from,
-              rautomaton::StateId rho_state,
+  void insert(automaton& a,
+              automaton::StateId from,
+              automaton::StateId rho_state,
               Iterator begin, Iterator end) {
     last_ = bytes_ref::EMPTY;
     states_map_.reset();
@@ -270,12 +194,12 @@ class IRESEARCH_API utf8_transitions_builder {
   struct state;
 
   struct arc : private util::noncopyable {
-    arc(rautomaton::Arc::Label label, state* target)
+    arc(automaton::Arc::Label label, state* target)
       : target(target),
         label(label) {
     }
 
-    arc(rautomaton::Arc::Label label, rautomaton::StateId target)
+    arc(automaton::Arc::Label label, automaton::StateId target)
       : id(target),
         label(label) {
     }
@@ -285,21 +209,21 @@ class IRESEARCH_API utf8_transitions_builder {
         label(rhs.label) {
     }
 
-    bool operator==(const rautomaton::Arc& rhs) const noexcept {
+    bool operator==(const automaton::Arc& rhs) const noexcept {
       return label == rhs.ilabel
         && id == rhs.nextstate;
     }
 
-    bool operator!=(const rautomaton::Arc& rhs) const noexcept {
+    bool operator!=(const automaton::Arc& rhs) const noexcept {
       return !(*this == rhs);
     }
 
     union {
       state* target;
-      rautomaton::StateId id;
+      automaton::StateId id;
     };
     union {
-      rautomaton::Arc::Label label;
+      automaton::Arc::Label label;
       struct {
         uint32_t max;
         uint32_t min;
@@ -313,7 +237,7 @@ class IRESEARCH_API utf8_transitions_builder {
       arcs.clear();
     }
 
-    void add_rho_arc(uint32_t min, uint32_t max, rautomaton::StateId rho_state) {
+    void add_rho_arc(uint32_t min, uint32_t max, automaton::StateId rho_state) {
       if (fst::kNoStateId == rho_state) {
         return;
       }
@@ -327,14 +251,14 @@ class IRESEARCH_API utf8_transitions_builder {
       }
     }
 
-    rautomaton::StateId id{fst::kNoStateId};
+    automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
 
   static_assert(std::is_nothrow_move_constructible_v<state>);
 
   struct state_hash {
-    size_t operator()(const state& s, const rautomaton& fst) const noexcept {
+    size_t operator()(const state& s, const automaton& fst) const noexcept {
       if (fst::kNoStateId != s.id) {
         return operator()(s.id, fst);
       }
@@ -350,8 +274,8 @@ class IRESEARCH_API utf8_transitions_builder {
       return hash;
     }
 
-    size_t operator()(rautomaton::StateId id, const rautomaton& fst) const noexcept {
-      fst::ArcIteratorData<rautomaton::Arc> arcs;
+    size_t operator()(automaton::StateId id, const automaton& fst) const noexcept {
+      fst::ArcIteratorData<automaton::Arc> arcs;
       fst.InitArcIterator(id, &arcs);
 
       const auto* begin = arcs.arcs;
@@ -368,13 +292,13 @@ class IRESEARCH_API utf8_transitions_builder {
   }; // state_hash
 
   struct state_equal {
-    bool operator()(const state& lhs, rautomaton::StateId rhs, const rautomaton& fst) const noexcept {
+    bool operator()(const state& lhs, automaton::StateId rhs, const automaton& fst) const noexcept {
       if (lhs.id != fst::kNoStateId) {
         // already a part of automaton
         return lhs.id == rhs;
       }
 
-      fst::ArcIteratorData<rautomaton::Arc> rarcs;
+      fst::ArcIteratorData<automaton::Arc> rarcs;
       fst.InitArcIterator(rhs, &rarcs);
 
       if (lhs.arcs.size() != rarcs.narcs) {
@@ -395,11 +319,11 @@ class IRESEARCH_API utf8_transitions_builder {
 
   class state_emplace {
    public:
-    explicit state_emplace(const rautomaton::Weight& weight) noexcept
+    explicit state_emplace(const automaton::Weight& weight) noexcept
       : weight_(&weight) {
     }
 
-    rautomaton::StateId operator()(const state& s, rautomaton& fst) const {
+    automaton::StateId operator()(const state& s, automaton& fst) const {
       auto id = s.id;
 
       if (id == fst::kNoStateId) {
@@ -415,27 +339,27 @@ class IRESEARCH_API utf8_transitions_builder {
     }
 
    private:
-    const rautomaton::Weight* weight_;
+    const automaton::Weight* weight_;
   }; // state_emplace
 
   using automaton_states_map = fst_states_map<
-    rautomaton, state,
+    automaton, state,
     state_emplace, state_hash,
     state_equal, fst::kNoStateId>;
 
-  void minimize(rautomaton& a, size_t prefix);
+  void minimize(automaton& a, size_t prefix);
 
 
-  void insert(rautomaton& a,
+  void insert(automaton& a,
               const byte_type* label_data,
               const size_t label_size,
-              rautomaton::StateId target);
+              automaton::StateId target);
 
-  void finish(rautomaton& a, rautomaton::StateId from);
+  void finish(automaton& a, automaton::StateId from);
 
   // FIXME use a memory pool for arcs
-  rautomaton::Weight weight_;
-  rautomaton::StateId rho_states_[4];
+  automaton::Weight weight_;
+  automaton::StateId rho_states_[4];
   state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1]; // +1 for root state
   automaton_states_map states_map_;
   bytes_ref last_;
@@ -497,12 +421,6 @@ IRESEARCH_API void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
-IRESEARCH_API void utf8_emplace_arc_range(
-  rautomaton& a,
-  rautomaton::StateId from,
-  const bytes_ref& label,
-  rautomaton::StateId to);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source (from)
 ///        and target (to) states with the fallback to default (rho_state)
@@ -515,13 +433,6 @@ IRESEARCH_API void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
-IRESEARCH_API void utf8_emplace_arc_range(
-  rautomaton& a,
-  rautomaton::StateId from,
-  rautomaton::StateId rho_state,
-  const bytes_ref& label,
-  rautomaton::StateId to);
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish default connnection between specified source (from) and
 ///        and target (to)
@@ -531,24 +442,21 @@ IRESEARCH_API void utf8_emplace_rho_arc(
   automaton::StateId from,
   automaton::StateId to);
 
-IRESEARCH_API void utf8_emplace_rho_arc_range(
-  rautomaton& a,
-  rautomaton::StateId from,
-  rautomaton::StateId to);
-
+/*
 //////////////////////////////////////////////////////////////////////////////
 /// @brief modifies a specified UTF-8 automaton to an equivalent one that is
 ///        defined over the alphabet of { [0..255], fst::fsa::kRho }
 /// @returns fst::kNoStateId on success, otherwise first failed state id
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
+*/
 
-inline automaton make_char(const automaton::Arc::Label c) {
+inline automaton make_char(const uint32_t c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  a.EmplaceArc(0, c, 1);
+  a.EmplaceArc(0, range_label(c), 1);
   return a;
 }
 
@@ -566,45 +474,12 @@ inline automaton make_any() {
   a.AddStates(2);
   a.SetStart(0);
   a.SetFinal(1);
-  a.EmplaceArc(0, fst::fsa::kRho, 1);
+  utf8_emplace_rho_arc(a, 0, 1);
   return a;
 }
 
 inline automaton make_all() {
   automaton a = make_any();
-  fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
-  return a;
-};
-
-inline rautomaton make_char_range(const range_label::BoundaryType c) {
-  rautomaton a;
-  a.AddStates(2);
-  a.SetStart(0);
-  a.SetFinal(1);
-  a.EmplaceArc(0, range_label(c), 1);
-  return a;
-}
-
-inline rautomaton make_char_range(const bytes_ref& c) {
-  rautomaton a;
-  a.AddStates(2);
-  a.SetStart(0);
-  a.SetFinal(1);
-  utf8_emplace_arc_range(a, 0, c, 1);
-  return a;
-}
-
-inline rautomaton make_any_range() {
-  rautomaton a;
-  a.AddStates(2);
-  a.SetStart(0);
-  a.SetFinal(1);
-  utf8_emplace_rho_arc_range(a, 0, 1);
-  return a;
-}
-
-inline rautomaton make_all_range() {
-  rautomaton a = make_any_range();
   fst::Closure(&a, fst::ClosureType::CLOSURE_STAR);
   return a;
 };

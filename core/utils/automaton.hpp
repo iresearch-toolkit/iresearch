@@ -138,44 +138,16 @@ constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
   };
 }
 
-template<typename T>
-struct RangeLabel;
-
-template<>
-struct RangeLabel<int32_t> {
-  using RangeType = int32_t;
-  using BoundaryType = int32_t;
-
-  constexpr explicit RangeLabel(BoundaryType value) noexcept
-    : value(value) {
-  }
-
-  constexpr operator RangeType() const noexcept {
-    return value;
-  }
-
-  friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
-    strm << '[' << l.value << ".." << l.value << ']';
-    return strm;
-  }
-
-  RangeType value;
-}; // RangeLabel
-
-template<>
-struct RangeLabel<int64_t> {
-  using RangeType = int64_t;
-  using BoundaryType = uint32_t;
-
-  constexpr explicit RangeLabel(BoundaryType min) noexcept
+struct RangeLabel {
+  constexpr explicit RangeLabel(uint32_t min) noexcept
     : RangeLabel(min, min) {
   }
 
-  constexpr RangeLabel(BoundaryType min, BoundaryType max) noexcept
+  constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
     : max(max), min(min) {
   }
 
-  constexpr operator RangeType() const noexcept {
+  constexpr operator int64_t() const noexcept {
     return value;
   }
 
@@ -185,18 +157,18 @@ struct RangeLabel<int64_t> {
   }
 
   union {
-    RangeType value;
+    int64_t value;
     struct {
-      BoundaryType max;
-      BoundaryType min;
+      uint32_t max;
+      uint32_t min;
     };
   };
 }; // RangeLabel
 
-template<typename L = int32_t, typename W = BooleanWeight>
+template<typename W = BooleanWeight>
 struct Transition {
   using Weight = W;
-  using Label = L;
+  using Label = int64_t;
   using StateId = int32_t;
 
   static const std::string &Type() {
@@ -219,8 +191,7 @@ struct Transition {
 
   constexpr Transition() = default;
 
-  template<typename T>
-  constexpr Transition(RangeLabel<T> ilabel, StateId nextstate)
+  constexpr Transition(RangeLabel ilabel, StateId nextstate)
     : ilabel(ilabel.value),
       nextstate(nextstate) {
   }
@@ -243,26 +214,21 @@ struct Transition {
   }
 }; // Transition
 
-//static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
-
-constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
-
-
 } // fsa
 } // fst
 
 namespace std {
 
-template<typename T, typename W>
-inline void swap(::fst::fsa::RangeLabel<T>& lhs,
+template<typename W>
+inline void swap(::fst::fsa::RangeLabel& lhs,
                  typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 
-template<typename T>
-struct hash<::fst::fsa::RangeLabel<T>> {
-  size_t operator()(const ::fst::fsa::RangeLabel<T>& label) const noexcept {
-    return hash<uint64_t>()(uint64_t(label.min) | uint64_t(label.max) << 32);
+template<>
+struct hash<::fst::fsa::RangeLabel> {
+  size_t operator()(const ::fst::fsa::RangeLabel& label) const noexcept {
+    return hash<uint64_t>()(label.value);
   }
 };
 

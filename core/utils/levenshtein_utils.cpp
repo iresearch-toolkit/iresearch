@@ -391,7 +391,7 @@ std::vector<character> make_alphabet(
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  begin->cp = fst::fsa::kRho;
+  begin->cp = std::numeric_limits<uint32_t>::max();
   begin->chi.reset(capacity);
   ++begin;
 
@@ -654,16 +654,15 @@ automaton make_levenshtein_automaton(
 
     if (INVALID_STATE == default_state && arcs.empty()) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
+      a.EmplaceArc(state.from, range_label(0, 255), INVALID_STATE);
     } else if (INVALID_STATE == default_state && ascii && !a.Final(state.from)) {
       // optimization for ascii only input without default state and weight
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
-        a.EmplaceArc(state.from, arc.first.front(), arc.second);
+        a.EmplaceArc(state.from, range_label(arc.first.front()), arc.second);
       }
     } else {
-      //FIXME
-      //builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
+      builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
     }
   }
 
