@@ -515,6 +515,13 @@ IRESEARCH_API void utf8_emplace_arc(
   const bytes_ref& label,
   automaton::StateId to);
 
+IRESEARCH_API void utf8_emplace_arc_range(
+  rautomaton& a,
+  rautomaton::StateId from,
+  rautomaton::StateId rho_state,
+  const bytes_ref& label,
+  rautomaton::StateId to);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish default connnection between specified source (from) and
 ///        and target (to)

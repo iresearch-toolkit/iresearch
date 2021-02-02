@@ -139,6 +139,86 @@ void utf8_emplace_arc(
   a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
 }
 
+void utf8_emplace_arc_range(
+    rautomaton& a,
+    rautomaton::StateId from,
+    rautomaton::StateId rho_state,
+    const bytes_ref& label,
+    rautomaton::StateId to) {
+  if (fst::kNoStateId == rho_state) {
+    return utf8_emplace_arc_range(a, from, label, to);
+  }
+
+  if (label.empty()) {
+    return;
+  }
+
+  // reserve enough arcs and states (stated ids are sequential)
+  a.ReserveArcs(from, 6);
+  const auto id = a.NumStates();
+  a.AddStates(3 + label.size() - 1);
+
+  const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
+
+  auto add_arcs = [&a](
+      uint32_t min,
+      uint32_t max,
+      uint32_t label,
+      rautomaton::StateId from,
+      rautomaton::StateId to,
+      rautomaton::StateId rho) mutable {
+    if (label < min || label > max) {
+      a.EmplaceArc(from, range_label(min, max), rho);
+      return;
+    }
+
+    if (min < label) {
+      a.EmplaceArc(from, range_label(min, label - 1), rho);
+    }
+    a.EmplaceArc(from, range_label(label), to);
+    if (++label < max) {
+      a.EmplaceArc(from, range_label(label, max), rho);
+    }
+  };
+
+  const auto s0 = id + 3;
+  const uint32_t lead = label.front();
+  add_arcs(MIN, 127, lead, from, to, rho_states[0]);
+  add_arcs(192, 223, lead, from, s0, rho_states[1]);
+  add_arcs(224, 239, lead, from, s0, rho_states[2]);
+  add_arcs(240, 255, lead, from, s0, rho_states[3]);
+
+  switch (label.size()) {
+    case 1: {
+      break;
+    }
+    case 2: {
+      add_arcs(128, 191, label[1], s0, to, rho_states[0]);
+      break;
+    }
+    case 3: {
+      const auto s1 = id + 4;
+      add_arcs(128, 191, label[1], s0, s1, rho_states[1]);
+      add_arcs(128, 191, label[2], s1, to, rho_states[0]);
+      break;
+    }
+    case 4: {
+      const auto s1 = id + 4;
+      const auto s2 = id + 5;
+      add_arcs(128, 191, label[1], s0, s1, rho_states[2]);
+      add_arcs(128, 191, label[2], s1, s2, rho_states[1]);
+      add_arcs(128, 191, label[3], s2, to, rho_states[0]);
+      break;
+    }
+  }
+
+  // connect intermediate states of default multi-byte UTF8 sequence
+  constexpr range_label RHO_LABEL(128, 191);
+  a.EmplaceArc(rho_states[1], RHO_LABEL, rho_states[0]);
+  a.EmplaceArc(rho_states[2], RHO_LABEL, rho_states[1]);
+  a.EmplaceArc(rho_states[3], RHO_LABEL, rho_states[2]);
+}
+
 void utf8_emplace_arc(
     automaton& a,
     automaton::StateId from,
