@@ -131,6 +131,7 @@ class BooleanWeight {
   PayloadType p_{};
 };
 
+// FIXME remove
 constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
   return {
     static_cast<uint32_t>(label >> 32),
@@ -139,6 +140,10 @@ constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
 }
 
 struct RangeLabel {
+  constexpr RangeLabel() noexcept
+    : ilabel{fst::kNoLabel} {
+  }
+
   constexpr explicit RangeLabel(uint32_t min) noexcept
     : RangeLabel(min, min) {
   }
@@ -148,7 +153,7 @@ struct RangeLabel {
   }
 
   constexpr operator int64_t() const noexcept {
-    return value;
+    return ilabel;
   }
 
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
@@ -157,16 +162,23 @@ struct RangeLabel {
   }
 
   union {
-    int64_t value;
+    int64_t ilabel;
     struct {
       uint32_t max;
       uint32_t min;
     };
   };
+
+ protected:
+  // FIXME
+  constexpr explicit RangeLabel(int64_t ilabel, std::nullptr_t) noexcept
+    : ilabel(ilabel) {
+  }
+
 }; // RangeLabel
 
 template<typename W = BooleanWeight>
-struct Transition {
+struct Transition : RangeLabel {
   using Weight = W;
   using Label = int64_t;
   using StateId = int32_t;
@@ -177,13 +189,6 @@ struct Transition {
   }
 
   union {
-    Label ilabel{fst::kNoLabel};
-    struct {
-      uint32_t max;
-      uint32_t min;
-    };
-  };
-  union {
     StateId nextstate{fst::kNoStateId};
     fstext::EmptyLabel<Label> olabel;
     fstext::EmptyWeight<Weight> weight; // all arcs are trivial
@@ -192,47 +197,30 @@ struct Transition {
   constexpr Transition() = default;
 
   constexpr Transition(RangeLabel ilabel, StateId nextstate)
-    : ilabel(ilabel.value),
+    : RangeLabel(ilabel, nullptr),
       nextstate(nextstate) {
   }
 
   constexpr Transition(Label ilabel, StateId nextstate)
-    : ilabel(ilabel),
+    : RangeLabel(ilabel),
       nextstate(nextstate) {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
-    : ilabel(ilabel),
+    : RangeLabel(ilabel),
       nextstate(nextstate) {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel),
+    : RangeLabel(ilabel),
       nextstate(nextstate) {
   }
 }; // Transition
 
 } // fsa
 } // fst
-
-namespace std {
-
-template<typename W>
-inline void swap(::fst::fsa::RangeLabel& lhs,
-                 typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
-  lhs = ::fst::kNoLabel;
-}
-
-template<>
-struct hash<::fst::fsa::RangeLabel> {
-  size_t operator()(const ::fst::fsa::RangeLabel& label) const noexcept {
-    return hash<uint64_t>()(label.value);
-  }
-};
-
-}
 
 #if defined(_MSC_VER)
   // NOOP

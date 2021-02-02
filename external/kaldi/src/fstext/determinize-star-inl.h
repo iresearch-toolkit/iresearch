@@ -595,7 +595,7 @@ template<class F> class DeterminizerStar {
       }
 
       // We now have a subset for this ilabel.
-      ProcessTransition(state, irs::range_label(min, min).value, &min_subset);
+      ProcessTransition(state, irs::range_label(min), &min_subset);
     }
   }
 
@@ -1031,7 +1031,7 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
 
           if (arc.nextstate == a.nextstate &&
              (min - max1 <= 1)) {
-            const_cast<Arc&>(a).ilabel = irs::range_label(min1, max).value;
+            const_cast<Arc&>(a).ilabel = irs::range_label(min1, max);
           } else {
             ofst->AddArc(cur_state, arc);
           }
