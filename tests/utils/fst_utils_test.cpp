@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2019 ArangoDB GmbH, Cologne, Germany
@@ -265,7 +265,7 @@ TEST(fst_table_matcher_test, test_matcher) {
         auto to = a.AddState();
 
         for (; min < max; min += step) {
-          a.EmplaceArc(from, fst::fsa::RangeLabel(min), to);
+          a.EmplaceArc(from, fst::fsa::RangeLabel::fromRange(min), to);
         }
 
         from = to;
