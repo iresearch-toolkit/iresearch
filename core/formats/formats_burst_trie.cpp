@@ -1270,6 +1270,9 @@ class block_iterator : util::noncopyable {
     cur_start_ = cur_end_;
     if (sub_count_ != UNDEFINED) {
       --sub_count_;
+      vread<uint64_t>(header_begin_);
+      cur_meta_ = *header_begin_++;
+      next_label_ = *header_begin_++;
     }
     dirty_ = true;
     return true;
@@ -1324,7 +1327,7 @@ class block_iterator : util::noncopyable {
   void load_data(const field_meta& meta, attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
- private:
+ //private:
   template<typename Reader>
   void read_entry_leaf(Reader&& reader) {
     assert(leaf_ && cur_ent_ < ent_count_);
@@ -2255,11 +2258,17 @@ class automaton_arc_matcher {
 
     // linear search is faster for a small number of arcs
     for (;begin_ != end_; ++begin_) {
-      if (label <= begin_->ilabel) {
-        return (begin_->min <= label && label <= begin_->max)
-          ? begin_
-          : nullptr;
+      if (begin_->min <= label && label <= begin_->max) {
+        return begin_;
+      } else if (label < begin_->min) {
+        return nullptr;
       }
+
+      //if (label <= begin_->min) {
+      //  return (begin_->min <= label && label <= begin_->max)
+      //    ? begin_
+      //    : nullptr;
+      //}
     }
 
     return nullptr;
@@ -2498,14 +2507,16 @@ bool automaton_term_iterator<FST>::next() {
         return;
       }
 
-      arc = arcs.seek(lead_label);
+      if (lead_label > arc->max) {
+        arc = arcs.seek(lead_label);
 
-      if (!arc) {
-        if (arcs.done()) {
-          match = POP; // pop current block
+        if (!arc) {
+          if (arcs.done()) {
+            match = POP; // pop current block
+          }
+
+          return;
         }
-
-        return;
       }
 
       assert(*begin >= arc->min && *begin <= arc->max);
@@ -2546,6 +2557,7 @@ bool automaton_term_iterator<FST>::next() {
         if (weight) {
           payload_value_ = weight.Payload();
           copy(suffix, cur_block_->prefix(), suffix_size);
+
           match = MATCH;
         }
       } break;
@@ -2590,7 +2602,7 @@ bool automaton_term_iterator<FST>::next() {
           cur_block_ = &block_stack_.back();
 
           if (!acceptor_->Final(state))  {
-            cur_block_->scan_to_sub_block(data.arcs->ilabel);
+            cur_block_->scan_to_sub_block(data.arcs->min);
           }
 
           cur_block_->load(terms_input(), terms_cipher());
@@ -2606,33 +2618,46 @@ bool automaton_term_iterator<FST>::next() {
     // pop finished blocks
     while (cur_block_->end()) {
       if (cur_block_->sub_count()) {
-        if (block_t::INVALID_LABEL != cur_block_->next_label()) {
-          auto& arcs = cur_block_->arcs();
-          const auto* arc = arcs.seek(cur_block_->next_label());
+        const uint32_t next_label = cur_block_->next_label();
 
-          if (arcs.done()) {
-            if (&block_stack_.front() == cur_block_) {
-              // need to pop root block, we're done
-              term_.reset();
-              cur_block_->reset();
-              return false;
+        // FIXME signed vs unsigned
+        if (block_t::INVALID_LABEL == next_label) {
+          cur_block_->next_sub_block();
+        } else {
+          auto& arcs = cur_block_->arcs();
+          assert(!arcs.done());
+          const auto* arc = arcs.value();
+
+          if (next_label < arc->min) {
+            assert(arc->min <= std::numeric_limits<byte_type>::max());
+            cur_block_->scan_to_sub_block(byte_type(arc->min));
+          } else if (arc->min < next_label) {
+            arc = arcs.seek(next_label);
+
+            if (arcs.done()) {
+              if (&block_stack_.front() == cur_block_) {
+                // need to pop root block, we're done
+                term_.reset();
+                cur_block_->reset();
+                return false;
+              }
+
+              cur_block_ = pop_block();
+              continue;
             }
 
-            cur_block_ = pop_block();
-            continue;
-          }
-
-//FIXME
-          if (arc) {
-            cur_block_->next_sub_block();
+            if (!arc) {
+              assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
+              cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
+            } else {
+              cur_block_->next_sub_block();
+            }
           } else {
-            assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
-            cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
+            cur_block_->next_sub_block();
           }
-        } else {
-          cur_block_->next_sub_block();
         }
 
+        //cur_block_->next_sub_block();
         cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
