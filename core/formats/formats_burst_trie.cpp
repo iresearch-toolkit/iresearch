@@ -2487,6 +2487,7 @@ bool automaton_term_iterator<FST>::next() {
   } match;
 
   automaton::StateId state;
+  static size_t i;
 
   auto read_suffix = [this, &match, &state, &fst](const byte_type* suffix, size_t suffix_size) {
     match = SKIP;
@@ -2618,46 +2619,43 @@ bool automaton_term_iterator<FST>::next() {
     // pop finished blocks
     while (cur_block_->end()) {
       if (cur_block_->sub_count()) {
+        // we always instantiate block with header
+        assert(block_t::INVALID_LABEL != cur_block_->next_label());
+
         const uint32_t next_label = cur_block_->next_label();
 
-        // FIXME signed vs unsigned
-        if (block_t::INVALID_LABEL == next_label) {
-          cur_block_->next_sub_block();
-        } else {
-          auto& arcs = cur_block_->arcs();
-          assert(!arcs.done());
-          const auto* arc = arcs.value();
+        auto& arcs = cur_block_->arcs();
+        assert(!arcs.done());
+        const auto* arc = arcs.value();
 
-          if (next_label < arc->min) {
-            assert(arc->min <= std::numeric_limits<byte_type>::max());
-            cur_block_->scan_to_sub_block(byte_type(arc->min));
-          } else if (arc->min < next_label) {
-            arc = arcs.seek(next_label);
+        if (next_label < arc->min) {
+          assert(arc->min <= std::numeric_limits<byte_type>::max());
+          cur_block_->scan_to_sub_block(byte_type(arc->min));
+        } else if (arc->min < next_label) {
+          arc = arcs.seek(next_label);
 
-            if (arcs.done()) {
-              if (&block_stack_.front() == cur_block_) {
-                // need to pop root block, we're done
-                term_.reset();
-                cur_block_->reset();
-                return false;
-              }
-
-              cur_block_ = pop_block();
-              continue;
+          if (arcs.done()) {
+            if (&block_stack_.front() == cur_block_) {
+              // need to pop root block, we're done
+              term_.reset();
+              cur_block_->reset();
+              return false;
             }
 
-            if (!arc) {
-              assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
-              cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
-            } else {
-              cur_block_->next_sub_block();
-            }
+            cur_block_ = pop_block();
+            continue;
+          }
+
+          if (!arc) {
+            assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
+            cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
           } else {
             cur_block_->next_sub_block();
           }
+        } else {
+          cur_block_->next_sub_block();
         }
 
-        //cur_block_->next_sub_block();
         cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
