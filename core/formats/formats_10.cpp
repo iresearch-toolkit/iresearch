@@ -194,15 +194,14 @@ inline void prepare_output(
     const string_ref& ext,
     const string_ref& format,
     const int32_t version) {
-  assert( !out );
+  assert(!out);
   file_name(str, state.name, ext);
   out = state.dir->create(str);
 
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::write_header(*out, format, version);
@@ -217,15 +216,14 @@ inline void prepare_input(
     const string_ref& format,
     const int32_t min_ver,
     const int32_t max_ver ) {
-  assert( !in );
+  assert(!in);
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -493,8 +491,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     MAX_SKIP_LEVELS,
     state.doc_count,
     [this] (size_t i, index_output& out) { write_skip(i, out); },
-    directory_utils::get_allocator(*state.dir)
-  );
+    directory_utils::get_allocator(*state.dir));
 
   format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
   out.write_vint(BLOCK_SIZE); // write postings block size
@@ -762,8 +759,7 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
   if (id < doc_.last) {
     throw index_error(string_utils::to_string(
       "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc_.last
-    ));
+      id, doc_.last));
   }
 
   doc_.push(id, freq ? freq->value : 0);
@@ -863,8 +859,8 @@ class postings_writer final: public postings_writer_base {
 }; // postings_writer
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
@@ -915,8 +911,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -1452,7 +1448,7 @@ class position final : public irs::position,
         skip(this->pend_pos_ - freq);
         this->pend_pos_ = freq;
     }
-    while(value_ < target && this->pend_pos_) {
+    while (value_ < target && this->pend_pos_) {
       if (this->buf_pos_ == postings_writer_base::BLOCK_SIZE) {
         refill();
         this->buf_pos_ = 0;
@@ -1524,7 +1520,6 @@ class position final : public irs::position,
   }
 
  private:
-
   void refill() {
     if (this->pos_in_->file_pointer() == this->tail_start_) {
       this->read_tail_block();
@@ -1588,8 +1583,7 @@ class doc_iterator final : public irs::doc_iterator {
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
-                  [](doc_id_t doc) { return doc == doc_limits::invalid(); })
-    );
+                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
   }
 
   void prepare(
@@ -1714,7 +1708,7 @@ class doc_iterator final : public irs::doc_iterator {
         auto& freq = std::get<frequency>(attrs_);
         auto& pos = std::get<position<IteratorTraits>>(attrs_);
         freq.value = *doc_freq_++;
-        notify +=freq.value;
+        notify += freq.value;
 
         if (doc.value >= target) {
           pos.notify(notify);
@@ -1739,8 +1733,8 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
@@ -1777,8 +1771,8 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -1991,14 +1985,12 @@ std::string file_name<irs::index_meta_writer, index_meta>(const index_meta& meta
 
 struct index_meta_reader final: public irs::index_meta_reader {
   virtual bool last_segments_file(
-    const directory& dir, std::string& name
-  ) const override;
+    const directory& dir, std::string& name) const override;
 
   virtual void read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // index_meta_reader
 
 template<>
@@ -2025,8 +2017,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   {
@@ -2036,7 +2027,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     assert(meta.size() <= integer_traits<uint32_t>::const_max);
     out->write_vint(uint32_t(meta.size()));
 
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
@@ -2057,8 +2048,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!dir.sync(seg_file)) {
     throw io_error(string_utils::to_string(
       "failed to sync file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   // only noexcept operations below
@@ -2082,8 +2072,7 @@ bool index_meta_writer::commit() {
     throw io_error(string_utils::to_string(
       "failed to rename file, src path: '%s' dst path: '%s'",
       src.c_str(),
-      dst.c_str()
-    ));
+      dst.c_str()));
   }
 
   // only noexcept operations below
@@ -2164,14 +2153,12 @@ void index_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2181,8 +2168,7 @@ void index_meta_reader::read(
     *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
-    index_meta_writer::FORMAT_MAX
-  );
+    index_meta_writer::FORMAT_MAX);
 
   // read data from segments file
   auto gen = in->read_vlong();
@@ -2216,8 +2202,7 @@ void index_meta_reader::read(
   complete(
     meta, gen, cnt,
     std::move(segments),
-    has_payload ? &payload : nullptr
-  );
+    has_payload ? &payload : nullptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -2244,8 +2229,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   virtual void write(
     directory& dir,
     std::string& filename,
-    const segment_meta& meta
-  ) override;
+    const segment_meta& meta) override;
 
  private:
   int32_t version_;
@@ -2260,8 +2244,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error(string_utils::to_string(
       "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
-      meta.name.c_str(), meta.docs_count, meta.live_docs_count
-    ));
+      meta.name.c_str(), meta.docs_count, meta.live_docs_count));
   }
 
   meta_file = file_name<irs::segment_meta_writer>(meta);
@@ -2270,8 +2253,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
@@ -2305,8 +2287,7 @@ struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // segment_meta_reader
 
 void segment_meta_reader::read(
@@ -2319,14 +2300,12 @@ void segment_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2335,8 +2314,7 @@ void segment_meta_reader::read(
     *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
-    segment_meta_writer::FORMAT_MAX
-  );
+    segment_meta_writer::FORMAT_MAX);
 
   auto name = read_string<std::string>(*in);
   const auto segment_version = in->read_vlong();
@@ -2346,8 +2324,7 @@ void segment_meta_reader::read(
   if (docs_count < live_docs_count) {
     throw index_error(std::string("while reader segment meta '") + name
       + "', error: docs_count(" + std::to_string(docs_count)
-      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")"
-    );
+      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")");
   }
 
   const auto size = in->read_vlong();
@@ -2361,8 +2338,7 @@ void segment_meta_reader::read(
   if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: use of unsupported flags '%u'",
-      name.c_str(), flags
-    ));
+      name.c_str(), flags));
   }
 
   const auto sorted = bool(flags & segment_meta_writer::SORTED);
@@ -2370,15 +2346,13 @@ void segment_meta_reader::read(
   if ((!field_limits::valid(sort)) && sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as sorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   if ((field_limits::valid(sort)) && !sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as unsorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2437,8 +2411,7 @@ void document_mask_writer::write(
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   // segment can't have more than integer_traits<uint32_t>::const_max documents
@@ -2466,8 +2439,7 @@ class document_mask_reader final: public irs::document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask
-  ) override;
+    document_mask& docs_mask) override;
 }; // document_mask_reader
 
 bool document_mask_reader::read(
@@ -2482,8 +2454,7 @@ bool document_mask_reader::read(
   if (!dir.exists(exists, in_name)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   if (!exists) {
@@ -2492,14 +2463,12 @@ bool document_mask_reader::read(
   }
 
   auto in = dir.open(
-    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2508,16 +2477,14 @@ bool document_mask_reader::read(
     *in,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
-    document_mask_writer::FORMAT_MAX
-  );
+    document_mask_writer::FORMAT_MAX);
 
   auto count = in->read_vint();
 
   while (count--) {
     static_assert(
       sizeof(doc_id_t) == sizeof(decltype(in->read_vint())),
-      "sizeof(doc_id) != sizeof(decltype(id))"
-    );
+      "sizeof(doc_id) != sizeof(decltype(id))");
 
     docs_mask.insert(in->read_vint());
   }
@@ -2577,8 +2544,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (!out_) {
     throw io_error(string_utils::to_string(
-      "Failed to create file, path: %s", filename.c_str()
-    ));
+      "Failed to create file, path: %s", filename.c_str()));
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, version_);
@@ -2597,8 +2563,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
       out_ = index_output::make<encrypted_output>(
         std::move(out_),
         *out_cipher_,
-        blocks_in_buffer
-      );
+        blocks_in_buffer);
     }
   }
 }
@@ -2655,8 +2620,7 @@ bool meta_reader::prepare(
   if (!dir.exists(exists, filename)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   if (!exists) {
@@ -2665,14 +2629,12 @@ bool meta_reader::prepare(
   }
 
   in_ = dir.open(
-    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in_) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in_);
@@ -2690,8 +2652,7 @@ bool meta_reader::prepare(
   if (max_id >= irs::integer_traits<size_t>::const_max) {
     throw index_error(string_utils::to_string(
       "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
-      max_id, filename.c_str()
-    ));
+      max_id, filename.c_str()));
   }
 
   format_utils::check_footer(*in_, checksum);
@@ -2702,8 +2663,7 @@ bool meta_reader::prepare(
     *in_,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
-    meta_writer::FORMAT_MAX
-  );
+    meta_writer::FORMAT_MAX);
 
   if (version > meta_writer::FORMAT_MIN) {
     encryption* enc = get_encryption(dir.attributes());
@@ -2973,8 +2933,7 @@ class index_block {
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
-        keys_, block_size, reinterpret_cast<uint32_t*>(buf)
-      );
+        keys_, block_size, reinterpret_cast<uint32_t*>(buf));
 
       if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
         props |= CP_DENSE;
@@ -2992,8 +2951,7 @@ class index_block {
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
-        offsets_, block_size, buf
-      );
+        offsets_, block_size, buf);
 
       if (0 == offsets_[0] && encode::bitpack::rl(bits)) {
         props |= CP_FIXED;
@@ -3036,8 +2994,7 @@ class writer final : public irs::columnstore_writer {
       version_(version) {
     static_assert(
       2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
-      "buffer is not big enough"
-    );
+      "buffer is not big enough");
 
     assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
   }
@@ -3090,7 +3047,7 @@ class writer final : public irs::columnstore_writer {
        // evaluate overall column properties
       auto column_props = blocks_props_;
       if (0 != (column_props_ & CP_DENSE)) { column_props |= CP_COLUMN_DENSE; }
-      if (cipher_) 						   { column_props |= CP_COLUMN_ENCRYPT; }
+      if (cipher_) { column_props |= CP_COLUMN_ENCRYPT; }
 
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
@@ -3239,8 +3196,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   if (!data_out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   format_utils::write_header(*data_out, FORMAT_NAME, version_);
@@ -3351,7 +3307,7 @@ void writer::rollback() noexcept {
 template<typename Block, typename Allocator>
 class block_cache : irs::util::noncopyable {
  public:
-  block_cache(const Allocator& alloc = Allocator())
+  explicit block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
   block_cache(block_cache&&) = default;
@@ -3418,9 +3374,7 @@ class sparse_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
-
+        vend - vbegin); // length
       return true;
     }
 
@@ -3519,8 +3473,7 @@ class sparse_block : util::noncopyable {
     assert(vend >= vbegin);
     out = bytes_ref(
       data_.c_str() + vbegin, // start
-      vend - vbegin // length
-    );
+      vend - vbegin); // length
 
     return true;
   }
@@ -3541,8 +3494,7 @@ class sparse_block : util::noncopyable {
       assert(begin->offset >= vbegin);
       value = bytes_ref(
         data_.c_str() + vbegin, // start
-        begin->offset - vbegin // length
-      );
+        begin->offset - vbegin); // length
 
       if (!visitor(key, value)) {
         return false;
@@ -3553,8 +3505,7 @@ class sparse_block : util::noncopyable {
     assert(data_.size() >= begin->offset);
     value = bytes_ref(
       data_.c_str() + begin->offset, // start
-      data_.size() - begin->offset // length
-    );
+      data_.size() - begin->offset); // length
 
     return visitor(begin->key, value);
   }
@@ -3635,8 +3586,7 @@ class dense_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
+        vend - vbegin); // length
     }
 
     irs::bytes_ref* payload_{ &DUMMY };
@@ -3663,8 +3613,7 @@ class dense_block : util::noncopyable {
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
-        base_, avg
-      ));
+        base_, avg));
     }
 
     // read data offsets
@@ -3718,8 +3667,7 @@ class dense_block : util::noncopyable {
       assert(*begin >= vbegin);
       value = bytes_ref(
         data_.c_str() + vbegin, // start
-        *begin - vbegin // length
-      );
+        *begin - vbegin); // length
 
       if (!visitor(key, value)) {
         return false;
@@ -3730,8 +3678,7 @@ class dense_block : util::noncopyable {
     assert(data_.size() >= *begin);
     value = bytes_ref(
       data_.c_str() + *begin, // start
-      data_.size() - *begin // length
-    );
+      data_.size() - *begin); // length
 
     return visitor(key, value);
   }
@@ -3783,8 +3730,7 @@ class dense_fixed_offset_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_.c_str() + offset,
-        value_ == value_back_ ? data_.size() - offset : avg_length_
-      );
+        value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
     }
@@ -3843,16 +3789,14 @@ class dense_fixed_offset_block : util::noncopyable {
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, avg_delta=%du",
-        base_key_, avg
-      ));
+        base_key_, avg));
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, avg_length=%du",
-        base_key_, avg_length_
-      ));
+        base_key_, avg_length_));
     }
 
     // read data
@@ -3899,8 +3843,7 @@ class dense_fixed_offset_block : util::noncopyable {
     assert(data_.size() >= offset);
     value = bytes_ref(
       data_.c_str() + offset, // start
-      data_.size() - offset // length
-    );
+      data_.size() - offset); // length
 
     return visitor(key, value);
   }
@@ -3967,8 +3910,7 @@ class sparse_mask_block : util::noncopyable {
   sparse_mask_block() noexcept {
     std::fill(
       std::begin(keys_), std::end(keys_),
-      doc_limits::eof()
-    );
+      doc_limits::eof());
   }
 
   void load(index_input& in,
@@ -4002,8 +3944,7 @@ class sparse_mask_block : util::noncopyable {
     // to generate better optimized code
 
     const auto it = std::lower_bound(
-      std::begin(keys_), std::end(keys_), key
-    );
+      std::begin(keys_), std::end(keys_), key);
 
     return !(std::end(keys_) == it || *it > key);
   }
@@ -4106,8 +4047,7 @@ class dense_mask_block {
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_mask_block', base_key=%du, avg_delta=%du",
-        min_, avg
-      ));
+        min_, avg));
     }
 
     // mask block has no data, so all offsets should be equal to 0
@@ -4215,7 +4155,7 @@ typedef read_context<> read_context_t;
 
 class context_provider: private util::noncopyable {
  public:
-  context_provider(size_t max_pool_size)
+  explicit context_provider(size_t max_pool_size)
     : pool_(std::max(size_t(1), max_pool_size)) {
   }
 
@@ -4555,8 +4495,7 @@ class sparse_column final : public column {
   }
 
   virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
+      const columnstore_reader::values_visitor_f& visitor) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *begin, block);
@@ -4855,8 +4794,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed(
         in, INDEX_BLOCK_SIZE, buf,
-        [](uint64_t) {}
-      );
+        [](uint64_t) {});
 
       blocks_count -= INDEX_BLOCK_SIZE;
     }
@@ -4874,8 +4812,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed_tail(
         in, blocks_count, buf,
-        [](uint64_t) { }
-      );
+        [](uint64_t) { });
     }
 
 
@@ -4888,8 +4825,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
   virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
+      const columnstore_reader::values_visitor_f& visitor) const override {
     auto doc = min_;
 
     for (auto left = this->size(); left; --left) {
@@ -5014,8 +4950,7 @@ class reader final: public columnstore_reader, public context_provider {
 
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta
-  ) override;
+    const segment_meta& meta) override;
 
   virtual const column_reader* column(field_id field) const override;
 
@@ -5034,8 +4969,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   if (!dir.exists(exists, filename)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   if (!exists) {
@@ -5049,8 +4983,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   if (!stream) {
     throw io_error(string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   // check header
@@ -5092,8 +5025,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
+        i, static_cast<uint32_t>(props)));
     }
 
     // create column
@@ -5102,21 +5034,18 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     if (!factory) {
       static_assert(
         std::is_same<std::underlying_type<ColumnProperty>::type, uint32_t>::value,
-        "Enum 'ColumnProperty' has different underlying type"
-      );
+        "Enum 'ColumnProperty' has different underlying type");
 
       throw index_error(string_utils::to_string(
         "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
+        i, static_cast<uint32_t>(props)));
     }
 
     auto column = factory(*this, props);
 
     if (!column) {
       throw index_error(string_utils::to_string(
-        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i
-      ));
+        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i));
     }
 
     compression::decompressor::ptr decomp;
@@ -5205,8 +5134,7 @@ void postings_reader_base::prepare(
     postings_writer_base::DOC_EXT,
     postings_writer_base::DOC_FORMAT_NAME,
     postings_writer_base::FORMAT_MIN,
-    postings_writer_base::FORMAT_MAX
-  );
+    postings_writer_base::FORMAT_MAX);
 
   // Since terms doc postings too large
   //  it is too costly to verify checksum of
@@ -5222,8 +5150,7 @@ void postings_reader_base::prepare(
       postings_writer_base::POS_EXT,
       postings_writer_base::POS_FORMAT_NAME,
       postings_writer_base::FORMAT_MIN,
-      postings_writer_base::FORMAT_MAX
-    );
+      postings_writer_base::FORMAT_MAX);
 
     // Since terms pos postings too large
     // it is too costly to verify checksum of
@@ -5239,8 +5166,7 @@ void postings_reader_base::prepare(
         postings_writer_base::PAY_EXT,
         postings_writer_base::PAY_FORMAT_NAME,
         postings_writer_base::FORMAT_MIN,
-        postings_writer_base::FORMAT_MAX
-      );
+        postings_writer_base::FORMAT_MAX);
 
       // Since terms pos postings too large
       // it is too costly to verify checksum of
@@ -5255,16 +5181,14 @@ void postings_reader_base::prepare(
   format_utils::check_header(in,
     postings_writer_base::TERMS_FORMAT_NAME,
     postings_writer_base::TERMS_FORMAT_MIN,
-    postings_writer_base::TERMS_FORMAT_MAX
-  );
+    postings_writer_base::TERMS_FORMAT_MAX);
 
   const uint64_t block_size = in.read_vint();
 
   if (block_size != postings_writer_base::BLOCK_SIZE) {
     throw index_error(string_utils::to_string(
       "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
-      block_size
-    ));
+      block_size));
   }
 }
 
@@ -5338,7 +5262,7 @@ class postings_reader final: public postings_reader_base {
 }; // postings_reader
 
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
@@ -5381,7 +5305,7 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 }
 
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -5569,8 +5493,7 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MAX)
-  );
+    int32_t(columns::meta_writer::FORMAT_MAX));
 }
 
 /*static*/ irs::format::ptr format11::make() {
@@ -5606,8 +5529,7 @@ const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MAX)
-  );
+    int32_t(columns::writer::FORMAT_MAX));
 }
 
 /*static*/ irs::format::ptr format12::make() {
