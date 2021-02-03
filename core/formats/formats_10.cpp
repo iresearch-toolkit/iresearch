@@ -1446,6 +1446,33 @@ class position final : public irs::position,
     return impl::attribute(type);
   }
 
+  virtual value_t seek(value_t target) override {
+    const uint32_t freq = *this->freq_;
+    if (this->pend_pos_ > freq) {
+        skip(this->pend_pos_ - freq);
+        this->pend_pos_ = freq;
+    }
+    while(value_ < target && this->pend_pos_) {
+      if (this->buf_pos_ == postings_writer_base::BLOCK_SIZE) {
+        refill();
+        this->buf_pos_ = 0;
+      }
+      if constexpr (IteratorTraits::one_based_position_storage()) {
+        value_ += (uint32_t)(!pos_limits::valid(value_));
+      }
+      value_ += this->pos_deltas_[this->buf_pos_];
+      assert(irs::pos_limits::valid(value_));
+      this->read_attributes();
+
+      ++this->buf_pos_;
+      --this->pend_pos_;
+    }
+    if (0 == this->pend_pos_ && value_ < target) {
+      value_ = pos_limits::eof();
+    }
+    return value_;
+  }
+
   virtual bool next() override {
     if (0 == this->pend_pos_) {
       value_ = pos_limits::eof();
@@ -1669,6 +1696,7 @@ class doc_iterator final : public irs::doc_iterator {
       refill();
     }
 
+    uint32_t notify{0};
     while (begin_ < end_) {
       doc.value += *begin_++;
 
@@ -1686,16 +1714,19 @@ class doc_iterator final : public irs::doc_iterator {
         auto& freq = std::get<frequency>(attrs_);
         auto& pos = std::get<position<IteratorTraits>>(attrs_);
         freq.value = *doc_freq_++;
-
-        pos.notify(freq.value);
+        notify +=freq.value;
 
         if (doc.value >= target) {
+          pos.notify(notify);
           pos.clear();
           return doc.value;
         }
       }
     }
 
+    if constexpr (IteratorTraits::position()) {
+      std::get<position<IteratorTraits>>(attrs_).notify(notify);
+    }
     while (doc.value < target) {
       next();
     }
