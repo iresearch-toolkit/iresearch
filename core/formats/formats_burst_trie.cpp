@@ -2487,7 +2487,6 @@ bool automaton_term_iterator<FST>::next() {
   } match;
 
   automaton::StateId state;
-  static size_t i;
 
   auto read_suffix = [this, &match, &state, &fst](const byte_type* suffix, size_t suffix_size) {
     match = SKIP;
