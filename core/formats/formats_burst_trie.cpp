@@ -1501,29 +1501,31 @@ template<typename Reader>
 SeekResult block_iterator::scan_leaf(Reader&& reader) {
   assert(leaf_);
   assert(!dirty_);
+  assert(ent_count_ >= cur_ent_);
 
   SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM; // leaf block contains terms only
 
-  while (cur_ent_ < ent_count_) {
-    ++cur_ent_;
-    ++term_count_;
-    const size_t suffix_length = vread<uint64_t>(suffix_begin_);
-#ifdef IRESEARCH_DEBUG
-    assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
+  const byte_type* suffix = suffix_begin_;
+  size_t count = 0;
 
-    res = reader(suffix_begin_, suffix_length);
-
-    suffix_begin_ += suffix_length; // skip to the next term
-#ifdef IRESEARCH_DEBUG
-    assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
+  for (const size_t left = ent_count_ - cur_ent_; count < left; ) {
+    ++count;
+    const size_t suffix_length = vread<uint64_t>(suffix);
+    res = reader(suffix, suffix_length);
+    suffix += suffix_length; // skip to the next term
 
     if (res != SeekResult::NOT_FOUND) {
       break;
     }
   }
+
+  cur_ent_ += count;
+  term_count_ = cur_ent_;
+  suffix_begin_ = suffix;
+#ifdef IRESEARCH_DEBUG
+    assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
   return res;
 }
@@ -1542,18 +1544,12 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
 
     const byte_type* suffix = suffix_begin_;
     suffix_begin_ += suffix_length; // skip to the next entry
-#ifdef IRESEARCH_DEBUG
-    assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
 
     if (ET_TERM == cur_type_) {
       ++term_count_;
     } else {
       assert(cur_type_ == ET_BLOCK);
       cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_);
-#ifdef IRESEARCH_DEBUG
-      assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
     }
 
     res = reader(suffix, suffix_length);
@@ -1562,6 +1558,10 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
       break;
     }
   }
+
+#ifdef IRESEARCH_DEBUG
+    assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
   return res;
 }
@@ -1576,19 +1576,17 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
   const size_t term_suffix_length = term.size() - prefix_;
   const byte_type* term_suffix = term.c_str() + prefix_;
   size_t suffix_length{};
+  const byte_type* suffix = suffix_begin_;
   SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM; // leaf block contains terms only
 
-  while (cur_ent_ < ent_count_) {
-    ++cur_ent_;
-    ++term_count_;
-    suffix_length = vread<uint64_t>(suffix_begin_);
-#ifdef IRESEARCH_DEBUG
-    assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
+  size_t count = 0;
+  for (size_t left = ent_count_ - cur_ent_; count < left; ) {
+    ++count;
+    suffix_length = vread<uint64_t>(suffix);
 
     ptrdiff_t cmp = std::memcmp(
-      suffix_begin_, term_suffix,
+      suffix, term_suffix,
       std::min(suffix_length, term_suffix_length));
 
     if (cmp == 0) {
@@ -1605,17 +1603,17 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
       break;
     }
 
-    suffix_begin_ += suffix_length; // skip to the next term
-#ifdef IRESEARCH_DEBUG
-    assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
+    suffix += suffix_length; // skip to the next term
   }
 
-  reader(suffix_begin_, suffix_length);
-  suffix_begin_ += suffix_length; // skip to the next term
+  cur_ent_ += count;;
+  term_count_ = cur_ent_;
+  suffix_begin_ = suffix + suffix_length;
 #ifdef IRESEARCH_DEBUG
   assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
+
+  reader(suffix, suffix_length);
 
   // we have reached the end of the block
   return res;
