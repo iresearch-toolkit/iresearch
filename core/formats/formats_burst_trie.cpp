@@ -1272,7 +1272,7 @@ class block_iterator : util::noncopyable {
     if (sub_count_ != UNDEFINED) {
       --sub_count_;
       if constexpr (ReadHeader) {
-        vread<uint64_t>(header_begin_);
+        vskip<uint64_t>(header_begin_);
         cur_meta_ = *header_begin_++;
         next_label_ = *header_begin_++;
       }
@@ -1722,7 +1722,7 @@ void block_iterator::reset() {
   if (block_meta::floor(meta_)) {
     assert(sub_count_ != UNDEFINED);
     header_begin_ = header_.c_str() + 1; // +1 to skip meta
-    vread<uint64_t>(header_begin_); // skip address
+    vskip<uint64_t>(header_begin_); // skip address
     sub_count_ = vread<uint64_t>(header_begin_);
     next_label_ = *header_begin_++;
   }

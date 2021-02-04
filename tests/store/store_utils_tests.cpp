@@ -374,6 +374,14 @@ void vencode_from_array(T expected_value, size_t expected_length) {
     ASSERT_EQ(expected_value, irs::vread<T>(ptr));
     ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
   }
+
+  // skip data
+  {
+    const auto* ptr = buf;
+    irs::vskip<T>(ptr);
+    ASSERT_GE(ptr, buf);
+    ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
+  }
 }
 
 #ifdef IRESEARCH_SSE2
