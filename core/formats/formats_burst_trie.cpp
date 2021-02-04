@@ -1262,6 +1262,7 @@ class block_iterator : util::noncopyable {
 
   void load(index_input& in, encryption::stream* cipher);
 
+  template<bool ReadHeader>
   bool next_sub_block() noexcept {
     if (!sub_count_) {
       return false;
@@ -1270,9 +1271,11 @@ class block_iterator : util::noncopyable {
     cur_start_ = cur_end_;
     if (sub_count_ != UNDEFINED) {
       --sub_count_;
-      vread<uint64_t>(header_begin_);
-      cur_meta_ = *header_begin_++;
-      next_label_ = *header_begin_++;
+      if constexpr (ReadHeader) {
+        vread<uint64_t>(header_begin_);
+        cur_meta_ = *header_begin_++;
+        next_label_ = *header_begin_++;
+      }
     }
     dirty_ = true;
     return true;
@@ -1327,7 +1330,7 @@ class block_iterator : util::noncopyable {
   void load_data(const field_meta& meta, attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
- //private:
+ private:
   template<typename Reader>
   void read_entry_leaf(Reader&& reader) {
     assert(leaf_ && cur_ent_ < ent_count_);
@@ -1996,7 +1999,7 @@ bool term_iterator<FST>::next() {
 
   // pop finished blocks
   while (cur_block_->end()) {
-    if (cur_block_->next_sub_block()) {
+    if (cur_block_->next_sub_block<false>()) {
       cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
@@ -2630,6 +2633,8 @@ bool automaton_term_iterator<FST>::next() {
         if (next_label < arc->min) {
           assert(arc->min <= std::numeric_limits<byte_type>::max());
           cur_block_->scan_to_sub_block(byte_type(arc->min));
+          assert(cur_block_->next_label() == block_t::INVALID_LABEL ||
+                 arc->min < uint32_t(cur_block_->next_label()));
         } else if (arc->min < next_label) {
           arc = arcs.seek(next_label);
 
@@ -2648,11 +2653,15 @@ bool automaton_term_iterator<FST>::next() {
           if (!arc) {
             assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
+            assert(cur_block_->next_label() == block_t::INVALID_LABEL ||
+                   arcs.value()->min < uint32_t(cur_block_->next_label()));
           } else {
-            cur_block_->next_sub_block();
+            assert(arc->min <= next_label && next_label <= arc->max);
+            cur_block_->template next_sub_block<true>();
           }
         } else {
-          cur_block_->next_sub_block();
+          assert(arc->min <= next_label && next_label <= arc->max);
+          cur_block_->template next_sub_block<true>();
         }
 
         cur_block_->load(terms_input(), terms_cipher());
@@ -3009,7 +3018,7 @@ class term_reader_visitor {
 
     while (true) {
       while (cur_block->end()) {
-        if (cur_block->next_sub_block()) {
+        if (cur_block->next_sub_block<false>()) {
           cur_block->load(*terms_in_, terms_in_cipher_);
           visitor.sub_block(*cur_block);
         } else if (&block_stack_.front() == cur_block) { // root
