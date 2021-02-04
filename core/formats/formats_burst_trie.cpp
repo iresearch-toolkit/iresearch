@@ -742,17 +742,12 @@ void field_writer::write_block(
     auto& e = stack_[begin];
     assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
 
-    switch (e.type()) {
-      case ET_TERM:
-        write_term_entry(e, prefix, leaf > 0);
-        break;
-      case ET_BLOCK: {
-        write_block_entry(e, prefix, block_start);
-        index.splice(index.end(), e.block().index);
-      } break;
-      default:
-        assert(false);
-        break;
+    if (ET_TERM == e.type()) {
+      write_term_entry(e, prefix, leaf > 0);
+    } else {
+      assert(ET_BLOCK == e.type());
+      write_block_entry(e, prefix, block_start);
+      index.splice(index.end(), e.block().index);
     }
   }
 
@@ -1316,6 +1311,15 @@ class block_iterator : util::noncopyable {
       : scan_to_term_nonleaf(term, std::forward<Reader>(reader));
   }
 
+  template<typename Reader>
+  SeekResult scan(Reader&& reader) {
+    assert(!dirty_);
+
+    return leaf_
+      ? scan_leaf(std::forward<Reader>(reader))
+      : scan_nonleaf(std::forward<Reader>(reader));
+  }
+
   // scan to floor block
   void scan_to_sub_block(byte_type label);
 
@@ -1345,9 +1349,13 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   SeekResult scan_to_term_nonleaf(const bytes_ref& term, Reader&& reader);
-
   template<typename Reader>
   SeekResult scan_to_term_leaf(const bytes_ref& term, Reader&& reader);
+
+  template<typename Reader>
+  SeekResult scan_nonleaf(Reader&& reader);
+  template<typename Reader>
+  SeekResult scan_leaf(Reader&& reader);
 
   byte_weight header_; // block header
   bstring suffix_block_; // suffix data block
@@ -1474,10 +1482,11 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 
-  switch (cur_type_) {
-    case ET_TERM: ++term_count_; break;
-    case ET_BLOCK: cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_); break;
-    default: assert(false); break;
+  if (ET_TERM == cur_type_) {
+    ++term_count_;
+  } else {
+    assert(ET_BLOCK == cur_type_);
+    cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_);
   }
 
   // read after state is updated
@@ -1487,6 +1496,76 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 }
+
+template<typename Reader>
+SeekResult block_iterator::scan_leaf(Reader&& reader) {
+  assert(leaf_);
+  assert(!dirty_);
+
+  SeekResult res = SeekResult::END;
+  cur_type_ = ET_TERM; // leaf block contains terms only
+
+  while (cur_ent_ < ent_count_) {
+    ++cur_ent_;
+    ++term_count_;
+    const size_t suffix_length = vread<uint64_t>(suffix_begin_);
+#ifdef IRESEARCH_DEBUG
+    assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
+
+    res = reader(suffix_begin_, suffix_length);
+
+    suffix_begin_ += suffix_length; // skip to the next term
+#ifdef IRESEARCH_DEBUG
+    assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
+
+    if (res != SeekResult::NOT_FOUND) {
+      break;
+    }
+  }
+
+  return res;
+}
+
+template<typename Reader>
+SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
+  assert(!leaf_);
+  assert(!dirty_);
+
+  size_t suffix_length{};
+  SeekResult res = SeekResult::END;
+
+  while (cur_ent_ < ent_count_) {
+    ++cur_ent_;
+    cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length));
+
+    const byte_type* suffix = suffix_begin_;
+    suffix_begin_ += suffix_length; // skip to the next entry
+#ifdef IRESEARCH_DEBUG
+    assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
+
+    if (ET_TERM == cur_type_) {
+      ++term_count_;
+    } else {
+      assert(cur_type_ == ET_BLOCK);
+      cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_);
+#ifdef IRESEARCH_DEBUG
+      assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
+    }
+
+    res = reader(suffix, suffix_length);
+
+    if (res != SeekResult::NOT_FOUND || cur_type_ == ET_BLOCK) {
+      break;
+    }
+  }
+
+  return res;
+}
+
 
 template<typename Reader>
 SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& reader) {
@@ -1534,6 +1613,9 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
 
   reader(suffix_begin_, suffix_length);
   suffix_begin_ += suffix_length; // skip to the next term
+#ifdef IRESEARCH_DEBUG
+  assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
   // we have reached the end of the block
   return res;
@@ -1563,10 +1645,11 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 
-    switch (cur_type_) {
-      case ET_TERM: ++term_count_; break;
-      case ET_BLOCK: cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_); break;
-      default: assert(false); break;
+    if (ET_TERM == cur_type_) {
+      ++term_count_;
+    } else {
+      assert(ET_BLOCK == cur_type_);
+      cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_begin_);
     }
 
     ptrdiff_t cmp = std::memcmp(
@@ -1661,27 +1744,23 @@ void block_iterator::scan_to_block(uint64_t start) {
     assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
 
-    switch (type) {
-      case ET_TERM:
-        ++term_count_;
-        break;
-      case ET_BLOCK:
-        if (vread<uint64_t>(suffix_begin_) == target) {
-#ifdef IRESEARCH_DEBUG
-          assert(suffix_begin_ <= suffix_end_);
-#endif // IRESEARCH_DEBUG
-          cur_block_start_ = target;
-          return;
-        }
+    if (ET_TERM == type) {
+      ++term_count_;
+    } else {
+      assert(ET_BLOCK == type);
+      if (vread<uint64_t>(suffix_begin_) == target) {
 #ifdef IRESEARCH_DEBUG
         assert(suffix_begin_ <= suffix_end_);
 #endif // IRESEARCH_DEBUG
-        break;
-      default:
-        assert(false);
-        break;
+        cur_block_start_ = target;
+        return;
+      }
+#ifdef IRESEARCH_DEBUG
+      assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
     }
   }
+
   assert(false);
 }
 
@@ -2493,16 +2572,9 @@ bool automaton_term_iterator<FST>::next() {
     }
   }
 
-  enum {
-    MATCH, // current entry is valid term
-    SKIP,  // skip current entry
-    POP    // pop current block
-  } match;
-
   automaton::StateId state;
 
-  auto read_suffix = [this, &match, &state, &fst](const byte_type* suffix, size_t suffix_size) {
-    match = SKIP;
+  auto read_suffix = [this, &state, &fst](const byte_type* suffix, size_t suffix_size) -> SeekResult {
     state = cur_block_->acceptor_state();
 
     const auto* begin = suffix;
@@ -2517,7 +2589,7 @@ bool automaton_term_iterator<FST>::next() {
       const uint32_t lead_label = *begin;
 
       if (lead_label < arc->min) {
-        return;
+        return SeekResult::NOT_FOUND;
       }
 
       if (lead_label > arc->max) {
@@ -2525,10 +2597,10 @@ bool automaton_term_iterator<FST>::next() {
 
         if (!arc) {
           if (arcs.done()) {
-            match = POP; // pop current block
+            return SeekResult::END; // pop current block
           }
 
-          return;
+          return SeekResult::NOT_FOUND;
         }
       }
 
@@ -2536,7 +2608,7 @@ bool automaton_term_iterator<FST>::next() {
       state = arc->nextstate;
 
       if (state == sink_) {
-        return;
+        return SeekResult::NOT_FOUND;
       }
 
 #ifdef IRESEARCH_DEBUG
@@ -2550,7 +2622,7 @@ bool automaton_term_iterator<FST>::next() {
       for (matcher_->SetState(state); begin < end; ++begin) {
         if (!matcher_->Find(*begin)) {
           // suffix doesn't match
-          return;
+          return SeekResult::NOT_FOUND;
         }
 
         state = matcher_->Value().nextstate;
@@ -2560,71 +2632,64 @@ bool automaton_term_iterator<FST>::next() {
 
     assert(begin == end);
 
-    if (state == sink_) {
-      return;
+    if (ET_TERM == cur_block_->type()) {
+      const auto weight = acceptor_->Final(state);
+      if (weight) {
+        payload_value_ = weight.Payload();
+        copy(suffix, cur_block_->prefix(), suffix_size);
+
+        return SeekResult::FOUND;
+      }
+    } else {
+      assert(ET_BLOCK == cur_block_->type());
+      fst::ArcIteratorData<automaton::Arc> data;
+      acceptor_->InitArcIterator(state, &data);
+
+      if (data.narcs) {
+        copy(suffix, cur_block_->prefix(), suffix_size);
+
+        weight_.Resize(cur_block_->weight_prefix());
+        auto fst_state = cur_block_->fst_state();
+
+        if (const auto* begin = suffix; begin < end) {
+          auto& fst_arcs = cur_block_->fst_arcs();
+          fst_arcs.seek(*begin++);
+          assert(!fst_arcs.done());
+          const auto* arc = fst_arcs.value();
+          weight_.PushBack(arc->weight.begin(), arc->weight.end());
+
+          fst_state = fst_arcs.value()->nextstate;
+          for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
+            [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
+            assert(found);
+
+            const auto& arc = fst_matcher_.Value();
+            fst_state = arc.nextstate;
+            fst_matcher_.SetState(fst_state);
+            weight_.PushBack(arc.weight.begin(), arc.weight.end());
+          }
+        }
+
+        const auto& weight = fst.FinalRef(fst_state);
+        assert(!weight.Empty() || fst_buffer::fst_byte_builder::final == fst_state);
+        const auto weight_prefix = weight_.Size();
+        weight_.PushBack(weight.begin(), weight.end());
+
+        block_stack_.emplace_back(
+          static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
+          state, fst_state, data.arcs, data.narcs);
+        assert(cur_block_->block_start() == block_stack_.back().start());
+        cur_block_ = &block_stack_.back();
+
+        if (!acceptor_->Final(state))  {
+          cur_block_->scan_to_sub_block(data.arcs->min);
+        }
+
+        cur_block_->load(terms_input(), terms_cipher());
+      }
     }
 
-    switch (cur_block_->type()) {
-      case ET_TERM: {
-        const auto weight = acceptor_->Final(state);
-        if (weight) {
-          payload_value_ = weight.Payload();
-          copy(suffix, cur_block_->prefix(), suffix_size);
-
-          match = MATCH;
-        }
-      } break;
-      case ET_BLOCK: {
-        fst::ArcIteratorData<automaton::Arc> data;
-        acceptor_->InitArcIterator(state, &data);
-
-        if (data.narcs) {
-          copy(suffix, cur_block_->prefix(), suffix_size);
-
-          weight_.Resize(cur_block_->weight_prefix());
-          auto fst_state = cur_block_->fst_state();
-
-          if (const auto* begin = suffix; begin < end) {
-            auto& fst_arcs = cur_block_->fst_arcs();
-            fst_arcs.seek(*begin++);
-            assert(!fst_arcs.done());
-            const auto* arc = fst_arcs.value();
-            weight_.PushBack(arc->weight.begin(), arc->weight.end());
-
-            fst_state = fst_arcs.value()->nextstate;
-            for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
-              [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
-              assert(found);
-
-              const auto& arc = fst_matcher_.Value();
-              fst_state = arc.nextstate;
-              fst_matcher_.SetState(fst_state);
-              weight_.PushBack(arc.weight.begin(), arc.weight.end());
-            }
-          }
-
-          const auto& weight = fst.FinalRef(fst_state);
-          assert(!weight.Empty() || fst_buffer::fst_byte_builder::final == fst_state);
-          const auto weight_prefix = weight_.Size();
-          weight_.PushBack(weight.begin(), weight.end());
-
-          block_stack_.emplace_back(
-            static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
-            state, fst_state, data.arcs, data.narcs);
-          assert(cur_block_->block_start() == block_stack_.back().start());
-          cur_block_ = &block_stack_.back();
-
-          if (!acceptor_->Final(state))  {
-            cur_block_->scan_to_sub_block(data.arcs->min);
-          }
-
-          cur_block_->load(terms_input(), terms_cipher());
-        }
-      } break;
-      default: {
-        assert(false);
-      } break;
-    }
+    return SeekResult::NOT_FOUND;
   };
 
   for (;;) {
@@ -2693,23 +2758,21 @@ bool automaton_term_iterator<FST>::next() {
       }
     }
 
-    do {
-      cur_block_->next(read_suffix);
+    const auto res = cur_block_->scan(read_suffix);
 
-      if (MATCH == match) {
-        return true;
-      } else if (POP == match) {
-        if (&block_stack_.front() == cur_block_) {
-          // need to pop root block, we're done
-          term_.reset();
-          cur_block_->reset();
-          return false;
-        }
-
-        cur_block_ = pop_block();
-        break; // continue with popped block
+    if (SeekResult::FOUND == res) {
+      return true;
+    } else if (SeekResult::END == res) {
+      if (&block_stack_.front() == cur_block_) {
+        // need to pop root block, we're done
+        term_.reset();
+        cur_block_->reset();
+        return false;
       }
-    } while (!cur_block_->end());
+
+      // continue with popped block
+      cur_block_ = pop_block();
+    }
   }
 }
 
@@ -3042,18 +3105,13 @@ class term_reader_visitor {
 
       while (!cur_block->end()) {
         cur_block->next(copy_suffix);
-        switch (cur_block->type()) {
-          case ET_TERM:
-            visitor.push_term(term_);
-            break;
-          case ET_BLOCK:
-            cur_block = push_block(cur_block->block_start(), term_.size());
-            cur_block->load(*terms_in_, terms_in_cipher_);
-            visitor.push_block(term_, *cur_block);
-            break;
-          default:
-            assert(false);
-            break;
+        if (ET_TERM == cur_block->type()) {
+          visitor.push_term(term_);
+        } else {
+          assert(ET_BLOCK == cur_block->type());
+          cur_block = push_block(cur_block->block_start(), term_.size());
+          cur_block->load(*terms_in_, terms_in_cipher_);
+          visitor.push_block(term_, *cur_block);
         }
       }
     }
