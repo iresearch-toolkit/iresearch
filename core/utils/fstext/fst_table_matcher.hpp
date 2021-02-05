@@ -189,6 +189,7 @@ template<
       cached_label_offsets_[i] = offset;
     }
     std::fill(cached_label_offsets_ + i, std::end(cached_label_offsets_), offset);
+    transitions_begin_ = transitions_.data();
   }
 
   virtual TableMatcher* Copy(bool) const override {
@@ -219,10 +220,20 @@ template<
     }
   }
 
+  StateId Peek(StateId s, Label label) noexcept {
+    assert(!error_);
+
+    const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+                                 ? cached_label_offsets_[size_t(label)]
+                                 : find_label_offset(label));
+    assert(label_offset < num_labels_);
+    return (transitions_begin_ + s*num_labels_)[label_offset];
+  }
+
   virtual void SetState(StateId s) noexcept final {
     assert(!error_);
     assert(s*num_labels_ < transitions_.size());
-    state_begin_ = transitions_.data() + s*num_labels_;
+    state_begin_ = transitions_begin_ + s*num_labels_;
     state_ = state_begin_;
     state_end_ = state_begin_ + num_labels_;
   }
@@ -318,12 +329,13 @@ template<
   size_t num_labels_;
   std::vector<StateId> transitions_;
   Arc arc_;
-  StateId sink_{ fst::kNoStateId };  // sink state
-  const FST* fst_;                   // FST for matching
+  StateId sink_{ fst::kNoStateId };    // sink state
+  const FST* fst_;                     // FST for matching
+  const StateId* transitions_begin_;
   const StateId* state_begin_{};       // Matcher state begin
   const StateId* state_end_{};         // Matcher state end
   const StateId* state_{};             // Matcher current state
-  bool error_;                       // Matcher validity
+  bool error_;                         // Matcher validity
 }; // TableMatcher
 
 } // fst

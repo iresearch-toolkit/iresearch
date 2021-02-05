@@ -1369,13 +1369,13 @@ class block_iterator : util::noncopyable {
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif // IRESEARCH_DEBUG
   version10::term_meta state_;
-  uint64_t cur_ent_{}; // current entry in a block
-  uint64_t ent_count_{}; // number of entries in a current block
+  uint32_t cur_ent_{}; // current entry in a block
+  uint32_t ent_count_{}; // number of entries in a current block
+  uint32_t term_count_{}; // number terms in a block we have seen
+  uint32_t cur_stats_ent_{}; // current position of loaded stats
   uint64_t start_; // initial block start pointer
   uint64_t cur_start_; // current block start pointer
   uint64_t cur_end_; // block end pointer
-  uint64_t term_count_{}; // number terms in a block we have seen
-  uint64_t cur_stats_ent_{}; // current position of loaded stats
   uint64_t cur_block_start_{ UNDEFINED }; // start pointer of the current sub-block entry
   size_t prefix_; // block prefix length
   uint64_t sub_count_; // number of sub-blocks
@@ -1411,7 +1411,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
   }
 
   in.seek(cur_start_);
-  if (shift_unpack_64(in.read_vint(), ent_count_)) {
+  if (shift_unpack_32(in.read_vint(), ent_count_)) {
     sub_count_ = 0; // no sub-blocks
   }
 
@@ -1580,8 +1580,8 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
   SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM; // leaf block contains terms only
 
-  size_t count = 0;
-  for (size_t left = ent_count_ - cur_ent_; count < left; ) {
+  uint32_t count = 0;
+  for (uint32_t left = ent_count_ - cur_ent_; count < left; ) {
     ++count;
     suffix_length = vread<uint64_t>(suffix);
 
@@ -2610,21 +2610,18 @@ bool automaton_term_iterator<FST>::next() {
       }
 
 #ifdef IRESEARCH_DEBUG
-      matcher_->SetState(cur_block_->acceptor_state());
-      assert(matcher_->Find(*begin));
-      assert(matcher_->Value().nextstate == state);
+      assert(matcher_->Peek(cur_block_->acceptor_state(), *begin) == state);
 #endif
 
       ++begin; // already match first suffix label
 
-      for (matcher_->SetState(state); begin < end; ++begin) {
-        if (!matcher_->Find(*begin)) {
+      for (; begin < end; ++begin) {
+        state = matcher_->Peek(state, *begin);
+
+        if (fst::kNoStateId == state) {
           // suffix doesn't match
           return SeekResult::NOT_FOUND;
         }
-
-        state = matcher_->Value().nextstate;
-        matcher_->SetState(state);
       }
     }
 
