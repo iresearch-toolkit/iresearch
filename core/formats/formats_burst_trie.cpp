@@ -1964,24 +1964,21 @@ class term_iterator final : public term_iterator_base {
 
   struct arc {
     arc() = default;
-    arc(arc&&) = default;
-    arc& operator=(arc&&) = delete;
-    arc(stateid_t state, const bytes_ref& weight, block_iterator* block)
+    arc(stateid_t state, const bytes_ref& weight, size_t block) noexcept
       : state(state), weight(weight), block(block) {
     }
 
     stateid_t state;
     bytes_ref weight;
-    block_iterator* block{};
+    size_t block;
   }; // arc
 
   static_assert(std::is_nothrow_move_constructible_v<arc>);
 
   typedef std::vector<arc> seek_state_t;
-  typedef std::deque<block_iterator> block_stack_t;
 
   ptrdiff_t seek_cached(
-    size_t& prefix, stateid_t& state,
+    size_t& prefix, stateid_t& state, size_t& block,
     byte_weight& weight, const bytes_ref& term);
 
   /// @brief Seek to the closest block which contain a specified term
@@ -2051,7 +2048,7 @@ class term_iterator final : public term_iterator_base {
   const FST* fst_;
   explicit_matcher<FST> matcher_;
   seek_state_t sstate_;
-  block_stack_t block_stack_;
+  std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
 }; // term_iterator
 
@@ -2091,7 +2088,7 @@ bool term_iterator<FST>::next() {
     } else if (&block_stack_.front() == cur_block_) { // root
       term_.reset();
       cur_block_->reset();
-      sstate_.resize(0);
+      sstate_.clear();
       return false;
     } else {
       const uint64_t start = cur_block_->start();
@@ -2105,9 +2102,9 @@ bool term_iterator<FST>::next() {
         cur_block_->scan_to_block(start);
       }
     }
-
-    sstate_.resize(std::min(sstate_.size(), cur_block_->prefix()));
   }
+
+  sstate_.resize(std::min(sstate_.size(), cur_block_->prefix()));
 
   auto copy_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     copy(suffix, cur_block_->prefix(), suffix_size);
@@ -2133,14 +2130,11 @@ bool term_iterator<FST>::next() {
 
 template<typename FST>
 ptrdiff_t term_iterator<FST>::seek_cached(
-    size_t& prefix, stateid_t& state,
+    size_t& prefix, stateid_t& state, size_t& block,
     byte_weight& weight, const bytes_ref& target) {
   assert(!block_stack_.empty());
   const byte_type* pterm = term_.c_str();
   const byte_type* ptarget = target.c_str();
-
-  // reset current block to root
-  auto* cur_block = &block_stack_.front();
 
   // determine common prefix between target term and current
   {
@@ -2151,7 +2145,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(
       auto& state_weight = begin->weight;
       weight.PushBack(state_weight.begin(), state_weight.end());
       state = begin->state;
-      cur_block = begin->block;
+      block = begin->block;
     }
 
     prefix = size_t(pterm - term_.c_str());
@@ -2168,10 +2162,13 @@ ptrdiff_t term_iterator<FST>::seek_cached(
   }
 
   if (cmp) {
-    cur_block_ = cur_block; // update cur_block if not at the same block
-
+    // FIXME
     // truncate block_stack_ to match path
-    while (!block_stack_.empty() && &(block_stack_.back()) != cur_block_) {
+//    block_stack_.erase(block_stack_.begin() + block);
+
+    auto* b = &block_stack_[block];
+
+    while (&(block_stack_.back()) != b) {
       block_stack_.pop_back();
     }
   }
@@ -2191,18 +2188,20 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
   prefix = 0; // number of current symbol to process
   stateid_t state = fst.Start(); // start state
   weight_.Clear(); // clear aggregated fst output
+  size_t block = 0;
 
   if (cur_block_) {
-    const auto cmp = seek_cached(prefix, state, weight_, term);
+    const ptrdiff_t cmp = seek_cached(prefix, state, block, weight_, term);
+
     if (cmp > 0) {
       // target term is before the current term
-      cur_block_->reset();
+      block_stack_[block].reset();
     } else if (0 == cmp) {
       // we're already at current term
       return true;
     }
   } else {
-    cur_block_ = push_block(fst.Final(state), prefix);
+    push_block(fst.Final(state), prefix);
   }
 
   term_.oversize(term.size());
@@ -2225,7 +2224,8 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
     const auto& weight = fst.FinalRef(arc.nextstate);
 
     if (!weight.Empty()) {
-      cur_block_ = push_block(fst::Times(weight_, weight), prefix);
+      push_block(fst::Times(weight_, weight), prefix);
+      ++block;
     } else if (fst_buffer::fst_byte_builder::final == arc.nextstate) {
       // ensure final state has no weight assigned
       // the only case when it's wrong is degenerated FST composed of only
@@ -2233,18 +2233,19 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
       // in that case we'll never get there due to the loop condition above.
       assert(fst.FinalRef(fst_buffer::fst_byte_builder::final).Empty());
 
-      cur_block_ = push_block(std::move(weight_), prefix);
+      push_block(std::move(weight_), prefix);
+      ++block;
     }
 
     // cache found arcs, we can reuse it in further seeks
     // avoiding relatively expensive FST lookups
-    sstate_.emplace_back(arc.nextstate, arc.weight, cur_block_);
+    sstate_.emplace_back(arc.nextstate, arc.weight, block);
 
     // proceed to the next state
     state = arc.nextstate;
   }
 
-  assert(cur_block_);
+  cur_block_ = &block_stack_[block];
   prefix = cur_block_->prefix();
   sstate_.resize(prefix);
 
