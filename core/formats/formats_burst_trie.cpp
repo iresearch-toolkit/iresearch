@@ -1255,6 +1255,48 @@ class block_iterator : util::noncopyable {
       sub_count_(UNDEFINED) {
   }
 
+  block_iterator(block_iterator&& rhs) noexcept
+    : //header_(std::move(rhs.header_)),
+      suffix_block_(std::move(rhs.suffix_block_)),
+      stats_block_(std::move(rhs.stats_block_)),
+      //header_begin_(rhs.header_begin_),
+      suffix_begin_(rhs.suffix_begin_),
+      stats_begin_(rhs.stats_begin_),
+#ifdef IRESEARCH_DEBUG
+//      header_end_(rhs.header_end_),
+      suffix_end_(rhs.suffix_end_),
+      stats_end_(rhs.stats_end_),
+#endif // IRESEARCH_DEBUG
+      state_(rhs.state_),
+      cur_ent_(rhs.cur_ent_),
+      ent_count_(rhs.ent_count_),
+      term_count_(rhs.term_count_),
+      cur_stats_ent_(rhs.cur_stats_ent_),
+      start_(rhs.start_),
+      cur_start_(rhs.cur_start_),
+      cur_end_(rhs.cur_end_),
+      cur_block_start_(rhs.cur_block_start_),
+      prefix_(rhs.prefix_),
+      sub_count_(rhs.sub_count_),
+      next_label_(rhs.next_label_),
+      cur_type_(rhs.cur_type_),
+      meta_(rhs.meta_),
+      cur_meta_(rhs.cur_meta_),
+      dirty_(rhs.dirty_),
+      leaf_(rhs.leaf_) {
+    const auto offset = rhs.header_begin_ - rhs.header_.c_str();
+    header_ = std::move(rhs.header_);
+    header_begin_ = header_.c_str() + offset;
+#ifdef IRESEARCH_DEBUG
+    header_end_ = header_begin_ + header_.Size();
+#endif
+  }
+
+  block_iterator& operator=(block_iterator&&) noexcept {
+    assert(false);
+    return *this;
+  }
+
   void load(index_input& in, encryption::stream* cipher);
 
   template<bool ReadHeader>
@@ -2048,7 +2090,7 @@ class term_iterator final : public term_iterator_base {
   const FST* fst_;
   explicit_matcher<FST> matcher_;
   seek_state_t sstate_;
-  std::deque<block_iterator> block_stack_;
+  std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
 }; // term_iterator
 
@@ -2535,7 +2577,7 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   explicit_matcher<FST> fst_matcher_;
   byte_weight weight_;
-  std::deque<block_iterator> block_stack_;
+  std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;
   payload payload_; // payload of the matched automaton state
@@ -2569,18 +2611,13 @@ bool automaton_term_iterator<FST>::next() {
   automaton::StateId state;
 
   auto read_suffix = [this, &state, &fst](const byte_type* suffix, size_t suffix_size) -> SeekResult {
-    state = cur_block_->acceptor_state();
-
-    const auto* begin = suffix;
-    const auto* end = begin + suffix_size;
-
-    if (begin != end) {
+    if (suffix_size) {
       auto& arcs = cur_block_->arcs();
       assert(!arcs.done());
 
       const auto* arc = arcs.value();
 
-      const uint32_t lead_label = *begin;
+      const uint32_t lead_label = *suffix;
 
       if (lead_label < arc->min) {
         return SeekResult::NOT_FOUND;
@@ -2598,7 +2635,7 @@ bool automaton_term_iterator<FST>::next() {
         }
       }
 
-      assert(*begin >= arc->min && *begin <= arc->max);
+      assert(*suffix >= arc->min && *suffix <= arc->max);
       state = arc->nextstate;
 
       if (state == sink_) {
@@ -2606,10 +2643,11 @@ bool automaton_term_iterator<FST>::next() {
       }
 
 #ifdef IRESEARCH_DEBUG
-      assert(matcher_->Peek(cur_block_->acceptor_state(), *begin) == state);
+      assert(matcher_->Peek(cur_block_->acceptor_state(), *suffix) == state);
 #endif
 
-      ++begin; // already match first suffix label
+      const auto* end = suffix + suffix_size;
+      const auto* begin = suffix + 1; // already match first suffix label
 
       for (; begin < end; ++begin) {
         state = matcher_->Peek(state, *begin);
@@ -2619,9 +2657,9 @@ bool automaton_term_iterator<FST>::next() {
           return SeekResult::NOT_FOUND;
         }
       }
+    } else {
+      state = cur_block_->acceptor_state();
     }
-
-    assert(begin == end);
 
     if (ET_TERM == cur_block_->type()) {
       const auto weight = acceptor_->Final(state);
@@ -2642,16 +2680,16 @@ bool automaton_term_iterator<FST>::next() {
         weight_.Resize(cur_block_->weight_prefix());
         auto fst_state = cur_block_->fst_state();
 
-        if (const auto* begin = suffix; begin < end) {
+        if (const auto* end = suffix + suffix_size; suffix < end) {
           auto& fst_arcs = cur_block_->fst_arcs();
-          fst_arcs.seek(*begin++);
+          fst_arcs.seek(*suffix++);
           assert(!fst_arcs.done());
           const auto* arc = fst_arcs.value();
           weight_.PushBack(arc->weight.begin(), arc->weight.end());
 
           fst_state = fst_arcs.value()->nextstate;
-          for (fst_matcher_.SetState(fst_state); begin < end; ++begin) {
-            [[maybe_unused]] const bool found = fst_matcher_.Find(*begin);
+          for (fst_matcher_.SetState(fst_state); suffix < end; ++suffix) {
+            [[maybe_unused]] const bool found = fst_matcher_.Find(*suffix);
             assert(found);
 
             const auto& arc = fst_matcher_.Value();
