@@ -2048,7 +2048,7 @@ class term_iterator final : public term_iterator_base {
   const FST* fst_;
   explicit_matcher<FST> matcher_;
   seek_state_t sstate_;
-  std::vector<block_iterator> block_stack_;
+  std::deque<block_iterator> block_stack_;
   block_iterator* cur_block_{};
 }; // term_iterator
 
@@ -2162,15 +2162,10 @@ ptrdiff_t term_iterator<FST>::seek_cached(
   }
 
   if (cmp) {
-    // FIXME
     // truncate block_stack_ to match path
-//    block_stack_.erase(block_stack_.begin() + block);
-
-    auto* b = &block_stack_[block];
-
-    while (&(block_stack_.back()) != b) {
-      block_stack_.pop_back();
-    }
+    const auto begin = block_stack_.begin() + (block + 1);
+    assert(begin <= block_stack_.end());
+    block_stack_.erase(begin, block_stack_.end());
   }
 
   // cmp < 0 : target term is after the current term
