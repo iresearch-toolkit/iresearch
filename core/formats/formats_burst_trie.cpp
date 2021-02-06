@@ -2382,22 +2382,16 @@ class automaton_arc_matcher {
   }
 
   const automaton::Arc* seek(uint32_t label) noexcept {
-    assert(begin_ != end_ && label >= begin_->min);
-
+    assert(begin_ != end_ && begin_->min <= label);
     // linear search is faster for a small number of arcs
-    for (;begin_ != end_; ++begin_) {
+
+    do {
       if (begin_->min <= label && label <= begin_->max) {
         return begin_;
-      } else if (label < begin_->min) {
-        return nullptr;
       }
 
-      //if (label <= begin_->min) {
-      //  return (begin_->min <= label && label <= begin_->max)
-      //    ? begin_
-      //    : nullptr;
-      //}
-    }
+      ++begin_;
+    } while (begin_ != end_ && begin_->min <= label);
 
     return nullptr;
   }
