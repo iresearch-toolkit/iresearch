@@ -182,6 +182,8 @@ struct block_t : private util::noncopyable {
     volatile_byte_ref prefix;
   }; // prefixed_output
 
+  using block_list_t = std::list<prefixed_output>;
+
   static constexpr int16_t INVALID_LABEL = -1;
 
   block_t(uint64_t block_start, byte_type meta, int16_t label) noexcept
@@ -207,10 +209,10 @@ struct block_t : private util::noncopyable {
     return *this;
   }
 
-  std::list<prefixed_output> index; // fst index data
-  uint64_t start; // file pointer
-  int16_t label;  // block lead label
-  byte_type meta; // block metadata
+  block_list_t index; // fst index data
+  uint64_t start;     // file pointer
+  int16_t label;      // block lead label
+  byte_type meta;     // block metadata
 }; // block_t
 
 // FIXME std::is_nothrow_move_constructible_v<std::list<...>> == false
@@ -502,7 +504,7 @@ const fst::FstReadOptions& fst_read_options() {
 // mininum size of string weight we store in FST
 constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
-void merge_blocks(std::list<entry>& blocks) {
+void merge_blocks(std::vector<entry>& blocks) {
   assert(!blocks.empty());
 
   auto it = blocks.begin();
@@ -660,7 +662,6 @@ class field_writer final : public irs::field_writer {
   // meta - block metadata
   // label - block lead label (if present)
   void write_block(
-    std::list<entry>& blocks,
     size_t prefix, size_t begin,
     size_t end, byte_type meta,
     int16_t label);
@@ -672,6 +673,7 @@ class field_writer final : public irs::field_writer {
   void push(const irs::bytes_ref& term);
 
   std::unordered_map<irs::type_info::type_id, size_t> feature_map_;
+  std::vector<entry> blocks_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -715,7 +717,6 @@ void field_writer::write_block_entry(
 }
 
 void field_writer::write_block(
-    std::list<entry>& blocks,
     size_t prefix,
     size_t begin, size_t end,
     irs::byte_type meta,
@@ -732,9 +733,9 @@ void field_writer::write_block(
   );
 
   // write block entries
-  const uint64_t leaf = !block_meta::blocks(meta);
+  const bool leaf = !block_meta::blocks(meta);
 
-  std::list<block_t::prefixed_output> index;
+  block_t::block_list_t index;
 
   pw_->begin_block();
 
@@ -743,7 +744,7 @@ void field_writer::write_block(
     assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
 
     if (ET_TERM == e.type()) {
-      write_term_entry(e, prefix, leaf > 0);
+      write_term_entry(e, prefix, leaf);
     } else {
       assert(ET_BLOCK == e.type());
       write_block_entry(e, prefix, block_start);
@@ -757,7 +758,7 @@ void field_writer::write_block(
   stats_.stream.flush();
 
   terms_out_->write_vlong(
-    shift_pack_64(static_cast<uint64_t>(block_size), leaf > 0)
+    shift_pack_64(static_cast<uint64_t>(block_size), leaf)
   );
 
   auto copy = [this](const irs::byte_type* b, size_t len) {
@@ -794,7 +795,7 @@ void field_writer::write_block(
   stats_.stream.reset();
 
   // add new block to the list of created blocks
-  blocks.emplace_back(
+  blocks_.emplace_back(
     bytes_ref(last_term_, prefix),
     block_start,
     meta,
@@ -803,19 +804,17 @@ void field_writer::write_block(
   );
 
   if (!index.empty()) {
-    blocks.back().block().index = std::move(index);
+    blocks_.back().block().index = std::move(index);
   }
 }
 
-void field_writer::write_blocks( size_t prefix, size_t count ) {
+void field_writer::write_blocks(size_t prefix, size_t count) {
   // only root node able to write whole stack
   assert(prefix || count == stack_.size());
+  assert(blocks_.empty());
 
   // block metadata
   irs::byte_type meta{};
-
-  // created blocks
-  std::list<entry> blocks;
 
   const size_t end = stack_.size();
   const size_t begin = end - count;
@@ -844,7 +843,7 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
       if (block_size >= min_block_size_
            && end - block_start > max_block_size_) {
         block_meta::floor(meta, block_size < count);
-        write_block( blocks, prefix, block_start, i, meta, next_label );
+        write_block(prefix, block_start, i, meta, next_label);
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
@@ -859,13 +858,13 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   }
 
   // write remaining block
-  if ( block_start < end ) {
+  if (block_start < end) {
     block_meta::floor(meta, end - block_start < count);
-    write_block(blocks, prefix, block_start, end, meta, next_label);
+    write_block(prefix, block_start, end, meta, next_label);
   }
 
   // merge blocks into 1st block
-  ::merge_blocks(blocks);
+  ::merge_blocks(blocks_);
 
   // remove processed entries from the
   // top of the stack
@@ -873,8 +872,9 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
 
   // move root block from temporary storage
   // to the top of the stack
-  if (!blocks.empty()) {
-    stack_.emplace_back(std::move(blocks.front()));
+  if (!blocks_.empty()) {
+    stack_.emplace_back(std::move(blocks_.front()));
+    blocks_.clear();
   }
 }
 
