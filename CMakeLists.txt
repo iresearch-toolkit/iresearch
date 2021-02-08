@@ -8,6 +8,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
+### set required processor architecture
+################################################################################
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
+  set(IRESEARCH_BUILDING_FOR_ARM64 ON)
+else()
+  set(IRESEARCH_BUILDING_FOR_ARM64 OFF)
+endif()
+
+################################################################################
 ### interprocedural optimization (link time optimization)
 ################################################################################
 
