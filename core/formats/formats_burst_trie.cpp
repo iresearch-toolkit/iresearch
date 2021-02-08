@@ -25,6 +25,11 @@
 #include <cassert>
 #include <variant>
 #include <list>
+#include <version>
+
+#ifdef __cpp_lib_memory_resource
+#include <memory_resource>
+#endif
 
 #include "utils/fstext/fst_utils.hpp"
 
@@ -159,7 +164,7 @@ using volatile_byte_ref = volatile_ref<byte_type>;
 using feature_map_t = std::vector<irs::type_info::type_id>;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @class block_t
+/// @struct block_t
 /// @brief block of terms
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
@@ -182,15 +187,31 @@ struct block_t : private util::noncopyable {
     volatile_byte_ref prefix;
   }; // prefixed_output
 
-  using block_list_t = std::list<prefixed_output>;
-
   static constexpr int16_t INVALID_LABEL = -1;
 
-  block_t(uint64_t block_start, byte_type meta, int16_t label) noexcept
+#ifdef __cpp_lib_memory_resource
+  using block_index_t = std::pmr::list<prefixed_output>;
+
+  block_t(std::pmr::memory_resource& mrc,
+          uint64_t block_start,
+          byte_type meta,
+          int16_t label) noexcept
+    : index(&mrc),
+      start(block_start),
+      label(label),
+      meta(meta) {
+  }
+#else
+  using block_index_t = std::list<prefixed_output>;
+
+  block_t(uint64_t block_start,
+          byte_type meta,
+          int16_t label) noexcept
     : start(block_start),
       label(label),
       meta(meta) {
   }
+#endif
 
   block_t(block_t&& rhs) noexcept
     : index(std::move(rhs.index)),
@@ -209,10 +230,10 @@ struct block_t : private util::noncopyable {
     return *this;
   }
 
-  block_list_t index; // fst index data
-  uint64_t start;     // file pointer
-  int16_t label;      // block lead label
-  byte_type meta;     // block metadata
+  block_index_t index; // fst index data
+  uint64_t start;      // file pointer
+  int16_t label;       // block lead label
+  byte_type meta;      // block metadata
 }; // block_t
 
 // FIXME std::is_nothrow_move_constructible_v<std::list<...>> == false
@@ -236,7 +257,7 @@ enum EntryType : byte_type {
 class entry : private util::noncopyable {
  public:
   entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs, bool volatile_term);
-  entry(const irs::bytes_ref& prefix, uint64_t block_start,
+  entry(const irs::bytes_ref& prefix, std::pmr::memory_resource& mrc, uint64_t block_start,
         byte_type meta, int16_t label, bool volatile_term);
   entry(entry&& rhs) noexcept;
   entry& operator=(entry&& rhs) noexcept;
@@ -279,6 +300,7 @@ entry::entry(
 
 entry::entry(
     const irs::bytes_ref& prefix,
+    std::pmr::memory_resource& mrc,
     uint64_t block_start,
     byte_type meta,
     int16_t label,
@@ -290,7 +312,7 @@ entry::entry(
     data_.assign(prefix, volatile_term);
   }
 
-  mem_.construct<block_t>(block_start, meta, label);
+  mem_.construct<block_t>(mrc, block_start, meta, label);
 }
 
 entry::entry(entry&& rhs) noexcept
@@ -673,6 +695,7 @@ class field_writer final : public irs::field_writer {
   void push(const irs::bytes_ref& term);
 
   std::unordered_map<irs::type_info::type_id, size_t> feature_map_;
+  std::pmr::monotonic_buffer_resource block_index_buf_;
   std::vector<entry> blocks_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
@@ -735,7 +758,11 @@ void field_writer::write_block(
   // write block entries
   const bool leaf = !block_meta::blocks(meta);
 
-  block_t::block_list_t index;
+#ifdef __cpp_lib_memory_resource
+  block_t::block_index_t index(&block_index_buf_);
+#else
+  block_t::block_index_t index;
+#endif
 
   pw_->begin_block();
 
@@ -797,11 +824,13 @@ void field_writer::write_block(
   // add new block to the list of created blocks
   blocks_.emplace_back(
     bytes_ref(last_term_, prefix),
+#ifdef __cpp_lib_memory_resource
+    block_index_buf_,
+#endif
     block_start,
     meta,
     label,
-    volatile_state_
-  );
+    volatile_state_);
 
   if (!index.empty()) {
     blocks_.back().block().index = std::move(index);
@@ -908,7 +937,8 @@ field_writer::field_writer(
     burst_trie::Version version /* = Format::MAX */,
     uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
     uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
-  : suffix_(memory_allocator::global()),
+  : block_index_buf_{sizeof(block_t::prefixed_output)*32},
+    suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
@@ -1284,6 +1314,7 @@ class block_iterator : util::noncopyable {
       cur_meta_(rhs.cur_meta_),
       dirty_(rhs.dirty_),
       leaf_(rhs.leaf_) {
+    // FIXME
     const auto offset = rhs.header_begin_ - rhs.header_.c_str();
     header_ = std::move(rhs.header_);
     header_begin_ = header_.c_str() + offset;
