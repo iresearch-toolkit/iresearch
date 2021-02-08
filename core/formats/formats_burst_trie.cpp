@@ -2382,18 +2382,14 @@ class automaton_arc_matcher {
   }
 
   const automaton::Arc* seek(uint32_t label) noexcept {
-    assert(begin_ != end_ && begin_->min <= label);
+    assert(begin_ != end_ && begin_->max < label);
     // linear search is faster for a small number of arcs
 
-    do {
-      if (begin_->min <= label && label <= begin_->max) {
-        return begin_;
-      }
+    while (++begin_ != end_ && begin_->max < label) { }
 
-      ++begin_;
-    } while (begin_ != end_ && begin_->min <= label);
+    assert(begin_ == end_ || label <= begin_->max);
 
-    return nullptr;
+    return begin_ != end_ && begin_->min <= label ? begin_ : nullptr;
   }
 
   const automaton::Arc* value() const noexcept {
@@ -2733,7 +2729,7 @@ bool automaton_term_iterator<FST>::next() {
           cur_block_->scan_to_sub_block(byte_type(arc->min));
           assert(cur_block_->next_label() == block_t::INVALID_LABEL ||
                  arc->min < uint32_t(cur_block_->next_label()));
-        } else if (arc->min < next_label) {
+        } else if (arc->max < next_label) {
           arc = arcs.seek(next_label);
 
           if (arcs.done()) {
