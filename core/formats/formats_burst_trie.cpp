@@ -674,10 +674,6 @@ class field_writer final : public irs::field_writer {
     uint64_t total_term_freq,
     size_t doc_count);
 
-  void write_term_entry(const entry& e, size_t prefix, bool leaf);
-
-  void write_block_entry(const entry& e, size_t prefix, uint64_t block_start);
-
   // prefix - prefix length (in last_term)
   // begin - index of the first entry in the block
   // end - index of the last entry in the block
@@ -718,27 +714,6 @@ class field_writer final : public irs::field_writer {
   const bool volatile_state_;
 }; // field_writer
 
-void field_writer::write_term_entry(const entry& e, size_t prefix, bool leaf) {
-  const irs::bytes_ref& data = e.data();
-  const size_t suf_size = data.size() - prefix;
-  suffix_.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
-  suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
-
-  pw_->encode(stats_.stream, *e.term());
-}
-
-void field_writer::write_block_entry(
-    const entry& e, size_t prefix, uint64_t block_start) {
-  const irs::bytes_ref& data = e.data();
-  const size_t suf_size = data.size() - prefix;
-  suffix_.stream.write_vlong(shift_pack_64(suf_size, true));
-  suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
-
-  // current block start pointer should be greater
-  assert(block_start > e.block().start );
-  suffix_.stream.write_vlong(block_start - e.block().start);
-}
-
 void field_writer::write_block(
     size_t prefix,
     size_t begin, size_t end,
@@ -768,18 +743,31 @@ void field_writer::write_block(
 
   for (; begin < end; ++begin) {
     auto& e = stack_[begin];
-    assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
+    const irs::bytes_ref& data = e.data();
+    const EntryType type = e.type();
+    assert(starts_with(data, bytes_ref(last_term_, prefix)));
 
-    if (ET_TERM == e.type()) {
-      write_term_entry(e, prefix, leaf);
+    const size_t suf_size = data.size() - prefix;
+    assert(suf_size <= UINT64_C(0x7FFFFFFFFFFFFFFF));
+
+    suffix_.stream.write_vlong(leaf
+      ? suf_size
+      : ((suf_size << 1) | static_cast<size_t>(type)));
+    suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
+
+    if (ET_TERM == type) {
+      pw_->encode(stats_.stream, *e.term());
     } else {
-      assert(ET_BLOCK == e.type());
-      write_block_entry(e, prefix, block_start);
+      assert(ET_BLOCK == type);
+
+      // current block start pointer should be greater
+      assert(block_start > e.block().start);
+      suffix_.stream.write_vlong(block_start - e.block().start);
       index.splice(index.end(), e.block().index);
     }
   }
 
-  size_t block_size = suffix_.stream.file_pointer();
+  const size_t block_size = suffix_.stream.file_pointer();
 
   suffix_.stream.flush();
   stats_.stream.flush();
