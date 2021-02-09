@@ -691,7 +691,9 @@ class field_writer final : public irs::field_writer {
   void push(const irs::bytes_ref& term);
 
   std::unordered_map<irs::type_info::type_id, size_t> feature_map_;
+#ifdef __cpp_lib_memory_resource
   std::pmr::monotonic_buffer_resource block_index_buf_;
+#endif
   std::vector<entry> blocks_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
@@ -925,7 +927,10 @@ field_writer::field_writer(
     burst_trie::Version version /* = Format::MAX */,
     uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
     uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
-  : block_index_buf_{sizeof(block_t::prefixed_output)*32},
+  :
+#ifdef __cpp_lib_memory_resource
+    block_index_buf_{sizeof(block_t::prefixed_output)*32},
+#endif
     suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
