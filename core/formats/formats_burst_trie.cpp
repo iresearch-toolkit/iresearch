@@ -1487,6 +1487,9 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
       cipher->decrypt(cur_start_, &(suffix_.block[0]), block_size);
     }
   }
+#ifdef IRESEARCH_DEBUG
+  suffix_.end = suffix_.begin + block_size;
+#endif // IRESEARCH_DEBUG
   suffix_.assert_block_boundaries();
 
   // read stats block
@@ -1506,6 +1509,9 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 #endif // IRESEARCH_DEBUG
     stats_.begin = stats_.block.c_str();
   }
+#ifdef IRESEARCH_DEBUG
+  stats_.end = stats_.begin + block_size;
+#endif // IRESEARCH_DEBUG
   stats_.assert_block_boundaries();
 
   cur_end_ = in.file_pointer();
