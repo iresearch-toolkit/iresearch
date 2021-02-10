@@ -232,7 +232,7 @@ struct block_t : private util::noncopyable {
 
   block_index_t index; // fst index data
   uint64_t start;      // file pointer
-  int16_t label;       // block lead label
+  uint16_t label;      // block lead label
   byte_type meta;      // block metadata
 }; // block_t
 
@@ -1721,7 +1721,7 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     return;
   }
 
-  const uint16_t target = label; // avoid byte_type vs int16_t comparison
+  const uint16_t target = label; // avoid byte_type vs uint16_t comparison
 
   if (target < next_label_) {
     // we don't need search
