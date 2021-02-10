@@ -1257,48 +1257,6 @@ attribute* term_reader_base::get_mutable(irs::type_info::type_id type) noexcept 
   return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
-template<typename T>
-struct data_block {
-  data_block() = default;
-  data_block(T&& block) noexcept
-    : block(std::move(block)),
-      begin(this->block.c_str()) {
-#ifdef IRESEARCH_DEBUG
-    end = begin + this->block.size();
-#endif
-  }
-  data_block(data_block&& rhs) noexcept {
-    *this = std::move(rhs);
-  }
-  data_block& operator=(data_block&& rhs) noexcept {
-    if (this != &rhs) {
-      if (rhs.block.empty()) {
-        begin = rhs.begin;
-      } else {
-        const size_t offset = std::distance(rhs.block.c_str(), rhs.begin);
-        block = std::move(rhs.block);
-        begin = block.c_str() + offset;
-      }
-#ifdef IRESEARCH_DEBUG
-      end = block.empty()
-        ? rhs.end
-        : block.c_str() + block.size();
-#endif
-    }
-    return *this;
-  }
-
-  [[maybe_unused]] void assert_block_boundaries() {
-    assert(begin <= end);
-  }
-
-  T block;
-  const byte_type* begin{block.c_str()};
-#ifdef IRESEARCH_DEBUG
-  const byte_type* end{begin};
-#endif
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @class block_iterator
 ///////////////////////////////////////////////////////////////////////////////
@@ -1396,6 +1354,48 @@ class block_iterator : util::noncopyable {
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
+  template<typename T>
+  struct data_block {
+    data_block() = default;
+    data_block(T&& block) noexcept
+      : block(std::move(block)),
+        begin(this->block.c_str()) {
+  #ifdef IRESEARCH_DEBUG
+      end = begin + this->block.size();
+  #endif
+    }
+    data_block(data_block&& rhs) noexcept {
+      *this = std::move(rhs);
+    }
+    data_block& operator=(data_block&& rhs) noexcept {
+      if (this != &rhs) {
+        if (rhs.block.empty()) {
+          begin = rhs.begin;
+        } else {
+          const size_t offset = std::distance(rhs.block.c_str(), rhs.begin);
+          block = std::move(rhs.block);
+          begin = block.c_str() + offset;
+        }
+  #ifdef IRESEARCH_DEBUG
+        end = block.empty()
+          ? rhs.end
+          : block.c_str() + block.size();
+  #endif
+      }
+      return *this;
+    }
+
+    [[maybe_unused]] void assert_block_boundaries() {
+      assert(begin <= end);
+    }
+
+    T block;
+    const byte_type* begin{block.c_str()};
+  #ifdef IRESEARCH_DEBUG
+    const byte_type* end{begin};
+  #endif
+  }; // data_block
+
   template<typename Reader>
   void read_entry_nonleaf(Reader&& reader);
 
