@@ -171,6 +171,14 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return str_.c_str();
   }
 
+  size_t size() const noexcept {
+    return str_.size();
+  }
+
+  bool empty() const noexcept {
+    return str_.empty();
+  }
+
   void Resize(size_t size) noexcept {
     str_.resize(size);
   }
