@@ -187,7 +187,7 @@ struct block_t : private util::noncopyable {
     volatile_byte_ref prefix;
   }; // prefixed_output
 
-  static constexpr int16_t INVALID_LABEL = -1;
+  static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
 
 #ifdef __cpp_lib_memory_resource
   using block_index_t = std::pmr::list<prefixed_output>;
@@ -195,7 +195,7 @@ struct block_t : private util::noncopyable {
   block_t(std::pmr::memory_resource& mrc,
           uint64_t block_start,
           byte_type meta,
-          int16_t label) noexcept
+          uint16_t label) noexcept
     : index(&mrc),
       start(block_start),
       label(label),
@@ -206,7 +206,7 @@ struct block_t : private util::noncopyable {
 
   block_t(uint64_t block_start,
           byte_type meta,
-          int16_t label) noexcept
+          uint16_t label) noexcept
     : start(block_start),
       label(label),
       meta(meta) {
@@ -258,7 +258,7 @@ class entry : private util::noncopyable {
  public:
   entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs, bool volatile_term);
   entry(const irs::bytes_ref& prefix, std::pmr::memory_resource& mrc, uint64_t block_start,
-        byte_type meta, int16_t label, bool volatile_term);
+        byte_type meta, uint16_t label, bool volatile_term);
   entry(entry&& rhs) noexcept;
   entry& operator=(entry&& rhs) noexcept;
   ~entry() noexcept;
@@ -303,7 +303,7 @@ entry::entry(
     std::pmr::memory_resource& mrc,
     uint64_t block_start,
     byte_type meta,
-    int16_t label,
+    uint16_t label,
     bool volatile_term)
   : type_(ET_BLOCK) {
   if (block_t::INVALID_LABEL != label) {
@@ -682,7 +682,7 @@ class field_writer final : public irs::field_writer {
   void write_block(
     size_t prefix, size_t begin,
     size_t end, byte_type meta,
-    int16_t label);
+    uint16_t label);
 
   // prefix - prefix length ( in last_term
   // count - number of entries to write into block
@@ -720,7 +720,7 @@ void field_writer::write_block(
     size_t prefix,
     size_t begin, size_t end,
     irs::byte_type meta,
-    int16_t label) {
+    uint16_t label) {
   assert(end > begin);
 
   // begin of the block
@@ -842,8 +842,8 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   size_t min_suffix = std::numeric_limits<size_t>::max();
   size_t max_suffix = 0;
 
-  int16_t last_label = block_t::INVALID_LABEL; // last lead suffix label
-  int16_t next_label = block_t::INVALID_LABEL; // next lead suffix label in current block
+  uint16_t last_label{block_t::INVALID_LABEL}; // last lead suffix label
+  uint16_t next_label{block_t::INVALID_LABEL}; // next lead suffix label in current block
   for (size_t i = begin; i < end; ++i) {
     const entry& e = stack_[i];
     const irs::bytes_ref& data = e.data();
@@ -852,7 +852,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
     min_suffix = std::min(suffix, min_suffix);
     max_suffix = std::max(suffix, max_suffix);
 
-    const int16_t label = data.size() == prefix
+    const uint16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
       : data[prefix];
 
@@ -1318,7 +1318,7 @@ class block_iterator : util::noncopyable {
   size_t prefix() const noexcept { return prefix_; }
   EntryType type() const noexcept { return cur_type_; }
   uint64_t block_start() const noexcept { return cur_block_start_; }
-  int16_t next_label() const noexcept { return next_label_; }
+  uint16_t next_label() const noexcept { return next_label_; }
   uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
@@ -1434,7 +1434,7 @@ class block_iterator : util::noncopyable {
   uint64_t cur_block_start_{ UNDEFINED }; // start pointer of the current sub-block entry
   size_t prefix_; // block prefix length
   uint64_t sub_count_; // number of sub-blocks
-  int16_t next_label_{ block_t::INVALID_LABEL }; // next label (of the next sub-block)
+  uint16_t next_label_{ block_t::INVALID_LABEL }; // next label (of the next sub-block)
   EntryType cur_type_{ ET_INVALID }; // term or block
   byte_type meta_{ }; // initial block metadata
   byte_type cur_meta_{ }; // current block metadata
@@ -1721,7 +1721,7 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     return;
   }
 
-  const int16_t target = label; // avoid byte_type vs int16_t comparison
+  const uint16_t target = label; // avoid byte_type vs int16_t comparison
 
   if (target < next_label_) {
     // we don't need search
