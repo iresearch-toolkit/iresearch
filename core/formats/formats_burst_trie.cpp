@@ -1620,7 +1620,6 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
   const byte_type* term_suffix = term.c_str() + prefix_;
   size_t suffix_length{};
   const byte_type* suffix = suffix_.begin;
-  SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM; // leaf block contains terms only
 
   uint32_t count = 0;
@@ -1636,28 +1635,25 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
       cmp = suffix_length - term_suffix_length;
     }
 
-    if (cmp > 0) {
-      // we after the target, not found
-      res = SeekResult::NOT_FOUND;
-      break;
-    } else if (cmp == 0) {
-      // match!
-      res = SeekResult::FOUND;
-      break;
+    if (cmp >= 0) {
+      cur_ent_ += count;
+      term_count_ = cur_ent_;
+      suffix_.begin = suffix + suffix_length;
+      suffix_.assert_block_boundaries();
+
+      reader(suffix, suffix_length);
+
+      return cmp == 0
+        ? SeekResult::FOUND      // match!
+        : SeekResult::NOT_FOUND; // we after the target, not found
     }
 
     suffix += suffix_length; // skip to the next term
   }
 
-  cur_ent_ += count;;
-  term_count_ = cur_ent_;
-  suffix_.begin = suffix + suffix_length;
-  suffix_.assert_block_boundaries();
-
-  reader(suffix, suffix_length);
-
   // we have reached the end of the block
-  return res;
+  suffix_.assert_block_boundaries();
+  return SeekResult::END;
 }
 
 template<typename Reader>
@@ -1670,7 +1666,6 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
   const byte_type* term_suffix = term.c_str() + prefix_;
   size_t suffix_length{};
   const byte_type* suffix{};
-  SeekResult res = SeekResult::END;
 
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
@@ -1695,21 +1690,17 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
       cmp = suffix_length - term_suffix_length;
     }
 
-    if (cmp > 0) {
-      // we after the target, not found
-      res = SeekResult::NOT_FOUND;
-      break;
-    } else if (cmp == 0) {
-      // match!
-      res = SeekResult::FOUND;
-      break;
+    if (cmp >= 0) {
+      reader(suffix, suffix_length);
+
+      return cmp == 0
+        ? SeekResult::FOUND      // match!
+        : SeekResult::NOT_FOUND; // we after the target, not found
     }
   }
 
-  reader(suffix, suffix_length);
-
   // we have reached the end of the block
-  return res;
+  return SeekResult::END;
 }
 
 void block_iterator::scan_to_sub_block(byte_type label) {
