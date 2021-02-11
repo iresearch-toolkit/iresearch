@@ -171,14 +171,6 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return str_.c_str();
   }
 
-  size_t size() const noexcept {
-    return str_.size();
-  }
-
-  bool empty() const noexcept {
-    return str_.empty();
-  }
-
   void Resize(size_t size) noexcept {
     str_.resize(size);
   }
@@ -218,6 +210,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   // intentionally implicit
   operator irs::basic_string_ref<Label>() const noexcept {
     return str_;
+  }
+
+  // intentionally implicit
+  operator std::basic_string<Label>() && noexcept {
+    return std::move(str_);
   }
 
  private:

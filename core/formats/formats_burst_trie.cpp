@@ -524,7 +524,7 @@ const fst::FstReadOptions& fst_read_options() {
 }
 
 // mininum size of string weight we store in FST
-constexpr const size_t MIN_WEIGHT_SIZE = 2;
+[[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
 void merge_blocks(std::vector<entry>& blocks) {
   assert(!blocks.empty());
@@ -1354,10 +1354,9 @@ class block_iterator : util::noncopyable {
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
-  template<typename T>
   struct data_block {
     data_block() = default;
-    data_block(T&& block) noexcept
+    data_block(bstring&& block) noexcept
       : block(std::move(block)),
         begin(this->block.c_str()) {
   #ifdef IRESEARCH_DEBUG
@@ -1389,7 +1388,7 @@ class block_iterator : util::noncopyable {
       assert(begin <= end);
     }
 
-    T block;
+    bstring block;
     const byte_type* begin{block.c_str()};
   #ifdef IRESEARCH_DEBUG
     const byte_type* end{begin};
@@ -1420,9 +1419,9 @@ class block_iterator : util::noncopyable {
   template<typename Reader>
   SeekResult scan_leaf(Reader&& reader);
 
-  data_block<byte_weight> header_; // suffix block header
-  data_block<bstring> suffix_; // suffix data block
-  data_block<bstring> stats_; // stats data block
+  data_block header_; // suffix block header
+  data_block suffix_; // suffix data block
+  data_block stats_; // stats data block
   version10::term_meta state_;
   uint32_t cur_ent_{}; // current entry in a block
   uint32_t ent_count_{}; // number of entries in a current block
