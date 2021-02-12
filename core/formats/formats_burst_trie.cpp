@@ -1263,7 +1263,8 @@ attribute* term_reader_base::get_mutable(irs::type_info::type_id type) noexcept 
 ///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
-  static constexpr uint32_t UNDEFINED{std::numeric_limits<uint32_t>::max()};
+  static constexpr uint32_t UNDEFINED_COUNT{std::numeric_limits<uint32_t>::max()};
+  static constexpr uint64_t UNDEFINED_ADDRESS{std::numeric_limits<uint64_t>::max()};
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
 
@@ -1275,8 +1276,9 @@ class block_iterator : util::noncopyable {
     : start_{start},
       cur_start_{start},
       cur_end_{start},
-      prefix_{prefix},
-      sub_count_{UNDEFINED} {
+      prefix_{static_cast<uint32_t>(prefix)},
+      sub_count_{UNDEFINED_COUNT} {
+    assert(prefix <= std::numeric_limits<uint32_t>::max());
   }
 
   void load(index_input& in, encryption::stream* cipher);
@@ -1288,7 +1290,7 @@ class block_iterator : util::noncopyable {
     }
 
     cur_start_ = cur_end_;
-    if (sub_count_ != UNDEFINED) {
+    if (sub_count_ != UNDEFINED_COUNT) {
       --sub_count_;
       if constexpr (ReadHeader) {
         vskip<uint64_t>(header_.begin);
@@ -1427,8 +1429,8 @@ class block_iterator : util::noncopyable {
   uint64_t start_; // initial block start pointer
   uint64_t cur_start_; // current block start pointer
   uint64_t cur_end_; // block end pointer
-  uint64_t cur_block_start_{ UNDEFINED }; // start pointer of the current sub-block entry
-  size_t prefix_; // block prefix length
+  uint64_t cur_block_start_{ UNDEFINED_ADDRESS }; // start pointer of the current sub-block entry
+  uint32_t prefix_; // block prefix length, 32k at most
   uint32_t cur_ent_{}; // current entry in a block
   uint32_t ent_count_{}; // number of entries in a current block
   uint32_t term_count_{}; // number terms in a block we have seen
@@ -1444,8 +1446,10 @@ class block_iterator : util::noncopyable {
 
 block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_{std::move(header)},
-    prefix_{prefix},
+    prefix_{static_cast<uint32_t>(prefix)},
     sub_count_{0} {
+  assert(prefix <= std::numeric_limits<uint32_t>::max());
+
   cur_meta_ = meta_ = *header_.begin++;
   cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_.begin);
   if (block_meta::floor(meta_)) {
@@ -1516,7 +1520,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   cur_end_ = in.file_pointer();
   cur_ent_ = 0;
-  cur_block_start_ = UNDEFINED;
+  cur_block_start_ = UNDEFINED_ADDRESS;
   term_count_ = 0;
   cur_stats_ent_ = 0;
   dirty_ = false;
@@ -1705,7 +1709,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
 }
 
 void block_iterator::scan_to_sub_block(byte_type label) {
-  assert(sub_count_ != UNDEFINED);
+  assert(sub_count_ != UNDEFINED_COUNT);
 
   if (!sub_count_ || !block_meta::floor(meta_)) {
     // no sub-blocks, nothing to do
@@ -1807,14 +1811,14 @@ void block_iterator::load_data(const field_meta& meta,
 }
 
 void block_iterator::reset() {
-  if (sub_count_ != UNDEFINED) {
+  if (sub_count_ != UNDEFINED_COUNT) {
     sub_count_ = 0;
   }
   next_label_ = block_t::INVALID_LABEL;
   cur_start_ = start_;
   cur_meta_ = meta_;
   if (block_meta::floor(meta_)) {
-    assert(sub_count_ != UNDEFINED);
+    assert(sub_count_ != UNDEFINED_COUNT);
     header_.begin = header_.block.c_str() + 1; // +1 to skip meta
     vskip<uint64_t>(header_.begin); // skip address
     sub_count_ = vread<uint32_t>(header_.begin);
