@@ -552,7 +552,8 @@ void merge_blocks(std::vector<entry>& blocks) {
   out.write_vlong(root_block.start); // start pointer of the block
 
   if (block_meta::floor(root_block.meta)) {
-    out.write_vlong(static_cast<uint64_t>(blocks.size()-1));
+    assert(blocks.size() - 1 < std::numeric_limits<uint32_t>::max());
+    out.write_vint(static_cast<uint32_t>(blocks.size()-1));
     for (++it; it != blocks.end(); ++it ) {
       const auto* block = &it->block();
       assert(block->label != block_t::INVALID_LABEL);
@@ -1262,20 +1263,20 @@ attribute* term_reader_base::get_mutable(irs::type_info::type_id type) noexcept 
 ///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
-  static constexpr uint64_t UNDEFINED = std::numeric_limits<uint64_t>::max();
+  static constexpr uint32_t UNDEFINED{std::numeric_limits<uint32_t>::max()};
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
 
   block_iterator(const bytes_ref& header, size_t prefix)
-    : block_iterator(byte_weight(header), prefix) {
+    : block_iterator{byte_weight{header}, prefix} {
   }
 
   block_iterator(uint64_t start, size_t prefix) noexcept
-    : start_(start),
-      cur_start_(start),
-      cur_end_(start),
-      prefix_(prefix),
-      sub_count_(UNDEFINED) {
+    : start_{start},
+      cur_start_{start},
+      cur_end_{start},
+      prefix_{prefix},
+      sub_count_{UNDEFINED} {
   }
 
   void load(index_input& in, encryption::stream* cipher);
@@ -1319,7 +1320,7 @@ class block_iterator : util::noncopyable {
   EntryType type() const noexcept { return cur_type_; }
   uint64_t block_start() const noexcept { return cur_block_start_; }
   uint16_t next_label() const noexcept { return next_label_; }
-  uint64_t sub_count() const noexcept { return sub_count_; }
+  uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
   uint64_t size() const noexcept { return ent_count_; }
@@ -1423,16 +1424,16 @@ class block_iterator : util::noncopyable {
   data_block suffix_; // suffix data block
   data_block stats_; // stats data block
   version10::term_meta state_;
-  uint32_t cur_ent_{}; // current entry in a block
-  uint32_t ent_count_{}; // number of entries in a current block
-  uint32_t term_count_{}; // number terms in a block we have seen
-  uint32_t cur_stats_ent_{}; // current position of loaded stats
   uint64_t start_; // initial block start pointer
   uint64_t cur_start_; // current block start pointer
   uint64_t cur_end_; // block end pointer
   uint64_t cur_block_start_{ UNDEFINED }; // start pointer of the current sub-block entry
   size_t prefix_; // block prefix length
-  uint64_t sub_count_; // number of sub-blocks
+  uint32_t cur_ent_{}; // current entry in a block
+  uint32_t ent_count_{}; // number of entries in a current block
+  uint32_t term_count_{}; // number terms in a block we have seen
+  uint32_t cur_stats_ent_{}; // current position of loaded stats
+  uint32_t sub_count_; // number of sub-blocks
   uint16_t next_label_{ block_t::INVALID_LABEL }; // next label (of the next sub-block)
   EntryType cur_type_{ ET_INVALID }; // term or block
   byte_type meta_{ }; // initial block metadata
@@ -1442,13 +1443,13 @@ class block_iterator : util::noncopyable {
 }; // block_iterator
 
 block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
-  : header_(std::move(header)),
-    prefix_(prefix),
-    sub_count_(0) {
+  : header_{std::move(header)},
+    prefix_{prefix},
+    sub_count_{0} {
   cur_meta_ = meta_ = *header_.begin++;
   cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_.begin);
   if (block_meta::floor(meta_)) {
-    sub_count_ = vread<uint64_t>(header_.begin);
+    sub_count_ = vread<uint32_t>(header_.begin);
     next_label_ = *header_.begin++;
   }
   header_.assert_block_boundaries();
@@ -1816,7 +1817,7 @@ void block_iterator::reset() {
     assert(sub_count_ != UNDEFINED);
     header_.begin = header_.block.c_str() + 1; // +1 to skip meta
     vskip<uint64_t>(header_.begin); // skip address
-    sub_count_ = vread<uint64_t>(header_.begin);
+    sub_count_ = vread<uint32_t>(header_.begin);
     next_label_ = *header_.begin++;
   }
   dirty_ = true;
