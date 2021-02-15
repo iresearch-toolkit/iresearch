@@ -1121,7 +1121,10 @@ bool field_data::invert(
     const auto res = terms_.emplace(term->value);
 
     if (terms_.end() == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term '%s'", meta_.name.c_str(), ref_cast<char>(term->value).c_str());
+      IR_FRMT_ERROR("field '%s' has invalid term of size '" IR_SIZE_T_SPECIFIER "'",
+                    meta_.name.c_str(), term->value.size());
+      IR_FRMT_TRACE("field '%s' has invalid term '%s'",
+                    meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
 
