@@ -130,7 +130,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
       in = numeric_utils::hton32(in);
     }
 
-    *reinterpret_cast<T*>(out) = in;
+    std::memcpy(out, &in, sizeof(T));
     out += sizeof(T);
   }
 
@@ -173,7 +173,8 @@ struct bytes_io<T, sizeof(uint32_t)> {
   }
 
   static T read(byte_type*& in) {
-    auto value = *reinterpret_cast<T*>(in);
+    T value;
+    std::memcpy(&value, in, sizeof(T));
 
     if (!numeric_utils::is_big_endian()) {
       value = numeric_utils::ntoh32(value);
@@ -236,7 +237,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
       in = numeric_utils::hton64(in);
     }
 
-    *reinterpret_cast<T*>(out) = in;
+    std::memcpy(out, &in, sizeof(T));
     out += sizeof(T);
   }
 
@@ -293,7 +294,8 @@ struct bytes_io<T, sizeof(uint64_t)> {
   }
 
   static T read(byte_type*& in) {
-    auto value = *reinterpret_cast<T*>(in);
+    T value;
+    std::memcpy(&value, in, sizeof(T));
 
     if (!numeric_utils::is_big_endian()) {
       value = numeric_utils::ntoh64(value);

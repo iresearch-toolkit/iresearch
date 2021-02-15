@@ -750,12 +750,13 @@ void field_writer::write_block(
     const EntryType type = e.type();
     assert(starts_with(data, bytes_ref(last_term_, prefix)));
 
-    const size_t suf_size = data.size() - prefix;
-    assert(suf_size <= UINT64_C(0x7FFFFFFFFFFFFFFF));
+    // only terms under 32k are allowed
+    assert(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
+    const uint32_t suf_size = static_cast<uint32_t>(data.size() - prefix);
 
-    suffix_.stream.write_vlong(leaf
+    suffix_.stream.write_vint(leaf
       ? suf_size
-      : ((suf_size << 1) | static_cast<size_t>(type)));
+      : ((suf_size << 1) | static_cast<uint32_t>(type)));
     suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
 
     if (ET_TERM == type) {
@@ -1406,7 +1407,7 @@ class block_iterator : util::noncopyable {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
-    const size_t suffix_length = vread<uint64_t>(suffix_.begin);
+    const size_t suffix_length = vread<uint32_t>(suffix_.begin);
     reader(suffix_.begin, suffix_length);
     suffix_.begin += suffix_length;
     suffix_.assert_block_boundaries();
@@ -1531,7 +1532,7 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
   size_t suffix_length;
-  cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_.begin), suffix_length));
+  cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
   const byte_type* suffix = suffix_.begin;
   suffix_.begin += suffix_length;
   suffix_.assert_block_boundaries();
@@ -1563,7 +1564,7 @@ SeekResult block_iterator::scan_leaf(Reader&& reader) {
 
   for (const size_t left = ent_count_ - cur_ent_; count < left; ) {
     ++count;
-    const size_t suffix_length = vread<uint64_t>(suffix);
+    const size_t suffix_length = vread<uint32_t>(suffix);
     res = reader(suffix, suffix_length);
     suffix += suffix_length; // skip to the next term
 
@@ -1590,7 +1591,7 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
 
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_.begin), suffix_length));
+    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
 
     const byte_type* suffix = suffix_.begin;
     suffix_.begin += suffix_length; // skip to the next entry
@@ -1630,7 +1631,7 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
   uint32_t count = 0;
   for (uint32_t left = ent_count_ - cur_ent_; count < left; ) {
     ++count;
-    suffix_length = vread<uint64_t>(suffix);
+    suffix_length = vread<uint32_t>(suffix);
 
     ptrdiff_t cmp = std::memcmp(
       suffix, term_suffix,
@@ -1674,7 +1675,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
 
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_.begin), suffix_length));
+    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
     suffix_.assert_block_boundaries();
     suffix = suffix_.begin;
     suffix_.begin += suffix_length; // skip to the next entry
@@ -1764,7 +1765,7 @@ void block_iterator::scan_to_block(uint64_t start) {
   const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    const auto type = static_cast<EntryType>(shift_unpack_64(vread<uint64_t>(suffix_.begin), suffix_length));
+    const auto type = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
     suffix_.assert_block_boundaries();
     suffix_.begin += suffix_length;
     suffix_.assert_block_boundaries();
