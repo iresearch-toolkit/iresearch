@@ -1325,7 +1325,7 @@ class block_iterator : util::noncopyable {
   uint16_t next_label() const noexcept { return next_label_; }
   uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
-  bool end() const noexcept { return cur_ent_ == ent_count_; }
+  bool done() const noexcept { return cur_ent_ == ent_count_; }
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
@@ -1407,9 +1407,10 @@ class block_iterator : util::noncopyable {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
-    const size_t suffix_length = vread<uint32_t>(suffix_.begin);
-    reader(suffix_.begin, suffix_length);
-    suffix_.begin += suffix_length;
+    suffix_length_ = vread<uint32_t>(suffix_.begin);
+    reader(suffix_.begin, suffix_length_);
+    suffix_begin_ = suffix_.begin;
+    suffix_.begin += suffix_length_;
     suffix_.assert_block_boundaries();
   }
 
@@ -1427,6 +1428,8 @@ class block_iterator : util::noncopyable {
   data_block suffix_; // suffix data block
   data_block stats_; // stats data block
   version10::term_meta state_;
+  size_t suffix_length_{}; // last matched suffix length
+  const byte_type* suffix_begin_{};
   uint64_t start_; // initial block start pointer
   uint64_t cur_start_; // current block start pointer
   uint64_t cur_end_; // block end pointer
@@ -1559,12 +1562,13 @@ SeekResult block_iterator::scan_leaf(Reader&& reader) {
   SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM; // leaf block contains terms only
 
+  size_t suffix_length = suffix_length_;
   const byte_type* suffix = suffix_.begin;
   size_t count = 0;
 
   for (const size_t left = ent_count_ - cur_ent_; count < left; ) {
     ++count;
-    const size_t suffix_length = vread<uint32_t>(suffix);
+    suffix_length = vread<uint32_t>(suffix);
     res = reader(suffix, suffix_length);
     suffix += suffix_length; // skip to the next term
 
@@ -1575,7 +1579,10 @@ SeekResult block_iterator::scan_leaf(Reader&& reader) {
 
   cur_ent_ += count;
   term_count_ = cur_ent_;
+
   suffix_.begin = suffix;
+  suffix_begin_ = suffix - suffix_length;
+  suffix_length_ = suffix_length;
   suffix_.assert_block_boundaries();
 
   return res;
@@ -1624,9 +1631,10 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
 
   const size_t term_suffix_length = term.size() - prefix_;
   const byte_type* term_suffix = term.c_str() + prefix_;
-  size_t suffix_length{};
+  size_t suffix_length = suffix_length_;
   const byte_type* suffix = suffix_.begin;
   cur_type_ = ET_TERM; // leaf block contains terms only
+  SeekResult res{SeekResult::END};
 
   uint32_t count = 0;
   for (uint32_t left = ent_count_ - cur_ent_; count < left; ) {
@@ -1641,25 +1649,26 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
       cmp = suffix_length - term_suffix_length;
     }
 
-    if (cmp >= 0) {
-      cur_ent_ += count;
-      term_count_ = cur_ent_;
-      suffix_.begin = suffix + suffix_length;
-      suffix_.assert_block_boundaries();
-
-      reader(suffix, suffix_length);
-
-      return cmp == 0
-        ? SeekResult::FOUND      // match!
-        : SeekResult::NOT_FOUND; // we after the target, not found
-    }
-
     suffix += suffix_length; // skip to the next term
+
+    if (cmp >= 0) {
+      res = (cmp == 0
+        ? SeekResult::FOUND       // match!
+        : SeekResult::NOT_FOUND); // after the target, not found
+      break;
+    }
   }
+
+  cur_ent_ += count;
+  term_count_ = cur_ent_;
+  suffix_.begin = suffix;
+  suffix_begin_ = suffix - suffix_length;
+  suffix_length_ = suffix_length;
+  reader(suffix_begin_, suffix_length);
 
   // we have reached the end of the block
   suffix_.assert_block_boundaries();
-  return SeekResult::END;
+  return res;
 }
 
 template<typename Reader>
@@ -2101,7 +2110,7 @@ bool term_iterator<FST>::next() {
   }
 
   // pop finished blocks
-  while (cur_block_->end()) {
+  while (cur_block_->done()) {
     if (cur_block_->next_sub_block<false>()) {
       cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) { // root
@@ -2690,7 +2699,7 @@ bool automaton_term_iterator<FST>::next() {
 
   for (;;) {
     // pop finished blocks
-    while (cur_block_->end()) {
+    while (cur_block_->done()) {
       if (cur_block_->sub_count()) {
         // we always instantiate block with header
         assert(block_t::INVALID_LABEL != cur_block_->next_label());
@@ -3086,7 +3095,7 @@ class term_reader_visitor {
     };
 
     while (true) {
-      while (cur_block->end()) {
+      while (cur_block->done()) {
         if (cur_block->next_sub_block<false>()) {
           cur_block->load(*terms_in_, terms_in_cipher_);
           visitor.sub_block(*cur_block);
@@ -3099,7 +3108,7 @@ class term_reader_visitor {
         }
       }
 
-      while (!cur_block->end()) {
+      while (!cur_block->done()) {
         cur_block->next(copy_suffix);
         if (ET_TERM == cur_block->type()) {
           visitor.push_term(term_);
