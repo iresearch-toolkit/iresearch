@@ -1534,10 +1534,9 @@ template<typename Reader>
 void block_iterator::read_entry_nonleaf(Reader&& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
-  size_t suffix_length;
-  cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
-  const byte_type* suffix = suffix_.begin;
-  suffix_.begin += suffix_length;
+  cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length_);
+  suffix_begin_ = suffix_.begin;
+  suffix_.begin += suffix_length_;
   suffix_.assert_block_boundaries();
 
   if (ET_TERM == cur_type_) {
@@ -1545,12 +1544,11 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   } else {
     assert(ET_BLOCK == cur_type_);
     cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_.begin);
+    suffix_.assert_block_boundaries();
   }
 
   // read after state is updated
-  reader(suffix, suffix_length);
-
-  suffix_.assert_block_boundaries();
+  reader(suffix_begin_, suffix_length_);
 }
 
 template<typename Reader>
@@ -1634,7 +1632,7 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term, Reader&& rea
   size_t suffix_length = suffix_length_;
   const byte_type* suffix = suffix_.begin;
   cur_type_ = ET_TERM; // leaf block contains terms only
-  SeekResult res{SeekResult::END};
+  SeekResult res = SeekResult::END;
 
   uint32_t count = 0;
   for (uint32_t left = ent_count_ - cur_ent_; count < left; ) {
@@ -1679,26 +1677,26 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
 
   const size_t term_suffix_length = term.size() - prefix_;
   const byte_type* term_suffix = term.c_str() + prefix_;
-  size_t suffix_length{};
-  const byte_type* suffix{};
+  size_t suffix_length = suffix_length_;
+  const byte_type* suffix = suffix_.begin;
+  const byte_type* suffix_begin = suffix_begin_;
+  SeekResult res = SeekResult::END;
 
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
-    suffix_.assert_block_boundaries();
-    suffix = suffix_.begin;
-    suffix_.begin += suffix_length; // skip to the next entry
-    suffix_.assert_block_boundaries();
+    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix), suffix_length);
+    suffix_begin = suffix;
+    suffix += suffix_length; // skip to the next entry
 
     if (ET_TERM == cur_type_) {
       ++term_count_;
     } else {
       assert(ET_BLOCK == cur_type_);
-      cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_.begin);
+      cur_block_start_ = cur_start_ - vread<uint64_t>(suffix);
     }
 
     ptrdiff_t cmp = std::memcmp(
-      suffix, term_suffix,
+      suffix_begin, term_suffix,
       std::min(suffix_length, term_suffix_length));
 
     if (cmp == 0) {
@@ -1706,16 +1704,21 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term, Reader&& 
     }
 
     if (cmp >= 0) {
-      reader(suffix, suffix_length);
-
-      return cmp == 0
-        ? SeekResult::FOUND      // match!
-        : SeekResult::NOT_FOUND; // we after the target, not found
+      res = (cmp == 0
+        ? SeekResult::FOUND       // match!
+        : SeekResult::NOT_FOUND); // we after the target, not found
+      break;
     }
   }
 
+  suffix_.begin = suffix;
+  suffix_begin_ = suffix_begin;
+  suffix_length_ = suffix_length;
+  reader(suffix_begin, suffix_length);
+
   // we have reached the end of the block
-  return SeekResult::END;
+  suffix_.assert_block_boundaries();
+  return res;
 }
 
 void block_iterator::scan_to_sub_block(byte_type label) {
