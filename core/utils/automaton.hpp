@@ -25,6 +25,9 @@
 
 #include "shared.hpp"
 
+#include <unordered_map>
+#include <vector>
+
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
@@ -37,6 +40,8 @@
 #endif
 
 #include <fst/fst.h>
+#include <fst/connect.h>
+#include <fst/test-properties.h>
 
 #if defined(_MSC_VER)
   // NOOP
@@ -223,6 +228,169 @@ struct Transition : RangeLabel {
 }; // Transition
 
 } // fsa
+
+template<typename W>
+uint64 ComputeProperties(
+    const Fst<fsa::Transition<W>> &fst, uint64 mask,
+    uint64 *known, bool use_stored) {
+  using Arc = fsa::Transition<W>;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
+  const auto fst_props = fst.Properties(kFstProperties, false);  // FST-stored.
+  // Check stored FST properties first if allowed.
+  if (use_stored) {
+    const auto known_props = KnownProperties(fst_props);
+    // If FST contains required info, return it.
+    if ((known_props & mask) == mask) {
+      if (known) *known = known_props;
+      return fst_props;
+    }
+  }
+  // Computes (trinary) properties explicitly.
+  // Initialize with binary properties (already known).
+  uint64 comp_props = fst_props & kBinaryProperties;
+  // Computes these trinary properties with a DFS. We compute only those that
+  // need a DFS here, since we otherwise would like to avoid a DFS since its
+  // stack could grow large.
+  uint64 dfs_props = kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic |
+                     kAccessible | kNotAccessible | kCoAccessible |
+                     kNotCoAccessible;
+  std::vector<StateId> scc;
+  if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+    SccVisitor<Arc> scc_visitor(&scc, nullptr, nullptr, &comp_props);
+    DfsVisit(fst, &scc_visitor);
+  }
+  // Computes any remaining trinary properties via a state and arcs iterations
+  if (mask & ~(kBinaryProperties | dfs_props)) {
+    comp_props |= kAcceptor | kNoEpsilons | kNoIEpsilons | kNoOEpsilons |
+                  kILabelSorted | kOLabelSorted | kUnweighted | kTopSorted |
+                  kString;
+    if (mask & (kIDeterministic | kNonIDeterministic)) {
+      comp_props |= kIDeterministic;
+    }
+    if (mask & (kODeterministic | kNonODeterministic)) {
+      comp_props |= kODeterministic;
+    }
+    if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+      comp_props |= kUnweightedCycles;
+    }
+
+    struct RangeLabelComparer {
+      bool operator()(Label lhs, Label rhs) const noexcept {
+        if (lhs > rhs) {
+          std::swap(lhs, rhs);
+        }
+
+        fsa::RangeLabel lhsRange{lhs};
+        fsa::RangeLabel rhsRange{rhs};
+
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
+      }
+    };
+
+    using Labels = std::set<Label, RangeLabelComparer>;
+
+    std::unique_ptr<Labels> ilabels;
+    std::unique_ptr<Labels> olabels;
+    StateId nfinal = 0;
+    for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
+      StateId s = siter.Value();
+      Arc prev_arc;
+      // Creates these only if we need to.
+      if (mask & (kIDeterministic | kNonIDeterministic)) {
+        ilabels.reset(new Labels());
+      }
+      if (mask & (kODeterministic | kNonODeterministic)) {
+        olabels.reset(new Labels());
+      }
+      bool first_arc = true;
+      for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {
+        const auto &arc = aiter.Value();
+        if (ilabels && ilabels->find(arc.ilabel) != ilabels->end()) {
+          comp_props |= kNonIDeterministic;
+          comp_props &= ~kIDeterministic;
+        }
+        if (olabels && olabels->find(arc.olabel) != olabels->end()) {
+          comp_props |= kNonODeterministic;
+          comp_props &= ~kODeterministic;
+        }
+        if (arc.ilabel != arc.olabel) {
+          comp_props |= kNotAcceptor;
+          comp_props &= ~kAcceptor;
+        }
+        if (arc.ilabel == 0 && arc.olabel == 0) {
+          comp_props |= kEpsilons;
+          comp_props &= ~kNoEpsilons;
+        }
+        if (arc.ilabel == 0) {
+          comp_props |= kIEpsilons;
+          comp_props &= ~kNoIEpsilons;
+        }
+        if (arc.olabel == 0) {
+          comp_props |= kOEpsilons;
+          comp_props &= ~kNoOEpsilons;
+        }
+        if (!first_arc) {
+          if (arc.ilabel < prev_arc.ilabel) {
+            comp_props |= kNotILabelSorted;
+            comp_props &= ~kILabelSorted;
+          }
+          if (arc.olabel < prev_arc.olabel) {
+            comp_props |= kNotOLabelSorted;
+            comp_props &= ~kOLabelSorted;
+          }
+        }
+        if (arc.weight != Weight::One() && arc.weight != Weight::Zero()) {
+          comp_props |= kWeighted;
+          comp_props &= ~kUnweighted;
+          if ((comp_props & kUnweightedCycles) &&
+              scc[s] == scc[arc.nextstate]) {
+            comp_props |= kWeightedCycles;
+            comp_props &= ~kUnweightedCycles;
+          }
+        }
+        if (arc.nextstate <= s) {
+          comp_props |= kNotTopSorted;
+          comp_props &= ~kTopSorted;
+        }
+        if (arc.nextstate != s + 1) {
+          comp_props |= kNotString;
+          comp_props &= ~kString;
+        }
+        prev_arc = arc;
+        first_arc = false;
+        if (ilabels) ilabels->insert(arc.ilabel);
+        if (olabels) olabels->insert(arc.olabel);
+      }
+
+      if (nfinal > 0) {  // Final state not last.
+        comp_props |= kNotString;
+        comp_props &= ~kString;
+      }
+      const auto final_weight = fst.Final(s);
+      if (final_weight != Weight::Zero()) {  // Final state.
+        if (final_weight != Weight::One()) {
+          comp_props |= kWeighted;
+          comp_props &= ~kUnweighted;
+        }
+        ++nfinal;
+      } else {  // Non-final state.
+        if (fst.NumArcs(s) != 1) {
+          comp_props |= kNotString;
+          comp_props &= ~kString;
+        }
+      }
+    }
+    if (fst.Start() != kNoStateId && fst.Start() != 0) {
+      comp_props |= kNotString;
+      comp_props &= ~kString;
+    }
+  }
+  if (known) *known = KnownProperties(comp_props);
+  return comp_props;
+}
+
 } // fst
 
 #if defined(_MSC_VER)

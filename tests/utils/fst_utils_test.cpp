@@ -45,6 +45,8 @@ TEST(fst_table_matcher_test, test_properties) {
     a.AddState(); // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
+    ASSERT_EQ(fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
@@ -56,6 +58,8 @@ TEST(fst_table_matcher_test, test_properties) {
     a.AddState(); // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    ASSERT_EQ(fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
@@ -67,6 +71,58 @@ TEST(fst_table_matcher_test, test_properties) {
     a.AddState(); // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(21, 22), 0);
+    ASSERT_EQ(fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
+    fst::TableMatcher<decltype(a)> matcher(a, true);
+    ASSERT_EQ(fst::kError, matcher.Properties(0));
+  }
+
+  // non-deterministic
+  {
+    fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
+    a.AddState(); // 0
+    a.AddState(); // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    ASSERT_EQ(fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
+    fst::TableMatcher<decltype(a)> matcher(a, true);
+    ASSERT_EQ(fst::kError, matcher.Properties(0));
+  }
+
+  // non-deterministic
+  {
+    fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
+    a.AddState(); // 0
+    a.AddState(); // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    ASSERT_EQ(fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
+    fst::TableMatcher<decltype(a)> matcher(a, true);
+    ASSERT_EQ(fst::kError, matcher.Properties(0));
+  }
+
+  // non-deterministic, unsorted
+  {
+    fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
+    a.AddState(); // 0
+    a.AddState(); // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
+    ASSERT_EQ(0, a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
+    fst::TableMatcher<decltype(a)> matcher(a, true);
+    ASSERT_EQ(fst::kError, matcher.Properties(0));
+  }
+
+  // deterministic, unsorted
+  {
+    fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
+    a.AddState(); // 0
+    a.AddState(); // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 18), 0);
+    ASSERT_EQ(fst::kIDeterministic, a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
@@ -76,8 +132,10 @@ TEST(fst_table_matcher_test, test_properties) {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
     a.AddState(); // 0
     a.AddState(); // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(2), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1,1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(2,4), 0);
+    ASSERT_EQ(fst::kIDeterministic | fst::kILabelSorted,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::ArcIteratorData<decltype(a)::Arc> data;
     a.InitArcIterator(1, &data);
     const_cast<decltype(a)::Arc&>(data.arcs[0]).olabel = fst::kNoLabel;

@@ -138,6 +138,10 @@ template<
       error_(test_props && (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
     assert(!start_labels_.empty());
 
+    if (error_) {
+      return;
+    }
+
     // initialize transition table
     ArcIteratorData<Arc> data;
     for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
