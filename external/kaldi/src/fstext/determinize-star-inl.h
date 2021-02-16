@@ -258,9 +258,7 @@ template<class F> class DeterminizerStar {
     InputStateId state;
     StringId string;
     Weight weight;
-    bool operator==(const Element &other) const {
-      return !(*this != other);
-    }
+
     bool operator!=(const Element &other) const  {
       return (state != other.state || string != other.string ||
               weight != other.weight);
