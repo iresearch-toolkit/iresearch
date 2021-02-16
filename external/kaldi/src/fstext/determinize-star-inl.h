@@ -368,8 +368,8 @@ template<class F> class DeterminizerStar {
     // This function computes epsilon closure of subset of states by following epsilon links.
     // Called by ProcessSubset.
     // Has no side effects except on the repository.
-    void GetEpsilonClosure(const std::vector<Element> &input_subset,
-                        std::vector<Element> *output_subset);
+    const std::vector<Element>* GetEpsilonClosure(const std::vector<Element> &input_subset,
+                                                  std::vector<Element> *output_subset);
 
    private:
     struct EpsilonClosureInfo {
@@ -445,7 +445,7 @@ template<class F> class DeterminizerStar {
   // called by ProcessSubset.
   // Has no side effects except on the variable repository_, and output_arcs_.
 
-  void ProcessFinal(const std::vector<Element> &closed_subset, OutputStateId state) {
+  void ProcessFinal(const std::vector<Element>& closed_subset, OutputStateId state) {
     // processes final-weights for this subset.
     bool is_final = false;
     StringId final_string = 0;  // = 0 to keep compiler happy.
@@ -497,10 +497,7 @@ template<class F> class DeterminizerStar {
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
   void ProcessTransitions(const std::vector<Element> &closed_subset, OutputStateId state) {
-    std::vector<std::pair<std::pair<Label, bool>, Element> > all_elems;
-
-    std::map<std::pair<Label, bool>, std::vector<Element>> map;
-
+    std::vector<std::pair<std::pair<Label, bool>, Element>> all_elems;
 
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
@@ -523,82 +520,61 @@ template<class F> class DeterminizerStar {
             }
 
             const fst::fsa::RangeLabel label(arc.ilabel);
-
-//            map[{min,false}].push_back(next_elem);
-//            map[{max,true}].push_back(next_elem);
-            for (auto min = label.min; min <= label.max; ) {
-              this_pr.first = { min, false };
-              all_elems.push_back(this_pr);
-              ++min;
-            }
-//            this_pr.first = { min, false };
-//            all_elems.push_back(this_pr);
-//            this_pr.first = { max, true };
-//            all_elems.push_back(this_pr);
+            this_pr.first = { label.min, false };
+            all_elems.emplace_back(this_pr);
+            this_pr.first = { label.max, true };
+            all_elems.emplace_back(this_pr);
           }
         }
       }
     }
-    // now sorted first on input label, then on state.
+    // now sorted first on input label bound, bound type, then on state.
     std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
       if (p1.first.first < p2.first.first) {
         return true;
       } else if (p1.first.first > p2.first.first) {
+        return false;
+      } else if (p1.first.second < p2.first.second) {
+        return true;
+      } else if (p1.first.second > p2.first.second) {
         return false;
       } else {
         return p1.second.state < p2.second.state;
       }
     });
 
-//    auto next = map.begin();
-//    auto end = map.end();
-//
-//    while (next != end) {
-//      auto cur = next++;
-//      if (next == end) {
-//        ProcessTransition(state, fst::fsa::EncodeRange(cur->first.first), &cur->second);
-//        break;
-//      }
-//
-//      if (!cur.first.first &&
-//
-//
-//    }
+   std::vector<Element> subset;
+   fst::fsa::RangeLabel label;
 
+   for (auto& e : all_elems) {
+     const auto [bound, is_max] = e.first;
 
-//    while (begin != end) {
-//      auto cur = begin++;
-//
-//      if (begin != end) {
-//        ProcessTransition(state, fst::fsa::EncodeRange(min, begin->first - 1), &cur->second);
-//        min = begin->first;
-//        cur = begin++;
-//
-//        if (begin == end) {
-//          ProcessTransition(state, fst::fsa::EncodeRange(min), &cur->second);
-//        }
-//      } else {
-//        ProcessTransition(state, fst::fsa::EncodeRange(min), &cur->second);
-//      }
-//    }
+     if (!is_max) {
+       if (label.ilabel != fst::kNoLabel && label.min != bound) {
+         label.max = bound - 1;
+         assert(!subset.empty() && label.min <= label.max);
+         ProcessTransition(state, label.ilabel, &subset);
+       }
 
-    auto begin = all_elems.begin();
-    const auto end = all_elems.end();
+       subset.emplace_back(e.second);
+       label.min = bound;
+     } else {
+       if (label.max != bound) {
+         label.max = bound;
+         assert(!subset.empty() && label.min <= label.max);
+         ProcessTransition(state, label.ilabel, &subset);
+         label.min = bound + 1;
+       }
 
-    std::vector<Element> min_subset;
+       assert(!subset.empty());
+       subset.pop_back();
+       if (subset.empty()) {
+         label.ilabel = fst::kNoLabel;
+       }
+     }
+   }
 
-    while (begin < end) {
-      // Process ranges that share the same input symbol.
-      const Label min = begin->first.first;
-      min_subset.clear();
-      while (begin < end && begin->first.first == min) {
-        min_subset.push_back(begin->second);
-        begin++;
-      }
-
-      // We now have a subset for this ilabel.
-      ProcessTransition(state, irs::range_label::fromRange(min), &min_subset);
-    }
+    assert(subset.empty());
   }
 
   // SubsetToStateId converts a subset (vector of Elements) to a StateId in the output
@@ -637,18 +613,18 @@ template<class F> class DeterminizerStar {
   // of (states, weights)).  After that we ignore epsilons.  We process the final-weight
   // of the state, and then handle transitions out (this may add more determinized states
   // to the queue).
-  void ProcessSubset(const std::pair<std::vector<Element>*, OutputStateId> & pair) {
-    const std::vector<Element> *subset = pair.first;
+  void ProcessSubset(const std::pair<std::vector<Element>*, OutputStateId>& pair) {
     OutputStateId state = pair.second;
 
     std::vector<Element> closed_subset;  // subset after epsilon closure.
-    epsilon_closure_.GetEpsilonClosure(*subset, &closed_subset);
+    const std::vector<Element>* subset = epsilon_closure_.GetEpsilonClosure(*pair.first, &closed_subset);
+    assert(subset);
 
     // Now follow non-epsilon arcs [and also process final states]
-    ProcessFinal(closed_subset, state);
+    ProcessFinal(*subset, state);
 
     // Now handle transitions out of these states.
-    ProcessTransitions(closed_subset, state);
+    ProcessTransitions(*subset, state);
   }
 
   void Debug();
@@ -701,9 +677,10 @@ bool DeterminizeStar(F &ifst,
 }
 
 template<class F>
-void DeterminizerStar<F>::EpsilonClosure::
-            GetEpsilonClosure(const std::vector<Element> &input_subset,
-                                       std::vector<Element> *output_subset) {
+const std::vector<typename DeterminizerStar<F>::Element>*
+DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
+    const std::vector<Element> &input_subset,
+    std::vector<Element> *output_subset) {
   ecinfo_.resize(0);
   size_t size = input_subset.size();
   // find whether input fst is known to be sorted in input label.
@@ -717,16 +694,13 @@ void DeterminizerStar<F>::EpsilonClosure::
 
   size_t s = queue_2_.size();
   if (s == 0) {
-    *output_subset = input_subset;
-    return;
+    return &input_subset;
   } else {
     // queue_2 not empty. Need to create the vector<info>
     for (size_t i = 0; i < size; i++) {
       // the weight has not been processed yet,
       // so put all of them in the "weight_to_process"
-      ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
-                                           input_subset[i].weight,
-                                           false));
+      ecinfo_.emplace_back(input_subset[i], input_subset[i].weight, false);
       ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
       if (id_to_index_.size() < input_subset[i].state + 1) {
@@ -789,9 +763,11 @@ void DeterminizerStar<F>::EpsilonClosure::
       if (info.weight_to_process != Weight::Zero()) {
         info.element.weight = Plus(info.element.weight, info.weight_to_process);
       }
-      output_subset->push_back(info.element);
+      output_subset->emplace_back(info.element);
     }
   }
+
+  return output_subset;
 }
 
 template<class F>
