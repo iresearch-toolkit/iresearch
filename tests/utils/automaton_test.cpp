@@ -24,7 +24,6 @@
 
 #include "utils/automaton_utils.hpp"
 #include "utils/misc.hpp"
-#include "draw-impl.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               boolean_weight_test
@@ -995,7 +994,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       auto* actual_arc = actual_arcs.arcs;
       assert_arc(*actual_arc, irs::range_label{0, 'a' - 1}, def);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{'a'}, finish);
+      assert_arc(*actual_arc, irs::range_label{'a', 'a'}, finish);
       ++actual_arc;
       assert_arc(*actual_arc, irs::range_label{'a' + 1, 127}, def);
       ++actual_arc;
@@ -1098,7 +1097,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(2, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 190}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{191}, finish);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{191, 191}, finish);
     }
 
     // arcs from 'intermediate0'
@@ -1191,7 +1190,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 157}, intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{158}, intermediate2+2);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{158, 158}, intermediate2+2);
       assert_arc(actual_arcs.arcs[2], irs::range_label{159, 191}, intermediate0);
     }
 
@@ -1201,7 +1200,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 149}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{150}, finish);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{150, 150}, finish);
       assert_arc(actual_arcs.arcs[2], irs::range_label{151, 191}, def);
     }
 
@@ -1281,7 +1280,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ++actual_arc;
       assert_arc(*actual_arc, irs::range_label{224, 239}, intermediate1);
       ++actual_arc;
-      assert_arc(*actual_arc, irs::range_label{240}, intermediate2+1);
+      assert_arc(*actual_arc, irs::range_label{240, 240}, intermediate2+1);
       ++actual_arc;
       assert_arc(*actual_arc, irs::range_label{241, 255}, intermediate2);
       ++actual_arc;
@@ -1294,7 +1293,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+1, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 158}, intermediate1);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{159}, intermediate2+2);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{159, 159}, intermediate2+2);
       assert_arc(actual_arcs.arcs[2], irs::range_label{160, 191}, intermediate1);
     }
 
@@ -1304,7 +1303,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+2, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 151}, intermediate0);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{152}, intermediate2+3);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{152, 152}, intermediate2+3);
       assert_arc(actual_arcs.arcs[2], irs::range_label{153, 191}, intermediate0);
     }
 
@@ -1314,7 +1313,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       a.InitArcIterator(intermediate2+3, &actual_arcs);
       ASSERT_EQ(3, actual_arcs.narcs);
       assert_arc(actual_arcs.arcs[0], irs::range_label{128, 128}, def);
-      assert_arc(actual_arcs.arcs[1], irs::range_label{129}, finish);
+      assert_arc(actual_arcs.arcs[1], irs::range_label{129, 129}, finish);
       assert_arc(actual_arcs.arcs[2], irs::range_label{130, 191}, def);
     }
 
