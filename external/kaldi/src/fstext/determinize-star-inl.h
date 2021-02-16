@@ -201,10 +201,12 @@ template<class F> class DeterminizerStar {
       OutputStateId cur_id = SubsetToStateId({elem});
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
+    std::vector<Element> closed_subset;
+    std::vector<std::pair<std::pair<Label, bool>, Element>> all_elems;
     while (!Q_.empty()) {
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
-      ProcessSubset(cur_pair);
+      ProcessSubset(cur_pair, &all_elems, &closed_subset);
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
         if (allow_partial_ == false) {
@@ -368,8 +370,8 @@ template<class F> class DeterminizerStar {
     // This function computes epsilon closure of subset of states by following epsilon links.
     // Called by ProcessSubset.
     // Has no side effects except on the repository.
-    const std::vector<Element>* GetEpsilonClosure(const std::vector<Element> &input_subset,
-                                                  std::vector<Element> *output_subset);
+    void GetEpsilonClosure(const std::vector<Element> &input_subset,
+                           std::vector<Element> *output_subset);
 
    private:
     struct EpsilonClosureInfo {
@@ -496,8 +498,11 @@ template<class F> class DeterminizerStar {
   // with the same ilabel.
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
-  void ProcessTransitions(const std::vector<Element> &closed_subset, OutputStateId state) {
-    std::vector<std::pair<std::pair<Label, bool>, Element>> all_elems;
+  void ProcessTransitions(
+      std::vector<Element>& closed_subset,
+      std::vector<std::pair<std::pair<Label, bool>, Element>>& all_elems,
+      OutputStateId state) {
+    all_elems.clear();
 
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
@@ -543,7 +548,9 @@ template<class F> class DeterminizerStar {
       }
     });
 
-   std::vector<Element> subset;
+   // reuse vector as we don't need data anymore
+   std::vector<Element>& subset = closed_subset;
+   subset.clear();
    fst::fsa::RangeLabel label;
 
    for (auto& e : all_elems) {
@@ -613,18 +620,19 @@ template<class F> class DeterminizerStar {
   // of (states, weights)).  After that we ignore epsilons.  We process the final-weight
   // of the state, and then handle transitions out (this may add more determinized states
   // to the queue).
-  void ProcessSubset(const std::pair<std::vector<Element>*, OutputStateId>& pair) {
+  void ProcessSubset(
+      const std::pair<std::vector<Element>*, OutputStateId>& pair,
+      std::vector<std::pair<std::pair<Label, bool>, Element>>* all_elems,
+      std::vector<Element>* closed_subset) {  // subset after epsilon closure.
     OutputStateId state = pair.second;
 
-    std::vector<Element> closed_subset;  // subset after epsilon closure.
-    const std::vector<Element>* subset = epsilon_closure_.GetEpsilonClosure(*pair.first, &closed_subset);
-    assert(subset);
+    epsilon_closure_.GetEpsilonClosure(*pair.first, closed_subset);
 
     // Now follow non-epsilon arcs [and also process final states]
-    ProcessFinal(*subset, state);
+    ProcessFinal(*closed_subset, state);
 
     // Now handle transitions out of these states.
-    ProcessTransitions(*subset, state);
+    ProcessTransitions(*closed_subset, *all_elems, state);
   }
 
   void Debug();
@@ -677,8 +685,7 @@ bool DeterminizeStar(F &ifst,
 }
 
 template<class F>
-const std::vector<typename DeterminizerStar<F>::Element>*
-DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
+void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
     const std::vector<Element> &input_subset,
     std::vector<Element> *output_subset) {
   ecinfo_.resize(0);
@@ -694,7 +701,8 @@ DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
 
   size_t s = queue_2_.size();
   if (s == 0) {
-    return &input_subset;
+    *output_subset = input_subset;
+    return;
   } else {
     // queue_2 not empty. Need to create the vector<info>
     for (size_t i = 0; i < size; i++) {
@@ -766,8 +774,6 @@ DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
       output_subset->emplace_back(info.element);
     }
   }
-
-  return output_subset;
 }
 
 template<class F>
