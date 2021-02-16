@@ -343,7 +343,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     // root node to its successors
     for (const auto& arc : root.arcs) {
       // FIXME we can potentially expand last arc range rather than adding a new transition
-      a.EmplaceArc(from, arc.label, arc.id);
+      a.EmplaceArc(from, arc.ilabel, arc.id);
     }
 
     root.clear();
@@ -377,7 +377,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
       }
 
       // FIXME we can potentially expand last arc range rather than adding a new transition
-      a.EmplaceArc(from, arc->label, arc->id);
+      a.EmplaceArc(from, arc->ilabel, arc->id);
       min = arc->max + 1;
     }
 

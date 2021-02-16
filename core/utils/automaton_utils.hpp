@@ -192,24 +192,19 @@ class IRESEARCH_API utf8_transitions_builder {
  private:
   struct state;
 
-  struct arc : private util::noncopyable {
-    arc(automaton::Arc::Label label, state* target)
-      : target(target),
-        label(label) {
+  struct arc : range_label, private util::noncopyable {
+    arc(automaton::Arc::Label label, state* target) noexcept
+      : range_label{label},
+        target{target} {
     }
 
-    arc(automaton::Arc::Label label, automaton::StateId target)
-      : id(target),
-        label(label) {
-    }
-
-    arc(arc&& rhs) noexcept
-      : target(rhs.target),
-        label(rhs.label) {
+    arc(automaton::Arc::Label label, automaton::StateId target) noexcept
+      : range_label{label},
+        id{target} {
     }
 
     bool operator==(const automaton::Arc& rhs) const noexcept {
-      return label == rhs.ilabel
+      return ilabel == rhs.ilabel
         && id == rhs.nextstate;
     }
 
@@ -220,13 +215,6 @@ class IRESEARCH_API utf8_transitions_builder {
     union {
       state* target;
       automaton::StateId id;
-    };
-    union {
-      automaton::Arc::Label label;
-      struct {
-        uint32_t max;
-        uint32_t min;
-      };
     };
   }; // arc
 
@@ -266,7 +254,7 @@ class IRESEARCH_API utf8_transitions_builder {
       auto& arcs = s.arcs;
 
       for (auto& arc: arcs) {
-        hash = hash_combine(hash, arc.label);
+        hash = hash_combine(hash, arc.ilabel);
         hash = hash_combine(hash, arc.id);
       }
 
@@ -331,7 +319,7 @@ class IRESEARCH_API utf8_transitions_builder {
       }
 
       for (const auto& a : s.arcs) {
-        fst.EmplaceArc(id, a.label, a.id);
+        fst.EmplaceArc(id, a.ilabel, a.id);
       }
 
       return id;
