@@ -23,6 +23,7 @@
 // Do not include this file directly.  It is included by determinize-star.h
 
 #include "base/kaldi-error.h"
+#include "utils/automaton.hpp"
 
 #include <unordered_map>
 #include <algorithm>
@@ -30,8 +31,6 @@ using std::unordered_map;
 
 #include <vector>
 #include <climits>
-
-#include "utils/automaton.hpp"
 
 namespace fst {
 
@@ -524,10 +523,9 @@ template<class F> class DeterminizerStar {
               next_elem.string = repository_.IdOfSeq(seq);
             }
 
-            const fst::fsa::RangeLabel label(arc.ilabel);
-            this_pr.first = { label.min, false };
+            this_pr.first = { arc.min, false };
             all_elems.emplace_back(this_pr);
-            this_pr.first = { label.max, true };
+            this_pr.first = { arc.max, true };
             all_elems.emplace_back(this_pr);
           }
         }
@@ -551,7 +549,7 @@ template<class F> class DeterminizerStar {
    // reuse vector as we don't need data anymore
    std::vector<Element>& subset = closed_subset;
    subset.clear();
-   fst::fsa::RangeLabel label;
+   fsa::RangeLabel label;
 
    for (auto& e : all_elems) {
      const auto [bound, is_max] = e.first;
