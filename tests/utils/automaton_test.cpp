@@ -822,26 +822,111 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
     assert_properties(a);
 
     std::vector<std::vector<std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>> expected_automaton {
-      { { irs::range_label::fromRange(48),  1  }, { irs::range_label::fromRange(55),  2  },
-        { irs::range_label::fromRange(85),  1  }, { irs::range_label::fromRange(97),  1  },
-        { irs::range_label::fromRange(98),  2  }, { irs::range_label::fromRange(209), 3  },
-        { irs::range_label::fromRange(226), 6  }, { irs::range_label::fromRange(227), 8  },
-        { irs::range_label::fromRange(245), 11 }, { irs::range_label::fromRange(254), 11 },
-        { irs::range_label::fromRange(255), 14 }                                       },
-      {                                                                           },
-      {                                                                           },
-      { { irs::range_label::fromRange(134), 1  }, { irs::range_label::fromRange(144), 1 }   },
-      { { irs::range_label::fromRange(150), 2  }                                       },
-      { { irs::range_label::fromRange(150), 2  }, { irs::range_label::fromRange(151), 2 }   },
-      { { irs::range_label::fromRange(133), 4  }, { irs::range_label::fromRange(158), 5 }   },
-      { { irs::range_label::fromRange(151), 2  }                                       },
-      { { irs::range_label::fromRange(133), 7  }, { irs::range_label::fromRange(158), 7 }   },
-      { { irs::range_label::fromRange(134), 2  }                                       },
-      { { irs::range_label::fromRange(151), 9  }                                       },
-      { { irs::range_label::fromRange(133), 10 }                                       },
-      { { irs::range_label::fromRange(134), 2  }, { irs::range_label::fromRange(150), 2 }   },
-      { { irs::range_label::fromRange(151), 12 }                                       },
-      { { irs::range_label::fromRange(133), 13 }                                       },
+      {
+        { irs::range_label{0,   47},  3  },
+        { irs::range_label{48,  48},  1  },
+        { irs::range_label{49,  54},  3  },
+        { irs::range_label{55,  55},  2  },
+        { irs::range_label{56,  84},  3  },
+        { irs::range_label{85,  85},  1  },
+        { irs::range_label{86,  96},  3  },
+        { irs::range_label{97,  97},  1  },
+        { irs::range_label{98,  98},  2  },
+        { irs::range_label{99,  127}, 3  },
+        { irs::range_label{192, 208}, 4  },
+        { irs::range_label{209, 209}, 7  },
+        { irs::range_label{210, 223}, 4  },
+        { irs::range_label{224, 225}, 5  },
+        { irs::range_label{226, 226}, 10 },
+        { irs::range_label{227, 227}, 12 },
+        { irs::range_label{228, 239}, 5  },
+        { irs::range_label{240, 244}, 6  },
+        { irs::range_label{245, 245}, 15 },
+        { irs::range_label{246, 253}, 6  },
+        { irs::range_label{254, 254}, 15 },
+        { irs::range_label{255, 255}, 18 }
+      },
+      { },
+      { },
+      { },
+      {
+        { irs::range_label{128, 191}, 3  }
+      },
+      {
+        { irs::range_label{128, 191}, 4  }
+      },
+      {
+        { irs::range_label{128, 191}, 5  }
+      },
+      {
+        { irs::range_label{128, 133}, 3  },
+        { irs::range_label{134, 134}, 1  },
+        { irs::range_label{135, 143}, 3  },
+        { irs::range_label{144, 144}, 1  },
+        { irs::range_label{145, 191}, 4  },
+      },
+      {
+        { irs::range_label{128, 149}, 3  },
+        { irs::range_label{150, 150}, 2  },
+        { irs::range_label{151, 191}, 4  },
+      },
+      {
+        { irs::range_label{128, 149}, 3  },
+        { irs::range_label{150, 150}, 2  },
+        { irs::range_label{151, 151}, 2  },
+        { irs::range_label{152, 191}, 4  },
+      },
+      {
+        { irs::range_label{128, 132}, 4  },
+        { irs::range_label{133, 133}, 8  },
+        { irs::range_label{134, 157}, 4  },
+        { irs::range_label{158, 158}, 9  },
+        { irs::range_label{159, 191}, 5  }
+      },
+      {
+        { irs::range_label{128, 150}, 3  },
+        { irs::range_label{151, 151}, 2  },
+        { irs::range_label{152, 191}, 4  }
+      },
+      {
+        { irs::range_label{128, 132}, 4  },
+        { irs::range_label{133, 133}, 11 },
+        { irs::range_label{134, 157}, 4  },
+        { irs::range_label{158, 158}, 11 },
+        { irs::range_label{159, 191}, 5  }
+      },
+      {
+        { irs::range_label{128, 133}, 3  },
+        { irs::range_label{134, 134}, 2  },
+        { irs::range_label{135, 191}, 4  }
+      },
+      {
+        { irs::range_label{128, 150}, 4  },
+        { irs::range_label{151, 151}, 13 },
+        { irs::range_label{152, 191}, 5  }
+      },
+      {
+        { irs::range_label{128, 132}, 5  },
+        { irs::range_label{133, 133}, 14 },
+        { irs::range_label{134, 191}, 6  }
+      },
+      {
+        { irs::range_label{128, 133}, 3  },
+        { irs::range_label{134, 134}, 2  },
+        { irs::range_label{135, 149}, 3  },
+        { irs::range_label{150, 150}, 2  },
+        { irs::range_label{151, 191}, 4  },
+      },
+      {
+        { irs::range_label{128, 150}, 4  },
+        { irs::range_label{151, 151}, 16 },
+        { irs::range_label{152, 191}, 5  }
+      },
+      {
+        { irs::range_label{128, 132}, 5  },
+        { irs::range_label{133, 133}, 17 },
+        { irs::range_label{134, 191}, 6  },
+      },
     };
 
     assert_automaton(a, expected_automaton);
