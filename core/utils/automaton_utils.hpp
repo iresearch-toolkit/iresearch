@@ -32,7 +32,6 @@
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
-#include "draw-impl.h"
 
 namespace iresearch {
 
