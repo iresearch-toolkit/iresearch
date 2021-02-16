@@ -202,18 +202,18 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::BinarySearch() {
     const size_t half = size / 2;
     const size_t mid = high - half;
     aiter_->Seek(mid);
-    const auto [min, max] = fsa::DecodeRange(GetLabel());
-    if (max >= match_label_) {
+    const fsa::RangeLabel range{GetLabel()};
+    if (range.max >= match_label_) {
       high = mid;
     }
     size -= half;
   }
   aiter_->Seek(high);
-  const auto [min, max] = fsa::DecodeRange(GetLabel());
-  if (min <= match_label_ && max >= match_label_) {
+  const fsa::RangeLabel range{GetLabel()};
+  if (range.min <= match_label_ && range.max >= match_label_) {
     return true;
   }
-  if (max < match_label_) {
+  if (range.max < match_label_) {
     aiter_->Next();
   }
   return false;
@@ -224,9 +224,9 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::BinarySearch() {
 template <class FST, fst::MatchType MatchType>
 inline bool SortedRangeExplicitMatcher<FST, MatchType>::LinearSearch() {
   for (aiter_->Reset(); !aiter_->Done(); aiter_->Next()) {
-    const auto [min, max] = fsa::DecodeRange(GetLabel());
-    if (min <= match_label_ && max >= match_label_) return true;
-    if (min > match_label_) break;
+    const fsa::RangeLabel range{GetLabel()};
+    if (range.min <= match_label_ && range.max >= match_label_) return true;
+    if (range.min > match_label_) break;
   }
   return false;
 }

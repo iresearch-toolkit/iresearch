@@ -34,7 +34,6 @@
 
 namespace fst {
 
-
 template<typename F, bool MatchInput, bool ByteLabel>
 std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
   using Label = typename F::Arc::Label;
@@ -46,15 +45,15 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       const auto state = siter.Value();
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
-        auto [min, max] = fsa::DecodeRange(MatchInput ? arc.ilabel : arc.olabel);
-        assert(min <= std::numeric_limits<irs::byte_type>::max());
-        assert(max <= std::numeric_limits<irs::byte_type>::max());
-        max += decltype(max)(max < std::numeric_limits<irs::byte_type>::max());
+        fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
+        assert(range.min <= std::numeric_limits<irs::byte_type>::max());
+        assert(range.max <= std::numeric_limits<irs::byte_type>::max());
+        range.max += decltype(range.max)(range.max < std::numeric_limits<irs::byte_type>::max());
 
-        irs::set_bit(bits[min / irs::bits_required<size_t>()],
-                     min % irs::bits_required<size_t>());
-        irs::set_bit(bits[max / irs::bits_required<size_t>()],
-                     max % irs::bits_required<size_t>());
+        irs::set_bit(bits[range.min / irs::bits_required<size_t>()],
+                     range.min % irs::bits_required<size_t>());
+        irs::set_bit(bits[range.max / irs::bits_required<size_t>()],
+                     range.max % irs::bits_required<size_t>());
       }
     }
 
@@ -90,13 +89,13 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       const auto state = siter.Value();
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
-        auto [min, max] = fsa::DecodeRange(MatchInput ? arc.ilabel : arc.olabel);
-        assert(min <= std::numeric_limits<uint32_t>::max());
-        assert(max <= std::numeric_limits<uint32_t>::max());
-        max += decltype(max)(max < std::numeric_limits<uint32_t>::max());
+        fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
+        assert(range.min <= std::numeric_limits<uint32_t>::max());
+        assert(range.max <= std::numeric_limits<uint32_t>::max());
+        range.max += decltype(range.max)(range.max < std::numeric_limits<uint32_t>::max());
 
-        labels.emplace(min);
-        labels.emplace(max);
+        labels.emplace(range.min);
+        labels.emplace(range.max);
       }
     }
     return { labels.begin(), labels.end() };
@@ -163,14 +162,14 @@ template<
       auto* state_transitions = transitions_.data() + state*num_labels_;
 
       for (; arc != arc_end && label != start_labels_.end(); ++arc) {
-        const auto range = fsa::DecodeRange(get_label(*arc));
-        assert(range.first <= range.second);
+        const fsa::RangeLabel range{get_label(*arc)};
+        assert(range.min <= range.max);
 
-        label = std::find(label, start_labels_.end(), range.first);
+        label = std::find(label, start_labels_.end(), range.min);
         assert(label != start_labels_.end());
 
         auto* label_transitions = state_transitions + std::distance(start_labels_.begin(), label);
-        for ( ; label != start_labels_.end()&& range.second >= *label; ++label) {
+        for ( ; label != start_labels_.end()&& range.max >= *label; ++label) {
           *label_transitions++ = arc->nextstate;
         }
       }

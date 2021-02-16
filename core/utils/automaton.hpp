@@ -56,6 +56,9 @@
 namespace fst {
 namespace fsa {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class BooleanWeight
+////////////////////////////////////////////////////////////////////////////////
 class BooleanWeight {
  public:
   using ReverseWeight = BooleanWeight;
@@ -134,16 +137,11 @@ class BooleanWeight {
 
   PayloadType v_{Invalid};
   PayloadType p_{};
-};
+}; // BooleanWeight
 
-// FIXME remove
-constexpr std::pair<uint32_t, uint32_t> DecodeRange(uint64_t label) noexcept {
-  return {
-    static_cast<uint32_t>(label >> 32),
-    static_cast<uint32_t>(label & UINT64_C(0xFFFFFFFF))
-  };
-}
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct RangeLabel
+////////////////////////////////////////////////////////////////////////////////
 struct RangeLabel {
   static constexpr RangeLabel fromRange(uint32_t min, uint32_t max) noexcept {
     return RangeLabel{min, max};
@@ -185,6 +183,9 @@ struct RangeLabel {
   };
 }; // RangeLabel
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct Transition
+////////////////////////////////////////////////////////////////////////////////
 template<typename W = BooleanWeight>
 struct Transition : RangeLabel {
   using Weight = W;

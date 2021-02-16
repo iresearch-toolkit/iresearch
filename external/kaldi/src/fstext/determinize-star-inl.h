@@ -544,7 +544,7 @@ template<class F> class DeterminizerStar {
       }
     });
 
-   // reuse vector as we don't need data anymore
+   // reuse memory as we don't need data anymore
    std::vector<Element>& subset = closed_subset;
    subset.clear();
    fsa::RangeLabel label;
