@@ -998,32 +998,13 @@ void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
           ofst->AddArc(cur_state, arc);
           cur_state = next_state;
         }
-
+        // Add the final arc in the sequence.
         Arc arc;
         arc.nextstate = temp_arc.nextstate;
         arc.weight = (seq.size() <= 1 ? temp_arc.weight : Weight::One());
         arc.ilabel = (seq.size() <= 1 ? temp_arc.ilabel : 0);
         arc.olabel = (seq.size() > 0 ? seq.back() : 0);
-//        ofst->AddArc(cur_state, arc);
-
-        fst::ArcIteratorData<Arc> data;
-        ofst->InitArcIterator(cur_state, &data);
-        if (data.narcs) {
-          auto& a = data.arcs[data.narcs - 1];
-          const auto [min, max] = fst::fsa::DecodeRange(arc.ilabel);
-          const auto [min1, max1] = fst::fsa::DecodeRange(a.ilabel);
-
-          if (arc.nextstate == a.nextstate &&
-             (min - max1 <= 1)) {
-            const_cast<Arc&>(a).ilabel = irs::range_label{min1, max};
-          } else {
-            ofst->AddArc(cur_state, arc);
-          }
-        } else {
-          // Add the final arc in the sequence.
-          ofst->AddArc(cur_state, arc);
-        }
-
+        ofst->AddArc(cur_state, arc);
       }
     }
     // Free up memory.  Do this inside the loop as ofst is also allocating memory

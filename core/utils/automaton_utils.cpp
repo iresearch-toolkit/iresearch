@@ -102,7 +102,7 @@ void utf8_emplace_arc(
   }
 
   // connect intermediate states of default multi-byte UTF8 sequence
-  constexpr range_label RHO_LABEL(128, 191);
+  constexpr range_label RHO_LABEL{128, 191};
   a.EmplaceArc(rho_states[1], RHO_LABEL, rho_states[0]);
   a.EmplaceArc(rho_states[2], RHO_LABEL, rho_states[1]);
   a.EmplaceArc(rho_states[3], RHO_LABEL, rho_states[2]);
