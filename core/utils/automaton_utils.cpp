@@ -282,7 +282,9 @@ void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
     if (s.id == fst::kNoStateId) {
       // here we deal with rho transition only for
       // intermediate states, i.e. char range is [128;191]
-      s.add_rho_arc(128, 192, rho_states_[last_.size() - i]);
+      const size_t rho_idx = last_.size() - i - 1;
+      assert(rho_idx >= 0 && rho_idx < IRESEARCH_COUNTOF(rho_states_));
+      s.add_rho_arc(128, 192, rho_states_[rho_idx]);
     }
 
     p.arcs.back().id = states_map_.insert(s, a); // finalize state

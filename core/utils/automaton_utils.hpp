@@ -192,7 +192,7 @@ class IRESEARCH_API utf8_transitions_builder {
  private:
   struct state;
 
-  struct arc : range_label, private util::noncopyable {
+  struct arc : public range_label, private util::noncopyable {
     arc(automaton::Arc::Label label, state* target) noexcept
       : range_label{label},
         target{target} {
@@ -224,8 +224,8 @@ class IRESEARCH_API utf8_transitions_builder {
       arcs.clear();
     }
 
-    void add_rho_arc(uint32_t min, uint32_t max, automaton::StateId rho_state) {
-      if (fst::kNoStateId == rho_state) {
+    void add_rho_arc(uint32_t min, uint32_t max, automaton::StateId rho) {
+      if (fst::kNoStateId == rho) {
         return;
       }
 
@@ -234,7 +234,7 @@ class IRESEARCH_API utf8_transitions_builder {
       }
 
       if (min < max) {
-        arcs.emplace_back(range_label{min, max - 1}, rho_state);
+        arcs.emplace_back(range_label{min, max - 1}, rho);
       }
     }
 
