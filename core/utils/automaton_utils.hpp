@@ -139,7 +139,33 @@ class automaton_term_iterator final : public seek_term_iterator {
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
-}; // rautomaton_term_iterator
+}; // automaton_term_iterator
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief add a new transition to "to" state denoted by "label" or expands
+///        the last already existing one
+//////////////////////////////////////////////////////////////////////////////
+inline void add_or_expand_arc(
+    automaton& a,
+    automaton::StateId from,
+    range_label label,
+    automaton::StateId to) {
+  assert(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
+
+  fst::ArcIteratorData<automaton::Arc> data;
+  a.InitArcIterator(from, &data);
+
+  if (data.narcs) {
+    auto& prev = const_cast<automaton::Arc&>(data.arcs[data.narcs-1]);
+    assert(prev < label);
+    if (prev.nextstate == to && label.min - prev.max <= 1) {
+      prev.ilabel = range_label{prev.min, label.max};
+      return;
+    }
+  }
+
+  a.EmplaceArc(from, label, to);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class utf8_transitions_builder

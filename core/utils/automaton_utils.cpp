@@ -315,7 +315,6 @@ void utf8_transitions_builder::insert(
       p.add_rho_arc(128, ch, rho_states_[size - i]);
     }
 
-    // FIXME we can potentially expand last arc range rather than adding a new transition
     p.arcs.emplace_back(range_label::fromRange(ch), &states_[i]);
   }
 
@@ -344,7 +343,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     // no default state: just add transitions from the
     // root node to its successors
     for (const auto& arc : root.arcs) {
-      // FIXME we can potentially expand last arc range rather than adding a new transition
       a.EmplaceArc(from, arc.ilabel, arc.id);
     }
 
@@ -368,8 +366,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
     for (; arc != end && arc->max <= max; ++arc) {
       // ensure arcs are sorted
       assert(min <= arc->min);
-
-      // ensure all arcs denote a single char, otherwise
+      // ensure every arc denotes a single char, otherwise
       // we have to use "arc->min" below which is a bit more
       // expensive to access
       assert(arc->min == arc->max);
@@ -378,7 +375,6 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
         a.EmplaceArc(from, range_label{min, arc->max - 1}, rho_state);
       }
 
-      // FIXME we can potentially expand last arc range rather than adding a new transition
       a.EmplaceArc(from, arc->ilabel, arc->id);
       min = arc->max + 1;
     }

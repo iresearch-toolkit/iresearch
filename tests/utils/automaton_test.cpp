@@ -863,69 +863,69 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
         { irs::range_label{134, 134}, 1  },
         { irs::range_label{135, 143}, 3  },
         { irs::range_label{144, 144}, 1  },
-        { irs::range_label{145, 191}, 4  },
+        { irs::range_label{145, 191}, 3  },
       },
       {
         { irs::range_label{128, 149}, 3  },
         { irs::range_label{150, 150}, 2  },
-        { irs::range_label{151, 191}, 4  },
+        { irs::range_label{151, 191}, 3  },
       },
       {
         { irs::range_label{128, 149}, 3  },
         { irs::range_label{150, 150}, 2  },
         { irs::range_label{151, 151}, 2  },
-        { irs::range_label{152, 191}, 4  },
+        { irs::range_label{152, 191}, 3  },
       },
       {
         { irs::range_label{128, 132}, 4  },
         { irs::range_label{133, 133}, 8  },
         { irs::range_label{134, 157}, 4  },
         { irs::range_label{158, 158}, 9  },
-        { irs::range_label{159, 191}, 5  }
+        { irs::range_label{159, 191}, 4  }
       },
       {
         { irs::range_label{128, 150}, 3  },
         { irs::range_label{151, 151}, 2  },
-        { irs::range_label{152, 191}, 4  }
+        { irs::range_label{152, 191}, 3  }
       },
       {
         { irs::range_label{128, 132}, 4  },
         { irs::range_label{133, 133}, 11 },
         { irs::range_label{134, 157}, 4  },
         { irs::range_label{158, 158}, 11 },
-        { irs::range_label{159, 191}, 5  }
+        { irs::range_label{159, 191}, 4  }
       },
       {
         { irs::range_label{128, 133}, 3  },
         { irs::range_label{134, 134}, 2  },
-        { irs::range_label{135, 191}, 4  }
+        { irs::range_label{135, 191}, 3  }
       },
       {
         { irs::range_label{128, 150}, 4  },
         { irs::range_label{151, 151}, 13 },
-        { irs::range_label{152, 191}, 5  }
+        { irs::range_label{152, 191}, 4  }
       },
       {
         { irs::range_label{128, 132}, 5  },
         { irs::range_label{133, 133}, 14 },
-        { irs::range_label{134, 191}, 6  }
+        { irs::range_label{134, 191}, 5  }
       },
       {
         { irs::range_label{128, 133}, 3  },
         { irs::range_label{134, 134}, 2  },
         { irs::range_label{135, 149}, 3  },
         { irs::range_label{150, 150}, 2  },
-        { irs::range_label{151, 191}, 4  },
+        { irs::range_label{151, 191}, 3  },
       },
       {
         { irs::range_label{128, 150}, 4  },
         { irs::range_label{151, 151}, 16 },
-        { irs::range_label{152, 191}, 5  }
+        { irs::range_label{152, 191}, 4  }
       },
       {
         { irs::range_label{128, 132}, 5  },
         { irs::range_label{133, 133}, 17 },
-        { irs::range_label{134, 191}, 6  },
+        { irs::range_label{134, 191}, 5  },
       },
     };
 
@@ -1516,6 +1516,81 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF\xD0\xBF"))));
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xE2\x9E\x96\xD0\xBF"))));
    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::ref_cast<irs::byte_type>(irs::string_ref("\xF0\x9F\x98\x81\xD0\xBF"))));
+}
+
+
+TEST_F(utf8_emplace_arc_test, add_or_expand) {
+  irs::automaton a;
+  auto start = a.AddState();
+  auto finish = a.AddState();
+  a.SetStart(start);
+  a.SetFinal(finish);
+
+  irs::add_or_expand_arc(a, start, irs::range_label{0, 5}, finish);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 5}), actual_arcs.arcs[0]);
+  }
+
+  irs::add_or_expand_arc(a, start, irs::range_label{5, 5}, finish);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 5}), actual_arcs.arcs[0]);
+  }
+
+  irs::add_or_expand_arc(a, start, irs::range_label{5, 6}, finish);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 6}), actual_arcs.arcs[0]);
+  }
+
+  irs::add_or_expand_arc(a, start, irs::range_label{7, 9}, finish);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(1, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+  }
+
+  irs::add_or_expand_arc(a, start, irs::range_label{11, 11}, finish);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(2, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+    ASSERT_EQ(finish, actual_arcs.arcs[1].nextstate);
+    ASSERT_EQ((irs::range_label{11, 11}), actual_arcs.arcs[1]);
+  }
+
+  irs::add_or_expand_arc(a, start, irs::range_label{12, 12}, start);
+
+  {
+    fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
+    a.InitArcIterator(start, &actual_arcs);
+    ASSERT_EQ(3, actual_arcs.narcs);
+    ASSERT_EQ(finish, actual_arcs.arcs[0].nextstate);
+    ASSERT_EQ((irs::range_label{0, 9}), actual_arcs.arcs[0]);
+    ASSERT_EQ(finish, actual_arcs.arcs[1].nextstate);
+    ASSERT_EQ((irs::range_label{11, 11}), actual_arcs.arcs[1]);
+    ASSERT_EQ(start, actual_arcs.arcs[2].nextstate);
+    ASSERT_EQ((irs::range_label{12, 12}), actual_arcs.arcs[2]);
+  }
 }
 
 /*
