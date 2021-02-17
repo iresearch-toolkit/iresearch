@@ -202,7 +202,7 @@ automaton from_wildcard(const bytes_ref& expr) {
   UNUSED(EXPECTED_NFA_PROPERTIES);
 #endif
 
-  // nfa has only 1 arc per state
+  // nfa is sorted
   nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
 
   automaton dfa;

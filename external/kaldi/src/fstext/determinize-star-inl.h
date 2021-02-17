@@ -176,15 +176,19 @@ template<class F> class DeterminizerStar {
   // Initializer.  After initializing the object you will typically call
   // Determinize() and then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
-                   int max_states = -1, bool allow_partial = false):
-      ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
-      determinized_(false), allow_partial_(allow_partial),
+                   int max_states = -1, bool allow_partial = false)
+    : ifst_(ifst.Copy()),
+      delta_(delta),
+      max_states_(max_states),
+      determinized_(false),
+      allow_partial_(allow_partial),
       is_partial_(false),
       hash_(ifst.Properties(kExpanded, false) ?
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
             SubsetKey(), SubsetEqual(delta_)),
-      epsilon_closure_(ifst_, max_states, &repository_, delta) { }
+      epsilon_closure_(ifst_, max_states, &repository_, delta) {
+  }
 
   void Determinize(bool *debug_ptr) {
     assert(!determinized_);
@@ -359,9 +363,15 @@ template<class F> class DeterminizerStar {
    public:
     EpsilonClosure(const Fst<Arc> *ifst, int max_states,
         StringRepository<Label, StringId> *repository, float delta):
-      ifst_(ifst), max_states_(max_states), repository_(repository),
-      delta_(delta) {
+      ifst_(ifst),
+      max_states_(max_states),
+      repository_(repository),
+      delta_(delta),
+      sorted_(ifst->Properties(kILabelSorted, false) & kILabelSorted) {
+    }
 
+    bool FstSorted() const noexcept {
+      return sorted_;
     }
 
     // This function computes epsilon closure of subset of states by following epsilon links.
@@ -428,7 +438,6 @@ template<class F> class DeterminizerStar {
     // - then we save it to queue_2 s.t. if it's empty, we directly return
     // the input set
     void ExpandOneElement(const Element &elem,
-                          bool sorted,
                           const Weight &unprocessed_weight,
                           bool save_to_queue_2 = false);
 
@@ -437,6 +446,7 @@ template<class F> class DeterminizerStar {
     int max_states_;
     StringRepository<Label, StringId> *repository_;
     float delta_;
+    bool sorted_;
   };
 
 
@@ -530,19 +540,21 @@ template<class F> class DeterminizerStar {
       }
     }
     // now sorted first on input label bound, bound type, then on state.
-    std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
-      if (p1.first.first < p2.first.first) {
-        return true;
-      } else if (p1.first.first > p2.first.first) {
-        return false;
-      } else if (p1.first.second < p2.first.second) {
-        return true;
-      } else if (p1.first.second > p2.first.second) {
-        return false;
-      } else {
-        return p1.second.state < p2.second.state;
-      }
-    });
+    if (!epsilon_closure_.FstSorted() || closed_subset.size() > 1) {
+      std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
+        if (p1.first.first < p2.first.first) {
+          return true;
+        } else if (p1.first.first > p2.first.first) {
+          return false;
+        } else if (p1.first.second < p2.first.second) {
+          return true;
+        } else if (p1.first.second > p2.first.second) {
+          return false;
+        } else {
+          return p1.second.state < p2.second.state;
+        }
+      });
+    }
 
    // reuse memory as we don't need data anymore
    std::vector<Element>& subset = closed_subset;
@@ -633,9 +645,6 @@ template<class F> class DeterminizerStar {
 
   void Debug();
 
-  // Label denoting "Rho" transition (consume symbol, match rest)
-  static constexpr Label RhoLabel = std::numeric_limits<Label>::max();
-
   KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   std::deque<std::pair<std::vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
@@ -686,13 +695,10 @@ void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
     std::vector<Element> *output_subset) {
   ecinfo_.resize(0);
   size_t size = input_subset.size();
-  // find whether input fst is known to be sorted in input label.
-  bool sorted =
-          ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
   // size is still the input_subset.size()
   for (size_t i = 0; i < size; i++) {
-    ExpandOneElement(input_subset[i], sorted, input_subset[i].weight, true);
+    ExpandOneElement(input_subset[i], input_subset[i].weight, true);
   }
 
   size_t s = queue_2_.size();
@@ -751,7 +757,7 @@ void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
     // here we pass a reference (elem), which could be an issue.
     // In the beginning of ExpandOneElement, we make a copy of elem.string
     // to avoid that issue
-    ExpandOneElement(elem, sorted, unprocessed_weight);
+    ExpandOneElement(elem, unprocessed_weight);
   }
 
   {
@@ -846,7 +852,6 @@ void DeterminizerStar<F>::EpsilonClosure::
 template<class F>
 void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
                                           const Element &elem,
-                                          bool sorted,
                                           const Weight &unprocessed_weight,
                                           bool save_to_queue_2) {
   StringId str = elem.string; // copy it here because there is an iterator-
@@ -856,7 +861,7 @@ void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
   for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
        !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
-    if (sorted && arc.ilabel > 0) {
+    if (sorted_ && arc.ilabel > 0) {
       break;
       // Break from the loop: due to sorting there will be no
       // more transitions with epsilons as input labels.

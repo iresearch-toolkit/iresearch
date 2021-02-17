@@ -1690,7 +1690,7 @@ class doc_iterator final : public irs::doc_iterator {
       refill();
     }
 
-    uint32_t notify{0};
+    [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
       doc.value += *begin_++;
 
