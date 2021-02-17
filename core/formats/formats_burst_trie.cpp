@@ -25,7 +25,12 @@
 #include <cassert>
 #include <variant>
 #include <list>
+
+#if (defined(__clang__) || \
+     defined(_MSC_VER)  || \
+     defined(__GNUC__) && (__GNUC__ > 7)) // GCCs <= 7 don't have "<version>" header
 #include <version>
+#endif
 
 #ifdef __cpp_lib_memory_resource
 #include <memory_resource>
@@ -257,8 +262,15 @@ enum EntryType : byte_type {
 class entry : private util::noncopyable {
  public:
   entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs, bool volatile_term);
-  entry(const irs::bytes_ref& prefix, std::pmr::memory_resource& mrc, uint64_t block_start,
-        byte_type meta, uint16_t label, bool volatile_term);
+
+  entry(const irs::bytes_ref& prefix,
+#ifdef __cpp_lib_memory_resource
+        std::pmr::memory_resource& mrc,
+ #endif
+        uint64_t block_start,
+        byte_type meta,
+        uint16_t label,
+        bool volatile_term);
   entry(entry&& rhs) noexcept;
   entry& operator=(entry&& rhs) noexcept;
   ~entry() noexcept;
@@ -300,7 +312,9 @@ entry::entry(
 
 entry::entry(
     const irs::bytes_ref& prefix,
+#ifdef __cpp_lib_memory_resource
     std::pmr::memory_resource& mrc,
+#endif
     uint64_t block_start,
     byte_type meta,
     uint16_t label,
@@ -312,7 +326,11 @@ entry::entry(
     data_.assign(prefix, volatile_term);
   }
 
+#ifdef __cpp_lib_memory_resource
   mem_.construct<block_t>(mrc, block_start, meta, label);
+#else
+  mem_.construct<block_t>(block_start, meta, label);
+#endif
 }
 
 entry::entry(entry&& rhs) noexcept
