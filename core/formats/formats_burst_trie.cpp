@@ -28,7 +28,7 @@
 
 #if (defined(__clang__) || \
      defined(_MSC_VER)  || \
-     defined(__GNUC__) && (__GNUC__ > 7)) // GCCs <= 7 don't have "<version>" header
+     defined(__GNUC__) && (__GNUC__ > 8)) // GCCs <= 8 don't have "<version>" header
 #include <version>
 #endif
 
