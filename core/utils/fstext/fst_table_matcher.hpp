@@ -241,7 +241,7 @@ template<
     state_end_ = state_begin_ + num_labels_;
   }
 
-  virtual bool Find(Label label) noexcept final {
+  virtual bool Find(Label label) noexcept override final {
     assert(!error_);
 
     const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
@@ -255,17 +255,17 @@ template<
     return arc_.nextstate != kNoStateId;
   }
 
-  virtual bool Done() const noexcept final {
+  virtual bool Done() const noexcept override final {
     assert(!error_);
     return state_ == state_end_;
   }
 
-  virtual const Arc& Value() const noexcept final {
+  virtual const Arc& Value() const noexcept override final {
     assert(!error_);
     return arc_;
   }
 
-  virtual void Next() noexcept final {
+  virtual void Next() noexcept override final {
     assert(!error_);
 
     if (Done()) {
@@ -289,11 +289,11 @@ template<
     }
   }
 
-  virtual Weight Final(StateId s) const final {
+  virtual Weight Final(StateId s) const override final {
     return MatcherBase<Arc>::Final(s);
   }
 
-  virtual ssize_t Priority(StateId s) final {
+  virtual ssize_t Priority(StateId s) override final {
     return MatcherBase<Arc>::Priority(s);
   }
 

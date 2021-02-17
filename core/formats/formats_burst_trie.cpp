@@ -1873,7 +1873,7 @@ class term_iterator_base : public seek_term_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const override final {
     return ::cookie::make(std::get<version10::term_meta>(attrs_), freq_.value);
   }
 
