@@ -28,7 +28,7 @@
 
 #if (defined(__clang__) || \
      defined(_MSC_VER)  || \
-     defined(__GNUC__) && (__GNUC__ > 8)) // GCCs <= 8 don't have "<version>" header
+     defined(__GNUC__) && (__GNUC__ > 8)) // GCCs <=  don't have "<version>" header
 #include <version>
 #endif
 
@@ -1607,17 +1607,16 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
   assert(!leaf_);
   assert(!dirty_);
 
-  const byte_type* suffix_begin = suffix_begin_;
-  size_t suffix_length = suffix_length_;
   SeekResult res = SeekResult::END;
 
   while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length);
+    cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin), suffix_length_);
+    const bool is_block = cur_type_ == ET_BLOCK;
     suffix_.assert_block_boundaries();
 
-    suffix_begin = suffix_.begin;
-    suffix_.begin += suffix_length; // skip to the next entry
+    suffix_begin_ = suffix_.begin;
+    suffix_.begin += suffix_length_; // skip to the next entry
     suffix_.assert_block_boundaries();
 
     if (ET_TERM == cur_type_) {
@@ -1628,17 +1627,17 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
       suffix_.assert_block_boundaries();
     }
 
-    res = reader(suffix_begin, suffix_length);
+    // FIXME
+    // we're not allowed to access/modify any block_iterator's
+    // member as current instance might be already moved due
+    // to a reallocation
+    res = reader(suffix_begin_, suffix_length_);
 
-    if (res != SeekResult::NOT_FOUND || cur_type_ == ET_BLOCK) {
+    if (res != SeekResult::NOT_FOUND || is_block) {
       break;
     }
   }
 
-  suffix_begin_ = suffix_begin;
-  suffix_length_ = suffix_length;
-
-  suffix_.assert_block_boundaries();
   return res;
 }
 
