@@ -226,9 +226,15 @@ template<
   StateId Peek(StateId s, Label label) noexcept {
     assert(!error_);
 
-    const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
-                                 ? cached_label_offsets_[size_t(label)]
-                                 : find_label_offset(label));
+    size_t label_offset;
+    if constexpr (ByteLabel && CacheSize > std::numeric_limits<irs::byte_type>::max()) {
+      label_offset = cached_label_offsets_[size_t(label)];
+    } else {
+      label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+                        ? cached_label_offsets_[size_t(label)]
+                        : find_label_offset(label));
+    }
+
     assert(label_offset < num_labels_);
     return (transitions_begin_ + s*num_labels_)[label_offset];
   }
@@ -244,9 +250,14 @@ template<
   virtual bool Find(Label label) noexcept override final {
     assert(!error_);
 
-    const auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
-                                 ? cached_label_offsets_[size_t(label)]
-                                 : find_label_offset(label));
+    size_t label_offset;
+    if constexpr (ByteLabel && CacheSize > std::numeric_limits<irs::byte_type>::max()) {
+      label_offset = cached_label_offsets_[size_t(label)];
+    } else {
+      label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+                        ? cached_label_offsets_[size_t(label)]
+                        : find_label_offset(label));
+    }
 
     state_ = state_begin_ + label_offset;
     assert(state_ < state_end_);
