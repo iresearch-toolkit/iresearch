@@ -1354,7 +1354,7 @@ struct position_impl<IteratorTraits, false, false> {
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
     features_ = state.features;
-    enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
+    enc_buf_ = state.enc_buf;
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
   }
@@ -1690,7 +1690,7 @@ class doc_iterator final : public irs::doc_iterator {
       refill();
     }
 
-    uint32_t notify{0};
+    [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
       doc.value += *begin_++;
 

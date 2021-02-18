@@ -325,14 +325,16 @@ FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint64_t>
+FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint32_t>
+FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
 // ----------------------------------------------------------------------------

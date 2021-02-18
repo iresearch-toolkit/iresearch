@@ -2494,21 +2494,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
   // prefix
   {
     auto acceptor = irs::from_wildcard("forb%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
     auto acceptor = irs::from_wildcard("%ende%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
     auto acceptor = irs::from_wildcard("%ione");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 }

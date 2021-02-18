@@ -945,7 +945,7 @@ enum class MatchType {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct block_disjunction_traits
 ////////////////////////////////////////////////////////////////////////////////
-template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 32>
+template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 8>
 struct block_disjunction_traits {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "false" - iterator is used for filtering only,
@@ -1415,8 +1415,8 @@ class block_disjunction final : public doc_iterator, private score_ctx {
     }
   }
 
-  doc_iterators_t itrs_;
   uint64_t mask_[num_blocks()]{};
+  doc_iterators_t itrs_;
   uint64_t* begin_{std::end(mask_)};
   uint64_t cur_{};
   doc_id_t doc_base_{doc_limits::invalid()};

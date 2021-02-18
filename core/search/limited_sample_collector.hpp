@@ -109,7 +109,6 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       pop();
 
       auto& min_state = scored_states_[min_state_idx];
-      auto state_term_it = min_state.state->reader->iterator(); // FIXME cache iterator???
 
       assert(min_state.cookie);
       // state will not be scored

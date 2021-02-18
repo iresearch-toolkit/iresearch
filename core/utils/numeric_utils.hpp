@@ -63,16 +63,7 @@ struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
 namespace iresearch {
 namespace numeric_utils {
 
-
-#if defined(__APPLE__) \
-    || (defined(__clang__) && (__clang_major__ > 4)) \
-    || (defined(_MSC_VER) && (_MSC_VER >= 1900)) \
-    || (defined(__GNUC__) && (__GNUC__ >= 5)) \
-    || (defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
-  inline constexpr bool is_big_endian() { return big_endian_check(); }
-#else
-  inline constexpr bool is_big_endian() { return *(uint16_t*)"\0\xff" < 0x100; }
-#endif
+constexpr bool is_big_endian() noexcept { return IRESEARCH_BIG_ENDIAN; }
 
 IRESEARCH_API const bytes_ref& mini64();
 IRESEARCH_API const bytes_ref& maxi64();
