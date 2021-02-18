@@ -28,7 +28,6 @@
 #include "utils/levenshtein_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/utf8_utils.hpp"
-#include "draw-impl.h"
 
 using namespace irs::literals;
 
