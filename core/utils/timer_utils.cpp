@@ -21,12 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "singleton.hpp"
 #include "timer_utils.hpp"
 
 #include <mutex>
-#include <unordered_map>
 #include <map>
+
+#include <robin_hood/robin_hood.h>
+
+#include "singleton.hpp"
 
 namespace {
 
@@ -34,7 +36,7 @@ class timer_states: public irs::singleton<timer_states> {
  public:
   typedef std::string key_type;
   typedef irs::timer_utils::timer_stat_t entry_type;
-  typedef std::unordered_map<key_type, entry_type> state_map_t;
+  typedef robin_hood::unordered_map<key_type, entry_type> state_map_t;
 
   timer_states(): track_all_keys_(false) {}
 

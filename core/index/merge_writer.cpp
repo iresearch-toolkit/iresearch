@@ -53,12 +53,12 @@ const irs::column_info NORM_COLUMN{
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
-typedef std::vector<irs::doc_id_t> doc_id_map_t;
+using doc_id_map_t = std::vector<irs::doc_id_t>;
 
 // document mapping function
-typedef std::function<irs::doc_id_t(irs::doc_id_t)> doc_map_f;
+using doc_map_f = std::function<irs::doc_id_t(irs::doc_id_t)>;
 
-typedef std::unordered_map<irs::string_ref, const irs::field_meta*> field_meta_map_t;
+using field_meta_map_t = robin_hood::unordered_flat_map<irs::string_ref, const irs::field_meta*>;
 
 class noop_directory : public irs::directory {
  public:

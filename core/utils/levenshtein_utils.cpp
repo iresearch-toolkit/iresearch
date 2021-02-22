@@ -224,7 +224,7 @@ class parametric_states {
     }
   };
 
-  std::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  robin_hood::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 

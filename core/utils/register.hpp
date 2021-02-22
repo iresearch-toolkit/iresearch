@@ -23,15 +23,16 @@
 #ifndef IRESEARCH_REGISTER_H
 #define IRESEARCH_REGISTER_H
 
+#include <memory>
+#include <vector>
+#include <string>
+
+#include <robin_hood/robin_hood.h>
+
 #include "singleton.hpp"
 #include "so_utils.hpp"
 #include "log.hpp"
 #include "string.hpp"
-
-#include <memory>
-#include <unordered_map>
-#include <vector>
-#include <string>
 
 // use busywait implementation for Win32 since std::mutex cannot be used in calls going through dllmain()
 #ifdef _WIN32
@@ -64,7 +65,6 @@ template<
   typedef EntryType entry_type;
   typedef Hash hash_type;
   typedef Pred pred_type;
-  typedef std::unordered_map<key_type, entry_type, hash_type, pred_type> register_map_t;
   typedef std::function<bool(const key_type& key)> visitor_t;
 
   virtual ~generic_register() = default;
@@ -171,6 +171,8 @@ template<
   }
 
  private:
+  typedef robin_hood::unordered_map<key_type, entry_type, hash_type, pred_type> register_map_t;
+
   mutable mutex_t mutex_;
   register_map_t reg_map_;
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;

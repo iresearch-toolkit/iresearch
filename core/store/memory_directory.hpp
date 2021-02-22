@@ -25,14 +25,15 @@
 #define IRESEARCH_MEMORYDIRECTORY_H
 
 #include "directory.hpp"
+
+#include <mutex>
+
+#include <robin_hood/robin_hood.h>
+
 #include "directory_attributes.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
-
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace iresearch {
 
@@ -308,8 +309,8 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
-  typedef std::unordered_set<std::string> lock_map;
+  typedef robin_hood::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
+  typedef robin_hood::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const memory_allocator* alloc_;
