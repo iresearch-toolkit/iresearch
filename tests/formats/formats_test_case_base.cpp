@@ -3167,7 +3167,7 @@ TEST_P(format_test_case, columns_meta_rw) {
 }
 
 TEST_P(format_test_case, document_mask_rw) {
-  const std::unordered_set<irs::doc_id_t> mask_set = { 1, 4, 5, 7, 10, 12 };
+  const irs::document_mask mask_set = { 1, 4, 5, 7, 10, 12 };
   irs::segment_meta meta("_1", nullptr);
   meta.version = 42;
 

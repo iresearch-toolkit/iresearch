@@ -84,7 +84,7 @@ class mask_doc_iterator final : public irs::doc_iterator {
 
   virtual bool next() override {
     while (it_->next()) {
-      if (mask_.find(value()) == mask_.end()) {
+      if (!mask_.contains(value())) {
         return true;
       }
     }
@@ -134,7 +134,7 @@ class masked_docs_iterator
     while (next_ < end_) {
       current_.value = next_++;
 
-      if (docs_mask_.find(current_.value) == docs_mask_.end()) {
+      if (!docs_mask_.contains(current_.value)) {
         return true;
       }
     }
@@ -172,7 +172,7 @@ bool read_columns_meta(
     const irs::segment_meta& meta,
     std::vector<irs::column_meta>& columns,
     std::vector<irs::column_meta*>& id_to_column,
-    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column) {
+    robin_hood::unordered_flat_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column) {
   size_t count = 0;
   irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();
@@ -209,10 +209,8 @@ bool read_columns_meta(
 
   // check column meta order
 
-  auto less = [] (
-      const irs::column_meta& lhs,
-      const irs::column_meta& rhs
-  ) noexcept {
+  auto less = [] (const irs::column_meta& lhs,
+                  const irs::column_meta& rhs) noexcept {
     return lhs.name < rhs.name;
   };
 
@@ -317,13 +315,12 @@ class segment_reader_impl : public sub_reader {
   field_reader::ptr field_reader_;
   std::vector<column_meta*> id_to_column_;
   uint64_t meta_version_;
-  std::unordered_map<hashed_string_ref, column_meta*> name_to_column_;
+  robin_hood::unordered_flat_map<hashed_string_ref, column_meta*> name_to_column_;
 
   segment_reader_impl(
     const directory& dir,
     uint64_t meta_version,
-    uint64_t docs_count
-  );
+    uint64_t docs_count);
 };
 
 segment_reader::segment_reader(impl_ptr&& impl) noexcept

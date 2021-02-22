@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_INDEX_WRITER_H
 #define IRESEARCH_INDEX_WRITER_H
 
+#include <robin_hood/robin_hood.h>
+
 #include "field_meta.hpp"
 #include "column_info.hpp"
 #include "index_meta.hpp"
@@ -55,11 +57,6 @@ class readers_cache final : util::noncopyable {
   struct key_t {
     key_t(const segment_meta& meta); // implicit constructor
 
-    bool operator<(const key_t& other) const noexcept {
-      return name < other.name
-        || (name == other.name && version < other.version);
-    }
-
     bool operator==(const key_t& other) const noexcept {
       return name == other.name && version == other.version;
     }
@@ -70,11 +67,12 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return std::hash<std::string>()(key.name);
+      return hash_utils::hash(key.name);
     }
   };
 
-  readers_cache(directory& dir): dir_(dir) {}
+  explicit readers_cache(directory& dir) noexcept
+    : dir_(dir) {}
 
   void clear() noexcept;
   segment_reader emplace(const segment_meta& meta);
@@ -82,7 +80,7 @@ class readers_cache final : util::noncopyable {
 
  private:
   std::mutex lock_;
-  std::unordered_map<key_t, segment_reader, key_hash_t> cache_;
+  robin_hood::unordered_flat_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 

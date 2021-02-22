@@ -296,7 +296,7 @@ directory_reader_impl::directory_reader_impl(
   }
 
   const auto INVALID_CANDIDATE = integer_traits<size_t>::const_max;
-  std::unordered_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  robin_hood::unordered_flat_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
 
   for(size_t i = 0, count = cached_impl ? cached_impl->meta_.meta.size() : 0; i < count; ++i) {
     assert(cached_impl); // ensured by loop condition above

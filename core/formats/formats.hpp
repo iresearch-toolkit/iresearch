@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_FORMAT_H
 #define IRESEARCH_FORMAT_H
 
+#include <robin_hood/robin_hood.h>
+
 #include "shared.hpp"
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
@@ -47,7 +49,7 @@ struct reader_state;
 struct index_output;
 struct data_input;
 struct index_input;
-typedef std::unordered_set<doc_id_t> document_mask;
+typedef robin_hood::unordered_flat_set<doc_id_t> document_mask;
 struct postings_writer;
 typedef std::vector<doc_id_t> doc_map;
 
@@ -215,8 +217,7 @@ struct IRESEARCH_API field_reader {
   virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& mask
-  ) = 0;
+    const document_mask& mask) = 0;
 
   virtual const term_reader* field(const string_ref& field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
@@ -348,8 +349,7 @@ struct IRESEARCH_API document_mask_writer {
   virtual void write(
     directory& dir,
     const segment_meta& meta,
-    const document_mask& docs_mask
-  ) = 0;
+    const document_mask& docs_mask) = 0;
 }; // document_mask_writer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,8 +367,7 @@ struct IRESEARCH_API document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask
-  ) = 0;
+    document_mask& docs_mask) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,8 +381,7 @@ struct IRESEARCH_API segment_meta_writer {
   virtual void write(
     directory& dir,
     std::string& filename,
-    const segment_meta& meta
-  ) = 0;
+    const segment_meta& meta) = 0;
 }; // segment_meta_writer
 
 ////////////////////////////////////////////////////////////////////////////////

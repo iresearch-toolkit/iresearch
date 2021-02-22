@@ -1154,26 +1154,23 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
   state.features = &features_;
 
-  struct less_t {
-    bool operator()(
-        const field_data* lhs,
-        const field_data* rhs
-    ) const noexcept {
-      return lhs->meta().name < rhs->meta().name;
-    }
-  };
-
-  std::set<const field_data*, less_t> fields;
-
-  // ensure fields are sorted
+  // sort fields
+  std::vector<const field_data*> fields(fields_.size());
+  auto begin = fields.begin();
   for (auto& entry : fields_) {
-    fields.emplace(&entry.second);
+    *begin = &entry.second;
+    ++begin;
   }
 
-  fw.prepare(state);
+  std::sort(
+    fields.begin(), fields.end(),
+    [](const field_data* lhs, const field_data* rhs) noexcept {
+      return lhs->meta().name < rhs->meta().name;
+  });
 
   detail::term_reader terms;
 
+  fw.prepare(state);
   for (auto* field : fields) {
     auto& meta = field->meta();
 

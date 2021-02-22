@@ -256,6 +256,7 @@ if(MSVC)
 endif()
 
 include_directories(${IResearchTests_TARGET_NAME}-shared
+  ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
@@ -267,6 +268,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
+  ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}

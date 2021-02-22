@@ -136,21 +136,6 @@ target_include_directories(
 )
 
 ################################################################################
-### robin_hood library
-################################################################################
-
-add_library(
-  ${IResearch_TARGET_NAME}-robinhood
-  INTERFACE
-)
-
-target_include_directories(
-  ${IResearch_TARGET_NAME}-robinhood
-  SYSTEM
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/robin_hood
-)
-
-################################################################################
 ### SIMDCOMP library
 ################################################################################
 

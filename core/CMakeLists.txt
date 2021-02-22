@@ -381,14 +381,12 @@ target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-  PUBLIC $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-  PUBLIC $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 
@@ -1051,13 +1049,11 @@ set_target_properties(${static_format_library_name}
 target_include_directories(${shared_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
-  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${static_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
-  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_link_libraries(${shared_format_library_name}

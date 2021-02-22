@@ -13,6 +13,7 @@ include_directories(
 )
 
 include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
+  ${EXTERNAL_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
 )
 

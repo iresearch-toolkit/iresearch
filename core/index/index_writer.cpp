@@ -61,16 +61,16 @@ struct flush_segment_context {
   const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
 
   flush_segment_context(
-    const irs::index_meta::index_segment_t& segment,
-    size_t doc_id_begin,
-    size_t doc_id_end,
-    const update_contexts_ref& update_contexts,
-    const modification_contexts_ref& modification_contexts
-  ): doc_id_begin_(doc_id_begin),
-     doc_id_end_(doc_id_end),
-     modification_contexts_(modification_contexts),
-     segment_(segment),
-     update_contexts_(update_contexts) {
+      const irs::index_meta::index_segment_t& segment,
+      size_t doc_id_begin,
+      size_t doc_id_end,
+      const update_contexts_ref& update_contexts,
+      const modification_contexts_ref& modification_contexts)
+    : doc_id_begin_(doc_id_begin),
+      doc_id_end_(doc_id_end),
+      modification_contexts_(modification_contexts),
+      segment_(segment),
+      update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
     assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
