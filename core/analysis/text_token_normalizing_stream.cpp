@@ -24,6 +24,9 @@
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+
+#include <frozen/unordered_map.h>
+
 #include <unicode/locid.h> // for icu::Locale
 
 #if defined(_MSC_VER)
@@ -48,6 +51,7 @@
   #pragma warning(default: 4229)
 #endif
 
+#include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
 #include "text_token_normalizing_stream.hpp"
@@ -100,13 +104,13 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-const irs::string_ref LOCALE_PARAM_NAME      = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
-const irs::string_ref ACCENT_PARAM_NAME    = "accent";
+constexpr irs::string_ref LOCALE_PARAM_NAME       = "locale";
+constexpr irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
+constexpr irs::string_ref ACCENT_PARAM_NAME       = "accent";
 
-const std::unordered_map<
-    std::string, 
-    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
+constexpr frozen::unordered_map<
+    irs::string_ref,
+    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
@@ -243,7 +247,7 @@ bool make_json_config(
       json.AddMember(
         rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
         rapidjson::Value(case_value->first.c_str(),
-                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+                         static_cast<rapidjson::SizeType>(case_value->first.size())),
         allocator);
     }
     else {

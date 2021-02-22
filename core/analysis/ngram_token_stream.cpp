@@ -24,20 +24,24 @@
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
+#include <frozen/unordered_map.h>
+#include <frozen/string.h>
+
 #include "ngram_token_stream.hpp"
+#include "utils/hash_utils.hpp"
 #include "utils/json_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
 namespace {
 
-const irs::string_ref MIN_PARAM_NAME               = "min";
-const irs::string_ref MAX_PARAM_NAME               = "max";
-const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
-const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
-const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
-const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
+constexpr irs::string_ref MIN_PARAM_NAME               = "min";
+constexpr irs::string_ref MAX_PARAM_NAME               = "max";
+constexpr irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+constexpr irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
+constexpr irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
+constexpr irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
-const std::unordered_map<std::string, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
+constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2> STREAM_TYPE_CONVERT_MAP = {
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
   { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
 
@@ -211,7 +215,7 @@ bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& opt
     if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
       json.AddMember(
         rapidjson::StringRef(STREAM_TYPE_PARAM_NAME.c_str(), STREAM_TYPE_PARAM_NAME.size()),
-        rapidjson::StringRef(stream_type_value->first.c_str(), stream_type_value->first.length()),
+        rapidjson::StringRef(stream_type_value->first.c_str(), stream_type_value->first.size()),
         allocator);
     } else {
       IR_FRMT_ERROR(

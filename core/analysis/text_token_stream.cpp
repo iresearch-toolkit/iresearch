@@ -27,17 +27,20 @@
 #include <fstream>
 #include <mutex>
 #include <unordered_map>
+
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-#include <utils/utf8_utils.hpp>
+
+#include <frozen/unordered_map.h>
+
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
 #endif
 
-  #include <unicode/normalizer2.h> // for icu::Normalizer2
+#include <unicode/normalizer2.h> // for icu::Normalizer2
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4512)
@@ -49,7 +52,7 @@
   #pragma warning(disable: 4229)
 #endif
 
-  #include <unicode/uclean.h> // for u_cleanup
+#include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
@@ -66,6 +69,7 @@
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/utf8_utils.hpp"
 
 #include "text_token_stream.hpp"
 
@@ -468,21 +472,20 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
+constexpr irs::string_ref LOCALE_PARAM_NAME            = "locale";
+constexpr irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
+constexpr irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
+constexpr irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
+constexpr irs::string_ref ACCENT_PARAM_NAME            = "accent";
+constexpr irs::string_ref STEMMING_PARAM_NAME          = "stemming";
+constexpr irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
+constexpr irs::string_ref MIN_PARAM_NAME               = "min";
+constexpr irs::string_ref MAX_PARAM_NAME               = "max";
+constexpr irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
 
-const irs::string_ref LOCALE_PARAM_NAME            = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
-const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
-const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
-const irs::string_ref ACCENT_PARAM_NAME            = "accent";
-const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
-const irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
-const irs::string_ref MIN_PARAM_NAME               = "min";
-const irs::string_ref MAX_PARAM_NAME               = "max";
-const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
-
-const std::unordered_map<
-    std::string, 
-    irs::analysis::text_token_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
+const frozen::unordered_map<
+    irs::string_ref,
+    irs::analysis::text_token_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_stream::options_t::case_convert_t::UPPER },
@@ -712,7 +715,7 @@ bool make_json_config(
       json.AddMember(
         rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
         rapidjson::Value(case_value->first.c_str(),
-                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+                         static_cast<rapidjson::SizeType>(case_value->first.size())),
         allocator);
     } else {
       IR_FRMT_ERROR(

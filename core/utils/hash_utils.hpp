@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_HASH_UTILS_H
 #define IRESEARCH_HASH_UTILS_H
 
+#include <frozen/string.h>
+
 #include "shared.hpp"
 #include "string.hpp"
 
@@ -111,6 +113,24 @@ inline size_t hash(const T* begin, size_t size) noexcept {
 
 typedef hashed_basic_string_ref<byte_type> hashed_bytes_ref;
 typedef hashed_basic_string_ref<char> hashed_string_ref;
+
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 frozen extensions
+// -----------------------------------------------------------------------------
+
+namespace frozen {
+
+template<>
+struct elsa<irs::string_ref> {
+  constexpr size_t operator()(irs::string_ref value) const noexcept {
+    return elsa<frozen::string>{}({value.c_str(), value.size()});
+  }
+  constexpr std::size_t operator()(irs::string_ref value, std::size_t seed) const {
+    return elsa<frozen::string>{}({value.c_str(), value.size()}, seed);
+  }
+};
 
 }
 

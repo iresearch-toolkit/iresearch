@@ -95,7 +95,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-static const irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
+constexpr irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
 
 bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
   rapidjson::Document json;
