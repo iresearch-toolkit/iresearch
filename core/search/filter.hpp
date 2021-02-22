@@ -23,8 +23,9 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include <unordered_map>
 #include <functional>
+
+#include <robin_hood/robin_hood.h>
 
 #include "shared.hpp"
 #include "search/sort.hpp"
@@ -36,7 +37,8 @@ namespace iresearch {
 template<typename State>
 class states_cache : private util::noncopyable {
  private:
-  using states_map = std::unordered_map<const sub_reader*, State>;
+  // FIXME use vector instead?
+  using states_map = robin_hood::unordered_map<const sub_reader*, State>;
 
  public:
   using state_type = State;
@@ -60,7 +62,6 @@ class states_cache : private util::noncopyable {
   bool empty() const noexcept { return states_.empty(); }
 
 private:
-  // FIXME use vector instead?
   states_map states_;
 }; // states_cache
 
