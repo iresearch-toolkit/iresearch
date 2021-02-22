@@ -24,8 +24,7 @@
 #ifndef IRESEARCH_POSTINGS_H
 #define IRESEARCH_POSTINGS_H
 
-#include <map>
-#include "../external/robin_hood/robin_hood.h"
+#include <robin_hood/robin_hood.h>
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
