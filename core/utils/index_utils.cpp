@@ -183,10 +183,9 @@ namespace index_utils {
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_bytes& options) {
   return [options](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& /*consolidating_segments*/
-  )->void {
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/)->void {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
@@ -212,10 +211,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_bytes_accum& options) {
   return [options](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& consolidating_segments
-  )->void {
+      const index_writer::consolidating_segments_t& consolidating_segments)->void {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     typedef std::pair<size_t, const segment_meta*> entry_t;
@@ -258,10 +256,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_count& options) {
   return [options](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& /*consolidating_segments*/
-   )->void {
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/)->void {
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, meta.size());
          i < count;
@@ -274,10 +271,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_docs_fill& options) {
   return [options](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& /*consolidating_segments*/
-  )->void {
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/)->void {
     auto fill_threshold = options.threshold;
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
 
@@ -294,10 +290,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_docs_live& options) {
   return [options](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& /*consolidating_segments*/
-  )->void {
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/)->void {
     auto docs_threshold = options.threshold;
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
@@ -319,9 +314,7 @@ index_writer::consolidation_policy_t consolidation_policy(
   };
 }
 
-index_writer::consolidation_policy_t consolidation_policy(
-    const consolidate_tier& options) {
-
+index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier& options) {
   // validate input
   const auto max_segments_per_tier = (std::max)(size_t(1), options.max_segments); // can't merge less than 1 segment
   auto min_segments_per_tier = (std::max)(size_t(1), options.min_segments); // can't merge less than 1 segment
@@ -331,7 +324,7 @@ index_writer::consolidation_policy_t consolidation_policy(
   const auto min_score = options.min_score; // skip consolidation that have score less than min_score
 
   return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, min_score](
-      std::set<const segment_meta*>& candidates,
+      index_writer::consolidation_t& candidates,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& consolidating_segments) -> void {
     size_t consolidating_size = 0; // size of segments in bytes that are currently under consolidation

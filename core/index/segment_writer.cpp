@@ -216,20 +216,18 @@ void segment_writer::finish() {
 }
 
 void segment_writer::flush_column_meta(const segment_meta& meta) {
-  struct less_t {
-    bool operator()(
-        const stored_column* lhs,
-        const stored_column* rhs) const noexcept {
-      return lhs->name < rhs->name;
-    }
-  };
-
-  std::set<const stored_column*, less_t> columns;
-
   // ensure columns are sorted
+  std::vector<const stored_column*> columns(columns_.size());
+  auto begin = columns.begin();
   for (auto& entry : columns_) {
-    columns.emplace(&entry.second);
+    *begin = &entry.second;
+    ++begin;
   }
+  std::sort(
+    columns.begin(), columns.end(),
+    [](const stored_column* lhs, const stored_column* rhs) noexcept {
+      return lhs->name < rhs->name;
+  });
 
   // flush columns meta
   try {

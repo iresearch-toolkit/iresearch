@@ -541,6 +541,11 @@ class IRESEARCH_API index_writer
   using ptr = std::shared_ptr<index_writer>;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief a set of candidates denoting an instance of consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  using consolidation_t = robin_hood::unordered_flat_set<const segment_meta*>;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
   ///        in: segment candidates that may be considered by this policy
@@ -551,11 +556,10 @@ class IRESEARCH_API index_writer
   ///        of consolidation
   /// @note final candidates are all segments selected by at least some policy
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<void(
-    std::set<const segment_meta*>& candidates,
+  using consolidation_policy_t = std::function<void(
+    consolidation_t& candidates,
     const index_meta& meta,
-    const consolidating_segments_t& consolidating_segments
-  )> consolidation_policy_t;
+    const consolidating_segments_t& consolidating_segments)>;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief name of the lock for index repository 
@@ -707,7 +711,7 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates,
+        consolidation_t&& candidates,
         merge_writer&& merger) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)),
@@ -716,52 +720,52 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates) noexcept
+        consolidation_t&& candidates) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)) {
     }
 
     std::shared_ptr<index_meta> consolidaton_meta;
-    std::set<const segment_meta*> candidates;
+    consolidation_t candidates;
     merge_writer merger;
   }; // consolidation_context_t
 
-  static_assert(std::is_move_constructible_v<consolidation_context_t>);
+  static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
+        consolidation_t&& consolidation_candidates,
         std::shared_ptr<index_meta>&& consolidation_meta,
-        merge_writer&& merger
-    ) noexcept
+        merge_writer&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates), std::move(merger)) {
+        consolidation_ctx(std::move(consolidation_meta),
+        std::move(consolidation_candidates),
+        std::move(merger)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
-        std::shared_ptr<index_meta>&& consolidation_meta
-    ) noexcept
+        consolidation_t&& consolidation_candidates,
+        std::shared_ptr<index_meta>&& consolidation_meta) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates)) {
+        consolidation_ctx(std::move(consolidation_meta),
+        std::move(consolidation_candidates)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates
-    ) noexcept
+        consolidation_t&& consolidation_candidates) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
@@ -795,7 +799,7 @@ class IRESEARCH_API index_writer
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  static_assert(std::is_move_constructible_v<import_context>);
+  static_assert(std::is_nothrow_move_constructible_v<import_context>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the segment writer and its associated ref tracing directory

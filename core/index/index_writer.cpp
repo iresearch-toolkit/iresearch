@@ -327,12 +327,11 @@ const std::string& write_document_mask(
 }
 
 // mapping: name -> { new segment, old segment }
-typedef std::map<
+using candidates_mapping_t = robin_hood::unordered_flat_map<
   irs::string_ref,
   std::pair<
     const irs::segment_meta*, // new segment
-    std::pair<const irs::segment_meta*, size_t> // old segment + index within merge_writer
->> candidates_mapping_t;
+    std::pair<const irs::segment_meta*, size_t>>>; // old segment + index within merge_writer
 
 /// @param candidates_mapping output mapping
 /// @param candidates candidates for mapping
@@ -340,7 +339,7 @@ typedef std::map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const std::set<const irs::segment_meta*>& candidates,
+    const robin_hood::unordered_flat_set<const irs::segment_meta*>& candidates,
     const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
@@ -501,7 +500,7 @@ bool map_removals(
   return true;
 }
 
-std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
+std::string to_string(robin_hood::unordered_flat_set<const irs::segment_meta*>& consolidation) {
   std::stringstream ss;
   size_t total_size = 0;
   size_t total_docs_count = 0;
@@ -1415,7 +1414,7 @@ index_writer::consolidation_result index_writer::consolidate(
     codec = codec_;
   }
 
-  std::set<const segment_meta*> candidates;
+  consolidation_t candidates;
   const auto run_id = reinterpret_cast<size_t>(&candidates);
 
   // hold a reference to the last committed state to prevent files from being
