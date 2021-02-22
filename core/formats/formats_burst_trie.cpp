@@ -36,6 +36,8 @@
 #include <memory_resource>
 #endif
 
+#include <robin_hood/robin_hood.h>
+
 #include "utils/fstext/fst_utils.hpp"
 
 #if defined(_MSC_VER)
@@ -709,7 +711,7 @@ class field_writer final : public irs::field_writer {
 
   void push(const irs::bytes_ref& term);
 
-  std::unordered_map<irs::type_info::type_id, size_t> feature_map_;
+  robin_hood::unordered_flat_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
   std::pmr::monotonic_buffer_resource block_index_buf_;
 #endif
@@ -2903,7 +2905,7 @@ class field_reader final : public irs::field_reader {
   using immutable_fst_readers = std::vector<term_reader<immutable_byte_fst>>;
 
   std::variant<immutable_fst_readers, vector_fst_readers> fields_;
-  std::unordered_map<hashed_string_ref, irs::term_reader*> name_to_field_;
+  robin_hood::unordered_flat_map<hashed_string_ref, irs::term_reader*> name_to_field_;
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;

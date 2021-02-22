@@ -1051,11 +1051,13 @@ set_target_properties(${static_format_library_name}
 target_include_directories(${shared_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${static_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-robinhood,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_link_libraries(${shared_format_library_name}
