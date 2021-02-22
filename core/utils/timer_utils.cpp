@@ -60,7 +60,7 @@ class timer_states: public irs::singleton<timer_states> {
 
   void init(
       bool track_all_keys = false,
-      const std::unordered_set<key_type>& tracked_keys = std::unordered_set<key_type>()) {
+      const robin_hood::unordered_flat_set<key_type>& tracked_keys = {}) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto& entry: state_map_) {
@@ -123,9 +123,8 @@ timer_stat_t& get_stat(const std::string& key) {
 // -----------------------------------------------------------------------------
 
 void init_stats(
-  bool track_all_keys /*= false*/,
-  const std::unordered_set<std::string>& tracked_keys /*= std::unordered_set<iresearch::std::string>()*/
-) {
+    bool track_all_keys /*= false*/,
+    const robin_hood::unordered_flat_set<std::string>& tracked_keys /*= {} */) {
   timer_states::instance().init(track_all_keys, tracked_keys);
 }
 

@@ -79,7 +79,7 @@ bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
 }
 
 irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  std::unordered_set<irs::bstring> tokens;
+  robin_hood::unordered_set<irs::bstring> tokens;
 
   for (size_t begin = 0, end = 0, length = mask.size();
        end < length;
@@ -107,11 +107,9 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
   );
 }
 
-irs::analysis::analyzer::ptr construct(
-    const rapidjson::Document::Array& mask
-) {
+irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
   size_t offset = 0;
-  std::unordered_set<irs::bstring> tokens;
+  robin_hood::unordered_set<irs::bstring> tokens;
 
   for (auto itr = mask.Begin(), end = mask.End(); itr != end; ++itr, ++offset) {
     if (!itr->IsString()) {
@@ -202,7 +200,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
+token_masking_stream::token_masking_stream(robin_hood::unordered_set<irs::bstring>&& mask)
   : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {
@@ -236,7 +234,7 @@ bool token_masking_stream::reset(const string_ref& data) {
 
   auto& term = std::get<term_attribute>(attrs_);
   term.value = irs::ref_cast<irs::byte_type>(data);
-  term_eof_ = mask_.find(term.value) != mask_.end();
+  term_eof_ = mask_.contains(term.value);
 
   return true;
 }

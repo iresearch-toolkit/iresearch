@@ -82,7 +82,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     }
   }
 
-  std::unordered_set<irs::string_ref> codecs;
+  robin_hood::unordered_set<irs::string_ref> codecs;
   auto visitor = [&codecs](const irs::string_ref& name)->bool {
     codecs.insert(name);
     return true;
@@ -185,7 +185,7 @@ class directory_reader_impl :
   );
 
  private:
-  typedef std::unordered_set<index_file_refs::ref_t> segment_file_refs_t;
+  typedef robin_hood::unordered_flat_set<index_file_refs::ref_t> segment_file_refs_t;
   typedef std::vector<segment_file_refs_t> reader_file_refs_t;
 
   directory_reader_impl(

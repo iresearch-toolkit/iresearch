@@ -24,18 +24,20 @@
 #ifndef IRESEARCH_INDEX_META_H
 #define IRESEARCH_INDEX_META_H
 
+#include <algorithm>
+#include <unordered_set>
+#include <unordered_map>
+#include <vector>
+#include <atomic>
+
+#include <robin_hood/robin_hood.h>
+
 #include "store/directory.hpp"
 
 #include "error/error.hpp"
 
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
-
-#include <algorithm>
-#include <unordered_set>
-#include <unordered_map>
-#include <vector>
-#include <atomic>
 
 namespace iresearch {
 
@@ -53,7 +55,7 @@ MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // f
 namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
-  typedef std::unordered_set<std::string> file_set;
+  typedef robin_hood::unordered_set<std::string> file_set;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;

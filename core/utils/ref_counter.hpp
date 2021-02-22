@@ -28,6 +28,9 @@
 #include <memory>
 #include <unordered_set>
 #include <mutex>
+
+#include <robin_hood/robin_hood.h>
+
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/thread_utils.hpp"
@@ -126,7 +129,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
  private:
   mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
-  std::unordered_set<ref_t, hash, equal_to> refs_;
+  robin_hood::unordered_flat_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
 }

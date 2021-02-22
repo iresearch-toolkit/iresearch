@@ -39,7 +39,8 @@ class text_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  typedef std::unordered_set<std::string> stopwords_t;
+  typedef robin_hood::unordered_set<std::string> stopwords_t;
+
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
     // lowercase tokens, match original implementation

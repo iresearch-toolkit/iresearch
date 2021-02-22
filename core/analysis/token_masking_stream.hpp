@@ -44,7 +44,7 @@ class token_masking_stream final
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
+  explicit token_masking_stream(robin_hood::unordered_set<irs::bstring>&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
@@ -58,7 +58,7 @@ class token_masking_stream final
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-  std::unordered_set<irs::bstring> mask_;
+  robin_hood::unordered_set<irs::bstring> mask_;
   attributes attrs_;
   bool term_eof_;
 };

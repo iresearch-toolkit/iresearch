@@ -559,7 +559,7 @@ void readers_cache::clear() noexcept {
 }
 
 size_t readers_cache::purge(
-    const std::unordered_set<key_t, key_hash_t>& segments) noexcept {
+    const robin_hood::unordered_flat_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }

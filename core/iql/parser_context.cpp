@@ -935,12 +935,11 @@ void parser_context::print(
 /// @brief add a child to children, ensuring there are no duplicates or overlaps
 ////////////////////////////////////////////////////////////////////////////////
 void parser_context::add_child(
-  std::vector<size_t>& children,
-  parser::semantic_type const& child,
-  bool bRemoveSuperset
-) {
+    std::vector<size_t>& children,
+    parser::semantic_type const& child,
+    bool bRemoveSuperset) {
   auto& node = find_node(child);
-  std::unordered_set<size_t> subChildren; // only for bRemoveSuperset
+  robin_hood::unordered_flat_set<size_t> subChildren; // only for bRemoveSuperset
 
   if (bRemoveSuperset) {
     if (query_node::NodeType::INTERSECTION == node.type) {

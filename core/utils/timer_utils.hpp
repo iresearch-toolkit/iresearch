@@ -27,6 +27,9 @@
 #include <atomic>
 #include <functional>
 #include <unordered_set>
+
+#include <robin_hood/robin_hood.h>
+
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "shared.hpp"
@@ -97,8 +100,7 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void init_stats(
   bool track_all_keys = false,
-  const std::unordered_set<std::string>& tracked_keys = std::unordered_set<std::string>()
-);
+  const robin_hood::unordered_set<std::string>& tracked_keys = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys
