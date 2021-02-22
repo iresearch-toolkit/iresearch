@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ngram_similarity_filter.hpp"
+
+#include <set>
+
 #include "collectors.hpp"
 #include "disjunction.hpp"
 #include "min_match_disjunction.hpp"

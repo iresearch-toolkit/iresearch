@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/format_utils.hpp"
-#include "index_utils.hpp"
 
 #include <cmath>
+#include <set>
+
+#include "index_utils.hpp"
 
 namespace {
 
