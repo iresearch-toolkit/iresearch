@@ -22,7 +22,7 @@
 
 #include <chrono>
 
-#include "MurmurHash/MurmurHash3.h"
+#include "cityhash/city.h"
 #include "integer.hpp"
 #include "string.hpp"
 
@@ -32,24 +32,9 @@
 
 namespace {
 
-inline uint32_t get_seed() noexcept {
-  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::high_resolution_clock::now().time_since_epoch()
-  );
-
-  return static_cast<uint32_t>(ms.count());
-}
-
 template<typename T>
-inline size_t get_hash(const T* value, size_t size) noexcept {
-  static const auto seed = get_seed();
-  size_t length = std::min(size, size_t(irs::integer_traits<int>::const_max));
-  uint32_t code;
-
-  // hash as much as possible if length greater than std::numeric_limits<int>::max
-  MurmurHash3_x86_32(value, int(length), seed, &code);
-
-  return code;
+size_t get_hash(const T* value, size_t size) noexcept {
+  return CityHash64(reinterpret_cast<const char*>(value), size);
 }
 
 }

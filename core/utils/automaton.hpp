@@ -53,10 +53,6 @@
 #include "utils/fstext/fst_utils.hpp"
 #include "utils/string.hpp"
 
-#ifndef IRESEARCH_BIG_ENDIAN
-static_assert(false); // must be defined
-#endif
-
 namespace fst {
 namespace fsa {
 
@@ -180,7 +176,7 @@ struct RangeLabel {
 
   union {
     int64_t ilabel;
-#if IRESEARCH_BIG_ENDIAN
+#ifdef IRESEARCH_BIG_ENDIAN
     struct {
       uint32_t min;
       uint32_t max;

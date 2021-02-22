@@ -14,42 +14,27 @@ target_include_directories(
 )
 
 ################################################################################
-### MurMurHash library
+### CityHash library
 ################################################################################
 
-set(MurMurHash_sources
-  ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.h
+set(cityhash_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/city.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/city.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/citycrc.h
 )
 
 add_library(
-  ${IResearch_TARGET_NAME}-murmurhash
+  ${IResearch_TARGET_NAME}-cityhash
   OBJECT
-  ${MurMurHash_sources}
+  ${cityhash_sources}
 )
 
-set_ipo(${IResearch_TARGET_NAME}-murmurhash)
-
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-murmurhash
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-
-if (NOT MSVC)
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash
-    PRIVATE "-Wno-all"
-    PRIVATE "-fPIC"
-  )
-endif()
+set_ipo(${IResearch_TARGET_NAME}-cityhash)
 
 target_include_directories(
-  ${IResearch_TARGET_NAME}-murmurhash
+  ${IResearch_TARGET_NAME}-cityhash
   SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cityhash
 )
 
 ################################################################################

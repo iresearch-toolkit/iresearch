@@ -24,6 +24,12 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
+#ifdef __APPLE__
+#include <machine/endian.h>
+#elif __linux__
+#include <endian.h>
+#endif
+
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -291,18 +297,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
-#if BYTE_ORDER == LITTLE_ENDIAN
-#define IRESEARCH_BIG_ENDIAN false
-#elif BYTE_ORDER == BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN true
+#if BYTE_ORDER == BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
 #endif
-#elif _WIN32
-#define IRESEARCH_BIG_ENDIAN false
 #elif __linux__
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-#define IRESEARCH_BIG_ENDIAN false
-#elif __BYTE_ORDER == __BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN true
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
 #endif
 #else
 #error "unsupported os or compiler"

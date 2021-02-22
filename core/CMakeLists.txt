@@ -284,7 +284,7 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
@@ -293,7 +293,7 @@ set_ipo(${IResearch_TARGET_NAME}-shared)
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
 )
 
 set_ipo(${IResearch_TARGET_NAME}-static)

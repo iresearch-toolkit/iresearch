@@ -33,8 +33,8 @@ number of components produced by third parties
     - Copyright: Cyril Allauzen, Michael Riley 
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: Part of the source code tree
-2.  Title: Murmurhash
-    - Copyright: Austin Appleby
+2.  Title: CityHash 
+    - Copyright: Google Inc.
     - License: [MIT license](https://opensource.org/licenses/MIT)
     - How it's used: Part of the source code tree
 3.  Title: Boost C++ Libraries
