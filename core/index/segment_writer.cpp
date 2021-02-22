@@ -153,16 +153,16 @@ bool segment_writer::index(
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  auto& slot = fields_.emplace(name);
-  auto& slot_features = slot.meta().features;
+  const auto [slot, id] = fields_.emplace(name);
+  auto& slot_features = slot->meta().features;
 
-  const bool slot_empty = slot.empty();
+  const bool slot_empty = slot->empty();
 
   // invert only if new field features are a subset of slot features
   if ((slot_empty || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot_empty ? features : slot_features, doc)) {
-    if (slot.size() && features.check<norm>()) {
-      norm_fields_.insert(&slot);
+      slot->invert(tokens, slot_empty ? features : slot_features, doc)) {
+    if (slot->size() && features.check<norm>()) {
+      norm_fields_.insert(id);
     }
 
     fields_ += features; // accumulate segment features
@@ -205,8 +205,9 @@ void segment_writer::finish() {
 
   // write document normalization factors (for each field marked for normalization))
   float_t value;
-  for (auto* field : norm_fields_) {
-    assert(field->size() > 0);
+  for (const auto field_id : norm_fields_) {
+    const auto* field = fields_.field(field_id);
+    assert(field && field->size() > 0);
     value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
@@ -217,14 +218,14 @@ void segment_writer::finish() {
 
 void segment_writer::flush_column_meta(const segment_meta& meta) {
   // ensure columns are sorted
-  std::vector<const stored_column*> columns(columns_.size());
-  auto begin = columns.begin();
+  sorted_columns_.resize(columns_.size());
+  auto begin = sorted_columns_.begin();
   for (auto& entry : columns_) {
     *begin = &entry.second;
     ++begin;
   }
   std::sort(
-    columns.begin(), columns.end(),
+    sorted_columns_.begin(), sorted_columns_.end(),
     [](const stored_column* lhs, const stored_column* rhs) noexcept {
       return lhs->name < rhs->name;
   });
@@ -232,7 +233,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   // flush columns meta
   try {
     col_meta_writer_->prepare(dir_, meta);
-    for (auto& column: columns) {
+    for (const auto* column: sorted_columns_) {
       col_meta_writer_->write(column->name, column->id);
     }
     col_meta_writer_->flush();

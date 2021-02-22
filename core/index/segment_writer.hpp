@@ -389,7 +389,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
   std::unordered_map<hashed_string_ref, stored_column> columns_;
-  std::unordered_set<field_data*> norm_fields_; // document fields for normalization
+  std::vector<const stored_column*> sorted_columns_;
+  robin_hood::unordered_flat_set<size_t> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
