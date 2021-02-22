@@ -84,8 +84,7 @@ posting& term::add(irs::doc_id_t id) {
 bool term::operator<( const term& rhs ) const {
   return irs::memcmp_less(
     value.c_str(), value.size(),
-    rhs.value.c_str(), rhs.value.size()
-  );
+    rhs.value.c_str(), rhs.value.size());
 }
 
 field::field(

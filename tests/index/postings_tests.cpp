@@ -52,13 +52,11 @@ void insert_find_core(const std::vector<std::string>& src) {
     const std::string& s = src[i];
     const bytes_ref b = detail::to_bytes_ref(s);
     auto res = bh.emplace(b);
-    ASSERT_NE(bh.end(), res.first);
-    ASSERT_EQ(b, res.first->first);
+    ASSERT_NE(nullptr, res.first);
     ASSERT_TRUE(res.second);
 
     res = bh.emplace(b);
-    ASSERT_NE(bh.end(), res.first);
-    ASSERT_EQ(b, res.first->first);
+    ASSERT_NE(nullptr, res.first);
     ASSERT_FALSE(res.second);
   }
 
@@ -123,6 +121,7 @@ TEST(postings_tests, clear) {
 TEST(postings_tests, slice_alignment) {
   const uint32_t block_size = 32768;
   block_pool<byte_type, block_size> pool;
+  std::vector<std::pair<const bytes_ref*, const posting*>> sorted_postings;
 
   // add initial block
   pool.alloc_buffer();
@@ -140,7 +139,9 @@ TEST(postings_tests, slice_alignment) {
     auto res = bh.emplace(tests::detail::to_bytes_ref("string0"));
     ASSERT_FALSE(bh.empty());
     ASSERT_EQ(1, bh.size());
-    ASSERT_EQ(tests::detail::to_bytes_ref("string0"), bh.begin()->first);
+    bh.get_sorted_postings(sorted_postings);
+    ASSERT_EQ(1, sorted_postings.size());
+    ASSERT_EQ(tests::detail::to_bytes_ref("string0"), *sorted_postings.begin()->first);
   }
 
   // read_write on reused pool
@@ -156,6 +157,8 @@ TEST(postings_tests, slice_alignment) {
     auto res = bh.emplace(tests::detail::to_bytes_ref("string1"));
     ASSERT_FALSE(bh.empty());
     ASSERT_EQ(1, bh.size());
-    ASSERT_EQ(tests::detail::to_bytes_ref("string1"), bh.begin()->first);
+    bh.get_sorted_postings(sorted_postings);
+    ASSERT_EQ(1, sorted_postings.size());
+    ASSERT_EQ(tests::detail::to_bytes_ref("string1"), *sorted_postings.begin()->first);
   }
 }

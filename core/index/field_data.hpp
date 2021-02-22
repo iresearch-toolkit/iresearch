@@ -58,20 +58,6 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
-IRESEARCH_API bool memcmp_less(
-  const byte_type* lhs,
-  size_t lhs_size,
-  const byte_type* rhs,
-  size_t rhs_size
-) noexcept;
-
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs
-) noexcept {
-  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
-}
-
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(

@@ -24,7 +24,8 @@
 #ifndef IRESEARCH_POSTINGS_H
 #define IRESEARCH_POSTINGS_H
 
-#include <unordered_map>
+#include <map>
+#include "../external/robin_hood/robin_hood.h"
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
@@ -32,9 +33,31 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
+
 namespace iresearch {
 
-typedef block_pool<byte_type, 32768> byte_block_pool;
+inline bool memcmp_less(
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size) noexcept {
+  assert(lhs && rhs);
+
+  const size_t size = std::min(lhs_size, rhs_size);
+  const auto res = ::memcmp(lhs, rhs, size);
+
+  if (0 == res) {
+    return lhs_size < rhs_size;
+  }
+
+  return res < 0;
+}
+
+inline bool memcmp_less(
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) noexcept {
+  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+}
+
+using byte_block_pool = block_pool<byte_type, 32768>;
 
 struct posting {
   uint64_t doc_code;
@@ -55,28 +78,33 @@ struct posting {
 
 class IRESEARCH_API postings: util::noncopyable {
  public:
-  typedef std::unordered_map<hashed_bytes_ref, posting> map_t;
-  typedef std::pair<map_t::iterator, bool> emplace_result;
-  typedef byte_block_pool::inserter writer_t;
+  using writer_t = byte_block_pool::inserter;
 
-  postings(writer_t& writer);
+  explicit postings(writer_t& writer)
+    : writer_(writer) {
+  }
 
-  inline map_t::const_iterator begin() const { return map_.begin(); }
+  void clear() noexcept {
+    map_.clear();
+    postings_.clear();
+  }
 
-  inline void clear() { map_.clear(); }
+  /// @brief fill a provided vector with terms and corresponding postings in sorted order
+  void get_sorted_postings(std::vector<std::pair<const bytes_ref*, const posting*>>& postings) const;
 
-  // on error returns std::ptr(end(), false)
-  emplace_result emplace(const bytes_ref& term);
+  /// @note on error returns std::ptr(nullptr, false)
+  /// @note returned poitern remains valid until the next call
+  std::pair<posting*, bool> emplace(const bytes_ref& term);
 
-  inline bool empty() const { return map_.empty(); }
-
-  inline map_t::const_iterator end() const { return map_.end(); }
-
-  inline size_t size() const { return map_.size(); }
+  bool empty() const noexcept { return map_.empty(); }
+  size_t size() const noexcept { return map_.size(); }
 
  private:
+  using map_t = robin_hood::unordered_flat_map<hashed_bytes_ref, size_t>;
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   map_t map_;
+  std::vector<posting> postings_;
   writer_t& writer_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };

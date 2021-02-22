@@ -240,22 +240,6 @@ class pos_iterator final : public irs::position {
 }
 
 namespace iresearch {
-
-bool memcmp_less(
-    const byte_type* lhs, size_t lhs_size,
-    const byte_type* rhs, size_t rhs_size) noexcept {
-  assert(lhs && rhs);
-
-  const size_t size = std::min(lhs_size, rhs_size);
-  const auto res = ::memcmp(lhs, rhs, size);
-
-  if (0 == res) {
-    return lhs_size < rhs_size;
-  }
-
-  return res < 0;
-}
-
 namespace detail {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,14 +556,13 @@ class term_iterator : public irs::term_iterator {
       const doc_map* docmap,
       const bytes_ref*& min,
       const bytes_ref*& max) {
-    // refill postings
     postings_.clear();
-    postings_.insert(field.terms_.begin(), field.terms_.end());
+    field.terms_.get_sorted_postings(postings_);
 
     max = min = &irs::bytes_ref::NIL;
     if (!postings_.empty()) {
-      min = &(postings_.begin()->first);
-      max = &((--postings_.end())->first);
+      min = (postings_.begin()->first);
+      max = ((--postings_.end())->first);
     }
 
     field_ = &field;
@@ -597,7 +580,7 @@ class term_iterator : public irs::term_iterator {
 
   virtual const bytes_ref& value() const noexcept override {
     assert(it_ != postings_.end());
-    return it_->first;
+    return *it_->first;
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
@@ -612,7 +595,7 @@ class term_iterator : public irs::term_iterator {
     REGISTER_TIMER_DETAILED();
     assert(it_ != postings_.end());
 
-    return (this->*POSTINGS[size_t(field_->prox_random_access())])(it_->second);
+    return (this->*POSTINGS[size_t(field_->prox_random_access())])(*it_->second);
   }
 
   virtual bool next() override {   
@@ -630,17 +613,7 @@ class term_iterator : public irs::term_iterator {
   }
 
  private:
-  struct less_t {
-    bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const noexcept {
-      return memcmp_less(lhs, rhs);
-    }
-  };
-
-  typedef std::map<
-    bytes_ref,
-    std::reference_wrapper<const posting>,
-    less_t
-  > map_t;
+  using postings_t = std::vector<std::pair<const bytes_ref*, const posting*>>;
 
   typedef irs::doc_iterator::ptr(term_iterator::*postings_f)(const posting&) const;
 
@@ -678,9 +651,9 @@ class term_iterator : public irs::term_iterator {
     return memory::to_managed<irs::doc_iterator, false>(&sorting_doc_itr_);
   }
 
-  map_t postings_;
-  map_t::iterator next_{ postings_.end() };
-  map_t::iterator it_{ postings_.end() };
+  postings_t postings_;
+  postings_t::const_iterator next_{ postings_.end() };
+  postings_t::const_iterator it_{ postings_.end() };
   const field_data* field_{};
   const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
@@ -1120,7 +1093,7 @@ bool field_data::invert(
 
     const auto res = terms_.emplace(term->value);
 
-    if (terms_.end() == res.first) {
+    if (nullptr == res.first) {
       IR_FRMT_ERROR("field '%s' has invalid term of size '" IR_SIZE_T_SPECIFIER "'",
                     meta_.name.c_str(), term->value.size());
       IR_FRMT_TRACE("field '%s' has invalid term '%s'",
@@ -1128,7 +1101,7 @@ bool field_data::invert(
       continue;
     }
 
-    (this->*proc_table_[size_t(res.second)])(res.first->second, id, pay, offs);
+    (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
 
     if (0 == ++len_) {
       IR_FRMT_ERROR(
