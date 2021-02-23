@@ -218,22 +218,32 @@ class parametric_states {
 
  private:
   struct parametric_state_hash {
+    static size_t seed() noexcept {
+      return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(SEED));
+    }
+
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = 1610612741;
+      size_t seed = parametric_state_hash::seed();
       for (auto& pos: state) {
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
+
         seed = irs::hash_combine(seed, hash);
       }
       return seed;
     }
+
+    static const void* SEED;
   };
 
   absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
+
+const void* parametric_states::parametric_state_hash::SEED
+  = &parametric_states::parametric_state_hash::SEED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds elementary transition denoted by 'pos' to parametric state
