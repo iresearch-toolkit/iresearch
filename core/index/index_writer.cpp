@@ -339,7 +339,7 @@ using candidates_mapping_t = robin_hood::unordered_flat_map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const robin_hood::unordered_flat_set<const irs::segment_meta*>& candidates,
+    const irs::index_writer::consolidation_t& candidates,
     const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
@@ -500,7 +500,7 @@ bool map_removals(
   return true;
 }
 
-std::string to_string(robin_hood::unordered_flat_set<const irs::segment_meta*>& consolidation) {
+std::string to_string(const irs::index_writer::consolidation_t& consolidation) {
   std::stringstream ss;
   size_t total_size = 0;
   size_t total_docs_count = 0;
