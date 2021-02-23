@@ -26,6 +26,9 @@
 #include <queue>
 #include <cmath>
 
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
+
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "automaton_utils.hpp"
@@ -218,17 +221,17 @@ class parametric_states {
     bool operator()(const parametric_state& state) const noexcept {
       size_t seed = 1610612741;
       for (auto& pos: state) {
-        const size_t hash = robin_hood::hash_int(
+        const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
         seed = irs::hash_combine(seed, hash);
       }
-      return robin_hood::hash_int(seed);
+      return seed;
     }
   };
 
-  std::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 

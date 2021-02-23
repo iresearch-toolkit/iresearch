@@ -79,7 +79,7 @@ bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
 }
 
 irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  robin_hood::unordered_set<irs::bstring> tokens;
+  absl::flat_hash_set<irs::bstring> tokens;
 
   for (size_t begin = 0, end = 0, length = mask.size();
        end < length;
@@ -109,7 +109,7 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
 
 irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
   size_t offset = 0;
-  robin_hood::unordered_set<irs::bstring> tokens;
+  absl::flat_hash_set<irs::bstring> tokens;
 
   for (auto itr = mask.Begin(), end = mask.End(); itr != end; ++itr, ++offset) {
     if (!itr->IsString()) {
@@ -200,7 +200,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(robin_hood::unordered_set<irs::bstring>&& mask)
+token_masking_stream::token_masking_stream(absl::flat_hash_set<bstring>&& mask)
   : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {

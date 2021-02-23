@@ -27,7 +27,7 @@
 #include <deque>
 #include <vector>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_map.h>
 
 #include "parser_common.hpp"
 
@@ -135,7 +135,7 @@ namespace iresearch {
       std::pair<bool, size_t> m_limit;
       size_t m_nNext;
       std::deque<query_node> m_nodes; // a type that allows O(1) random access and does not invalidate on resize // FIXME seperate into different type vectors?
-      robin_hood::unordered_flat_map<size_t, size_t> m_negatedNodeCache;
+      absl::flat_hash_map<size_t, size_t> m_negatedNodeCache;
       std::vector<std::pair<size_t, bool>> m_order;
       enum StateType { NONE, SINGLE, DOUBLE } m_eState;
 

@@ -26,9 +26,8 @@
 
 #include <atomic>
 #include <functional>
-#include <unordered_set>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
@@ -38,6 +37,12 @@ namespace iresearch {
 namespace timer_utils {
 
 struct timer_stat_t {
+  timer_stat_t() = default;
+  timer_stat_t(const timer_stat_t& rhs) noexcept
+    : count{rhs.count.load(std::memory_order_relaxed)},
+      time{rhs.time.load(std::memory_order_relaxed)} {
+  }
+
   std::atomic<size_t> count;
   std::atomic<size_t> time;
 };
@@ -100,7 +105,7 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void init_stats(
   bool track_all_keys = false,
-  const robin_hood::unordered_set<std::string>& tracked_keys = {});
+  const absl::flat_hash_set<std::string>& tracked_keys = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys

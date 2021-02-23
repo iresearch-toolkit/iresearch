@@ -29,7 +29,7 @@
 #include <unordered_set>
 #include <mutex>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
@@ -38,7 +38,7 @@
 
 namespace iresearch {
 
-template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
+template<typename Key, typename Hash = absl::Hash<Key>, typename Equal = std::equal_to<Key>>
 class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
  public:
   typedef std::shared_ptr<const Key> ref_t;
@@ -114,7 +114,8 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
       auto visit_next = visitor(*ref, ref.use_count() - 1); // -1 for usage by refs_ itself
 
       if (remove_unused && ref.unique()) {
-        itr = refs_.erase(itr);
+        const auto erase_me = itr++;
+        refs_.erase(erase_me);
       } else {
         ++itr;
       }
@@ -129,7 +130,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
  private:
   mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
-  robin_hood::unordered_flat_set<ref_t, hash, equal_to> refs_;
+  absl::flat_hash_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
 }

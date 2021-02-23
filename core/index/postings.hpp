@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_POSTINGS_H
 #define IRESEARCH_POSTINGS_H
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_map.h>
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
@@ -99,7 +99,7 @@ class IRESEARCH_API postings: util::noncopyable {
   size_t size() const noexcept { return map_.size(); }
 
  private:
-  using map_t = robin_hood::unordered_flat_map<hashed_bytes_ref, size_t>;
+  using map_t = absl::flat_hash_map<hashed_bytes_ref, size_t>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   map_t map_;

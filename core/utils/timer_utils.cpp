@@ -26,7 +26,7 @@
 #include <mutex>
 #include <map>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_map.h>
 
 #include "singleton.hpp"
 
@@ -34,18 +34,15 @@ namespace {
 
 class timer_states: public irs::singleton<timer_states> {
  public:
-  typedef std::string key_type;
-  typedef irs::timer_utils::timer_stat_t entry_type;
-  typedef robin_hood::unordered_map<key_type, entry_type> state_map_t;
+  using key_type = std::string;
+  using entry_type = irs::timer_utils::timer_stat_t;
 
   timer_states(): track_all_keys_(false) {}
 
   entry_type& find(const key_type& key) {
     if (track_all_keys_) {
       std::lock_guard<std::mutex> lock(mutex_);
-      auto itr = state_map_.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple());
-
-      return itr.first->second;
+      return state_map_[key];
     }
 
     static entry_type unused;
@@ -60,7 +57,7 @@ class timer_states: public irs::singleton<timer_states> {
 
   void init(
       bool track_all_keys = false,
-      const robin_hood::unordered_flat_set<key_type>& tracked_keys = {}) {
+      const absl::flat_hash_set<key_type>& tracked_keys = {}) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto& entry: state_map_) {
@@ -71,7 +68,7 @@ class timer_states: public irs::singleton<timer_states> {
     track_all_keys_ = track_all_keys;
 
     for (auto& key: tracked_keys) {
-      state_map_.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple());
+      state_map_[key];
     }
   }
 
@@ -91,8 +88,10 @@ class timer_states: public irs::singleton<timer_states> {
   }
 
  private:
+  using state_map_type = absl::flat_hash_map<key_type, entry_type>;
+
   std::mutex mutex_;
-  state_map_t state_map_;
+  state_map_type state_map_;
   bool track_all_keys_;
 };
 
@@ -124,7 +123,7 @@ timer_stat_t& get_stat(const std::string& key) {
 
 void init_stats(
     bool track_all_keys /*= false*/,
-    const robin_hood::unordered_flat_set<std::string>& tracked_keys /*= {} */) {
+    const absl::flat_hash_set<std::string>& tracked_keys /*= {} */) {
   timer_states::instance().init(track_all_keys, tracked_keys);
 }
 

@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_TOKEN_MASKING_STREAM_H
 #define IRESEARCH_TOKEN_MASKING_STREAM_H
 
+#include <absl/container/flat_hash_set.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
@@ -44,7 +46,7 @@ class token_masking_stream final
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(robin_hood::unordered_set<irs::bstring>&& mask);
+  explicit token_masking_stream(absl::flat_hash_set<bstring>&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
@@ -58,7 +60,7 @@ class token_masking_stream final
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-  robin_hood::unordered_set<irs::bstring> mask_;
+  absl::flat_hash_set<bstring> mask_;
   attributes attrs_;
   bool term_eof_;
 };

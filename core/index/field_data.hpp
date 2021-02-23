@@ -123,7 +123,7 @@ class IRESEARCH_API field_data : util::noncopyable {
 
 class IRESEARCH_API fields_data: util::noncopyable {
  private:
-  using fields_map = robin_hood::unordered_flat_map<hashed_string_ref, size_t>;
+  using fields_map = absl::flat_hash_map<hashed_string_ref, size_t>;
 
  public:
   using postings_ref_t = std::vector<std::pair<const bytes_ref*, const posting*>>;

@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_HASH_UTILS_H
 #define IRESEARCH_HASH_UTILS_H
 
+#include <absl/hash/hash.h>
 #include <frozen/string.h>
 
 #include "shared.hpp"
@@ -135,21 +136,31 @@ struct elsa<irs::string_ref> {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   absl extensions
+// -----------------------------------------------------------------------------
+
+namespace absl {
+namespace hash_internal {
+
+template<typename Char>
+struct HashImpl<::iresearch::hashed_basic_string_ref<Char>> {
+  size_t operator()(const ::iresearch::hashed_basic_string_ref<Char>& value) const {
+    return value.hash();
+  }
+};
+
+}
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    std extensions
 // -----------------------------------------------------------------------------
 
 namespace std {
 
-template<>
-struct hash<::iresearch::hashed_bytes_ref> {
-  size_t operator()(const ::iresearch::hashed_bytes_ref& value) const {
-    return value.hash();
-  }
-};
-
-template<>
-struct hash<::iresearch::hashed_string_ref> {
-  size_t operator()(const ::iresearch::hashed_string_ref& value) const {
+template<typename Char>
+struct hash<::iresearch::hashed_basic_string_ref<Char>> {
+  size_t operator()(const ::iresearch::hashed_basic_string_ref<Char>& value) const {
     return value.hash();
   }
 };

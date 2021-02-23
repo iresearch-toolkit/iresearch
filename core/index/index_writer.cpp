@@ -561,7 +561,7 @@ void readers_cache::clear() noexcept {
 }
 
 size_t readers_cache::purge(
-    const robin_hood::unordered_flat_set<key_t, key_hash_t>& segments) noexcept {
+    const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }
@@ -572,7 +572,8 @@ size_t readers_cache::purge(
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
     if (segments.end() != segments.find(it->first)) {
-      it = cache_.erase(it);
+      const auto erase_me = it++;
+      cache_.erase(erase_me);
       ++erased;
     } else {
       ++it;

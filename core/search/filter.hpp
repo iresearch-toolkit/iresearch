@@ -25,7 +25,7 @@
 
 #include <functional>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/node_hash_map.h>
 
 #include "shared.hpp"
 #include "search/sort.hpp"
@@ -38,7 +38,8 @@ template<typename State>
 class states_cache : private util::noncopyable {
  private:
   // FIXME use vector instead?
-  using states_map = robin_hood::unordered_map<const sub_reader*, State>;
+  // FIXME maybe use flat_hash_map depending on State size
+  using states_map = absl::node_hash_map<const sub_reader*, State>;
 
  public:
   using state_type = State;

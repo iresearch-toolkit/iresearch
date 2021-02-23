@@ -30,7 +30,7 @@
 #include <vector>
 #include <atomic>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "store/directory.hpp"
 
@@ -55,7 +55,7 @@ MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // f
 namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
-  typedef robin_hood::unordered_set<std::string> file_set;
+  using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;

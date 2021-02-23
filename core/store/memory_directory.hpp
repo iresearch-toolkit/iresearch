@@ -28,7 +28,7 @@
 
 #include <mutex>
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_map.h>
 
 #include "directory_attributes.hpp"
 #include "utils/attributes.hpp"
@@ -309,8 +309,8 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef robin_hood::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
-  typedef robin_hood::unordered_set<std::string> lock_map;
+  using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
+  using lock_map = absl::flat_hash_set<std::string>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const memory_allocator* alloc_;

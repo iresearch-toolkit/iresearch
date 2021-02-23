@@ -28,11 +28,10 @@
 #endif
 #include <stdint.h>
 
+#include <absl/container/flat_hash_set.h>
+
 #include <frozen/unordered_map.h>
 #include <frozen/string.h>
-
-#include <unordered_map>
-#include <unordered_set>
 
 using namespace iresearch::iql;
 
@@ -41,8 +40,8 @@ using namespace iresearch::iql;
 // -----------------------------------------------------------------------------
 
 namespace {
-  const parser::semantic_type UNKNOWN = 0; // no known value
-  const parser::semantic_type TRUE = 1; // expression evaluating to true
+constexpr parser::semantic_type UNKNOWN = 0; // no known value
+constexpr parser::semantic_type TRUE = 1; // expression evaluating to true
 }
 
 // -----------------------------------------------------------------------------
@@ -939,7 +938,7 @@ void parser_context::add_child(
     parser::semantic_type const& child,
     bool bRemoveSuperset) {
   auto& node = find_node(child);
-  robin_hood::unordered_flat_set<size_t> subChildren; // only for bRemoveSuperset
+  absl::flat_hash_set<size_t> subChildren; // only for bRemoveSuperset
 
   if (bRemoveSuperset) {
     if (query_node::NodeType::INTERSECTION == node.type) {

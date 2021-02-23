@@ -23,7 +23,7 @@
 #ifndef IRESEARCH_FORMAT_H
 #define IRESEARCH_FORMAT_H
 
-#include <robin_hood/robin_hood.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "shared.hpp"
 #include "store/data_output.hpp"
@@ -49,9 +49,10 @@ struct reader_state;
 struct index_output;
 struct data_input;
 struct index_input;
-typedef robin_hood::unordered_flat_set<doc_id_t> document_mask;
 struct postings_writer;
-typedef std::vector<doc_id_t> doc_map;
+
+using document_mask = absl::flat_hash_set<doc_id_t> ;
+using doc_map = std::vector<doc_id_t>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta

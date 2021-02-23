@@ -21,14 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "composite_reader_impl.hpp"
+#include "directory_reader.hpp"
+
+#include <absl/container/flat_hash_map.h>
+
+#include "index/segment_reader.hpp"
+#include "index/composite_reader_impl.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/hash_utils.hpp"
 
-#include "directory_reader.hpp"
-#include "segment_reader.hpp"
 
 namespace {
 
@@ -82,7 +86,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     }
   }
 
-  robin_hood::unordered_set<irs::string_ref> codecs;
+  absl::flat_hash_set<irs::string_ref> codecs;
   auto visitor = [&codecs](const irs::string_ref& name)->bool {
     codecs.insert(name);
     return true;
@@ -185,8 +189,8 @@ class directory_reader_impl :
   );
 
  private:
-  typedef robin_hood::unordered_flat_set<index_file_refs::ref_t> segment_file_refs_t;
-  typedef std::vector<segment_file_refs_t> reader_file_refs_t;
+  using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
+  using reader_file_refs_t = std::vector<segment_file_refs_t>;
 
   directory_reader_impl(
     const directory& dir,
@@ -296,7 +300,7 @@ directory_reader_impl::directory_reader_impl(
   }
 
   const auto INVALID_CANDIDATE = integer_traits<size_t>::const_max;
-  robin_hood::unordered_flat_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
 
   for(size_t i = 0, count = cached_impl ? cached_impl->meta_.meta.size() : 0; i < count; ++i) {
     assert(cached_impl); // ensured by loop condition above

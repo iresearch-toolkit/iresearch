@@ -23,8 +23,10 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
-#define IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
+#ifndef IRESEARCH_TEXT_TOKEN_STREAM_H
+#define IRESEARCH_TEXT_TOKEN_STREAM_H
+
+#include <absl/container/flat_hash_set.h>
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -39,7 +41,7 @@ class text_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  typedef robin_hood::unordered_set<std::string> stopwords_t;
+  using stopwords_t = absl::flat_hash_set<std::string>;
 
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
