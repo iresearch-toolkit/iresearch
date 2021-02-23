@@ -37,6 +37,8 @@
 #include "utils/range.hpp"
 #include "index_writer.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 #include <list>
 #include <sstream>
 
@@ -327,7 +329,7 @@ const std::string& write_document_mask(
 }
 
 // mapping: name -> { new segment, old segment }
-using candidates_mapping_t = robin_hood::unordered_flat_map<
+using candidates_mapping_t = absl::flat_hash_map<
   irs::string_ref,
   std::pair<
     const irs::segment_meta*, // new segment

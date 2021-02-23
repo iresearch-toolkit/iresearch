@@ -284,7 +284,6 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
@@ -293,7 +292,6 @@ set_ipo(${IResearch_TARGET_NAME}-shared)
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
 )
 
 set_ipo(${IResearch_TARGET_NAME}-static)
@@ -444,6 +442,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
+  absl-static
 )
 
 
@@ -466,6 +465,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
+  absl-static
 )
 
 if (CLANG_TIDY_EXE)
@@ -484,6 +484,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   ${ICU_STATIC_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
+  "$<TARGET_FILE:absl-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
