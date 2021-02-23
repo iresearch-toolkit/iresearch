@@ -157,6 +157,8 @@ class parametric_state {
     return positions_.end();
   }
 
+  size_t size() const noexcept { return positions_.size(); }
+
   bool empty() const noexcept { return positions_.empty(); }
 
   void clear() noexcept { return positions_.clear(); }
@@ -214,17 +216,19 @@ class parametric_states {
  private:
   struct parametric_state_hash {
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = 0;
+      size_t seed = 1610612741;
       for (auto& pos: state) {
-        seed = irs::hash_combine(seed, pos.offset);
-        seed = irs::hash_combine(seed, pos.distance);
-        seed = irs::hash_combine(seed, pos.transpose);
+        const size_t hash = robin_hood::hash_int(
+          size_t(pos.offset) << 33  |
+          size_t(pos.distance) << 1 |
+          size_t(pos.transpose));
+        seed = irs::hash_combine(seed, hash);
       }
-      return seed;
+      return robin_hood::hash_int(seed);
     }
   };
 
-  robin_hood::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  std::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 

@@ -95,7 +95,7 @@ class mask_doc_iterator final : public irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     const auto doc = it_->seek(target);
 
-    if (mask_.find(doc) == mask_.end()) {
+    if (!mask_.contains(doc)) {
       return doc;
     }
 
