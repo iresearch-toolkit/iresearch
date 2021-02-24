@@ -576,14 +576,14 @@ class term_iterator : public irs::term_iterator {
 
     max = min = &irs::bytes_ref::NIL;
     if (it_ != end_) {
-      min = it_->first;
-      max = ((end_ - 1)->first);
+      min = &(*it_)->term;
+      max = &(*(end_ - 1))->term;
     }
   }
 
   virtual const bytes_ref& value() const noexcept override {
     assert(it_ != end_);
-    return *it_->first;
+    return (*it_)->term;
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
@@ -598,7 +598,7 @@ class term_iterator : public irs::term_iterator {
     REGISTER_TIMER_DETAILED();
     assert(it_ != end_);
 
-    return (this->*POSTINGS[size_t(field_->prox_random_access())])(*it_->second);
+    return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
   virtual bool next() override {   
@@ -730,7 +730,7 @@ class term_reader final : public irs::basic_term_reader,
   }
 };
 
-field_data::field_data( 
+field_data::field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
@@ -1141,26 +1141,26 @@ fields_data::fields_data(const comparer* comparator /*= nullptr*/)
     int_writer_(int_pool_.begin()) {
 }
 
-std::pair<field_data*, size_t> fields_data::emplace(const hashed_string_ref& name) {
-  auto generator = [this](
-      const hashed_string_ref& key,
-      size_t& value) noexcept {
-    value = fields_.size();
-    fields_.emplace_back(key, byte_writer_, int_writer_, (nullptr != comparator_));
+field_data* fields_data::emplace(const hashed_string_ref& name) {
+  assert(fields_map_.size() == fields_.size());
 
-    // FIXME: can't use c_str() address!!!
-    // reuse hash but point ref at value
-    return hashed_string_ref(key.hash(), fields_.back().meta().name);
-  };
+  auto it = fields_map_.lazy_emplace(
+    name,
+    [&name](const fields_map::constructor& ctor) {
+      ctor(name.hash(), nullptr);
+  });
 
-  // replace original reference to 'name' provided by the caller
-  // with a reference to the cached copy in 'value'
-  const auto res = map_utils::try_emplace_update_key(
-    fields_map_, generator, name);
+  if (!it->second) {
+    try {
+      fields_.emplace_back(name, byte_writer_, int_writer_, (nullptr != comparator_));
+    } catch (...) {
+      fields_map_.erase(it);
+    }
 
-  const size_t id = res.first->second;
+    const_cast<field_data*&>(it->second) = &fields_.back();
+  }
 
-  return { &fields_[id], id };
+  return it->second;
 }
 
 void fields_data::flush(field_writer& fw, flush_state& state) {

@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_POSTINGS_H
 #define IRESEARCH_POSTINGS_H
 
-#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
@@ -59,6 +59,7 @@ inline bool memcmp_less(
 using byte_block_pool = block_pool<byte_type, 32768>;
 
 struct posting {
+  bytes_ref term;
   uint64_t doc_code;
   // ...........................................................................
   // store pointers to data in the following way:
@@ -80,7 +81,8 @@ class IRESEARCH_API postings: util::noncopyable {
   using writer_t = byte_block_pool::inserter;
 
   explicit postings(writer_t& writer)
-    : writer_(writer) {
+    : map_{0, term_id_hash{}, term_id_eq{postings_}},
+      writer_(writer) {
   }
 
   void clear() noexcept {
@@ -89,7 +91,7 @@ class IRESEARCH_API postings: util::noncopyable {
   }
 
   /// @brief fill a provided vector with terms and corresponding postings in sorted order
-  void get_sorted_postings(std::vector<std::pair<const bytes_ref*, const posting*>>& postings) const;
+  void get_sorted_postings(std::vector<const posting*>& postings) const;
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
@@ -99,11 +101,52 @@ class IRESEARCH_API postings: util::noncopyable {
   size_t size() const noexcept { return map_.size(); }
 
  private:
-  using map_t = absl::flat_hash_map<hashed_bytes_ref, size_t>;
+  // hash + index
+  using term_id_t = std::pair<size_t, size_t>;
+
+  class term_id_hash {
+   public:
+    using is_transparent = void;
+
+    size_t operator()(const term_id_t& value) const noexcept {
+      return value.first;
+    }
+
+    size_t operator()(const hashed_bytes_ref& value) const noexcept {
+      return value.hash();
+    }
+  };
+
+  class term_id_eq {
+   public:
+    using is_transparent = void;
+
+    explicit term_id_eq(const std::vector<posting>& data) noexcept
+      : data_(&data) {
+    }
+
+    bool operator()(const term_id_t lhs, const hashed_bytes_ref& rhs) const noexcept {
+      assert(lhs.second < data_->size());
+      return (*data_)[lhs.second].term == rhs;
+    }
+
+    bool operator()(const hashed_bytes_ref& lhs, term_id_t rhs) const noexcept {
+      return this->operator()(rhs, lhs);
+    }
+
+    bool operator()(const term_id_t& lhs, const term_id_t& rhs) const noexcept {
+      return lhs.second == rhs.second;
+    }
+
+   private:
+    const std::vector<posting>* data_;
+  };
+
+  using map_t = absl::flat_hash_set<term_id_t, term_id_hash, term_id_eq>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  map_t map_;
   std::vector<posting> postings_;
+  map_t map_;
   writer_t& writer_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };

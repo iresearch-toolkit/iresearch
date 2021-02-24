@@ -153,7 +153,7 @@ bool segment_writer::index(
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  const auto [slot, id] = fields_.emplace(name);
+  auto* slot = fields_.emplace(name);
   auto& slot_features = slot->meta().features;
 
   const bool slot_empty = slot->empty();
@@ -162,7 +162,7 @@ bool segment_writer::index(
   if ((slot_empty || features.is_subset_of(slot_features)) &&
       slot->invert(tokens, slot_empty ? features : slot_features, doc)) {
     if (slot->size() && features.check<norm>()) {
-      norm_fields_.insert(id);
+      norm_fields_.insert(slot);
     }
 
     fields_ += features; // accumulate segment features
@@ -205,8 +205,7 @@ void segment_writer::finish() {
 
   // write document normalization factors (for each field marked for normalization))
   float_t value;
-  for (const auto field_id : norm_fields_) {
-    const auto* field = fields_.field(field_id);
+  for (const auto* field: norm_fields_) {
     assert(field && field->size() > 0);
     value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {

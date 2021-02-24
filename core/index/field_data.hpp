@@ -123,10 +123,43 @@ class IRESEARCH_API field_data : util::noncopyable {
 
 class IRESEARCH_API fields_data: util::noncopyable {
  private:
-  using fields_map = absl::flat_hash_map<hashed_string_ref, size_t>;
+  // hash + pointer
+  using field_ref_t = std::pair<size_t, field_data*>;
+
+  class field_ref_hash {
+   public:
+    using is_transparent = void;
+
+    size_t operator()(const field_ref_t& value) const noexcept {
+      return value.first;
+    }
+
+    size_t operator()(const hashed_string_ref& field) const noexcept {
+      return field.hash();
+    }
+  };
+
+  class field_ref_eq {
+   public:
+    using is_transparent = void;
+
+    bool operator()(const field_ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+      return lhs.second->meta().name == rhs;
+    }
+
+    bool operator()(const hashed_string_ref& lhs, const field_ref_t& rhs) const noexcept {
+      return this->operator()(rhs, lhs);
+    }
+
+    bool operator()(const field_ref_t& lhs, const field_ref_t& rhs) const noexcept {
+      return lhs.second == rhs.second;
+    }
+  };
+
+  using fields_map = absl::flat_hash_set<field_ref_t, field_ref_hash, field_ref_eq>;
 
  public:
-  using postings_ref_t = std::vector<std::pair<const bytes_ref*, const posting*>>;
+  using postings_ref_t = std::vector<const posting*>;
 
   explicit fields_data(const comparer* comparator);
 
@@ -134,7 +167,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return comparator_;
   }
 
-  std::pair<field_data*, size_t> emplace(const hashed_string_ref& name);
+  field_data* emplace(const hashed_string_ref& name);
 
   field_data* field(size_t idx) noexcept {
     assert(idx < fields_.size());
@@ -173,10 +206,10 @@ class IRESEARCH_API fields_data: util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
+  std::deque<field_data> fields_; // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;
-  std::vector<field_data> fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?

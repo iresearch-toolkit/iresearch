@@ -33,20 +33,19 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 void postings::get_sorted_postings(
-    std::vector<std::pair<const bytes_ref*, const posting*>>& postings) const {
+    std::vector<const posting*>& postings) const {
   postings.resize(map_.size());
 
   auto begin = postings.begin();
   for (auto& entry : map_) {
-    begin->first = &entry.first;
-    begin->second = &postings_[entry.second];
+    *begin = &postings_[entry.second];
     ++begin;
   }
 
   std::sort(
     postings.begin(), postings.end(),
-    [](const auto& lhs, const auto& rhs) {
-      return memcmp_less(*lhs.first, *rhs.first);
+    [](const auto lhs, const auto rhs) {
+      return memcmp_less(lhs->term, rhs->term);
   });
 }
 
@@ -74,26 +73,35 @@ std::pair<posting*, bool> postings::emplace(const bytes_ref& term) {
   }
 
   assert(size() < doc_limits::eof()); // not larger then the static flag
+  assert(map_.size() == postings_.size());
 
-  auto generator = [&term, this](const hashed_bytes_ref& key, size_t& value) {
+  const auto hashed_term = make_hashed_ref(term);
+
+  bool is_new = false;
+  const auto it = map_.lazy_emplace(
+    hashed_term,
+    [&is_new, hash = hashed_term.hash(), id = map_.size()](const map_t::constructor& ctor){
+      is_new = true;
+      ctor(hash, id);
+  });
+
+  if (is_new) {
     // for new terms also write out their value
-    writer_.write(term.c_str(), term.size());
+    try {
+      writer_.write(term.c_str(), term.size());
+      postings_.emplace_back();
+    } catch (...) {
+      // we leave some garbage in block pool
+      map_.erase(it);
+      throw;
+    }
 
-    value = postings_.size();
-    postings_.emplace_back();
+    postings_.back().term = {
+      (writer_.position() - term.size()).buffer(),
+      term.size() };
+  }
 
-    // reuse hash but point ref at data in pool
-    return hashed_bytes_ref(
-      key.hash(),
-      (writer_.position() - term.size()).buffer(), term.size());
-  };
-
-  // replace original reference to 'term' provided by the caller
-  // with a reference to the cached copy in 'writer_'
-  const auto res = map_utils::try_emplace_update_key(
-    map_, generator, make_hashed_ref(term));
-
-  return { &postings_[res.first->second], res.second };
+  return { &postings_[it->second], is_new };
 }
 
 }
