@@ -551,10 +551,9 @@ bool memory_directory::rename(
         files_.erase(it);
         return true;
       }
-
-      files_.erase(res.first);
     }
 
+    files_.erase(res.first);
     return false;
   } catch (...) {
   }
