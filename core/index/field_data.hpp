@@ -24,6 +24,10 @@
 #ifndef IRESEARCH_FIELD_DATA_H
 #define IRESEARCH_FIELD_DATA_H
 
+#include <vector>
+#include <tuple>
+#include <unordered_map>
+
 #include "field_meta.hpp"
 #include "postings.hpp"
 #include "formats/formats.hpp"
@@ -33,10 +37,7 @@
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <vector>
-#include <tuple>
-#include <unordered_map>
+#include "utils/hash_container_utils.hpp"
 
 namespace iresearch {
 
@@ -123,40 +124,19 @@ class IRESEARCH_API field_data : util::noncopyable {
 
 class IRESEARCH_API fields_data: util::noncopyable {
  private:
-  // hash + pointer
-  using field_ref_t = std::pair<size_t, field_data*>;
+  struct field_ref_eq : value_ref_eq<field_data*> {
+    using self_t::operator();
 
-  class field_ref_hash {
-   public:
-    using is_transparent = void;
-
-    size_t operator()(const field_ref_t& value) const noexcept {
-      return value.first;
-    }
-
-    size_t operator()(const hashed_string_ref& field) const noexcept {
-      return field.hash();
-    }
-  };
-
-  class field_ref_eq {
-   public:
-    using is_transparent = void;
-
-    bool operator()(const field_ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+    bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
       return lhs.second->meta().name == rhs;
     }
 
-    bool operator()(const hashed_string_ref& lhs, const field_ref_t& rhs) const noexcept {
+    bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
-    }
-
-    bool operator()(const field_ref_t& lhs, const field_ref_t& rhs) const noexcept {
-      return lhs.second == rhs.second;
     }
   };
 
-  using fields_map = absl::flat_hash_set<field_ref_t, field_ref_hash, field_ref_eq>;
+  using fields_map = flat_hash_set<field_ref_eq>;
 
  public:
   using postings_ref_t = std::vector<const posting*>;

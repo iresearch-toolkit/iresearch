@@ -26,8 +26,8 @@
 
 #include <functional>
 #include <locale>
-#include <unordered_map>
 #include <vector>
+
 #include "utils/string.hpp"
 
 namespace iresearch {

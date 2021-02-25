@@ -22,7 +22,6 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <unordered_map>
 #include <queue>
 #include <cmath>
 

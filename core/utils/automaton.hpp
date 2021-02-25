@@ -25,7 +25,6 @@
 
 #include "shared.hpp"
 
-#include <unordered_map>
 #include <vector>
 
 #if defined(_MSC_VER)

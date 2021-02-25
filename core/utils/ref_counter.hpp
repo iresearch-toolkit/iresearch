@@ -26,7 +26,6 @@
 
 #include <functional>
 #include <memory>
-#include <unordered_set>
 #include <mutex>
 
 #include <absl/container/flat_hash_set.h>
