@@ -26,7 +26,7 @@
 #include <mutex>
 #include <map>
 
-#include <absl/container/flat_hash_map.h>
+#include <absl/container/node_hash_map.h>
 
 #include "singleton.hpp"
 
@@ -88,7 +88,7 @@ class timer_states: public irs::singleton<timer_states> {
   }
 
  private:
-  using state_map_type = absl::flat_hash_map<key_type, entry_type>;
+  using state_map_type = absl::node_hash_map<key_type, entry_type>;
 
   std::mutex mutex_;
   state_map_type state_map_;

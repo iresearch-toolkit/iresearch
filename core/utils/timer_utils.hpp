@@ -37,12 +37,6 @@ namespace iresearch {
 namespace timer_utils {
 
 struct timer_stat_t {
-  timer_stat_t() = default;
-  timer_stat_t(const timer_stat_t& rhs) noexcept
-    : count{rhs.count.load(std::memory_order_relaxed)},
-      time{rhs.time.load(std::memory_order_relaxed)} {
-  }
-
   std::atomic<size_t> count;
   std::atomic<size_t> time;
 };
