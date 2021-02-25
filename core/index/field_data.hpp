@@ -26,7 +26,6 @@
 
 #include <vector>
 #include <tuple>
-#include <unordered_map>
 
 #include "field_meta.hpp"
 #include "postings.hpp"
