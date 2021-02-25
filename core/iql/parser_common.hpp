@@ -27,6 +27,7 @@
 #include <functional>
 #include <locale>
 #include <vector>
+#include <unordered_map>
 
 #include "utils/string.hpp"
 
