@@ -729,7 +729,8 @@ class IRESEARCH_API index_writer
     merge_writer merger;
   }; // consolidation_context_t
 
-  static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
+  // FIXME change to is_nothrow_move_constructible_v once we switch to absl::flat_hash_set
+  static_assert(std::is_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
     import_context(
@@ -798,7 +799,8 @@ class IRESEARCH_API index_writer
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  static_assert(std::is_nothrow_move_constructible_v<import_context>);
+  // FIXME change to is_nothrow_move_constructible_v once we switch to absl::flat_hash_set
+  static_assert(std::is_move_constructible_v<import_context>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the segment writer and its associated ref tracing directory
