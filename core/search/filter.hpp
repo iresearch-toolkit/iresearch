@@ -34,38 +34,6 @@
 
 namespace iresearch {
 
-template<typename State>
-class states_cache : private util::noncopyable {
- private:
-  // FIXME use vector instead?
-  // FIXME maybe use flat_hash_map depending on State size
-  using states_map = absl::node_hash_map<const sub_reader*, State>;
-
- public:
-  using state_type = State;
-
-  explicit states_cache(size_t size) {
-    states_.reserve(size);
-  }
-
-  states_cache(states_cache&&) = default;
-  states_cache& operator=(states_cache&&) = default;
-
-  State& insert(const sub_reader& rdr) {
-    return states_[&rdr];
-  }
-
-  const State* find(const sub_reader& rdr) const noexcept {
-    auto it = states_.find(&rdr);
-    return states_.end() == it ? nullptr : &(it->second);
-  }
-
-  bool empty() const noexcept { return states_.empty(); }
-
-private:
-  states_map states_;
-}; // states_cache
-
 struct index_reader;
 
 ////////////////////////////////////////////////////////////////////////////////

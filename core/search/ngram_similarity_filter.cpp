@@ -24,14 +24,15 @@
 
 #include <set>
 
-#include "collectors.hpp"
-#include "disjunction.hpp"
-#include "min_match_disjunction.hpp"
 #include "shared.hpp"
-#include "cost.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "search/collectors.hpp"
+#include "search/cost.hpp"
+#include "search/disjunction.hpp"
+#include "search/min_match_disjunction.hpp"
+#include "search/states_cache.hpp"
 #include "utils/misc.hpp"
 #include "utils/map_utils.hpp"
 
@@ -498,7 +499,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   size_t min_match_count = std::max(
     static_cast<size_t>(std::ceil(static_cast<double>(ngrams.size()) * threshold)), (size_t)1);
 
-  states_t query_states(rdr.size());
+  states_t query_states(rdr);
 
   // per segment terms states
   const auto terms_count = ngrams.size();
