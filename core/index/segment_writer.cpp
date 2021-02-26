@@ -35,17 +35,15 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-#include <math.h>
-#include <set>
-
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(
-    const string_ref& name, 
+    const hashed_string_ref& name,
     columnstore_writer& columnstore,
     const column_info_provider_t& column_info,
     bool cache)
   : name(name.c_str(), name.size()),
+    name_hash(name.hash()),
     stream(column_info(name)) {
   if (!cache) {
     auto& info = stream.info();
@@ -94,8 +92,8 @@ size_t segment_writer::memory_active() const noexcept {
 
   const auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
-      return lhs + rhs.second.stream.memory_active();
+    [](size_t lhs, const stored_column& rhs) noexcept {
+      return lhs + rhs.stream.memory_active();
   });
 
   return (docs_context_.size() * sizeof(update_contexts::value_type))
@@ -111,8 +109,8 @@ size_t segment_writer::memory_reserved() const noexcept {
 
   const auto column_cache_reserved = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
-      return lhs + rhs.second.stream.memory_reserved();
+    [](size_t lhs, const stored_column& rhs) noexcept {
+      return lhs + rhs.stream.memory_reserved();
   });
 
   return sizeof(segment_writer)
@@ -183,21 +181,12 @@ columnstore_writer::column_output& segment_writer::stream(
   REGISTER_TIMER_DETAILED();
   assert(column_info_);
 
-  auto generator = [](
-      const hashed_string_ref& key,
-      const stored_column& value) noexcept {
-    // reuse hash but point ref at value
-    return hashed_string_ref(key.hash(), value.name);
-  };
-
-  // replace original reference to 'name' provided by the caller
-  // with a reference to the cached copy in 'value'
-  return map_utils::try_emplace_update_key(
-    columns_,                                                          // container
-    generator,                                                         // key generator
-    name,                                                              // key
-    name, *col_writer_, *column_info_, nullptr != fields_.comparator() // value // FIXME
-  ).first->second.writer(doc_id);
+  return columns_.lazy_emplace(
+    name,
+    [this, &name](const auto& ctor){
+      ctor(name, *col_writer_, *column_info_,
+           nullptr != fields_.comparator());
+  })->writer(doc_id);
 }
 
 void segment_writer::finish() {
@@ -220,7 +209,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   sorted_columns_.resize(columns_.size());
   auto begin = sorted_columns_.begin();
   for (auto& entry : columns_) {
-    *begin = &entry.second;
+    *begin = &entry;
     ++begin;
   }
   std::sort(
@@ -293,8 +282,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     );
 
     irs::sorted_column::flush_buffer_t buffer;
-    for (auto& column_entry : columns_) {
-      auto& column = column_entry.second;
+    for (auto& column : columns_) {
 
       if (!field_limits::valid(column.id)) {
         // cached column

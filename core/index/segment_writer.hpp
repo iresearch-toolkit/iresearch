@@ -229,17 +229,45 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   friend struct action_helper;
 
   struct stored_column : util::noncopyable {
+    struct hash {
+      using is_transparent = void;
+
+      size_t operator()(const hashed_string_ref& value) const noexcept {
+        return value.hash();
+      }
+
+      size_t operator()(const stored_column& value) const noexcept {
+        return value.name_hash;
+      }
+    };
+
+    struct eq {
+      using is_transparent = void;
+
+      bool operator()(const stored_column& lhs, const stored_column& rhs) const noexcept {
+        return lhs.name == rhs.name;
+      }
+
+      bool operator()(const stored_column& lhs, const hashed_string_ref& rhs) const noexcept {
+        return lhs.name == rhs;
+      }
+
+      bool operator()(const hashed_string_ref& lhs, const stored_column& rhs) const noexcept {
+        return this->operator()(rhs, lhs);
+      }
+    };
+
     stored_column(
-      const string_ref& name,
+      const hashed_string_ref& name,
       columnstore_writer& columnstore,
       const column_info_provider_t& column_info,
-      bool cache
-    );
+      bool cache);
 
     std::string name;
-    irs::sorted_column stream;
+    size_t name_hash;
     columnstore_writer::values_writer_f writer;
-    field_id id{ field_limits::invalid() };
+    mutable irs::sorted_column stream;
+    mutable field_id id{ field_limits::invalid() };
   }; // stored_column
 
   struct sorted_column : util::noncopyable {
@@ -388,7 +416,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
-  std::unordered_map<hashed_string_ref, stored_column> columns_;
+  absl::flat_hash_set<stored_column, stored_column::hash, stored_column::eq> columns_;
   std::vector<const stored_column*> sorted_columns_;
   absl::flat_hash_set<const field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
