@@ -24,6 +24,7 @@
 #define IRESEARCH_STATES_CACHE_H
 
 #include <vector>
+#include <absl/container/flat_hash_map.h>
 
 #include "shared.hpp"
 #include "index/index_reader.hpp"
@@ -38,6 +39,7 @@ namespace iresearch {
 /// @todo consider changing an API so that sub_reader is indexable by an integer
 ///       regardless of memory layout
 ////////////////////////////////////////////////////////////////////////////////
+/*
 template<typename State>
 class states_cache : private util::noncopyable {
  private:
@@ -78,8 +80,40 @@ class states_cache : private util::noncopyable {
   }
 
   std::vector<size_t> index_;
-  std::vector<State> states_;
+  std::deque<State> states_;
   const sub_reader* begin_; // address of the very first segment
+}; // states_cache
+*/
+
+template<typename State>
+class states_cache : private util::noncopyable {
+ private:
+  using states_map = absl::flat_hash_map<const sub_reader*, State>;
+
+ public:
+  using state_type = State;
+
+  explicit states_cache(const index_reader& reader) {
+    states_.reserve(reader.size());
+  }
+
+  states_cache(states_cache&&) = default;
+  states_cache& operator=(states_cache&&) = default;
+
+  State& insert(const sub_reader& rdr) {
+    return states_[&rdr];
+  }
+
+  const State* find(const sub_reader& rdr) const noexcept {
+    auto it = states_.find(&rdr);
+    return states_.end() == it ? nullptr : &(it->second);
+  }
+
+  bool empty() const noexcept { return states_.empty(); }
+
+private:
+  // FIXME use vector instead?
+  states_map states_;
 }; // states_cache
 
 }

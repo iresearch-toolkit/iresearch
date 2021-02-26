@@ -26,6 +26,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <emilib/hash_map.hpp>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
@@ -46,6 +48,11 @@ struct top_term {
       key(std::forward<U>(key)) {
   }
 
+  template<typename U = key_type>
+  void reset(const bytes_ref& term, U&& key) {
+    this->term = term;
+    this->key = std::forward<U>(key);
+  }
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -98,6 +105,13 @@ struct top_term_state : top_term<T> {
   template<typename U = T>
   top_term_state(const bytes_ref& term, U&& key)
     : top_term<T>(term, std::forward<U>(key)) {
+  }
+
+  template<typename U = T>
+  void reset(const bytes_ref& term, U&& key) {
+    top_term<T>::reset(term, std::forward<U>(key));
+    segments.clear();
+    terms.clear();
   }
 
   template<typename CollectorState>
@@ -156,8 +170,9 @@ template<typename State,
       const Comparer& comp = {})
     : comparer_rep(comp),
       size_(std::max(size_t(1), size)) {
-    heap_.reserve(size);
-    terms_.reserve(size); // ensure all iterators remain valid
+    states_.reserve(size_);
+    heap_.reserve(size_);
+    terms_.reserve(size_); // ensure all iterators remain valid
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -186,20 +201,31 @@ template<typename State,
     const auto& term = *state_.term;
 
     if (terms_.size() < size_) {
-      const auto res = emplace(make_hashed_ref(term), key);
+      const auto hashed_term = make_hashed_ref(term);
+      auto it = terms_.find(hashed_term);
 
-      if (res.second) {
-        heap_.emplace_back(res.first);
-        push();
+      if (it == terms_.end()) {
+        state_type& state = states_.emplace_back(term, key);
+        const auto res = terms_.insert(
+          hashed_bytes_ref{hashed_term.hash(), state.term},
+          &state);
+        assert(res.second);
+        it = res.first;
+        heap_.emplace_back(it);
       }
 
-      res.first->second.emplace(state_);
+      it->second->emplace(state_);
+
+      if (terms_.size() == size_) {
+        // postpone building a heap as long as we can
+        make_heap();
+      }
 
       return;
     }
 
     const auto min = heap_.front();
-    const auto& min_state = min->second;
+    const auto& min_state = *min->second;
 
     if (!comparer()(min_state, key, term)) {
       // nothing to do
@@ -212,31 +238,34 @@ template<typename State,
     if (it == terms_.end()) {
       // update min entry
       pop();
+      state_type* state = min->second;
       terms_.erase(min);
-      const auto res = emplace(hashed_term, key);
+      state->reset(term, key);
+      const auto res = terms_.insert(
+        hashed_bytes_ref{hashed_term.hash(), state->term},
+        state);
       assert(res.second);
-
       heap_.back() = res.first;
       push();
 
-      res.first->second.emplace(state_);
+      state->emplace(state_);
     } else {
-      assert(it->second.key == key);
+      assert(it->second->key == key);
       // update existing entry
-      it->second.emplace(state_);
+      it->second->emplace(state_);
     }
   }
 
   //FIXME rename
   template<typename Visitor>
   void visit(const Visitor& visitor) noexcept {
-    for (auto& entry : terms_) {
-      visitor(entry.second);
+    for (auto& state: states_) {
+      visitor(state);
     }
   }
 
  private:
-  typedef std::unordered_map<hashed_bytes_ref, state_type> states_map_t;
+  using states_map_t = emilib::HashMap<hashed_bytes_ref, state_type*>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a representation of state of the collector
@@ -249,13 +278,23 @@ template<typename State,
     const uint32_t* docs_count{};
   };
 
+  void make_heap() noexcept {
+    std::make_heap(
+      heap_.begin(),
+      heap_.end(),
+      [this](const typename states_map_t::iterator lhs,
+             const typename states_map_t::iterator rhs) noexcept {
+       return comparer()(*rhs->second, *lhs->second);
+    });
+  }
+
   void push() noexcept {
     std::push_heap(
       heap_.begin(),
       heap_.end(),
       [this](const typename states_map_t::iterator lhs,
              const typename states_map_t::iterator rhs) noexcept {
-       return comparer()(rhs->second, lhs->second);
+       return comparer()(*rhs->second, *lhs->second);
     });
   }
 
@@ -265,22 +304,8 @@ template<typename State,
       heap_.end(),
       [this](const typename states_map_t::iterator lhs,
              const typename states_map_t::iterator rhs) noexcept {
-       return comparer()(rhs->second, lhs->second);
+       return comparer()(*rhs->second, *lhs->second);
     });
-  }
-
-  std::pair<typename states_map_t::iterator, bool>
-  emplace(const hashed_bytes_ref& term, const key_type& key) {
-    // replace original reference to 'name' provided by the caller
-    // with a reference to the cached copy in 'value'
-    return map_utils::try_emplace_update_key(
-      terms_,
-      [](const hashed_bytes_ref& key,
-         const state_type& value) noexcept {
-          // reuse hash but point ref at value
-          return hashed_bytes_ref(key.hash(), value.term);
-      },
-      term, term, key);
   }
 
   const comparer_type& comparer() const noexcept {
@@ -288,6 +313,7 @@ template<typename State,
   }
 
   collector_state state_;
+  std::vector<state_type> states_;
   std::vector<typename states_map_t::iterator> heap_;
   states_map_t terms_;
   size_t size_;
