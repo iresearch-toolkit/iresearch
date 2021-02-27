@@ -305,8 +305,7 @@ directory_reader_impl::directory_reader_impl(
   for(size_t i = 0, count = cached_impl ? cached_impl->meta_.meta.size() : 0; i < count; ++i) {
     assert(cached_impl); // ensured by loop condition above
     auto itr = reuse_candidates.emplace(
-      cached_impl->meta_.meta.segment(i).meta.name, i
-    );
+      cached_impl->meta_.meta.segment(i).meta.name, i);
 
     if (!itr.second) {
       itr.first->second = INVALID_CANDIDATE; // treat collisions as invalid

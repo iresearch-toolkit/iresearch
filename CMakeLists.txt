@@ -82,7 +82,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
-option(USE_BENCHMARK "Build micro-benchmark project" OFF)
+option(USE_MICRO_BENCHMARCH "Build micro-benchmark project" OFF)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -332,8 +332,8 @@ if (USE_PVS_STUDIO)
   )
 endif()
 
-if (USE_BENCHMARK)
-  add_subdirectory(benchmark)
+if (USE_MICRO_BENCHMARCH)
+  add_subdirectory(microbench)
 endif()
 
 if (USE_TESTS)

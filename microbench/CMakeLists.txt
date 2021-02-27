@@ -1,9 +1,9 @@
-set (IResearchBenchmark_TARGET_NAME "iresearch-benchmark" CACHE INTERNAL "")
+set (IResearchBenchmark_TARGET_NAME "iresearch-microbench" CACHE INTERNAL "")
 
 find_package(benchmark REQUIRED)
 
 add_executable(${IResearchBenchmark_TARGET_NAME}
-  ./benchmark_main.cpp
+  ./microbench_main.cpp
 )
 
 set_ipo(${IResearchBenchmark_TARGET_NAME})

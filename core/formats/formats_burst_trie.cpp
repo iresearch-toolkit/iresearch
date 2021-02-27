@@ -1409,7 +1409,9 @@ class block_iterator : util::noncopyable {
     }
 
     [[maybe_unused]] void assert_block_boundaries() {
+#ifdef IRESEARCH_DEBUG
       assert(begin <= end);
+#endif
     }
 
     bstring block;
