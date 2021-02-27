@@ -26,14 +26,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include <emilib/hash_map.hpp>
-
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
-#include "search/sort.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/map_utils.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -206,9 +203,7 @@ template<typename State,
 
       if (it == terms_.end()) {
         state_type& state = states_.emplace_back(term, key);
-        const auto res = terms_.insert(
-          hashed_bytes_ref{hashed_term.hash(), state.term},
-          &state);
+        const auto res = terms_.insert({hashed_term.hash(), &state});
         assert(res.second);
         it = res.first;
         heap_.emplace_back(it);
@@ -241,9 +236,7 @@ template<typename State,
       state_type* state = min->second;
       terms_.erase(min);
       state->reset(term, key);
-      const auto res = terms_.insert(
-        hashed_bytes_ref{hashed_term.hash(), state->term},
-        state);
+      const auto res = terms_.insert({hashed_term.hash(), state});
       assert(res.second);
       heap_.back() = res.first;
       push();
@@ -265,7 +258,20 @@ template<typename State,
   }
 
  private:
-  using states_map_t = emilib::HashMap<hashed_bytes_ref, state_type*>;
+  struct state_ref_eq : value_ref_eq<state_type*> {
+    using state_ref = typename value_ref_eq<state_type*>::ref_t;
+    using value_ref_eq<state_type*>::operator();
+
+    bool operator()(const hashed_bytes_ref& lhs, const state_ref& rhs) const noexcept {
+      return lhs == rhs.second->term;
+    }
+
+    bool operator()(const state_ref& lhs, const hashed_bytes_ref& rhs) const noexcept {
+      return this->operator()(rhs, lhs);
+    }
+  };
+
+  using states_map_t = irs::stable_hash_set<state_ref_eq>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a representation of state of the collector

@@ -29,7 +29,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
-#include "utils/hash_container_utils.hpp"
+#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 

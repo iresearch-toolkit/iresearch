@@ -29,7 +29,7 @@
 #include "index/index_meta.hpp"
 
 #include "formats/format_utils.hpp"
-#include "utils/hash_container_utils.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"

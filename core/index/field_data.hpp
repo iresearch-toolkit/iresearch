@@ -36,7 +36,7 @@
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/hash_container_utils.hpp"
+#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 
