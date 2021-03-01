@@ -343,7 +343,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
     std::vector<tier::segment_stat> sorted_segments;
     sorted_segments.reserve(meta.size());
 
-    // get sorted segments from index meta
+    // get segments from index meta
     auto push_segments = [&sorted_segments](
         const std::string& /*filename*/,
         const irs::segment_meta& segment) {
@@ -358,7 +358,6 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
     };
 
     meta.visit_segments(push_segments);
-    std::sort(sorted_segments.begin(), sorted_segments.end());
 
     ///////////////////////////////////////////////////////////////////////////
     /// Stage 1
@@ -375,7 +374,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
       if (consolidating_segments.end() != consolidating_segments.find(segment.meta)) {
         consolidating_size += segment.size;
         total_docs_count += segment.meta->live_docs_count; // exclude removals from stats for consolidating segments
-        begin = sorted_segments.erase(begin); // segment is already marked for consolidation, filter it out
+        irstd::swap_remove(sorted_segments, begin); // segment is already marked for consolidation, filter it out
       } else {
         total_docs_count += segment.meta->docs_count;
         ++begin;
@@ -402,7 +401,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
       const double_t segment_fill_factor = double_t(segment.meta->live_docs_count) / segment.meta->docs_count;
       if (segment.size > too_big_segments_threshold && (total_fill_factor <= segment_fill_factor)) {
         // filter out segments that are too big
-        begin = sorted_segments.erase(begin);
+        irstd::swap_remove(sorted_segments, begin);
       } else {
         ++begin;
       }
@@ -410,7 +409,14 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
 
     ///////////////////////////////////////////////////////////////////////////
     /// Stage 3
-    /// find candidates
+    /// sort candidates
+    ///////////////////////////////////////////////////////////////////////////
+
+    std::sort(sorted_segments.begin(), sorted_segments.end());
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 4
+    /// find proper candidates
     ///////////////////////////////////////////////////////////////////////////
 
     tier::consolidation_candidate best(sorted_segments.begin());
