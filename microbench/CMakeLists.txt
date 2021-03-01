@@ -3,6 +3,7 @@ set (IResearchBenchmark_TARGET_NAME "iresearch-microbench" CACHE INTERNAL "")
 find_package(benchmark REQUIRED)
 
 add_executable(${IResearchBenchmark_TARGET_NAME}
+  ./top_term_collector_benchmark.cpp
   ./microbench_main.cpp
 )
 
@@ -27,7 +28,7 @@ target_include_directories(${IResearchBenchmark_TARGET_NAME}
 
 set_target_properties(${IResearchBenchmark_TARGET_NAME}
   PROPERTIES
-  OUTPUT_NAME iresearch-benchmark
+  OUTPUT_NAME iresearch-microbench
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
 )
 

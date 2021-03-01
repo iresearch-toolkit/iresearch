@@ -24,7 +24,6 @@
 #define IRESEARCH_HASH_CONTAINER_UTILS
 
 #include <absl/container/flat_hash_set.h>
-#include <emilib/hash_set.hpp>
 
 #include "hash_utils.hpp"
 
@@ -76,13 +75,6 @@ struct value_ref_eq {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Eq>
 using flat_hash_set = absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief emilib hash containers conform c++ standard in a sense that if enough
-///        space was allocated, no rehashing happens
-////////////////////////////////////////////////////////////////////////////////
-template<typename Eq>
-using stable_hash_set = emilib::HashSet<typename Eq::ref_t, value_ref_hash, Eq>;
 
 }
 

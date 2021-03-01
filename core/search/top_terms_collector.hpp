@@ -29,8 +29,9 @@
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
+#include "search/sort.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/hash_set_utils.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -45,11 +46,6 @@ struct top_term {
       key(std::forward<U>(key)) {
   }
 
-  template<typename U = key_type>
-  void reset(const bytes_ref& term, U&& key) {
-    this->term = term;
-    this->key = std::forward<U>(key);
-  }
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -102,13 +98,6 @@ struct top_term_state : top_term<T> {
   template<typename U = T>
   top_term_state(const bytes_ref& term, U&& key)
     : top_term<T>(term, std::forward<U>(key)) {
-  }
-
-  template<typename U = T>
-  void reset(const bytes_ref& term, U&& key) {
-    top_term<T>::reset(term, std::forward<U>(key));
-    segments.clear();
-    terms.clear();
   }
 
   template<typename CollectorState>
@@ -167,9 +156,8 @@ template<typename State,
       const Comparer& comp = {})
     : comparer_rep(comp),
       size_(std::max(size_t(1), size)) {
-    states_.reserve(size_);
-    heap_.reserve(size_);
-    terms_.reserve(size_); // ensure all iterators remain valid
+    heap_.reserve(size);
+    terms_.reserve(size); // ensure all iterators remain valid
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -197,30 +185,24 @@ template<typename State,
   void visit(const key_type& key) {
     const auto& term = *state_.term;
 
-    if (terms_.size() < size_) {
-      const auto hashed_term = make_hashed_ref(term);
-      auto it = terms_.find(hashed_term);
+    if (left_) {
+      const auto res = emplace(make_hashed_ref(term), key);
 
-      if (it == terms_.end()) {
-        state_type& state = states_.emplace_back(term, key);
-        const auto res = terms_.insert({hashed_term.hash(), &state});
-        assert(res.second);
-        it = res.first;
-        heap_.emplace_back(it);
+      if (res.second) {
+        heap_.emplace_back(res.first);
+
+        if (!--left_) {
+          make_heap();
+        }
       }
 
-      it->second->emplace(state_);
-
-      if (terms_.size() == size_) {
-        // postpone building a heap as long as we can
-        make_heap();
-      }
+      res.first->second.emplace(state_);
 
       return;
     }
 
     const auto min = heap_.front();
-    const auto& min_state = *min->second;
+    const auto& min_state = min->second;
 
     if (!comparer()(min_state, key, term)) {
       // nothing to do
@@ -233,45 +215,31 @@ template<typename State,
     if (it == terms_.end()) {
       // update min entry
       pop();
-      state_type* state = min->second;
       terms_.erase(min);
-      state->reset(term, key);
-      const auto res = terms_.insert({hashed_term.hash(), state});
+      const auto res = emplace(hashed_term, key);
       assert(res.second);
+
       heap_.back() = res.first;
       push();
 
-      state->emplace(state_);
+      res.first->second.emplace(state_);
     } else {
-      assert(it->second->key == key);
+      assert(it->second.key == key);
       // update existing entry
-      it->second->emplace(state_);
+      it->second.emplace(state_);
     }
   }
 
   //FIXME rename
   template<typename Visitor>
   void visit(const Visitor& visitor) noexcept {
-    for (auto& state: states_) {
-      visitor(state);
+    for (auto& entry : terms_) {
+      visitor(entry.second);
     }
   }
 
  private:
-  struct state_ref_eq : value_ref_eq<state_type*> {
-    using state_ref = typename value_ref_eq<state_type*>::ref_t;
-    using value_ref_eq<state_type*>::operator();
-
-    bool operator()(const hashed_bytes_ref& lhs, const state_ref& rhs) const noexcept {
-      return lhs == rhs.second->term;
-    }
-
-    bool operator()(const state_ref& lhs, const hashed_bytes_ref& rhs) const noexcept {
-      return this->operator()(rhs, lhs);
-    }
-  };
-
-  using states_map_t = irs::stable_hash_set<state_ref_eq>;
+  typedef std::unordered_map<hashed_bytes_ref, state_type> states_map_t;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a representation of state of the collector
@@ -288,9 +256,8 @@ template<typename State,
     std::make_heap(
       heap_.begin(),
       heap_.end(),
-      [this](const typename states_map_t::iterator lhs,
-             const typename states_map_t::iterator rhs) noexcept {
-       return comparer()(*rhs->second, *lhs->second);
+      [this](const auto lhs, const auto rhs) noexcept {
+       return comparer()(rhs->second, lhs->second);
     });
   }
 
@@ -298,9 +265,8 @@ template<typename State,
     std::push_heap(
       heap_.begin(),
       heap_.end(),
-      [this](const typename states_map_t::iterator lhs,
-             const typename states_map_t::iterator rhs) noexcept {
-       return comparer()(*rhs->second, *lhs->second);
+      [this](const auto lhs, const auto rhs) noexcept {
+       return comparer()(rhs->second, lhs->second);
     });
   }
 
@@ -308,10 +274,23 @@ template<typename State,
     std::pop_heap(
       heap_.begin(),
       heap_.end(),
-      [this](const typename states_map_t::iterator lhs,
-             const typename states_map_t::iterator rhs) noexcept {
-       return comparer()(*rhs->second, *lhs->second);
+      [this](const auto lhs, const auto rhs) noexcept {
+       return comparer()(rhs->second, lhs->second);
     });
+  }
+
+  std::pair<typename states_map_t::iterator, bool>
+  emplace(const hashed_bytes_ref& term, const key_type& key) {
+    // replace original reference to 'name' provided by the caller
+    // with a reference to the cached copy in 'value'
+    return map_utils::try_emplace_update_key(
+      terms_,
+      [](const hashed_bytes_ref& key,
+         const state_type& value) noexcept {
+          // reuse hash but point ref at value
+          return hashed_bytes_ref(key.hash(), value.term);
+      },
+      term, term, key);
   }
 
   const comparer_type& comparer() const noexcept {
@@ -319,10 +298,10 @@ template<typename State,
   }
 
   collector_state state_;
-  std::vector<state_type> states_;
   std::vector<typename states_map_t::iterator> heap_;
   states_map_t terms_;
   size_t size_;
+  size_t left_{size_};
   const decltype(term_meta::docs_count) no_docs_{0};
 }; // top_terms_collector
 
