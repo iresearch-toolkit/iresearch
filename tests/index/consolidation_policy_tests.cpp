@@ -70,7 +70,7 @@ void assert_candidates(
 
   for (const size_t expected_candidate_idx : expected_candidates) {
     const auto& expected_candidate = meta[expected_candidate_idx];
-    ASSERT_NE(actual_candidates.end(), actual_candidates.find(&expected_candidate.meta));
+    ASSERT_NE(actual_candidates.end(), std::find(actual_candidates.begin(), actual_candidates.end(), &expected_candidate.meta));
   }
 }
 
@@ -496,7 +496,7 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
       ASSERT_EQ(5, candidates.size());
 
       for (size_t i = 0; i < candidates.size(); ++i) {
-        ASSERT_NE(candidates.end(), candidates.find(&meta[i].meta));
+        ASSERT_NE(candidates.end(), std::find(candidates.begin(), candidates.end(), &meta[i].meta));
       }
     }
 

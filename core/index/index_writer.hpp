@@ -542,7 +542,7 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a set of candidates denoting an instance of consolidation
   //////////////////////////////////////////////////////////////////////////////
-  using consolidation_t = std::set<const segment_meta*>;
+  using consolidation_t = std::vector<const segment_meta*>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
@@ -729,8 +729,7 @@ class IRESEARCH_API index_writer
     merge_writer merger;
   }; // consolidation_context_t
 
-  // FIXME change to is_nothrow_move_constructible_v once we switch to absl::flat_hash_set
-  static_assert(std::is_move_constructible_v<consolidation_context_t>);
+  static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
     import_context(
@@ -744,8 +743,8 @@ class IRESEARCH_API index_writer
         segment(std::move(segment)),
         refs(std::move(refs)),
         consolidation_ctx(std::move(consolidation_meta),
-        std::move(consolidation_candidates),
-        std::move(merger)) {
+                          std::move(consolidation_candidates),
+                          std::move(merger)) {
     }
 
     import_context(
@@ -758,7 +757,7 @@ class IRESEARCH_API index_writer
         segment(std::move(segment)),
         refs(std::move(refs)),
         consolidation_ctx(std::move(consolidation_meta),
-        std::move(consolidation_candidates)) {
+                          std::move(consolidation_candidates)) {
     }
 
     import_context(
@@ -799,8 +798,7 @@ class IRESEARCH_API index_writer
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  // FIXME change to is_nothrow_move_constructible_v once we switch to absl::flat_hash_set
-  static_assert(std::is_move_constructible_v<import_context>);
+  static_assert(std::is_nothrow_move_constructible_v<import_context>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the segment writer and its associated ref tracing directory

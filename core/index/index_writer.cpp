@@ -1456,7 +1456,7 @@ index_writer::consolidation_result index_writer::consolidate(
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
-      if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
+      if (consolidating_segments_.contains(candidate)) {
         return { 0, ConsolidationError::FAIL };
       }
     }
@@ -1485,15 +1485,22 @@ index_writer::consolidation_result index_writer::consolidate(
     }
   });
 
+  // sort candidates
+  std::sort(candidates.begin(), candidates.end());
+
+  // remove duplicates
+  candidates.erase(
+    std::unique(candidates.begin(), candidates.end()),
+    candidates.end());
 
   // validate candidates
   {
     size_t found = 0;
 
-    const auto candidate_not_found = candidates.end();
-
+    const auto not_found = candidates.end();
     for (const auto& segment : *committed_meta) {
-      found += size_t(candidate_not_found != candidates.find(&segment.meta));
+      const auto it = std::lower_bound(candidates.begin(), not_found, &segment.meta);
+      found += (it != not_found && *it == &segment.meta);
     }
 
     if (found != candidates.size()) {
@@ -1556,7 +1563,7 @@ index_writer::consolidation_result index_writer::consolidate(
         if (!candidates.empty()) {
           decltype(flush_context::segment_mask_) cached_mask;
           // pointers are different so check by name
-          for (const auto& candidate : candidates) {
+          for (const auto* candidate : candidates) {
             if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                 current_committed_meta->end(),
@@ -1580,7 +1587,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // only if we have different index meta
       if (committed_meta != current_committed_meta) {
         // pointers are different so check by name
-        for (const auto& candidate : candidates) {
+        for (const auto* candidate : candidates) {
           if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                            current_committed_meta->end(),

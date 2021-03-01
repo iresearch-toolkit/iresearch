@@ -6496,7 +6496,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6622,7 +6622,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6761,7 +6761,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6903,7 +6903,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -7028,7 +7028,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
         irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t&) {
-      candidates.insert(nullptr);
+      candidates.emplace_back(nullptr);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7045,7 +7045,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
         irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t&) {
-      candidates.insert(&meta);
+      candidates.emplace_back(&meta);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -8349,9 +8349,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
@@ -11990,7 +11990,7 @@ TEST_P(index_test_case, segment_consolidate) {
       const irs::index_writer::consolidating_segments_t&)->void {
     for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };

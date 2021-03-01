@@ -75,8 +75,8 @@ struct segment_stat {
 }; // segment_stat
 
 struct consolidation_candidate {
-  typedef std::set<segment_stat>::const_iterator iterator_t;
-  typedef std::pair<iterator_t, iterator_t> range_t;
+  using iterator_t = std::vector<segment_stat>::const_iterator;
+  using range_t = std::pair<iterator_t, iterator_t> ;
 
   explicit consolidation_candidate(iterator_t i) noexcept
     : segments(i, i) {
@@ -204,7 +204,7 @@ index_writer::consolidation_policy_t consolidation_policy(
       const size_t segment_bytes_size = segment.meta.size;
 
       if (threshold_bytes_avg >= segment_bytes_size) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };
@@ -249,7 +249,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 
       if (cumulative_size + segment_bytes_size <= threshold_size) {
         cumulative_size += segment_bytes_size;
-        candidates.insert(entry.second);
+        candidates.emplace_back(entry.second);
       }
     }
   };
@@ -265,7 +265,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     for (size_t i = 0, count = std::min(options.threshold, meta.size());
          i < count;
          ++i) {
-      candidates.insert(&(meta[i].meta));
+      candidates.emplace_back(&(meta[i].meta));
     }
   };
 }
@@ -283,7 +283,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     for (auto& segment: meta) {
       if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
           || segment.meta.docs_count * threshold >= segment.meta.live_docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };
@@ -310,7 +310,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     for (auto& segment: meta) {
       if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
           || threshold_docs_avg >= segment.meta.live_docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };
@@ -340,7 +340,8 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
     /// get sorted list of segments
     ///////////////////////////////////////////////////////////////////////////
 
-    std::set<tier::segment_stat> sorted_segments;
+    std::vector<tier::segment_stat> sorted_segments;
+    sorted_segments.reserve(meta.size());
 
     // get sorted segments from index meta
     auto push_segments = [&sorted_segments](
@@ -350,13 +351,14 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
         // skip empty segments, they'll be
         // removed from index by index_writer
         // during 'commit'
-        sorted_segments.insert(segment);
+        sorted_segments.emplace_back(segment);
       }
 
       return true;
     };
 
     meta.visit_segments(push_segments);
+    std::sort(sorted_segments.begin(), sorted_segments.end());
 
     ///////////////////////////////////////////////////////////////////////////
     /// Stage 1
@@ -455,7 +457,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
     /// pick the best candidate
     ///////////////////////////////////////////////////////////////////////////
 
-    candidates.insert(best.begin(), best.end());
+    std::copy(best.begin(), best.end(), std::back_inserter(candidates));
   };
 }
 
