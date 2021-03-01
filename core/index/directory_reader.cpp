@@ -299,10 +299,12 @@ directory_reader_impl::directory_reader_impl(
     return cached; // no changes to refresh
   }
 
-  const auto INVALID_CANDIDATE = integer_traits<size_t>::const_max;
+  constexpr size_t INVALID_CANDIDATE{integer_traits<size_t>::const_max};
+  const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
   absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  reuse_candidates.reserve(count);
 
-  for(size_t i = 0, count = cached_impl ? cached_impl->meta_.meta.size() : 0; i < count; ++i) {
+  for(size_t i = 0; i < count; ++i) {
     assert(cached_impl); // ensured by loop condition above
     auto itr = reuse_candidates.emplace(
       cached_impl->meta_.meta.segment(i).meta.name, i);
