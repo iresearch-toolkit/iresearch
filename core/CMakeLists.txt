@@ -372,6 +372,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -455,6 +456,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -491,6 +493,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
@@ -996,6 +999,64 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-static
 )
 
+################################################################################
+### analysis plugin : text segmentation
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  SHARED
+  ./analysis/segmentation_token_stream.cpp
+  ./analysis/segmentation_token_stream.hpp
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-unicorn>
+  $<TARGET_OBJECTS:zlibstatic>
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  STATIC
+  ./analysis/segmentation_token_stream.cpp
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-unicorn>
+  $<TARGET_OBJECTS:zlibstatic>
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
+
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+)
+
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-static
+)
 ################################################################################
 ### format plugin: format-1_0
 ################################################################################

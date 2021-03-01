@@ -304,7 +304,7 @@
 #if __BYTE_ORDER == __BIG_ENDIAN
 #define IRESEARCH_BIG_ENDIAN
 #endif
-#else
+#elif !defined(_MSC_VER)
 #error "unsupported os or compiler"
 #endif
 

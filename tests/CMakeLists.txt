@@ -31,6 +31,7 @@ set(IReSearch_tests_sources
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
+  ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
@@ -176,6 +177,8 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -188,6 +191,8 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -232,6 +237,8 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
