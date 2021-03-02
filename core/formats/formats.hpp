@@ -62,7 +62,7 @@ struct IRESEARCH_API term_meta : attribute {
 
   virtual ~term_meta() = default;
 
-  virtual void clear() {
+  void clear() {
     docs_count = 0;
     freq = 0;
   }
