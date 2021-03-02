@@ -2907,7 +2907,7 @@ class field_reader final : public irs::field_reader {
   using immutable_fst_readers = std::vector<term_reader<immutable_byte_fst>>;
 
   std::variant<immutable_fst_readers, vector_fst_readers> fields_;
-  absl::flat_hash_map<hashed_string_ref, irs::term_reader*> name_to_field_; // FIXME
+  absl::flat_hash_map<hashed_string_ref, irs::term_reader*> name_to_field_;
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;

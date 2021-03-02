@@ -741,7 +741,6 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  meta_.name.reserve(32); // FIXME!!!
 }
 
 void field_data::reset(doc_id_t doc_id) {
