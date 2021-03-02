@@ -372,11 +372,16 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
-  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
+
+if (USE_SEGMENTATION_ANALYZER)
+  add_dependencies(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  )
+endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
@@ -456,7 +461,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
-  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -469,6 +473,12 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
 )
+
+if (USE_SEGMENTATION_ANALYZER)
+  target_link_libraries(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  )
+endif()
 
 if (CLANG_TIDY_EXE)
   set_target_properties(
@@ -493,12 +503,21 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
-  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
+
+if (USE_SEGMENTATION_ANALYZER)
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>")
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>")
+  if (TARGET zlibstatic)
+    set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
+  else()
+    set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_LIBRARIES})
+  endif()
+endif()
 
 if (MSVC)
   foreach(ELEMENT
@@ -998,7 +1017,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-static
 )
-
+if(USE_SEGMENTATION_ANALYZER)
 ################################################################################
 ### analysis plugin : text segmentation
 ################################################################################
@@ -1007,18 +1026,17 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   SHARED
   ./analysis/segmentation_token_stream.cpp
   ./analysis/segmentation_token_stream.hpp
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-unicorn>
-  $<TARGET_OBJECTS:zlibstatic>
 )
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared ${IResearch_TARGET_NAME}-unicorn)
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
 
 add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   STATIC
   ./analysis/segmentation_token_stream.cpp
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-unicorn>
-  $<TARGET_OBJECTS:zlibstatic>
 )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IResearch_TARGET_NAME}-unicorn)
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
 
@@ -1057,6 +1075,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-static
 )
+endif()
 ################################################################################
 ### format plugin: format-1_0
 ################################################################################

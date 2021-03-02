@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
+# we use of xxx_ROOT variables for modules sources search
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 OLD)
+endif()
+
 ################################################################################
 ### set required standard version
 ################################################################################
@@ -82,6 +87,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
+option(USE_SEGMENTATION_ANALYZER "Use segmentation analyzer" ON)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 

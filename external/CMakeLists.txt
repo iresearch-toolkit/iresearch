@@ -161,3 +161,7 @@ target_include_directories(
 ################################################################################
 
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+
+if (USE_SEGMENTATION_ANALYZER)
+add_subdirectory(unicorn)
+endif()

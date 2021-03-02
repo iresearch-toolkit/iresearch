@@ -35,9 +35,9 @@ TEST(segmentation_token_stream_test, smoke_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
   auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  std::string data = "¨øêèí ÊÎÒ  ÁîËÜØîÉ File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   ASSERT_TRUE(stream.reset(data));
-  while (stream.next()) {
+  //while (stream.next()) {
    // std::cout << term->value.c_str();
-  }
+  //}
 }
