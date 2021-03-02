@@ -58,8 +58,7 @@ segment_writer::stored_column::stored_column(
 
 doc_id_t segment_writer::begin(
     const update_context& ctx,
-    size_t reserve_rollback_extra /*= 0*/
-) {
+    size_t reserve_rollback_extra /*= 0*/) {
   assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
   norm_fields_.clear(); // clear norm fields

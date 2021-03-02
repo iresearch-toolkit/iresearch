@@ -21,8 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TL_DOC_WRITER_H
-#define IRESEARCH_TL_DOC_WRITER_H
+#ifndef IRESEARCH_SEGMENT_WRITER_H
+#define IRESEARCH_SEGMENT_WRITER_H
+
+#include <absl/container/node_hash_set.h>
 
 #include "column_info.hpp"
 #include "field_data.hpp"
@@ -270,6 +272,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     mutable field_id id{ field_limits::invalid() };
   }; // stored_column
 
+  // FIXME consider refactor this
+  // we can't use flat_hash_set as stored_column stores 'this' in non-cached case
+  using stored_columns = absl::node_hash_set<
+    stored_column,
+    stored_column::hash,
+    stored_column::eq>;
+
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
         const column_info_provider_t& column_info) noexcept
@@ -283,21 +292,16 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   segment_writer(
     directory& dir,
     const column_info_provider_t& column_info,
-    const comparer* comparator
-  ) noexcept;
+    const comparer* comparator) noexcept;
 
   bool index(
     const hashed_string_ref& name,
     const doc_id_t doc,
     const flags& features,
-    token_stream& tokens
-  );
+    token_stream& tokens);
 
   template<typename Writer>
-  bool store_sorted(
-      const doc_id_t doc,
-      Writer& writer
-  ) {
+  bool store_sorted(const doc_id_t doc, Writer& writer) {
     assert(doc < doc_limits::eof());
 
     if (!fields_.comparator()) {
@@ -320,8 +324,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool store(
       const hashed_string_ref& name,
       const doc_id_t doc,
-      Writer& writer
-  ) {
+      Writer& writer) {
     assert(doc < doc_limits::eof());
 
     auto& out = stream(name, doc);
@@ -389,14 +392,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       return false; // indexing failed
     }
 
-    if (Sorted) {
+    if constexpr (Sorted) {
       return store_sorted(doc_id, field);
     }
 
     return store(name, doc_id, field);
   }
-
-  // returns stream for storing attributes in sorted order
+ // returns stream for storing attributes in sorted order
   columnstore_writer::column_output& sorted_stream(const doc_id_t doc_id);
 
   // returns stream for storing attributes
@@ -416,7 +418,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
-  absl::flat_hash_set<stored_column, stored_column::hash, stored_column::eq> columns_;
+  stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
   absl::flat_hash_set<const field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
@@ -475,4 +477,4 @@ struct action_helper<Action::INDEX | Action::STORE_SORTED> {
 
 MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // segment_writer::ptr
 
-#endif
+#endif // IRESEARCH_SEGMENT_WRITER_H
