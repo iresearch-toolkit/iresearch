@@ -49,7 +49,12 @@ endif()
 if (TARGET zlibstatic)
   target_link_libraries(${IResearch_TARGET_NAME}-unicorn zlibstatic)
 else()
-  target_link_libraries(${IResearch_TARGET_NAME}-unicorn ${ZLIB_LIBRARIES})
+  if (NOT MSVC)
+    find_library(ZLIB_STATIC_LIBRARIES NAMES zlibstatic.lib)
+  else()
+    find_library(ZLIB_STATIC_LIBRARIES NAMES libz.a)
+  endif()
+  target_link_libraries(${IResearch_TARGET_NAME}-unicorn ${ZLIB_STATIC_LIBRARIES})
 endif()
 
 target_include_directories(
