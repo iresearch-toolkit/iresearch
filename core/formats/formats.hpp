@@ -132,28 +132,49 @@ struct IRESEARCH_API field_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
+  using cookie_provider = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
   
-  // in - corresponding stream
-  // features - the set of features available for segment
+  //////////////////////////////////////////////////////////////////////////////
+  /// @arg in - corresponding stream
+  /// @arg features - the set of features available for segment
+  //////////////////////////////////////////////////////////////////////////////
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
     const flags& features) = 0;
 
-  // parses input block "in" and populate "attrs" collection with attributes
-  // returns number of bytes read from in
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief parses input block "in" and populate "attrs" collection with attributes
+  /// @returns number of bytes read from in
+  //////////////////////////////////////////////////////////////////////////////
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
     attribute_provider& attrs,
     term_meta& state) = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns a document iterator for a specified 'cookie' and 'features'
+  //////////////////////////////////////////////////////////////////////////////
   virtual doc_iterator::ptr iterator(
     const flags& field,
     const attribute_provider& attrs,
     const flags& features) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief evaluates a union of all docs denoted by attribute supplied via a
+  ///        speciified 'provider'. Each doc is represented by a bit in a
+  ///        specified 'bitset'.
+  /// @returns a number of bits set
+  /// @note it's up to the caller to allocate enough space for a bitset
+  /// @note this API is experimental
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t bit_union(
+    const flags& field,
+    const cookie_provider& provider,
+    uint64_t* set) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,28 +200,53 @@ struct IRESEARCH_API basic_term_reader : public attribute_provider {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
+  using cookie_provider = std::function<const seek_term_iterator::seek_cookie*()>;
 
   virtual ~term_reader() = default;
 
-  // returns an iterator over terms for a field
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an iterator over terms for a field
+  //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator() const = 0;
 
-  // returns an intersection of a specified automaton and term reader
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an intersection of a specified automaton and term reader
+  //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
-  // returns field metadata
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief evaluates a union of all docs denoted by cookies supplied via a
+  ///        speciified 'provider'. Each doc is represented by a bit in a
+  ///        specified 'bitset'.
+  /// @returns a number of bits set
+  /// @note it's up to the caller to allocate enough space for a bitset
+  /// @note this API is experimental
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t bit_union(const cookie_provider& provider, uint64_t* bitset) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns field metadata
+  //////////////////////////////////////////////////////////////////////////////
   virtual const field_meta& meta() const = 0;
 
-  // total number of terms
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns total number of terms
+  //////////////////////////////////////////////////////////////////////////////
   virtual size_t size() const = 0;
 
-  // total number of documents with at least 1 term in a field
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns total number of documents with at least 1 term in a field
+  //////////////////////////////////////////////////////////////////////////////
   virtual uint64_t docs_count() const = 0;
 
-  // less significant term
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns the least significant term
+  //////////////////////////////////////////////////////////////////////////////
   virtual const bytes_ref& (min)() const = 0;
 
-  // most significant term
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns the most significant term
+  //////////////////////////////////////////////////////////////////////////////
   virtual const bytes_ref& (max)() const = 0;
 };
 

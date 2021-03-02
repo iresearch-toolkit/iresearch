@@ -55,13 +55,13 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
       const sub_reader& segment,
-      seek_term_iterator::ptr&& terms,
+      const term_reader& field,
       const order::prepared& ord,
       const std::vector<multiterm_state::unscored_term_state>& states,
       cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
       score_(ord),
-      terms_(std::move(terms)),
+      field_(&field),
       segment_(&segment),
       states_(states.data(), states.size()) {
     assert(!states_.empty());
@@ -77,9 +77,9 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   virtual bool refill(const bitset::word_t** begin, const bitset::word_t** end) override;
 
  private:
-  bitset set_;
   score score_;
-  seek_term_iterator::ptr terms_;
+  std::unique_ptr<uint64_t[]> set_;
+  const term_reader* field_;
   const sub_reader* segment_;
   range<const multiterm_state::unscored_term_state> states_;
 }; // lazy_bitset_iterator
@@ -87,36 +87,35 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
 bool lazy_bitset_iterator::refill(
     const bitset::word_t** begin,
     const bitset::word_t** end) {
-  if (!terms_) {
+  if (!field_) {
     return false;
   }
 
-  const auto& features = flags::empty_instance();
-  set_.reset(segment_->docs_count() + irs::doc_limits::min());
+  const size_t bits = segment_->docs_count() + irs::doc_limits::min();
+  const size_t words = bitset::bits_to_words(bits);
+  set_ = memory::make_unique<bitset::word_t[]>(words);
+  std::memset(set_.get(), 0, sizeof(bitset::word_t)*words);
 
-  bool has_bit_set = false;
-  for (auto& cookie : states_) {
-    assert(cookie);
-    if (!terms_->seek(bytes_ref::NIL, *cookie)) {
-      continue; // internal error
+  auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
+      -> const seek_term_iterator::seek_cookie* {
+    if (begin != end) {
+      auto* cookie = begin->get();
+      ++begin;
+      return cookie;
     }
+    return nullptr;
+  };
 
-    auto docs = terms_->postings(features);
+  const size_t count = field_->bit_union(provider, set_.get());
+  field_ = nullptr;
 
-    if (IRS_LIKELY(docs)) {
-      has_bit_set |= fill(set_, *docs);
-    }
-  }
-
-  terms_ = nullptr; // seal iterator
-
-  if (has_bit_set) {
+  if (count) {
+    // we don't want to emit doc_limits::invalid()
     // ensure first bit isn't set,
-    // since we don't want to emit doc_limits::invalid()
-    assert(set_.any() && !set_.test(0));
+    assert(!irs::check_bit(set_[0], 0));
 
-    *begin = set_.begin();
-    *end = set_.end();
+    *begin = set_.get();
+    *end = set_.get() + words;
     return true;
   }
 
@@ -195,7 +194,7 @@ doc_iterator::ptr multiterm_query::execute(
   if (has_unscored_terms) {
     *it = {
       memory::make_managed<::lazy_bitset_iterator>(
-        segment, std::move(terms), ord,
+        segment, *state->reader, ord,
         state->unscored_terms,
         state->unscored_states_estimation)
     };
