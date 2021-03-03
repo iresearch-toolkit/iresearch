@@ -135,6 +135,11 @@ namespace RS::Unicorn {
         return word_range(utf_range(source), flags);
     }
 
+    template <typename C> Irange<WordIterator<C>>
+    word_range(const std::basic_string_view<C> source, uint32_t flags = 0) {
+        return word_range(utf_range(source), flags);
+    }
+
     // Sentence boundaries
 
     template <typename C> using SentenceIterator = BasicSegmentIterator<C, Sentence_Break, sentence_break, UnicornDetail::find_sentence_break>;

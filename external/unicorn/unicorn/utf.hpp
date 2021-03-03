@@ -217,24 +217,33 @@ namespace RS::Unicorn {
     public:
         using code_unit = C;
         using string_type = std::basic_string<C>;
-        UtfIterator() noexcept { static const string_type dummy; sptr = &dummy; }
-        explicit UtfIterator(const string_type& src): sptr(&src) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
-        UtfIterator(const string_type& src, size_t offset, uint32_t flags = 0):
-            sptr(&src), ofs(std::min(offset, src.size())), fset(flags) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
+        using view_type = std::basic_string_view<C>;
+        UtfIterator() noexcept { static const string_type dummy; sptr = dummy; }
+        explicit UtfIterator(const string_type& src): UtfIterator(src, 0, 0) {}
+        //UtfIterator(const string_type& src, size_t offset, uint32_t flags = 0): 
+        //    sptr(src), ofs(std::min(offset, src.size())), fset(flags) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
+        UtfIterator(view_type src, size_t offset, uint32_t flags = 0):
+            sptr(src), ofs(std::min(offset, src.size())), fset(flags) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
         const char32_t& operator*() const noexcept { return u; }
         UtfIterator& operator++();
         UtfIterator& operator--();
         size_t count() const noexcept { return units; }
         size_t offset() const noexcept { return ofs; }
         UtfIterator offset_by(ptrdiff_t n) const noexcept;
-        const C* ptr() const noexcept { return sptr ? sptr->data() + ofs : nullptr; }
-        const string_type& source() const noexcept { return *sptr; }
-        string_type str() const { return sptr ? sptr->substr(ofs, units) : string_type(); }
+        const C* ptr() const noexcept { return !sptr.empty() ? sptr.data() + ofs : nullptr; }
+        const view_type& source() const noexcept { return sptr; }
+        string_type str() const { return !sptr.empty() ? string_type(sptr.substr(ofs, units)) : string_type(); }
         bool valid() const noexcept { return ok; }
-        std::basic_string_view<C> view() const noexcept;
+        view_type view() const noexcept {
+          if (!sptr.empty()) {
+            return {sptr.data() + ofs, units};
+          } else {
+            return {};
+          }
+        }
         friend bool operator==(const UtfIterator& lhs, const UtfIterator& rhs) noexcept { return lhs.ofs == rhs.ofs; }
     private:
-        const string_type* sptr = nullptr;  // Source string
+        view_type sptr;                     // Source string
         size_t ofs = 0;                     // Offset of current character in source
         size_t units = 0;                   // Code units in current character
         char32_t u = 0;                     // Current decoded character
@@ -245,22 +254,22 @@ namespace RS::Unicorn {
     template <typename C>
     UtfIterator<C>& UtfIterator<C>::operator++() {
         using namespace UnicornDetail;
-        ofs = std::min(ofs + units, sptr->size());
+        ofs = std::min(ofs + units, sptr.size());
         units = 0;
         u = 0;
         ok = false;
-        if (ofs == sptr->size()) {
+        if (ofs == sptr.size()) {
             // do nothing
         } else if (fset & Utf::ignore) {
-            units = UtfEncoding<C>::decode_fast(sptr->data() + ofs, sptr->size() - ofs, u);
+            units = UtfEncoding<C>::decode_fast(sptr.data() + ofs, sptr.size() - ofs, u);
             ok = true;
         } else {
-            units = UtfEncoding<C>::decode(sptr->data() + ofs, sptr->size() - ofs, u);
+            units = UtfEncoding<C>::decode(sptr.data() + ofs, sptr.size() - ofs, u);
             ok = char_is_unicode(u);
             if (! ok) {
                 u = replacement_char;
                 if (fset & Utf::throws)
-                    throw EncodingError(UtfEncoding<C>::name(), ofs, sptr->data() + ofs, units);
+                    throw EncodingError(UtfEncoding<C>::name(), ofs, sptr.data() + ofs, units);
             }
         }
         return *this;
@@ -274,34 +283,26 @@ namespace RS::Unicorn {
         ok = false;
         if (ofs == 0)
             return *this;
-        units = UtfEncoding<C>::decode_prev(sptr->data(), ofs, u);
+        units = UtfEncoding<C>::decode_prev(sptr.data(), ofs, u);
         ofs -= units;
         ok = (fset & Utf::ignore) || char_is_unicode(u);
         if (! ok) {
             u = replacement_char;
             if (fset & Utf::throws)
-                throw EncodingError(UtfEncoding<C>::name(), ofs, sptr->data() + ofs, units);
+                throw EncodingError(UtfEncoding<C>::name(), ofs, sptr.data() + ofs, units);
         }
         return *this;
     }
 
     template <typename C>
     UtfIterator<C> UtfIterator<C>::offset_by(ptrdiff_t n) const noexcept {
-        if (! sptr)
+        if (sptr.empty())
             return *this;
         auto i = *this;
-        i.ofs = std::clamp(size_t(ptrdiff_t(ofs) + n), size_t(0), sptr->size());
+        i.ofs = std::clamp(size_t(ptrdiff_t(ofs) + n), size_t(0), sptr.size());
         i.units = 0;
         ++i;
         return i;
-    }
-
-    template <typename C>
-    std::basic_string_view<C> UtfIterator<C>::view() const noexcept {
-        if (sptr)
-            return {sptr->data() + ofs, units};
-        else
-            return {};
     }
 
     using Utf8Iterator = UtfIterator<char>;
@@ -334,8 +335,28 @@ namespace RS::Unicorn {
     }
 
     template <typename C>
+    UtfIterator<C> utf_begin(std::basic_string_view<C> src, uint32_t flags = 0) {
+        return {src, 0, flags};
+    }
+
+    template <typename C>
+    UtfIterator<C> utf_end(std::basic_string_view<C> src, uint32_t flags = 0) {
+        return {src, src.size(), flags};
+    }
+
+    template <typename C>
+    UtfIterator<C> utf_iterator(std::basic_string_view<C> src, size_t offset, uint32_t flags = 0) {
+        return {src, offset, flags};
+    }
+
+    template <typename C>
+    Irange<UtfIterator<C>> utf_range(std::basic_string_view<C> src, uint32_t flags = 0) {
+        return {utf_begin(src, flags), utf_end(src, flags)};
+    }
+
+    template <typename C>
     std::basic_string<C> u_str(const UtfIterator<C>& i, const UtfIterator<C>& j) {
-        return i.source().substr(i.offset(), j.offset() - i.offset());
+      return std::basic_string<C>(i.source().substr(i.offset(), j.offset() - i.offset()));
     }
 
     template <typename C>

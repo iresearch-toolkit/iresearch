@@ -44,8 +44,7 @@ bool segmentation_token_stream::next() {
 	return true;
 }
 bool segmentation_token_stream::reset(const string_ref& data) {
-	std::string src_ = data;
-	for (auto word : RS::Unicorn::word_range(src_, RS::Unicorn::Segment::alpha)) {
+	for (auto word : RS::Unicorn::word_range(static_cast<std::basic_string_view<char>>(data), RS::Unicorn::Segment::alpha)) {
 		std::cout <<  RS::Unicorn::str_lowercase(RS::Unicorn::u_str(word)) << std::endl;
 	}
 	return true;

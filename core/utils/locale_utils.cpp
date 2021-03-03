@@ -3745,7 +3745,7 @@ std::locale locale(
   }
 
   locale_info_facet info(name);
-  std::string locale_name = info.language();
+  std::string locale_name = static_cast<std::string>(info.language());
 
   if (!info.country().empty()) {
     locale_name.append(1, '_').append(info.country());
