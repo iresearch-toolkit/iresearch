@@ -5321,10 +5321,10 @@ void bit_union(
     uint32_t (&docs)[N], uint32_t (&enc_buf)[N],
     uint64_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
-  const size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
+  size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
 
   doc_id_t doc = doc_limits::min();
-  for (size_t i = 0; i < num_blocks; ++i) {
+  while (num_blocks--) {
     IteratorTraits::read_block(doc_in, enc_buf, docs);
     if constexpr (IteratorTraits::frequency()) {
       IteratorTraits::skip_block(doc_in);
@@ -5336,9 +5336,9 @@ void bit_union(
     }
   }
 
-  const doc_id_t left = docs_count % postings_writer_base::BLOCK_SIZE;
+  doc_id_t docs_left = docs_count % postings_writer_base::BLOCK_SIZE;
 
-  for (doc_id_t i = 0; i < left; ++i) {
+  while (docs_left--) {
     doc_id_t delta;
     if constexpr (IteratorTraits::frequency()) {
       if (!shift_unpack_32(doc_in.read_vint(), delta)) {
