@@ -12,6 +12,10 @@ if (NOT IResearch_version_patch)
   set(IResearch_version_patch "0")
 endif()
 
+set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+set(SIMD_LIBRARY_STATIC "simdcomp-static")
+set(ABSL_LIBRARY_STATIC "absl-static")
+
 # set libatomic library 
 # (not available on Windows and Mac)
 if (NOT MSVC AND NOT APPLE)
@@ -273,6 +277,7 @@ include_directories(
 
 include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${EXTERNAL_INCLUDE_DIRS}
+  $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
   ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
@@ -280,11 +285,9 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${FROZEN_INCLUDE_DIR}
 )
 
-
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
@@ -293,7 +296,6 @@ set_ipo(${IResearch_TARGET_NAME}-shared)
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-cityhash>
 )
 
 set_ipo(${IResearch_TARGET_NAME}-static)
@@ -430,9 +432,6 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-set(SIMD_LIBRARY_STATIC "simdcomp-static")
-
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${BFD_SHARED_LIBS}
@@ -444,8 +443,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
+  ${ABSL_LIBRARY_STATIC}
 )
-
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
@@ -466,6 +465,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
+  ${ABSL_LIBRARY_STATIC}
 )
 
 if (CLANG_TIDY_EXE)
@@ -484,6 +484,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   ${ICU_STATIC_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
+  "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"

@@ -22,7 +22,8 @@
 
 #include <chrono>
 
-#include "cityhash/city.h"
+#include <absl/hash/internal/city.h>
+
 #include "integer.hpp"
 #include "string.hpp"
 
@@ -34,7 +35,7 @@ namespace {
 
 template<typename T>
 size_t get_hash(const T* value, size_t size) noexcept {
-  return CityHash64(reinterpret_cast<const char*>(value), size);
+  return absl::hash_internal::CityHash64(reinterpret_cast<const char*>(value), size);
 }
 
 }

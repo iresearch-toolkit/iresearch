@@ -82,6 +82,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
+option(USE_MICRO_BENCHMARCH "Build micro-benchmark project" OFF)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -168,9 +169,7 @@ endif()
 ################################################################################
 
 # find Boost
-find_package(BoostLocal
-  REQUIRED
-)
+find_package(BoostLocal REQUIRED)
 
 # set pthread library
 if (NOT MSVC)
@@ -331,6 +330,10 @@ if (USE_PVS_STUDIO)
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
+endif()
+
+if (USE_MICRO_BENCHMARCH)
+  add_subdirectory(microbench)
 endif()
 
 if (USE_TESTS)

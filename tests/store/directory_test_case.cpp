@@ -340,6 +340,13 @@ TEST_P(directory_test_case, rename) {
   }
 
   {
+    bool res = false;
+    ASSERT_TRUE(dir_->rename("foo1", "foo1"));
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
     auto stream1 = dir_->open("foo1", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream1);
     ASSERT_EQ(4, stream1->length());

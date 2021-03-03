@@ -37,8 +37,6 @@
 #include "utils/attributes.hpp"
 #include "utils/std.hpp"
 
-#include <unordered_set>
-
 namespace {
 
 using iresearch::data_input;

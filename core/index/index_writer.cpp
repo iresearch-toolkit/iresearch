@@ -37,6 +37,8 @@
 #include "utils/range.hpp"
 #include "index_writer.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 #include <list>
 #include <sstream>
 
@@ -61,16 +63,16 @@ struct flush_segment_context {
   const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
 
   flush_segment_context(
-    const irs::index_meta::index_segment_t& segment,
-    size_t doc_id_begin,
-    size_t doc_id_end,
-    const update_contexts_ref& update_contexts,
-    const modification_contexts_ref& modification_contexts
-  ): doc_id_begin_(doc_id_begin),
-     doc_id_end_(doc_id_end),
-     modification_contexts_(modification_contexts),
-     segment_(segment),
-     update_contexts_(update_contexts) {
+      const irs::index_meta::index_segment_t& segment,
+      size_t doc_id_begin,
+      size_t doc_id_end,
+      const update_contexts_ref& update_contexts,
+      const modification_contexts_ref& modification_contexts)
+    : doc_id_begin_(doc_id_begin),
+      doc_id_end_(doc_id_end),
+      modification_contexts_(modification_contexts),
+      segment_(segment),
+      update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
     assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
@@ -327,12 +329,11 @@ const std::string& write_document_mask(
 }
 
 // mapping: name -> { new segment, old segment }
-typedef std::map<
+using candidates_mapping_t = absl::flat_hash_map<
   irs::string_ref,
   std::pair<
     const irs::segment_meta*, // new segment
-    std::pair<const irs::segment_meta*, size_t> // old segment + index within merge_writer
->> candidates_mapping_t;
+    std::pair<const irs::segment_meta*, size_t>>>; // old segment + index within merge_writer
 
 /// @param candidates_mapping output mapping
 /// @param candidates candidates for mapping
@@ -340,7 +341,7 @@ typedef std::map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const std::set<const irs::segment_meta*>& candidates,
+    const irs::index_writer::consolidation_t& candidates,
     const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
@@ -501,7 +502,7 @@ bool map_removals(
   return true;
 }
 
-std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
+std::string to_string(const irs::index_writer::consolidation_t& consolidation) {
   std::stringstream ss;
   size_t total_size = 0;
   size_t total_docs_count = 0;
@@ -560,7 +561,7 @@ void readers_cache::clear() noexcept {
 }
 
 size_t readers_cache::purge(
-    const std::unordered_set<key_t, key_hash_t>& segments) noexcept {
+    const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }
@@ -571,7 +572,8 @@ size_t readers_cache::purge(
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
     if (segments.end() != segments.find(it->first)) {
-      it = cache_.erase(it);
+      const auto erase_me = it++;
+      cache_.erase(erase_me);
       ++erased;
     } else {
       ++it;
@@ -1415,7 +1417,7 @@ index_writer::consolidation_result index_writer::consolidate(
     codec = codec_;
   }
 
-  std::set<const segment_meta*> candidates;
+  consolidation_t candidates;
   const auto run_id = reinterpret_cast<size_t>(&candidates);
 
   // hold a reference to the last committed state to prevent files from being
@@ -1454,7 +1456,7 @@ index_writer::consolidation_result index_writer::consolidate(
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
-      if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
+      if (consolidating_segments_.contains(candidate)) {
         return { 0, ConsolidationError::FAIL };
       }
     }
@@ -1483,15 +1485,22 @@ index_writer::consolidation_result index_writer::consolidate(
     }
   });
 
+  // sort candidates
+  std::sort(candidates.begin(), candidates.end());
+
+  // remove duplicates
+  candidates.erase(
+    std::unique(candidates.begin(), candidates.end()),
+    candidates.end());
 
   // validate candidates
   {
     size_t found = 0;
 
-    const auto candidate_not_found = candidates.end();
-
+    const auto not_found = candidates.end();
     for (const auto& segment : *committed_meta) {
-      found += size_t(candidate_not_found != candidates.find(&segment.meta));
+      const auto it = std::lower_bound(candidates.begin(), not_found, &segment.meta);
+      found += (it != not_found && *it == &segment.meta);
     }
 
     if (found != candidates.size()) {
@@ -1554,7 +1563,7 @@ index_writer::consolidation_result index_writer::consolidate(
         if (!candidates.empty()) {
           decltype(flush_context::segment_mask_) cached_mask;
           // pointers are different so check by name
-          for (const auto& candidate : candidates) {
+          for (const auto* candidate : candidates) {
             if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                 current_committed_meta->end(),
@@ -1578,7 +1587,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // only if we have different index meta
       if (committed_meta != current_committed_meta) {
         // pointers are different so check by name
-        for (const auto& candidate : candidates) {
+        for (const auto* candidate : candidates) {
           if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                            current_committed_meta->end(),
