@@ -31,14 +31,15 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
-#include <unordered_map>
+
+#include <absl/container/node_hash_map.h>
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-  #include <boost/locale/generator.hpp>
+#include <boost/locale/generator.hpp>
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic pop
@@ -142,7 +143,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     return irs::hashed_string_ref(key.hash(), pool.encoding());
   };
   static std::mutex mutex;
-  static std::unordered_map<irs::hashed_string_ref, converter_pool> encodings;
+  static absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
   auto key = encoding;
   std::string tmp;
 

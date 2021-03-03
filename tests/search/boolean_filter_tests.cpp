@@ -602,7 +602,7 @@ TEST(boolean_query_boost, hierarchy) {
   }
 }
 
-TEST(boolean_query_boost, and) {
+TEST(boolean_query_boost, and_filter) {
   // empty boolean unboosted query
   {
     irs::And root;
@@ -883,7 +883,7 @@ TEST(boolean_query_boost, and) {
   }
 }
 
-TEST(boolean_query_boost, or) {
+TEST(boolean_query_boost, or_filter) {
   // single unboosted query
   {
     const irs::boost_t value = 5;
@@ -1327,7 +1327,7 @@ DEFINE_FACTORY_DEFAULT(estimated)
 
 } // detail
 
-TEST( boolean_query_estimation, or ) {
+TEST( boolean_query_estimation, or_filter) {
   // estimated subqueries
   {
     irs::Or root;
@@ -1472,7 +1472,7 @@ TEST( boolean_query_estimation, or ) {
   }
 }
 
-TEST( boolean_query_estimation, and ) {
+TEST( boolean_query_estimation, and_filter) {
   // estimated subqueries
   {
     irs::And root;

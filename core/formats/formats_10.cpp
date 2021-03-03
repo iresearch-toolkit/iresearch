@@ -2479,7 +2479,8 @@ bool document_mask_reader::read(
     document_mask_writer::FORMAT_MIN,
     document_mask_writer::FORMAT_MAX);
 
-  auto count = in->read_vint();
+  size_t count = in->read_vint();
+  docs_mask.reserve(count);
 
   while (count--) {
     static_assert(

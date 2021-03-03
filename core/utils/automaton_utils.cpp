@@ -416,7 +416,7 @@ filter::prepared::ptr prepare_automaton_filter(
   }
 
   limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   for (const auto& segment : index) {

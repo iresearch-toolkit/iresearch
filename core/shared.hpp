@@ -300,6 +300,8 @@
 #if BYTE_ORDER == BIG_ENDIAN
 #define IRESEARCH_BIG_ENDIAN
 #endif
+#elif _WIN32
+// always LE
 #elif __linux__
 #if __BYTE_ORDER == __BIG_ENDIAN
 #define IRESEARCH_BIG_ENDIAN
