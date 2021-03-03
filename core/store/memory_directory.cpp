@@ -542,8 +542,10 @@ bool memory_directory::rename(
     auto it = files_.find(src);
 
     if (IRS_LIKELY(it != files_.end())) {
-      res.first->second = std::move(it->second);
-      files_.erase(it);
+      if (IRS_LIKELY(it != res.first)) {
+        res.first->second = std::move(it->second);
+        files_.erase(it);
+      }
       return true;
     }
 
