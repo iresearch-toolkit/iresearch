@@ -435,22 +435,22 @@ template<typename Conjunction, typename Frequency>
 class phrase_iterator final : public doc_iterator {
  public:
   phrase_iterator(
-      typename Conjunction::doc_iterators_t&& itrs,
+      Conjunction&& approx,
       std::vector<typename Frequency::term_position_t>&& pos,
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
       const order::prepared& ord,
       boost_t boost)
-    : approx_(std::move(itrs)),
+    : approx_(std::move(approx)),
       freq_(std::move(pos), ord) {
-    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
+    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(approx_.get());
     std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
     std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
-      [this](){ return cost::extract(approx_); });
+      [this](){ return cost::extract(*approx_); });
 
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
@@ -475,7 +475,7 @@ class phrase_iterator final : public doc_iterator {
 
   virtual bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !freq_()) {}
+    while ((next = approx_->next()) && !freq_()) {}
 
     return next;
   }
@@ -486,7 +486,7 @@ class phrase_iterator final : public doc_iterator {
     // important to call freq_() in order
     // to set attribute values
     const auto prev = pdoc->value;
-    const auto doc = approx_.seek(target);
+    const auto doc = approx_->seek(target);
 
     if (prev == doc || freq_()) {
       return doc;
