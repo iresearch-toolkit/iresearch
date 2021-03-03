@@ -225,7 +225,8 @@ struct IRESEARCH_API term_reader: public attribute_provider {
   /// @note it's up to the caller to allocate enough space for a bitset
   /// @note this API is experimental
   //////////////////////////////////////////////////////////////////////////////
-  virtual size_t bit_union(const cookie_provider& provider, uint64_t* bitset) const;
+  virtual size_t bit_union(const cookie_provider& provider,
+                           uint64_t* bitset) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns field metadata

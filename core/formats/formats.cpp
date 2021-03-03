@@ -205,32 +205,4 @@ format_registrar::operator bool() const noexcept {
   return registered_;
 }
 
-size_t term_reader::bit_union(
-    const cookie_provider& provider,
-    uint64_t* bitset) const {
-  constexpr auto BITS{bits_required<uint64_t>()};
-
-  auto term = iterator();
-  const auto& no_features = flags::empty_instance();
-
-  size_t count{0};
-  while (auto* cookie = provider()) {
-    term->seek(bytes_ref::NIL, *cookie);
-
-    auto docs = term->postings(no_features);
-
-    if (docs) {
-      auto* doc = irs::get<document>(*docs);
-
-      while (docs->next()) {
-        const doc_id_t value = doc->value;
-        irs::set_bit(bitset[value / BITS], value % BITS);
-        ++count;
-      }
-    }
-  }
-
-  return count;
-}
-
 }
