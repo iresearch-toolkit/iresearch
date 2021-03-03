@@ -2289,7 +2289,90 @@ class index_test_case : public tests::index_test_base {
       ASSERT_EQ(reader.begin(), reader.end());
     }
   }
+
+  void docs_bit_union(const irs::flags& features);
 }; // index_test_case
+
+void index_test_case::docs_bit_union(const irs::flags& features) {
+  tests::templates::string_ref_field field("0", features);
+  const size_t N = irs::bits_required<uint64_t>(2) + 7;
+
+  {
+    auto writer = open_writer();
+
+    {
+      auto docs = writer->documents();
+      for (size_t i = 1; i <= N; ++i) {
+        const irs::string_ref value = i % 2 ? "A" : "B";
+        field.value(value);
+        ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+      }
+
+      field.value("C");
+      ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(1, reader->size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(N+1, segment.docs_count());
+  ASSERT_EQ(N+1, segment.live_docs_count());
+
+  const auto* term_reader = segment.field(field.name());
+  ASSERT_NE(nullptr, term_reader);
+  ASSERT_EQ(N+1, term_reader->docs_count());
+  ASSERT_EQ(3, term_reader->size());
+  ASSERT_EQ("A", irs::ref_cast<char>(term_reader->min()));
+  ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
+  ASSERT_EQ(field.name(), term_reader->meta().name);
+  ASSERT_EQ(field.features(), term_reader->meta().features);
+  ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
+
+  constexpr size_t expected_docs_B[] {
+    0b0101010101010101010101010101010101010101010101010101010101010100,
+    0b0101010101010101010101010101010101010101010101010101010101010101,
+    0b0000000000000000000000000000000000000000000000000000000001010101
+  };
+
+  constexpr size_t expected_docs_A[] {
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b0000000000000000000000000000000000000000000000000000000010101010
+  };
+
+  irs::seek_term_iterator::seek_cookie::ptr cookies[2];
+
+  auto term = term_reader->iterator();
+  ASSERT_TRUE(term->next());
+  ASSERT_EQ("A", irs::ref_cast<char>(term->value()));
+  term->read();
+  cookies[0] = term->cookie();
+  ASSERT_TRUE(term->next());
+  term->read();
+  cookies[1] = term->cookie();
+  ASSERT_EQ("B", irs::ref_cast<char>(term->value()));
+
+  auto cookie_provider = [
+      begin = std::begin(cookies),
+      end = std::end(cookies)]()mutable -> const irs::seek_term_iterator::seek_cookie*{
+    if (begin != end) {
+      auto cookie = begin->get();
+      ++begin;
+      return cookie;
+    }
+    return nullptr;
+  };
+
+  size_t actual_docs_AB[3]{};
+  ASSERT_EQ(N, term_reader->bit_union(cookie_provider, actual_docs_AB));
+  ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
+  ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
+  ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
+}
 
 TEST_P(index_test_case, arango_demo_docs) {
   {
@@ -2482,6 +2565,11 @@ TEST_P(index_test_case, europarl_docs) {
     add_segment(gen);
   }
   assert_index();
+}
+
+TEST_P(index_test_case, docs_bit_union) {
+  docs_bit_union({});
+  docs_bit_union({irs::type<irs::frequency>::get()});
 }
 
 TEST_P(index_test_case, europarl_docs_automaton) {

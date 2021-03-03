@@ -2863,6 +2863,26 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
+    virtual size_t bit_union(
+        const cookie_provider& provider,
+        size_t* set) const override {
+      auto term_provider = [&provider]() mutable -> const term_meta* {
+        if (auto* cookie = provider()) {
+#ifdef IRESEARCH_DEBUG
+          const auto& state = dynamic_cast<const ::cookie&>(*cookie);
+#else
+          const auto& state = static_cast<const ::cookie&>(*cookie);
+#endif // IRESEARCH_DEBUG
+
+          return &state.meta;
+        }
+
+        return nullptr;
+      };
+
+      return owner_->pr_->bit_union(meta().features, term_provider, set);
+    }
+
     virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override {
       auto& acceptor = matcher.GetFst();
 

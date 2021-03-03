@@ -5250,6 +5250,11 @@ class postings_reader final: public postings_reader_base {
     const attribute_provider& attrs,
     const flags& features) override;
 
+  virtual size_t bit_union(
+    const flags& field,
+    const cookie_provider& provider,
+    size_t* set) override;
+
  private:
   template<typename IteratorTraits>
   irs::doc_iterator::ptr iterator(
@@ -5309,6 +5314,97 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 #elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
+
+template<typename IteratorTraits, size_t N>
+void bit_union(
+    index_input& doc_in, doc_id_t docs_count,
+    uint32_t (&docs)[N], uint32_t (&enc_buf)[N],
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
+
+  doc_id_t doc = doc_limits::min();
+  while (num_blocks--) {
+    IteratorTraits::read_block(doc_in, enc_buf, docs);
+    if constexpr (IteratorTraits::frequency()) {
+      IteratorTraits::skip_block(doc_in);
+    }
+
+    // FIXME optimize
+    for (const auto delta : docs) {
+      doc += delta;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+    }
+  }
+
+  doc_id_t docs_left = docs_count % postings_writer_base::BLOCK_SIZE;
+
+  while (docs_left--) {
+    doc_id_t delta;
+    if constexpr (IteratorTraits::frequency()) {
+      if (!shift_unpack_32(doc_in.read_vint(), delta)) {
+        doc_in.read_vint();
+      }
+    } else {
+      delta = doc_in.read_vint();
+    }
+
+    doc += delta;
+    irs::set_bit(set[doc / BITS], doc % BITS);
+  }
+}
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
+    const flags& field,
+    const cookie_provider& provider,
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
+  uint32_t docs[postings_writer_base::BLOCK_SIZE];
+  const bool has_freq = field.check<frequency>();
+
+  assert(doc_in_);
+  auto doc_in = doc_in_->reopen(); // reopen thread-safe stream
+
+  if (!doc_in) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen document input");
+  }
+
+  size_t count = 0;
+  while (const irs::term_meta* meta = provider()) {
+#ifdef IRESEARCH_DEBUG
+    auto& term_state = dynamic_cast<const version10::term_meta&>(*meta);
+#else
+    auto& term_state = static_cast<const version10::term_meta&>(*meta);
+#endif
+
+    if (term_state.docs_count > 1) {
+      doc_in->seek(term_state.doc_start);
+      assert(!doc_in->eof());
+
+      if (has_freq) {
+        using iterator_traits_t = iterator_traits<true, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      } else {
+        using iterator_traits_t = iterator_traits<false, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      }
+
+      count += term_state.docs_count;
+    } else {
+      const doc_id_t doc = doc_limits::min() + term_state.e_single_doc;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+
+      ++count;
+    }
+  }
+
+  return count;
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         format10

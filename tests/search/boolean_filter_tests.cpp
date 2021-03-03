@@ -21,7 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <functional>
+
 #include "tests_shared.hpp"
+#include "filter_test_case_base.hpp"
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "search/boolean_filter.hpp"
@@ -31,13 +34,10 @@
 #include "search/exclusion.hpp"
 #include "search/bm25.hpp"
 #include "search/tfidf.hpp"
-#include "filter_test_case_base.hpp"
 #include "index/iterators.hpp"
-#include "formats/formats.hpp"
+#include "formats/empty_term_reader.hpp"
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
-
-#include <functional>
 
 namespace {
 
@@ -154,7 +154,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       scorers_ = irs::order::prepared::scorers(
         ord,
         irs::sub_reader::empty(),
-        empty_term_reader::instance(),
+        irs::empty_term_reader{0},
         stats_,
         score_.realloc(ord),
         *this,
