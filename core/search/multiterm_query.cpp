@@ -25,31 +25,12 @@
 #include "shared.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
+#include "utils/bitset.hpp"
 #include "utils/range.hpp"
 
 namespace {
 
 using namespace irs;
-
-template<typename DocIterator>
-bool fill(bitset& bs, DocIterator& it) {
-  auto* doc = irs::get<irs::document>(it);
-
-  if (!doc) {
-    return false;
-  }
-
-  bool has_docs = false;
-  if (it.next()) {
-    has_docs = true;
-
-    do {
-      bs.set(doc->value);
-    } while (it.next());
-  }
-
-  return has_docs;
-}
 
 class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
@@ -74,27 +55,27 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   }
 
  protected:
-  virtual bool refill(const bitset::word_t** begin, const bitset::word_t** end) override;
+  virtual bool refill(const word_t** begin, const word_t** end) override;
 
  private:
   score score_;
-  std::unique_ptr<uint64_t[]> set_;
+  std::unique_ptr<word_t[]> set_;
   const term_reader* field_;
   const sub_reader* segment_;
   range<const multiterm_state::unscored_term_state> states_;
 }; // lazy_bitset_iterator
 
 bool lazy_bitset_iterator::refill(
-    const bitset::word_t** begin,
-    const bitset::word_t** end) {
+    const word_t** begin,
+    const word_t** end) {
   if (!field_) {
     return false;
   }
 
   const size_t bits = segment_->docs_count() + irs::doc_limits::min();
   const size_t words = bitset::bits_to_words(bits);
-  set_ = memory::make_unique<bitset::word_t[]>(words);
-  std::memset(set_.get(), 0, sizeof(bitset::word_t)*words);
+  set_ = memory::make_unique<word_t[]>(words);
+  std::memset(set_.get(), 0, sizeof(word_t)*words);
 
   auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
       -> const seek_term_iterator::seek_cookie* {

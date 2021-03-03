@@ -5253,7 +5253,7 @@ class postings_reader final: public postings_reader_base {
   virtual size_t bit_union(
     const flags& field,
     const cookie_provider& provider,
-    uint64_t* set) override;
+    size_t* set) override;
 
  private:
   template<typename IteratorTraits>
@@ -5319,7 +5319,7 @@ template<typename IteratorTraits, size_t N>
 void bit_union(
     index_input& doc_in, doc_id_t docs_count,
     uint32_t (&docs)[N], uint32_t (&enc_buf)[N],
-    uint64_t* set) {
+    size_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
 
@@ -5330,6 +5330,7 @@ void bit_union(
       IteratorTraits::skip_block(doc_in);
     }
 
+    // FIXME optimize
     for (const auto delta : docs) {
       doc += delta;
       irs::set_bit(set[doc / BITS], doc % BITS);
@@ -5357,7 +5358,7 @@ template<typename FormatTraits, bool OneBasedPositionStorage>
 size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
     const flags& field,
     const cookie_provider& provider,
-    uint64_t* set) {
+    size_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
   uint32_t docs[postings_writer_base::BLOCK_SIZE];

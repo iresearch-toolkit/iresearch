@@ -566,7 +566,7 @@ irs::seek_term_iterator::ptr term_reader::iterator(irs::automaton_table_matcher&
 
 size_t term_reader::bit_union(
     const cookie_provider& provider,
-    uint64_t* bitset) const {
+    size_t* bitset) const {
   constexpr auto BITS{irs::bits_required<uint64_t>()};
 
   auto term = this->iterator();

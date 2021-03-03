@@ -2865,7 +2865,7 @@ class field_reader final : public irs::field_reader {
 
     virtual size_t bit_union(
         const cookie_provider& provider,
-        uint64_t* set) const override {
+        size_t* set) const override {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
 #ifdef IRESEARCH_DEBUG

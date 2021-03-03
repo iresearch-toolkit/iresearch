@@ -177,7 +177,7 @@ struct IRESEARCH_API postings_reader {
   virtual size_t bit_union(
     const flags& field,
     const cookie_provider& provider,
-    uint64_t* set) = 0;
+    size_t* set) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +226,7 @@ struct IRESEARCH_API term_reader: public attribute_provider {
   /// @note this API is experimental
   //////////////////////////////////////////////////////////////////////////////
   virtual size_t bit_union(const cookie_provider& provider,
-                           uint64_t* bitset) const = 0;
+                           size_t* bitset) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns field metadata

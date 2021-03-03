@@ -48,7 +48,7 @@ class empty_term_reader final : public irs::term_reader {
 
   virtual size_t bit_union(
       const cookie_provider&,
-      uint64_t*) const noexcept override {
+      size_t*) const noexcept override {
     return 0;
   }
 
