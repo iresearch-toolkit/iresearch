@@ -538,19 +538,13 @@ bool memory_directory::rename(
   try {
     auto lock = make_lock_guard(mutex);
 
-    auto res = files_.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(dst),
-      std::forward_as_tuple());
+    const auto res = files_.try_emplace(dst);
+    auto it = files_.find(src);
 
-    if (IRS_LIKELY(res.second)) {
-      auto it = files_.find(src);
-
-      if (IRS_LIKELY(it != files_.end())) {
-        res.first->second = std::move(it->second);
-        files_.erase(it);
-        return true;
-      }
+    if (IRS_LIKELY(it != files_.end())) {
+      res.first->second = std::move(it->second);
+      files_.erase(it);
+      return true;
     }
 
     files_.erase(res.first);

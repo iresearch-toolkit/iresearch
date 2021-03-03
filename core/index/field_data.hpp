@@ -168,7 +168,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   size_t memory_reserved() const noexcept {
     return sizeof(fields_data) +
-           sizeof(decltype(fields_)) +
            byte_pool_.size() +
            int_pool_.size();
   }
