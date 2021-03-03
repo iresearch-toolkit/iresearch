@@ -14,30 +14,6 @@ target_include_directories(
 )
 
 ################################################################################
-### CityHash library
-################################################################################
-
-set(cityhash_sources
-  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/city.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/city.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/cityhash/citycrc.h
-)
-
-add_library(
-  ${IResearch_TARGET_NAME}-cityhash
-  OBJECT
-  ${cityhash_sources}
-)
-
-set_ipo(${IResearch_TARGET_NAME}-cityhash)
-
-target_include_directories(
-  ${IResearch_TARGET_NAME}-cityhash
-  SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cityhash
-)
-
-################################################################################
 ### OpenFST + Kaldi library
 ################################################################################
 
@@ -70,17 +46,9 @@ add_library(
 
 set_ipo(${IResearch_TARGET_NAME}-ofst)
 
-
 target_compile_definitions(
   ${IResearch_TARGET_NAME}-ofst
   PUBLIC "FST_NO_DYNAMIC_LINKING"
-)
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-ofst
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
 )
 
 # disable warnings for 3rd-party libs for a cleaner build
@@ -161,3 +129,9 @@ target_include_directories(
 ################################################################################
 
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+
+################################################################################
+### absl library
+################################################################################
+
+add_subdirectory(absl)

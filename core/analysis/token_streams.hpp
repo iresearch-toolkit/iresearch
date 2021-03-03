@@ -93,7 +93,7 @@ class IRESEARCH_API string_token_stream final
 
   virtual bool next() noexcept override;
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept {
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override final {
     return irs::get_mutable(attrs_, id);
   }
 

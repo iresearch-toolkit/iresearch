@@ -6487,17 +6487,16 @@ TEST_P(index_test_case, concurrent_consolidation) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6524,10 +6523,9 @@ TEST_P(index_test_case, concurrent_consolidation) {
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6615,17 +6613,16 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6652,10 +6649,9 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6756,17 +6752,16 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6793,10 +6788,9 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6900,17 +6894,16 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6938,10 +6931,9 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments, &dir] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -7003,10 +6995,9 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   ASSERT_NE(nullptr, writer);
 
   auto check_consolidating_segments = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_TRUE(consolidating_segments.empty());
   };
 
@@ -7034,11 +7025,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   // null candidate
   {
     auto invalid_candidate_policy = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(nullptr);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(nullptr);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7052,11 +7042,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     const irs::segment_meta meta("foo", nullptr, 6, 5, false, irs::segment_meta::file_set(), irs::field_limits::invalid());
 
     auto invalid_candidate_policy = [&meta](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(&meta);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(&meta);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7086,10 +7075,9 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7240,10 +7228,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7400,10 +7387,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       auto check_consolidating_segments = [](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
       ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
@@ -7558,10 +7544,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7695,10 +7680,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7795,10 +7779,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 TEST_P(index_test_case, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7976,10 +7959,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 TEST_P(index_test_case, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -8342,10 +8324,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8364,14 +8345,13 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // register 'SEGMENTS_COUNT/2' consolidations
   for (size_t i = 0, j = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto merge_adjacent = [&j](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
@@ -8380,10 +8360,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // check all segments registered
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_EQ(meta.size(), consolidating_segments.size());
       for (auto& segment : meta) {
         ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&segment.meta));
@@ -8397,10 +8376,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8457,10 +8435,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 TEST_P(index_test_case, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -9184,10 +9161,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
@@ -9347,15 +9323,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9422,18 +9397,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer, &query_doc4](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        // new transaction with passed 1st phase
-        writer->documents().remove(*query_doc4.filter);
-        writer->begin();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      // new transaction with passed 1st phase
+      writer->documents().remove(*query_doc4.filter);
+      writer->begin();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9999,10 +9973,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 TEST_P(index_test_case, consolidate_segment_versions) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i: expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -10505,10 +10478,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
       // segment 2 (version 0) created entirely while consolidate is in progress
       auto policy = [&writer, doc3](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      )->void {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
         auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
         policy(candidates, meta, consolidating_segments); // compute policy first then add segment
         {
@@ -10849,10 +10821,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       {
@@ -11010,10 +10981,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3, &doc4](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       // segment 2 (version 0)
@@ -12015,13 +11985,12 @@ TEST_P(index_test_case, segment_consolidate) {
   }
 
   auto merge_if_masked = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t&
-  )->void {
+      const irs::index_writer::consolidating_segments_t&)->void {
     for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };

@@ -26,13 +26,13 @@
 #include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
-#include <unordered_map>
+
+#include <absl/container/node_hash_map.h>
+#include <frozen/unordered_map.h>
 
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-
-#include <frozen/unordered_map.h>
 
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
@@ -144,7 +144,7 @@ struct cached_options_t: public irs::analysis::text_token_stream::options_t {
 };
 
 
-static std::unordered_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
+static absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
 static std::mutex mutex;
 static auto icu_cleanup = irs::make_finally([]()->void{
   // this call will release/free all memory used by ICU (for all users)

@@ -25,6 +25,7 @@
 
 #include "search/cost.hpp"
 #include "search/filter.hpp"
+#include "search/states_cache.hpp"
 #include "utils/bitset.hpp"
 
 namespace iresearch {
