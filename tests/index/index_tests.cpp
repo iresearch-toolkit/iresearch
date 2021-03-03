@@ -2332,13 +2332,13 @@ void index_test_case::docs_bit_union(const irs::flags& features) {
   ASSERT_EQ(field.features(), term_reader->meta().features);
   ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
 
-  constexpr uint64_t expected_docs_B[] {
+  constexpr size_t expected_docs_B[] {
     0b0101010101010101010101010101010101010101010101010101010101010100,
     0b0101010101010101010101010101010101010101010101010101010101010101,
     0b0000000000000000000000000000000000000000000000000000000001010101
   };
 
-  constexpr uint64_t expected_docs_A[] {
+  constexpr size_t expected_docs_A[] {
     0b1010101010101010101010101010101010101010101010101010101010101010,
     0b1010101010101010101010101010101010101010101010101010101010101010,
     0b0000000000000000000000000000000000000000000000000000000010101010
@@ -2367,7 +2367,7 @@ void index_test_case::docs_bit_union(const irs::flags& features) {
     return nullptr;
   };
 
-  uint64_t actual_docs_AB[3]{};
+  size_t actual_docs_AB[3]{};
   ASSERT_EQ(N, term_reader->bit_union(cookie_provider, actual_docs_AB));
   ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
   ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
