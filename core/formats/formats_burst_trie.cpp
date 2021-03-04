@@ -505,19 +505,11 @@ inline int32_t prepare_input(
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
 struct cookie : irs::seek_term_iterator::seek_cookie {
-  cookie(const version10::term_meta& meta, uint64_t term_freq)
-    : meta(meta), term_freq(term_freq) {
+  explicit cookie(const version10::term_meta& meta) noexcept
+    : meta(meta) {
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief declaration/implementation of DECLARE_FACTORY()
-  //////////////////////////////////////////////////////////////////////////////
-  static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
-    return memory::make_unique<cookie>(meta, term_freq);
-  }
-
-  version10::term_meta meta; // term metadata
-  uint64_t term_freq; // length of the positions list
+  version10::term_meta meta;
 }; // cookie
 
 const fst::FstWriteOptions& fst_write_options() {
@@ -1374,8 +1366,9 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, attribute_provider& attrs,
-                 version10::term_meta& state, irs::postings_reader& pr);
+  void load_data(const field_meta& meta,
+                 version10::term_meta& state,
+                 irs::postings_reader& pr);
 
  private:
   struct data_block {
@@ -1822,7 +1815,6 @@ void block_iterator::scan_to_block(uint64_t start) {
 }
 
 void block_iterator::load_data(const field_meta& meta,
-                               attribute_provider& attrs,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);
@@ -1839,7 +1831,7 @@ void block_iterator::load_data(const field_meta& meta,
   }
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
-    stats_.begin += pr.decode(stats_.begin, meta.features, attrs, state);
+    stats_.begin += pr.decode(stats_.begin, meta.features, state);
     stats_.assert_block_boundaries();
   }
 
@@ -1878,16 +1870,7 @@ class term_iterator_base : public seek_term_iterator {
     : field_(&field),
       postings_(&postings),
       terms_cipher_(terms_cipher) {
-    if (field.features.check<frequency>()) {
-      std::get<attribute_ptr<frequency>>(attrs_) = freq_;
-    }
-
     std::get<attribute_ptr<payload>>(attrs_) = pay;
-  }
-
-  // read attributes
-  void read(block_iterator& it) {
-    it.load_data(*field_, *this, std::get<version10::term_meta>(attrs_), *postings_);
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
@@ -1895,7 +1878,7 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const override final {
-    return ::cookie::make(std::get<version10::term_meta>(attrs_), freq_.value);
+    return memory::make_unique<::cookie>(std::get<version10::term_meta>(attrs_));
   }
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
@@ -1909,24 +1892,10 @@ class term_iterator_base : public seek_term_iterator {
     const auto& state = static_cast<const ::cookie&>(cookie);
 #endif // IRESEARCH_DEBUG
 
-    // copy state
     std::get<version10::term_meta>(attrs_) = state.meta;
-    freq_.value = state.term_freq;
-
-    // copy term
-    term_.reset();
-    term_ += term;
+    term_ = term;
 
     return true;
-  }
-
-  doc_iterator::ptr postings(block_iterator* it, const flags& features) const {
-    if (it) {
-      it->load_data(
-        *field_, const_cast<term_iterator_base&>(*this),
-        std::get<version10::term_meta>(attrs_), *postings_); // read attributes
-    }
-    return postings_->iterator(field_->features, *this, features);
   }
 
   index_input& terms_input() const;
@@ -1938,8 +1907,20 @@ class term_iterator_base : public seek_term_iterator {
  protected:
   using attributes = std::tuple<
     version10::term_meta,
-    attribute_ptr<frequency>,
     attribute_ptr<payload>>;
+
+  void read_impl(block_iterator& it) {
+    it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
+  }
+
+  doc_iterator::ptr postings_impl(block_iterator* it, const flags& features) const {
+    auto& meta = std::get<version10::term_meta>(attrs_);
+
+    if (it) {
+      it->load_data(*field_, meta, *postings_);
+    }
+    return postings_->iterator(field_->features, features, meta);
+  }
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
     const auto size = prefix_size + suffix_size;
@@ -1956,7 +1937,6 @@ class term_iterator_base : public seek_term_iterator {
   const field_meta* field_;
   postings_reader* postings_;
   irs::encryption::stream* terms_cipher_;
-  frequency freq_;
   bytes_builder term_;
   byte_weight weight_; // aggregated fst output
 }; // term_iterator_base
@@ -2006,11 +1986,11 @@ class term_iterator final : public term_iterator_base {
 
   virtual void read() override {
     assert(cur_block_);
-    term_iterator_base::read(*cur_block_);
+    read_impl(*cur_block_);
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    return term_iterator_base::postings(cur_block_, features);
+    return postings_impl(cur_block_, features);
   }
 
  private:
@@ -2505,11 +2485,11 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual void read() override {
     assert(cur_block_);
-    term_iterator_base::read(*cur_block_);
+    read_impl(*cur_block_);
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    return term_iterator_base::postings(cur_block_, features);
+    return postings_impl(cur_block_, features);
   }
 
  private:

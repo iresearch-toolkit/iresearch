@@ -53,6 +53,7 @@ struct postings_writer;
 
 using document_mask = absl::flat_hash_set<doc_id_t> ;
 using doc_map = std::vector<doc_id_t>;
+using callback_f = std::function<bool(doc_iterator&)>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
@@ -63,9 +64,7 @@ struct IRESEARCH_API term_meta : attribute {
     return "iresearch::term_meta";
   }
 
-  virtual ~term_meta() = default;
-
-  void clear() {
+  void clear() noexcept {
     docs_count = 0;
     freq = 0;
   }
@@ -135,7 +134,7 @@ struct IRESEARCH_API field_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
-  using cookie_provider = std::function<const term_meta*()>;
+  using term_provider_f = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
   
@@ -155,7 +154,6 @@ struct IRESEARCH_API postings_reader {
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    attribute_provider& attrs,
     term_meta& state) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -163,8 +161,8 @@ struct IRESEARCH_API postings_reader {
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& features) = 0;
+    const flags& features,
+    const term_meta& meta) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by attribute supplied via a
@@ -176,7 +174,7 @@ struct IRESEARCH_API postings_reader {
   //////////////////////////////////////////////////////////////////////////////
   virtual size_t bit_union(
     const flags& field,
-    const cookie_provider& provider,
+    const term_provider_f& provider,
     size_t* set) = 0;
 }; // postings_reader
 

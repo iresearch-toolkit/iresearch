@@ -47,9 +47,6 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 
-#include "search/cost.hpp"
-#include "search/score.hpp"
-
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
@@ -315,11 +312,7 @@ class postings_writer_base : public irs::postings_writer {
 
  protected:
   virtual void release(irs::term_meta *meta) noexcept final {
-  #ifdef IRESEARCH_DEBUG
-    auto* state = dynamic_cast<version10::term_meta*>(meta);
-  #else
     auto* state = static_cast<version10::term_meta*>(meta);
-  #endif // IRESEARCH_DEBUG
     assert(state);
 
     alloc_.destroy(state);
@@ -503,11 +496,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
 void postings_writer_base::encode(
     data_output& out,
     const irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  const auto& meta = dynamic_cast<const version10::term_meta&>(state);
-#else
   const auto& meta = static_cast<const version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
   out.write_vint(meta.docs_count);
   if (meta.freq != integer_traits<uint32_t>::const_max) {
@@ -1578,6 +1567,9 @@ class doc_iterator final : public irs::doc_iterator {
       >>;
 
  public:
+  // hide 'ptr' defined in irs::doc_iterator
+  using ptr = memory::managed_ptr<doc_iterator>;
+
   doc_iterator() noexcept
     : skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
@@ -1588,7 +1580,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   void prepare(
       const features& field,
-      const attribute_provider& attrs,
+      const term_meta& meta,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
@@ -1602,15 +1594,7 @@ class doc_iterator final : public irs::doc_iterator {
     // add mandatory attributes
     begin_ = end_ = docs_;
 
-    // get state attribute
-    auto* meta = irs::get<irs::term_meta>(attrs);
-    assert(meta);
-
-#ifdef IRESEARCH_DEBUG
-    term_state_ = dynamic_cast<const version10::term_meta&>(*meta);
-#else
-    term_state_ = static_cast<const version10::term_meta&>(*meta);
-#endif
+    term_state_ = static_cast<const version10::term_meta&>(meta);
 
     // init document stream
     if (term_state_.docs_count > 1) {
@@ -1632,8 +1616,8 @@ class doc_iterator final : public irs::doc_iterator {
     std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
-      assert(irs::get<frequency>(attrs));
-      term_freq_ = irs::get<frequency>(attrs)->value;
+      assert(meta.freq);
+      term_freq_ = meta.freq;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
@@ -5114,7 +5098,6 @@ class postings_reader_base : public irs::postings_reader {
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
-    attribute_provider& attrs,
     irs::term_meta& state) final;
 
  protected:
@@ -5196,27 +5179,22 @@ void postings_reader_base::prepare(
 size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
-    attribute_provider& attrs,
     irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  auto& term_meta = dynamic_cast<version10::term_meta&>(state);
-#else
   auto& term_meta = static_cast<version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
-  auto* term_freq = irs::get_mutable<frequency>(&attrs);
+  const bool has_freq = meta.check<frequency>();
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
-  if (term_freq) {
-    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
+  if (has_freq) {
+    term_meta.freq = term_meta.docs_count + vread<uint32_t>(p);
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (term_freq && term_freq->value && meta.check<irs::position>()) {
+  if (has_freq && term_meta.freq && meta.check<irs::position>()) {
     term_meta.pos_start += vread<uint64_t>(p);
 
-    term_meta.pos_end = term_freq->value > postings_writer_base::BLOCK_SIZE
+    term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
@@ -5247,24 +5225,38 @@ class postings_reader final: public postings_reader_base {
 
   virtual irs::doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& features) override;
+    const flags& features,
+    const term_meta& meta) override;
 
   virtual size_t bit_union(
     const flags& field,
-    const cookie_provider& provider,
+    const term_provider_f& provider,
     size_t* set) override;
 
  private:
-  template<typename IteratorTraits>
-  irs::doc_iterator::ptr iterator(
-      const attribute_provider& attrs,
-      const ::features& features) {
-    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
-    it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+  struct doc_iterator_maker {
+    template<typename IteratorTraits>
+    static typename doc_iterator<IteratorTraits>::ptr make(
+        const ::features& features,
+        const postings_reader& ctx,
+        const term_meta& meta) {
+      auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
 
-    return it;
-  }
+      it->prepare(
+        features, meta,
+        ctx.doc_in_.get(),
+        ctx.pos_in_.get(),
+        ctx.pay_in_.get());
+
+      return it;
+    }
+  };
+
+  template<typename Maker, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(
+    const flags& field,
+    const flags& features,
+    Args&&... args);
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -5274,35 +5266,34 @@ class postings_reader final: public postings_reader_base {
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+template<typename Maker, typename... Args>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& req) {
-
-  // compile field features
+    const flags& req,
+    Args&&... args) {
   const auto features = ::features(field);
-  // get enabled features:
-  // find intersection between requested and available features
+  // get enabled features as the intersection
+  // between requested and available features
   const auto enabled = features & req;
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return iterator<iterator_traits<true, true, true, true>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, true, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::OFFS: {
-      return iterator<iterator_traits<true, true, true, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, true, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::PAY: {
-      return iterator<iterator_traits<true, true, false, true>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, false, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS: {
-      return iterator<iterator_traits<true, true, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ: {
-      return iterator<iterator_traits<true, false, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     default: {
-      return iterator<iterator_traits<false, false, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<false, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
   }
 
@@ -5314,6 +5305,14 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 #elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+    const flags& field,
+    const flags& req,
+    const term_meta& meta) {
+  return iterator_impl<doc_iterator_maker>(field, req, meta);
+}
 
 template<typename IteratorTraits, size_t N>
 void bit_union(
@@ -5357,7 +5356,7 @@ void bit_union(
 template<typename FormatTraits, bool OneBasedPositionStorage>
 size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
     const flags& field,
-    const cookie_provider& provider,
+    const term_provider_f& provider,
     size_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
@@ -5376,11 +5375,7 @@ size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
 
   size_t count = 0;
   while (const irs::term_meta* meta = provider()) {
-#ifdef IRESEARCH_DEBUG
-    auto& term_state = dynamic_cast<const version10::term_meta&>(*meta);
-#else
     auto& term_state = static_cast<const version10::term_meta&>(*meta);
-#endif
 
     if (term_state.docs_count > 1) {
       doc_in->seek(term_state.doc_start);
