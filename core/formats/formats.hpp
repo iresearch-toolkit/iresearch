@@ -164,12 +164,6 @@ struct IRESEARCH_API postings_reader {
     const flags& features,
     const term_meta& meta) = 0;
 
-  virtual doc_iterator::ptr conjunction(
-    const flags& field,
-    const flags& features,
-    const term_provider_f& provider,
-    const callback_f& callback) = 0;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by attribute supplied via a
   ///        speciified 'provider'. Each doc is represented by a bit in a
@@ -220,11 +214,6 @@ struct IRESEARCH_API term_reader: public attribute_provider {
   /// @returns an intersection of a specified automaton and term reader
   //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
-
-  virtual doc_iterator::ptr conjunction(
-    const flags& features,
-    const cookie_provider& provider,
-    const callback_f& callback) const { return doc_iterator::empty();} // FIXME
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by cookies supplied via a

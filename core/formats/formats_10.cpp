@@ -5230,59 +5230,36 @@ class postings_reader final: public postings_reader_base {
     const flags& features,
     const term_meta& meta) override;
 
-  virtual irs::doc_iterator::ptr conjunction(
-    const flags& field,
-    const flags& features,
-    const term_provider_f& provider,
-    const callback_f& callback) override;
-
   virtual size_t bit_union(
     const flags& field,
     const term_provider_f& provider,
     size_t* set) override;
 
  private:
-  template<typename IteratorTraits>
-  typename doc_iterator<IteratorTraits>::ptr iterator(
-      const ::features& features,
-      const term_meta& meta) {
-    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
-    it->prepare(features, meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+  struct doc_iterator_maker {
+    template<typename IteratorTraits>
+    static typename doc_iterator<IteratorTraits>::ptr make(
+        const ::features& features,
+        const postings_reader& ctx,
+        const term_meta& meta) {
+      auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
 
-    return it;
-  }
+      it->prepare(
+        features, meta,
+        ctx.doc_in_.get(),
+        ctx.pos_in_.get(),
+        ctx.pay_in_.get());
 
-  template<typename IteratorTraits>
-  irs::doc_iterator::ptr conjunction(
-    const ::features& features,
-    const term_provider_f& provider,
-    const callback_f& callback);
-}; // postings_reader
-
-
-template<typename FormatTraits, bool OneBasedPositionStorage>
-template<typename IteratorTraits>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::conjunction(
-    const ::features& features,
-    const term_provider_f& provider,
-    const callback_f& callback) {
-  using conjunction_t = irs::conjunction<typename doc_iterator<IteratorTraits>::ptr>;
-  using doc_iterators_t = typename conjunction_t::doc_iterators_t;
-
-  doc_iterators_t itrs;  // FIXME reserve!!!
-
-  while (const irs::term_meta* meta = provider()) {
-    auto& it = itrs.emplace_back(iterator<IteratorTraits>(features, *meta));
-    if (!callback(*it.it)) {
-      return irs::doc_iterator::empty();
+      return it;
     }
-  }
+  };
 
-  //FIXME
-  //return irs::make_conjunction<conjunction_t>(std::move(itrs));
-
-  return memory::make_managed<conjunction_t>(std::move(itrs));
-}
+  template<typename Maker, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(
+    const flags& field,
+    const flags& features,
+    Args&&... args);
+}; // postings_reader
 
 #if defined(_MSC_VER)
 #elif defined(__GNUC__)
@@ -5291,10 +5268,11 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::c
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+template<typename Maker, typename... Args>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
     const flags& field,
     const flags& req,
-    const term_meta& meta) {
+    Args&&... args) {
   const auto features = ::features(field);
   // get enabled features as the intersection
   // between requested and available features
@@ -5302,58 +5280,22 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return iterator<iterator_traits<true, true, true, true>>(features, meta);
+      return Maker::template make<iterator_traits<true, true, true, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::OFFS: {
-      return iterator<iterator_traits<true, true, true, false>>(features, meta);
+      return Maker::template make<iterator_traits<true, true, true, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::PAY: {
-      return iterator<iterator_traits<true, true, false, true>>(features, meta);
+      return Maker::template make<iterator_traits<true, true, false, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS: {
-      return iterator<iterator_traits<true, true, false, false>>(features, meta);
+      return Maker::template make<iterator_traits<true, true, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ: {
-      return iterator<iterator_traits<true, false, false, false>>(features, meta);
+      return Maker::template make<iterator_traits<true, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     default: {
-      return iterator<iterator_traits<false, false, false, false>>(features, meta);
-    }
-  }
-
-  assert(false);
-  return irs::doc_iterator::empty();
-}
-
-template<typename FormatTraits, bool OneBasedPositionStorage>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::conjunction(
-    const flags& field,
-    const flags& req,
-    const term_provider_f& provider,
-    const callback_f& callback) {
-  const auto features = ::features(field);
-  // get enabled features as the intersection
-  // between requested and available features
-  const auto enabled = features & req;
-
-  switch (enabled) {
-    case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return conjunction<iterator_traits<true, true, true, true>>(features, provider, callback);
-    }
-    case features::FREQ | features::POS | features::OFFS: {
-      return conjunction<iterator_traits<true, true, true, false>>(features, provider, callback);
-    }
-    case features::FREQ | features::POS | features::PAY: {
-      return conjunction<iterator_traits<true, true, false, true>>(features, provider, callback);
-    }
-    case features::FREQ | features::POS: {
-      return conjunction<iterator_traits<true, true, false, false>>(features, provider, callback);
-    }
-    case features::FREQ: {
-      return conjunction<iterator_traits<true, false, false, false>>(features, provider, callback);
-    }
-    default: {
-      return conjunction<iterator_traits<false, false, false, false>>(features, provider, callback);
+      return Maker::template make<iterator_traits<false, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
   }
 
@@ -5365,6 +5307,14 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::c
 #elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+    const flags& field,
+    const flags& req,
+    const term_meta& meta) {
+  return iterator_impl<doc_iterator_maker>(field, req, meta);
+}
 
 template<typename IteratorTraits, size_t N>
 void bit_union(

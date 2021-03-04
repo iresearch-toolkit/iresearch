@@ -2843,28 +2843,6 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
-
-    virtual doc_iterator::ptr conjunction(
-        const flags& features,
-        const cookie_provider& provider,
-        const callback_f& callback) const {
-      auto term_provider = [&provider]() mutable -> const term_meta* {
-        if (auto* cookie = provider()) {
-#ifdef IRESEARCH_DEBUG
-          const auto& state = dynamic_cast<const ::cookie&>(*cookie);
-#else
-          const auto& state = static_cast<const ::cookie&>(*cookie);
-#endif // IRESEARCH_DEBUG
-
-          return &state.meta;
-        }
-
-        return nullptr;
-      };
-
-      return owner_->pr_->conjunction(meta().features, features, term_provider, callback);
-    }
-
     virtual size_t bit_union(
         const cookie_provider& provider,
         size_t* set) const override {
