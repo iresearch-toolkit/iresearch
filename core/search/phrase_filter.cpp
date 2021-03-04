@@ -302,8 +302,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       const sub_reader& rdr,
       const order::prepared& ord,
       const attribute_provider* /*ctx*/) const override {
+    using conjunction_t = conjunction<doc_iterator::ptr>;
     using phrase_iterator_t = phrase_iterator<
-      doc_iterator::ptr,
+      conjunction_t,
       fixed_phrase_frequency>;
 
     // get phrase state for the specified reader
@@ -315,56 +316,52 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     }
 
     // get features required for query & order
-    const auto features = ord.features() | by_phrase::required();
+    auto features = ord.features() | by_phrase::required();
 
-    //conjunction_t::doc_iterators_t itrs;
-    //itrs.reserve(phrase_state->terms.size());
+    conjunction_t::doc_iterators_t itrs;
+    itrs.reserve(phrase_state->terms.size());
 
     std::vector<fixed_phrase_frequency::term_position_t> positions;
     positions.reserve(phrase_state->terms.size());
 
     // find term using cached state
-    //auto terms = phrase_state->reader->iterator();
+    auto terms = phrase_state->reader->iterator();
     auto position = positions_.begin();
 
-    auto provider = [
-        begin = phrase_state->terms.begin(),
-        end = phrase_state->terms.end()]() mutable noexcept -> const seek_term_iterator::seek_cookie* {
-      if (begin != end) {
-        auto* cookie = begin->first.get();
-        ++begin;
-        return cookie;
-      }
-      return nullptr;
-    };
+    for (const auto& term_state : phrase_state->terms) {
+      assert(term_state.first);
 
-    auto callback = [&](doc_iterator& docs) {
-      auto* pos = irs::get_mutable<irs::position>(&docs);
+      // use bytes_ref::blank here since we do not need just to "jump"
+      // to cached state, and we are not interested in term value itself
+      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
+        return doc_iterator::empty();
+      }
+
+      auto docs = terms->postings(features); // postings
+
+      auto* pos = irs::get_mutable<irs::position>(docs.get());
 
       if (!pos) {
         // positions not found
-        return false;
+        return doc_iterator::empty();
       }
 
       positions.emplace_back(std::ref(*pos), *position);
+
+      // add base iterator
+      itrs.emplace_back(std::move(docs));
+
       ++position;
-      return true;
-    };
-
-    doc_iterator::ptr approx = phrase_state->reader->conjunction(features, provider, callback);
-
-    if (!doc_limits::eof(approx->value())) {
-      return memory::make_managed<phrase_iterator_t>(
-          std::move(approx),
-          std::move(positions),
-          rdr,
-          *phrase_state->reader,
-          stats_.c_str(),
-          ord,
-          boost());
     }
 
-    return doc_iterator::empty();
+    return memory::make_managed<phrase_iterator_t>(
+        std::move(itrs),
+        std::move(positions),
+        rdr,
+        *phrase_state->reader,
+        stats_.c_str(),
+        ord,
+        boost());
   }
 }; // fixed_phrase_query
 
@@ -460,11 +457,10 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       ++position;
     }
     assert(term_state == phrase_state->terms.end());
-    /*
 
     if (phrase_state->volatile_boost) {
       return memory::make_managed<phrase_iterator_t<true>>(
-        memory::make_unique<conjunction_t>(std::move(conj_itrs)),
+        std::move(conj_itrs),
         std::move(positions),
         rdr,
         *phrase_state->reader,
@@ -474,15 +470,13 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     return memory::make_managed<phrase_iterator_t<false>>(
-      memory::make_unique<conjunction_t>(std::move(conj_itrs)),
+      std::move(conj_itrs),
       std::move(positions),
       rdr,
       *phrase_state->reader,
       stats_.c_str(),
       ord,
       boost());
-      */
-      return nullptr;
   }
 }; // variadic_phrase_query
 
