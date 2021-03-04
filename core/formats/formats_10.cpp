@@ -44,6 +44,9 @@
 #include "index/index_reader.hpp"
 #include "index/index_meta.hpp"
 
+#include "search/cost.hpp"
+#include "search/score.hpp"
+
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 
