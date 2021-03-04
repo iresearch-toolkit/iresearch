@@ -47,8 +47,6 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 
-#include "search/conjunction.hpp"
-
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
