@@ -330,7 +330,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
       const index_meta& meta,
       const index_writer::consolidating_segments_t& consolidating_segments) -> void {
     size_t consolidating_size = 0; // size of segments in bytes that are currently under consolidation
-    size_t min_segment_size = integer_traits<size_t>::const_max; // the smallest segment
+    size_t min_segment_size = std::numeric_limits<size_t>::max(); // the smallest segment
     size_t total_index_size = 0; // total size in bytes of all segments in index
     size_t total_docs_count = 0; // total number of documents in index
     size_t total_live_docs_count = 0; // total number of live documents in index

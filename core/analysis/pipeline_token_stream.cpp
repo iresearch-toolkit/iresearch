@@ -294,7 +294,7 @@ bool pipeline_token_stream::next() {
       ++current_;
       // check do we need to do step forward due to rollback to 0.
       step_for_rollback |= top_holds_position && current_->pos != 0 &&
-        current_->pos != irs::integer_traits<uint32_t>::const_max;
+        current_->pos != std::numeric_limits<uint32_t>::max();
       if (!current_->reset(prev_start, prev_end, irs::ref_cast<char>(prev_term))) {
         return false;
       }

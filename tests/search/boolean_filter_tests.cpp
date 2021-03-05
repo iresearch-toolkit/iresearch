@@ -10925,7 +10925,7 @@ TEST(min_match_disjunction_test, next) {
     }
 
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11086,7 +11086,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11246,7 +11246,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{ 1, 5 };
       std::vector<irs::doc_id_t> result;
       {
@@ -11402,7 +11402,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
@@ -11471,7 +11471,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
           );
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
@@ -11597,7 +11597,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
           {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
@@ -11727,7 +11727,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
         {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, irs::doc_limits::eof()},
@@ -11783,7 +11783,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11849,7 +11849,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11964,7 +11964,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
         );
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));

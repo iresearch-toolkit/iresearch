@@ -255,7 +255,7 @@ size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
        doc_id < doc_id_end;
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
-      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + doc_limits::min());
+      assert(size_t(std::numeric_limits<doc_id_t>::max()) >= doc_id + doc_limits::min());
       docs_mask.emplace(doc_id_t(doc_id + doc_limits::min()));
     }
   }

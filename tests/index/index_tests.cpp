@@ -6607,7 +6607,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
@@ -6733,7 +6733,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
@@ -6872,7 +6872,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
@@ -7015,7 +7015,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, &dir, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments, &dir] (

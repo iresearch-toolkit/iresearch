@@ -502,7 +502,7 @@ void postings_writer_base::encode(
   const auto& meta = static_cast<const version10::term_meta&>(state);
 
   out.write_vint(meta.docs_count);
-  if (meta.freq != integer_traits<uint32_t>::const_max) {
+  if (meta.freq != std::numeric_limits<uint32_t>::max()) {
     assert(meta.freq >= meta.docs_count);
     out.write_vint(meta.freq - meta.docs_count);
   }
@@ -663,8 +663,8 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
     if (pos_->size > 0) {
       data_output& out = *pos_out_;
-      uint32_t last_pay_size = integer_traits<uint32_t>::const_max;
-      uint32_t last_offs_len = integer_traits<uint32_t>::const_max;
+      uint32_t last_pay_size = std::numeric_limits<uint32_t>::max();
+      uint32_t last_offs_len = std::numeric_limits<uint32_t>::max();
       uint32_t pay_buf_start = 0;
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
@@ -711,7 +711,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   if (!tfreq) {
-    meta.freq = integer_traits<uint32_t>::const_max;
+    meta.freq = std::numeric_limits<uint32_t>::max();
   }
 
   // if we have flushed at least
@@ -2011,7 +2011,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     format_utils::write_header(*out, FORMAT_NAME, version_);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
-    assert(meta.size() <= integer_traits<uint32_t>::const_max);
+    assert(meta.size() <= std::numeric_limits<uint32_t>::max());
     out->write_vint(uint32_t(meta.size()));
 
     for (auto& segment : meta) {
@@ -2401,8 +2401,8 @@ void document_mask_writer::write(
       filename.c_str()));
   }
 
-  // segment can't have more than integer_traits<uint32_t>::const_max documents
-  assert(docs_mask.size() <= integer_traits<uint32_t>::const_max);
+  // segment can't have more than std::numeric_limits<uint32_t>::max() documents
+  assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2637,7 +2637,7 @@ bool meta_reader::prepare(
   count = in_->read_long(); // read number of objects to read
   max_id = in_->read_long(); // read highest column id written
 
-  if (max_id >= irs::integer_traits<size_t>::const_max) {
+  if (max_id >= std::numeric_limits<size_t>::max()) {
     throw index_error(string_utils::to_string(
       "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
       max_id, filename.c_str()));
@@ -2746,7 +2746,7 @@ ColumnProperty write_compact(
   const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
-    assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
+    assert(compressed.size() <= std::numeric_limits<int32_t>::max());
     irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressed.c_str()), compressed.size());
@@ -2754,7 +2754,7 @@ ColumnProperty write_compact(
     out.write_bytes(compressed.c_str(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
   } else {
-    assert(data.size() <= irs::integer_traits<int32_t>::const_max);
+    assert(data.size() <= std::numeric_limits<int32_t>::max());
     irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(data.c_str()), data.size());

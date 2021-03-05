@@ -324,9 +324,8 @@ struct IRESEARCH_API column_meta_reader {
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
-    size_t& count, // out parameter
-    field_id& max_id // out parameter
-  ) = 0;
+    /*out*/ size_t& count,
+    /*out*/ field_id& max_id) = 0;
 
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
@@ -367,8 +366,7 @@ struct IRESEARCH_API columnstore_reader {
   /// @throws index_error
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta
-  ) = 0;
+    const segment_meta& meta) = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
 
@@ -388,9 +386,7 @@ struct IRESEARCH_API document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  virtual std::string filename(
-    const segment_meta& meta
-  ) const = 0;
+  virtual std::string filename(const segment_meta& meta) const = 0;
 
   virtual void write(
     directory& dir,

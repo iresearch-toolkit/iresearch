@@ -162,13 +162,13 @@ inline int64_t read_zvlong(data_input& in) {
 }
 
 inline void write_string(data_output& out, const char* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
 }
 
 inline void write_string(data_output& out, const byte_type* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(s, len);
 }

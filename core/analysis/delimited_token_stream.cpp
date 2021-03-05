@@ -231,7 +231,7 @@ bool delimited_token_stream::next() {
   auto start = offset.end + uint32_t(delim_.size()); // value is allowed to overflow, will only produce invalid result
   auto end = start + size;
 
-  if (irs::integer_traits<uint32_t>::const_max < end) {
+  if (std::numeric_limits<uint32_t>::max() < end) {
     return false; // cannot fit the next token into offset calculation
   }
 

@@ -24,7 +24,6 @@
 
 #include <absl/hash/internal/city.h>
 
-#include "integer.hpp"
 #include "string.hpp"
 
 // -----------------------------------------------------------------------------

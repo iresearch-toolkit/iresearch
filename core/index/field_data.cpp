@@ -109,7 +109,7 @@ FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
 }
 
 FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
-  assert(offset <= integer_traits<byte_type>::const_max);
+  assert(offset <= std::numeric_limits<byte_type>::max());
   return static_cast<uint64_t>(slice_offset) << 8 | static_cast<byte_type>(offset);
 }
 

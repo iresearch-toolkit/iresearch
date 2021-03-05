@@ -102,7 +102,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     irs::index_file_refs::ref_t ref;
   } newest;
 
-  newest.mtime = (irs::integer_traits<time_t>::min)();
+  newest.mtime = (std::numeric_limits<time_t>::min)();
 
   try {
     for (auto& name: codecs) {
@@ -299,7 +299,7 @@ directory_reader_impl::directory_reader_impl(
     return cached; // no changes to refresh
   }
 
-  constexpr size_t INVALID_CANDIDATE{integer_traits<size_t>::const_max};
+  constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
   absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
   reuse_candidates.reserve(count);
