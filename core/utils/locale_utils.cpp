@@ -148,9 +148,11 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
   std::string tmp;
 
   // use system encoding if encoding.null()
-  if (key.null()) {
+  if (encoding.null()) {
     tmp = system_encoding();
     key = tmp;
+  } else {
+    tmp = static_cast<std::string>(key);
   }
 
   auto lock = irs::make_lock_guard(mutex);
@@ -159,7 +161,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     encodings,
     generator,
     irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
-    key
+    std::move(tmp)
   ).first->second;
 }
 
@@ -3478,7 +3480,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     data += length;
 
     // normalize encoding and compare to 'utf8' (data already in lower case)
-    std::string buf = encoding_;
+    std::string buf = static_cast<std::string>(encoding_);
     auto* str = &buf[0];
     auto end = std::remove_if(
       str, str + buf.size(),

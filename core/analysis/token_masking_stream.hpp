@@ -29,6 +29,7 @@
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
+#include "utils/hash_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -41,12 +42,14 @@ class token_masking_stream final
   : public analyzer,
     private util::noncopyable {
  public:
+  using MaskSet  = absl::flat_hash_set<std::string>;
+
   static constexpr string_ref type_name() noexcept { return "mask"; }
 
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(absl::flat_hash_set<bstring>&& mask);
+  explicit token_masking_stream(MaskSet&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
@@ -60,7 +63,7 @@ class token_masking_stream final
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-  absl::flat_hash_set<bstring> mask_;
+  MaskSet mask_;
   attributes attrs_;
   bool term_eof_;
 };

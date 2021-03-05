@@ -28,7 +28,7 @@
 
 namespace {
 
-constexpr uint8_t HEX_DECODE_MAP[256] = {
+constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 0 - 15
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 16 - 31
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 32 - 47
@@ -47,7 +47,7 @@ constexpr uint8_t HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
+bool hex_decode(std::string& buf, const irs::string_ref& value) {
   if (value.size() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
@@ -79,7 +79,7 @@ bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
 }
 
 irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  absl::flat_hash_set<irs::bstring> tokens;
+  irs::analysis::token_masking_stream::MaskSet tokens;
 
   for (size_t begin = 0, end = 0, length = mask.size();
        end < length;
@@ -91,11 +91,11 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
     }
 
     if (end > begin) {
-      irs::bstring token;
+      std::string token;
       irs::string_ref value(&mask[begin], end - begin);
 
       if (!hex_decode(token, value)) {
-        tokens.emplace(irs::ref_cast<irs::byte_type>(value)); // interpret verbatim
+        tokens.emplace(value); // interpret verbatim
       } else {
         tokens.emplace(std::move(token));
       }
@@ -109,7 +109,7 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
 
 irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
   size_t offset = 0;
-  absl::flat_hash_set<irs::bstring> tokens;
+  irs::analysis::token_masking_stream::MaskSet tokens;
 
   for (auto itr = mask.Begin(), end = mask.End(); itr != end; ++itr, ++offset) {
     if (!itr->IsString()) {
@@ -121,11 +121,11 @@ irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
       return nullptr;
     }
 
-    irs::bstring token;
+    std::string token;
     irs::string_ref value(itr->GetString());
 
     if (!hex_decode(token, value)) {
-      tokens.emplace(irs::ref_cast<irs::byte_type>(value)); // interpret verbatim
+      tokens.emplace(value); // interpret verbatim
     } else {
       tokens.emplace(std::move(token));
     }
@@ -200,7 +200,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(absl::flat_hash_set<bstring>&& mask)
+token_masking_stream::token_masking_stream(token_masking_stream::MaskSet&& mask)
   : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {
@@ -234,7 +234,7 @@ bool token_masking_stream::reset(const string_ref& data) {
 
   auto& term = std::get<term_attribute>(attrs_);
   term.value = irs::ref_cast<irs::byte_type>(data);
-  term_eof_ = mask_.contains(term.value);
+  term_eof_ = mask_.contains(data);
 
   return true;
 }

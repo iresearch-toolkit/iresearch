@@ -578,7 +578,7 @@ TEST_P(format_test_case, fields_read_write) {
     resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
 
@@ -1863,7 +1863,7 @@ TEST_P(format_test_case, columns_rw_typed) {
     [&values](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
 
@@ -1872,19 +1872,19 @@ TEST_P(format_test_case, columns_rw_typed) {
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_number()) {
@@ -1893,7 +1893,7 @@ TEST_P(format_test_case, columns_rw_typed) {
       // 'value' can be interpreted as a double
       doc.insert(std::make_shared<tests::double_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(dValue);
       values.emplace_back(field.name(), field.value());
     }
