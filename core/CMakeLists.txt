@@ -238,7 +238,6 @@ set(IResearch_core_headers
   ./utils/fstext/fst_table_matcher.hpp
   ./utils/fstext/fst_string_weight.h
   ./utils/mmap_utils.hpp
-  ./utils/integer.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp
   ./utils/math_utils.hpp

@@ -138,7 +138,7 @@ class IRESEARCH_API index_writer
         segment_context_ptr ctx,
         std::atomic<size_t>& segments_active,
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
+        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
     ) noexcept;
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
@@ -310,7 +310,7 @@ class IRESEARCH_API index_writer
 
           rollback.reserve(writer.docs_cached() + 1); // reserve space for rollback
 
-          if (integer_traits<doc_id_t>::const_max <= writer.docs_cached() + doc_limits::min()
+          if (std::numeric_limits<doc_id_t>::max() <= writer.docs_cached() + doc_limits::min()
               || doc_limits::eof(writer.begin(update, rollback_extra))) {
             break; // the segment cannot fit any more docs, must roll back
           }
@@ -343,7 +343,7 @@ class IRESEARCH_API index_writer
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
           rollback.unset(i); // if new doc_ids at end this allows to terminate 'for' earlier
-          assert(integer_traits<doc_id_t>::const_max >= i + doc_limits::min());
+          assert(std::numeric_limits<doc_id_t>::max() >= i + doc_limits::min());
           writer.remove(doc_id_t(i + doc_limits::min())); // convert to doc_id
         }
       }
@@ -834,7 +834,7 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
     struct flushed_t: public index_meta::index_segment_t {
-      doc_id_t docs_mask_tail_doc_id{integer_traits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
+      doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
       flushed_t(segment_meta&& meta)
         : index_meta::index_segment_t(std::move(meta)) {}
@@ -938,9 +938,9 @@ class IRESEARCH_API index_writer
         const segment_context::ptr& segment,
         size_t pending_segment_context_offset
       ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
-         doc_id_end_(integer_traits<size_t>::const_max),
+         doc_id_end_(std::numeric_limits<size_t>::max()),
          modification_offset_begin_(segment->uncomitted_modification_queries_),
-         modification_offset_end_(integer_traits<size_t>::const_max),
+         modification_offset_end_(std::numeric_limits<size_t>::max()),
          segment_(segment) {
         assert(segment);
         value = pending_segment_context_offset;
@@ -1006,7 +1006,7 @@ class IRESEARCH_API index_writer
           // partial update
           assert(begin <= files.end());
 
-          if (integer_traits<size_t>::const_max == entry.second) {
+          if (std::numeric_limits<size_t>::max() == entry.second) {
             // skip invalid segments
             begin += entry.second;
             continue;

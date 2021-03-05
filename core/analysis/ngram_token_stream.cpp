@@ -305,7 +305,7 @@ void ngram_token_stream_base::emit_original() noexcept {
   switch (emit_original_) {
     case EmitOriginal::WithoutMarkers:
       term.value = data_;
-      assert(data_.size() <= integer_traits<uint32_t>::const_max);
+      assert(data_.size() <= std::numeric_limits<uint32_t>::max());
       offset.end = uint32_t(data_.size());
       emit_original_ = EmitOriginal::None;
       inc.value = next_inc_val_;
@@ -316,7 +316,7 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.append(data_.begin(), data_end_);
       marked_term_buffer_.append(options_.end_marker.begin(), options_.end_marker.end());
       term.value = marked_term_buffer_;
-      assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
+      assert(marked_term_buffer_.size() <= std::numeric_limits<uint32_t>::max());
       offset.start = 0;
       offset.end = uint32_t(data_.size());
       emit_original_ = EmitOriginal::None; // end marker is emitted last, so we are done emitting original
@@ -328,7 +328,7 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
       marked_term_buffer_.append(data_.begin(), data_end_);
       term.value = marked_term_buffer_;
-      assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
+      assert(marked_term_buffer_.size() <= std::numeric_limits<uint32_t>::max());
       offset.start = 0;
       offset.end = uint32_t(data_.size());
       emit_original_ = options_.end_marker.empty()? EmitOriginal::None : EmitOriginal::WithEndMarker;
@@ -342,8 +342,8 @@ void ngram_token_stream_base::emit_original() noexcept {
 }
 
 bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
-  if (value.size() > integer_traits<uint32_t>::const_max) {
-    // can't handle data which is longer than integer_traits<uint32_t>::const_max
+  if (value.size() > std::numeric_limits<uint32_t>::max()) {
+    // can't handle data which is longer than std::numeric_limits<uint32_t>::max()
     return false;
   }
 
@@ -354,8 +354,8 @@ bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
   term.value = bytes_ref::NIL;
 
   // reset offset attribute
-  offset.start = integer_traits<uint32_t>::const_max;
-  offset.end = integer_traits<uint32_t>::const_max;
+  offset.start = std::numeric_limits<uint32_t>::max();
+  offset.end = std::numeric_limits<uint32_t>::max();
 
   // reset stream
   data_ = ref_cast<byte_type>(value);
@@ -418,7 +418,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
       ++length_;
       if (length_ >= options_.min_gram) {
         IRS_ASSERT(begin_ <= ngram_end_);
-        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= integer_traits<uint32_t>::const_max);
+        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <= std::numeric_limits<uint32_t>::max());
         const auto ngram_byte_len = static_cast<uint32_t>(std::distance(begin_, ngram_end_));
         if (EmitOriginal::None == emit_original_ || 0 != offset.start || ngram_byte_len != data_.size()) {
           offset.end = offset.start + ngram_byte_len;
@@ -432,7 +432,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
             marked_term_buffer_.append(options_.start_marker.begin(), options_.start_marker.end());
             marked_term_buffer_.append(begin_, ngram_byte_len);
             term.value = marked_term_buffer_;
-            assert(marked_term_buffer_.size() <= integer_traits<uint32_t>::const_max);
+            assert(marked_term_buffer_.size() <= std::numeric_limits<uint32_t>::max());
             if (ngram_byte_len == data_.size() && !end_marker_empty_) {
               // this term is whole original stream and we have end marker, so we need to emit
               // this term again with end marker just like original, so pretend we need to emit original

@@ -62,7 +62,7 @@ class pipeline_token_stream final
       data_size = data.size();
       data_start = start;
       data_end = end;
-      pos = irs::integer_traits<uint32_t>::const_max;
+      pos = std::numeric_limits<uint32_t>::max();
       return analyzer->reset(data);
     }
     bool next() {
@@ -90,7 +90,7 @@ class pipeline_token_stream final
     size_t data_size{ 0 };
     uint32_t data_start{ 0 };
     uint32_t data_end{ 0 };
-    uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+    uint32_t pos{ std::numeric_limits<uint32_t>::max() };
 
    private:
     // sub analyzer should be operated through provided next/release

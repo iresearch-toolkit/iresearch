@@ -1303,7 +1303,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
       char hostname[256] = {};
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
 
-      const std::string pid = std::to_string(integer_traits<int>::const_max);
+      const std::string pid = std::to_string(std::numeric_limits<int>::max());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));

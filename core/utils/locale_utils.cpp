@@ -2754,7 +2754,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
     return do_put_int_zero(out, str,fill); // optimization for '0'
   }
 
-  if ((unsigned long long)irs::integer_traits<int64_t>::const_max < value) {
+  if ((unsigned long long)std::numeric_limits<int64_t>::max() < value) {
     throw irs::io_error(
       "value too large while converting data from UTF8 in num_put_facet::do_put(...)"
     );
@@ -3065,7 +3065,7 @@ template<typename T>
 
   // strip leading/trailing zero half-bytes
   {
-    static_assert(std::numeric_limits<size_t>::digits < irs::integer_traits<int>::const_max, "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
+    static_assert(std::numeric_limits<size_t>::digits < std::numeric_limits<int>::max(), "std::numeric_limits<size_t>::digits >= std::numeric_limits<int>::max()");
     auto clz = int(irs::math::math_traits<size_t>::clz(mantissa_i));
     auto ctz = int(irs::math::math_traits<size_t>::ctz(mantissa_i));
 
