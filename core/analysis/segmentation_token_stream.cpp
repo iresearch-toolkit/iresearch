@@ -70,7 +70,19 @@ bool segmentation_token_stream::next() {
 }
 
 bool segmentation_token_stream::reset(const string_ref& data) {
-  auto range =  RS::Unicorn::word_range(static_cast<std::string_view>(data), RS::Unicorn::Segment::alpha);
+  auto flags = RS::Unicorn::Segment::alpha;
+  switch (options_.word_break) {
+    case options_t::word_break_t::ALL:
+      flags = RS::Unicorn::Segment::unicode;
+      break;
+    case options_t::word_break_t::GRAPHIC:
+      flags = RS::Unicorn::Segment::graphic;
+    case options_t::word_break_t::ALPHA:
+    default:
+      assert(options_.word_break == options_t::word_break_t::ALPHA);
+      break;
+  }
+  auto range =  RS::Unicorn::word_range(static_cast<std::string_view>(data), flags);
   state_->begin = range.begin();
   state_->end = range.end();
   return true;

@@ -39,9 +39,14 @@ class segmentation_token_stream final
   static void init(); // for triggering registration in a static build
   
   struct options_t {
-    enum case_convert_t { LOWER, NONE, UPPER };
+    enum class case_convert_t { LOWER, NONE, UPPER };
+    enum class word_break_t { ALL, // All UAX29 words are reported
+                              GRAPHIC, // Report only words with graphic characters
+                              ALPHA }; // Report only words with alphanumeric characters
+
     // lowercase tokens, match default values in text analyzer
     case_convert_t case_convert{case_convert_t::LOWER};
+    word_break_t word_break {word_break_t::ALPHA};
   };
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
