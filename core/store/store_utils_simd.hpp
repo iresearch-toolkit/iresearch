@@ -39,15 +39,6 @@ IRESEARCH_API void read_block_simd(
   uint32_t* RESTRICT encoded,
   uint32_t* RESTRICT decoded);
 
-// reads block of the specified size from the stream
-// that was previously encoded with the corresponding
-// 'write_block' function using low-level optimizations
-IRESEARCH_API void read_block_simd(
-  data_input& in,
-  uint32_t size,
-  uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded);
-
 // writes block of integers to stream
 //   all values are equal -> RL encoding,
 //   otherwise            -> bit packing
@@ -55,16 +46,6 @@ IRESEARCH_API void read_block_simd(
 IRESEARCH_API uint32_t write_block_simd(
   data_output& out,
   const uint32_t* RESTRICT decoded,
-  uint32_t* RESTRICT encoded);
-
-// writes block of the specified size to stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block_simd(
-  data_output& out,
-  const uint32_t* RESTRICT decoded,
-  uint32_t size,
   uint32_t* RESTRICT encoded);
 
 } // encode

@@ -160,12 +160,10 @@ endif()
 ### setup platform dependent optimizations
 ################################################################################
 
-if (USE_SIMDCOMP)
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+include(OptimizeForArchitecture)
+OptimizeForArchitecture()
 
-  add_definitions(${Vc_ARCHITECTURE_FLAGS})
-endif()
+add_definitions(${Vc_ARCHITECTURE_FLAGS})
 
 ################################################################################
 ### find 3rd party libraries
