@@ -28,6 +28,12 @@
 
 #include "analysis/segmentation_token_stream.hpp"
 
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#endif // IRESEARCH_USE_VPACK_LIBRARY
+
 namespace {
 
 struct analyzer_token {
@@ -253,3 +259,15 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
 
   testFunc(data, &stream);
 }
+
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+TEST(segmentation_token_stream_test, make_empty_object) {
+  auto vpack = arangodb::velocypack::Parser::fromJson("{}");
+  irs::string_ref args(reinterpret_cast<const char*>(vpack->data()), vpack->size());
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::vpack>::get(),
+      args);
+  ASSERT_TRUE(stream);
+}
+#endif

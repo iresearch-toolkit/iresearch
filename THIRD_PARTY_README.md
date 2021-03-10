@@ -86,7 +86,10 @@ number of components produced by third parties
     - License: [MIT license](https://opensource.org/licenses/MIT)
     - How it's used: Word segmentation rules implementation for
       segmentation analyzer
-
+15. Title: Velocypack Library
+    - Copyright: Jan Steemann
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: Binary JSON parser
 ## Third Party Open Source Software licenses
 
 ### OpenFST

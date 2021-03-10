@@ -278,6 +278,11 @@ configure_file(
 )
 
 add_subdirectory(external)
+
+if (TARGET velocypack)
+add_definitions(-DIRESEARCH_USE_VPACK_LIBRARY)
+endif()
+
 add_subdirectory(core)
 add_subdirectory(utils)
 

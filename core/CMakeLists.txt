@@ -38,6 +38,11 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
+if (TARGET velocypack)
+#for some reason TARGET_PROPERTY generator expression does not work for this target
+get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
+endif()
+
 if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
@@ -397,6 +402,13 @@ target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
+if (TARGET velocypack)
+target_include_directories(${IResearch_TARGET_NAME}-static
+  PUBLIC ${VPACK_INCLUDE_PATH}
+)
+add_dependencies(${IResearch_TARGET_NAME}-static velocypack)
+target_link_libraries(${IResearch_TARGET_NAME}-static velocypack)
+endif()
 
 # setup MSVC specific compiler flags
 if(MSVC)
@@ -480,6 +492,15 @@ if (USE_SEGMENTATION_ANALYZER)
   )
 endif()
 
+if (TARGET velocypack)
+get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
+target_include_directories(${IResearch_TARGET_NAME}-shared
+  PUBLIC ${VPACK_INCLUDE_PATH}
+)
+add_dependencies(${IResearch_TARGET_NAME}-shared velocypack)
+target_link_libraries(${IResearch_TARGET_NAME}-shared velocypack)
+endif()
+
 if (CLANG_TIDY_EXE)
   set_target_properties(
     ${IResearch_TARGET_NAME}-static
@@ -518,6 +539,10 @@ if (USE_SEGMENTATION_ANALYZER)
   else()
     set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
   endif()
+endif()
+
+if (TARGET velocypack)
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:velocypack>")
 endif()
 
 if (MSVC)
@@ -1039,7 +1064,15 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
 )
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IResearch_TARGET_NAME}-unicorn)
 
+
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
+
+if (TARGET velocypack)
+add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
+add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
+endif()
 
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared

@@ -21,12 +21,143 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "segmentation_token_stream.hpp"
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-
 #include "unicorn/segment.hpp"
 #include "unicorn/string.hpp"
+#include <frozen/unordered_map.h>
+
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#endif // IRESEARCH_USE_VPACK_LIBRARY
+
+
+namespace {
+
+constexpr irs::string_ref CASE_CONVERT_PARAM_NAME  = "case";
+constexpr irs::string_ref BREAK_PARAM_NAME         = "break";
+
+const frozen::unordered_map<
+    irs::string_ref,
+    irs::analysis::segmentation_token_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", irs::analysis::segmentation_token_stream::options_t::case_convert_t::LOWER },
+  { "none", irs::analysis::segmentation_token_stream::options_t::case_convert_t::NONE },
+  { "upper", irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER },
+};
+
+const frozen::unordered_map<
+    irs::string_ref,
+    irs::analysis::segmentation_token_stream::options_t::word_break_t, 3> BREAK_CONVERT_MAP = {
+  { "all", irs::analysis::segmentation_token_stream::options_t::word_break_t::ALL },
+  { "alpha", irs::analysis::segmentation_token_stream::options_t::word_break_t::ALPHA },
+  { "graphic", irs::analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC },
+};
+
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+
+bool parse_vpack_options(const irs::string_ref& args,
+                         irs::analysis::segmentation_token_stream::options_t& options) {
+   arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+   if (!slice.isObject()) {
+     IR_FRMT_ERROR("Slice for segmentation_token_stream is not an object: %s", 
+                    slice.toString().c_str());
+     return false;
+   }
+   if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
+      auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME.c_str());
+      if (!case_convert_slice.isString()) {
+        IR_FRMT_WARN(
+            "Invalid type '%s' (string expected) for segmentation_token_stream from "
+            "Vpack arguments: %s",
+            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString());
+        return false;
+      }
+      auto case_convert = case_convert_slice.stringRef();
+      auto itr = CASE_CONVERT_MAP.find(irs::string_ref(case_convert.data(), case_convert.size()));
+
+      if (itr == CASE_CONVERT_MAP.end()) {
+        IR_FRMT_WARN(
+            "Invalid value in '%s' for segmentation_token_stream from "
+            "Vpack arguments: %s",
+            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString());
+        return false;
+      }
+      options.case_convert = itr->second;
+   }
+   if (slice.hasKey(BREAK_PARAM_NAME.c_str())) {
+      auto break_type_slice = slice.get(BREAK_PARAM_NAME.c_str());
+      if (!break_type_slice.isString()) {
+        IR_FRMT_WARN(
+            "Invalid type '%s' (string expected) for segmentation_token_stream from "
+            "Vpack arguments: %s",
+            BREAK_PARAM_NAME.c_str(), slice.toString());
+        return false;
+      }
+      auto break_type = break_type_slice.stringRef();
+      auto itr = BREAK_CONVERT_MAP.find(irs::string_ref(break_type.data(), break_type.size()));
+
+      if (itr == BREAK_CONVERT_MAP.end()) {
+        IR_FRMT_WARN(
+            "Invalid value in '%s' for segmentation_token_stream from "
+            "Vpack arguments: %s",
+            BREAK_PARAM_NAME.c_str(), slice.toString());
+        return false;
+      }
+      options.word_break = itr->second;
+   }
+   return true;
+}
+
+bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t& options,
+  std::string& definition) {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a Vpack slice object with the following attributes:
+///        "case"(string enum): modify token case
+///        "break"(string enum): word breaking method
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+ 
+  try {
+    irs::analysis::segmentation_token_stream::options_t options;
+    if (!parse_vpack_options(args, options)) {
+      return nullptr;
+    }
+    return irs::memory::make_unique<irs::analysis::segmentation_token_stream>(options);
+  } catch(const arangodb::velocypack::Exception& ex) {
+    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from Vpack arguments: %s", 
+                  ex.what(), slice.toString().c_str());
+  } catch (...) {
+    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    IR_FRMT_ERROR("Caught error while constructing segmentation_token_stream from Vpack arguments: %s", 
+                  slice.toString().c_str());
+  }
+  return nullptr;
+}
+
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+  irs::analysis::segmentation_token_stream::options_t options;
+  try {
+    if (parse_vpack_options(args, options)) {
+      return make_vpack_config(options, definition);
+    } else {
+      return false;
+    }
+  } catch(const arangodb::velocypack::Exception& ex) {
+    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from Vpack arguments: %s", 
+                  ex.what(), slice.toString().c_str());
+  } catch (...) {
+    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from Vpack arguments: %s", 
+                  slice.toString().c_str());
+  }
+}
+#endif
+}
 
 namespace iresearch {
 namespace analysis {
@@ -36,9 +167,16 @@ struct segmentation_token_stream::state_t {
   RS::Unicorn::WordIterator<char> end;
 };
 
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
+                        normalize_vpack_config);  // match registration above
+#endif
+
 /*static*/ void segmentation_token_stream::init() {
- // REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
- //   normalize_json_config);  // match registration above
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+  REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
+    normalize_vpack_config);  // match registration above
+#endif
 }
 
 segmentation_token_stream::segmentation_token_stream(segmentation_token_stream::options_t&& options)
