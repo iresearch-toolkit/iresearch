@@ -314,44 +314,24 @@ namespace RS::Unicorn {
     using WcharIterator = UtfIterator<wchar_t>;
     using WcharRange = Irange<WcharIterator>;
 
-    template <typename C>
-    UtfIterator<C> utf_begin(const std::basic_string<C>& src, uint32_t flags = 0) {
-        return {src, 0, flags};
+    template <typename container>
+    UtfIterator<typename std::decay<container>::type::value_type> utf_begin(container&& src, uint32_t flags = 0) {
+        return {std::forward<container>(src), 0, flags};
     }
 
-    template <typename C>
-    UtfIterator<C> utf_end(const std::basic_string<C>& src, uint32_t flags = 0) {
-        return {src, src.size(), flags};
+    template <typename container>
+    UtfIterator<typename std::decay<container>::type::value_type> utf_end(container&& src, uint32_t flags = 0) {
+        return {std::forward<container>(src), src.size(), flags};
     }
 
-    template <typename C>
-    UtfIterator<C> utf_iterator(const std::basic_string<C>& src, size_t offset, uint32_t flags = 0) {
-        return {src, offset, flags};
+    template <typename container>
+    UtfIterator<typename std::decay<container>::type::value_type> utf_iterator(container&& src, size_t offset, uint32_t flags = 0) {
+        return {std::forward<container>(src), offset, flags};
     }
 
-    template <typename C>
-    Irange<UtfIterator<C>> utf_range(const std::basic_string<C>& src, uint32_t flags = 0) {
-        return {utf_begin(src, flags), utf_end(src, flags)};
-    }
-
-    template <typename C>
-    UtfIterator<C> utf_begin(std::basic_string_view<C> src, uint32_t flags = 0) {
-        return {src, 0, flags};
-    }
-
-    template <typename C>
-    UtfIterator<C> utf_end(std::basic_string_view<C> src, uint32_t flags = 0) {
-        return {src, src.size(), flags};
-    }
-
-    template <typename C>
-    UtfIterator<C> utf_iterator(std::basic_string_view<C> src, size_t offset, uint32_t flags = 0) {
-        return {src, offset, flags};
-    }
-
-    template <typename C>
-    Irange<UtfIterator<C>> utf_range(std::basic_string_view<C> src, uint32_t flags = 0) {
-        return {utf_begin(src, flags), utf_end(src, flags)};
+    template <typename container>
+    Irange<UtfIterator<typename std::decay<container>::type::value_type>> utf_range(container&& src, uint32_t flags = 0) {
+        return {utf_begin(std::forward<container>(src), flags), utf_end(std::forward<container>(src), flags)};
     }
 
     template <typename C>
@@ -362,6 +342,17 @@ namespace RS::Unicorn {
     template <typename C>
     std::basic_string<C> u_str(const Irange<UtfIterator<C>>& range) {
         return u_str(range.begin(), range.end());
+    }
+
+    
+    template <typename C>
+    std::basic_string_view<C> u_view(const UtfIterator<C>& i, const UtfIterator<C>& j) {
+      return std::basic_string_view<C>(i.source().substr(i.offset(), j.offset() - i.offset()));
+    }
+
+    template <typename C>
+    std::basic_string_view<C> u_view(const Irange<UtfIterator<C>>& range) {
+        return u_view(range.begin(), range.end());
     }
 
     // UTF encoding iterator

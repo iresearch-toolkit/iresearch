@@ -5,12 +5,12 @@ namespace RS::Unicorn {
 
     namespace {
 
-        template <typename F>
-        const Ustring casemap_helper(const Ustring& src, F f) {
+        template <typename C, typename F>
+        const Ustring casemap_helper(C&& src, F f) {
             Ustring dst;
             char32_t buf[max_case_decomposition];
             auto out = utf_writer(dst);
-            for (auto c: utf_range(src)) {
+            for (auto c: utf_range(std::forward<C>(src))) {
                 auto n = f(c, buf);
                 std::copy_n(buf, n, out);
             }
@@ -48,10 +48,13 @@ namespace RS::Unicorn {
         return casemap_helper(str, char_to_full_uppercase);
     }
 
-    Ustring str_lowercase(const Ustring& str) {
+    Ustring str_uppercase(Uview str) {
+        return casemap_helper(str, char_to_full_uppercase);
+    }
+        
+    Ustring str_lowercase_range(const Utf8Range& range) {
         Ustring dst;
         LowerChar lc;
-        auto range = utf_range(str);
         auto out = utf_writer(dst);
         for (auto i = range.begin(), e = range.end(); i != e; ++i)
             lc.convert(i, e, out);

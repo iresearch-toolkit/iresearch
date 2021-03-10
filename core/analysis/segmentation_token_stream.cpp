@@ -31,23 +31,49 @@
 namespace iresearch {
 namespace analysis {
 
+struct segmentation_token_stream::state_t {
+  RS::Unicorn::WordIterator<char> begin;
+  RS::Unicorn::WordIterator<char> end;
+};
+
 /*static*/ void segmentation_token_stream::init() {
  // REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
  //   normalize_json_config);  // match registration above
 }
 
 segmentation_token_stream::segmentation_token_stream(segmentation_token_stream::options_t&& options)
-	: analyzer{ irs::type<segmentation_token_stream>::get() } {
+  : analyzer{ irs::type<segmentation_token_stream>::get() },
+    state_(memory::make_unique<state_t>()), options_(options) {
 }
 
 bool segmentation_token_stream::next() {
-	return true;
+  if (state_->begin != state_->end) {
+    std::get<1>(attrs_).start = state_->begin->first.offset();
+    std::get<1>(attrs_).end = state_->begin->second.offset();
+    switch (options_.case_convert) {
+      case options_t::case_convert_t::NONE:
+        std::get<2>(attrs_).value = irs::ref_cast<irs::byte_type>(RS::Unicorn::u_view(*state_->begin++));
+        break;
+      case options_t::case_convert_t::LOWER:
+        term_buf_ = RS::Unicorn::str_lowercase(RS::Unicorn::u_view(*state_->begin++));
+        std::get<2>(attrs_).value = irs::ref_cast<irs::byte_type>(irs::string_ref(term_buf_));
+        break;
+      case options_t::case_convert_t::UPPER:
+        term_buf_ = RS::Unicorn::str_uppercase(RS::Unicorn::u_view(*state_->begin++));
+        std::get<2>(attrs_).value = irs::ref_cast<irs::byte_type>(irs::string_ref(term_buf_));
+        break;
+    }
+    
+    return true;
+  }
+  return false;
 }
+
 bool segmentation_token_stream::reset(const string_ref& data) {
-	for (auto word : RS::Unicorn::word_range(static_cast<std::basic_string_view<char>>(data), RS::Unicorn::Segment::alpha)) {
-		std::cout <<  RS::Unicorn::str_lowercase(RS::Unicorn::u_str(word)) << std::endl;
-	}
-	return true;
+  auto range =  RS::Unicorn::word_range(static_cast<std::string_view>(data), RS::Unicorn::Segment::alpha);
+  state_->begin = range.begin();
+  state_->end = range.end();
+  return true;
 }
 
 } // namespace analysis

@@ -64,11 +64,6 @@ bool hex_decode(std::string& buf, const irs::string_ref& value) {
     auto lo = HEX_DECODE_MAP[size_t(value[i + 1])];
 
     if (hi >= 16 || lo >= 16) {
-      IR_FRMT_WARN(
-        "Invalid hex-encoded value while HEX decoding masked token: %s",
-        value.c_str()
-      );
-
       return false;
     }
 

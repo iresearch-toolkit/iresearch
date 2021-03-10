@@ -53,6 +53,7 @@ target_compile_definitions(
 
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build

@@ -39,12 +39,15 @@ class segmentation_token_stream final
   static void init(); // for triggering registration in a static build
   
   struct options_t {
+    enum case_convert_t { LOWER, NONE, UPPER };
+    // lowercase tokens, match default values in text analyzer
+    case_convert_t case_convert{case_convert_t::LOWER};
   };
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
-  explicit segmentation_token_stream(options_t&&);
+  explicit segmentation_token_stream(options_t&& opts);
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -55,11 +58,12 @@ class segmentation_token_stream final
     offset,
     term_attribute>;
 
-  bstring term_buf_; // buffer for value if value cannot be referenced directly
+  struct state_t;
+
+  std::shared_ptr<state_t> state_;
+  options_t options_;
+  std::string term_buf_; // buffer for value if value cannot be referenced directly
   attributes attrs_;
- //std::unique_ptr<RS::Unicorn::WordIterator> word_range_; // it should stay before src_ !
- // std::string src_;
-  
 };
 } // namespace analysis
 } // namespace iresearch
