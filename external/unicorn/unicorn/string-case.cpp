@@ -52,7 +52,7 @@ namespace RS::Unicorn {
         return casemap_helper(str, char_to_full_uppercase);
     }
         
-    Ustring str_lowercase_range(const Utf8Range& range) {
+    Ustring str_lowercase(const Utf8Range& range) {
         Ustring dst;
         LowerChar lc;
         auto out = utf_writer(dst);

@@ -219,10 +219,7 @@ namespace RS::Unicorn {
         using string_type = std::basic_string<C>;
         using view_type = std::basic_string_view<C>;
         UtfIterator() noexcept { static const string_type dummy; sptr = dummy; }
-        explicit UtfIterator(const string_type& src): UtfIterator(src, 0, 0) {}
-        //UtfIterator(const string_type& src, size_t offset, uint32_t flags = 0): 
-        //    sptr(src), ofs(std::min(offset, src.size())), fset(flags) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
-        UtfIterator(view_type src, size_t offset, uint32_t flags = 0):
+        UtfIterator(view_type src, size_t offset = 0, uint32_t flags = 0):
             sptr(src), ofs(std::min(offset, src.size())), fset(flags) { if (popcount(fset & Utf::mask) == 0) fset |= Utf::ignore; ++*this; }
         const char32_t& operator*() const noexcept { return u; }
         UtfIterator& operator++();

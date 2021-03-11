@@ -841,13 +841,14 @@ namespace RS::Unicorn {
     Ustring str_uppercase(const Ustring& str);
     Ustring str_uppercase(Uview str);
 
-    template<typename T> // FIXME: use enable_if to disable wrong instantination and remove_range function
-    Ustring str_lowercase(T&& str) {
-      return str_lowercase_range(utf_range(std::forward<T>(str)));
+    template<typename T>
+    // we suppport only string/views with chars
+    std::enable_if_t<std::is_same_v<typename std::decay_t<T>::value_type, char>, Ustring> 
+    str_lowercase(T&& str) {
+      return str_lowercase(utf_range(std::forward<T>(str)));
     }
 
-    
-    Ustring str_lowercase_range(const Utf8Range& range);
+    Ustring str_lowercase(const Utf8Range& range);
     Ustring str_titlecase(const Ustring& str);
     Ustring str_casefold(const Ustring& str);
     Ustring str_case(const Ustring& str, Case c);
