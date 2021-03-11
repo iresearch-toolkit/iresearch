@@ -310,6 +310,14 @@
 #error "unsupported os or compiler"
 #endif
 
+constexpr bool is_big_endian() noexcept {
+#ifdef IRESEARCH_BIG_ENDIAN
+ return true;
+#else
+ return false;
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
