@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "segmentation_token_stream.hpp"
 
+#include "utils/hash_utils.hpp"
 #include "unicorn/segment.hpp"
 #include "unicorn/string.hpp"
 #include <frozen/unordered_map.h>
@@ -28,6 +29,7 @@
 #ifdef IRESEARCH_USE_VPACK_LIBRARY
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
 #endif // IRESEARCH_USE_VPACK_LIBRARY
 
 
@@ -124,7 +126,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     if (!parse_vpack_options(args, options)) {
       return nullptr;
     }
-    return irs::memory::make_unique<irs::analysis::segmentation_token_stream>(options);
+    return irs::memory::make_unique<irs::analysis::segmentation_token_stream>(std::move(options));
   } catch(const arangodb::velocypack::Exception& ex) {
     arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
     IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from Vpack arguments: %s", 
@@ -156,6 +158,34 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
                   slice.toString().c_str());
   }
 }
+
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+  } catch(const arangodb::velocypack::Exception& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from json: %s", 
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing segmentation_token_stream from json: %s", 
+                  args.c_str());
+  }
+  return nullptr;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    return normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), definition);
+  } catch(const arangodb::velocypack::Exception& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from json: %s", 
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from json: %s", 
+                  args.c_str());
+  }
+}
+
 #endif
 }
 
@@ -169,13 +199,17 @@ struct segmentation_token_stream::state_t {
 
 #ifdef IRESEARCH_USE_VPACK_LIBRARY
 REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
-                        normalize_vpack_config);  // match registration above
+                        normalize_vpack_config);
+REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
+                        normalize_json_config);
 #endif
 
 /*static*/ void segmentation_token_stream::init() {
 #ifdef IRESEARCH_USE_VPACK_LIBRARY
   REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
-    normalize_vpack_config);  // match registration above
+                          normalize_vpack_config);  // match registration above
+  REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
+                         normalize_json_config);  // match registration above
 #endif
 }
 

@@ -28,12 +28,6 @@
 
 #include "analysis/segmentation_token_stream.hpp"
 
-#ifdef IRESEARCH_USE_VPACK_LIBRARY
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#endif // IRESEARCH_USE_VPACK_LIBRARY
-
 namespace {
 
 struct analyzer_token {
@@ -262,12 +256,154 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
 
 #ifdef IRESEARCH_USE_VPACK_LIBRARY
 TEST(segmentation_token_stream_test, make_empty_object) {
-  auto vpack = arangodb::velocypack::Parser::fromJson("{}");
-  irs::string_ref args(reinterpret_cast<const char*>(vpack->data()), vpack->size());
   auto stream = irs::analysis::analyzers::get(
       "segmentation",
-      irs::type<irs::text_format::vpack>::get(),
-      args);
+      irs::type<irs::text_format::json>::get(),
+      "{}");
   ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "test", 0, 4, 0},
+    { "retest", 7, 13, 1}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
 }
+
+TEST(segmentation_token_stream_test, make_lowercase) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"lower\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "test", 0, 4, 0},
+    { "retest", 7, 13, 1}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_nonecase) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"none\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "Test", 0, 4, 0},
+    { "ReTeSt", 7, 13, 1}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "TEST", 0, 4, 0},
+    { "RETEST", 7, 13, 1}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_invalidcase) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"invalid\"}");
+  ASSERT_FALSE(stream);
+}
+
+
+TEST(segmentation_token_stream_test, make_numbercase) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":2}");
+  ASSERT_FALSE(stream);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase_alphabreak) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\", \"break\":\"alpha\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "TEST", 0, 4, 0},
+    { "RETEST", 7, 13, 1}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase_all_break) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\", \"break\":\"all\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "TEST", 0, 4, 0},
+    { " ", 4, 5, 1},
+    { "-", 5, 6, 2},
+    { " ", 6, 7, 3},
+    { "RETEST", 7, 13, 4}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase_graphic_break) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\", \"break\":\"graphic\"}");
+  ASSERT_TRUE(stream);
+  const analyzer_tokens expected{
+    { "TEST", 0, 4, 0},
+    { "-", 5, 6, 1},
+    { "RETEST", 7, 13, 2}
+  };
+  std::string data = "Test - ReTeSt";
+  assert_stream(stream.get(), data, expected);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase_invalid_break) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\", \"break\":\"_INVALID_\"}");
+  ASSERT_FALSE(stream);
+}
+
+TEST(segmentation_token_stream_test, make_uppercase_invalid_number_break) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"upper\", \"break\":1}");
+  ASSERT_FALSE(stream);
+}
+
+TEST(segmentation_token_stream_test, make_invalid_json) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "NOT a JSON");
+  ASSERT_FALSE(stream);
+}
+
+TEST(segmentation_token_stream_test, make_not_object_json) {
+  auto stream = irs::analysis::analyzers::get(
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "'string'");
+  ASSERT_FALSE(stream);
+}
+
 #endif

@@ -208,18 +208,6 @@ target_include_directories(${IResearchTests_TARGET_NAME}-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
-if (TARGET velocypack)
-#for some reason TARGET_PROPERTY generator expression does not work for this target
-get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(${IResearchTests_TARGET_NAME}-shared
-  PRIVATE ${VPACK_INCLUDE_PATH}
-)
-
-target_include_directories(${IResearchTests_TARGET_NAME}-static
-  PRIVATE ${VPACK_INCLUDE_PATH}
-)
-endif()
-
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
     PRIVATE "/bigobj"
