@@ -29,7 +29,6 @@
 #include "utils/automaton.hpp" // FIXME
 #include "utils/misc.hpp"
 #include "utils/bit_utils.hpp"
-#include "utils/integer.hpp"
 #include "utils/std.hpp"
 
 namespace fst {

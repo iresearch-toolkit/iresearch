@@ -86,7 +86,7 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
   {
     irs::index_utils::consolidate_tier options;
     options.floor_segment_bytes = 1;
-    options.max_segments = irs::integer_traits<size_t>::const_max;
+    options.max_segments = std::numeric_limits<size_t>::max();
     options.min_segments = 1;
     options.max_segments_bytes = 10;
 
@@ -129,7 +129,7 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
   {
     irs::index_utils::consolidate_tier options;
     options.floor_segment_bytes = 1;
-    options.max_segments = irs::integer_traits<size_t>::const_max;
+    options.max_segments = std::numeric_limits<size_t>::max();
     options.min_segments = 1;
     options.max_segments_bytes = 0;
 
@@ -151,7 +151,7 @@ TEST(consolidation_test_tier, empty_meta) {
   options.floor_segment_bytes = 1;
   options.max_segments = 10;
   options.min_segments = 1;
-  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+  options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
   irs::index_writer::consolidating_segments_t consolidating_segments;
   auto policy = irs::index_utils::consolidation_policy(options);
@@ -168,7 +168,7 @@ TEST(consolidation_test_tier, empty_consolidating_segment) {
   options.floor_segment_bytes = 1;
   options.max_segments = 10;
   options.min_segments = 1;
-  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+  options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
   irs::index_writer::consolidating_segments_t consolidating_segments { &meta[0].meta };
   auto policy = irs::index_utils::consolidation_policy(options);
@@ -185,7 +185,7 @@ TEST(consolidation_test_tier, empty_segment) {
   options.floor_segment_bytes = 1;
   options.max_segments = 10;
   options.min_segments = 1;
-  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+  options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
   irs::index_writer::consolidating_segments_t consolidating_segments { &meta[0].meta };
   auto policy = irs::index_utils::consolidation_policy(options);
@@ -206,7 +206,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.floor_segment_bytes = 1;
     options.max_segments = 10;
     options.min_segments = 1;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -243,13 +243,13 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     }
   }
 
-  // max_segments == irs::integer_traits<size_t>::const_max
+  // max_segments == std::numeric_limits<size_t>::max()
   {
     irs::index_utils::consolidate_tier options;
     options.floor_segment_bytes = 1;
-    options.max_segments = irs::integer_traits<size_t>::const_max;
+    options.max_segments = std::numeric_limits<size_t>::max();
     options.min_segments = 1;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -276,7 +276,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.floor_segment_bytes = 1;
     options.max_segments = 0;
     options.min_segments = 1;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -295,7 +295,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.floor_segment_bytes = 0;
     options.max_segments = 10;
     options.min_segments = 3;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -338,7 +338,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.floor_segment_bytes = 1;
     options.max_segments = 10;
     options.min_segments = 3;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -373,7 +373,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.floor_segment_bytes = 1;
     options.max_segments = 10;
     options.min_segments = 0;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -415,8 +415,8 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     irs::index_utils::consolidate_tier options;
     options.floor_segment_bytes = 1;
     options.max_segments = 10;
-    options.min_segments = irs::integer_traits<size_t>::const_max;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.min_segments = std::numeric_limits<size_t>::max();
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -449,9 +449,9 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
   {
     irs::index_utils::consolidate_tier options;
     options.floor_segment_bytes = 1;
-    options.max_segments = irs::integer_traits<size_t>::const_max;
-    options.min_segments = irs::integer_traits<size_t>::const_max;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments = std::numeric_limits<size_t>::max();
+    options.min_segments = std::numeric_limits<size_t>::max();
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -483,7 +483,7 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
     options.floor_segment_bytes = 8;
     options.max_segments = meta.size();
     options.min_segments = 1;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -519,10 +519,10 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
   // enormous floor value, treat all segments as equal
   {
     irs::index_utils::consolidate_tier options;
-    options.floor_segment_bytes = irs::integer_traits<uint32_t>::const_max;
-    options.max_segments = irs::integer_traits<size_t>::const_max;
+    options.floor_segment_bytes = std::numeric_limits<uint32_t>::max();
+    options.max_segments = std::numeric_limits<size_t>::max();
     options.min_segments = 1;
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
     irs::index_writer::consolidating_segments_t consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
@@ -557,7 +557,7 @@ TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
   options.floor_segment_bytes = 1;
   options.max_segments = 2;
   options.min_segments = 1;
-  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+  options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
   irs::index_writer::consolidating_segments_t consolidating_segments;
   auto policy = irs::index_utils::consolidation_policy(options);
@@ -588,9 +588,9 @@ TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
 TEST(consolidation_test_tier, test_singleton) {
   irs::index_utils::consolidate_tier options;
   options.floor_segment_bytes = 1;
-  options.max_segments = irs::integer_traits<size_t>::const_max;
+  options.max_segments = std::numeric_limits<size_t>::max();
   options.min_segments = 1;
-  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+  options.max_segments_bytes = std::numeric_limits<size_t>::max();
   auto policy = irs::index_utils::consolidation_policy(options);
 
   // singleton consolidation without removals
@@ -1105,7 +1105,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     irs::index_utils::consolidate_tier options;
     options.min_segments = 1;            // min number of segments per tier to merge at once
     options.max_segments = 10; // max number of segments per tier to merge at once
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -1160,7 +1160,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     irs::index_utils::consolidate_tier options;
     options.min_segments = 1;            // min number of segments per tier to merge at once
     options.max_segments = 10; // max number of segments per tier to merge at once
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -1217,7 +1217,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     irs::index_utils::consolidate_tier options;
     options.min_segments = 1;            // min number of segments per tier to merge at once
     options.max_segments = 10; // max number of segments per tier to merge at once
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
@@ -1275,7 +1275,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     irs::index_utils::consolidate_tier options;
     options.min_segments = 1;            // min number of segments per tier to merge at once
     options.max_segments = 10; // max number of segments per tier to merge at once
-    options.max_segments_bytes = irs::integer_traits<size_t>::const_max;; // max size of the merge
+    options.max_segments_bytes = std::numeric_limits<size_t>::max();; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 

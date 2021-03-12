@@ -167,7 +167,7 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   auto* inc = irs::get<irs::increment>(*pipe);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(pipe->reset(data));
-  uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+  uint32_t pos{ std::numeric_limits<uint32_t>::max() };
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());

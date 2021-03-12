@@ -115,8 +115,8 @@ struct numeric_traits;
 template<>
 struct numeric_traits<int32_t> {
   typedef int32_t integral_t;
-  static const bytes_ref& (min)() { return mini32(); } 
-  static const bytes_ref& (max)() { return maxi32(); } 
+  static const bytes_ref& min() { return mini32(); } 
+  static const bytes_ref& max() { return maxi32(); } 
   inline static integral_t integral(integral_t value) { return value; }
   constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
@@ -137,8 +137,8 @@ struct numeric_traits<uint32_t> {
   static integral_t hton(integral_t value) { return hton32(value); }
   static integral_t ntoh(integral_t value) { return ntoh32(value); }
   inline static integral_t integral(integral_t value) { return value; }
-  static const bytes_ref& (min)() { return minu32(); }
-  static const bytes_ref& (max)() { return maxu32(); }
+  static const bytes_ref& min() { return minu32(); }
+  static const bytes_ref& max() { return maxu32(); }
   static bytes_ref raw_ref(integral_t const& value) {
     return bytes_ref(
       reinterpret_cast<irs::byte_type const*>(&value),
@@ -151,8 +151,8 @@ struct numeric_traits<uint32_t> {
 template<>
 struct numeric_traits<int64_t> {
   typedef int64_t integral_t;
-  static const bytes_ref& (min)() { return mini64(); } 
-  static const bytes_ref& (max)() { return maxi64(); } 
+  static const bytes_ref& min() { return mini64(); } 
+  static const bytes_ref& max() { return maxi64(); } 
   inline static integral_t integral(integral_t value) { return value; }
   constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
@@ -173,8 +173,8 @@ struct numeric_traits<uint64_t> {
   static integral_t hton(integral_t value) { return hton64(value); }
   static integral_t ntoh(integral_t value) { return ntoh64(value); }
   inline static integral_t integral(integral_t value) { return value; }
-  static const bytes_ref& (max)() { return maxu64(); }
-  static const bytes_ref& (min)() { return minu64(); }
+  static const bytes_ref& max() { return maxu64(); }
+  static const bytes_ref& min() { return minu64(); }
   static bytes_ref raw_ref(integral_t const& value) {
     return bytes_ref(
       reinterpret_cast<irs::byte_type const*>(&value),
@@ -197,8 +197,8 @@ template<>
 struct numeric_traits<float> {
   typedef int32_t integral_t;
   static const bytes_ref& ninf() { return nfinf32(); }
-  static const bytes_ref& (min)() { return minf32(); } 
-  static const bytes_ref& (max)() { return maxf32(); } 
+  static const bytes_ref& min() { return minf32(); } 
+  static const bytes_ref& max() { return maxf32(); } 
   static const bytes_ref& inf() { return finf32(); }
   static float_t floating(integral_t value) { return i32tof(value); }
   static integral_t integral(float_t value) { return ftoi32(value); }
@@ -215,8 +215,8 @@ template<>
 struct numeric_traits<double> {
   typedef int64_t integral_t;
   static const bytes_ref& ninf() { return ndinf64(); }
-  static const bytes_ref& (min)() { return mind64(); } 
-  static const bytes_ref& (max)() { return maxd64(); } 
+  static const bytes_ref& min() { return mind64(); } 
+  static const bytes_ref& max() { return maxd64(); } 
   static const bytes_ref& inf() { return dinf64(); }
   static double_t floating(integral_t value) { return i64tod(value); }
   static integral_t integral(double_t value) { return dtoi64(value); }

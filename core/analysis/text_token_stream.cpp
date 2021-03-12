@@ -944,8 +944,8 @@ text_token_stream::text_token_stream(
 }
 
 bool text_token_stream::reset(const string_ref& data) {
-  if (data.size() > integer_traits<uint32_t>::const_max) {
-    // can't handle data which is longer than integer_traits<uint32_t>::const_max
+  if (data.size() > std::numeric_limits<uint32_t>::max()) {
+    // can't handle data which is longer than std::numeric_limits<uint32_t>::max()
     return false;
   }
 
@@ -954,8 +954,8 @@ bool text_token_stream::reset(const string_ref& data) {
 
   // reset offset attribute
   auto& offset = std::get<irs::offset>(attrs_);
-  offset.start = integer_traits<uint32_t>::const_max;
-  offset.end = integer_traits<uint32_t>::const_max;
+  offset.start = std::numeric_limits<uint32_t>::max();
+  offset.end = std::numeric_limits<uint32_t>::max();
 
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
@@ -1039,7 +1039,7 @@ bool text_token_stream::reset(const string_ref& data) {
     data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > std::numeric_limits<int32_t>::max()) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
@@ -1053,8 +1053,8 @@ bool text_token_stream::reset(const string_ref& data) {
 
   // reset term state for ngrams
   state_->term = bytes_ref::NIL;
-  state_->start = integer_traits<uint32_t>::const_max;
-  state_->end = integer_traits<uint32_t>::const_max;
+  state_->start = std::numeric_limits<uint32_t>::max();
+  state_->end = std::numeric_limits<uint32_t>::max();
   state_->set_ngram_finished();
   std::get<increment>(attrs_).value = 1;
 
