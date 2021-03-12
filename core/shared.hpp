@@ -310,14 +310,6 @@
 #error "unsupported os or compiler"
 #endif
 
-constexpr bool is_big_endian() noexcept {
-#ifdef IRESEARCH_BIG_ENDIAN
- return true;
-#else
- return false;
-#endif
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
@@ -340,7 +332,15 @@ constexpr bool is_big_endian() noexcept {
 
 #define UNUSED(par) (void)(par)
 
-namespace iresearch { }
+namespace iresearch {
+constexpr bool is_big_endian() noexcept {
+#ifdef IRESEARCH_BIG_ENDIAN
+ return true;
+#else
+ return false;
+#endif
+}
+}
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x

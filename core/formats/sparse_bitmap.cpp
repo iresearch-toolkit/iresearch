@@ -159,6 +159,9 @@ struct block_seek_helper<BT_DENSE> {
     const auto word_delta = target_word_idx - ctx.word_idx;
 
     if (word_delta) {
+      // FIMXE consider using SSE/avx256/avx512 extensions for large skips
+      // FIXME consider align data first to avoid calling memcpy
+
       const size_t* pword = reinterpret_cast<const size_t*>(self->ctx.mem); // FIXME
       const size_t* ptarget_word = reinterpret_cast<const size_t*>(self->ctx.mem) + word_delta;
       for (; pword <= ptarget_word; ++pword) {

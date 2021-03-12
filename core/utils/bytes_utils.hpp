@@ -126,7 +126,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
   }
 
   static void write(byte_type*& out, T in) {
-    if (!numeric_utils::is_big_endian()) {
+    if (!is_big_endian()) {
       in = numeric_utils::hton32(in);
     }
 
@@ -176,7 +176,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
     T value;
     std::memcpy(&value, in, sizeof(T));
 
-    if (!numeric_utils::is_big_endian()) {
+    if (!is_big_endian()) {
       value = numeric_utils::ntoh32(value);
     }
 
@@ -233,7 +233,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
   }
 
   static void write(byte_type*& out, T in) {
-    if (!numeric_utils::is_big_endian()) {
+    if (!is_big_endian()) {
       in = numeric_utils::hton64(in);
     }
 
@@ -297,7 +297,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
     T value;
     std::memcpy(&value, in, sizeof(T));
 
-    if (!numeric_utils::is_big_endian()) {
+    if (!is_big_endian()) {
       value = numeric_utils::ntoh64(value);
     }
 
