@@ -114,16 +114,43 @@ class sparse_bitmap_iterator final : public doc_iterator {
     return std::get<document>(attrs_).value;
   }
 
-  size_t block() const noexcept {
-    return block_;
+  doc_id_t index() const noexcept {
+    return index_;
   }
 
  private:
+  using block_seek_f = void(*)(sparse_bitmap_iterator*, doc_id_t);
+
+  template<uint32_t>
+  friend struct block_seek_helper;
+
   void seek_to_block(size_t block);
+  void read_block_header();
+
+  struct block_ctx {
+    union {
+      struct {
+
+      } sparse;
+      struct {
+        doc_id_t popcnt;
+        uint32_t word_idx;
+        size_t word;
+      } dense;
+      struct {
+        doc_id_t missing;
+      } all;
+    };
+    const byte_type* mem;
+  } ctx;
 
   index_input* in_;
   std::tuple<document, cost> attrs_;
-  size_t block_;
+  block_seek_f seek_func_;
+  size_t block_end_{};
+  doc_id_t index_{};
+  doc_id_t index_max_{};
+  doc_id_t block_;
 };
 
 } // iresearch
