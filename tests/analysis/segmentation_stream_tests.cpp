@@ -406,4 +406,14 @@ TEST(segmentation_token_stream_test, make_not_object_json) {
   ASSERT_FALSE(stream);
 }
 
+TEST(segmentation_token_stream_test, normalize_empty_object) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual,
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{}"));
+  ASSERT_EQ(actual, "{\n  \"break\" : \"alpha\",\n  \"case\" : \"lower\"\n}");
+}
+
 #endif

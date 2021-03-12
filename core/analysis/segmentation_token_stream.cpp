@@ -111,6 +111,39 @@ bool parse_vpack_options(const irs::string_ref& args,
 
 bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t& options,
   std::string& definition) {
+  arangodb::velocypack::Builder builder;
+  {
+    arangodb::velocypack::ObjectBuilder object(&builder);
+    {
+      auto it = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(), [v = options.case_convert](const decltype(CASE_CONVERT_MAP)::value_type& m) {
+        return m.second == v;
+      });
+      if (it != CASE_CONVERT_MAP.end()) {
+        builder.add(CASE_CONVERT_PARAM_NAME.c_str(), arangodb::velocypack::Value(it->first.c_str()));
+      } else {
+         IR_FRMT_WARN(
+              "Invalid value in '%s' for normalizing segmentation_token_stream from "
+              "Value is : %d",
+              CASE_CONVERT_PARAM_NAME.c_str(), options.case_convert);
+         return false;
+      }
+    }
+    {
+      auto it = std::find_if(BREAK_CONVERT_MAP.begin(), BREAK_CONVERT_MAP.end(), [v = options.word_break](const decltype(BREAK_CONVERT_MAP)::value_type& m) {
+        return m.second == v;
+      });
+      if (it != BREAK_CONVERT_MAP.end()) {
+        builder.add(BREAK_PARAM_NAME.c_str(), arangodb::velocypack::Value(it->first.c_str()));
+      } else {
+         IR_FRMT_WARN(
+              "Invalid value in '%s' for normalizing segmentation_token_stream from "
+              "Value is : %d",
+              BREAK_PARAM_NAME.c_str(), options.word_break);
+         return false;
+      }
+    }
+  }
+  definition = builder.toString();
   return true;
 }
 
@@ -157,6 +190,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from Vpack arguments: %s", 
                   slice.toString().c_str());
   }
+  return false;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -184,6 +218,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from json: %s", 
                   args.c_str());
   }
+  return false;
 }
 
 #endif

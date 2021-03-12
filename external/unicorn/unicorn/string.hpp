@@ -842,8 +842,8 @@ namespace RS::Unicorn {
     Ustring str_uppercase(Uview str);
 
     template<typename T>
-    // we suppport only string/views with chars
-    std::enable_if_t<std::is_same_v<typename std::decay_t<T>::value_type, char>, Ustring> 
+    // template disabler for Utf8Range - > this should go into overload resolution
+    std::enable_if_t<!std::is_same_v<typename std::decay_t<T>, Utf8Range>, Ustring> 
     str_lowercase(T&& str) {
       return str_lowercase(utf_range(std::forward<T>(str)));
     }
