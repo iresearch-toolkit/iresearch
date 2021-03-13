@@ -173,6 +173,14 @@ FORCE_INLINE uint32_t pop32( uint32_t v ) noexcept {
 #endif
 }
 
+inline uint32_t pop32(const uint32_t* begin, const uint32_t* end) noexcept {
+  return std::accumulate(
+    begin, end, UINT32_C(0),
+    [](uint32_t acc, uint32_t word) {
+      return acc + pop32(word);
+  });
+}
+
 FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
 #if  __GNUC__ >= 4
   return __builtin_popcountll(v);
@@ -180,6 +188,14 @@ FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
   //TODO: compile time
   return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
 #endif
+}
+
+inline uint64_t pop64(const uint64_t* begin, const uint64_t* end) noexcept {
+  return std::accumulate(
+    begin, end, UINT64_C(0),
+    [](uint64_t acc, uint64_t word) {
+      return acc + pop64(word);
+  });
 }
 
 FORCE_INLINE uint32_t ctz32(uint32_t v) noexcept {
@@ -273,6 +289,7 @@ struct math_traits {
   static size_t clz(T value);
   static size_t ctz(T value);
   static size_t pop(T value);
+  static size_t pop(const T* begin, size_t count);
   static size_t ceil(T value, T step);
 }; // math_traits 
 
@@ -280,22 +297,36 @@ template<typename T>
 struct math_traits<T, sizeof(uint32_t)> {
   typedef T type;
 
-  static size_t clz(type value) { return clz32(value); }
-  static size_t ctz(type value) { return ctz32(value); }
-  static size_t pop(type value) { return pop32(value); }
-  static size_t div_ceil(type num, type den) { return div_ceil32(num, den); }
-  static size_t ceil(type value, type step) { return ceil32(value, step); }
+  static size_t clz(type value) noexcept { return clz32(value); }
+  static size_t ctz(type value) noexcept { return ctz32(value); }
+  static size_t pop(type value) noexcept { return pop32(value); }
+  static size_t pop(const type* begin, const type* end) noexcept {
+    return pop32(begin, end);
+  }
+  static size_t div_ceil(type num, type den) noexcept {
+    return div_ceil32(num, den);
+  }
+  static size_t ceil(type value, type step) noexcept {
+    return ceil32(value, step);
+  }
 }; // math_traits
 
 template<typename T>
 struct math_traits<T, sizeof(uint64_t)> {
   typedef T type;
 
-  static size_t clz(type value) { return clz64(value); }
-  static size_t ctz(type value) { return ctz64(value); }
-  static size_t pop(type value) { return pop64(value); }
-  static size_t div_ceil(type num, type den) { return div_ceil64(num, den); }
-  static size_t ceil(type value, type step) { return ceil64(value, step); }
+  static size_t clz(type value) noexcept { return clz64(value); }
+  static size_t ctz(type value) noexcept { return ctz64(value); }
+  static size_t pop(type value) noexcept { return pop64(value); }
+  static size_t pop(const type* begin, const type* end) noexcept {
+    return pop64(begin, end);
+  }
+  static size_t div_ceil(type num, type den) noexcept {
+    return div_ceil64(num, den);
+  }
+  static size_t ceil(type value, type step) noexcept {
+    return ceil64(value, step);
+  }
 }; // math_traits
 
 //// MacOS size_t is a different type from any of the above
