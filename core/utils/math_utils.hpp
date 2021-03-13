@@ -66,18 +66,18 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
 }
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
-  #define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
+#define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
 #else
-  // undefined for 0
-  template<typename T>
-  constexpr inline bool is_power2(T v) noexcept {
-    static_assert(
-      std::is_integral<T>::value,
-      "T must be an integral type"
-    );
+// undefined for 0
+template<typename T>
+constexpr inline bool is_power2(T v) noexcept {
+  static_assert(
+    std::is_integral<T>::value,
+    "T must be an integral type"
+  );
 
-    return !(v & (v-1));
-  }
+  return !(v & (v-1));
+}
 #endif
 
 inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
@@ -120,36 +120,36 @@ IRESEARCH_API uint32_t log(uint64_t x, uint64_t base);
 
 /* returns number of set bits in a set of words */
 template<typename T>
-FORCE_INLINE size_t popcnt( const T* value, size_t count ) noexcept {
-  const char *const bitsperbyte =
-  "\0\1\1\2\1\2\2\3\1\2\2\3\2\3\3\4"
-  "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-  "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-  "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-  "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-  "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-  "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-  "\4\5\5\6\5\6\6\7\5\6\6\7\6\7\7\x8";
+inline size_t popcnt(const T* value, size_t count) noexcept {
+  constexpr char bitsperbyte[] =
+    "\0\1\1\2\1\2\2\3\1\2\2\3\2\3\3\4"
+    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
+    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
+    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
+    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
+    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
+    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
+    "\4\5\5\6\5\6\6\7\5\6\6\7\6\7\7\x8";
   const unsigned char* begin = reinterpret_cast< const unsigned char* >( value );
   const unsigned char* end = begin + count;
 
   return std::accumulate(
-    begin, end, size_t( 0 ),
-    [bitsperbyte] ( size_t v, unsigned char c ) {
+    begin, end, size_t(0),
+    [bitsperbyte] (size_t v, unsigned char c) {
       return v + bitsperbyte[c];
   } );
 }
 
 /* Hamming weight for 64bit values */
-FORCE_INLINE uint64_t popcnt64( uint64_t v ) noexcept{  
+constexpr inline uint64_t popcnt64(uint64_t v) noexcept {
   v = v - ( ( v >> 1 ) & ( uint64_t ) ~( uint64_t ) 0 / 3 );
   v = ( v & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 ) + ( ( v >> 2 ) & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 );
   v = ( v + ( v >> 4 ) ) & ( uint64_t ) ~( uint64_t ) 0 / 255 * 15;                      
@@ -157,28 +157,20 @@ FORCE_INLINE uint64_t popcnt64( uint64_t v ) noexcept{
 }
 
 /* Hamming weight for 32bit values */
-FORCE_INLINE uint32_t popcnt32( uint32_t v ) noexcept{
+constexpr uint32_t popcnt32(uint32_t v) noexcept{
   v = v - ( ( v >> 1 ) & 0x55555555 );                    
   v = ( v & 0x33333333 ) + ( ( v >> 2 ) & 0x33333333 );  
   v = (v + (v >> 4)) & 0xF0F0F0F;
   return ((v * 0x1010101) >> 24);
 }
 
-FORCE_INLINE uint32_t pop32( uint32_t v ) noexcept {
+FORCE_INLINE uint32_t pop32(uint32_t v) noexcept {
 #if __GNUC__ >= 4 
   return __builtin_popcount(v);
 #elif defined(_MSC_VER) 
   //TODO: compile time
   return cpuinfo::support_popcnt() ?__popcnt(v) : popcnt32(v);
 #endif
-}
-
-inline uint32_t pop32(const uint32_t* begin, const uint32_t* end) noexcept {
-  return std::accumulate(
-    begin, end, UINT32_C(0),
-    [](uint32_t acc, uint32_t word) {
-      return acc + pop32(word);
-  });
 }
 
 FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
@@ -188,14 +180,6 @@ FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
   //TODO: compile time
   return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
 #endif
-}
-
-inline uint64_t pop64(const uint64_t* begin, const uint64_t* end) noexcept {
-  return std::accumulate(
-    begin, end, UINT64_C(0),
-    [](uint64_t acc, uint64_t word) {
-      return acc + pop64(word);
-  });
 }
 
 FORCE_INLINE uint32_t ctz32(uint32_t v) noexcept {
@@ -280,8 +264,7 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 }
 
 FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
-  static const uint64_t CEIL_EXTRA[] = { UINT64_C(1), UINT64_C(0) };
-  return log2_floor_64(v) + CEIL_EXTRA[is_power2(v)];
+  return log2_floor_64(v) + uint64_t(!is_power2(v));
 }
 
 template<typename T, size_t N = sizeof(T)>
@@ -289,7 +272,7 @@ struct math_traits {
   static size_t clz(T value);
   static size_t ctz(T value);
   static size_t pop(T value);
-  static size_t pop(const T* begin, size_t count);
+  static size_t pop(const T* begin, const T* end);
   static size_t ceil(T value, T step);
 }; // math_traits 
 
@@ -301,7 +284,11 @@ struct math_traits<T, sizeof(uint32_t)> {
   static size_t ctz(type value) noexcept { return ctz32(value); }
   static size_t pop(type value) noexcept { return pop32(value); }
   static size_t pop(const type* begin, const type* end) noexcept {
-    return pop32(begin, end);
+    return std::accumulate(
+      begin, end, type{0},
+      [](type acc, type word) {
+        return acc + pop(word);
+    });
   }
   static size_t div_ceil(type num, type den) noexcept {
     return div_ceil32(num, den);
@@ -319,7 +306,11 @@ struct math_traits<T, sizeof(uint64_t)> {
   static size_t ctz(type value) noexcept { return ctz64(value); }
   static size_t pop(type value) noexcept { return pop64(value); }
   static size_t pop(const type* begin, const type* end) noexcept {
-    return pop64(begin, end);
+    return std::accumulate(
+      begin, end, type{0},
+      [](type acc, type word) {
+        return acc + pop(word);
+    });
   }
   static size_t div_ceil(type num, type den) noexcept {
     return div_ceil64(num, den);
