@@ -102,6 +102,7 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   word_ = (*next_++) >> bit_idx;
   doc_.value = base_ - 1 + bit_idx;
 
+  // FIXME consider inlining to speedup
   next();
 
   return doc_.value;
