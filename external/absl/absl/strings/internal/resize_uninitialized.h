@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_
-#define ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_
 
 #include <string>
 #include <type_traits>
@@ -24,8 +24,8 @@
 #include "absl/base/port.h"
 #include "absl/meta/type_traits.h"  //  for void_t
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 // Is a subclass of true_type or false_type, depending on whether or not
@@ -39,7 +39,7 @@ struct ResizeUninitializedTraits {
 // __resize_default_init is provided by libc++ >= 8.0
 template <typename string_type>
 struct ResizeUninitializedTraits<
-    string_type, absl::void_t<decltype(std::declval<string_type&>()
+    string_type, iresearch_absl::void_t<decltype(std::declval<string_type&>()
                                            .__resize_default_init(237))> > {
   using HasMember = std::true_type;
   static void Resize(string_type* s, size_t new_size) {
@@ -67,7 +67,7 @@ inline void STLStringResizeUninitialized(string_type* s, size_t new_size) {
 }
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_RESIZE_UNINITIALIZED_H_

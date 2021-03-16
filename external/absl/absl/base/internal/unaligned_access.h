@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_
-#define ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_
 
 #include <string.h>
 
@@ -32,8 +32,8 @@
 // (namespaces, inline) which are absent or incompatible in C.
 #if defined(__cplusplus)
 
-#if defined(ABSL_HAVE_ADDRESS_SANITIZER) || \
-    defined(ABSL_HAVE_THREAD_SANITIZER) || defined(ABSL_HAVE_MEMORY_SANITIZER)
+#if defined(IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER) || \
+    defined(IRESEARCH_ABSL_HAVE_THREAD_SANITIZER) || defined(IRESEARCH_ABSL_HAVE_MEMORY_SANITIZER)
 // Consider we have an unaligned load/store of 4 bytes from address 0x...05.
 // AddressSanitizer will treat it as a 3-byte access to the range 05:07 and
 // will miss a bug if 08 is the first unaddressable byte.
@@ -57,8 +57,8 @@ void __sanitizer_unaligned_store32(void *p, uint32_t v);
 void __sanitizer_unaligned_store64(void *p, uint64_t v);
 }  // extern "C"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 inline uint16_t UnalignedLoad16(const void *p) {
@@ -86,27 +86,27 @@ inline void UnalignedStore64(void *p, uint64_t v) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#define ABSL_INTERNAL_UNALIGNED_LOAD16(_p) \
-  (absl::base_internal::UnalignedLoad16(_p))
-#define ABSL_INTERNAL_UNALIGNED_LOAD32(_p) \
-  (absl::base_internal::UnalignedLoad32(_p))
-#define ABSL_INTERNAL_UNALIGNED_LOAD64(_p) \
-  (absl::base_internal::UnalignedLoad64(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD16(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad16(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD32(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad32(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD64(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad64(_p))
 
-#define ABSL_INTERNAL_UNALIGNED_STORE16(_p, _val) \
-  (absl::base_internal::UnalignedStore16(_p, _val))
-#define ABSL_INTERNAL_UNALIGNED_STORE32(_p, _val) \
-  (absl::base_internal::UnalignedStore32(_p, _val))
-#define ABSL_INTERNAL_UNALIGNED_STORE64(_p, _val) \
-  (absl::base_internal::UnalignedStore64(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE16(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore16(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE32(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore32(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE64(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore64(_p, _val))
 
 #else
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 inline uint16_t UnalignedLoad16(const void *p) {
@@ -134,25 +134,25 @@ inline void UnalignedStore32(void *p, uint32_t v) { memcpy(p, &v, sizeof v); }
 inline void UnalignedStore64(void *p, uint64_t v) { memcpy(p, &v, sizeof v); }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#define ABSL_INTERNAL_UNALIGNED_LOAD16(_p) \
-  (absl::base_internal::UnalignedLoad16(_p))
-#define ABSL_INTERNAL_UNALIGNED_LOAD32(_p) \
-  (absl::base_internal::UnalignedLoad32(_p))
-#define ABSL_INTERNAL_UNALIGNED_LOAD64(_p) \
-  (absl::base_internal::UnalignedLoad64(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD16(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad16(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD32(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad32(_p))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD64(_p) \
+  (iresearch_absl::base_internal::UnalignedLoad64(_p))
 
-#define ABSL_INTERNAL_UNALIGNED_STORE16(_p, _val) \
-  (absl::base_internal::UnalignedStore16(_p, _val))
-#define ABSL_INTERNAL_UNALIGNED_STORE32(_p, _val) \
-  (absl::base_internal::UnalignedStore32(_p, _val))
-#define ABSL_INTERNAL_UNALIGNED_STORE64(_p, _val) \
-  (absl::base_internal::UnalignedStore64(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE16(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore16(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE32(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore32(_p, _val))
+#define IRESEARCH_ABSL_INTERNAL_UNALIGNED_STORE64(_p, _val) \
+  (iresearch_absl::base_internal::UnalignedStore64(_p, _val))
 
 #endif
 
 #endif  // defined(__cplusplus), end of unaligned API
 
-#endif  // ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_UNALIGNED_ACCESS_H_

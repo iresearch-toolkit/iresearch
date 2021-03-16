@@ -16,8 +16,8 @@
 // File: hash.h
 // -----------------------------------------------------------------------------
 //
-#ifndef ABSL_HASH_INTERNAL_HASH_H_
-#define ABSL_HASH_INTERNAL_HASH_H_
+#ifndef IRESEARCH_ABSL_HASH_INTERNAL_HASH_H_
+#define IRESEARCH_ABSL_HASH_INTERNAL_HASH_H_
 
 #include <algorithm>
 #include <array>
@@ -49,8 +49,8 @@
 #include "absl/utility/utility.h"
 #include "absl/hash/internal/city.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace hash_internal {
 
 // Internal detail: Large buffers are hashed in smaller chunks.  This function
@@ -349,7 +349,7 @@ H AbslHashValue(H hash_state, std::nullptr_t) {
 
 // is_hashable()
 //
-// Trait class which returns true if T is hashable by the absl::Hash framework.
+// Trait class which returns true if T is hashable by the iresearch_absl::Hash framework.
 // Used for the AbslHashValue implementations for composite types below.
 template <typename T>
 struct is_hashable;
@@ -367,7 +367,7 @@ AbslHashValue(H hash_state, const std::pair<T1, T2>& p) {
 // Helper function for hashing a tuple. The third argument should
 // be an index_sequence running from 0 to tuple_size<Tuple> - 1.
 template <typename H, typename Tuple, size_t... Is>
-H hash_tuple(H hash_state, const Tuple& t, absl::index_sequence<Is...>) {
+H hash_tuple(H hash_state, const Tuple& t, iresearch_absl::index_sequence<Is...>) {
   return H::combine(std::move(hash_state), std::get<Is>(t)...);
 }
 
@@ -378,11 +378,11 @@ template <typename H, typename... Ts>
 // for now.
 H
 #else  // _MSC_VER
-typename std::enable_if<absl::conjunction<is_hashable<Ts>...>::value, H>::type
+typename std::enable_if<iresearch_absl::conjunction<is_hashable<Ts>...>::value, H>::type
 #endif  // _MSC_VER
 AbslHashValue(H hash_state, const std::tuple<Ts...>& t) {
   return hash_internal::hash_tuple(std::move(hash_state), t,
-                                   absl::make_index_sequence<sizeof...(Ts)>());
+                                   iresearch_absl::make_index_sequence<sizeof...(Ts)>());
 }
 
 // -----------------------------------------------------------------------------
@@ -420,7 +420,7 @@ H AbslHashValue(H hash_state, const std::shared_ptr<T>& ptr) {
 // misbehave in cases where the traits' `eq()` member isn't equivalent to `==`
 // on the underlying character type.
 template <typename H>
-H AbslHashValue(H hash_state, absl::string_view str) {
+H AbslHashValue(H hash_state, iresearch_absl::string_view str) {
   return H::combine(
       H::combine_contiguous(std::move(hash_state), str.data(), str.size()),
       str.size());
@@ -428,7 +428,7 @@ H AbslHashValue(H hash_state, absl::string_view str) {
 
 // Support std::wstring, std::u16string and std::u32string.
 template <typename Char, typename Alloc, typename H,
-          typename = absl::enable_if_t<std::is_same<Char, wchar_t>::value ||
+          typename = iresearch_absl::enable_if_t<std::is_same<Char, wchar_t>::value ||
                                        std::is_same<Char, char16_t>::value ||
                                        std::is_same<Char, char32_t>::value>>
 H AbslHashValue(
@@ -558,10 +558,10 @@ typename std::enable_if<is_hashable<T>::value, H>::type AbslHashValue(
   return H::combine(std::move(hash_state), opt.get());
 }
 
-// AbslHashValue for hashing absl::optional
+// AbslHashValue for hashing iresearch_absl::optional
 template <typename H, typename T>
 typename std::enable_if<is_hashable<T>::value, H>::type AbslHashValue(
-    H hash_state, const absl::optional<T>& opt) {
+    H hash_state, const iresearch_absl::optional<T>& opt) {
   if (opt) hash_state = H::combine(std::move(hash_state), *opt);
   return H::combine(std::move(hash_state), opt.has_value());
 }
@@ -576,12 +576,12 @@ struct VariantVisitor {
   }
 };
 
-// AbslHashValue for hashing absl::variant
+// AbslHashValue for hashing iresearch_absl::variant
 template <typename H, typename... T>
 typename std::enable_if<conjunction<is_hashable<T>...>::value, H>::type
-AbslHashValue(H hash_state, const absl::variant<T...>& v) {
+AbslHashValue(H hash_state, const iresearch_absl::variant<T...>& v) {
   if (!v.valueless_by_exception()) {
-    hash_state = absl::visit(VariantVisitor<H>{std::move(hash_state)}, v);
+    hash_state = iresearch_absl::visit(VariantVisitor<H>{std::move(hash_state)}, v);
   }
   return H::combine(std::move(hash_state), v.index());
 }
@@ -618,11 +618,11 @@ hash_range_or_bytes(H hash_state, const T* data, size_t size) {
   return hash_state;
 }
 
-#if defined(ABSL_INTERNAL_LEGACY_HASH_NAMESPACE) && \
-    ABSL_META_INTERNAL_STD_HASH_SFINAE_FRIENDLY_
-#define ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_ 1
+#if defined(IRESEARCH_ABSL_INTERNAL_LEGACY_HASH_NAMESPACE) && \
+    IRESEARCH_ABSL_META_INTERNAL_STD_HASH_SFINAE_FRIENDLY_
+#define IRESEARCH_ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_ 1
 #else
-#define ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_ 0
+#define IRESEARCH_ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_ 0
 #endif
 
 // HashSelect
@@ -645,14 +645,14 @@ struct HashSelect {
   struct UniquelyRepresentedProbe {
     template <typename H, typename T>
     static auto Invoke(H state, const T& value)
-        -> absl::enable_if_t<is_uniquely_represented<T>::value, H> {
+        -> iresearch_absl::enable_if_t<is_uniquely_represented<T>::value, H> {
       return hash_internal::hash_bytes(std::move(state), value);
     }
   };
 
   struct HashValueProbe {
     template <typename H, typename T>
-    static auto Invoke(H state, const T& value) -> absl::enable_if_t<
+    static auto Invoke(H state, const T& value) -> iresearch_absl::enable_if_t<
         std::is_same<H,
                      decltype(AbslHashValue(std::move(state), value))>::value,
         H> {
@@ -661,24 +661,24 @@ struct HashSelect {
   };
 
   struct LegacyHashProbe {
-#if ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_
+#if IRESEARCH_ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_
     template <typename H, typename T>
-    static auto Invoke(H state, const T& value) -> absl::enable_if_t<
+    static auto Invoke(H state, const T& value) -> iresearch_absl::enable_if_t<
         std::is_convertible<
-            decltype(ABSL_INTERNAL_LEGACY_HASH_NAMESPACE::hash<T>()(value)),
+            decltype(IRESEARCH_ABSL_INTERNAL_LEGACY_HASH_NAMESPACE::hash<T>()(value)),
             size_t>::value,
         H> {
       return hash_internal::hash_bytes(
           std::move(state),
-          ABSL_INTERNAL_LEGACY_HASH_NAMESPACE::hash<T>{}(value));
+          IRESEARCH_ABSL_INTERNAL_LEGACY_HASH_NAMESPACE::hash<T>{}(value));
     }
-#endif  // ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_
+#endif  // IRESEARCH_ABSL_HASH_INTERNAL_SUPPORT_LEGACY_HASH_
   };
 
   struct StdHashProbe {
     template <typename H, typename T>
     static auto Invoke(H state, const T& value)
-        -> absl::enable_if_t<type_traits_internal::IsHashable<T>::value, H> {
+        -> iresearch_absl::enable_if_t<type_traits_internal::IsHashable<T>::value, H> {
       return hash_internal::hash_bytes(std::move(state), std::hash<T>{}(value));
     }
   };
@@ -700,7 +700,7 @@ struct HashSelect {
   // Probe each implementation in order.
   // disjunction provides short circuiting wrt instantiation.
   template <typename T>
-  using Apply = absl::disjunction<         //
+  using Apply = iresearch_absl::disjunction<         //
       Probe<UniquelyRepresentedProbe, T>,  //
       Probe<HashValueProbe, T>,            //
       Probe<LegacyHashProbe, T>,           //
@@ -713,15 +713,15 @@ struct is_hashable
     : std::integral_constant<bool, HashSelect::template Apply<T>::value> {};
 
 // CityHashState
-class ABSL_DLL CityHashState
+class IRESEARCH_ABSL_DLL CityHashState
     : public HashStateBase<CityHashState> {
-  // absl::uint128 is not an alias or a thin wrapper around the intrinsic.
+  // iresearch_absl::uint128 is not an alias or a thin wrapper around the intrinsic.
   // We use the intrinsic when available to improve performance.
-#ifdef ABSL_HAVE_INTRINSIC_INT128
+#ifdef IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
   using uint128 = __uint128_t;
-#else   // ABSL_HAVE_INTRINSIC_INT128
-  using uint128 = absl::uint128;
-#endif  // ABSL_HAVE_INTRINSIC_INT128
+#else   // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
+  using uint128 = iresearch_absl::uint128;
+#endif  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
 
   static constexpr uint64_t kMul =
       sizeof(size_t) == 4 ? uint64_t{0xcc9e2d51}
@@ -756,13 +756,13 @@ class ABSL_DLL CityHashState
   // Otherwise we would be instantiating and calling dozens of functions for
   // something that is just one multiplication and a couple xor's.
   // The result should be the same as running the whole algorithm, but faster.
-  template <typename T, absl::enable_if_t<IntegralFastPath<T>::value, int> = 0>
+  template <typename T, iresearch_absl::enable_if_t<IntegralFastPath<T>::value, int> = 0>
   static size_t hash(T value) {
     return static_cast<size_t>(Mix(Seed(), static_cast<uint64_t>(value)));
   }
 
   // Overload of CityHashState::hash()
-  template <typename T, absl::enable_if_t<!IntegralFastPath<T>::value, int> = 0>
+  template <typename T, iresearch_absl::enable_if_t<!IntegralFastPath<T>::value, int> = 0>
   static size_t hash(const T& value) {
     return static_cast<size_t>(combine(CityHashState{}, value).state_);
   }
@@ -826,9 +826,9 @@ class ABSL_DLL CityHashState
                                  (p[len - 1] << ((len - 1) * 8)));
   }
 
-  ABSL_ATTRIBUTE_ALWAYS_INLINE static uint64_t Mix(uint64_t state, uint64_t v) {
+  IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE static uint64_t Mix(uint64_t state, uint64_t v) {
     using MultType =
-        absl::conditional_t<sizeof(size_t) == 4, uint64_t, uint128>;
+        iresearch_absl::conditional_t<sizeof(size_t) == 4, uint64_t, uint128>;
     // We do the addition in 64-bit space to make sure the 128-bit
     // multiplication is fast. If we were to do it as MultType the compiler has
     // to assume that the high word is non-zero and needs to perform 2
@@ -854,7 +854,7 @@ class ABSL_DLL CityHashState
   //
   // On other platforms this is still going to be non-deterministic but most
   // probably per-build and not per-process.
-  ABSL_ATTRIBUTE_ALWAYS_INLINE static uint64_t Seed() {
+  IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE static uint64_t Seed() {
     return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(kSeed));
   }
   static const void* const kSeed;
@@ -870,10 +870,10 @@ inline uint64_t CityHashState::CombineContiguousImpl(
   // multiplicative hash.
   uint64_t v;
   if (len > 8) {
-    if (ABSL_PREDICT_FALSE(len > PiecewiseChunkSize())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(len > PiecewiseChunkSize())) {
       return CombineLargeContiguousImpl32(state, first, len);
     }
-    v = absl::hash_internal::CityHash32(reinterpret_cast<const char*>(first), len);
+    v = iresearch_absl::hash_internal::CityHash32(reinterpret_cast<const char*>(first), len);
   } else if (len >= 4) {
     v = Read4To8(first, len);
   } else if (len > 0) {
@@ -893,10 +893,10 @@ inline uint64_t CityHashState::CombineContiguousImpl(
   // multiplicative hash.
   uint64_t v;
   if (len > 16) {
-    if (ABSL_PREDICT_FALSE(len > PiecewiseChunkSize())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(len > PiecewiseChunkSize())) {
       return CombineLargeContiguousImpl64(state, first, len);
     }
-    v = absl::hash_internal::CityHash64(reinterpret_cast<const char*>(first), len);
+    v = iresearch_absl::hash_internal::CityHash64(reinterpret_cast<const char*>(first), len);
   } else if (len > 8) {
     auto p = Read9To16(first, len);
     state = Mix(state, p.first);
@@ -932,7 +932,7 @@ struct HashImpl {
 
 template <typename T>
 struct Hash
-    : absl::conditional_t<is_hashable<T>::value, HashImpl<T>, PoisonedHash> {};
+    : iresearch_absl::conditional_t<is_hashable<T>::value, HashImpl<T>, PoisonedHash> {};
 
 template <typename H>
 template <typename T, typename... Ts>
@@ -990,7 +990,7 @@ H PiecewiseCombiner::finalize(H state) {
 }
 
 }  // namespace hash_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HASH_INTERNAL_HASH_H_
+#endif  // IRESEARCH_ABSL_HASH_INTERNAL_HASH_H_

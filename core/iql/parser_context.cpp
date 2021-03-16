@@ -938,7 +938,7 @@ void parser_context::add_child(
     parser::semantic_type const& child,
     bool bRemoveSuperset) {
   auto& node = find_node(child);
-  absl::flat_hash_set<size_t> subChildren; // only for bRemoveSuperset
+  iresearch_absl::flat_hash_set<size_t> subChildren; // only for bRemoveSuperset
 
   if (bRemoveSuperset) {
     if (query_node::NodeType::INTERSECTION == node.type) {

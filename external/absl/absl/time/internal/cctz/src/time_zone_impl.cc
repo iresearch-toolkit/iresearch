@@ -24,8 +24,8 @@
 #include "absl/base/config.h"
 #include "time_zone_fixed.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -109,5 +109,5 @@ const time_zone::Impl* time_zone::Impl::UTCImpl() {
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

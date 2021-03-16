@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_BITS_H_
-#define ABSL_BASE_INTERNAL_BITS_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_BITS_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_BITS_H_
 
 // This file contains bitwise ops which are implementation details of various
 // absl libraries.
@@ -40,18 +40,18 @@
 // We can achieve something similar to attribute((always_inline)) with MSVC by
 // using the __forceinline keyword, however this is not perfect. MSVC is
 // much less aggressive about inlining, and even with the __forceinline keyword.
-#define ABSL_BASE_INTERNAL_FORCEINLINE __forceinline
+#define IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE __forceinline
 #else
 // Use default attribute inline.
-#define ABSL_BASE_INTERNAL_FORCEINLINE inline ABSL_ATTRIBUTE_ALWAYS_INLINE
+#define IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE inline IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE
 #endif
 
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64Slow(uint64_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64Slow(uint64_t n) {
   int zeroes = 60;
   if (n >> 32) {
     zeroes -= 32;
@@ -72,7 +72,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64Slow(uint64_t n) {
   return "\4\3\2\2\1\1\1\1\0\0\0\0\0\0\0"[n] + zeroes;
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64(uint64_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64(uint64_t n) {
 #if defined(_MSC_VER) && !defined(__clang__) && defined(_M_X64)
   // MSVC does not have __buitin_clzll. Use _BitScanReverse64.
   unsigned long result = 0;  // NOLINT(runtime/int)
@@ -109,7 +109,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros64(uint64_t n) {
 #endif
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32Slow(uint64_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32Slow(uint64_t n) {
   int zeroes = 28;
   if (n >> 16) {
     zeroes -= 16;
@@ -126,7 +126,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32Slow(uint64_t n) {
   return "\4\3\2\2\1\1\1\1\0\0\0\0\0\0\0"[n] + zeroes;
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32(uint32_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32(uint32_t n) {
 #if defined(_MSC_VER) && !defined(__clang__)
   unsigned long result = 0;  // NOLINT(runtime/int)
   if (_BitScanReverse(&result, n)) {
@@ -151,7 +151,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountLeadingZeros32(uint32_t n) {
 #endif
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64Slow(uint64_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64Slow(uint64_t n) {
   int c = 63;
   n &= ~n + 1;
   if (n & 0x00000000FFFFFFFF) c -= 32;
@@ -163,7 +163,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64Slow(uint64_t n) {
   return c;
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64(uint64_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64(uint64_t n) {
 #if defined(_MSC_VER) && !defined(__clang__) && defined(_M_X64)
   unsigned long result = 0;  // NOLINT(runtime/int)
   _BitScanForward64(&result, n);
@@ -185,7 +185,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero64(uint64_t n) {
 #endif
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32Slow(uint32_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32Slow(uint32_t n) {
   int c = 31;
   n &= ~n + 1;
   if (n & 0x0000FFFF) c -= 16;
@@ -196,7 +196,7 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32Slow(uint32_t n) {
   return c;
 }
 
-ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32(uint32_t n) {
+IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32(uint32_t n) {
 #if defined(_MSC_VER) && !defined(__clang__)
   unsigned long result = 0;  // NOLINT(runtime/int)
   _BitScanForward(&result, n);
@@ -210,10 +210,10 @@ ABSL_BASE_INTERNAL_FORCEINLINE int CountTrailingZerosNonZero32(uint32_t n) {
 #endif
 }
 
-#undef ABSL_BASE_INTERNAL_FORCEINLINE
+#undef IRESEARCH_ABSL_BASE_INTERNAL_FORCEINLINE
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_BITS_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_BITS_H_

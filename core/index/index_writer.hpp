@@ -76,11 +76,11 @@ class readers_cache final : util::noncopyable {
 
   void clear() noexcept;
   segment_reader emplace(const segment_meta& meta);
-  size_t purge(const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept;
+  size_t purge(const iresearch_absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept;
 
  private:
   std::mutex lock_;
-  absl::flat_hash_map<key_t, segment_reader, key_hash_t> cache_;
+  iresearch_absl::flat_hash_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 
@@ -492,7 +492,7 @@ class IRESEARCH_API index_writer
   }; // segment_equal
 
   // segments that are under consolidation
-  using consolidating_segments_t = absl::flat_hash_set<
+  using consolidating_segments_t = iresearch_absl::flat_hash_set<
     const segment_meta*,
     segment_hash,
     segment_equal>;
@@ -956,7 +956,7 @@ class IRESEARCH_API index_writer
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
     freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
-    absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
+    iresearch_absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
 

@@ -51,7 +51,7 @@ struct data_input;
 struct index_input;
 struct postings_writer;
 
-using document_mask = absl::flat_hash_set<doc_id_t> ;
+using document_mask = iresearch_absl::flat_hash_set<doc_id_t> ;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 

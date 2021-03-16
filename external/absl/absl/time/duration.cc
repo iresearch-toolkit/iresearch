@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The implementation of the absl::Duration class, which is declared in
+// The implementation of the iresearch_absl::Duration class, which is declared in
 // //absl/time.h.  This class behaves like a numeric type; it has no public
 // methods and is used only through the operators defined here.
 //
 // Implementation notes:
 //
-// An absl::Duration is represented as
+// An iresearch_absl::Duration is represented as
 //
 //   rep_hi_ : (int64_t)  Whole seconds
 //   rep_lo_ : (uint32_t) Fractions of a second
@@ -73,8 +73,8 @@
 #include "absl/strings/strip.h"
 #include "absl/time/time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -189,9 +189,9 @@ inline Duration MakeDurationFromU128(uint128 u128, bool is_neg) {
 // bits, and a two's complement representation." So, we can convert to
 // and from the corresponding uint64_t value using a bit cast.
 inline uint64_t EncodeTwosComp(int64_t v) {
-  return absl::bit_cast<uint64_t>(v);
+  return iresearch_absl::bit_cast<uint64_t>(v);
 }
-inline int64_t DecodeTwosComp(uint64_t v) { return absl::bit_cast<int64_t>(v); }
+inline int64_t DecodeTwosComp(uint64_t v) { return iresearch_absl::bit_cast<int64_t>(v); }
 
 // Note: The overflow detection in this function is done using greater/less *or
 // equal* because kint64max/min is too large to be represented exactly in a
@@ -508,12 +508,12 @@ Duration Trunc(Duration d, Duration unit) {
 }
 
 Duration Floor(const Duration d, const Duration unit) {
-  const absl::Duration td = Trunc(d, unit);
+  const iresearch_absl::Duration td = Trunc(d, unit);
   return td <= d ? td : td - AbsDuration(unit);
 }
 
 Duration Ceil(const Duration d, const Duration unit) {
-  const absl::Duration td = Trunc(d, unit);
+  const iresearch_absl::Duration td = Trunc(d, unit);
   return td >= d ? td : td + AbsDuration(unit);
 }
 
@@ -711,16 +711,16 @@ char* Format64(char* ep, int width, int64_t v) {
 // fractional digits, because it is in the noise of what a Duration can
 // represent.
 struct DisplayUnit {
-  absl::string_view abbr;
+  iresearch_absl::string_view abbr;
   int prec;
   double pow10;
 };
-ABSL_CONST_INIT const DisplayUnit kDisplayNano = {"ns", 2, 1e2};
-ABSL_CONST_INIT const DisplayUnit kDisplayMicro = {"us", 5, 1e5};
-ABSL_CONST_INIT const DisplayUnit kDisplayMilli = {"ms", 8, 1e8};
-ABSL_CONST_INIT const DisplayUnit kDisplaySec = {"s", 11, 1e11};
-ABSL_CONST_INIT const DisplayUnit kDisplayMin = {"m", -1, 0.0};  // prec ignored
-ABSL_CONST_INIT const DisplayUnit kDisplayHour = {"h", -1,
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplayNano = {"ns", 2, 1e2};
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplayMicro = {"us", 5, 1e5};
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplayMilli = {"ms", 8, 1e8};
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplaySec = {"s", 11, 1e11};
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplayMin = {"m", -1, 0.0};  // prec ignored
+IRESEARCH_ABSL_CONST_INIT const DisplayUnit kDisplayHour = {"h", -1,
                                                   0.0};  // prec ignored
 
 void AppendNumberUnit(std::string* out, int64_t n, DisplayUnit unit) {
@@ -869,7 +869,7 @@ bool ConsumeDurationUnit(const char** start, const char* end, Duration* unit) {
         default:
           break;
       }
-      ABSL_FALLTHROUGH_INTENDED;
+      IRESEARCH_ABSL_FALLTHROUGH_INTENDED;
     case 1:
       switch (**start) {
         case 's':
@@ -897,12 +897,12 @@ bool ConsumeDurationUnit(const char** start, const char* end, Duration* unit) {
 //   a possibly signed sequence of decimal numbers, each with optional
 //   fraction and a unit suffix, such as "300ms", "-1.5h" or "2h45m".
 //   Valid time units are "ns", "us" "ms", "s", "m", "h".
-bool ParseDuration(absl::string_view dur_sv, Duration* d) {
+bool ParseDuration(iresearch_absl::string_view dur_sv, Duration* d) {
   int sign = 1;
-  if (absl::ConsumePrefix(&dur_sv, "-")) {
+  if (iresearch_absl::ConsumePrefix(&dur_sv, "-")) {
     sign = -1;
   } else {
-    absl::ConsumePrefix(&dur_sv, "+");
+    iresearch_absl::ConsumePrefix(&dur_sv, "+");
   }
   if (dur_sv.empty()) return false;
 
@@ -938,7 +938,7 @@ bool ParseDuration(absl::string_view dur_sv, Duration* d) {
   return true;
 }
 
-bool AbslParseFlag(absl::string_view text, Duration* dst, std::string*) {
+bool AbslParseFlag(iresearch_absl::string_view text, Duration* dst, std::string*) {
   return ParseDuration(text, dst);
 }
 
@@ -949,5 +949,5 @@ bool ParseFlag(const std::string& text, Duration* dst, std::string* ) {
 
 std::string UnparseFlag(Duration d) { return FormatDuration(d); }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

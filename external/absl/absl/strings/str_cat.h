@@ -50,8 +50,8 @@
 //
 // -----------------------------------------------------------------------------
 
-#ifndef ABSL_STRINGS_STR_CAT_H_
-#define ABSL_STRINGS_STR_CAT_H_
+#ifndef IRESEARCH_ABSL_STRINGS_STR_CAT_H_
+#define IRESEARCH_ABSL_STRINGS_STR_CAT_H_
 
 #include <array>
 #include <cstdint>
@@ -63,8 +63,8 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace strings_internal {
 // AlphaNumBuffer allows a way to pass a string to StrCat without having to do
@@ -138,40 +138,40 @@ struct Hex {
 
   template <typename Int>
   explicit Hex(
-      Int v, PadSpec spec = absl::kNoPad,
+      Int v, PadSpec spec = iresearch_absl::kNoPad,
       typename std::enable_if<sizeof(Int) == 1 &&
                               !std::is_pointer<Int>::value>::type* = nullptr)
       : Hex(spec, static_cast<uint8_t>(v)) {}
   template <typename Int>
   explicit Hex(
-      Int v, PadSpec spec = absl::kNoPad,
+      Int v, PadSpec spec = iresearch_absl::kNoPad,
       typename std::enable_if<sizeof(Int) == 2 &&
                               !std::is_pointer<Int>::value>::type* = nullptr)
       : Hex(spec, static_cast<uint16_t>(v)) {}
   template <typename Int>
   explicit Hex(
-      Int v, PadSpec spec = absl::kNoPad,
+      Int v, PadSpec spec = iresearch_absl::kNoPad,
       typename std::enable_if<sizeof(Int) == 4 &&
                               !std::is_pointer<Int>::value>::type* = nullptr)
       : Hex(spec, static_cast<uint32_t>(v)) {}
   template <typename Int>
   explicit Hex(
-      Int v, PadSpec spec = absl::kNoPad,
+      Int v, PadSpec spec = iresearch_absl::kNoPad,
       typename std::enable_if<sizeof(Int) == 8 &&
                               !std::is_pointer<Int>::value>::type* = nullptr)
       : Hex(spec, static_cast<uint64_t>(v)) {}
   template <typename Pointee>
-  explicit Hex(Pointee* v, PadSpec spec = absl::kNoPad)
+  explicit Hex(Pointee* v, PadSpec spec = iresearch_absl::kNoPad)
       : Hex(spec, reinterpret_cast<uintptr_t>(v)) {}
 
  private:
   Hex(PadSpec spec, uint64_t v)
       : value(v),
-        width(spec == absl::kNoPad
+        width(spec == iresearch_absl::kNoPad
                   ? 1
-                  : spec >= absl::kSpacePad2 ? spec - absl::kSpacePad2 + 2
-                                             : spec - absl::kZeroPad2 + 2),
-        fill(spec >= absl::kSpacePad2 ? ' ' : '0') {}
+                  : spec >= iresearch_absl::kSpacePad2 ? spec - iresearch_absl::kSpacePad2 + 2
+                                             : spec - iresearch_absl::kZeroPad2 + 2),
+        fill(spec >= iresearch_absl::kSpacePad2 ? ' ' : '0') {}
 };
 
 // -----------------------------------------------------------------------------
@@ -188,15 +188,15 @@ struct Dec {
   bool neg;
 
   template <typename Int>
-  explicit Dec(Int v, PadSpec spec = absl::kNoPad,
+  explicit Dec(Int v, PadSpec spec = iresearch_absl::kNoPad,
                typename std::enable_if<(sizeof(Int) <= 8)>::type* = nullptr)
       : value(v >= 0 ? static_cast<uint64_t>(v)
                      : uint64_t{0} - static_cast<uint64_t>(v)),
-        width(spec == absl::kNoPad
+        width(spec == iresearch_absl::kNoPad
                   ? 1
-                  : spec >= absl::kSpacePad2 ? spec - absl::kSpacePad2 + 2
-                                             : spec - absl::kZeroPad2 + 2),
-        fill(spec >= absl::kSpacePad2 ? ' ' : '0'),
+                  : spec >= iresearch_absl::kSpacePad2 ? spec - iresearch_absl::kSpacePad2 + 2
+                                             : spec - iresearch_absl::kZeroPad2 + 2),
+        fill(spec >= iresearch_absl::kSpacePad2 ? ' ' : '0'),
         neg(v < 0) {}
 };
 
@@ -246,7 +246,7 @@ class AlphaNum {
       : piece_(&buf.data[0], buf.size) {}
 
   AlphaNum(const char* c_str) : piece_(c_str) {}  // NOLINT(runtime/explicit)
-  AlphaNum(absl::string_view pc) : piece_(pc) {}  // NOLINT(runtime/explicit)
+  AlphaNum(iresearch_absl::string_view pc) : piece_(pc) {}  // NOLINT(runtime/explicit)
 
   template <typename Allocator>
   AlphaNum(  // NOLINT(runtime/explicit)
@@ -259,9 +259,9 @@ class AlphaNum {
   AlphaNum(const AlphaNum&) = delete;
   AlphaNum& operator=(const AlphaNum&) = delete;
 
-  absl::string_view::size_type size() const { return piece_.size(); }
+  iresearch_absl::string_view::size_type size() const { return piece_.size(); }
   const char* data() const { return piece_.data(); }
-  absl::string_view Piece() const { return piece_; }
+  iresearch_absl::string_view Piece() const { return piece_; }
 
   // Normal enums are already handled by the integer formatters.
   // This overload matches only scoped enums.
@@ -283,7 +283,7 @@ class AlphaNum {
   AlphaNum(T e) : AlphaNum(static_cast<bool>(e)) {}  // NOLINT(runtime/explicit)
 
  private:
-  absl::string_view piece_;
+  iresearch_absl::string_view piece_;
   char digits_[numbers_internal::kFastToBufferSize];
 };
 
@@ -318,27 +318,27 @@ class AlphaNum {
 namespace strings_internal {
 
 // Do not call directly - this is not part of the public API.
-std::string CatPieces(std::initializer_list<absl::string_view> pieces);
+std::string CatPieces(std::initializer_list<iresearch_absl::string_view> pieces);
 void AppendPieces(std::string* dest,
-                  std::initializer_list<absl::string_view> pieces);
+                  std::initializer_list<iresearch_absl::string_view> pieces);
 
 }  // namespace strings_internal
 
-ABSL_MUST_USE_RESULT inline std::string StrCat() { return std::string(); }
+IRESEARCH_ABSL_MUST_USE_RESULT inline std::string StrCat() { return std::string(); }
 
-ABSL_MUST_USE_RESULT inline std::string StrCat(const AlphaNum& a) {
+IRESEARCH_ABSL_MUST_USE_RESULT inline std::string StrCat(const AlphaNum& a) {
   return std::string(a.data(), a.size());
 }
 
-ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b);
-ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b,
+IRESEARCH_ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b);
+IRESEARCH_ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b,
                                         const AlphaNum& c);
-ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b,
+IRESEARCH_ABSL_MUST_USE_RESULT std::string StrCat(const AlphaNum& a, const AlphaNum& b,
                                         const AlphaNum& c, const AlphaNum& d);
 
 // Support 5 or more arguments
 template <typename... AV>
-ABSL_MUST_USE_RESULT inline std::string StrCat(
+IRESEARCH_ABSL_MUST_USE_RESULT inline std::string StrCat(
     const AlphaNum& a, const AlphaNum& b, const AlphaNum& c, const AlphaNum& d,
     const AlphaNum& e, const AV&... args) {
   return strings_internal::CatPieces(
@@ -370,7 +370,7 @@ ABSL_MUST_USE_RESULT inline std::string StrCat(
 // data:
 //
 //   std::string s = "foobar";
-//   absl::string_view p = s;
+//   iresearch_absl::string_view p = s;
 //   StrAppend(&s, p);
 
 inline void StrAppend(std::string*) {}
@@ -402,7 +402,7 @@ SixDigits(double d) {
   return result;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_STR_CAT_H_
+#endif  // IRESEARCH_ABSL_STRINGS_STR_CAT_H_

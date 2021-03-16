@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#ifndef ABSL_TYPES_INTERNAL_OPTIONAL_H_
-#define ABSL_TYPES_INTERNAL_OPTIONAL_H_
+#ifndef IRESEARCH_ABSL_TYPES_INTERNAL_OPTIONAL_H_
+#define IRESEARCH_ABSL_TYPES_INTERNAL_OPTIONAL_H_
 
 #include <functional>
 #include <new>
@@ -25,7 +25,7 @@
 #include "absl/meta/type_traits.h"
 #include "absl/utility/utility.h"
 
-// ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
+// IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
 //
 // Inheriting constructors is supported in GCC 4.8+, Clang 3.3+ and MSVC 2015.
 // __cpp_inheriting_constructors is a predefined macro and a recommended way to
@@ -44,17 +44,17 @@
 // constexpr Foo foo(0);  // doesn't work on MSVC 2015
 #if defined(__clang__)
 #if __has_feature(cxx_inheriting_constructors)
-#define ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS 1
+#define IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS 1
 #endif
 #elif (defined(__GNUC__) &&                                       \
        (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8)) || \
     (__cpp_inheriting_constructors >= 200802) ||                  \
     (defined(_MSC_VER) && _MSC_VER >= 1910)
-#define ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS 1
+#define IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS 1
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // Forward declaration
 template <typename T>
@@ -101,7 +101,7 @@ class optional_data_dtor_base {
 
   template <typename... Args>
   constexpr explicit optional_data_dtor_base(in_place_t, Args&&... args)
-      : engaged_(true), data_(absl::forward<Args>(args)...) {}
+      : engaged_(true), data_(iresearch_absl::forward<Args>(args)...) {}
 
   ~optional_data_dtor_base() { destruct(); }
 };
@@ -130,21 +130,21 @@ class optional_data_dtor_base<T, true> {
 
   template <typename... Args>
   constexpr explicit optional_data_dtor_base(in_place_t, Args&&... args)
-      : engaged_(true), data_(absl::forward<Args>(args)...) {}
+      : engaged_(true), data_(iresearch_absl::forward<Args>(args)...) {}
 };
 
 template <typename T>
 class optional_data_base : public optional_data_dtor_base<T> {
  protected:
   using base = optional_data_dtor_base<T>;
-#ifdef ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
+#ifdef IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
   using base::base;
 #else
   optional_data_base() = default;
 
   template <typename... Args>
   constexpr explicit optional_data_base(in_place_t t, Args&&... args)
-      : base(t, absl::forward<Args>(args)...) {}
+      : base(t, iresearch_absl::forward<Args>(args)...) {}
 #endif
 
   template <typename... Args>
@@ -171,8 +171,8 @@ class optional_data_base : public optional_data_dtor_base<T> {
 // Also, we should be checking is_trivially_copyable here, which is not
 // supported now, so we use is_trivially_* traits instead.
 template <typename T,
-          bool unused = absl::is_trivially_copy_constructible<T>::value&&
-              absl::is_trivially_copy_assignable<typename std::remove_cv<
+          bool unused = iresearch_absl::is_trivially_copy_constructible<T>::value&&
+              iresearch_absl::is_trivially_copy_assignable<typename std::remove_cv<
                   T>::type>::value&& std::is_trivially_destructible<T>::value>
 class optional_data;
 
@@ -180,26 +180,26 @@ class optional_data;
 template <typename T>
 class optional_data<T, true> : public optional_data_base<T> {
  protected:
-#ifdef ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
+#ifdef IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
   using optional_data_base<T>::optional_data_base;
 #else
   optional_data() = default;
 
   template <typename... Args>
   constexpr explicit optional_data(in_place_t t, Args&&... args)
-      : optional_data_base<T>(t, absl::forward<Args>(args)...) {}
+      : optional_data_base<T>(t, iresearch_absl::forward<Args>(args)...) {}
 #endif
 };
 
 template <typename T>
 class optional_data<T, false> : public optional_data_base<T> {
  protected:
-#ifdef ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
+#ifdef IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
   using optional_data_base<T>::optional_data_base;
 #else
   template <typename... Args>
   constexpr explicit optional_data(in_place_t t, Args&&... args)
-      : optional_data_base<T>(t, absl::forward<Args>(args)...) {}
+      : optional_data_base<T>(t, iresearch_absl::forward<Args>(args)...) {}
 #endif
 
   optional_data() = default;
@@ -211,7 +211,7 @@ class optional_data<T, false> : public optional_data_base<T> {
   }
 
   optional_data(optional_data&& rhs) noexcept(
-      absl::default_allocator_is_nothrow::value ||
+      iresearch_absl::default_allocator_is_nothrow::value ||
       std::is_nothrow_move_constructible<T>::value)
       : optional_data_base<T>() {
     if (rhs.engaged_) {
@@ -324,9 +324,9 @@ struct ctor_copy_traits {
 template <typename T>
 struct assign_copy_traits {
   static constexpr copy_traits traits =
-      absl::is_copy_assignable<T>::value && std::is_copy_constructible<T>::value
+      iresearch_absl::is_copy_assignable<T>::value && std::is_copy_constructible<T>::value
           ? copy_traits::copyable
-          : absl::is_move_assignable<T>::value &&
+          : iresearch_absl::is_move_assignable<T>::value &&
                     std::is_move_constructible<T>::value
                 ? copy_traits::movable
                 : copy_traits::non_movable;
@@ -359,7 +359,7 @@ struct is_constructible_convertible_assignable_from_optional
 // for checking whether an expression is convertible to bool.
 bool convertible_to_bool(bool);
 
-// Base class for std::hash<absl::optional<T>>:
+// Base class for std::hash<iresearch_absl::optional<T>>:
 // If std::hash<std::remove_const_t<T>> is enabled, it provides operator() to
 // compute the hash; Otherwise, it is disabled.
 // Reference N4659 23.14.15 [unord.hash].
@@ -373,14 +373,14 @@ struct optional_hash_base {
 };
 
 template <typename T>
-struct optional_hash_base<T, decltype(std::hash<absl::remove_const_t<T> >()(
-                                 std::declval<absl::remove_const_t<T> >()))> {
-  using argument_type = absl::optional<T>;
+struct optional_hash_base<T, decltype(std::hash<iresearch_absl::remove_const_t<T> >()(
+                                 std::declval<iresearch_absl::remove_const_t<T> >()))> {
+  using argument_type = iresearch_absl::optional<T>;
   using result_type = size_t;
-  size_t operator()(const absl::optional<T>& opt) const {
-    absl::type_traits_internal::AssertHashEnabled<absl::remove_const_t<T>>();
+  size_t operator()(const iresearch_absl::optional<T>& opt) const {
+    iresearch_absl::type_traits_internal::AssertHashEnabled<iresearch_absl::remove_const_t<T>>();
     if (opt) {
-      return std::hash<absl::remove_const_t<T> >()(*opt);
+      return std::hash<iresearch_absl::remove_const_t<T> >()(*opt);
     } else {
       return static_cast<size_t>(0x297814aaad196e6dULL);
     }
@@ -388,9 +388,9 @@ struct optional_hash_base<T, decltype(std::hash<absl::remove_const_t<T> >()(
 };
 
 }  // namespace optional_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#undef ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
+#undef IRESEARCH_ABSL_OPTIONAL_USE_INHERITING_CONSTRUCTORS
 
-#endif  // ABSL_TYPES_INTERNAL_OPTIONAL_H_
+#endif  // IRESEARCH_ABSL_TYPES_INTERNAL_OPTIONAL_H_

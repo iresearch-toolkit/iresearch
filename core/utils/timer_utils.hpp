@@ -99,7 +99,7 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void init_stats(
   bool track_all_keys = false,
-  const absl::flat_hash_set<std::string>& tracked_keys = {});
+  const iresearch_absl::flat_hash_set<std::string>& tracked_keys = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys

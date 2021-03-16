@@ -21,14 +21,14 @@
 // types for storing the results of three way comparisons.
 //
 // Example:
-//   absl::weak_ordering compare(const std::string& a, const std::string& b);
+//   iresearch_absl::weak_ordering compare(const std::string& a, const std::string& b);
 //
 // These are C++11 compatible versions of the C++20 corresponding types
 // (`std::weak_equality`, etc.) and are designed to be drop-in replacements
 // for code compliant with C++20.
 
-#ifndef ABSL_TYPES_COMPARE_H_
-#define ABSL_TYPES_COMPARE_H_
+#ifndef IRESEARCH_ABSL_TYPES_COMPARE_H_
+#define IRESEARCH_ABSL_TYPES_COMPARE_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -38,8 +38,8 @@
 #include "absl/base/attributes.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace compare_internal {
 
 using value_type = int8_t;
@@ -82,28 +82,28 @@ enum class ncmp : value_type { unordered = -127 };
 
 // Define macros to allow for creation or emulation of C++17 inline variables
 // based on whether the feature is supported. Note: we can't use
-// ABSL_INTERNAL_INLINE_CONSTEXPR here because the variables here are of
+// IRESEARCH_ABSL_INTERNAL_INLINE_CONSTEXPR here because the variables here are of
 // incomplete types so they need to be defined after the types are complete.
 #ifdef __cpp_inline_variables
 
 // A no-op expansion that can be followed by a semicolon at class level.
-#define ABSL_COMPARE_INLINE_BASECLASS_DECL(name) static_assert(true, "")
+#define IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(name) static_assert(true, "")
 
-#define ABSL_COMPARE_INLINE_SUBCLASS_DECL(type, name) \
+#define IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(type, name) \
   static const type name
 
-#define ABSL_COMPARE_INLINE_INIT(type, name, init) \
+#define IRESEARCH_ABSL_COMPARE_INLINE_INIT(type, name, init) \
   inline constexpr type type::name(init)
 
 #else  // __cpp_inline_variables
 
-#define ABSL_COMPARE_INLINE_BASECLASS_DECL(name) \
-  ABSL_CONST_INIT static const T name
+#define IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(name) \
+  IRESEARCH_ABSL_CONST_INIT static const T name
 
 // A no-op expansion that can be followed by a semicolon at class level.
-#define ABSL_COMPARE_INLINE_SUBCLASS_DECL(type, name) static_assert(true, "")
+#define IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(type, name) static_assert(true, "")
 
-#define ABSL_COMPARE_INLINE_INIT(type, name, init) \
+#define IRESEARCH_ABSL_COMPARE_INLINE_INIT(type, name, init) \
   template <typename T>                            \
   const T compare_internal::type##_base<T>::name(init)
 
@@ -114,39 +114,39 @@ enum class ncmp : value_type { unordered = -127 };
 // aren't available in C++11).
 template <typename T>
 struct weak_equality_base {
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequivalent);
 };
 
 template <typename T>
 struct strong_equality_base {
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equal);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequal);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equal);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequal);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(nonequivalent);
 };
 
 template <typename T>
 struct partial_ordering_base {
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(unordered);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(unordered);
 };
 
 template <typename T>
 struct weak_ordering_base {
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
 };
 
 template <typename T>
 struct strong_ordering_base {
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equal);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
-  ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(less);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equal);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL(greater);
 };
 
 }  // namespace compare_internal
@@ -158,8 +158,8 @@ class weak_equality
   friend struct compare_internal::weak_equality_base<weak_equality>;
 
  public:
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_equality, equivalent);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_equality, nonequivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_equality, equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_equality, nonequivalent);
 
   // Comparisons
   friend constexpr bool operator==(
@@ -202,10 +202,10 @@ class strong_equality
   friend struct compare_internal::strong_equality_base<strong_equality>;
 
  public:
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, equal);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, nonequal);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, equivalent);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, nonequivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, equal);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, nonequal);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_equality, nonequivalent);
 
   // Conversion
   constexpr operator weak_equality() const noexcept {  // NOLINT
@@ -265,10 +265,10 @@ class partial_ordering
   }
 
  public:
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, less);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, equivalent);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, greater);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, unordered);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, less);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(partial_ordering, unordered);
 
   // Conversion
   constexpr operator weak_equality() const noexcept {  // NOLINT
@@ -353,9 +353,9 @@ class weak_ordering
   friend struct compare_internal::weak_ordering_base<weak_ordering>;
 
  public:
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, less);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, equivalent);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, less);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(weak_ordering, greater);
 
   // Conversions
   constexpr operator weak_equality() const noexcept {  // NOLINT
@@ -443,10 +443,10 @@ class strong_ordering
   friend struct compare_internal::strong_ordering_base<strong_ordering>;
 
  public:
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, less);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, equal);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, equivalent);
-  ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, greater);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, less);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, equal);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, equivalent);
+  IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL(strong_ordering, greater);
 
   // Conversions
   constexpr operator weak_equality() const noexcept {  // NOLINT
@@ -534,9 +534,9 @@ ABSL_COMPARE_INLINE_INIT(strong_ordering, equivalent,
 ABSL_COMPARE_INLINE_INIT(strong_ordering, greater,
                          compare_internal::ord::greater);
 
-#undef ABSL_COMPARE_INLINE_BASECLASS_DECL
-#undef ABSL_COMPARE_INLINE_SUBCLASS_DECL
-#undef ABSL_COMPARE_INLINE_INIT
+#undef IRESEARCH_ABSL_COMPARE_INLINE_BASECLASS_DECL
+#undef IRESEARCH_ABSL_COMPARE_INLINE_SUBCLASS_DECL
+#undef IRESEARCH_ABSL_COMPARE_INLINE_INIT
 
 namespace compare_internal {
 // We also provide these comparator adapter functions for internal absl use.
@@ -545,9 +545,9 @@ namespace compare_internal {
 // or three-way comparator.
 // SFINAE prevents implicit conversions to bool (such as from int).
 template <typename Bool,
-          absl::enable_if_t<std::is_same<bool, Bool>::value, int> = 0>
+          iresearch_absl::enable_if_t<std::is_same<bool, Bool>::value, int> = 0>
 constexpr bool compare_result_as_less_than(const Bool r) { return r; }
-constexpr bool compare_result_as_less_than(const absl::weak_ordering r) {
+constexpr bool compare_result_as_less_than(const iresearch_absl::weak_ordering r) {
   return r < 0;
 }
 
@@ -561,40 +561,40 @@ constexpr bool do_less_than_comparison(const Compare &compare, const K &x,
 // three-way comparator.
 // SFINAE prevents implicit conversions to int (such as from bool).
 template <typename Int,
-          absl::enable_if_t<std::is_same<int, Int>::value, int> = 0>
-constexpr absl::weak_ordering compare_result_as_ordering(const Int c) {
-  return c < 0 ? absl::weak_ordering::less
-               : c == 0 ? absl::weak_ordering::equivalent
-                        : absl::weak_ordering::greater;
+          iresearch_absl::enable_if_t<std::is_same<int, Int>::value, int> = 0>
+constexpr iresearch_absl::weak_ordering compare_result_as_ordering(const Int c) {
+  return c < 0 ? iresearch_absl::weak_ordering::less
+               : c == 0 ? iresearch_absl::weak_ordering::equivalent
+                        : iresearch_absl::weak_ordering::greater;
 }
-constexpr absl::weak_ordering compare_result_as_ordering(
-    const absl::weak_ordering c) {
+constexpr iresearch_absl::weak_ordering compare_result_as_ordering(
+    const iresearch_absl::weak_ordering c) {
   return c;
 }
 
 template <
     typename Compare, typename K, typename LK,
-    absl::enable_if_t<!std::is_same<bool, absl::result_of_t<Compare(
+    iresearch_absl::enable_if_t<!std::is_same<bool, iresearch_absl::result_of_t<Compare(
                                               const K &, const LK &)>>::value,
                       int> = 0>
-constexpr absl::weak_ordering do_three_way_comparison(const Compare &compare,
+constexpr iresearch_absl::weak_ordering do_three_way_comparison(const Compare &compare,
                                                       const K &x, const LK &y) {
   return compare_result_as_ordering(compare(x, y));
 }
 template <
     typename Compare, typename K, typename LK,
-    absl::enable_if_t<std::is_same<bool, absl::result_of_t<Compare(
+    iresearch_absl::enable_if_t<std::is_same<bool, iresearch_absl::result_of_t<Compare(
                                              const K &, const LK &)>>::value,
                       int> = 0>
-constexpr absl::weak_ordering do_three_way_comparison(const Compare &compare,
+constexpr iresearch_absl::weak_ordering do_three_way_comparison(const Compare &compare,
                                                       const K &x, const LK &y) {
-  return compare(x, y) ? absl::weak_ordering::less
-                       : compare(y, x) ? absl::weak_ordering::greater
-                                       : absl::weak_ordering::equivalent;
+  return compare(x, y) ? iresearch_absl::weak_ordering::less
+                       : compare(y, x) ? iresearch_absl::weak_ordering::greater
+                                       : iresearch_absl::weak_ordering::equivalent;
 }
 
 }  // namespace compare_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TYPES_COMPARE_H_
+#endif  // IRESEARCH_ABSL_TYPES_COMPARE_H_

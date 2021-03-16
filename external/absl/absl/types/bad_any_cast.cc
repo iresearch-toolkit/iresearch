@@ -14,15 +14,15 @@
 
 #include "absl/types/bad_any_cast.h"
 
-#ifndef ABSL_USES_STD_ANY
+#ifndef IRESEARCH_ABSL_USES_STD_ANY
 
 #include <cstdlib>
 
 #include "absl/base/config.h"
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 bad_any_cast::~bad_any_cast() = default;
 
@@ -31,16 +31,16 @@ const char* bad_any_cast::what() const noexcept { return "Bad any cast"; }
 namespace any_internal {
 
 void ThrowBadAnyCast() {
-#ifdef ABSL_HAVE_EXCEPTIONS
+#ifdef IRESEARCH_ABSL_HAVE_EXCEPTIONS
   throw bad_any_cast();
 #else
-  ABSL_RAW_LOG(FATAL, "Bad any cast");
+  IRESEARCH_ABSL_RAW_LOG(FATAL, "Bad any cast");
   std::abort();
 #endif
 }
 
 }  // namespace any_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_USES_STD_ANY
+#endif  // IRESEARCH_ABSL_USES_STD_ANY

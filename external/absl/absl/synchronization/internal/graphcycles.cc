@@ -31,7 +31,7 @@
 #include "absl/base/attributes.h"
 // This file is a no-op if the required LowLevelAlloc support is missing.
 #include "absl/base/internal/low_level_alloc.h"
-#ifndef ABSL_LOW_LEVEL_ALLOC_MISSING
+#ifndef IRESEARCH_ABSL_LOW_LEVEL_ALLOC_MISSING
 
 #include "absl/synchronization/internal/graphcycles.h"
 
@@ -44,17 +44,17 @@
 
 // Do not use STL.   This module does not use standard memory allocation.
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace synchronization_internal {
 
 namespace {
 
 // Avoid LowLevelAlloc's default arena since it calls malloc hooks in
 // which people are doing things like acquiring Mutexes.
-ABSL_CONST_INIT static absl::base_internal::SpinLock arena_mu(
-    absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
-ABSL_CONST_INIT static base_internal::LowLevelAlloc::Arena* arena;
+IRESEARCH_ABSL_CONST_INIT static iresearch_absl::base_internal::SpinLock arena_mu(
+    iresearch_absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
+IRESEARCH_ABSL_CONST_INIT static base_internal::LowLevelAlloc::Arena* arena;
 
 static void InitArenaIfNecessary() {
   arena_mu.Lock();
@@ -384,18 +384,18 @@ bool GraphCycles::CheckInvariants() const {
     Node* nx = r->nodes_[x];
     void* ptr = base_internal::UnhidePtr<void>(nx->masked_ptr);
     if (ptr != nullptr && static_cast<uint32_t>(r->ptrmap_.Find(ptr)) != x) {
-      ABSL_RAW_LOG(FATAL, "Did not find live node in hash table %u %p", x, ptr);
+      IRESEARCH_ABSL_RAW_LOG(FATAL, "Did not find live node in hash table %u %p", x, ptr);
     }
     if (nx->visited) {
-      ABSL_RAW_LOG(FATAL, "Did not clear visited marker on node %u", x);
+      IRESEARCH_ABSL_RAW_LOG(FATAL, "Did not clear visited marker on node %u", x);
     }
     if (!ranks.insert(nx->rank)) {
-      ABSL_RAW_LOG(FATAL, "Duplicate occurrence of rank %d", nx->rank);
+      IRESEARCH_ABSL_RAW_LOG(FATAL, "Duplicate occurrence of rank %d", nx->rank);
     }
     HASH_FOR_EACH(y, nx->out) {
       Node* ny = r->nodes_[y];
       if (nx->rank >= ny->rank) {
-        ABSL_RAW_LOG(FATAL, "Edge %u->%d has bad rank assignment %d->%d", x, y,
+        IRESEARCH_ABSL_RAW_LOG(FATAL, "Edge %u->%d has bad rank assignment %d->%d", x, y,
                      nx->rank, ny->rank);
       }
     }
@@ -676,7 +676,7 @@ void GraphCycles::UpdateStackTrace(GraphId id, int priority,
   if (n == nullptr || n->priority >= priority) {
     return;
   }
-  n->nstack = (*get_stack_trace)(n->stack, ABSL_ARRAYSIZE(n->stack));
+  n->nstack = (*get_stack_trace)(n->stack, IRESEARCH_ABSL_ARRAYSIZE(n->stack));
   n->priority = priority;
 }
 
@@ -692,7 +692,7 @@ int GraphCycles::GetStackTrace(GraphId id, void*** ptr) {
 }
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_LOW_LEVEL_ALLOC_MISSING
+#endif  // IRESEARCH_ABSL_LOW_LEVEL_ALLOC_MISSING

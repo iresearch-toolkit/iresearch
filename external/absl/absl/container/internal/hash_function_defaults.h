@@ -42,8 +42,8 @@
 // the hash function is hash<std::string> but as a pointer when the hash
 // function is hash<void*>.
 //
-#ifndef ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_
-#define ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -56,25 +56,25 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
-// The hash of an object of type T is computed by using absl::Hash.
+// The hash of an object of type T is computed by using iresearch_absl::Hash.
 template <class T, class E = void>
 struct HashEq {
-  using Hash = absl::Hash<T>;
+  using Hash = iresearch_absl::Hash<T>;
   using Eq = std::equal_to<T>;
 };
 
 struct StringHash {
   using is_transparent = void;
 
-  size_t operator()(absl::string_view v) const {
-    return absl::Hash<absl::string_view>{}(v);
+  size_t operator()(iresearch_absl::string_view v) const {
+    return iresearch_absl::Hash<iresearch_absl::string_view>{}(v);
   }
-  size_t operator()(const absl::Cord& v) const {
-    return absl::Hash<absl::Cord>{}(v);
+  size_t operator()(const iresearch_absl::Cord& v) const {
+    return iresearch_absl::Hash<iresearch_absl::Cord>{}(v);
   }
 };
 
@@ -83,16 +83,16 @@ struct StringHashEq {
   using Hash = StringHash;
   struct Eq {
     using is_transparent = void;
-    bool operator()(absl::string_view lhs, absl::string_view rhs) const {
+    bool operator()(iresearch_absl::string_view lhs, iresearch_absl::string_view rhs) const {
       return lhs == rhs;
     }
-    bool operator()(const absl::Cord& lhs, const absl::Cord& rhs) const {
+    bool operator()(const iresearch_absl::Cord& lhs, const iresearch_absl::Cord& rhs) const {
       return lhs == rhs;
     }
-    bool operator()(const absl::Cord& lhs, absl::string_view rhs) const {
+    bool operator()(const iresearch_absl::Cord& lhs, iresearch_absl::string_view rhs) const {
       return lhs == rhs;
     }
-    bool operator()(absl::string_view lhs, const absl::Cord& rhs) const {
+    bool operator()(iresearch_absl::string_view lhs, const iresearch_absl::Cord& rhs) const {
       return lhs == rhs;
     }
   };
@@ -101,9 +101,9 @@ struct StringHashEq {
 template <>
 struct HashEq<std::string> : StringHashEq {};
 template <>
-struct HashEq<absl::string_view> : StringHashEq {};
+struct HashEq<iresearch_absl::string_view> : StringHashEq {};
 template <>
-struct HashEq<absl::Cord> : StringHashEq {};
+struct HashEq<iresearch_absl::Cord> : StringHashEq {};
 
 // Supports heterogeneous lookup for pointers and smart pointers.
 template <class T>
@@ -112,7 +112,7 @@ struct HashEq<T*> {
     using is_transparent = void;
     template <class U>
     size_t operator()(const U& ptr) const {
-      return absl::Hash<const T*>{}(HashEq::ToPtr(ptr));
+      return iresearch_absl::Hash<const T*>{}(HashEq::ToPtr(ptr));
     }
   };
   struct Eq {
@@ -143,19 +143,19 @@ struct HashEq<std::shared_ptr<T>> : HashEq<T*> {};
 // This header's visibility is restricted.  If you need to access the default
 // hasher please use the container's ::hasher alias instead.
 //
-// Example: typename Hash = typename absl::flat_hash_map<K, V>::hasher
+// Example: typename Hash = typename iresearch_absl::flat_hash_map<K, V>::hasher
 template <class T>
 using hash_default_hash = typename container_internal::HashEq<T>::Hash;
 
 // This header's visibility is restricted.  If you need to access the default
 // key equal please use the container's ::key_equal alias instead.
 //
-// Example: typename Eq = typename absl::flat_hash_map<K, V, Hash>::key_equal
+// Example: typename Eq = typename iresearch_absl::flat_hash_map<K, V, Hash>::key_equal
 template <class T>
 using hash_default_eq = typename container_internal::HashEq<T>::Eq;
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_HASH_FUNCTION_DEFAULTS_H_

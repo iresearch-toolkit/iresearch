@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_
-#define ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_
 
 // Operations to make atomic transitions on a word, and to allow
 // waiting for those transitions to become possible.
@@ -23,8 +23,8 @@
 
 #include "absl/base/internal/scheduling_mode.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // SpinLockWait() waits until it can perform one of several transitions from
@@ -63,7 +63,7 @@ void SpinLockDelay(std::atomic<uint32_t> *w, uint32_t value, int loop,
 int SpinLockSuggestedDelayNS(int loop);
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // In some build configurations we pass --detect-odr-violations to the
@@ -76,18 +76,18 @@ extern "C" {
 void AbslInternalSpinLockWake(std::atomic<uint32_t> *w, bool all);
 void AbslInternalSpinLockDelay(
     std::atomic<uint32_t> *w, uint32_t value, int loop,
-    absl::base_internal::SchedulingMode scheduling_mode);
+    iresearch_absl::base_internal::SchedulingMode scheduling_mode);
 }
 
-inline void absl::base_internal::SpinLockWake(std::atomic<uint32_t> *w,
+inline void iresearch_absl::base_internal::SpinLockWake(std::atomic<uint32_t> *w,
                                               bool all) {
   AbslInternalSpinLockWake(w, all);
 }
 
-inline void absl::base_internal::SpinLockDelay(
+inline void iresearch_absl::base_internal::SpinLockDelay(
     std::atomic<uint32_t> *w, uint32_t value, int loop,
-    absl::base_internal::SchedulingMode scheduling_mode) {
+    iresearch_absl::base_internal::SchedulingMode scheduling_mode) {
   AbslInternalSpinLockDelay(w, value, loop, scheduling_mode);
 }
 
-#endif  // ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_WAIT_H_

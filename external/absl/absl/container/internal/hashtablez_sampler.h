@@ -36,8 +36,8 @@
 //
 // This utility is internal-only. Use at your own risk.
 
-#ifndef ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_
-#define ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_
 
 #include <atomic>
 #include <functional>
@@ -50,8 +50,8 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/utility/utility.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 // Stores information about a sampled hashtable.  All mutations to this *must*
@@ -66,7 +66,7 @@ struct HashtablezInfo {
 
   // Puts the object into a clean state, fills in the logically `const` members,
   // blocking for any readers that are currently sampling the object.
-  void PrepareForSampling() ABSL_EXCLUSIVE_LOCKS_REQUIRED(init_mu);
+  void PrepareForSampling() IRESEARCH_ABSL_EXCLUSIVE_LOCKS_REQUIRED(init_mu);
 
   // These fields are mutated by the various Record* APIs and need to be
   // thread-safe.
@@ -83,9 +83,9 @@ struct HashtablezInfo {
   // comments on `HashtablezSampler::all_` for details on these.  `init_mu`
   // guards the ability to restore the sample to a pristine state.  This
   // prevents races with sampling and resurrecting an object.
-  absl::Mutex init_mu;
+  iresearch_absl::Mutex init_mu;
   HashtablezInfo* next;
-  HashtablezInfo* dead ABSL_GUARDED_BY(init_mu);
+  HashtablezInfo* dead IRESEARCH_ABSL_GUARDED_BY(init_mu);
 
   // All of the fields below are set by `PrepareForSampling`, they must not be
   // mutated in `Record*` functions.  They are logically `const` in that sense.
@@ -93,13 +93,13 @@ struct HashtablezInfo {
   // can only read them during `HashtablezSampler::Iterate` which will hold the
   // lock.
   static constexpr int kMaxStackDepth = 64;
-  absl::Time create_time;
+  iresearch_absl::Time create_time;
   int32_t depth;
   void* stack[kMaxStackDepth];
 };
 
 inline void RecordRehashSlow(HashtablezInfo* info, size_t total_probe_length) {
-#if ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
+#if IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
   total_probe_length /= 16;
 #else
   total_probe_length /= 8;
@@ -139,17 +139,17 @@ inline void RecordEraseSlow(HashtablezInfo* info) {
 HashtablezInfo* SampleSlow(int64_t* next_sample);
 void UnsampleSlow(HashtablezInfo* info);
 
-#if defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
-#error ABSL_INTERNAL_HASHTABLEZ_SAMPLE cannot be directly set
-#endif  // defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+#if defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+#error IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE cannot be directly set
+#endif  // defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
 
-#if defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+#if defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
 class HashtablezInfoHandle {
  public:
   explicit HashtablezInfoHandle() : info_(nullptr) {}
   explicit HashtablezInfoHandle(HashtablezInfo* info) : info_(info) {}
   ~HashtablezInfoHandle() {
-    if (ABSL_PREDICT_TRUE(info_ == nullptr)) return;
+    if (IRESEARCH_ABSL_PREDICT_TRUE(info_ == nullptr)) return;
     UnsampleSlow(info_);
   }
 
@@ -157,32 +157,32 @@ class HashtablezInfoHandle {
   HashtablezInfoHandle& operator=(const HashtablezInfoHandle&) = delete;
 
   HashtablezInfoHandle(HashtablezInfoHandle&& o) noexcept
-      : info_(absl::exchange(o.info_, nullptr)) {}
+      : info_(iresearch_absl::exchange(o.info_, nullptr)) {}
   HashtablezInfoHandle& operator=(HashtablezInfoHandle&& o) noexcept {
-    if (ABSL_PREDICT_FALSE(info_ != nullptr)) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(info_ != nullptr)) {
       UnsampleSlow(info_);
     }
-    info_ = absl::exchange(o.info_, nullptr);
+    info_ = iresearch_absl::exchange(o.info_, nullptr);
     return *this;
   }
 
   inline void RecordStorageChanged(size_t size, size_t capacity) {
-    if (ABSL_PREDICT_TRUE(info_ == nullptr)) return;
+    if (IRESEARCH_ABSL_PREDICT_TRUE(info_ == nullptr)) return;
     RecordStorageChangedSlow(info_, size, capacity);
   }
 
   inline void RecordRehash(size_t total_probe_length) {
-    if (ABSL_PREDICT_TRUE(info_ == nullptr)) return;
+    if (IRESEARCH_ABSL_PREDICT_TRUE(info_ == nullptr)) return;
     RecordRehashSlow(info_, total_probe_length);
   }
 
   inline void RecordInsert(size_t hash, size_t distance_from_desired) {
-    if (ABSL_PREDICT_TRUE(info_ == nullptr)) return;
+    if (IRESEARCH_ABSL_PREDICT_TRUE(info_ == nullptr)) return;
     RecordInsertSlow(info_, hash, distance_from_desired);
   }
 
   inline void RecordErase() {
-    if (ABSL_PREDICT_TRUE(info_ == nullptr)) return;
+    if (IRESEARCH_ABSL_PREDICT_TRUE(info_ == nullptr)) return;
     RecordEraseSlow(info_);
   }
 
@@ -211,17 +211,17 @@ class HashtablezInfoHandle {
   friend inline void swap(HashtablezInfoHandle& /*lhs*/,
                           HashtablezInfoHandle& /*rhs*/) {}
 };
-#endif  // defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+#endif  // defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
 
-#if defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
-extern ABSL_PER_THREAD_TLS_KEYWORD int64_t global_next_sample;
-#endif  // defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+#if defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+extern IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD int64_t global_next_sample;
+#endif  // defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
 
 // Returns an RAII sampling handle that manages registration and unregistation
 // with the global sampler.
 inline HashtablezInfoHandle Sample() {
-#if defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
-  if (ABSL_PREDICT_TRUE(--global_next_sample > 0)) {
+#if defined(IRESEARCH_ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
+  if (IRESEARCH_ABSL_PREDICT_TRUE(--global_next_sample > 0)) {
     return HashtablezInfoHandle(nullptr);
   }
   return HashtablezInfoHandle(SampleSlow(&global_next_sample));
@@ -315,7 +315,7 @@ void SetHashtablezMaxSamples(int32_t max);
 extern "C" bool AbslContainerInternalSampleEverything();
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLEZ_SAMPLER_H_

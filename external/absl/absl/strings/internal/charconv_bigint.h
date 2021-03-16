@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_
-#define ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -25,8 +25,8 @@
 #include "absl/strings/internal/charconv_parse.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 // The largest power that 5 that can be raised to, and still fit in a uint32_t.
@@ -34,14 +34,14 @@ constexpr int kMaxSmallPowerOfFive = 13;
 // The largest power that 10 that can be raised to, and still fit in a uint32_t.
 constexpr int kMaxSmallPowerOfTen = 9;
 
-ABSL_DLL extern const uint32_t
+IRESEARCH_ABSL_DLL extern const uint32_t
     kFiveToNth[kMaxSmallPowerOfFive + 1];
-ABSL_DLL extern const uint32_t kTenToNth[kMaxSmallPowerOfTen + 1];
+IRESEARCH_ABSL_DLL extern const uint32_t kTenToNth[kMaxSmallPowerOfTen + 1];
 
 // Large, fixed-width unsigned integer.
 //
 // Exact rounding for decimal-to-binary floating point conversion requires very
-// large integer math, but a design goal of absl::from_chars is to avoid
+// large integer math, but a design goal of iresearch_absl::from_chars is to avoid
 // allocating memory.  The integer precision needed for decimal-to-binary
 // conversions is large but bounded, so a huge fixed-width integer class
 // suffices.
@@ -68,7 +68,7 @@ class BigUnsigned {
   // Constructs a BigUnsigned from the given string_view containing a decimal
   // value.  If the input string is not a decimal integer, constructs a 0
   // instead.
-  explicit BigUnsigned(absl::string_view sv) : size_(0), words_{} {
+  explicit BigUnsigned(iresearch_absl::string_view sv) : size_(0), words_{} {
     // Check for valid input, returning a 0 otherwise.  This is reasonable
     // behavior only because this constructor is for unit tests.
     if (std::find_if_not(sv.begin(), sv.end(), ascii_isdigit) != sv.end() ||
@@ -417,7 +417,7 @@ extern template class BigUnsigned<4>;
 extern template class BigUnsigned<84>;
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_BIGINT_H_

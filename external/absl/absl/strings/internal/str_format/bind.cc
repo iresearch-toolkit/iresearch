@@ -5,14 +5,14 @@
 #include <sstream>
 #include <string>
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 
 namespace {
 
 inline bool BindFromPosition(int position, int* value,
-                             absl::Span<const FormatArgImpl> pack) {
+                             iresearch_absl::Span<const FormatArgImpl> pack) {
   assert(position > 0);
   if (static_cast<size_t>(position) > pack.size()) {
     return false;
@@ -23,7 +23,7 @@ inline bool BindFromPosition(int position, int* value,
 
 class ArgContext {
  public:
-  explicit ArgContext(absl::Span<const FormatArgImpl> pack) : pack_(pack) {}
+  explicit ArgContext(iresearch_absl::Span<const FormatArgImpl> pack) : pack_(pack) {}
 
   // Fill 'bound' with the results of applying the context's argument pack
   // to the specified 'unbound'. We synthesize a BoundConversion by
@@ -34,7 +34,7 @@ class ArgContext {
   bool Bind(const UnboundConversion* unbound, BoundConversion* bound);
 
  private:
-  absl::Span<const FormatArgImpl> pack_;
+  iresearch_absl::Span<const FormatArgImpl> pack_;
 };
 
 inline bool ArgContext::Bind(const UnboundConversion* unbound,
@@ -89,7 +89,7 @@ inline bool ArgContext::Bind(const UnboundConversion* unbound,
 template <typename Converter>
 class ConverterConsumer {
  public:
-  ConverterConsumer(Converter converter, absl::Span<const FormatArgImpl> pack)
+  ConverterConsumer(Converter converter, iresearch_absl::Span<const FormatArgImpl> pack)
       : converter_(converter), arg_context_(pack) {}
 
   bool Append(string_view s) {
@@ -109,7 +109,7 @@ class ConverterConsumer {
 
 template <typename Converter>
 bool ConvertAll(const UntypedFormatSpecImpl format,
-                absl::Span<const FormatArgImpl> args, Converter converter) {
+                iresearch_absl::Span<const FormatArgImpl> args, Converter converter) {
   if (format.has_parsed_conversion()) {
     return format.parsed_conversion()->ProcessFormat(
         ConverterConsumer<Converter>(converter, args));
@@ -159,13 +159,13 @@ class SummarizingConverter {
 }  // namespace
 
 bool BindWithPack(const UnboundConversion* props,
-                  absl::Span<const FormatArgImpl> pack,
+                  iresearch_absl::Span<const FormatArgImpl> pack,
                   BoundConversion* bound) {
   return ArgContext(pack).Bind(props, bound);
 }
 
 std::string Summarize(const UntypedFormatSpecImpl format,
-                      absl::Span<const FormatArgImpl> args) {
+                      iresearch_absl::Span<const FormatArgImpl> args) {
   typedef SummarizingConverter Converter;
   std::string out;
   {
@@ -181,7 +181,7 @@ std::string Summarize(const UntypedFormatSpecImpl format,
 
 bool FormatUntyped(FormatRawSinkImpl raw_sink,
                    const UntypedFormatSpecImpl format,
-                   absl::Span<const FormatArgImpl> args) {
+                   iresearch_absl::Span<const FormatArgImpl> args) {
   FormatSinkImpl sink(raw_sink);
   using Converter = DefaultConverter;
   return ConvertAll(format, args, Converter(&sink));
@@ -193,25 +193,25 @@ std::ostream& Streamable::Print(std::ostream& os) const {
 }
 
 std::string& AppendPack(std::string* out, const UntypedFormatSpecImpl format,
-                        absl::Span<const FormatArgImpl> args) {
+                        iresearch_absl::Span<const FormatArgImpl> args) {
   size_t orig = out->size();
-  if (ABSL_PREDICT_FALSE(!FormatUntyped(out, format, args))) {
+  if (IRESEARCH_ABSL_PREDICT_FALSE(!FormatUntyped(out, format, args))) {
     out->erase(orig);
   }
   return *out;
 }
 
 std::string FormatPack(const UntypedFormatSpecImpl format,
-                       absl::Span<const FormatArgImpl> args) {
+                       iresearch_absl::Span<const FormatArgImpl> args) {
   std::string out;
-  if (ABSL_PREDICT_FALSE(!FormatUntyped(&out, format, args))) {
+  if (IRESEARCH_ABSL_PREDICT_FALSE(!FormatUntyped(&out, format, args))) {
     out.clear();
   }
   return out;
 }
 
 int FprintF(std::FILE* output, const UntypedFormatSpecImpl format,
-            absl::Span<const FormatArgImpl> args) {
+            iresearch_absl::Span<const FormatArgImpl> args) {
   FILERawSink sink(output);
   if (!FormatUntyped(&sink, format, args)) {
     errno = EINVAL;
@@ -229,7 +229,7 @@ int FprintF(std::FILE* output, const UntypedFormatSpecImpl format,
 }
 
 int SnprintF(char* output, size_t size, const UntypedFormatSpecImpl format,
-             absl::Span<const FormatArgImpl> args) {
+             iresearch_absl::Span<const FormatArgImpl> args) {
   BufferRawSink sink(output, size ? size - 1 : 0);
   if (!FormatUntyped(&sink, format, args)) {
     errno = EINVAL;
@@ -241,5 +241,5 @@ int SnprintF(char* output, size_t size, const UntypedFormatSpecImpl format,
 }
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

@@ -43,8 +43,8 @@
 // the visitor pattern are a good example of when this class should be used.
 //
 // This class is trivial to copy and should be passed by value.
-#ifndef ABSL_FUNCTIONAL_FUNCTION_REF_H_
-#define ABSL_FUNCTIONAL_FUNCTION_REF_H_
+#ifndef IRESEARCH_ABSL_FUNCTIONAL_FUNCTION_REF_H_
+#define IRESEARCH_ABSL_FUNCTIONAL_FUNCTION_REF_H_
 
 #include <cassert>
 #include <functional>
@@ -53,8 +53,8 @@
 #include "absl/functional/internal/function_ref.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // FunctionRef
 //
@@ -74,11 +74,11 @@ class FunctionRef;
 //
 //   // The following function takes a function callback by const reference
 //   bool Visitor(const std::function<void(my_proto&,
-//                                         absl::string_view)>& callback);
+//                                         iresearch_absl::string_view)>& callback);
 //
 //   // Assuming that the function is not stored or otherwise copied, it can be
 //   // replaced by an `absl::FunctionRef`:
-//   bool Visitor(absl::FunctionRef<void(my_proto&, absl::string_view)>
+//   bool Visitor(iresearch_absl::FunctionRef<void(my_proto&, iresearch_absl::string_view)>
 //                  callback);
 //
 // Note: the assignment operator within an `absl::FunctionRef` is intentionally
@@ -90,7 +90,7 @@ class FunctionRef<R(Args...)> {
   // Used to disable constructors for objects that are not compatible with the
   // signature of this FunctionRef.
   template <typename F,
-            typename FR = absl::base_internal::invoke_result_t<F, Args&&...>>
+            typename FR = iresearch_absl::base_internal::invoke_result_t<F, Args&&...>>
   using EnableIfCompatible =
       typename std::enable_if<std::is_void<R>::value ||
                               std::is_convertible<FR, R>::value>::type;
@@ -99,8 +99,8 @@ class FunctionRef<R(Args...)> {
   // Constructs a FunctionRef from any invokable type.
   template <typename F, typename = EnableIfCompatible<const F&>>
   FunctionRef(const F& f)  // NOLINT(runtime/explicit)
-      : invoker_(&absl::functional_internal::InvokeObject<F, R, Args...>) {
-    absl::functional_internal::AssertNonNull(f);
+      : invoker_(&iresearch_absl::functional_internal::InvokeObject<F, R, Args...>) {
+    iresearch_absl::functional_internal::AssertNonNull(f);
     ptr_.obj = &f;
   }
 
@@ -112,9 +112,9 @@ class FunctionRef<R(Args...)> {
   // functions can decay to function pointers implicitly.
   template <
       typename F, typename = EnableIfCompatible<F*>,
-      absl::functional_internal::EnableIf<absl::is_function<F>::value> = 0>
+      iresearch_absl::functional_internal::EnableIf<iresearch_absl::is_function<F>::value> = 0>
   FunctionRef(F* f)  // NOLINT(runtime/explicit)
-      : invoker_(&absl::functional_internal::InvokeFunction<F*, R, Args...>) {
+      : invoker_(&iresearch_absl::functional_internal::InvokeFunction<F*, R, Args...>) {
     assert(f != nullptr);
     ptr_.fun = reinterpret_cast<decltype(ptr_.fun)>(f);
   }
@@ -129,11 +129,11 @@ class FunctionRef<R(Args...)> {
   }
 
  private:
-  absl::functional_internal::VoidPtr ptr_;
-  absl::functional_internal::Invoker<R, Args...> invoker_;
+  iresearch_absl::functional_internal::VoidPtr ptr_;
+  iresearch_absl::functional_internal::Invoker<R, Args...> invoker_;
 };
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_FUNCTIONAL_FUNCTION_REF_H_
+#endif  // IRESEARCH_ABSL_FUNCTIONAL_FUNCTION_REF_H_

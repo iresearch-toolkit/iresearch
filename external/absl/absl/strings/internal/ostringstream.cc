@@ -14,8 +14,8 @@
 
 #include "absl/strings/internal/ostringstream.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 OStringStream::Buf::int_type OStringStream::overflow(int c) {
@@ -32,5 +32,5 @@ std::streamsize OStringStream::xsputn(const char* s, std::streamsize n) {
 }
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

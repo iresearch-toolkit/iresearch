@@ -74,7 +74,7 @@ struct value_ref_eq {
 ///        rehash may still happen even if enough space was allocated
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Eq>
-using flat_hash_set = absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
+using flat_hash_set = iresearch_absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
 
 }
 

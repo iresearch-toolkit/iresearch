@@ -59,7 +59,7 @@ using doc_id_map_t = std::vector<irs::doc_id_t>;
 // document mapping function
 using doc_map_f = std::function<irs::doc_id_t(irs::doc_id_t)>;
 
-using field_meta_map_t = absl::flat_hash_map<irs::string_ref, const irs::field_meta*>;
+using field_meta_map_t = iresearch_absl::flat_hash_map<irs::string_ref, const irs::field_meta*>;
 
 class noop_directory : public irs::directory {
  public:

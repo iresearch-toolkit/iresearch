@@ -224,7 +224,7 @@ class parametric_states {
     bool operator()(const parametric_state& state) const noexcept {
       size_t seed = parametric_state_hash::seed();
       for (auto& pos: state) {
-        const size_t hash = absl::hash_internal::CityHashState::hash(
+        const size_t hash = iresearch_absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
@@ -237,7 +237,7 @@ class parametric_states {
     static const void* SEED;
   };
 
-  absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  iresearch_absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
 

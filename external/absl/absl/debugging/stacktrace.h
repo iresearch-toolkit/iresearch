@@ -28,13 +28,13 @@
 // frames consisting of function addresses rather than human-readable function
 // names. (See symbolize.h for information on symbolizing these values.)
 
-#ifndef ABSL_DEBUGGING_STACKTRACE_H_
-#define ABSL_DEBUGGING_STACKTRACE_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_STACKTRACE_H_
+#define IRESEARCH_ABSL_DEBUGGING_STACKTRACE_H_
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // GetStackFrames()
 //
@@ -51,7 +51,7 @@ ABSL_NAMESPACE_BEGIN
 //      bar() {
 //        void* result[10];
 //        int sizes[10];
-//        int depth = absl::GetStackFrames(result, sizes, 10, 1);
+//        int depth = iresearch_absl::GetStackFrames(result, sizes, 10, 1);
 //      }
 //
 // The current stack frame would consist of three function calls: `bar()`,
@@ -120,7 +120,7 @@ extern int GetStackFramesWithContext(void** result, int* sizes, int max_depth,
 //      foo() { bar(); }
 //      bar() {
 //        void* result[10];
-//        int depth = absl::GetStackTrace(result, 10, 1);
+//        int depth = iresearch_absl::GetStackTrace(result, 10, 1);
 //      }
 //
 // This produces:
@@ -172,7 +172,7 @@ extern int GetStackTraceWithContext(void** result, int max_depth,
 // WARNING
 // *****************************************************************************
 //
-// absl::SetStackUnwinder is not suitable for general purpose use.  It is
+// iresearch_absl::SetStackUnwinder is not suitable for general purpose use.  It is
 // provided for custom runtimes.
 // Some things to watch out for when calling `absl::SetStackUnwinder()`:
 //
@@ -225,7 +225,7 @@ namespace debugging_internal {
 // working.
 extern bool StackTraceWorksForTest();
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_DEBUGGING_STACKTRACE_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_STACKTRACE_H_

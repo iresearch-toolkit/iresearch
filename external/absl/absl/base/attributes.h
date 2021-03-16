@@ -33,12 +33,12 @@
 // `__has_attribute()` first. If the check fails, we check if we are on GCC and
 // assume the attribute exists on GCC (which is verified on GCC 4.7).
 
-#ifndef ABSL_BASE_ATTRIBUTES_H_
-#define ABSL_BASE_ATTRIBUTES_H_
+#ifndef IRESEARCH_ABSL_BASE_ATTRIBUTES_H_
+#define IRESEARCH_ABSL_BASE_ATTRIBUTES_H_
 
 #include "absl/base/config.h"
 
-// ABSL_HAVE_ATTRIBUTE
+// IRESEARCH_ABSL_HAVE_ATTRIBUTE
 //
 // A function-like feature checking macro that is a wrapper around
 // `__has_attribute`, which is defined by GCC 5+ and Clang and evaluates to a
@@ -49,12 +49,12 @@
 // GCC: https://gcc.gnu.org/gcc-5/changes.html
 // Clang: https://clang.llvm.org/docs/LanguageExtensions.html
 #ifdef __has_attribute
-#define ABSL_HAVE_ATTRIBUTE(x) __has_attribute(x)
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE(x) __has_attribute(x)
 #else
-#define ABSL_HAVE_ATTRIBUTE(x) 0
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE(x) 0
 #endif
 
-// ABSL_HAVE_CPP_ATTRIBUTE
+// IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE
 //
 // A function-like feature checking macro that accepts C++11 style attributes.
 // It's a wrapper around `__has_cpp_attribute`, defined by ISO C++ SD-6
@@ -63,9 +63,9 @@
 #if defined(__cplusplus) && defined(__has_cpp_attribute)
 // NOTE: requiring __cplusplus above should not be necessary, but
 // works around https://bugs.llvm.org/show_bug.cgi?id=23435.
-#define ABSL_HAVE_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
+#define IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
 #else
-#define ABSL_HAVE_CPP_ATTRIBUTE(x) 0
+#define IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(x) 0
 #endif
 
 // -----------------------------------------------------------------------------
@@ -75,8 +75,8 @@
 // GCC: https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 // Clang: https://clang.llvm.org/docs/AttributeReference.html
 
-// ABSL_PRINTF_ATTRIBUTE
-// ABSL_SCANF_ATTRIBUTE
+// IRESEARCH_ABSL_PRINTF_ATTRIBUTE
+// IRESEARCH_ABSL_SCANF_ATTRIBUTE
 //
 // Tells the compiler to perform `printf` format string checking if the
 // compiler supports it; see the 'format' attribute in
@@ -85,52 +85,52 @@
 // Note: As the GCC manual states, "[s]ince non-static C++ methods
 // have an implicit 'this' argument, the arguments of such methods
 // should be counted from two, not one."
-#if ABSL_HAVE_ATTRIBUTE(format) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check) \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(format) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check) \
   __attribute__((__format__(__printf__, string_index, first_to_check)))
-#define ABSL_SCANF_ATTRIBUTE(string_index, first_to_check) \
+#define IRESEARCH_ABSL_SCANF_ATTRIBUTE(string_index, first_to_check) \
   __attribute__((__format__(__scanf__, string_index, first_to_check)))
 #else
-#define ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check)
-#define ABSL_SCANF_ATTRIBUTE(string_index, first_to_check)
+#define IRESEARCH_ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check)
+#define IRESEARCH_ABSL_SCANF_ATTRIBUTE(string_index, first_to_check)
 #endif
 
-// ABSL_ATTRIBUTE_ALWAYS_INLINE
-// ABSL_ATTRIBUTE_NOINLINE
+// IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE
+// IRESEARCH_ABSL_ATTRIBUTE_NOINLINE
 //
 // Forces functions to either inline or not inline. Introduced in gcc 3.1.
-#if ABSL_HAVE_ATTRIBUTE(always_inline) || \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(always_inline) || \
     (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_ALWAYS_INLINE __attribute__((always_inline))
-#define ABSL_HAVE_ATTRIBUTE_ALWAYS_INLINE 1
+#define IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE __attribute__((always_inline))
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_ALWAYS_INLINE 1
 #else
-#define ABSL_ATTRIBUTE_ALWAYS_INLINE
+#define IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE
 #endif
 
-#if ABSL_HAVE_ATTRIBUTE(noinline) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_NOINLINE __attribute__((noinline))
-#define ABSL_HAVE_ATTRIBUTE_NOINLINE 1
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(noinline) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_NOINLINE __attribute__((noinline))
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_NOINLINE 1
 #else
-#define ABSL_ATTRIBUTE_NOINLINE
+#define IRESEARCH_ABSL_ATTRIBUTE_NOINLINE
 #endif
 
-// ABSL_ATTRIBUTE_NO_TAIL_CALL
+// IRESEARCH_ABSL_ATTRIBUTE_NO_TAIL_CALL
 //
 // Prevents the compiler from optimizing away stack frames for functions which
 // end in a call to another function.
-#if ABSL_HAVE_ATTRIBUTE(disable_tail_calls)
-#define ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 1
-#define ABSL_ATTRIBUTE_NO_TAIL_CALL __attribute__((disable_tail_calls))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(disable_tail_calls)
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 1
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_TAIL_CALL __attribute__((disable_tail_calls))
 #elif defined(__GNUC__) && !defined(__clang__)
-#define ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 1
-#define ABSL_ATTRIBUTE_NO_TAIL_CALL \
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 1
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_TAIL_CALL \
   __attribute__((optimize("no-optimize-sibling-calls")))
 #else
-#define ABSL_ATTRIBUTE_NO_TAIL_CALL
-#define ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 0
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_TAIL_CALL
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_NO_TAIL_CALL 0
 #endif
 
-// ABSL_ATTRIBUTE_WEAK
+// IRESEARCH_ABSL_ATTRIBUTE_WEAK
 //
 // Tags a function as weak for the purposes of compilation and linking.
 // Weak attributes currently do not work properly in LLVM's Windows backend,
@@ -138,18 +138,18 @@
 // for further information.
 // The MinGW compiler doesn't complain about the weak attribute until the link
 // step, presumably because Windows doesn't use ELF binaries.
-#if (ABSL_HAVE_ATTRIBUTE(weak) ||                   \
+#if (IRESEARCH_ABSL_HAVE_ATTRIBUTE(weak) ||                   \
      (defined(__GNUC__) && !defined(__clang__))) && \
     !(defined(__llvm__) && defined(_WIN32)) && !defined(__MINGW32__)
-#undef ABSL_ATTRIBUTE_WEAK
-#define ABSL_ATTRIBUTE_WEAK __attribute__((weak))
-#define ABSL_HAVE_ATTRIBUTE_WEAK 1
+#undef IRESEARCH_ABSL_ATTRIBUTE_WEAK
+#define IRESEARCH_ABSL_ATTRIBUTE_WEAK __attribute__((weak))
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_WEAK 1
 #else
-#define ABSL_ATTRIBUTE_WEAK
-#define ABSL_HAVE_ATTRIBUTE_WEAK 0
+#define IRESEARCH_ABSL_ATTRIBUTE_WEAK
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_WEAK 0
 #endif
 
-// ABSL_ATTRIBUTE_NONNULL
+// IRESEARCH_ABSL_ATTRIBUTE_NONNULL
 //
 // Tells the compiler either (a) that a particular function parameter
 // should be a non-null pointer, or (b) that all pointer arguments should
@@ -169,42 +169,42 @@
 // Example:
 //
 //   /* arg_a cannot be null, but arg_b can */
-//   void Function(void* arg_a, void* arg_b) ABSL_ATTRIBUTE_NONNULL(1);
+//   void Function(void* arg_a, void* arg_b) IRESEARCH_ABSL_ATTRIBUTE_NONNULL(1);
 //
 //   class C {
 //     /* arg_a cannot be null, but arg_b can */
-//     void Method(void* arg_a, void* arg_b) ABSL_ATTRIBUTE_NONNULL(2);
+//     void Method(void* arg_a, void* arg_b) IRESEARCH_ABSL_ATTRIBUTE_NONNULL(2);
 //
 //     /* arg_a cannot be null, but arg_b can */
 //     static void StaticMethod(void* arg_a, void* arg_b)
-//     ABSL_ATTRIBUTE_NONNULL(1);
+//     IRESEARCH_ABSL_ATTRIBUTE_NONNULL(1);
 //   };
 //
 // If no arguments are provided, then all pointer arguments should be non-null.
 //
 //  /* No pointer arguments may be null. */
-//  void Function(void* arg_a, void* arg_b, int arg_c) ABSL_ATTRIBUTE_NONNULL();
+//  void Function(void* arg_a, void* arg_b, int arg_c) IRESEARCH_ABSL_ATTRIBUTE_NONNULL();
 //
 // NOTE: The GCC nonnull attribute actually accepts a list of arguments, but
-// ABSL_ATTRIBUTE_NONNULL does not.
-#if ABSL_HAVE_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+// IRESEARCH_ABSL_ATTRIBUTE_NONNULL does not.
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
 #else
-#define ABSL_ATTRIBUTE_NONNULL(...)
+#define IRESEARCH_ABSL_ATTRIBUTE_NONNULL(...)
 #endif
 
-// ABSL_ATTRIBUTE_NORETURN
+// IRESEARCH_ABSL_ATTRIBUTE_NORETURN
 //
 // Tells the compiler that a given function never returns.
-#if ABSL_HAVE_ATTRIBUTE(noreturn) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_NORETURN __attribute__((noreturn))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(noreturn) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_NORETURN __attribute__((noreturn))
 #elif defined(_MSC_VER)
-#define ABSL_ATTRIBUTE_NORETURN __declspec(noreturn)
+#define IRESEARCH_ABSL_ATTRIBUTE_NORETURN __declspec(noreturn)
 #else
-#define ABSL_ATTRIBUTE_NORETURN
+#define IRESEARCH_ABSL_ATTRIBUTE_NORETURN
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS
 //
 // Tells the AddressSanitizer (or other memory testing tools) to ignore a given
 // function. Useful for cases when a function reads random locations on stack,
@@ -212,98 +212,98 @@
 // out of bounds or does other scary things with memory.
 // NOTE: GCC supports AddressSanitizer(asan) since 4.8.
 // https://gcc.gnu.org/gcc-4.8/changes.html
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize_address)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize_address)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY
 //
 // Tells the MemorySanitizer to relax the handling of a given function. All "Use
 // of uninitialized value" warnings from such functions will be suppressed, and
 // all values loaded from memory will be considered fully initialized.  This
-// attribute is similar to the ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS attribute
+// attribute is similar to the IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_ADDRESS attribute
 // above, but deals with initialized-ness rather than addressability issues.
 // NOTE: MemorySanitizer(msan) is supported by Clang but not GCC.
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize_memory)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY __attribute__((no_sanitize_memory))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize_memory)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY __attribute__((no_sanitize_memory))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_MEMORY
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_THREAD
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_THREAD
 //
 // Tells the ThreadSanitizer to not instrument a given function.
 // NOTE: GCC supports ThreadSanitizer(tsan) since 4.8.
 // https://gcc.gnu.org/gcc-4.8/changes.html
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize_thread)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_THREAD __attribute__((no_sanitize_thread))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize_thread)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_THREAD __attribute__((no_sanitize_thread))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_THREAD
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_THREAD
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED
 //
 // Tells the UndefinedSanitizer to ignore a given function. Useful for cases
 // where certain behavior (eg. division by zero) is being used intentionally.
 // NOTE: GCC supports UndefinedBehaviorSanitizer(ubsan) since 4.9.
 // https://gcc.gnu.org/gcc-4.9/changes.html
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize_undefined)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize_undefined)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED \
   __attribute__((no_sanitize_undefined))
-#elif ABSL_HAVE_ATTRIBUTE(no_sanitize)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED \
+#elif IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED \
   __attribute__((no_sanitize("undefined")))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_UNDEFINED
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_CFI
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_CFI
 //
 // Tells the ControlFlowIntegrity sanitizer to not instrument a given function.
 // See https://clang.llvm.org/docs/ControlFlowIntegrity.html for details.
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_CFI __attribute__((no_sanitize("cfi")))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_CFI __attribute__((no_sanitize("cfi")))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_CFI
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_CFI
 #endif
 
-// ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK
+// IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK
 //
 // Tells the SafeStack to not instrument a given function.
 // See https://clang.llvm.org/docs/SafeStack.html for details.
-#if ABSL_HAVE_ATTRIBUTE(no_sanitize)
-#define ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(no_sanitize)
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK \
   __attribute__((no_sanitize("safe-stack")))
 #else
-#define ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK
+#define IRESEARCH_ABSL_ATTRIBUTE_NO_SANITIZE_SAFESTACK
 #endif
 
-// ABSL_ATTRIBUTE_RETURNS_NONNULL
+// IRESEARCH_ABSL_ATTRIBUTE_RETURNS_NONNULL
 //
 // Tells the compiler that a particular function never returns a null pointer.
-#if ABSL_HAVE_ATTRIBUTE(returns_nonnull) || \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(returns_nonnull) || \
     (defined(__GNUC__) && \
      (__GNUC__ > 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9)) && \
      !defined(__clang__))
-#define ABSL_ATTRIBUTE_RETURNS_NONNULL __attribute__((returns_nonnull))
+#define IRESEARCH_ABSL_ATTRIBUTE_RETURNS_NONNULL __attribute__((returns_nonnull))
 #else
-#define ABSL_ATTRIBUTE_RETURNS_NONNULL
+#define IRESEARCH_ABSL_ATTRIBUTE_RETURNS_NONNULL
 #endif
 
-// ABSL_HAVE_ATTRIBUTE_SECTION
+// IRESEARCH_ABSL_HAVE_ATTRIBUTE_SECTION
 //
 // Indicates whether labeled sections are supported. Weak symbol support is
 // a prerequisite. Labeled sections are not supported on Darwin/iOS.
-#ifdef ABSL_HAVE_ATTRIBUTE_SECTION
-#error ABSL_HAVE_ATTRIBUTE_SECTION cannot be directly set
-#elif (ABSL_HAVE_ATTRIBUTE(section) ||                \
+#ifdef IRESEARCH_ABSL_HAVE_ATTRIBUTE_SECTION
+#error IRESEARCH_ABSL_HAVE_ATTRIBUTE_SECTION cannot be directly set
+#elif (IRESEARCH_ABSL_HAVE_ATTRIBUTE(section) ||                \
        (defined(__GNUC__) && !defined(__clang__))) && \
-    !defined(__APPLE__) && ABSL_HAVE_ATTRIBUTE_WEAK
-#define ABSL_HAVE_ATTRIBUTE_SECTION 1
+    !defined(__APPLE__) && IRESEARCH_ABSL_HAVE_ATTRIBUTE_WEAK
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_SECTION 1
 
-// ABSL_ATTRIBUTE_SECTION
+// IRESEARCH_ABSL_ATTRIBUTE_SECTION
 //
 // Tells the compiler/linker to put a given function into a section and define
 // `__start_ ## name` and `__stop_ ## name` symbols to bracket the section.
@@ -311,89 +311,89 @@
 // `ABSL_ATTRIBUTE_SECTION` must not be inlined, or it will be placed into
 // whatever section its caller is placed into.
 //
-#ifndef ABSL_ATTRIBUTE_SECTION
-#define ABSL_ATTRIBUTE_SECTION(name) \
+#ifndef IRESEARCH_ABSL_ATTRIBUTE_SECTION
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION(name) \
   __attribute__((section(#name))) __attribute__((noinline))
 #endif
 
 
-// ABSL_ATTRIBUTE_SECTION_VARIABLE
+// IRESEARCH_ABSL_ATTRIBUTE_SECTION_VARIABLE
 //
 // Tells the compiler/linker to put a given variable into a section and define
 // `__start_ ## name` and `__stop_ ## name` symbols to bracket the section.
 // This functionality is supported by GNU linker.
-#ifndef ABSL_ATTRIBUTE_SECTION_VARIABLE
-#define ABSL_ATTRIBUTE_SECTION_VARIABLE(name) __attribute__((section(#name)))
+#ifndef IRESEARCH_ABSL_ATTRIBUTE_SECTION_VARIABLE
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_VARIABLE(name) __attribute__((section(#name)))
 #endif
 
-// ABSL_DECLARE_ATTRIBUTE_SECTION_VARS
+// IRESEARCH_ABSL_DECLARE_ATTRIBUTE_SECTION_VARS
 //
 // A weak section declaration to be used as a global declaration
-// for ABSL_ATTRIBUTE_SECTION_START|STOP(name) to compile and link
-// even without functions with ABSL_ATTRIBUTE_SECTION(name).
-// ABSL_DEFINE_ATTRIBUTE_SECTION should be in the exactly one file; it's
+// for IRESEARCH_ABSL_ATTRIBUTE_SECTION_START|STOP(name) to compile and link
+// even without functions with IRESEARCH_ABSL_ATTRIBUTE_SECTION(name).
+// IRESEARCH_ABSL_DEFINE_ATTRIBUTE_SECTION should be in the exactly one file; it's
 // a no-op on ELF but not on Mach-O.
 //
-#ifndef ABSL_DECLARE_ATTRIBUTE_SECTION_VARS
-#define ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name) \
-  extern char __start_##name[] ABSL_ATTRIBUTE_WEAK;    \
-  extern char __stop_##name[] ABSL_ATTRIBUTE_WEAK
+#ifndef IRESEARCH_ABSL_DECLARE_ATTRIBUTE_SECTION_VARS
+#define IRESEARCH_ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name) \
+  extern char __start_##name[] IRESEARCH_ABSL_ATTRIBUTE_WEAK;    \
+  extern char __stop_##name[] IRESEARCH_ABSL_ATTRIBUTE_WEAK
 #endif
-#ifndef ABSL_DEFINE_ATTRIBUTE_SECTION_VARS
-#define ABSL_INIT_ATTRIBUTE_SECTION_VARS(name)
-#define ABSL_DEFINE_ATTRIBUTE_SECTION_VARS(name)
+#ifndef IRESEARCH_ABSL_DEFINE_ATTRIBUTE_SECTION_VARS
+#define IRESEARCH_ABSL_INIT_ATTRIBUTE_SECTION_VARS(name)
+#define IRESEARCH_ABSL_DEFINE_ATTRIBUTE_SECTION_VARS(name)
 #endif
 
-// ABSL_ATTRIBUTE_SECTION_START
+// IRESEARCH_ABSL_ATTRIBUTE_SECTION_START
 //
 // Returns `void*` pointers to start/end of a section of code with
-// functions having ABSL_ATTRIBUTE_SECTION(name).
+// functions having IRESEARCH_ABSL_ATTRIBUTE_SECTION(name).
 // Returns 0 if no such functions exist.
-// One must ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name) for this to compile and
+// One must IRESEARCH_ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name) for this to compile and
 // link.
 //
-#define ABSL_ATTRIBUTE_SECTION_START(name) \
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_START(name) \
   (reinterpret_cast<void *>(__start_##name))
-#define ABSL_ATTRIBUTE_SECTION_STOP(name) \
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_STOP(name) \
   (reinterpret_cast<void *>(__stop_##name))
 
 #else  // !ABSL_HAVE_ATTRIBUTE_SECTION
 
-#define ABSL_HAVE_ATTRIBUTE_SECTION 0
+#define IRESEARCH_ABSL_HAVE_ATTRIBUTE_SECTION 0
 
 // provide dummy definitions
-#define ABSL_ATTRIBUTE_SECTION(name)
-#define ABSL_ATTRIBUTE_SECTION_VARIABLE(name)
-#define ABSL_INIT_ATTRIBUTE_SECTION_VARS(name)
-#define ABSL_DEFINE_ATTRIBUTE_SECTION_VARS(name)
-#define ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name)
-#define ABSL_ATTRIBUTE_SECTION_START(name) (reinterpret_cast<void *>(0))
-#define ABSL_ATTRIBUTE_SECTION_STOP(name) (reinterpret_cast<void *>(0))
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION(name)
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_VARIABLE(name)
+#define IRESEARCH_ABSL_INIT_ATTRIBUTE_SECTION_VARS(name)
+#define IRESEARCH_ABSL_DEFINE_ATTRIBUTE_SECTION_VARS(name)
+#define IRESEARCH_ABSL_DECLARE_ATTRIBUTE_SECTION_VARS(name)
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_START(name) (reinterpret_cast<void *>(0))
+#define IRESEARCH_ABSL_ATTRIBUTE_SECTION_STOP(name) (reinterpret_cast<void *>(0))
 
-#endif  // ABSL_ATTRIBUTE_SECTION
+#endif  // IRESEARCH_ABSL_ATTRIBUTE_SECTION
 
-// ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
+// IRESEARCH_ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
 //
 // Support for aligning the stack on 32-bit x86.
-#if ABSL_HAVE_ATTRIBUTE(force_align_arg_pointer) || \
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(force_align_arg_pointer) || \
     (defined(__GNUC__) && !defined(__clang__))
 #if defined(__i386__)
-#define ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC \
+#define IRESEARCH_ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC \
   __attribute__((force_align_arg_pointer))
-#define ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
+#define IRESEARCH_ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
 #elif defined(__x86_64__)
-#define ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (1)
-#define ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
+#define IRESEARCH_ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (1)
+#define IRESEARCH_ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
 #else  // !__i386__ && !__x86_64
-#define ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
-#define ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
+#define IRESEARCH_ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
+#define IRESEARCH_ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
 #endif  // __i386__
 #else
-#define ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
-#define ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
+#define IRESEARCH_ABSL_ATTRIBUTE_STACK_ALIGN_FOR_OLD_LIBC
+#define IRESEARCH_ABSL_REQUIRE_STACK_ALIGN_TRAMPOLINE (0)
 #endif
 
-// ABSL_MUST_USE_RESULT
+// IRESEARCH_ABSL_MUST_USE_RESULT
 //
 // Tells the compiler to warn about unused results.
 //
@@ -401,13 +401,13 @@
 // declaration or definition. The compiler will warn if the return value from
 // such a function is unused:
 //
-//   ABSL_MUST_USE_RESULT Sprocket* AllocateSprocket();
+//   IRESEARCH_ABSL_MUST_USE_RESULT Sprocket* AllocateSprocket();
 //   AllocateSprocket();  // Triggers a warning.
 //
 // When annotating a class, it is equivalent to annotating every function which
 // returns an instance.
 //
-//   class ABSL_MUST_USE_RESULT Sprocket {};
+//   class IRESEARCH_ABSL_MUST_USE_RESULT Sprocket {};
 //   Sprocket();  // Triggers a warning.
 //
 //   Sprocket MakeSprocket();
@@ -418,20 +418,20 @@
 //   Sprocket* SprocketPointer();
 //   SprocketPointer();  // Does *not* trigger a warning.
 //
-// ABSL_MUST_USE_RESULT allows using cast-to-void to suppress the unused result
+// IRESEARCH_ABSL_MUST_USE_RESULT allows using cast-to-void to suppress the unused result
 // warning. For that, warn_unused_result is used only for clang but not for gcc.
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66425
 //
 // Note: past advice was to place the macro after the argument list.
-#if ABSL_HAVE_ATTRIBUTE(nodiscard)
-#define ABSL_MUST_USE_RESULT [[nodiscard]]
-#elif defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)
-#define ABSL_MUST_USE_RESULT __attribute__((warn_unused_result))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(nodiscard)
+#define IRESEARCH_ABSL_MUST_USE_RESULT [[nodiscard]]
+#elif defined(__clang__) && IRESEARCH_ABSL_HAVE_ATTRIBUTE(warn_unused_result)
+#define IRESEARCH_ABSL_MUST_USE_RESULT __attribute__((warn_unused_result))
 #else
-#define ABSL_MUST_USE_RESULT
+#define IRESEARCH_ABSL_MUST_USE_RESULT
 #endif
 
-// ABSL_ATTRIBUTE_HOT, ABSL_ATTRIBUTE_COLD
+// IRESEARCH_ABSL_ATTRIBUTE_HOT, IRESEARCH_ABSL_ATTRIBUTE_COLD
 //
 // Tells GCC that a function is hot or cold. GCC can use this information to
 // improve static analysis, i.e. a conditional branch to a cold function
@@ -440,22 +440,22 @@
 //
 // Example:
 //
-//   int foo() ABSL_ATTRIBUTE_HOT;
-#if ABSL_HAVE_ATTRIBUTE(hot) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_HOT __attribute__((hot))
+//   int foo() IRESEARCH_ABSL_ATTRIBUTE_HOT;
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(hot) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_HOT __attribute__((hot))
 #else
-#define ABSL_ATTRIBUTE_HOT
+#define IRESEARCH_ABSL_ATTRIBUTE_HOT
 #endif
 
-#if ABSL_HAVE_ATTRIBUTE(cold) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_COLD __attribute__((cold))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(cold) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_COLD __attribute__((cold))
 #else
-#define ABSL_ATTRIBUTE_COLD
+#define IRESEARCH_ABSL_ATTRIBUTE_COLD
 #endif
 
-// ABSL_XRAY_ALWAYS_INSTRUMENT, ABSL_XRAY_NEVER_INSTRUMENT, ABSL_XRAY_LOG_ARGS
+// IRESEARCH_ABSL_XRAY_ALWAYS_INSTRUMENT, IRESEARCH_ABSL_XRAY_NEVER_INSTRUMENT, IRESEARCH_ABSL_XRAY_LOG_ARGS
 //
-// We define the ABSL_XRAY_ALWAYS_INSTRUMENT and ABSL_XRAY_NEVER_INSTRUMENT
+// We define the IRESEARCH_ABSL_XRAY_ALWAYS_INSTRUMENT and IRESEARCH_ABSL_XRAY_NEVER_INSTRUMENT
 // macro used as an attribute to mark functions that must always or never be
 // instrumented by XRay. Currently, this is only supported in Clang/LLVM.
 //
@@ -483,29 +483,29 @@
 // attributes in source take precedence over these special-case lists.
 //
 // To disable the XRay attributes at build-time, users may define
-// ABSL_NO_XRAY_ATTRIBUTES. Do NOT define ABSL_NO_XRAY_ATTRIBUTES on specific
+// IRESEARCH_ABSL_NO_XRAY_ATTRIBUTES. Do NOT define IRESEARCH_ABSL_NO_XRAY_ATTRIBUTES on specific
 // packages/targets, as this may lead to conflicting definitions of functions at
 // link-time.
 //
 // XRay isn't currently supported on Android:
 // https://github.com/android/ndk/issues/368
-#if ABSL_HAVE_CPP_ATTRIBUTE(clang::xray_always_instrument) && \
-    !defined(ABSL_NO_XRAY_ATTRIBUTES) && !defined(__ANDROID__)
-#define ABSL_XRAY_ALWAYS_INSTRUMENT [[clang::xray_always_instrument]]
-#define ABSL_XRAY_NEVER_INSTRUMENT [[clang::xray_never_instrument]]
-#if ABSL_HAVE_CPP_ATTRIBUTE(clang::xray_log_args)
-#define ABSL_XRAY_LOG_ARGS(N) \
+#if IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(clang::xray_always_instrument) && \
+    !defined(IRESEARCH_ABSL_NO_XRAY_ATTRIBUTES) && !defined(__ANDROID__)
+#define IRESEARCH_ABSL_XRAY_ALWAYS_INSTRUMENT [[clang::xray_always_instrument]]
+#define IRESEARCH_ABSL_XRAY_NEVER_INSTRUMENT [[clang::xray_never_instrument]]
+#if IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(clang::xray_log_args)
+#define IRESEARCH_ABSL_XRAY_LOG_ARGS(N) \
     [[clang::xray_always_instrument, clang::xray_log_args(N)]]
 #else
-#define ABSL_XRAY_LOG_ARGS(N) [[clang::xray_always_instrument]]
+#define IRESEARCH_ABSL_XRAY_LOG_ARGS(N) [[clang::xray_always_instrument]]
 #endif
 #else
-#define ABSL_XRAY_ALWAYS_INSTRUMENT
-#define ABSL_XRAY_NEVER_INSTRUMENT
-#define ABSL_XRAY_LOG_ARGS(N)
+#define IRESEARCH_ABSL_XRAY_ALWAYS_INSTRUMENT
+#define IRESEARCH_ABSL_XRAY_NEVER_INSTRUMENT
+#define IRESEARCH_ABSL_XRAY_LOG_ARGS(N)
 #endif
 
-// ABSL_ATTRIBUTE_REINITIALIZES
+// IRESEARCH_ABSL_ATTRIBUTE_REINITIALIZES
 //
 // Indicates that a member function reinitializes the entire object to a known
 // state, independent of the previous state of the object.
@@ -513,37 +513,37 @@
 // The clang-tidy check bugprone-use-after-move allows member functions marked
 // with this attribute to be called on objects that have been moved from;
 // without the attribute, this would result in a use-after-move warning.
-#if ABSL_HAVE_CPP_ATTRIBUTE(clang::reinitializes)
-#define ABSL_ATTRIBUTE_REINITIALIZES [[clang::reinitializes]]
+#if IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(clang::reinitializes)
+#define IRESEARCH_ABSL_ATTRIBUTE_REINITIALIZES [[clang::reinitializes]]
 #else
-#define ABSL_ATTRIBUTE_REINITIALIZES
+#define IRESEARCH_ABSL_ATTRIBUTE_REINITIALIZES
 #endif
 
 // -----------------------------------------------------------------------------
 // Variable Attributes
 // -----------------------------------------------------------------------------
 
-// ABSL_ATTRIBUTE_UNUSED
+// IRESEARCH_ABSL_ATTRIBUTE_UNUSED
 //
 // Prevents the compiler from complaining about variables that appear unused.
-#if ABSL_HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
-#undef ABSL_ATTRIBUTE_UNUSED
-#define ABSL_ATTRIBUTE_UNUSED __attribute__((__unused__))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
+#undef IRESEARCH_ABSL_ATTRIBUTE_UNUSED
+#define IRESEARCH_ABSL_ATTRIBUTE_UNUSED __attribute__((__unused__))
 #else
-#define ABSL_ATTRIBUTE_UNUSED
+#define IRESEARCH_ABSL_ATTRIBUTE_UNUSED
 #endif
 
-// ABSL_ATTRIBUTE_INITIAL_EXEC
+// IRESEARCH_ABSL_ATTRIBUTE_INITIAL_EXEC
 //
 // Tells the compiler to use "initial-exec" mode for a thread-local variable.
 // See http://people.redhat.com/drepper/tls.pdf for the gory details.
-#if ABSL_HAVE_ATTRIBUTE(tls_model) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_INITIAL_EXEC __attribute__((tls_model("initial-exec")))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(tls_model) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_INITIAL_EXEC __attribute__((tls_model("initial-exec")))
 #else
-#define ABSL_ATTRIBUTE_INITIAL_EXEC
+#define IRESEARCH_ABSL_ATTRIBUTE_INITIAL_EXEC
 #endif
 
-// ABSL_ATTRIBUTE_PACKED
+// IRESEARCH_ABSL_ATTRIBUTE_PACKED
 //
 // Instructs the compiler not to use natural alignment for a tagged data
 // structure, but instead to reduce its alignment to 1. This attribute can
@@ -554,31 +554,31 @@
 // purpose is to control the offsets of the members in the structure. Instead,
 // apply this attribute only to structure members that need it.
 //
-// When applying ABSL_ATTRIBUTE_PACKED only to specific structure members the
+// When applying IRESEARCH_ABSL_ATTRIBUTE_PACKED only to specific structure members the
 // natural alignment of structure members not annotated is preserved. Aligned
 // member accesses are faster than non-aligned member accesses even if the
 // targeted microprocessor supports non-aligned accesses.
-#if ABSL_HAVE_ATTRIBUTE(packed) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_PACKED __attribute__((__packed__))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(packed) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_PACKED __attribute__((__packed__))
 #else
-#define ABSL_ATTRIBUTE_PACKED
+#define IRESEARCH_ABSL_ATTRIBUTE_PACKED
 #endif
 
-// ABSL_ATTRIBUTE_FUNC_ALIGN
+// IRESEARCH_ABSL_ATTRIBUTE_FUNC_ALIGN
 //
 // Tells the compiler to align the function start at least to certain
 // alignment boundary
-#if ABSL_HAVE_ATTRIBUTE(aligned) || (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_ATTRIBUTE_FUNC_ALIGN(bytes) __attribute__((aligned(bytes)))
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(aligned) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ABSL_ATTRIBUTE_FUNC_ALIGN(bytes) __attribute__((aligned(bytes)))
 #else
-#define ABSL_ATTRIBUTE_FUNC_ALIGN(bytes)
+#define IRESEARCH_ABSL_ATTRIBUTE_FUNC_ALIGN(bytes)
 #endif
 
-// ABSL_FALLTHROUGH_INTENDED
+// IRESEARCH_ABSL_FALLTHROUGH_INTENDED
 //
 // Annotates implicit fall-through between switch labels, allowing a case to
 // indicate intentional fallthrough and turn off warnings about any lack of a
-// `break` statement. The ABSL_FALLTHROUGH_INTENDED macro should be followed by
+// `break` statement. The IRESEARCH_ABSL_FALLTHROUGH_INTENDED macro should be followed by
 // a semicolon and can be used in most places where `break` can, provided that
 // no statements exist between it and the next switch label.
 //
@@ -589,7 +589,7 @@
 //    case 41:
 //      if (truth_is_out_there) {
 //        ++x;
-//        ABSL_FALLTHROUGH_INTENDED;  // Use instead of/along with annotations
+//        IRESEARCH_ABSL_FALLTHROUGH_INTENDED;  // Use instead of/along with annotations
 //                                    // in comments
 //      } else {
 //        return x;
@@ -597,36 +597,36 @@
 //    case 42:
 //      ...
 //
-// Notes: when compiled with clang in C++11 mode, the ABSL_FALLTHROUGH_INTENDED
+// Notes: when compiled with clang in C++11 mode, the IRESEARCH_ABSL_FALLTHROUGH_INTENDED
 // macro is expanded to the [[clang::fallthrough]] attribute, which is analysed
 // when  performing switch labels fall-through diagnostic
 // (`-Wimplicit-fallthrough`). See clang documentation on language extensions
 // for details:
 // https://clang.llvm.org/docs/AttributeReference.html#fallthrough-clang-fallthrough
 //
-// When used with unsupported compilers, the ABSL_FALLTHROUGH_INTENDED macro
+// When used with unsupported compilers, the IRESEARCH_ABSL_FALLTHROUGH_INTENDED macro
 // has no effect on diagnostics. In any case this macro has no effect on runtime
 // behavior and performance of code.
-#ifdef ABSL_FALLTHROUGH_INTENDED
+#ifdef IRESEARCH_ABSL_FALLTHROUGH_INTENDED
 #error "ABSL_FALLTHROUGH_INTENDED should not be defined."
 #endif
 
 // TODO(zhangxy): Use c++17 standard [[fallthrough]] macro, when supported.
 #if defined(__clang__) && defined(__has_warning)
 #if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
-#define ABSL_FALLTHROUGH_INTENDED [[clang::fallthrough]]
+#define IRESEARCH_ABSL_FALLTHROUGH_INTENDED [[clang::fallthrough]]
 #endif
 #elif defined(__GNUC__) && __GNUC__ >= 7
-#define ABSL_FALLTHROUGH_INTENDED [[gnu::fallthrough]]
+#define IRESEARCH_ABSL_FALLTHROUGH_INTENDED [[gnu::fallthrough]]
 #endif
 
-#ifndef ABSL_FALLTHROUGH_INTENDED
-#define ABSL_FALLTHROUGH_INTENDED \
+#ifndef IRESEARCH_ABSL_FALLTHROUGH_INTENDED
+#define IRESEARCH_ABSL_FALLTHROUGH_INTENDED \
   do {                            \
   } while (0)
 #endif
 
-// ABSL_DEPRECATED()
+// IRESEARCH_ABSL_DEPRECATED()
 //
 // Marks a deprecated class, struct, enum, function, method and variable
 // declarations. The macro argument is used as a custom diagnostic message (e.g.
@@ -634,28 +634,28 @@
 //
 // Examples:
 //
-//   class ABSL_DEPRECATED("Use Bar instead") Foo {...};
+//   class IRESEARCH_ABSL_DEPRECATED("Use Bar instead") Foo {...};
 //
-//   ABSL_DEPRECATED("Use Baz() instead") void Bar() {...}
+//   IRESEARCH_ABSL_DEPRECATED("Use Baz() instead") void Bar() {...}
 //
 //   template <typename T>
-//   ABSL_DEPRECATED("Use DoThat() instead")
+//   IRESEARCH_ABSL_DEPRECATED("Use DoThat() instead")
 //   void DoThis();
 //
 // Every usage of a deprecated entity will trigger a warning when compiled with
 // clang's `-Wdeprecated-declarations` option. This option is turned off by
 // default, but the warnings will be reported by clang-tidy.
 #if defined(__clang__) && __cplusplus >= 201103L
-#define ABSL_DEPRECATED(message) __attribute__((deprecated(message)))
+#define IRESEARCH_ABSL_DEPRECATED(message) __attribute__((deprecated(message)))
 #endif
 
-#ifndef ABSL_DEPRECATED
-#define ABSL_DEPRECATED(message)
+#ifndef IRESEARCH_ABSL_DEPRECATED
+#define IRESEARCH_ABSL_DEPRECATED(message)
 #endif
 
-// ABSL_CONST_INIT
+// IRESEARCH_ABSL_CONST_INIT
 //
-// A variable declaration annotated with the `ABSL_CONST_INIT` attribute will
+// A variable declaration annotated with the `IRESEARCH_ABSL_CONST_INIT` attribute will
 // not compile (on supported platforms) unless the variable has a constant
 // initializer. This is useful for variables with static and thread storage
 // duration, because it guarantees that they will not suffer from the so-called
@@ -667,16 +667,16 @@
 //
 //   class MyClass {
 //    public:
-//     ABSL_CONST_INIT static MyType my_var;
+//     IRESEARCH_ABSL_CONST_INIT static MyType my_var;
 //   };
 //
 //   MyType MyClass::my_var = MakeMyType(...);
 //
 // Note that this attribute is redundant if the variable is declared constexpr.
-#if ABSL_HAVE_CPP_ATTRIBUTE(clang::require_constant_initialization)
-#define ABSL_CONST_INIT [[clang::require_constant_initialization]]
+#if IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(clang::require_constant_initialization)
+#define IRESEARCH_ABSL_CONST_INIT [[clang::require_constant_initialization]]
 #else
-#define ABSL_CONST_INIT
-#endif  // ABSL_HAVE_CPP_ATTRIBUTE(clang::require_constant_initialization)
+#define IRESEARCH_ABSL_CONST_INIT
+#endif  // IRESEARCH_ABSL_HAVE_CPP_ATTRIBUTE(clang::require_constant_initialization)
 
-#endif  // ABSL_BASE_ATTRIBUTES_H_
+#endif  // IRESEARCH_ABSL_BASE_ATTRIBUTES_H_

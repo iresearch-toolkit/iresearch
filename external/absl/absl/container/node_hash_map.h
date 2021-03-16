@@ -33,8 +33,8 @@
 // `node_hash_map` and perhaps converting to a more efficient `flat_hash_map`
 // upon further review.
 
-#ifndef ABSL_CONTAINER_NODE_HASH_MAP_H_
-#define ABSL_CONTAINER_NODE_HASH_MAP_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_NODE_HASH_MAP_H_
+#define IRESEARCH_ABSL_CONTAINER_NODE_HASH_MAP_H_
 
 #include <tuple>
 #include <type_traits>
@@ -47,15 +47,15 @@
 #include "absl/container/internal/raw_hash_map.h"  // IWYU pragma: export
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 template <class Key, class Value>
 class NodeHashMapPolicy;
 }  // namespace container_internal
 
 // -----------------------------------------------------------------------------
-// absl::node_hash_map
+// iresearch_absl::node_hash_map
 // -----------------------------------------------------------------------------
 //
 // An `absl::node_hash_map<K, V>` is an unordered associative container which
@@ -80,7 +80,7 @@ class NodeHashMapPolicy;
 // Example:
 //
 //   // Create a node hash map of three strings (that map to strings)
-//   absl::node_hash_map<std::string, std::string> ducks =
+//   iresearch_absl::node_hash_map<std::string, std::string> ducks =
 //     {{"a", "huey"}, {"b", "dewey"}, {"c", "louie"}};
 //
 //  // Insert a new element into the node hash map
@@ -96,12 +96,12 @@ class NodeHashMapPolicy;
 //    std::cout << "Result: " << result->second << std::endl;
 //  }
 template <class Key, class Value,
-          class Hash = absl::container_internal::hash_default_hash<Key>,
-          class Eq = absl::container_internal::hash_default_eq<Key>,
+          class Hash = iresearch_absl::container_internal::hash_default_hash<Key>,
+          class Eq = iresearch_absl::container_internal::hash_default_eq<Key>,
           class Alloc = std::allocator<std::pair<const Key, Value>>>
 class node_hash_map
-    : public absl::container_internal::raw_hash_map<
-          absl::container_internal::NodeHashMapPolicy<Key, Value>, Hash, Eq,
+    : public iresearch_absl::container_internal::raw_hash_map<
+          iresearch_absl::container_internal::NodeHashMapPolicy<Key, Value>, Hash, Eq,
           Alloc> {
   using Base = typename node_hash_map::raw_hash_map;
 
@@ -114,38 +114,38 @@ class node_hash_map
   // *  Default constructor
   //
   //    // No allocation for the table's elements is made.
-  //    absl::node_hash_map<int, std::string> map1;
+  //    iresearch_absl::node_hash_map<int, std::string> map1;
   //
   // * Initializer List constructor
   //
-  //   absl::node_hash_map<int, std::string> map2 =
+  //   iresearch_absl::node_hash_map<int, std::string> map2 =
   //       {{1, "huey"}, {2, "dewey"}, {3, "louie"},};
   //
   // * Copy constructor
   //
-  //   absl::node_hash_map<int, std::string> map3(map2);
+  //   iresearch_absl::node_hash_map<int, std::string> map3(map2);
   //
   // * Copy assignment operator
   //
   //  // Hash functor and Comparator are copied as well
-  //  absl::node_hash_map<int, std::string> map4;
+  //  iresearch_absl::node_hash_map<int, std::string> map4;
   //  map4 = map3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::node_hash_map<int, std::string> map5(std::move(map4));
+  //   iresearch_absl::node_hash_map<int, std::string> map5(std::move(map4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::node_hash_map<int, std::string> map6;
+  //   iresearch_absl::node_hash_map<int, std::string> map6;
   //   map6 = std::move(map5);
   //
   // * Range constructor
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
-  //   absl::node_hash_map<int, std::string> map7(v.begin(), v.end());
+  //   iresearch_absl::node_hash_map<int, std::string> map7(v.begin(), v.end());
   node_hash_map() {}
   using Base::Base;
 
@@ -535,7 +535,7 @@ namespace container_internal {
 
 template <class Key, class Value>
 class NodeHashMapPolicy
-    : public absl::container_internal::node_hash_policy<
+    : public iresearch_absl::container_internal::node_hash_policy<
           std::pair<const Key, Value>&, NodeHashMapPolicy<Key, Value>> {
   using value_type = std::pair<const Key, Value>;
 
@@ -546,30 +546,30 @@ class NodeHashMapPolicy
 
   template <class Allocator, class... Args>
   static value_type* new_element(Allocator* alloc, Args&&... args) {
-    using PairAlloc = typename absl::allocator_traits<
+    using PairAlloc = typename iresearch_absl::allocator_traits<
         Allocator>::template rebind_alloc<value_type>;
     PairAlloc pair_alloc(*alloc);
     value_type* res =
-        absl::allocator_traits<PairAlloc>::allocate(pair_alloc, 1);
-    absl::allocator_traits<PairAlloc>::construct(pair_alloc, res,
+        iresearch_absl::allocator_traits<PairAlloc>::allocate(pair_alloc, 1);
+    iresearch_absl::allocator_traits<PairAlloc>::construct(pair_alloc, res,
                                                  std::forward<Args>(args)...);
     return res;
   }
 
   template <class Allocator>
   static void delete_element(Allocator* alloc, value_type* pair) {
-    using PairAlloc = typename absl::allocator_traits<
+    using PairAlloc = typename iresearch_absl::allocator_traits<
         Allocator>::template rebind_alloc<value_type>;
     PairAlloc pair_alloc(*alloc);
-    absl::allocator_traits<PairAlloc>::destroy(pair_alloc, pair);
-    absl::allocator_traits<PairAlloc>::deallocate(pair_alloc, pair, 1);
+    iresearch_absl::allocator_traits<PairAlloc>::destroy(pair_alloc, pair);
+    iresearch_absl::allocator_traits<PairAlloc>::deallocate(pair_alloc, pair, 1);
   }
 
   template <class F, class... Args>
-  static decltype(absl::container_internal::DecomposePair(
+  static decltype(iresearch_absl::container_internal::DecomposePair(
       std::declval<F>(), std::declval<Args>()...))
   apply(F&& f, Args&&... args) {
-    return absl::container_internal::DecomposePair(std::forward<F>(f),
+    return iresearch_absl::container_internal::DecomposePair(std::forward<F>(f),
                                                    std::forward<Args>(args)...);
   }
 
@@ -587,11 +587,11 @@ namespace container_algorithm_internal {
 // Specialization of trait in absl/algorithm/container.h
 template <class Key, class T, class Hash, class KeyEqual, class Allocator>
 struct IsUnorderedContainer<
-    absl::node_hash_map<Key, T, Hash, KeyEqual, Allocator>> : std::true_type {};
+    iresearch_absl::node_hash_map<Key, T, Hash, KeyEqual, Allocator>> : std::true_type {};
 
 }  // namespace container_algorithm_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_NODE_HASH_MAP_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_NODE_HASH_MAP_H_

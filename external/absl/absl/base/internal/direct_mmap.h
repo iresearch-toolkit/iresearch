@@ -15,12 +15,12 @@
 // Functions for directly invoking mmap() via syscall, avoiding the case where
 // mmap() has been locally overridden.
 
-#ifndef ABSL_BASE_INTERNAL_DIRECT_MMAP_H_
-#define ABSL_BASE_INTERNAL_DIRECT_MMAP_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_DIRECT_MMAP_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_DIRECT_MMAP_H_
 
 #include "absl/base/config.h"
 
-#if ABSL_HAVE_MMAP
+#if IRESEARCH_ABSL_HAVE_MMAP
 
 #include <sys/mman.h>
 
@@ -65,8 +65,8 @@ extern "C" void* __mmap2(void*, size_t, int, int, int, size_t);
 #define SYS_mmap2 __NR_mmap2
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // Platform specific logic extracted from
@@ -134,7 +134,7 @@ inline int DirectMunmap(void* start, size_t length) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #else  // !__linux__
@@ -142,8 +142,8 @@ ABSL_NAMESPACE_END
 // For non-linux platforms where we have mmap, just dispatch directly to the
 // actual mmap()/munmap() methods.
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 inline void* DirectMmap(void* start, size_t length, int prot, int flags, int fd,
@@ -156,11 +156,11 @@ inline int DirectMunmap(void* start, size_t length) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #endif  // __linux__
 
-#endif  // ABSL_HAVE_MMAP
+#endif  // IRESEARCH_ABSL_HAVE_MMAP
 
-#endif  // ABSL_BASE_INTERNAL_DIRECT_MMAP_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_DIRECT_MMAP_H_

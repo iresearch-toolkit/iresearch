@@ -50,7 +50,7 @@ std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   return result;
 }
 
-} // namespace 
+} // namespace
 
 void assert_stream(irs::analysis::analyzer* pipe, const std::string& data, const analyzer_tokens& expected_tokens) {
   SCOPED_TRACE(data);
@@ -61,7 +61,7 @@ void assert_stream(irs::analysis::analyzer* pipe, const std::string& data, const
   auto* inc = irs::get<irs::increment>(*pipe);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(pipe->reset(data));
-  uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+  uint32_t pos{ std::numeric_limits<uint32_t>::max() };
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());

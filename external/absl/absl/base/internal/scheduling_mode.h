@@ -15,13 +15,13 @@
 // Core interfaces and definitions used by by low-level interfaces such as
 // SpinLock.
 
-#ifndef ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_
-#define ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // Used to describe how a thread may be scheduled.  Typically associated with
@@ -52,7 +52,7 @@ enum SchedulingMode {
 };
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_SCHEDULING_MODE_H_

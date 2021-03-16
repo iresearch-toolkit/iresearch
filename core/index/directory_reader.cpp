@@ -86,7 +86,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     }
   }
 
-  absl::flat_hash_set<irs::string_ref> codecs;
+  iresearch_absl::flat_hash_set<irs::string_ref> codecs;
   auto visitor = [&codecs](const irs::string_ref& name)->bool {
     codecs.insert(name);
     return true;
@@ -189,7 +189,7 @@ class directory_reader_impl :
   );
 
  private:
-  using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
+  using segment_file_refs_t = iresearch_absl::flat_hash_set<index_file_refs::ref_t>;
   using reader_file_refs_t = std::vector<segment_file_refs_t>;
 
   directory_reader_impl(
@@ -301,7 +301,7 @@ directory_reader_impl::directory_reader_impl(
 
   constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
-  absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  iresearch_absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
   reuse_candidates.reserve(count);
 
   for(size_t i = 0; i < count; ++i) {

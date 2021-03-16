@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_
-#define ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_
 
 #include <algorithm>
 #include <initializer_list>
@@ -25,8 +25,8 @@
 #include "absl/container/internal/common.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 // A common base class for btree_set, btree_map, btree_multiset, and
@@ -194,7 +194,7 @@ class btree_container {
   key_compare key_comp() const { return tree_.key_comp(); }
   value_compare value_comp() const { return tree_.value_comp(); }
 
-  // Support absl::Hash.
+  // Support iresearch_absl::Hash.
   template <typename State>
   friend State AbslHashValue(State h, const btree_container &b) {
     for (const auto &v : b) {
@@ -335,8 +335,8 @@ class btree_set_container : public btree_container<Tree> {
   // `this`, it is left unmodified in `src`.
   template <
       typename T,
-      typename absl::enable_if_t<
-          absl::conjunction<
+      typename iresearch_absl::enable_if_t<
+          iresearch_absl::conjunction<
               std::is_same<value_type, typename T::value_type>,
               std::is_same<allocator_type, typename T::allocator_type>,
               std::is_same<typename params_type::is_map_container,
@@ -354,8 +354,8 @@ class btree_set_container : public btree_container<Tree> {
 
   template <
       typename T,
-      typename absl::enable_if_t<
-          absl::conjunction<
+      typename iresearch_absl::enable_if_t<
+          iresearch_absl::conjunction<
               std::is_same<value_type, typename T::value_type>,
               std::is_same<allocator_type, typename T::allocator_type>,
               std::is_same<typename params_type::is_map_container,
@@ -429,13 +429,13 @@ class btree_map_container : public btree_set_container<Tree> {
   }
 
   template <typename K = key_type, typename... Args,
-            typename absl::enable_if_t<
+            typename iresearch_absl::enable_if_t<
                 !std::is_convertible<K, const_iterator>::value, int> = 0>
   std::pair<iterator, bool> try_emplace(const key_arg<K> &k, Args &&... args) {
     return try_emplace_impl(k, std::forward<Args>(args)...);
   }
   template <typename K = key_type, typename... Args,
-            typename absl::enable_if_t<
+            typename iresearch_absl::enable_if_t<
                 !std::is_convertible<K, const_iterator>::value, int> = 0>
   std::pair<iterator, bool> try_emplace(key_arg<K> &&k, Args &&... args) {
     return try_emplace_impl(std::forward<K>(k), std::forward<Args>(args)...);
@@ -619,8 +619,8 @@ class btree_multiset_container : public btree_container<Tree> {
   // Moves all elements from `src` into `this`.
   template <
       typename T,
-      typename absl::enable_if_t<
-          absl::conjunction<
+      typename iresearch_absl::enable_if_t<
+          iresearch_absl::conjunction<
               std::is_same<value_type, typename T::value_type>,
               std::is_same<allocator_type, typename T::allocator_type>,
               std::is_same<typename params_type::is_map_container,
@@ -634,8 +634,8 @@ class btree_multiset_container : public btree_container<Tree> {
 
   template <
       typename T,
-      typename absl::enable_if_t<
-          absl::conjunction<
+      typename iresearch_absl::enable_if_t<
+          iresearch_absl::conjunction<
               std::is_same<value_type, typename T::value_type>,
               std::is_same<allocator_type, typename T::allocator_type>,
               std::is_same<typename params_type::is_map_container,
@@ -661,7 +661,7 @@ class btree_multimap_container : public btree_multiset_container<Tree> {
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_BTREE_CONTAINER_H_

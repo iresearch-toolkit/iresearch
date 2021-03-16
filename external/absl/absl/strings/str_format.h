@@ -25,7 +25,7 @@
 //
 // Example:
 //
-//   std::string s = absl::StrFormat(
+//   std::string s = iresearch_absl::StrFormat(
 //                      "%s %s You have $%d!", "Hello", name, dollars);
 //
 // The library consists of the following basic utilities:
@@ -67,8 +67,8 @@
 // In addition, the `str_format` library provides extension points for
 // augmenting formatting to new types.  See "StrFormat Extensions" below.
 
-#ifndef ABSL_STRINGS_STR_FORMAT_H_
-#define ABSL_STRINGS_STR_FORMAT_H_
+#ifndef IRESEARCH_ABSL_STRINGS_STR_FORMAT_H_
+#define IRESEARCH_ABSL_STRINGS_STR_FORMAT_H_
 
 #include <cstdio>
 #include <string>
@@ -79,8 +79,8 @@
 #include "absl/strings/internal/str_format/extension.h"  // IWYU pragma: export
 #include "absl/strings/internal/str_format/parser.h"  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // UntypedFormatSpec
 //
@@ -90,9 +90,9 @@ ABSL_NAMESPACE_BEGIN
 //
 // Example:
 //
-//   absl::UntypedFormatSpec format("%d");
+//   iresearch_absl::UntypedFormatSpec format("%d");
 //   std::string out;
-//   CHECK(absl::FormatUntyped(&out, format, {absl::FormatArg(1)}));
+//   CHECK(iresearch_absl::FormatUntyped(&out, format, {iresearch_absl::FormatArg(1)}));
 class UntypedFormatSpec {
  public:
   UntypedFormatSpec() = delete;
@@ -118,7 +118,7 @@ class UntypedFormatSpec {
 //
 // Example:
 //
-//   absl::StrFormat("%s", absl::FormatStreamed(obj));
+//   iresearch_absl::StrFormat("%s", iresearch_absl::FormatStreamed(obj));
 template <typename T>
 str_format_internal::StreamedWrapper<T> FormatStreamed(const T& v) {
   return str_format_internal::StreamedWrapper<T>(v);
@@ -137,8 +137,8 @@ str_format_internal::StreamedWrapper<T> FormatStreamed(const T& v) {
 // Example:
 //
 //   int n = 0;
-//   std::string s = absl::StrFormat("%s%d%n", "hello", 123,
-//                       absl::FormatCountCapture(&n));
+//   std::string s = iresearch_absl::StrFormat("%s%d%n", "hello", 123,
+//                       iresearch_absl::FormatCountCapture(&n));
 //   EXPECT_EQ(8, n);
 class FormatCountCapture {
  public:
@@ -179,16 +179,16 @@ class FormatCountCapture {
 // Example:
 //
 //   // Provided as a string literal.
-//   absl::StrFormat("Welcome to %s, Number %d!", "The Village", 6);
+//   iresearch_absl::StrFormat("Welcome to %s, Number %d!", "The Village", 6);
 //
-//   // Provided as a constexpr absl::string_view.
-//   constexpr absl::string_view formatString = "Welcome to %s, Number %d!";
-//   absl::StrFormat(formatString, "The Village", 6);
+//   // Provided as a constexpr iresearch_absl::string_view.
+//   constexpr iresearch_absl::string_view formatString = "Welcome to %s, Number %d!";
+//   iresearch_absl::StrFormat(formatString, "The Village", 6);
 //
 //   // Provided as a pre-compiled ParsedFormat object.
 //   // Note that this example is useful only for illustration purposes.
-//   absl::ParsedFormat<'s', 'd'> formatString("Welcome to %s, Number %d!");
-//   absl::StrFormat(formatString, "TheVillage", 6);
+//   iresearch_absl::ParsedFormat<'s', 'd'> formatString("Welcome to %s, Number %d!");
+//   iresearch_absl::StrFormat(formatString, "TheVillage", 6);
 //
 // A format string generally follows the POSIX syntax as used within the POSIX
 // `printf` specification.
@@ -235,8 +235,8 @@ class FormatCountCapture {
 //     "%p", (void*)&value      -> "0x7ffdeb6ad2a4"
 //
 //     int n = 0;
-//     std::string s = absl::StrFormat(
-//         "%s%d%n", "hello", 123, absl::FormatCountCapture(&n));
+//     std::string s = iresearch_absl::StrFormat(
+//         "%s%d%n", "hello", 123, iresearch_absl::FormatCountCapture(&n));
 //     EXPECT_EQ(8, n);
 //
 // The `FormatSpec` intrinsically supports all of these fundamental C++ types:
@@ -271,13 +271,13 @@ using FormatSpec = str_format_internal::FormatSpecTemplate<
 // Example:
 //
 //   // Verified at compile time.
-//   absl::ParsedFormat<'s', 'd'> formatString("Welcome to %s, Number %d!");
-//   absl::StrFormat(formatString, "TheVillage", 6);
+//   iresearch_absl::ParsedFormat<'s', 'd'> formatString("Welcome to %s, Number %d!");
+//   iresearch_absl::StrFormat(formatString, "TheVillage", 6);
 //
 //   // Verified at runtime.
-//   auto format_runtime = absl::ParsedFormat<'d'>::New(format_string);
+//   auto format_runtime = iresearch_absl::ParsedFormat<'d'>::New(format_string);
 //   if (format_runtime) {
-//     value = absl::StrFormat(*format_runtime, i);
+//     value = iresearch_absl::StrFormat(*format_runtime, i);
 //   } else {
 //     ... error case ...
 //   }
@@ -293,8 +293,8 @@ using FormatSpec = str_format_internal::FormatSpecTemplate<
 // Example:
 //   // Extended format supports multiple conversion characters per argument,
 //   // specified via a combination of `FormatConversionCharSet` enums.
-//   using MyFormat = absl::ParsedFormat<absl::FormatConversionCharSet::d |
-//                                       absl::FormatConversionCharSet::x>;
+//   using MyFormat = iresearch_absl::ParsedFormat<iresearch_absl::FormatConversionCharSet::d |
+//                                       iresearch_absl::FormatConversionCharSet::x>;
 //   MyFormat GetFormat(bool use_hex) {
 //     if (use_hex) return MyFormat("foo %x bar");
 //     return MyFormat("foo %d bar");
@@ -304,12 +304,12 @@ using FormatSpec = str_format_internal::FormatSpecTemplate<
 //   auto format = GetFormat(use_hex);
 //   value = StringF(format, i);
 template <auto... Conv>
-using ParsedFormat = absl::str_format_internal::ExtendedParsedFormat<
-    absl::str_format_internal::ToFormatConversionCharSet(Conv)...>;
+using ParsedFormat = iresearch_absl::str_format_internal::ExtendedParsedFormat<
+    iresearch_absl::str_format_internal::ToFormatConversionCharSet(Conv)...>;
 #else
 template <char... Conv>
 using ParsedFormat = str_format_internal::ExtendedParsedFormat<
-    absl::str_format_internal::ToFormatConversionCharSet(Conv)...>;
+    iresearch_absl::str_format_internal::ToFormatConversionCharSet(Conv)...>;
 #endif  // defined(__cpp_nontype_template_parameter_auto)
 
 // StrFormat()
@@ -329,13 +329,13 @@ using ParsedFormat = str_format_internal::ExtendedParsedFormat<
 //
 // Example:
 //
-//   std::string s = absl::StrFormat(
+//   std::string s = iresearch_absl::StrFormat(
 //       "Welcome to %s, Number %d!", "The Village", 6);
 //   EXPECT_EQ("Welcome to The Village, Number 6!", s);
 //
 // Returns an empty string in case of error.
 template <typename... Args>
-ABSL_MUST_USE_RESULT std::string StrFormat(const FormatSpec<Args...>& format,
+IRESEARCH_ABSL_MUST_USE_RESULT std::string StrFormat(const FormatSpec<Args...>& format,
                                            const Args&... args) {
   return str_format_internal::FormatPack(
       str_format_internal::UntypedFormatSpecImpl::Extract(format),
@@ -372,7 +372,7 @@ std::string& StrAppendFormat(std::string* dst,
 //
 //   std::cout << StreamFormat("%12.6f", 3.14);
 template <typename... Args>
-ABSL_MUST_USE_RESULT str_format_internal::Streamable StreamFormat(
+IRESEARCH_ABSL_MUST_USE_RESULT str_format_internal::Streamable StreamFormat(
     const FormatSpec<Args...>& format, const Args&... args) {
   return str_format_internal::Streamable(
       str_format_internal::UntypedFormatSpecImpl::Extract(format),
@@ -388,7 +388,7 @@ ABSL_MUST_USE_RESULT str_format_internal::Streamable StreamFormat(
 // Example:
 //
 //   std::string_view s = "Ulaanbaatar";
-//   absl::PrintF("The capital of Mongolia is %s", s);
+//   iresearch_absl::PrintF("The capital of Mongolia is %s", s);
 //
 //   Outputs: "The capital of Mongolia is Ulaanbaatar"
 //
@@ -408,7 +408,7 @@ int PrintF(const FormatSpec<Args...>& format, const Args&... args) {
 // Example:
 //
 //   std::string_view s = "Ulaanbaatar";
-//   absl::FPrintF(stdout, "The capital of Mongolia is %s", s);
+//   iresearch_absl::FPrintF(stdout, "The capital of Mongolia is %s", s);
 //
 //   Outputs: "The capital of Mongolia is Ulaanbaatar"
 //
@@ -436,7 +436,7 @@ int FPrintF(std::FILE* output, const FormatSpec<Args...>& format,
 //
 //   std::string_view s = "Ulaanbaatar";
 //   char output[128];
-//   absl::SNPrintF(output, sizeof(output),
+//   iresearch_absl::SNPrintF(output, sizeof(output),
 //                  "The capital of Mongolia is %s", s);
 //
 //   Post-condition: output == "The capital of Mongolia is Ulaanbaatar"
@@ -462,7 +462,7 @@ int SNPrintF(char* output, std::size_t size, const FormatSpec<Args...>& format,
 // sink, usually by adding a ADL-based free function in the same namespace as
 // the sink:
 //
-//   void AbslFormatFlush(MySink* dest, absl::string_view part);
+//   void AbslFormatFlush(MySink* dest, iresearch_absl::string_view part);
 //
 // where `dest` is the pointer passed to `absl::Format()`. The function should
 // append `part` to `dest`.
@@ -533,7 +533,7 @@ using FormatArg = str_format_internal::FormatArgImpl;
 // On failure, this function returns `false` and the state of the sink is
 // unspecified.
 //
-// The arguments are provided in an `absl::Span<const absl::FormatArg>`.
+// The arguments are provided in an `absl::Span<const iresearch_absl::FormatArg>`.
 // Each `absl::FormatArg` object binds to a single argument and keeps a
 // reference to it. The values used to create the `FormatArg` objects must
 // outlive this function call. (See `str_format_arg.h` for information on
@@ -545,23 +545,23 @@ using FormatArg = str_format_internal::FormatArgImpl;
 //       const std::string& in_format,
 //       const vector<std::string>& in_args) {
 //     std::string out;
-//     std::vector<absl::FormatArg> args;
+//     std::vector<iresearch_absl::FormatArg> args;
 //     for (const auto& v : in_args) {
 //       // It is important that 'v' is a reference to the objects in in_args.
 //       // The values we pass to FormatArg must outlive the call to
 //       // FormatUntyped.
 //       args.emplace_back(v);
 //     }
-//     absl::UntypedFormatSpec format(in_format);
-//     if (!absl::FormatUntyped(&out, format, args)) {
+//     iresearch_absl::UntypedFormatSpec format(in_format);
+//     if (!iresearch_absl::FormatUntyped(&out, format, args)) {
 //       return std::nullopt;
 //     }
 //     return std::move(out);
 //   }
 //
-ABSL_MUST_USE_RESULT inline bool FormatUntyped(
+IRESEARCH_ABSL_MUST_USE_RESULT inline bool FormatUntyped(
     FormatRawSink raw_sink, const UntypedFormatSpec& format,
-    absl::Span<const FormatArg> args) {
+    iresearch_absl::Span<const FormatArg> args) {
   return str_format_internal::FormatUntyped(
       str_format_internal::FormatRawSinkImpl::Extract(raw_sink),
       str_format_internal::UntypedFormatSpecImpl::Extract(format), args);
@@ -574,15 +574,15 @@ ABSL_MUST_USE_RESULT inline bool FormatUntyped(
 // AbslFormatConvert()
 //
 // The StrFormat library provides a customization API for formatting
-// user-defined types using absl::StrFormat(). The API relies on detecting an
+// user-defined types using iresearch_absl::StrFormat(). The API relies on detecting an
 // overload in the user-defined type's namespace of a free (non-member)
 // `AbslFormatConvert()` function, usually as a friend definition with the
 // following signature:
 //
-// absl::FormatConvertResult<...> AbslFormatConvert(
+// iresearch_absl::FormatConvertResult<...> AbslFormatConvert(
 //     const X& value,
-//     const absl::FormatConversionSpec& spec,
-//     absl::FormatSink *sink);
+//     const iresearch_absl::FormatConversionSpec& spec,
+//     iresearch_absl::FormatSink *sink);
 //
 // An `AbslFormatConvert()` overload for a type should only be declared in the
 // same file and namespace as said type.
@@ -612,14 +612,14 @@ ABSL_MUST_USE_RESULT inline bool FormatUntyped(
 //   // string and integral formatting are allowed (but not, for instance
 //   // floating point characters like "%f").  You can add such a free function
 //   // using a friend declaration within the body of the class:
-//   friend absl::FormatConvertResult<absl::FormatConversionCharSet::kString |
-//                                    absl::FormatConversionCharSet::kIntegral>
-//   AbslFormatConvert(const Point& p, const absl::FormatConversionSpec& spec,
-//                     absl::FormatSink* s) {
-//     if (spec.conversion_char() == absl::FormatConversionChar::s) {
-//       s->Append(absl::StrCat("x=", p.x, " y=", p.y));
+//   friend iresearch_absl::FormatConvertResult<iresearch_absl::FormatConversionCharSet::kString |
+//                                    iresearch_absl::FormatConversionCharSet::kIntegral>
+//   AbslFormatConvert(const Point& p, const iresearch_absl::FormatConversionSpec& spec,
+//                     iresearch_absl::FormatSink* s) {
+//     if (spec.conversion_char() == iresearch_absl::FormatConversionChar::s) {
+//       s->Append(iresearch_absl::StrCat("x=", p.x, " y=", p.y));
 //     } else {
-//       s->Append(absl::StrCat(p.x, ",", p.y));
+//       s->Append(iresearch_absl::StrCat(p.x, ",", p.y));
 //     }
 //     return {true};
 //   }
@@ -719,7 +719,7 @@ class FormatConversionSpec {
 
   friend str_format_internal::FormatConversionSpecImpl;
 
-  absl::str_format_internal::FormatConversionSpecImpl impl_;
+  iresearch_absl::str_format_internal::FormatConversionSpecImpl impl_;
 };
 
 // Type safe OR operator for FormatConversionCharSet to allow accepting multiple
@@ -761,7 +761,7 @@ enum class FormatConversionCharSet : uint64_t {
 
   // Used for width/precision '*' specification.
   kStar = static_cast<uint64_t>(
-      absl::str_format_internal::FormatConversionCharSetInternal::kStar),
+      iresearch_absl::str_format_internal::FormatConversionCharSetInternal::kStar),
   // Some predefined values:
   kIntegral = d | i | u | o | x | X,
   kFloating = a | e | f | g | A | E | F | G,
@@ -807,7 +807,7 @@ struct FormatConvertResult {
   bool value;
 };
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_STR_FORMAT_H_
+#endif  // IRESEARCH_ABSL_STRINGS_STR_FORMAT_H_

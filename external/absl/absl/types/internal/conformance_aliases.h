@@ -19,25 +19,25 @@
 // This file contains type aliases of common ConformanceProfiles and Archetypes
 // so that they can be directly used by name without creating them from scratch.
 
-#ifndef ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_
-#define ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_
+#ifndef IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_
+#define IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_
 
 #include "absl/types/internal/conformance_archetype.h"
 #include "absl/types/internal/conformance_profile.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace types_internal {
 
 // Creates both a Profile and a corresponding Archetype with root name "name".
-#define ABSL_INTERNAL_PROFILE_AND_ARCHETYPE_ALIAS(name, ...)                \
+#define IRESEARCH_ABSL_INTERNAL_PROFILE_AND_ARCHETYPE_ALIAS(name, ...)                \
   struct name##Profile : __VA_ARGS__ {};                                    \
                                                                             \
-  using name##Archetype = ::absl::types_internal::Archetype<name##Profile>; \
+  using name##Archetype = ::iresearch_absl::types_internal::Archetype<name##Profile>; \
                                                                             \
   template <class AbslInternalProfileTag>                                   \
-  using name##Archetype##_ = ::absl::types_internal::Archetype<             \
-      ::absl::types_internal::StrongProfileTypedef<name##Profile,           \
+  using name##Archetype##_ = ::iresearch_absl::types_internal::Archetype<             \
+      ::iresearch_absl::types_internal::StrongProfileTypedef<name##Profile,           \
                                                    AbslInternalProfileTag>>
 
 ABSL_INTERNAL_PROFILE_AND_ARCHETYPE_ALIAS(
@@ -439,9 +439,9 @@ using ExpandSupportedProfiles = Receiver<
 // (potentially) non-noexcept moves.
 
 }  // namespace types_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#undef ABSL_INTERNAL_PROFILE_AND_ARCHETYPE_ALIAS
+#undef IRESEARCH_ABSL_INTERNAL_PROFILE_AND_ARCHETYPE_ALIAS
 
-#endif  // ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_
+#endif  // IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_ALIASES_H_

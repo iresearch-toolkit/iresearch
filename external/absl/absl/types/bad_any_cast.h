@@ -18,27 +18,27 @@
 //
 // This header file defines the `absl::bad_any_cast` type.
 
-#ifndef ABSL_TYPES_BAD_ANY_CAST_H_
-#define ABSL_TYPES_BAD_ANY_CAST_H_
+#ifndef IRESEARCH_ABSL_TYPES_BAD_ANY_CAST_H_
+#define IRESEARCH_ABSL_TYPES_BAD_ANY_CAST_H_
 
 #include <typeinfo>
 
 #include "absl/base/config.h"
 
-#ifdef ABSL_USES_STD_ANY
+#ifdef IRESEARCH_ABSL_USES_STD_ANY
 
 #include <any>
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 using std::bad_any_cast;
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#else  // ABSL_USES_STD_ANY
+#else  // IRESEARCH_ABSL_USES_STD_ANY
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // -----------------------------------------------------------------------------
 // bad_any_cast
@@ -49,11 +49,11 @@ ABSL_NAMESPACE_BEGIN
 //
 // Example:
 //
-//   auto a = absl::any(65);
-//   absl::any_cast<int>(a);         // 65
+//   auto a = iresearch_absl::any(65);
+//   iresearch_absl::any_cast<int>(a);         // 65
 //   try {
-//     absl::any_cast<char>(a);
-//   } catch(const absl::bad_any_cast& e) {
+//     iresearch_absl::any_cast<char>(a);
+//   } catch(const iresearch_absl::bad_any_cast& e) {
 //     std::cout << "Bad any cast: " << e.what() << '\n';
 //   }
 class bad_any_cast : public std::bad_cast {
@@ -67,9 +67,9 @@ namespace any_internal {
 [[noreturn]] void ThrowBadAnyCast();
 
 }  // namespace any_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_USES_STD_ANY
+#endif  // IRESEARCH_ABSL_USES_STD_ANY
 
-#endif  // ABSL_TYPES_BAD_ANY_CAST_H_
+#endif  // IRESEARCH_ABSL_TYPES_BAD_ANY_CAST_H_

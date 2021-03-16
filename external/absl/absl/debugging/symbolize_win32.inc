@@ -77,5 +77,5 @@ bool Symbolize(const void* pc, char* out, int out_size) {
   return true;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

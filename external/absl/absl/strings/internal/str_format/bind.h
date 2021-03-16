@@ -1,5 +1,5 @@
-#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_
-#define ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_
 
 #include <array>
 #include <cstdio>
@@ -12,8 +12,8 @@
 #include "absl/strings/internal/str_format/parser.h"
 #include "absl/types/span.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class UntypedFormatSpec;
 
@@ -74,7 +74,7 @@ class FormatSpecTemplate
   using Base = typename MakeDependent<UntypedFormatSpec, Args...>::type;
 
  public:
-#ifdef ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#ifdef IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
   // Honeypot overload for when the string is not constexpr.
   // We use the 'unavailable' attribute to give a better compiler error than
@@ -112,12 +112,12 @@ class FormatSpecTemplate
       __attribute__((enable_if(ValidFormatImpl<Args...>(s), "bad format trap")))
       : Base(s) {}
 
-#else  // ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#else  // IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
   FormatSpecTemplate(const char* s) : Base(s) {}  // NOLINT
   FormatSpecTemplate(string_view s) : Base(s) {}  // NOLINT
 
-#endif  // ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#endif  // IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
   template <FormatConversionCharSet... C,
             typename = typename std::enable_if<
@@ -130,13 +130,13 @@ class FormatSpecTemplate
 class Streamable {
  public:
   Streamable(const UntypedFormatSpecImpl& format,
-             absl::Span<const FormatArgImpl> args)
+             iresearch_absl::Span<const FormatArgImpl> args)
       : format_(format) {
-    if (args.size() <= ABSL_ARRAYSIZE(few_args_)) {
+    if (args.size() <= IRESEARCH_ABSL_ARRAYSIZE(few_args_)) {
       for (size_t i = 0; i < args.size(); ++i) {
         few_args_[i] = args[i];
       }
-      args_ = absl::MakeSpan(few_args_, args.size());
+      args_ = iresearch_absl::MakeSpan(few_args_, args.size());
     } else {
       many_args_.assign(args.begin(), args.end());
       args_ = many_args_;
@@ -151,7 +151,7 @@ class Streamable {
 
  private:
   const UntypedFormatSpecImpl& format_;
-  absl::Span<const FormatArgImpl> args_;
+  iresearch_absl::Span<const FormatArgImpl> args_;
   // if args_.size() is 4 or less:
   FormatArgImpl few_args_[4] = {FormatArgImpl(0), FormatArgImpl(0),
                                 FormatArgImpl(0), FormatArgImpl(0)};
@@ -161,24 +161,24 @@ class Streamable {
 
 // for testing
 std::string Summarize(UntypedFormatSpecImpl format,
-                      absl::Span<const FormatArgImpl> args);
+                      iresearch_absl::Span<const FormatArgImpl> args);
 bool BindWithPack(const UnboundConversion* props,
-                  absl::Span<const FormatArgImpl> pack, BoundConversion* bound);
+                  iresearch_absl::Span<const FormatArgImpl> pack, BoundConversion* bound);
 
 bool FormatUntyped(FormatRawSinkImpl raw_sink,
                    UntypedFormatSpecImpl format,
-                   absl::Span<const FormatArgImpl> args);
+                   iresearch_absl::Span<const FormatArgImpl> args);
 
 std::string& AppendPack(std::string* out, UntypedFormatSpecImpl format,
-                        absl::Span<const FormatArgImpl> args);
+                        iresearch_absl::Span<const FormatArgImpl> args);
 
 std::string FormatPack(const UntypedFormatSpecImpl format,
-                       absl::Span<const FormatArgImpl> args);
+                       iresearch_absl::Span<const FormatArgImpl> args);
 
 int FprintF(std::FILE* output, UntypedFormatSpecImpl format,
-            absl::Span<const FormatArgImpl> args);
+            iresearch_absl::Span<const FormatArgImpl> args);
 int SnprintF(char* output, size_t size, UntypedFormatSpecImpl format,
-             absl::Span<const FormatArgImpl> args);
+             iresearch_absl::Span<const FormatArgImpl> args);
 
 // Returned by Streamed(v). Converts via '%s' to the std::string created
 // by std::ostream << v.
@@ -196,7 +196,7 @@ class StreamedWrapper {
 };
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_BIND_H_

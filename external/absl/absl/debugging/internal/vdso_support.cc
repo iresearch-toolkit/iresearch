@@ -18,7 +18,7 @@
 
 #include "absl/debugging/internal/vdso_support.h"
 
-#ifdef ABSL_HAVE_VDSO_SUPPORT     // defined in vdso_support.h
+#ifdef IRESEARCH_ABSL_HAVE_VDSO_SUPPORT     // defined in vdso_support.h
 
 #include <errno.h>
 #include <fcntl.h>
@@ -37,11 +37,11 @@
 #define AT_SYSINFO_EHDR 33  // for crosstoolv10
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
-ABSL_CONST_INIT
+IRESEARCH_ABSL_CONST_INIT
 std::atomic<const void *> VDSOSupport::vdso_base_(
     debugging_internal::ElfMemImage::kInvalidBase);
 
@@ -112,7 +112,7 @@ const void *VDSOSupport::Init() {
 }
 
 const void *VDSOSupport::SetBase(const void *base) {
-  ABSL_RAW_CHECK(base != debugging_internal::ElfMemImage::kInvalidBase,
+  IRESEARCH_ABSL_RAW_CHECK(base != debugging_internal::ElfMemImage::kInvalidBase,
                  "internal error");
   const void *old_base = vdso_base_.load(std::memory_order_relaxed);
   vdso_base_.store(base, std::memory_order_relaxed);
@@ -152,7 +152,7 @@ long VDSOSupport::InitAndGetCPU(unsigned *cpu,  // NOLINT(runtime/int)
                                 void *x, void *y) {
   Init();
   GetCpuFn fn = getcpu_fn_.load(std::memory_order_relaxed);
-  ABSL_RAW_CHECK(fn != &InitAndGetCPU, "Init() did not set getcpu_fn_");
+  IRESEARCH_ABSL_RAW_CHECK(fn != &InitAndGetCPU, "Init() did not set getcpu_fn_");
   return (*fn)(cpu, x, y);
 }
 
@@ -167,7 +167,7 @@ int GetCPU() {
 }
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HAVE_VDSO_SUPPORT
+#endif  // IRESEARCH_ABSL_HAVE_VDSO_SUPPORT

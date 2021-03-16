@@ -12,8 +12,8 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-#ifndef ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_
-#define ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_
+#ifndef IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_
+#define IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_
 
 #include <atomic>
 #include <cstddef>
@@ -28,8 +28,8 @@
 #include "time_zone_if.h"
 #include "tzfile.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -131,7 +131,7 @@ class TimeZoneInfo : public TimeZoneIf {
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_
+#endif  // IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_INFO_H_

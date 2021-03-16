@@ -53,7 +53,7 @@ MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // f
 namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
-  using file_set = absl::flat_hash_set<std::string>;
+  using file_set = iresearch_absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;

@@ -14,8 +14,8 @@
 #include "absl/strings/internal/str_format/float_conversion.h"
 #include "absl/strings/numbers.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 namespace {
 
@@ -33,11 +33,11 @@ template <typename T>
 struct MakeUnsigned : std::make_unsigned<T> {};
 template <>
 struct MakeUnsigned<absl::int128> {
-  using type = absl::uint128;
+  using type = iresearch_absl::uint128;
 };
 template <>
 struct MakeUnsigned<absl::uint128> {
-  using type = absl::uint128;
+  using type = iresearch_absl::uint128;
 };
 
 template <typename T>
@@ -306,7 +306,7 @@ bool ConvertIntArg(T v, const FormatConversionSpecImpl conv,
       return ConvertFloatImpl(static_cast<double>(v), conv, sink);
 
     default:
-       ABSL_INTERNAL_ASSUME(false);
+       IRESEARCH_ABSL_INTERNAL_ASSUME(false);
   }
 
   if (conv.is_basic()) {
@@ -453,12 +453,12 @@ IntegralConvertResult FormatConvertImpl(unsigned long long v,  // NOLINT
                                         FormatSinkImpl *sink) {
   return {ConvertIntArg(v, conv, sink)};
 }
-IntegralConvertResult FormatConvertImpl(absl::int128 v,
+IntegralConvertResult FormatConvertImpl(iresearch_absl::int128 v,
                                         const FormatConversionSpecImpl conv,
                                         FormatSinkImpl *sink) {
   return {ConvertIntArg(v, conv, sink)};
 }
-IntegralConvertResult FormatConvertImpl(absl::uint128 v,
+IntegralConvertResult FormatConvertImpl(iresearch_absl::uint128 v,
                                         const FormatConversionSpecImpl conv,
                                         FormatSinkImpl *sink) {
   return {ConvertIntArg(v, conv, sink)};
@@ -470,5 +470,5 @@ ABSL_INTERNAL_FORMAT_DISPATCH_OVERLOADS_EXPAND_();
 
 }  // namespace str_format_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

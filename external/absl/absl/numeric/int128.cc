@@ -26,10 +26,10 @@
 #include "absl/base/internal/bits.h"
 #include "absl/base/optimization.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-ABSL_DLL const uint128 kuint128max = MakeUint128(
+IRESEARCH_ABSL_DLL const uint128 kuint128max = MakeUint128(
     std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint64_t>::max());
 
 namespace {
@@ -40,13 +40,13 @@ namespace {
 // For example:
 //   Given: 5 (decimal) == 101 (binary)
 //   Returns: 2
-inline ABSL_ATTRIBUTE_ALWAYS_INLINE int Fls128(uint128 n) {
+inline IRESEARCH_ABSL_ATTRIBUTE_ALWAYS_INLINE int Fls128(uint128 n) {
   if (uint64_t hi = Uint128High64(n)) {
-    ABSL_INTERNAL_ASSUME(hi != 0);
+    IRESEARCH_ABSL_INTERNAL_ASSUME(hi != 0);
     return 127 - base_internal::CountLeadingZeros64(hi);
   }
   const uint64_t low = Uint128Low64(n);
-  ABSL_INTERNAL_ASSUME(low != 0);
+  IRESEARCH_ABSL_INTERNAL_ASSUME(low != 0);
   return 63 - base_internal::CountLeadingZeros64(low);
 }
 
@@ -139,26 +139,26 @@ uint128::uint128(double v) : uint128(MakeUint128FromFloat(v)) {}
 uint128::uint128(long double v) : uint128(MakeUint128FromFloat(v)) {}
 
 uint128 operator/(uint128 lhs, uint128 rhs) {
-#if defined(ABSL_HAVE_INTRINSIC_INT128)
+#if defined(IRESEARCH_ABSL_HAVE_INTRINSIC_INT128)
   return static_cast<unsigned __int128>(lhs) /
          static_cast<unsigned __int128>(rhs);
-#else  // ABSL_HAVE_INTRINSIC_INT128
+#else  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
   uint128 quotient = 0;
   uint128 remainder = 0;
   DivModImpl(lhs, rhs, &quotient, &remainder);
   return quotient;
-#endif  // ABSL_HAVE_INTRINSIC_INT128
+#endif  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
 }
 uint128 operator%(uint128 lhs, uint128 rhs) {
-#if defined(ABSL_HAVE_INTRINSIC_INT128)
+#if defined(IRESEARCH_ABSL_HAVE_INTRINSIC_INT128)
   return static_cast<unsigned __int128>(lhs) %
          static_cast<unsigned __int128>(rhs);
-#else  // ABSL_HAVE_INTRINSIC_INT128
+#else  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
   uint128 quotient = 0;
   uint128 remainder = 0;
   DivModImpl(lhs, rhs, &quotient, &remainder);
   return remainder;
-#endif  // ABSL_HAVE_INTRINSIC_INT128
+#endif  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
 }
 
 namespace {
@@ -240,7 +240,7 @@ uint128 UnsignedAbsoluteValue(int128 v) {
 
 }  // namespace
 
-#if !defined(ABSL_HAVE_INTRINSIC_INT128)
+#if !defined(IRESEARCH_ABSL_HAVE_INTRINSIC_INT128)
 namespace {
 
 template <typename T>
@@ -289,7 +289,7 @@ int128 operator%(int128 lhs, int128 rhs) {
   return MakeInt128(int128_internal::BitCastToSigned(Uint128High64(remainder)),
                     Uint128Low64(remainder));
 }
-#endif  // ABSL_HAVE_INTRINSIC_INT128
+#endif  // IRESEARCH_ABSL_HAVE_INTRINSIC_INT128
 
 std::ostream& operator<<(std::ostream& os, int128 v) {
   std::ios_base::fmtflags flags = os.flags();
@@ -336,7 +336,7 @@ std::ostream& operator<<(std::ostream& os, int128 v) {
   return os << rep;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 namespace std {

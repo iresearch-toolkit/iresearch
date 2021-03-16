@@ -54,8 +54,8 @@
 // this header file is limited, as a result. Please consult the Mutex guide for
 // more complete information and examples.
 
-#ifndef ABSL_SYNCHRONIZATION_MUTEX_H_
-#define ABSL_SYNCHRONIZATION_MUTEX_H_
+#ifndef IRESEARCH_ABSL_SYNCHRONIZATION_MUTEX_H_
+#define IRESEARCH_ABSL_SYNCHRONIZATION_MUTEX_H_
 
 #include <atomic>
 #include <cstdint>
@@ -74,15 +74,15 @@
 
 // Decide if we should use the non-production implementation because
 // the production implementation hasn't been fully ported yet.
-#ifdef ABSL_INTERNAL_USE_NONPROD_MUTEX
-#error ABSL_INTERNAL_USE_NONPROD_MUTEX cannot be directly set
-#elif defined(ABSL_LOW_LEVEL_ALLOC_MISSING)
-#define ABSL_INTERNAL_USE_NONPROD_MUTEX 1
+#ifdef IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX
+#error IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX cannot be directly set
+#elif defined(IRESEARCH_ABSL_LOW_LEVEL_ALLOC_MISSING)
+#define IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX 1
 #include "absl/synchronization/internal/mutex_nonprod.inc"
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class Condition;
 struct SynchWaitParams;
@@ -136,14 +136,14 @@ struct SynchWaitParams;
 //
 // See also `MutexLock`, below, for scoped `Mutex` acquisition.
 
-class ABSL_LOCKABLE Mutex {
+class IRESEARCH_ABSL_LOCKABLE Mutex {
  public:
   // Creates a `Mutex` that is not held by anyone. This constructor is
   // typically used for Mutexes allocated on the heap or the stack.
   //
   // To create `Mutex` instances with static storage duration
   // (e.g. a namespace-scoped or global variable), see
-  // `Mutex::Mutex(absl::kConstInit)` below instead.
+  // `Mutex::Mutex(iresearch_absl::kConstInit)` below instead.
   Mutex();
 
   // Creates a mutex with static storage duration.  A global variable
@@ -155,9 +155,9 @@ class ABSL_LOCKABLE Mutex {
   //
   // Example usage:
   //   namespace foo {
-  //   ABSL_CONST_INIT Mutex mu(absl::kConstInit);
+  //   IRESEARCH_ABSL_CONST_INIT Mutex mu(iresearch_absl::kConstInit);
   //   }
-  explicit constexpr Mutex(absl::ConstInitType);
+  explicit constexpr Mutex(iresearch_absl::ConstInitType);
 
   ~Mutex();
 
@@ -165,27 +165,27 @@ class ABSL_LOCKABLE Mutex {
   //
   // Blocks the calling thread, if necessary, until this `Mutex` is free, and
   // then acquires it exclusively. (This lock is also known as a "write lock.")
-  void Lock() ABSL_EXCLUSIVE_LOCK_FUNCTION();
+  void Lock() IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION();
 
   // Mutex::Unlock()
   //
   // Releases this `Mutex` and returns it from the exclusive/write state to the
   // free state. Caller must hold the `Mutex` exclusively.
-  void Unlock() ABSL_UNLOCK_FUNCTION();
+  void Unlock() IRESEARCH_ABSL_UNLOCK_FUNCTION();
 
   // Mutex::TryLock()
   //
   // If the mutex can be acquired without blocking, does so exclusively and
   // returns `true`. Otherwise, returns `false`. Returns `true` with high
   // probability if the `Mutex` was free.
-  bool TryLock() ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true);
+  bool TryLock() IRESEARCH_ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true);
 
   // Mutex::AssertHeld()
   //
   // Return immediately if this thread holds the `Mutex` exclusively (in write
   // mode). Otherwise, may report an error (typically by crashing with a
   // diagnostic), or may return immediately.
-  void AssertHeld() const ABSL_ASSERT_EXCLUSIVE_LOCK();
+  void AssertHeld() const IRESEARCH_ABSL_ASSERT_EXCLUSIVE_LOCK();
 
   // ---------------------------------------------------------------------------
   // Reader-Writer Locking
@@ -226,28 +226,28 @@ class ABSL_LOCKABLE Mutex {
   // `ReaderLock()` will block if some other thread has an exclusive/writer lock
   // on the mutex.
 
-  void ReaderLock() ABSL_SHARED_LOCK_FUNCTION();
+  void ReaderLock() IRESEARCH_ABSL_SHARED_LOCK_FUNCTION();
 
   // Mutex::ReaderUnlock()
   //
   // Releases a read share of this `Mutex`. `ReaderUnlock` may return a mutex to
   // the free state if this thread holds the last reader lock on the mutex. Note
   // that you cannot call `ReaderUnlock()` on a mutex held in write mode.
-  void ReaderUnlock() ABSL_UNLOCK_FUNCTION();
+  void ReaderUnlock() IRESEARCH_ABSL_UNLOCK_FUNCTION();
 
   // Mutex::ReaderTryLock()
   //
   // If the mutex can be acquired without blocking, acquires this mutex for
   // shared access and returns `true`. Otherwise, returns `false`. Returns
   // `true` with high probability if the `Mutex` was free or shared.
-  bool ReaderTryLock() ABSL_SHARED_TRYLOCK_FUNCTION(true);
+  bool ReaderTryLock() IRESEARCH_ABSL_SHARED_TRYLOCK_FUNCTION(true);
 
   // Mutex::AssertReaderHeld()
   //
   // Returns immediately if this thread holds the `Mutex` in at least shared
   // mode (read mode). Otherwise, may report an error (typically by
   // crashing with a diagnostic), or may return immediately.
-  void AssertReaderHeld() const ABSL_ASSERT_SHARED_LOCK();
+  void AssertReaderHeld() const IRESEARCH_ABSL_ASSERT_SHARED_LOCK();
 
   // Mutex::WriterLock()
   // Mutex::WriterUnlock()
@@ -258,11 +258,11 @@ class ABSL_LOCKABLE Mutex {
   // These methods may be used (along with the complementary `Reader*()`
   // methods) to distingish simple exclusive `Mutex` usage (`Lock()`,
   // etc.) from reader/writer lock usage.
-  void WriterLock() ABSL_EXCLUSIVE_LOCK_FUNCTION() { this->Lock(); }
+  void WriterLock() IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION() { this->Lock(); }
 
-  void WriterUnlock() ABSL_UNLOCK_FUNCTION() { this->Unlock(); }
+  void WriterUnlock() IRESEARCH_ABSL_UNLOCK_FUNCTION() { this->Unlock(); }
 
-  bool WriterTryLock() ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true) {
+  bool WriterTryLock() IRESEARCH_ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true) {
     return this->TryLock();
   }
 
@@ -316,11 +316,11 @@ class ABSL_LOCKABLE Mutex {
   // be acquired, then atomically acquires this `Mutex`. `LockWhen()` is
   // logically equivalent to `*Lock(); Await();` though they may have different
   // performance characteristics.
-  void LockWhen(const Condition &cond) ABSL_EXCLUSIVE_LOCK_FUNCTION();
+  void LockWhen(const Condition &cond) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION();
 
-  void ReaderLockWhen(const Condition &cond) ABSL_SHARED_LOCK_FUNCTION();
+  void ReaderLockWhen(const Condition &cond) IRESEARCH_ABSL_SHARED_LOCK_FUNCTION();
 
-  void WriterLockWhen(const Condition &cond) ABSL_EXCLUSIVE_LOCK_FUNCTION() {
+  void WriterLockWhen(const Condition &cond) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION() {
     this->LockWhen(cond);
   }
 
@@ -345,9 +345,9 @@ class ABSL_LOCKABLE Mutex {
   // Negative timeouts are equivalent to a zero timeout.
   //
   // This method requires that this thread holds this `Mutex` in some mode.
-  bool AwaitWithTimeout(const Condition &cond, absl::Duration timeout);
+  bool AwaitWithTimeout(const Condition &cond, iresearch_absl::Duration timeout);
 
-  bool AwaitWithDeadline(const Condition &cond, absl::Time deadline);
+  bool AwaitWithDeadline(const Condition &cond, iresearch_absl::Time deadline);
 
   // Mutex::LockWhenWithTimeout()
   // Mutex::ReaderLockWhenWithTimeout()
@@ -360,12 +360,12 @@ class ABSL_LOCKABLE Mutex {
   // `true` on return.
   //
   // Negative timeouts are equivalent to a zero timeout.
-  bool LockWhenWithTimeout(const Condition &cond, absl::Duration timeout)
-      ABSL_EXCLUSIVE_LOCK_FUNCTION();
-  bool ReaderLockWhenWithTimeout(const Condition &cond, absl::Duration timeout)
-      ABSL_SHARED_LOCK_FUNCTION();
-  bool WriterLockWhenWithTimeout(const Condition &cond, absl::Duration timeout)
-      ABSL_EXCLUSIVE_LOCK_FUNCTION() {
+  bool LockWhenWithTimeout(const Condition &cond, iresearch_absl::Duration timeout)
+      IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION();
+  bool ReaderLockWhenWithTimeout(const Condition &cond, iresearch_absl::Duration timeout)
+      IRESEARCH_ABSL_SHARED_LOCK_FUNCTION();
+  bool WriterLockWhenWithTimeout(const Condition &cond, iresearch_absl::Duration timeout)
+      IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION() {
     return this->LockWhenWithTimeout(cond, timeout);
   }
 
@@ -380,12 +380,12 @@ class ABSL_LOCKABLE Mutex {
   // on return.
   //
   // Deadlines in the past are equivalent to an immediate deadline.
-  bool LockWhenWithDeadline(const Condition &cond, absl::Time deadline)
-      ABSL_EXCLUSIVE_LOCK_FUNCTION();
-  bool ReaderLockWhenWithDeadline(const Condition &cond, absl::Time deadline)
-      ABSL_SHARED_LOCK_FUNCTION();
-  bool WriterLockWhenWithDeadline(const Condition &cond, absl::Time deadline)
-      ABSL_EXCLUSIVE_LOCK_FUNCTION() {
+  bool LockWhenWithDeadline(const Condition &cond, iresearch_absl::Time deadline)
+      IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION();
+  bool ReaderLockWhenWithDeadline(const Condition &cond, iresearch_absl::Time deadline)
+      IRESEARCH_ABSL_SHARED_LOCK_FUNCTION();
+  bool WriterLockWhenWithDeadline(const Condition &cond, iresearch_absl::Time deadline)
+      IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION() {
     return this->LockWhenWithDeadline(cond, deadline);
   }
 
@@ -461,7 +461,7 @@ class ABSL_LOCKABLE Mutex {
   static void InternalAttemptToUseMutexInFatalSignalHandler();
 
  private:
-#ifdef ABSL_INTERNAL_USE_NONPROD_MUTEX
+#ifdef IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX
   friend class CondVar;
 
   synchronization_internal::MutexImpl *impl() { return impl_.get(); }
@@ -487,9 +487,9 @@ class ABSL_LOCKABLE Mutex {
                             synchronization_internal::KernelTimeout t,
                             int flags);
   void LockSlow(MuHow how, const Condition *cond,
-                int flags) ABSL_ATTRIBUTE_COLD;
+                int flags) IRESEARCH_ABSL_ATTRIBUTE_COLD;
   // slow path release
-  void UnlockSlow(SynchWaitParams *waitp) ABSL_ATTRIBUTE_COLD;
+  void UnlockSlow(SynchWaitParams *waitp) IRESEARCH_ABSL_ATTRIBUTE_COLD;
   // Common code between Await() and AwaitWithTimeout/Deadline()
   bool AwaitCommon(const Condition &cond,
                    synchronization_internal::KernelTimeout t);
@@ -535,9 +535,9 @@ class ABSL_LOCKABLE Mutex {
 // private:
 //   Mutex lock_;
 // };
-class ABSL_SCOPED_LOCKABLE MutexLock {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE MutexLock {
  public:
-  explicit MutexLock(Mutex *mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) : mu_(mu) {
+  explicit MutexLock(Mutex *mu) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) : mu_(mu) {
     this->mu_->Lock();
   }
 
@@ -546,7 +546,7 @@ class ABSL_SCOPED_LOCKABLE MutexLock {
   MutexLock& operator=(const MutexLock&) = delete;
   MutexLock& operator=(MutexLock&&) = delete;
 
-  ~MutexLock() ABSL_UNLOCK_FUNCTION() { this->mu_->Unlock(); }
+  ~MutexLock() IRESEARCH_ABSL_UNLOCK_FUNCTION() { this->mu_->Unlock(); }
 
  private:
   Mutex *const mu_;
@@ -556,9 +556,9 @@ class ABSL_SCOPED_LOCKABLE MutexLock {
 //
 // The `ReaderMutexLock` is a helper class, like `MutexLock`, which acquires and
 // releases a shared lock on a `Mutex` via RAII.
-class ABSL_SCOPED_LOCKABLE ReaderMutexLock {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE ReaderMutexLock {
  public:
-  explicit ReaderMutexLock(Mutex *mu) ABSL_SHARED_LOCK_FUNCTION(mu) : mu_(mu) {
+  explicit ReaderMutexLock(Mutex *mu) IRESEARCH_ABSL_SHARED_LOCK_FUNCTION(mu) : mu_(mu) {
     mu->ReaderLock();
   }
 
@@ -567,7 +567,7 @@ class ABSL_SCOPED_LOCKABLE ReaderMutexLock {
   ReaderMutexLock& operator=(const ReaderMutexLock&) = delete;
   ReaderMutexLock& operator=(ReaderMutexLock&&) = delete;
 
-  ~ReaderMutexLock() ABSL_UNLOCK_FUNCTION() { this->mu_->ReaderUnlock(); }
+  ~ReaderMutexLock() IRESEARCH_ABSL_UNLOCK_FUNCTION() { this->mu_->ReaderUnlock(); }
 
  private:
   Mutex *const mu_;
@@ -577,9 +577,9 @@ class ABSL_SCOPED_LOCKABLE ReaderMutexLock {
 //
 // The `WriterMutexLock` is a helper class, like `MutexLock`, which acquires and
 // releases a write (exclusive) lock on a `Mutex` via RAII.
-class ABSL_SCOPED_LOCKABLE WriterMutexLock {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE WriterMutexLock {
  public:
-  explicit WriterMutexLock(Mutex *mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+  explicit WriterMutexLock(Mutex *mu) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
       : mu_(mu) {
     mu->WriterLock();
   }
@@ -589,7 +589,7 @@ class ABSL_SCOPED_LOCKABLE WriterMutexLock {
   WriterMutexLock& operator=(const WriterMutexLock&) = delete;
   WriterMutexLock& operator=(WriterMutexLock&&) = delete;
 
-  ~WriterMutexLock() ABSL_UNLOCK_FUNCTION() { this->mu_->WriterUnlock(); }
+  ~WriterMutexLock() IRESEARCH_ABSL_UNLOCK_FUNCTION() { this->mu_->WriterUnlock(); }
 
  private:
   Mutex *const mu_;
@@ -628,7 +628,7 @@ class ABSL_SCOPED_LOCKABLE WriterMutexLock {
 // Example:
 //
 //   // assume count_ is not internal reference count
-//   int count_ ABSL_GUARDED_BY(mu_);
+//   int count_ IRESEARCH_ABSL_GUARDED_BY(mu_);
 //
 //   mu_.LockWhen(Condition(+[](int* count) { return *count == 0; },
 //         &count_));
@@ -663,12 +663,12 @@ class Condition {
   // come from base classes. A simpler signature like
   // `Condition(T*, bool (T::*)())` does not suffice.
   template<typename T>
-  Condition(T *object, bool (absl::internal::identity<T>::type::* method)());
+  Condition(T *object, bool (iresearch_absl::internal::identity<T>::type::* method)());
 
   // Same as above, for const members
   template<typename T>
   Condition(const T *object,
-            bool (absl::internal::identity<T>::type::* method)() const);
+            bool (iresearch_absl::internal::identity<T>::type::* method)() const);
 
   // A Condition that returns the value of `*cond`
   explicit Condition(const bool *cond);
@@ -801,7 +801,7 @@ class CondVar {
   // to return `true` or `false`.
   //
   // Requires and ensures that the current thread holds the `Mutex`.
-  bool WaitWithTimeout(Mutex *mu, absl::Duration timeout);
+  bool WaitWithTimeout(Mutex *mu, iresearch_absl::Duration timeout);
 
   // CondVar::WaitWithDeadline()
   //
@@ -818,7 +818,7 @@ class CondVar {
   // to return `true` or `false`.
   //
   // Requires and ensures that the current thread holds the `Mutex`.
-  bool WaitWithDeadline(Mutex *mu, absl::Time deadline);
+  bool WaitWithDeadline(Mutex *mu, iresearch_absl::Time deadline);
 
   // CondVar::Signal()
   //
@@ -838,7 +838,7 @@ class CondVar {
   void EnableDebugLog(const char *name);
 
  private:
-#ifdef ABSL_INTERNAL_USE_NONPROD_MUTEX
+#ifdef IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX
   synchronization_internal::CondVarImpl *impl() { return impl_.get(); }
   synchronization_internal::SynchronizationStorage<
       synchronization_internal::CondVarImpl>
@@ -862,15 +862,15 @@ class CondVar {
 // MutexLockMaybe
 //
 // MutexLockMaybe is like MutexLock, but is a no-op when mu is null.
-class ABSL_SCOPED_LOCKABLE MutexLockMaybe {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE MutexLockMaybe {
  public:
-  explicit MutexLockMaybe(Mutex *mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+  explicit MutexLockMaybe(Mutex *mu) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
       : mu_(mu) {
     if (this->mu_ != nullptr) {
       this->mu_->Lock();
     }
   }
-  ~MutexLockMaybe() ABSL_UNLOCK_FUNCTION() {
+  ~MutexLockMaybe() IRESEARCH_ABSL_UNLOCK_FUNCTION() {
     if (this->mu_ != nullptr) { this->mu_->Unlock(); }
   }
 
@@ -886,17 +886,17 @@ class ABSL_SCOPED_LOCKABLE MutexLockMaybe {
 //
 // ReleasableMutexLock is like MutexLock, but permits `Release()` of its
 // mutex before destruction. `Release()` may be called at most once.
-class ABSL_SCOPED_LOCKABLE ReleasableMutexLock {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE ReleasableMutexLock {
  public:
-  explicit ReleasableMutexLock(Mutex *mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+  explicit ReleasableMutexLock(Mutex *mu) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
       : mu_(mu) {
     this->mu_->Lock();
   }
-  ~ReleasableMutexLock() ABSL_UNLOCK_FUNCTION() {
+  ~ReleasableMutexLock() IRESEARCH_ABSL_UNLOCK_FUNCTION() {
     if (this->mu_ != nullptr) { this->mu_->Unlock(); }
   }
 
-  void Release() ABSL_UNLOCK_FUNCTION();
+  void Release() IRESEARCH_ABSL_UNLOCK_FUNCTION();
 
  private:
   Mutex *mu_;
@@ -906,21 +906,21 @@ class ABSL_SCOPED_LOCKABLE ReleasableMutexLock {
   ReleasableMutexLock& operator=(ReleasableMutexLock&&) = delete;
 };
 
-#ifdef ABSL_INTERNAL_USE_NONPROD_MUTEX
+#ifdef IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX
 
-inline constexpr Mutex::Mutex(absl::ConstInitType) : impl_(absl::kConstInit) {}
+inline constexpr Mutex::Mutex(iresearch_absl::ConstInitType) : impl_(iresearch_absl::kConstInit) {}
 
 #else
 
 inline Mutex::Mutex() : mu_(0) {
-  ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
+  IRESEARCH_ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
 }
 
-inline constexpr Mutex::Mutex(absl::ConstInitType) : mu_(0) {}
+inline constexpr Mutex::Mutex(iresearch_absl::ConstInitType) : mu_(0) {}
 
 inline CondVar::CondVar() : cv_(0) {}
 
-#endif  // ABSL_INTERNAL_USE_NONPROD_MUTEX
+#endif  // IRESEARCH_ABSL_INTERNAL_USE_NONPROD_MUTEX
 
 // static
 template <typename T>
@@ -949,7 +949,7 @@ inline Condition::Condition(bool (*func)(T *), T *arg)
 
 template <typename T>
 inline Condition::Condition(T *object,
-                            bool (absl::internal::identity<T>::type::*method)())
+                            bool (iresearch_absl::internal::identity<T>::type::*method)())
     : eval_(&CastAndCallMethod<T>),
       function_(nullptr),
       method_(reinterpret_cast<InternalMethodType>(method)),
@@ -957,7 +957,7 @@ inline Condition::Condition(T *object,
 
 template <typename T>
 inline Condition::Condition(const T *object,
-                            bool (absl::internal::identity<T>::type::*method)()
+                            bool (iresearch_absl::internal::identity<T>::type::*method)()
                                 const)
     : eval_(&CastAndCallMethod<T>),
       function_(nullptr),
@@ -1015,10 +1015,10 @@ void RegisterCondVarTracer(void (*fn)(const char *msg, const void *cv));
 //
 // This has the same memory ordering concerns as RegisterMutexProfiler() above.
 //
-// DEPRECATED: The default symbolizer function is absl::Symbolize() and the
+// DEPRECATED: The default symbolizer function is iresearch_absl::Symbolize() and the
 // ability to register a different hook for symbolizing stack traces will be
 // removed on or after 2023-05-01.
-ABSL_DEPRECATED("absl::RegisterSymbolizer() is deprecated and will be removed "
+IRESEARCH_ABSL_DEPRECATED("absl::RegisterSymbolizer() is deprecated and will be removed "
                 "on or after 2023-05-01")
 void RegisterSymbolizer(bool (*fn)(const void *pc, char *out, int out_size));
 
@@ -1049,7 +1049,7 @@ enum class OnDeadlockCycle {
 // the manner chosen here.
 void SetMutexDeadlockDetectionMode(OnDeadlockCycle mode);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // In some build configurations we pass --detect-odr-violations to the
@@ -1062,4 +1062,4 @@ extern "C" {
 void AbslInternalMutexYield();
 }  // extern "C"
 
-#endif  // ABSL_SYNCHRONIZATION_MUTEX_H_
+#endif  // IRESEARCH_ABSL_SYNCHRONIZATION_MUTEX_H_

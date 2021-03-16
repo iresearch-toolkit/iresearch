@@ -27,8 +27,8 @@
 // arrive while they are holding the lock.  Typically, this is done by blocking
 // the signal.
 
-#ifndef ABSL_BASE_INTERNAL_SPINLOCK_H_
-#define ABSL_BASE_INTERNAL_SPINLOCK_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_H_
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -46,14 +46,14 @@
 #include "absl/base/port.h"
 #include "absl/base/thread_annotations.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
-class ABSL_LOCKABLE SpinLock {
+class IRESEARCH_ABSL_LOCKABLE SpinLock {
  public:
   SpinLock() : lockword_(kSpinLockCooperative) {
-    ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
+    IRESEARCH_ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
   }
 
   // Constructors that allow non-cooperative spinlocks to be created for use
@@ -61,43 +61,43 @@ class ABSL_LOCKABLE SpinLock {
   explicit SpinLock(base_internal::SchedulingMode mode);
 
   // Constructor for global SpinLock instances.  See absl/base/const_init.h.
-  constexpr SpinLock(absl::ConstInitType, base_internal::SchedulingMode mode)
+  constexpr SpinLock(iresearch_absl::ConstInitType, base_internal::SchedulingMode mode)
       : lockword_(IsCooperative(mode) ? kSpinLockCooperative : 0) {}
 
   // For global SpinLock instances prefer trivial destructor when possible.
   // Default but non-trivial destructor in some build configurations causes an
   // extra static initializer.
-#ifdef ABSL_INTERNAL_HAVE_TSAN_INTERFACE
-  ~SpinLock() { ABSL_TSAN_MUTEX_DESTROY(this, __tsan_mutex_not_static); }
+#ifdef IRESEARCH_ABSL_INTERNAL_HAVE_TSAN_INTERFACE
+  ~SpinLock() { IRESEARCH_ABSL_TSAN_MUTEX_DESTROY(this, __tsan_mutex_not_static); }
 #else
   ~SpinLock() = default;
 #endif
 
   // Acquire this SpinLock.
-  inline void Lock() ABSL_EXCLUSIVE_LOCK_FUNCTION() {
-    ABSL_TSAN_MUTEX_PRE_LOCK(this, 0);
+  inline void Lock() IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION() {
+    IRESEARCH_ABSL_TSAN_MUTEX_PRE_LOCK(this, 0);
     if (!TryLockImpl()) {
       SlowLock();
     }
-    ABSL_TSAN_MUTEX_POST_LOCK(this, 0, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_POST_LOCK(this, 0, 0);
   }
 
   // Try to acquire this SpinLock without blocking and return true if the
   // acquisition was successful.  If the lock was not acquired, false is
   // returned.  If this SpinLock is free at the time of the call, TryLock
   // will return true with high probability.
-  inline bool TryLock() ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true) {
-    ABSL_TSAN_MUTEX_PRE_LOCK(this, __tsan_mutex_try_lock);
+  inline bool TryLock() IRESEARCH_ABSL_EXCLUSIVE_TRYLOCK_FUNCTION(true) {
+    IRESEARCH_ABSL_TSAN_MUTEX_PRE_LOCK(this, __tsan_mutex_try_lock);
     bool res = TryLockImpl();
-    ABSL_TSAN_MUTEX_POST_LOCK(
+    IRESEARCH_ABSL_TSAN_MUTEX_POST_LOCK(
         this, __tsan_mutex_try_lock | (res ? 0 : __tsan_mutex_try_lock_failed),
         0);
     return res;
   }
 
   // Release this SpinLock, which must be held by the calling thread.
-  inline void Unlock() ABSL_UNLOCK_FUNCTION() {
-    ABSL_TSAN_MUTEX_PRE_UNLOCK(this, 0);
+  inline void Unlock() IRESEARCH_ABSL_UNLOCK_FUNCTION() {
+    IRESEARCH_ABSL_TSAN_MUTEX_PRE_UNLOCK(this, 0);
     uint32_t lock_value = lockword_.load(std::memory_order_relaxed);
     lock_value = lockword_.exchange(lock_value & kSpinLockCooperative,
                                     std::memory_order_release);
@@ -111,7 +111,7 @@ class ABSL_LOCKABLE SpinLock {
       // for the lock.
       SlowUnlock(lock_value);
     }
-    ABSL_TSAN_MUTEX_POST_UNLOCK(this, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_POST_UNLOCK(this, 0);
   }
 
   // Determine if the lock is held.  When the lock is held by the invoking
@@ -157,8 +157,8 @@ class ABSL_LOCKABLE SpinLock {
   }
 
   uint32_t TryLockInternal(uint32_t lock_value, uint32_t wait_cycles);
-  void SlowLock() ABSL_ATTRIBUTE_COLD;
-  void SlowUnlock(uint32_t lock_value) ABSL_ATTRIBUTE_COLD;
+  void SlowLock() IRESEARCH_ABSL_ATTRIBUTE_COLD;
+  void SlowUnlock(uint32_t lock_value) IRESEARCH_ABSL_ATTRIBUTE_COLD;
   uint32_t SpinLoop();
 
   inline bool TryLockImpl() {
@@ -174,13 +174,13 @@ class ABSL_LOCKABLE SpinLock {
 
 // Corresponding locker object that arranges to acquire a spinlock for
 // the duration of a C++ scope.
-class ABSL_SCOPED_LOCKABLE SpinLockHolder {
+class IRESEARCH_ABSL_SCOPED_LOCKABLE SpinLockHolder {
  public:
-  inline explicit SpinLockHolder(SpinLock* l) ABSL_EXCLUSIVE_LOCK_FUNCTION(l)
+  inline explicit SpinLockHolder(SpinLock* l) IRESEARCH_ABSL_EXCLUSIVE_LOCK_FUNCTION(l)
       : lock_(l) {
     l->Lock();
   }
-  inline ~SpinLockHolder() ABSL_UNLOCK_FUNCTION() { lock_->Unlock(); }
+  inline ~SpinLockHolder() IRESEARCH_ABSL_UNLOCK_FUNCTION() { lock_->Unlock(); }
 
   SpinLockHolder(const SpinLockHolder&) = delete;
   SpinLockHolder& operator=(const SpinLockHolder&) = delete;
@@ -231,7 +231,7 @@ inline uint32_t SpinLock::TryLockInternal(uint32_t lock_value,
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_SPINLOCK_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_SPINLOCK_H_

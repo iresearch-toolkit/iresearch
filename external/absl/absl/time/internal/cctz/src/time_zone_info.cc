@@ -49,8 +49,8 @@
 #include "time_zone_fixed.h"
 #include "time_zone_posix.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -961,5 +961,5 @@ bool TimeZoneInfo::PrevTransition(const time_point<seconds>& tp,
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

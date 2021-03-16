@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_STRINGS_CHARCONV_H_
-#define ABSL_STRINGS_CHARCONV_H_
+#ifndef IRESEARCH_ABSL_STRINGS_CHARCONV_H_
+#define IRESEARCH_ABSL_STRINGS_CHARCONV_H_
 
 #include <system_error>  // NOLINT(build/c++11)
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // Workalike compatibilty version of std::chars_format from C++17.
 //
-// This is an bitfield enumerator which can be passed to absl::from_chars to
+// This is an bitfield enumerator which can be passed to iresearch_absl::from_chars to
 // configure the string-to-float conversion.
 enum class chars_format {
   scientific = 1,
@@ -113,7 +113,7 @@ inline chars_format& operator^=(chars_format& lhs, chars_format rhs) {
   return lhs;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_CHARCONV_H_
+#endif  // IRESEARCH_ABSL_STRINGS_CHARCONV_H_
