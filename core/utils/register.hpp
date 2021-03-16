@@ -57,7 +57,7 @@ template<
   typename KeyType,
   typename EntryType,
   typename RegisterType,
-  typename Hash = iresearch_absl::Hash<KeyType>,
+  typename Hash = absl::Hash<KeyType>,
   typename Pred = std::equal_to<KeyType>
 > class generic_register : public singleton<RegisterType> {
  public:
@@ -171,7 +171,7 @@ template<
   }
 
  private:
-  using register_map_t = iresearch_absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
+  using register_map_t = absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
 
   mutable mutex_t mutex_;
   register_map_t reg_map_;
@@ -184,7 +184,7 @@ template<
   typename EntryType,
   typename TagType,
   typename RegisterType,
-  typename Hash = iresearch_absl::Hash<KeyType>,
+  typename Hash = absl::Hash<KeyType>,
   typename Pred = std::equal_to<KeyType>
 > class tagged_generic_register : public generic_register<KeyType, EntryType, RegisterType, Hash, Pred> {
  public:
@@ -218,7 +218,7 @@ template<
   }
 
   private:
-   using tag_map_t = iresearch_absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
+   using tag_map_t = absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
 
    mutable mutex_t mutex_;
    tag_map_t tag_map_;

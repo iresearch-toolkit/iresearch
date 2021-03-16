@@ -31,10 +31,10 @@
 // -----------------------------------------------------------------------------
 
 namespace {
-
+namespace absl = ::iresearch_absl;
 template<typename T>
 size_t get_hash(const T* value, size_t size) noexcept {
-  return iresearch_absl::hash_internal::CityHash64(reinterpret_cast<const char*>(value), size);
+  return absl::hash_internal::CityHash64(reinterpret_cast<const char*>(value), size);
 }
 
 }

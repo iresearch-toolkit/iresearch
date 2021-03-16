@@ -42,7 +42,7 @@ class token_masking_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  using MaskSet  = iresearch_absl::flat_hash_set<std::string>;
+  using MaskSet  = absl::flat_hash_set<std::string>;
 
   static constexpr string_ref type_name() noexcept { return "mask"; }
 

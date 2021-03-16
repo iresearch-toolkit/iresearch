@@ -37,7 +37,7 @@
 
 namespace iresearch {
 
-template<typename Key, typename Hash = iresearch_absl::Hash<Key>, typename Equal = std::equal_to<Key>>
+template<typename Key, typename Hash = absl::Hash<Key>, typename Equal = std::equal_to<Key>>
 class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
  public:
   typedef std::shared_ptr<const Key> ref_t;
@@ -129,7 +129,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
  private:
   mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
-  iresearch_absl::flat_hash_set<ref_t, hash, equal_to> refs_;
+  absl::flat_hash_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
 }

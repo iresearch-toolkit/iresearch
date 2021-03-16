@@ -144,7 +144,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     // stats for a specific term
-    iresearch_absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
+    absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;

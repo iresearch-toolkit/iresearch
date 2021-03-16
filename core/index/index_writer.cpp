@@ -43,7 +43,7 @@
 #include <sstream>
 
 namespace {
-
+namespace absl = ::iresearch_absl;
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
@@ -329,7 +329,7 @@ const std::string& write_document_mask(
 }
 
 // mapping: name -> { new segment, old segment }
-using candidates_mapping_t = iresearch_absl::flat_hash_map<
+using candidates_mapping_t = absl::flat_hash_map<
   irs::string_ref,
   std::pair<
     const irs::segment_meta*, // new segment
@@ -561,7 +561,7 @@ void readers_cache::clear() noexcept {
 }
 
 size_t readers_cache::purge(
-    const iresearch_absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept {
+    const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }

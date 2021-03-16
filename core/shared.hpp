@@ -332,7 +332,10 @@
 
 #define UNUSED(par) (void)(par)
 
-namespace iresearch { }
+namespace iresearch_absl { }
+namespace iresearch {
+namespace absl = ::iresearch_absl;
+}
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x

@@ -73,7 +73,7 @@ namespace std {
 } // std
 
 namespace {
-
+namespace absl = ::iresearch_absl;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of internal buffers, arbitrary size
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +143,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     return irs::hashed_string_ref(key.hash(), pool.encoding());
   };
   static std::mutex mutex;
-  static iresearch_absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
+  static absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
   auto key = encoding;
   std::string tmp;
 

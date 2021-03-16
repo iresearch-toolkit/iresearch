@@ -127,6 +127,7 @@ struct text_token_stream::state_t {
 } // ROOT
 
 namespace {
+namespace absl = ::iresearch_absl;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -144,7 +145,7 @@ struct cached_options_t: public irs::analysis::text_token_stream::options_t {
 };
 
 
-static iresearch_absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
+static absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
 static std::mutex mutex;
 static auto icu_cleanup = irs::make_finally([]()->void{
   // this call will release/free all memory used by ICU (for all users)

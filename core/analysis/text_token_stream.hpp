@@ -41,7 +41,7 @@ class text_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  using stopwords_t = iresearch_absl::flat_hash_set<std::string>;
+  using stopwords_t = absl::flat_hash_set<std::string>;
 
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };

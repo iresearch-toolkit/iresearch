@@ -31,6 +31,7 @@
 #include "singleton.hpp"
 
 namespace {
+namespace absl = ::iresearch_absl;
 
 class timer_states: public irs::singleton<timer_states> {
  public:
@@ -57,7 +58,7 @@ class timer_states: public irs::singleton<timer_states> {
 
   void init(
       bool track_all_keys = false,
-      const iresearch_absl::flat_hash_set<key_type>& tracked_keys = {}) {
+      const absl::flat_hash_set<key_type>& tracked_keys = {}) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto& entry: state_map_) {
@@ -88,7 +89,7 @@ class timer_states: public irs::singleton<timer_states> {
   }
 
  private:
-  using state_map_type = iresearch_absl::node_hash_map<key_type, entry_type>;
+  using state_map_type = absl::node_hash_map<key_type, entry_type>;
 
   std::mutex mutex_;
   state_map_type state_map_;
@@ -123,7 +124,7 @@ timer_stat_t& get_stat(const std::string& key) {
 
 void init_stats(
     bool track_all_keys /*= false*/,
-    const iresearch_absl::flat_hash_set<std::string>& tracked_keys /*= {} */) {
+    const absl::flat_hash_set<std::string>& tracked_keys /*= {} */) {
   timer_states::instance().init(track_all_keys, tracked_keys);
 }
 

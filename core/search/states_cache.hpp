@@ -61,7 +61,7 @@ class states_cache : private util::noncopyable {
   bool empty() const noexcept { return states_.empty(); }
 
  private:
-  using states_map = iresearch_absl::flat_hash_map<const sub_reader*, state_type>;
+  using states_map = absl::flat_hash_map<const sub_reader*, state_type>;
 
   // FIXME use vector instead?
   states_map states_;
