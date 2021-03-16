@@ -277,7 +277,7 @@ int codecvtu_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -376,7 +376,7 @@ int codecvt16_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -449,7 +449,7 @@ int codecvt16_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -597,7 +597,7 @@ int codecvt32_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -745,7 +745,7 @@ int codecvt32_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -931,7 +931,7 @@ bool codecvt8u_facet::append(
 }
 
 std::codecvt_base::result codecvt8u_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1077,7 +1077,7 @@ int codecvt8u_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8u_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -1451,7 +1451,7 @@ int codecvt_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvt_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -1600,7 +1600,7 @@ int codecvt8_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1726,7 +1726,7 @@ int codecvt8_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -2027,7 +2027,7 @@ int codecvtw_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -2226,7 +2226,7 @@ int codecvtw_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -3197,7 +3197,7 @@ template<typename T>
 
     len -= hi || full_width ? 0 : 1;
 
-    for (size_t i = lpad < len ? 0 : lpad - len; i; --i) {
+    for (size_t j = lpad < len ? 0 : lpad - len; j; --j) {
       *out++ = fill;
       ++size;
     }
