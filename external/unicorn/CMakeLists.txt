@@ -46,6 +46,11 @@ if(NOT ZLIB_FOUND AND NOT TARGET zlibstatic)
   endif()
 endif()
 
+if(NOT DEFINED ZLIB_INCLUDE_DIRS AND TARGET zlibstatic)
+  get_target_property(ZLIB_INCLUDE_DIRS zlibstatic INCLUDE_DIRECTORIES)
+endif()
+
+
 if (TARGET zlibstatic)
   target_link_libraries(${IResearch_TARGET_NAME}-unicorn zlibstatic)
 else()
