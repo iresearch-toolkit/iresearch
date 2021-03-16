@@ -237,7 +237,7 @@ void sparse_bitmap_iterator::read_block_header() {
       = sparse_bitmap_writer::BLOCK_SIZE / bits_required<byte_type>();
 
     ctx.dense.word_idx = -1;
-    ctx.dense.popcnt = 0;
+    ctx.dense.popcnt = index_;
     ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     block_end_ = in_->file_pointer() + block_size;
 
