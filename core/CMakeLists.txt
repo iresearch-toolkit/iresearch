@@ -85,6 +85,7 @@ set(IResearch_core_sources
   ./formats/formats.cpp
   ./formats/format_utils.cpp
   ./formats/skip_list.cpp
+  ./formats/sparse_bitmap.cpp
   ./index/directory_reader.cpp
   ./index/field_data.cpp
   ./index/field_meta.cpp

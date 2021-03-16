@@ -91,40 +91,39 @@ struct block_seek_helper;
 
 template<>
 struct block_seek_helper<BT_SPARSE> {
-  static void seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  template<bool Direct>
+  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     target &= 0x0000FFFF;
-    while (self->index_ < self->index_max_) {
-      const doc_id_t doc = self->in_->read_short();
-      ++self->index_;
 
-      if (doc >= target) {
-        std::get<document>(self->attrs_).value = self->block_ | doc;
-      }
-    }
-  }
+    auto& ctx = self->ctx.sparse;
+    const doc_id_t index_max = self->index_max_;
 
-  static void seek_mem(sparse_bitmap_iterator* self, doc_id_t target) {
-    target &= 0x0000FFFF;
-    while (self->index_ < self->index_max_) {
+    for (; self->index_ < index_max; ++self->index_) {
       doc_id_t doc;
-      if constexpr (is_big_endian()) {
-        std::memcpy(&doc, self->ctx.mem, sizeof(uint16_t));
-        self->ctx.mem += sizeof(uint16_t);
+      if constexpr (!Direct) {
+        doc = self->in_->read_short();
+      } else if constexpr (is_big_endian()) {
+        std::memcpy(&doc, ctx.u16data, sizeof(uint16_t));
+        ++ctx.u16data;
       } else {
-        doc = irs::read<uint16_t>(self->ctx.mem);
+        doc = irs::read<uint16_t>(self->ctx.u8data);
       }
 
-      ++self->index_;
       if (doc >= target) {
         std::get<document>(self->attrs_).value = self->block_ | doc;
+        std::get<value_index>(self->attrs_).value = self->index_++;
+        return true;
       }
     }
+
+    return false;
   }
 };
 
 template<>
 struct block_seek_helper<BT_DENSE> {
-  static void seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  template<bool Direct>
+  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     auto& ctx = self->ctx.dense;
 
     const uint32_t target_word_idx
@@ -132,60 +131,60 @@ struct block_seek_helper<BT_DENSE> {
     assert(target_word_idx >= ctx.word_idx);
     auto word_delta = target_word_idx - ctx.word_idx + 1;
 
-    for (; word_delta; --word_delta) {
-      ctx.word = self->in_->read_long();
-      ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
-    }
-    ctx.word_idx = target_word_idx;
+    if constexpr (Direct) {
+      if (word_delta) {
+        // FIMXE consider using SSE/avx256/avx512 extensions for large skips
+        // FIXME consider align data first to avoid calling memcpy
 
-    const doc_id_t left = ctx.word >> (target % bits_required<size_t>());
-
-    if (left) {
-      const doc_id_t offset = math::math_traits<decltype(left)>::ctz(left);
-      std::get<document>(self->attrs_).value = target + offset;
-      self->index_ = ctx.popcnt - math::math_traits<decltype(left)>::pop(left);
-      return;
-    }
-
-    // FIXME further scan
-  }
-
-  static void seek_mem(sparse_bitmap_iterator* self, doc_id_t target) {
-    auto& ctx = self->ctx.dense;
-
-    const uint32_t target_word_idx
-      = (target & 0x0000FFFF) / bits_required<size_t>();
-    assert(target_word_idx >= ctx.word_idx);
-    const auto word_delta = target_word_idx - ctx.word_idx;
-
-    if (word_delta) {
-      // FIMXE consider using SSE/avx256/avx512 extensions for large skips
-      // FIXME consider align data first to avoid calling memcpy
-
-      const size_t* pword = reinterpret_cast<const size_t*>(self->ctx.mem); // FIXME
-      const size_t* ptarget_word = reinterpret_cast<const size_t*>(self->ctx.mem) + word_delta;
-      for (; pword <= ptarget_word; ++pword) {
-        std::memcpy(&ctx.word, pword, sizeof(size_t));
+        const size_t* end = ctx.u64data + word_delta;
+        for (; ctx.u64data <= end; ++ctx.u64data) {
+          std::memcpy(&ctx.word, ctx.u64data, sizeof(size_t));
+          ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
+        }
+        ctx.word_idx = target_word_idx;
+      }
+    } else {
+      for (; word_delta; --word_delta) {
+        ctx.word = self->in_->read_long();
         ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
       }
-      self->ctx.mem = reinterpret_cast<const byte_type*>(pword);
       ctx.word_idx = target_word_idx;
     }
 
-    const doc_id_t left = is_big_endian()
+    const doc_id_t left = is_big_endian() || Direct // constexpr
       ? ctx.word >> (target % bits_required<size_t>())
       : ctx.word << (target % bits_required<size_t>());
 
     if (left) {
-      const doc_id_t offset = is_big_endian()
-        ? math::math_traits<decltype(left)>::ctz(left)
-        : math::math_traits<decltype(left)>::clz(left);
+      const doc_id_t offset = math::math_traits<decltype(left)>::ctz(left);
       std::get<document>(self->attrs_).value = target + offset;
-      self->index_ = ctx.popcnt - math::math_traits<decltype(left)>::pop(left);
-      return;
+      std::get<value_index>(self->attrs_).value
+        = ctx.popcnt - math::math_traits<decltype(left)>::pop(left);
+      return true;
     }
 
-    // FIXME further scan
+    ++ctx.word_idx;
+    for (; ctx.word_idx < sparse_bitmap_writer::NUM_BLOCKS; ++ctx.word_idx) {
+      if constexpr (Direct) {
+        std::memcpy(&ctx.word, ctx.u64data, sizeof(size_t));
+        ++ctx.u64data;
+      } else {
+        ctx.word = self->in_->read_long();
+      }
+
+      if (ctx.word) {
+        const doc_id_t offset = math::math_traits<size_t>::ctz(ctx.word);
+
+        std::get<document>(self->attrs_).value
+          = self->block_ + ctx.word_idx * bits_required<size_t>() + offset;
+        std::get<value_index>(self->attrs_).value = ctx.popcnt;
+        ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
+
+        return true;
+      }
+    }
+
+    return false;
   }
 };
 
@@ -193,58 +192,82 @@ struct block_seek_helper<BT_DENSE> {
 // --SECTION--                                            sparse_bitmap_iterator
 // -----------------------------------------------------------------------------
 
+sparse_bitmap_iterator::sparse_bitmap_iterator(index_input& in) noexcept
+  : in_(&in),
+    seek_func_([](sparse_bitmap_iterator* self, doc_id_t target) {
+      assert(!doc_limits::valid(self->value()));
+      assert(0 == (target & 0xFFFF0000));
+
+      // we can get there iff the very
+      // first block is not yet read
+      self->read_block_header();
+      self->seek(target);
+      return true;
+    }) {
+}
+
 void sparse_bitmap_iterator::read_block_header() {
   block_ = (in_->read_short() << 16);
-  const uint32_t popcnt = 1 + in_->read_short();
+  const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
   index_max_ += popcnt;
-  if (popcnt <= BITSET_THRESHOLD) {
-    constexpr BlockType type = BT_SPARSE;
-    const size_t block_size = 2*popcnt;
-    ctx.mem = in_->read_buffer(block_size, BufferHint::NORMAL);
-    block_end_ = in_->file_pointer() + block_size;
-
-    seek_func_ = ctx.mem
-      ? &block_seek_helper<type>::seek_mem
-      : &block_seek_helper<type>::seek;
-  } else if (popcnt == sparse_bitmap_writer::BLOCK_SIZE) {
+  if (popcnt == sparse_bitmap_writer::BLOCK_SIZE) {
     ctx.all.missing = block_ - index_;
     block_end_ = in_->file_pointer();
 
-    seek_func_ = [](sparse_bitmap_iterator* self, doc_id_t target) -> void {
+    seek_func_ = [](sparse_bitmap_iterator* self, doc_id_t target) {
       std::get<document>(self->attrs_).value = target;
-      self->index_ = target - self->ctx.all.missing;
+      std::get<value_index>(self->attrs_).value = target - self->ctx.all.missing;
+      return true;
     };
+  } else if (popcnt <= BITSET_THRESHOLD) {
+    constexpr BlockType type = BT_SPARSE;
+    const size_t block_size = 2*popcnt;
+    ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
+    block_end_ = in_->file_pointer() + block_size;
+
+    seek_func_ = ctx.u8data
+      ? &block_seek_helper<type>::seek<true>
+      : &block_seek_helper<type>::seek<false>;
   } else {
     constexpr BlockType type = BT_DENSE;
     constexpr size_t block_size
       = sparse_bitmap_writer::BLOCK_SIZE / bits_required<byte_type>();
 
-    ctx.mem = in_->read_buffer(block_size, BufferHint::NORMAL);
+    ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     block_end_ = in_->file_pointer() + block_size;
 
-    seek_func_ = ctx.mem
-      ? block_seek_helper<type>::seek_mem
-      : block_seek_helper<type>::seek;
+    seek_func_ = ctx.u8data
+      ? block_seek_helper<type>::seek<true>
+      : block_seek_helper<type>::seek<false>;
   }
 }
 
-void sparse_bitmap_iterator::seek_to_block(size_t target) {
+void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   do {
+    in_->seek(block_end_);
     read_block_header();
   } while (block_ < target);
 }
 
 doc_id_t sparse_bitmap_iterator::seek(doc_id_t target) {
-  const size_t target_block = target & 0xFFFF0000;
+  const doc_id_t target_block = target & 0xFFFF0000;
   if (block_ < target_block) {
     seek_to_block(target_block);
   }
 
-  assert(seek_func_);
-  seek_func_(this, target);
+  if (block_ == target_block) {
+    assert(seek_func_);
+    if (seek_func_(this, target)) {
+      return value();
+    }
+    read_block_header();
+  }
 
-  return std::get<document>(attrs_).value;
+  assert(seek_func_);
+  seek_func_(this, block_);
+
+  return value();
 }
 
 } // iresearch

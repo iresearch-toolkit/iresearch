@@ -42,15 +42,28 @@ namespace iresearch {
 
 struct index_output;
 
+///
+/// @class sparse_bitmap_writer
+///
+/// union {
+///   doc_id_t doc;
+///   struct {
+///     uint16_t block;
+///     uint16_t block_offset
+///   }
+/// };
 class sparse_bitmap_writer {
  public:
+  using value_type = doc_id_t; // for compatibility with back_inserter
+
   static constexpr uint32_t BLOCK_SIZE = 1 << 16;
+  static constexpr uint32_t NUM_BLOCKS = BLOCK_SIZE / bits_required<size_t>();
 
   explicit sparse_bitmap_writer(index_output& out) noexcept
     : out_(&out) {
   }
 
-  void add(doc_id_t doc) {
+  void push_back(doc_id_t doc) {
     static_assert(math::is_power2(BLOCK_SIZE));
     assert(doc_limits::valid(doc));
     assert(!doc_limits::eof(doc));
@@ -68,12 +81,9 @@ class sparse_bitmap_writer {
   void finish();
 
  private:
-  static constexpr uint32_t NUM_BLOCKS
-    = BLOCK_SIZE / bits_required<size_t>();
-
   void flush() {
     const uint32_t popcnt = static_cast<uint32_t>(
-      bitset::count(std::begin(bits_), std::end(bits_)));
+      math::math_traits<size_t>::pop(std::begin(bits_), std::end(bits_)));
     if (popcnt) {
       flush(popcnt);
       popcnt_ += popcnt;
@@ -81,7 +91,7 @@ class sparse_bitmap_writer {
     }
   }
 
-  void set(doc_id_t value) noexcept {
+  FORCE_INLINE void set(doc_id_t value) noexcept {
     irs::set_bit(bits_[value / bits_required<size_t>()],
                  value % bits_required<size_t>());
   }
@@ -94,11 +104,15 @@ class sparse_bitmap_writer {
   uint32_t block_{}; // last flushed block
 };
 
+struct value_index : document {
+  static constexpr string_ref type_name() noexcept {
+    return "value_index";
+  }
+};
+
 class sparse_bitmap_iterator final : public doc_iterator {
  public:
-  explicit sparse_bitmap_iterator(index_input& in) noexcept
-    : in_(&in) {
-  }
+  explicit sparse_bitmap_iterator(index_input& in) noexcept;
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
@@ -107,7 +121,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   virtual doc_id_t seek(doc_id_t target) override final;
 
   virtual bool next() override final {
-    return seek(value() + 1);
+    return !doc_limits::eof(seek(value() + 1));
   }
 
   virtual doc_id_t value() const noexcept override final {
@@ -115,24 +129,25 @@ class sparse_bitmap_iterator final : public doc_iterator {
   }
 
   doc_id_t index() const noexcept {
-    return index_;
+    return std::get<value_index>(attrs_).value;
   }
 
  private:
-  using block_seek_f = void(*)(sparse_bitmap_iterator*, doc_id_t);
+  using block_seek_f = bool(*)(sparse_bitmap_iterator*, doc_id_t);
 
   template<uint32_t>
   friend struct block_seek_helper;
 
-  void seek_to_block(size_t block);
+  void seek_to_block(doc_id_t block);
   void read_block_header();
 
   struct block_ctx {
     union {
       struct {
-
+        const uint16_t* u16data;
       } sparse;
       struct {
+        const size_t* u64data;
         doc_id_t popcnt;
         uint32_t word_idx;
         size_t word;
@@ -140,16 +155,16 @@ class sparse_bitmap_iterator final : public doc_iterator {
       struct {
         doc_id_t missing;
       } all;
+      const byte_type* u8data;
     };
-    const byte_type* mem;
   } ctx;
 
   index_input* in_;
-  std::tuple<document, cost> attrs_;
+  std::tuple<document, cost, value_index> attrs_;
   block_seek_f seek_func_;
-  size_t block_end_{};
-  doc_id_t index_{};
-  doc_id_t index_max_{};
+  size_t block_end_;
+  doc_id_t index_;
+  doc_id_t index_max_;
   doc_id_t block_;
 };
 

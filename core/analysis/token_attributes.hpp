@@ -88,7 +88,7 @@ struct IRESEARCH_API payload final : attribute {
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document final : attribute {
+struct IRESEARCH_API document : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "document"; }
 
