@@ -149,7 +149,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
       struct {
         const size_t* u64data;
         doc_id_t popcnt;
-        uint32_t word_idx;
+        int32_t word_idx;
         size_t word;
       } dense;
       struct {

@@ -126,10 +126,10 @@ struct block_seek_helper<BT_DENSE> {
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     auto& ctx = self->ctx.dense;
 
-    const uint32_t target_word_idx
+    const int32_t target_word_idx
       = (target & 0x0000FFFF) / bits_required<size_t>();
     assert(target_word_idx >= ctx.word_idx);
-    auto word_delta = target_word_idx - ctx.word_idx + 1;
+    auto word_delta = target_word_idx - ctx.word_idx;
 
     if constexpr (Direct) {
       if (word_delta) {
@@ -151,7 +151,7 @@ struct block_seek_helper<BT_DENSE> {
       ctx.word_idx = target_word_idx;
     }
 
-    const doc_id_t left = is_big_endian() || Direct // constexpr
+    const size_t left = is_big_endian() || !Direct // constexpr
       ? ctx.word >> (target % bits_required<size_t>())
       : ctx.word << (target % bits_required<size_t>());
 
@@ -163,8 +163,10 @@ struct block_seek_helper<BT_DENSE> {
       return true;
     }
 
+    constexpr int32_t NUM_BLOCKS = sparse_bitmap_writer::NUM_BLOCKS;
+
     ++ctx.word_idx;
-    for (; ctx.word_idx < sparse_bitmap_writer::NUM_BLOCKS; ++ctx.word_idx) {
+    for (; ctx.word_idx < NUM_BLOCKS; ++ctx.word_idx) {
       if constexpr (Direct) {
         std::memcpy(&ctx.word, ctx.u64data, sizeof(size_t));
         ++ctx.u64data;
@@ -234,6 +236,8 @@ void sparse_bitmap_iterator::read_block_header() {
     constexpr size_t block_size
       = sparse_bitmap_writer::BLOCK_SIZE / bits_required<byte_type>();
 
+    ctx.dense.word_idx = -1;
+    ctx.dense.popcnt = 0;
     ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     block_end_ = in_->file_pointer() + block_size;
 
@@ -245,7 +249,7 @@ void sparse_bitmap_iterator::read_block_header() {
 
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   do {
-    in_->seek(block_end_);
+    in_->seek(block_end_); // FIXME check if necessary
     read_block_header();
   } while (block_ < target);
 }

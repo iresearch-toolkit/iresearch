@@ -79,6 +79,13 @@ struct bytes_io<T, sizeof(uint16_t)> {
     return out;
   }
 
+  static T read(byte_type*& in) {
+    const T out = ((in[0] << 8) | in[1]);
+    in += sizeof(T);
+
+    return out;
+  }
+
   template<typename InputIterator>
   static T vskip(InputIterator& in) {
     std::advance(in, 2);
