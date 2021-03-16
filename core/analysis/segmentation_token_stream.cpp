@@ -70,7 +70,7 @@ bool parse_vpack_options(const irs::string_ref& args,
         IR_FRMT_WARN(
             "Invalid type '%s' (string expected) for segmentation_token_stream from "
             "Vpack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString());
+            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString().c_str());
         return false;
       }
       auto case_convert = case_convert_slice.stringRef();
@@ -80,7 +80,7 @@ bool parse_vpack_options(const irs::string_ref& args,
         IR_FRMT_WARN(
             "Invalid value in '%s' for segmentation_token_stream from "
             "Vpack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString());
+            CASE_CONVERT_PARAM_NAME.c_str(), slice.toString().c_str());
         return false;
       }
       options.case_convert = itr->second;
@@ -91,7 +91,7 @@ bool parse_vpack_options(const irs::string_ref& args,
         IR_FRMT_WARN(
             "Invalid type '%s' (string expected) for segmentation_token_stream from "
             "Vpack arguments: %s",
-            BREAK_PARAM_NAME.c_str(), slice.toString());
+            BREAK_PARAM_NAME.c_str(), slice.toString().c_str());
         return false;
       }
       auto break_type = break_type_slice.stringRef();
@@ -101,7 +101,7 @@ bool parse_vpack_options(const irs::string_ref& args,
         IR_FRMT_WARN(
             "Invalid value in '%s' for segmentation_token_stream from "
             "Vpack arguments: %s",
-            BREAK_PARAM_NAME.c_str(), slice.toString());
+            BREAK_PARAM_NAME.c_str(), slice.toString().c_str());
         return false;
       }
       options.word_break = itr->second;
@@ -255,8 +255,10 @@ segmentation_token_stream::segmentation_token_stream(segmentation_token_stream::
 
 bool segmentation_token_stream::next() {
   if (state_->begin != state_->end) {
-    std::get<1>(attrs_).start = state_->begin->first.offset();
-    std::get<1>(attrs_).end = state_->begin->second.offset();
+    assert(state_->begin->first.offset() <= std::numeric_limits<uint32_t>::max());
+    assert(state_->begin->second.offset() <= std::numeric_limits<uint32_t>::max());
+    std::get<1>(attrs_).start = static_cast<uint32_t>(state_->begin->first.offset());
+    std::get<1>(attrs_).end = static_cast<uint32_t>(state_->begin->second.offset());
     switch (options_.case_convert) {
       case options_t::case_convert_t::NONE:
         std::get<2>(attrs_).value = irs::ref_cast<irs::byte_type>(RS::Unicorn::u_view(*state_->begin++));
