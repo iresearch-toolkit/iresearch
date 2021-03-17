@@ -42,9 +42,9 @@ namespace iresearch {
 
 struct index_output;
 
-///
+//////////////////////////////////////////////////////////////////////////////
 /// @class sparse_bitmap_writer
-///
+/// @note
 /// union {
 ///   doc_id_t doc;
 ///   struct {
@@ -52,6 +52,7 @@ struct index_output;
 ///     uint16_t block_offset
 ///   }
 /// };
+//////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_writer {
  public:
   using value_type = doc_id_t; // for compatibility with back_inserter
@@ -102,14 +103,21 @@ class sparse_bitmap_writer {
   size_t bits_[NUM_BLOCKS]{};
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block
-};
+}; // sparse_bitmap_writer
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct value_index
+/// @brief denotes a position of a value associated with a document
+//////////////////////////////////////////////////////////////////////////////
 struct value_index : document {
   static constexpr string_ref type_name() noexcept {
     return "value_index";
   }
-};
+}; // value_index
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class sparse_bitmap_iterator
+//////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_iterator final : public doc_iterator {
  public:
   explicit sparse_bitmap_iterator(index_input& in) noexcept;
@@ -168,7 +176,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   doc_id_t index_;
   doc_id_t index_max_;
   doc_id_t block_;
-};
+}; // sparse_bitmap_iterator
 
 } // iresearch
 
