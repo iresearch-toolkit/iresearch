@@ -37,7 +37,7 @@ enum BlockType : uint32_t {
 };
 
 enum AccessType : uint32_t {
-  AT_DEFAULT,
+  AT_STREAM,
   AT_DIRECT,
   AT_DIRECT_ALIGNED
 };
@@ -89,14 +89,14 @@ void sparse_bitmap_writer::flush(uint32_t popcnt) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 block_seek_helper
+// --SECTION--                                                    block_iterator
 // -----------------------------------------------------------------------------
 
 template<uint32_t>
-struct block_seek_helper;
+struct block_iterator;
 
 template<>
-struct block_seek_helper<BT_SPARSE> {
+struct block_iterator<BT_SPARSE> {
   template<AccessType Access>
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     target &= 0x0000FFFF;
@@ -106,7 +106,7 @@ struct block_seek_helper<BT_SPARSE> {
 
     for (; self->index_ < index_max; ++self->index_) {
       doc_id_t doc;
-      if constexpr (AT_DEFAULT == Access) {
+      if constexpr (AT_STREAM == Access) {
         doc = self->in_->read_short();
       } else if constexpr (is_big_endian()) {
         if constexpr (AT_DIRECT_ALIGNED == Access) {
@@ -132,7 +132,7 @@ struct block_seek_helper<BT_SPARSE> {
 };
 
 template<>
-struct block_seek_helper<BT_DENSE> {
+struct block_iterator<BT_DENSE> {
   template<AccessType Access>
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     auto& ctx = self->ctx.dense;
@@ -142,7 +142,7 @@ struct block_seek_helper<BT_DENSE> {
     assert(target_word_idx >= ctx.word_idx);
     auto word_delta = target_word_idx - ctx.word_idx;
 
-    if constexpr (AT_DEFAULT == Access) {
+    if constexpr (AT_STREAM == Access) {
       for (; word_delta; --word_delta) {
         ctx.word = self->in_->read_long();
         ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
@@ -153,7 +153,7 @@ struct block_seek_helper<BT_DENSE> {
         // FIMXE consider using SSE/avx256/avx512 extensions for large skips
 
         const size_t* end = ctx.u64data + word_delta;
-        for (; ctx.u64data <= end; ++ctx.u64data) {
+        for (; ctx.u64data < end; ++ctx.u64data) {
           if constexpr (AT_DIRECT_ALIGNED == Access) {
             ctx.word = *ctx.u64data;
           } else {
@@ -162,13 +162,14 @@ struct block_seek_helper<BT_DENSE> {
           }
           ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
         }
+        if constexpr (!is_big_endian()) {
+          ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
+        }
         ctx.word_idx = target_word_idx;
       }
     }
 
-    const size_t left = is_big_endian() || (AT_DEFAULT == Access) // constexpr
-      ? ctx.word >> (target % bits_required<size_t>())
-      : ctx.word << (target % bits_required<size_t>());
+    const size_t left = ctx.word >> (target % bits_required<size_t>());
 
     if (left) {
       const doc_id_t offset = math::math_traits<decltype(left)>::ctz(left);
@@ -182,7 +183,7 @@ struct block_seek_helper<BT_DENSE> {
 
     ++ctx.word_idx;
     for (; ctx.word_idx < NUM_BLOCKS; ++ctx.word_idx) {
-      if constexpr (AT_DEFAULT == Access) {
+      if constexpr (AT_STREAM == Access) {
         ctx.word = self->in_->read_long();
       } else {
         if constexpr (AT_DIRECT_ALIGNED == Access) {
@@ -195,6 +196,10 @@ struct block_seek_helper<BT_DENSE> {
       }
 
       if (ctx.word) {
+        if constexpr (AT_STREAM != Access && !is_big_endian()) {
+          ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
+        }
+
         const doc_id_t offset = math::math_traits<size_t>::ctz(ctx.word);
 
         std::get<document>(self->attrs_).value
@@ -250,8 +255,8 @@ void sparse_bitmap_iterator::read_block_header() {
 
     // FIXME check alignment
     seek_func_ = ctx.u8data
-      ? &block_seek_helper<type>::seek<AT_DIRECT>
-      : &block_seek_helper<type>::seek<AT_DEFAULT>;
+      ? &block_iterator<type>::seek<AT_DIRECT>
+      : &block_iterator<type>::seek<AT_STREAM>;
   } else {
     constexpr BlockType type = BT_DENSE;
     constexpr size_t block_size
@@ -264,8 +269,8 @@ void sparse_bitmap_iterator::read_block_header() {
 
     // FIXME check alignment
     seek_func_ = ctx.u8data
-      ? block_seek_helper<type>::seek<AT_DIRECT>
-      : block_seek_helper<type>::seek<AT_DEFAULT>;
+      ? block_iterator<type>::seek<AT_DIRECT>
+      : block_iterator<type>::seek<AT_STREAM>;
   }
 }
 

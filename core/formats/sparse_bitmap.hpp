@@ -136,7 +136,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   using block_seek_f = bool(*)(sparse_bitmap_iterator*, doc_id_t);
 
   template<uint32_t>
-  friend struct block_seek_helper;
+  friend struct block_iterator;
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
