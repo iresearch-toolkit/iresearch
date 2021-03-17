@@ -284,6 +284,11 @@ void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
 }
 
 doc_id_t sparse_bitmap_iterator::seek(doc_id_t target) {
+  // FIXME
+  if (target <= value()) {
+    return value();
+  }
+
   const doc_id_t target_block = target & 0xFFFF0000;
   if (block_ < target_block) {
     seek_to_block(target_block);
