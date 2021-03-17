@@ -36,9 +36,13 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base {
   void test_read_write_seek(const range_type (&ranges)[N]);
 
   template<size_t N>
+  void test_read_write_seek_next(const range_type (&ranges)[N]);
+
+  template<size_t N>
   void test_read_write(const range_type (&ranges)[N]) {
     test_read_write_next(ranges);
     test_read_write_seek(ranges);
+    test_read_write_seek_next(ranges);
   }
 };
 
@@ -153,6 +157,92 @@ void sparse_bitmap_test_case::test_read_write_seek(const range_type (&ranges)[N]
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_TRUE(irs::doc_limits::eof(it.seek(expected_doc)));
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
+template<size_t N>
+void sparse_bitmap_test_case::test_read_write_seek_next(const range_type (&ranges)[N]) {
+  {
+    auto stream = dir().create("tmp");
+    ASSERT_NE(nullptr, stream);
+
+    irs::sparse_bitmap_writer writer(*stream);
+
+    for (const auto& range : ranges) {
+      irs::doc_id_t doc = range.first;
+      std::generate_n(
+        std::back_inserter(writer),
+        range.second - range.first,
+        [&doc] { return doc++; });
+    }
+
+    writer.finish();
+  }
+
+  // seek
+  {
+    auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    irs::doc_id_t expected_doc;
+    irs::doc_id_t max_doc;
+
+    auto begin = std::begin(ranges);
+    for (; begin != std::end(ranges); ++begin) {
+      std::tie(expected_doc, max_doc) = *begin;
+
+      while (expected_doc < max_doc) {
+        irs::doc_id_t expected_index = 0;
+
+        for (auto range = std::begin(ranges); range != begin; ++range) {
+          ASSERT_LE(range->first, range->second);
+          expected_index += range->second - range->first;
+        }
+
+        stream->seek(0);
+        irs::sparse_bitmap_iterator it(*stream);
+        auto* index = irs::get<irs::value_index>(it);
+        ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
+        auto* doc = irs::get<irs::document>(it);
+        ASSERT_NE(nullptr, doc);
+        ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+        auto* cost = irs::get<irs::document>(it);
+        ASSERT_NE(nullptr, cost);
+        // FIXME check cost value
+
+        ASSERT_EQ(expected_doc, it.seek(expected_doc));
+        ASSERT_EQ(expected_doc, it.value());
+        ASSERT_EQ(expected_doc, doc->value);
+        ASSERT_EQ(expected_index, it.index());
+        ASSERT_EQ(expected_index, index->value);
+
+        ++expected_doc;
+        ++expected_index;
+
+        for (auto range = begin;;) {
+          for (; expected_doc < max_doc; ) {
+            ASSERT_TRUE(it.next());
+            ASSERT_EQ(expected_doc, it.value());
+            ASSERT_EQ(expected_doc, doc->value);
+            ASSERT_EQ(expected_index, it.index());
+            ASSERT_EQ(expected_index, index->value);
+            ++expected_doc;
+            ++expected_index;
+          }
+
+          if (++range < std::end(ranges)) {
+            std::tie(expected_doc, max_doc) = *range;
+          } else {
+            break;
+          }
+        }
+
+        ASSERT_FALSE(it.next());
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+        ASSERT_TRUE(irs::doc_limits::eof(it.seek(expected_doc)));
+        ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      }
+    }
   }
 }
 

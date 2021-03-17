@@ -171,11 +171,11 @@ class sparse_bitmap_iterator final : public doc_iterator {
   block_iterator_context ctx_;
   index_input* in_;
   std::tuple<document, cost, value_index> attrs_;
-  block_seek_f seek_func_;
   size_t block_end_;
-  doc_id_t index_;
-  doc_id_t index_max_;
-  doc_id_t block_;
+  block_seek_f seek_func_;
+  doc_id_t index_{};
+  doc_id_t index_max_{};
+  doc_id_t block_{};
 }; // sparse_bitmap_iterator
 
 } // iresearch

@@ -221,6 +221,7 @@ struct block_iterator<BT_DENSE> {
 
 sparse_bitmap_iterator::sparse_bitmap_iterator(index_input& in) noexcept
   : in_(&in),
+    block_end_(in.file_pointer()),
     seek_func_([](sparse_bitmap_iterator* self, doc_id_t target) {
       assert(!doc_limits::valid(self->value()));
       assert(0 == (target & 0xFFFF0000));
