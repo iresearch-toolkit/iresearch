@@ -138,10 +138,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   template<uint32_t>
   friend struct block_iterator;
 
-  void seek_to_block(doc_id_t block);
-  void read_block_header();
-
-  struct block_ctx {
+  struct block_iterator_context {
     union {
       struct {
         const uint16_t* u16data;
@@ -153,12 +150,17 @@ class sparse_bitmap_iterator final : public doc_iterator {
         size_t word;
       } dense;
       struct {
+        const void* ignore;
         doc_id_t missing;
       } all;
       const byte_type* u8data;
     };
-  } ctx;
+  };
 
+  void seek_to_block(doc_id_t block);
+  void read_block_header();
+
+  block_iterator_context ctx_;
   index_input* in_;
   std::tuple<document, cost, value_index> attrs_;
   block_seek_f seek_func_;

@@ -38,7 +38,7 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base {
   template<size_t N>
   void test_read_write(const range_type (&ranges)[N]) {
     test_read_write_next(ranges);
-    //test_read_write_seek(ranges);
+    test_read_write_seek(ranges);
   }
 };
 
@@ -61,7 +61,6 @@ void sparse_bitmap_test_case::test_read_write_next(const range_type (&ranges)[N]
     writer.finish();
   }
 
-  // next
   {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);

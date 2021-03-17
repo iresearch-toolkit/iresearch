@@ -101,7 +101,7 @@ struct block_iterator<BT_SPARSE> {
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     target &= 0x0000FFFF;
 
-    auto& ctx = self->ctx.sparse;
+    auto& ctx = self->ctx_.sparse;
     const doc_id_t index_max = self->index_max_;
 
     for (; self->index_ < index_max; ++self->index_) {
@@ -117,7 +117,7 @@ struct block_iterator<BT_SPARSE> {
         }
         ++ctx.u16data;
       } else {
-        doc = irs::read<uint16_t>(self->ctx.u8data);
+        doc = irs::read<uint16_t>(self->ctx_.u8data);
       }
 
       if (doc >= target) {
@@ -135,7 +135,7 @@ template<>
 struct block_iterator<BT_DENSE> {
   template<AccessType Access>
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
-    auto& ctx = self->ctx.dense;
+    auto& ctx = self->ctx_.dense;
 
     const int32_t target_word_idx
       = (target & 0x0000FFFF) / bits_required<size_t>();
@@ -239,22 +239,22 @@ void sparse_bitmap_iterator::read_block_header() {
   index_ = index_max_;
   index_max_ += popcnt;
   if (popcnt == sparse_bitmap_writer::BLOCK_SIZE) {
-    ctx.all.missing = block_ - index_;
+    ctx_.all.missing = block_ - index_;
     block_end_ = in_->file_pointer();
 
     seek_func_ = [](sparse_bitmap_iterator* self, doc_id_t target) {
       std::get<document>(self->attrs_).value = target;
-      std::get<value_index>(self->attrs_).value = target - self->ctx.all.missing;
+      std::get<value_index>(self->attrs_).value = target - self->ctx_.all.missing;
       return true;
     };
   } else if (popcnt <= BITSET_THRESHOLD) {
     constexpr BlockType type = BT_SPARSE;
     const size_t block_size = 2*popcnt;
-    ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     block_end_ = in_->file_pointer() + block_size;
+    ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
 
     // FIXME check alignment
-    seek_func_ = ctx.u8data
+    seek_func_ = ctx_.u8data
       ? &block_iterator<type>::seek<AT_DIRECT>
       : &block_iterator<type>::seek<AT_STREAM>;
   } else {
@@ -262,13 +262,13 @@ void sparse_bitmap_iterator::read_block_header() {
     constexpr size_t block_size
       = sparse_bitmap_writer::BLOCK_SIZE / bits_required<byte_type>();
 
-    ctx.dense.word_idx = -1;
-    ctx.dense.popcnt = index_;
-    ctx.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
+    ctx_.dense.word_idx = -1;
+    ctx_.dense.popcnt = index_;
     block_end_ = in_->file_pointer() + block_size;
+    ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
 
     // FIXME check alignment
-    seek_func_ = ctx.u8data
+    seek_func_ = ctx_.u8data
       ? block_iterator<type>::seek<AT_DIRECT>
       : block_iterator<type>::seek<AT_STREAM>;
   }

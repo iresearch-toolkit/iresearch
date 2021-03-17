@@ -394,7 +394,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return pos_ >= data_.end();
   }
 
-  virtual byte_type read_byte() override final {
+  virtual byte_type read_byte() noexcept override final {
     assert(pos_ < data_.end());
     return *pos_++;
   }
@@ -432,19 +432,23 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return dup();
   }
 
-  virtual int32_t read_int() override final {
+  virtual int16_t read_short() noexcept override final {
+    return irs::read<uint16_t>(pos_);
+  }
+
+  virtual int32_t read_int() noexcept override final {
     return irs::read<uint32_t>(pos_);
   }
 
-  virtual int64_t read_long() override final {
+  virtual int64_t read_long() noexcept override final {
     return irs::read<uint64_t>(pos_);
   }
 
-  virtual uint64_t read_vlong() override final {
+  virtual uint64_t read_vlong() noexcept override final {
     return irs::vread<uint64_t>(pos_);
   }
 
-  virtual uint32_t read_vint() override final {
+  virtual uint32_t read_vint() noexcept override final {
     return irs::vread<uint32_t>(pos_);
   }
 

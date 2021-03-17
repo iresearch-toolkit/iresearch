@@ -180,6 +180,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   virtual void seek(size_t pos) override;
 
+  virtual int16_t read_short() override;
   virtual int32_t read_int() override;
   virtual int64_t read_long() override;
   virtual uint32_t read_vint() override;

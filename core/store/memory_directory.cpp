@@ -228,6 +228,12 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
   return length - left;
 }
 
+int16_t memory_index_input::read_short() {
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
+}
+
 int32_t memory_index_input::read_int() {
   return remain() < sizeof(uint32_t)
     ? data_input::read_int()

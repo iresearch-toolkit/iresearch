@@ -81,7 +81,7 @@ struct IRESEARCH_API data_input {
   /// @note calling "read_byte()" on a stream in EOF state is undefined behavior
   virtual bool eof() const = 0;
 
-  int16_t read_short() {
+  virtual int16_t read_short() {
     // important to read as unsigned
     return irs::read<uint16_t>(*this);
   }
@@ -174,6 +174,8 @@ class IRESEARCH_API buffered_index_input : public index_input {
   }
 
   virtual void seek(size_t pos) override final;
+
+  virtual int16_t read_short() override final;
 
   virtual int32_t read_int() override final;
 

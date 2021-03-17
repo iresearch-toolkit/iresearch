@@ -79,6 +79,12 @@ byte_type buffered_index_input::read_byte() {
   return *begin_++;
 }
 
+int16_t buffered_index_input::read_short() {
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
+}
+
 int32_t buffered_index_input::read_int() {
   return remain() < sizeof(uint32_t)
     ? data_input::read_int()
