@@ -92,6 +92,7 @@ void sparse_bitmap_test_case::test_read_write_next(const range_type (&ranges)[N]
         ASSERT_EQ(expected_index, index->value);
         ++expected_doc;
         ++expected_index;
+
       }
     }
 
@@ -231,6 +232,9 @@ void sparse_bitmap_test_case::test_read_write_seek_next(const range_type (&range
           }
 
           if (++range < std::end(ranges)) {
+            // attempt to seek backwards
+            ASSERT_EQ(it.value(), it.seek(it.value()-1));
+
             std::tie(expected_doc, max_doc) = *range;
           } else {
             break;

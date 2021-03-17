@@ -40,8 +40,6 @@
 
 namespace iresearch {
 
-struct index_output;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class sparse_bitmap_writer
 /// @note
@@ -120,7 +118,7 @@ struct value_index : document {
 //////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_iterator final : public doc_iterator {
  public:
-  explicit sparse_bitmap_iterator(index_input& in) noexcept;
+  explicit sparse_bitmap_iterator(index_input& in);
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
@@ -144,9 +142,9 @@ class sparse_bitmap_iterator final : public doc_iterator {
   using block_seek_f = bool(*)(sparse_bitmap_iterator*, doc_id_t);
 
   template<uint32_t>
-  friend struct block_iterator;
+  friend struct container_iterator;
 
-  struct block_iterator_context {
+  struct container_iterator_context {
     union {
       struct {
         const uint16_t* u16data;
@@ -168,11 +166,11 @@ class sparse_bitmap_iterator final : public doc_iterator {
   void seek_to_block(doc_id_t block);
   void read_block_header();
 
-  block_iterator_context ctx_;
-  index_input* in_;
+  container_iterator_context ctx_;
   std::tuple<document, cost, value_index> attrs_;
-  size_t block_end_;
+  index_input* in_;
   block_seek_f seek_func_;
+  size_t cont_begin_;
   doc_id_t index_{};
   doc_id_t index_max_{};
   doc_id_t block_{};
