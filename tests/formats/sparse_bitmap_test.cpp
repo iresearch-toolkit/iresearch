@@ -104,6 +104,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(
 
     for (auto& seek : seeks) {
       ASSERT_EQ(seek.second, it.seek(seek.first));
+      ASSERT_EQ(seek.second, doc->value);
     }
   }
 }
@@ -348,8 +349,37 @@ TEST_P(sparse_bitmap_test_case, rw_mixed_seek_next) {
 }
 
 TEST_P(sparse_bitmap_test_case, rw_mixed_seek_random) {
-  //constexpr seek_type seeks[] { };
-  //test_rw_seek_random(MIXED, seeks);
+  {
+    constexpr seek_type seeks[] {
+      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+    };
+
+    test_rw_seek_random(MIXED, seeks);
+  }
+
+  {
+    constexpr seek_type seeks[] {
+      { 33, 160 },
+      { 158, 160 },
+      { 999, 999 },
+      { 998, 999 },
+      { 60000, 60000 },
+      { 63000, 63000 },
+      { 62999, 63000 },
+      { 64499, 64499 },
+      { 64500, 196608 },
+      { 64500, 196608 },
+      { 328200, 328200 },
+      { 328199, 328200 },
+      { 328284, 328412 },
+      { 458778, 458778 },
+      { 460563, irs::doc_limits::eof() },
+      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+    };
+
+    test_rw_seek_random(MIXED, seeks);
+  }
 }
 
 TEST_P(sparse_bitmap_test_case, rw_dense) {
@@ -365,8 +395,29 @@ TEST_P(sparse_bitmap_test_case, rw_dense_seek_next) {
 }
 
 TEST_P(sparse_bitmap_test_case, rw_dense_seek_random) {
-  //constexpr seek_type seeks[] { };
-  //test_rw_seek_random(DENSE, seeks);
+  {
+    constexpr seek_type seeks[] {
+      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+    };
+
+    test_rw_seek_random(DENSE, seeks);
+  }
+
+  {
+    constexpr seek_type seeks[] {
+      { 33, 160 },
+      { 158, 160 },
+      { 999, 999 },
+      { 328410, 328412 },
+      { 329490, 329490 },
+      { 333585, 333585 },
+      { 333586, irs::doc_limits::eof() },
+      { 333587, irs::doc_limits::eof() },
+      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+    };
+
+    test_rw_seek_random(DENSE, seeks);
+  }
 }
 
 TEST_P(sparse_bitmap_test_case, rw_sparse_next) {
@@ -382,8 +433,28 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_seek_next) {
 }
 
 TEST_P(sparse_bitmap_test_case, rw_sparse_seek_random) {
-  //constexpr seek_type seeks[] { };
-  //test_rw_seek_random(SPARSE, seeks);
+  {
+    constexpr seek_type seeks[] {
+      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+    };
+
+    test_rw_seek_random(SPARSE, seeks);
+  }
+
+  {
+    constexpr seek_type seeks[] {
+      { 33, 160 },
+      { 1600, 1600 },
+      { 1599, 1600 },
+      { 328007, 328007 },
+      { 328107, 328107 },
+      { 328283, 328283 },
+      { 329489, irs::doc_limits::eof() },
+      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+    };
+
+    test_rw_seek_random(SPARSE, seeks);
+  }
 }
 
 TEST_P(sparse_bitmap_test_case, rw_all_next) {
@@ -399,8 +470,29 @@ TEST_P(sparse_bitmap_test_case, rw_all_seek_next) {
 }
 
 TEST_P(sparse_bitmap_test_case, rw_all_seek_random) {
-  //constexpr seek_type seeks[] { };
-  //test_rw_seek_random(ALL, seeks);
+  {
+    constexpr seek_type seeks[] {
+      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+    };
+
+    test_rw_seek_random(ALL, seeks);
+  }
+
+  {
+    constexpr seek_type seeks[] {
+      { 33, 65536 },
+      { 131071, 131071 },
+      { 131072, 196608 },
+      { 196612, 196612 },
+      { 196612, 196612 },
+      { 196611, 196612 },
+      { 262143, 262143 },
+      { 262144, irs::doc_limits::eof() },
+      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+    };
+
+    test_rw_seek_random(ALL, seeks);
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(
