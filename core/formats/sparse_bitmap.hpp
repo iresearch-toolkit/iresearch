@@ -134,6 +134,8 @@ class sparse_bitmap_iterator final : public doc_iterator {
     return std::get<document>(attrs_).value;
   }
 
+  /// @note the value is undefined for
+  ///       doc_limits::invalid() and doc_limits::eof()
   doc_id_t index() const noexcept {
     return std::get<value_index>(attrs_).value;
   }

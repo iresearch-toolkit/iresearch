@@ -27,8 +27,10 @@
 
 class sparse_bitmap_test_case : public tests::directory_test_case_base {
  protected:
+  // min, max
   using range_type = std::pair<irs::doc_id_t, irs::doc_id_t>;
-  using seek_type = range_type;
+  // position, expected, index
+  using seek_type = std::tuple<irs::doc_id_t, irs::doc_id_t, irs::doc_id_t>;
 
   static constexpr range_type MIXED[] {
     { 1, 32 }, { 160, 1184, }, { 1201, 1734 }, { 60000, 64500 },
@@ -103,8 +105,12 @@ void sparse_bitmap_test_case::test_rw_seek_random(
     // FIXME check cost value
 
     for (auto& seek : seeks) {
-      ASSERT_EQ(seek.second, it.seek(seek.first));
-      ASSERT_EQ(seek.second, doc->value);
+      ASSERT_EQ(std::get<1>(seek), it.seek(std::get<0>(seek)));
+      ASSERT_EQ(std::get<1>(seek), doc->value);
+      if (!irs::doc_limits::eof(std::get<1>(seek))) {
+        ASSERT_EQ(std::get<2>(seek), it.index());
+        ASSERT_EQ(std::get<2>(seek), index->value);
+      }
     }
   }
 }
@@ -351,7 +357,7 @@ TEST_P(sparse_bitmap_test_case, rw_mixed_seek_next) {
 TEST_P(sparse_bitmap_test_case, rw_mixed_seek_random) {
   {
     constexpr seek_type seeks[] {
-      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 }
     };
 
     test_rw_seek_random(MIXED, seeks);
@@ -359,23 +365,23 @@ TEST_P(sparse_bitmap_test_case, rw_mixed_seek_random) {
 
   {
     constexpr seek_type seeks[] {
-      { 33, 160 },
-      { 158, 160 },
-      { 999, 999 },
-      { 998, 999 },
-      { 60000, 60000 },
-      { 63000, 63000 },
-      { 62999, 63000 },
-      { 64499, 64499 },
-      { 64500, 196608 },
-      { 64500, 196608 },
-      { 328200, 328200 },
-      { 328199, 328200 },
-      { 328284, 328412 },
-      { 458778, 458778 },
-      { 460563, irs::doc_limits::eof() },
-      { irs::doc_limits::eof(), irs::doc_limits::eof() },
-      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+      { 33, 160, 31 },
+      { 158, 160, 31 },
+      { 999, 999, 870 },
+      { 998, 999, 870 },
+      { 60000, 60000, 1588 },
+      { 63000, 63000, 4588 },
+      { 62999, 63000, 4588 },
+      { 64499, 64499, 6087 },
+      { 64500, 196608, 6088 },
+      { 64500, 196608, 6088 },
+      { 328200, 328200, 71817 },
+      { 328199, 328200, 71817 },
+      { 328284, 328412, 71901 },
+      { 458778, 458778, 77076 },
+      { 460563, irs::doc_limits::eof(), 0 },
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 },
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 },
     };
 
     test_rw_seek_random(MIXED, seeks);
@@ -397,7 +403,7 @@ TEST_P(sparse_bitmap_test_case, rw_dense_seek_next) {
 TEST_P(sparse_bitmap_test_case, rw_dense_seek_random) {
   {
     constexpr seek_type seeks[] {
-      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 }
     };
 
     test_rw_seek_random(DENSE, seeks);
@@ -405,15 +411,15 @@ TEST_P(sparse_bitmap_test_case, rw_dense_seek_random) {
 
   {
     constexpr seek_type seeks[] {
-      { 33, 160 },
-      { 158, 160 },
-      { 999, 999 },
-      { 328410, 328412 },
-      { 329490, 329490 },
-      { 333585, 333585 },
-      { 333586, irs::doc_limits::eof() },
-      { 333587, irs::doc_limits::eof() },
-      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+      { 33, 160, 31 },
+      { 158, 160, 31 },
+      { 999, 999, 870 },
+      { 328410, 328412, 6365 },
+      { 329490, 329490, 7442 },
+      { 333585, 333585, 11537 },
+      { 333586, irs::doc_limits::eof(), 0 },
+      { 333587, irs::doc_limits::eof(), 0 },
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 },
     };
 
     test_rw_seek_random(DENSE, seeks);
@@ -435,7 +441,7 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_seek_next) {
 TEST_P(sparse_bitmap_test_case, rw_sparse_seek_random) {
   {
     constexpr seek_type seeks[] {
-      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 }
     };
 
     test_rw_seek_random(SPARSE, seeks);
@@ -443,14 +449,14 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_seek_random) {
 
   {
     constexpr seek_type seeks[] {
-      { 33, 160 },
-      { 1600, 1600 },
-      { 1599, 1600 },
-      { 328007, 328007 },
-      { 328107, 328107 },
-      { 328283, 328283 },
-      { 329489, irs::doc_limits::eof() },
-      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+      { 33, 160, 31 },
+      { 1600, 1600, 1454 },
+      { 1599, 1600, 1454 },
+      { 328007, 328007, 1588 },
+      { 328107, 328107, 1688 },
+      { 328283, 328283, 1864 },
+      { 329489, irs::doc_limits::eof(), 0 },
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 },
     };
 
     test_rw_seek_random(SPARSE, seeks);
@@ -472,7 +478,7 @@ TEST_P(sparse_bitmap_test_case, rw_all_seek_next) {
 TEST_P(sparse_bitmap_test_case, rw_all_seek_random) {
   {
     constexpr seek_type seeks[] {
-      { irs::doc_limits::eof(), irs::doc_limits::eof() }
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 }
     };
 
     test_rw_seek_random(ALL, seeks);
@@ -480,15 +486,15 @@ TEST_P(sparse_bitmap_test_case, rw_all_seek_random) {
 
   {
     constexpr seek_type seeks[] {
-      { 33, 65536 },
-      { 131071, 131071 },
-      { 131072, 196608 },
-      { 196612, 196612 },
-      { 196612, 196612 },
-      { 196611, 196612 },
-      { 262143, 262143 },
-      { 262144, irs::doc_limits::eof() },
-      { irs::doc_limits::eof(), irs::doc_limits::eof() },
+      { 33, 65536, 0 },
+      { 131071, 131071, 65535 },
+      { 131072, 196608, 65536 },
+      { 196612, 196612, 65540 },
+      { 196612, 196612, 65540 },
+      { 196611, 196612, 65540 },
+      { 262143, 262143, 131071 },
+      { 262144, irs::doc_limits::eof(), 0 },
+      { irs::doc_limits::eof(), irs::doc_limits::eof(), 0 },
     };
 
     test_rw_seek_random(ALL, seeks);
