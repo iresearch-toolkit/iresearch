@@ -143,7 +143,7 @@ bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t
       }
     }
   }
-  definition = builder.toString();
+  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
@@ -210,7 +210,12 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
-    return normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), definition);
+    std::string vpack_container;
+    if (normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), vpack_container)) {
+      arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
+      definition = slice.toString();
+      return true;
+    }
   } catch(const arangodb::velocypack::Exception& ex) {
     IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from json: %s", 
                   ex.what(), args.c_str());
