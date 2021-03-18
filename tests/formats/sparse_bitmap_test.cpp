@@ -30,6 +30,28 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base {
   using range_type = std::pair<irs::doc_id_t, irs::doc_id_t>;
   using seek_type = range_type;
 
+  static constexpr range_type MIXED[] {
+    { 1, 32 }, { 160, 1184, }, { 1201, 1734 }, { 60000, 64500 },
+    { 196608, 262144 },
+    { 328007, 328284 }, { 328412, 329489 }, { 329490, 333586 },
+    { 458757, 458758 }, { 458777, 460563 }
+  };
+
+  static constexpr range_type DENSE[] {
+    { 1, 32 }, { 160, 1184, }, { 1201, 1734 }, { 60000, 64500 },
+    { 328007, 328284 }, { 328412, 329489 }, { 329490, 333586 }
+  };
+
+  static constexpr range_type SPARSE[] {
+    { 1, 32 }, { 160, 1184, }, { 1201, 1734 },
+    { 328007, 328284 }, { 328412, 329489 }
+  };
+
+  static constexpr std::pair<irs::doc_id_t, irs::doc_id_t> ALL[] {
+    { 65536, 131072 },
+    { 196608, 262144 }
+  };
+
   template<size_t N>
   void test_rw_next(const range_type (&ranges)[N]);
 
@@ -40,13 +62,13 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base {
   void test_rw_seek_next(const range_type (&ranges)[N]);
 
   template<size_t N, size_t K>
-  void test_rw_random_seek(
+  void test_rw_seek_random(
     const range_type (&ranges)[N],
     const seek_type(&seeks)[K]);
 };
 
 template<size_t N, size_t K>
-void sparse_bitmap_test_case::test_rw_random_seek(
+void sparse_bitmap_test_case::test_rw_seek_random(
     const range_type (&ranges)[N],
     const seek_type (&seeks)[K]) {
   {
@@ -289,129 +311,6 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
       }
     }
   }
-
-  {
-    auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
-    ASSERT_NE(nullptr, stream);
-
-    irs::doc_id_t seek_expected_index = 0;
-    irs::doc_id_t seek_expected_doc;
-
-    irs::sparse_bitmap_iterator seek_it(*stream);
-    auto* index = irs::get<irs::value_index>(seek_it);
-    ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
-    auto* doc = irs::get<irs::document>(seek_it);
-    ASSERT_NE(nullptr, doc);
-    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(seek_it);
-    ASSERT_NE(nullptr, cost);
-
-    // FIXME check cost value
-    auto begin = std::begin(ranges);
-    for (; begin != std::end(ranges); ++begin) {
-      seek_expected_doc = begin->first;
-
-      while (seek_expected_doc < begin->second) {
-        ASSERT_EQ(seek_expected_doc, seek_it.seek(seek_expected_doc));
-        ASSERT_EQ(seek_expected_doc, seek_it.value());
-        ASSERT_EQ(seek_expected_doc, doc->value);
-        ASSERT_EQ(seek_expected_index, seek_it.index());
-        ASSERT_EQ(seek_expected_index, index->value);
-        ++seek_expected_doc;
-        ++seek_expected_index;
-      }
-
-      auto dup = stream->dup();
-      ASSERT_NE(nullptr, dup);
-      dup->seek(0);
-      ASSERT_EQ(0, dup->file_pointer());
-
-      irs::sparse_bitmap_iterator it(*dup);
-      auto* index = irs::get<irs::value_index>(it);
-      ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
-      auto* doc = irs::get<irs::document>(it);
-      ASSERT_NE(nullptr, doc);
-      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
-      ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
-
-      ASSERT_EQ(seek_expected_doc-1, it.seek(seek_it.value()));
-      ASSERT_EQ(seek_expected_doc-1, it.value());
-      ASSERT_EQ(seek_expected_doc-1, doc->value);
-      ASSERT_EQ(seek_expected_index-1, it.index());
-      ASSERT_EQ(seek_expected_index-1, index->value);
-
-      for (; begin != std::end(ranges); ++begin) {
-        auto expected_doc = seek_expected_doc;
-        auto max_doc = begin->second;
-
-        while (expected_doc < max_doc) {
-          irs::doc_id_t expected_index = 0;
-
-          for (auto range = std::begin(ranges); range != begin; ++range) {
-            ASSERT_LE(range->first, range->second);
-            expected_index += range->second - range->first;
-          }
-
-          auto dup = stream->dup();
-          ASSERT_NE(nullptr, dup);
-          dup->seek(0);
-          ASSERT_EQ(0, dup->file_pointer());
-
-          irs::sparse_bitmap_iterator it(*stream);
-          auto* index = irs::get<irs::value_index>(it);
-          ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
-          auto* doc = irs::get<irs::document>(it);
-          ASSERT_NE(nullptr, doc);
-          ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-          auto* cost = irs::get<irs::document>(it);
-          ASSERT_NE(nullptr, cost);
-          // FIXME check cost value
-
-          ASSERT_EQ(expected_doc, it.seek(expected_doc));
-          ASSERT_EQ(expected_doc, it.value());
-          ASSERT_EQ(expected_doc, doc->value);
-          ASSERT_EQ(expected_index, it.index());
-          ASSERT_EQ(expected_index, index->value);
-
-          ++expected_doc;
-          ++expected_index;
-
-          for (auto range = begin;;) {
-            for (; expected_doc < max_doc; ) {
-              ASSERT_TRUE(it.next());
-              ASSERT_EQ(expected_doc, it.value());
-              ASSERT_EQ(expected_doc, doc->value);
-              ASSERT_EQ(expected_index, it.index());
-              ASSERT_EQ(expected_index, index->value);
-              ++expected_doc;
-              ++expected_index;
-            }
-
-            if (++range < std::end(ranges)) {
-              // attempt to seek backwards
-              ASSERT_EQ(it.value(), it.seek(it.value()-1));
-
-              std::tie(expected_doc, max_doc) = *range;
-            } else {
-              break;
-            }
-          }
-
-          ASSERT_FALSE(it.next());
-          ASSERT_TRUE(irs::doc_limits::eof(it.value()));
-          ASSERT_TRUE(irs::doc_limits::eof(it.seek(expected_doc)));
-          ASSERT_TRUE(irs::doc_limits::eof(it.value()));
-        }
-      }
-
-      ASSERT_FALSE(seek_it.next());
-      ASSERT_TRUE(irs::doc_limits::eof(seek_it.value()));
-      ASSERT_TRUE(irs::doc_limits::eof(seek_it.seek(seek_expected_doc)));
-      ASSERT_TRUE(irs::doc_limits::eof(seek_it.value()));
-    }
-  }
 }
 
 TEST_P(sparse_bitmap_test_case, read_write_empty) {
@@ -436,61 +335,72 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
   }
 }
 
-TEST_P(sparse_bitmap_test_case, rw_mixed) {
-  constexpr range_type ranges[] {
-    { 1, 32 }, { 160, 1184, }, { 1201, 1734 }, { 60000, 64500 },
-    { 196608, 262144 },
-    { 328007, 328284 }, { 328412, 329489 }, { 329490, 333586 },
-    { 458757, 458758 }, { 458777, 460563 }
-  };
+TEST_P(sparse_bitmap_test_case, rw_mixed_next) {
+  test_rw_next(MIXED);
+}
 
-  test_rw_next(ranges);
-  test_rw_seek(ranges);
-  test_rw_seek_next(ranges);
+TEST_P(sparse_bitmap_test_case, rw_mixed_seek) {
+  test_rw_seek(MIXED);
+}
 
-  constexpr seek_type seeks[] { };
+TEST_P(sparse_bitmap_test_case, rw_mixed_seek_next) {
+  test_rw_seek_next(MIXED);
+}
 
-  test_rw_random_seek(ranges, seeks);
+TEST_P(sparse_bitmap_test_case, rw_mixed_seek_random) {
+  //constexpr seek_type seeks[] { };
+  //test_rw_seek_random(MIXED, seeks);
 }
 
 TEST_P(sparse_bitmap_test_case, rw_dense) {
-  constexpr range_type ranges[] {
-    { 1, 32 }, { 160, 1184, }, { 1201, 1734 }, { 60000, 64500 },
-    { 328007, 328284 }, { 328412, 329489 }, { 329490, 333586 }
-  };
-
-  test_rw_next(ranges);
-  test_rw_seek(ranges);
-  test_rw_seek_next(ranges);
-
-  constexpr seek_type seeks[] { };
-  test_rw_random_seek(ranges, seeks);
+  test_rw_next(DENSE);
 }
 
-TEST_P(sparse_bitmap_test_case, rw_sparse) {
-  constexpr range_type ranges[] {
-    { 1, 32 }, { 160, 1184, }, { 1201, 1734 },
-    { 328007, 328284 }, { 328412, 329489 }
-  };
-
-  test_rw_next(ranges);
-  test_rw_seek(ranges);
-  test_rw_seek_next(ranges);
-
-  constexpr seek_type seeks[] { };
-
-  test_rw_random_seek(ranges, seeks);
+TEST_P(sparse_bitmap_test_case, rw_dense_seek) {
+  test_rw_seek(DENSE);
 }
 
-TEST_P(sparse_bitmap_test_case, rw_all) {
-  constexpr std::pair<irs::doc_id_t, irs::doc_id_t> ranges[] {
-    { 65536, 131072 },
-    { 196608, 262144 }
-  };
+TEST_P(sparse_bitmap_test_case, rw_dense_seek_next) {
+  test_rw_seek_next(DENSE);
+}
 
-  test_rw_next(ranges);
-  test_rw_seek(ranges);
-  test_rw_seek_next(ranges);
+TEST_P(sparse_bitmap_test_case, rw_dense_seek_random) {
+  //constexpr seek_type seeks[] { };
+  //test_rw_seek_random(DENSE, seeks);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_sparse_next) {
+  test_rw_next(SPARSE);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_sparse_seek) {
+  test_rw_seek(SPARSE);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_sparse_seek_next) {
+  test_rw_seek_next(SPARSE);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_sparse_seek_random) {
+  //constexpr seek_type seeks[] { };
+  //test_rw_seek_random(SPARSE, seeks);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_all_next) {
+  test_rw_next(ALL);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_all_seek) {
+  test_rw_seek(ALL);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_all_seek_next) {
+  test_rw_seek_next(ALL);
+}
+
+TEST_P(sparse_bitmap_test_case, rw_all_seek_random) {
+  //constexpr seek_type seeks[] { };
+  //test_rw_seek_random(ALL, seeks);
 }
 
 INSTANTIATE_TEST_SUITE_P(
