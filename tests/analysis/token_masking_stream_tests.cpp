@@ -39,7 +39,7 @@ TEST(token_masking_stream_tests, test_masking) {
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
-    irs::analysis::token_masking_stream::MaskSet mask;
+    irs::analysis::token_masking_stream::mask_set mask;
     irs::analysis::token_masking_stream stream(std::move(mask));
     ASSERT_EQ(irs::type<irs::analysis::token_masking_stream>::id(), stream.type());
 
@@ -65,7 +65,7 @@ TEST(token_masking_stream_tests, test_masking) {
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
-    irs::analysis::token_masking_stream::MaskSet mask = {"abc"};
+    irs::analysis::token_masking_stream::mask_set mask = {"abc"};
     irs::analysis::token_masking_stream stream(std::move(mask));
 
     auto* offset = irs::get<irs::offset>(stream);

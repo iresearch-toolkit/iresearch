@@ -76,7 +76,7 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
 }
 
 irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  irs::analysis::token_masking_stream::MaskSet tokens;
+  irs::analysis::token_masking_stream::mask_set tokens;
 
   for (size_t begin = 0, end = 0, length = mask.size();
        end < length;
@@ -105,7 +105,7 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
 
 irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator& mask) {
   size_t offset = 0;
-  irs::analysis::token_masking_stream::MaskSet tokens;
+  irs::analysis::token_masking_stream::mask_set tokens;
 
   for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
     if (!(*itr).isString()) {
@@ -256,7 +256,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(token_masking_stream::MaskSet&& mask)
+token_masking_stream::token_masking_stream(token_masking_stream::mask_set&& mask)
   : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {
