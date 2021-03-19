@@ -217,7 +217,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing segmentation_token_stream");
-      return nullptr;
+      return false;
     }
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
     std::string vpack_container;
