@@ -286,9 +286,6 @@ bool token_masking_stream::reset(const string_ref& data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = uint32_t(data.size());
-
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
-
   auto& term = std::get<term_attribute>(attrs_);
   term.value = irs::ref_cast<irs::byte_type>(data);
   term_eof_ = mask_.contains(data);

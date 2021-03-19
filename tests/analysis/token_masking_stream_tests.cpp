@@ -44,14 +44,12 @@ TEST(token_masking_stream_tests, test_masking) {
     ASSERT_EQ(irs::type<irs::analysis::token_masking_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
-    auto* payload = irs::get<irs::payload>(stream);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data0));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
 
@@ -59,7 +57,6 @@ TEST(token_masking_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -72,7 +69,6 @@ TEST(token_masking_stream_tests, test_masking) {
     irs::analysis::token_masking_stream stream(std::move(mask));
 
     auto* offset = irs::get<irs::offset>(stream);
-    auto* payload = irs::get<irs::payload>(stream);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data0));
@@ -82,7 +78,6 @@ TEST(token_masking_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -103,13 +98,11 @@ TEST(token_masking_stream_tests, test_load) {
       ASSERT_TRUE(stream->reset(data1));
 
       auto* offset = irs::get<irs::offset>(*stream);
-      auto* payload = irs::get<irs::payload>(*stream);
       auto* term = irs::get<irs::term_attribute>(*stream);
 
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
-      ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
       ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
@@ -134,13 +127,11 @@ TEST(token_masking_stream_tests, test_load) {
       ASSERT_TRUE(stream->reset(data1));
 
       auto* offset = irs::get<irs::offset>(*stream);
-      auto* payload = irs::get<irs::payload>(*stream);
       auto* term = irs::get<irs::term_attribute>(*stream);
 
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(6, offset->end);
-      ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
       ASSERT_EQ("646566", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
@@ -173,13 +164,11 @@ TEST(token_masking_stream_tests, test_load) {
     ASSERT_TRUE(stream->reset(data0));
 
     auto* offset = irs::get<irs::offset>(*stream);
-    auto* payload = irs::get<irs::payload>(*stream);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
 
@@ -197,13 +186,11 @@ TEST(token_masking_stream_tests, test_load) {
     ASSERT_TRUE(stream->reset(data0));
 
     auto* offset = irs::get<irs::offset>(*stream);
-    auto* payload = irs::get<irs::payload>(*stream);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
 
@@ -211,7 +198,6 @@ TEST(token_masking_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("mno", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("mno", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
@@ -233,14 +219,14 @@ TEST(token_masking_stream_tests, normalize_valid_array) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
     irs::type<irs::text_format::json>::get(), "[\"QWRT\", \"qwrt\"]"));
-  ASSERT_EQ(actual, "{\n  \"mask\" : [\"QWRT\", \"qwrt\"]\n}");
+  ASSERT_EQ(actual, "{\n  \"mask\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
 }
 
 TEST(token_masking_stream_tests, normalize_valid_object) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
     irs::type<irs::text_format::json>::get(), "{\"mask\":[\"QWRT\", \"qwrt\"]}"));
-  ASSERT_EQ(actual, "{\n  \"mask\" : [\"QWRT\", \"qwrt\"]\n}");
+  ASSERT_EQ(actual, "{\n  \"mask\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
 }
 // commented out due to lack
 //TEST_F(token_masking_stream_tests, test_make_config_json) {
