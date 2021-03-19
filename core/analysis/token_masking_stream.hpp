@@ -47,7 +47,6 @@ class token_masking_stream final
   static constexpr string_ref type_name() noexcept { return "mask"; }
 
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& mask);
 
   explicit token_masking_stream(mask_set&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {

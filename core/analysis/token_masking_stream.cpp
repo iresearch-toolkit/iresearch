@@ -75,34 +75,6 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
   return true;
 }
 
-irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  irs::analysis::token_masking_stream::mask_set tokens;
-
-  for (size_t begin = 0, end = 0, length = mask.size();
-       end < length;
-       begin = end + 1, end = begin
-      ) {
-    // find first whitespace
-    while (end < length && !std::isspace(mask[end])) {
-      ++end;
-    }
-
-    if (end > begin) {
-      std::string token;
-      arangodb::velocypack::StringRef value(&mask[begin], end - begin);
-
-      if (!hex_decode(token, value)) {
-        tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
-      } else {
-        tokens.emplace(std::move(token));
-      }
-    }
-  }
-
-  return irs::memory::make_shared<irs::analysis::token_masking_stream>(
-    std::move(tokens));
-}
-
 irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator& mask) {
   size_t offset = 0;
   irs::analysis::token_masking_stream::mask_set tokens;
@@ -177,19 +149,6 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   }
   return nullptr;
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is whitespace delimited HEX encoded list of tokens to mask
-///        if HEX conversion fails for any token then it is matched verbatim
-////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  return construct(args);
-}
-
-bool normalize_text_config(const irs::string_ref&, std::string&) {
-  // FIXME: implement me
-  return false;
-}
-
 
 bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
   arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
@@ -249,7 +208,6 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 
 REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
 REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json, normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize_text_config);
 
 } // namespace
 
@@ -265,12 +223,8 @@ token_masking_stream::token_masking_stream(token_masking_stream::mask_set&& mask
 /*static*/ void token_masking_stream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
   REGISTER_ANALYZER_JSON(token_masking_stream, make_json, normalize_json_config);  // match registration above
-  REGISTER_ANALYZER_TEXT(token_masking_stream, make_text, normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr token_masking_stream::make(const string_ref& mask) {
-  return make_text(mask);
-}
 
 bool token_masking_stream::next() {
   if (term_eof_) {
