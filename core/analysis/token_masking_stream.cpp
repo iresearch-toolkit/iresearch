@@ -181,13 +181,14 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
         slice.toString().c_str(), slice.typeName());
     }
   }
+  return false;
 }
 
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing token_masking_stream");
-      return nullptr;
+      return false;
     }
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
     std::string vpack_container;
