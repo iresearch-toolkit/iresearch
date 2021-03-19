@@ -309,7 +309,9 @@ bool segmentation_token_stream::reset(const string_ref& data) {
       break;
     case options_t::word_break_t::GRAPHIC:
       flags = RS::Unicorn::Segment::graphic;
+      break;
     case options_t::word_break_t::ALPHA:
+    [[fallthrough]];
     default:
       assert(options_.word_break == options_t::word_break_t::ALPHA);
       break;
