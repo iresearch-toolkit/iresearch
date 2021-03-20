@@ -14,16 +14,16 @@
 //
 // UTF8 utilities, implemented to reduce dependencies.
 
-#ifndef ABSL_STRINGS_INTERNAL_UTF8_H_
-#define ABSL_STRINGS_INTERNAL_UTF8_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_UTF8_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_UTF8_H_
 
 #include <cstddef>
 #include <cstdint>
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 // For Unicode code points 0 through 0x10FFFF, EncodeUTF8Char writes
@@ -44,7 +44,7 @@ enum { kMaxEncodedUTF8Size = 4 };
 size_t EncodeUTF8Char(char *buffer, char32_t utf8_char);
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_UTF8_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_UTF8_H_

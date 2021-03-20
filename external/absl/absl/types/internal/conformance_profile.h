@@ -33,8 +33,8 @@
 // Regularity Profile. For more information regarding archetypes, see
 // "conformance_archetypes.h".
 
-#ifndef ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_
-#define ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_
+#ifndef IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_
+#define IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_
 
 #include <set>
 #include <type_traits>
@@ -52,14 +52,14 @@
 
 // TODO(calabrese) Add support for extending profiles.
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace types_internal {
 
 // Converts an enum to its underlying integral value.
 template <typename Enum>
-constexpr absl::underlying_type_t<Enum> UnderlyingValue(Enum value) {
-  return static_cast<absl::underlying_type_t<Enum>>(value);
+constexpr iresearch_absl::underlying_type_t<Enum> UnderlyingValue(Enum value) {
+  return static_cast<iresearch_absl::underlying_type_t<Enum>>(value);
 }
 
 // A tag type used in place of a matcher when checking that an assertion result
@@ -87,8 +87,8 @@ class ConformanceErrors {
   // previously reported as failing. This behavior is useful for tests that
   // have multiple parts, where failures and successes are reported individually
   // with the same test name.
-  void addTestSuccess(absl::string_view test_name) {
-    auto normalized_test_name = absl::AsciiStrToLower(test_name);
+  void addTestSuccess(iresearch_absl::string_view test_name) {
+    auto normalized_test_name = iresearch_absl::AsciiStrToLower(test_name);
 
     // If the test is already reported as failing, do not add it to the list of
     // successes.
@@ -105,7 +105,7 @@ class ConformanceErrors {
   //
   // TODO(calabrese) Determine desired behavior when if this function throws.
   template <class... P>
-  void addTestFailure(absl::string_view test_name, const P&... args) {
+  void addTestFailure(iresearch_absl::string_view test_name, const P&... args) {
     // Output a message related to the test failure.
     assertion_result_ << "\n\n"
                          "Failed test: "
@@ -114,7 +114,7 @@ class ConformanceErrors {
     assertion_result_ << "\n\n";
     outputDivider();
 
-    auto normalized_test_name = absl::AsciiStrToLower(test_name);
+    auto normalized_test_name = iresearch_absl::AsciiStrToLower(test_name);
 
     // If previous parts of this test succeeded, remove it from that set.
     test_successes_.erase(normalized_test_name);
@@ -148,12 +148,12 @@ class ConformanceErrors {
     // Get a list of all expected failures that did not actually fail
     // (or that were not run).
     std::vector<std::string> nonfailing_tests;
-    absl::c_set_difference(test_names, test_failures_,
+    iresearch_absl::c_set_difference(test_names, test_failures_,
                            std::back_inserter(nonfailing_tests));
 
     // Get a list of all "expected failures" that were never actually run.
     std::vector<std::string> unrun_tests;
-    absl::c_set_difference(nonfailing_tests, test_successes_,
+    iresearch_absl::c_set_difference(nonfailing_tests, test_successes_,
                            std::back_inserter(unrun_tests));
 
     // Report when the user specified tests that were not run.
@@ -241,12 +241,12 @@ template <class T, class /*Enabler*/ = void>
 struct PropertiesOfImpl {};
 
 template <class T>
-struct PropertiesOfImpl<T, absl::void_t<typename T::properties>> {
+struct PropertiesOfImpl<T, iresearch_absl::void_t<typename T::properties>> {
   using type = typename T::properties;
 };
 
 template <class T>
-struct PropertiesOfImpl<T, absl::void_t<typename T::profile_alias_of>> {
+struct PropertiesOfImpl<T, iresearch_absl::void_t<typename T::profile_alias_of>> {
   using type = typename PropertiesOfImpl<typename T::profile_alias_of>::type;
 };
 
@@ -278,7 +278,7 @@ inline std::string ExpectedFunctionKindList(function_support min,
                                             function_support max) {
   if (min == max) {
     std::string result =
-        absl::StrCat("Expected:\n  ",
+        iresearch_absl::StrCat("Expected:\n  ",
                      PessimisticPropertyDescription(
                          static_cast<function_support>(UnderlyingValue(min))),
                      "\n");
@@ -288,7 +288,7 @@ inline std::string ExpectedFunctionKindList(function_support min,
   std::string result = "Expected one of:\n";
   for (auto curr_support = UnderlyingValue(min);
        curr_support <= UnderlyingValue(max); ++curr_support) {
-    absl::StrAppend(&result, "  ",
+    iresearch_absl::StrAppend(&result, "  ",
                     PessimisticPropertyDescription(
                         static_cast<function_support>(curr_support)),
                     "\n");
@@ -318,7 +318,7 @@ void ExpectModelOfImpl(ConformanceErrors* errors, Enum min_support,
   }
 }
 
-#define ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM(description, name) \
+#define IRESEARCH_ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM(description, name) \
   enum class name { maybe, yes, nothrow, trivial };                   \
                                                                       \
   constexpr const char* PropertyName(name v) { return description; }  \
@@ -337,9 +337,9 @@ ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM("support for copy assignment",
 ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM("support for destruction",
                                            destructible);
 
-#undef ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM
+#undef IRESEARCH_ABSL_INTERNAL_SPECIAL_MEMBER_FUNCTION_ENUM
 
-#define ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM(description, name)     \
+#define IRESEARCH_ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM(description, name)     \
   enum class name { maybe, yes, nothrow };                           \
                                                                      \
   constexpr const char* PropertyName(name v) { return description; } \
@@ -355,7 +355,7 @@ ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM("support for >", greater_than_comparable);
 
 ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM("support for swap", swappable);
 
-#undef ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM
+#undef IRESEARCH_ABSL_INTERNAL_INTRINSIC_FUNCTION_ENUM
 
 enum class hashable { maybe, yes };
 
@@ -366,12 +366,12 @@ constexpr const char* PropertyName(hashable v) {
 template <class T>
 using AlwaysFalse = std::false_type;
 
-#define ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER(name, property)   \
+#define IRESEARCH_ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER(name, property)   \
   template <class T>                                                        \
   constexpr property property##_support_of() {                              \
     return std::is_##property<T>::value                                     \
                ? std::is_nothrow_##property<T>::value                       \
-                     ? absl::is_trivially_##property<T>::value              \
+                     ? iresearch_absl::is_trivially_##property<T>::value              \
                            ? property::trivial                              \
                            : property::nothrow                              \
                      : property::yes                                        \
@@ -402,7 +402,7 @@ ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER(CopyAssignable,
 
 ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER(Destructible, destructible);
 
-#undef ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER
+#undef IRESEARCH_ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_SPECIAL_MEMBER
 
 void BoolFunction(bool) noexcept;
 
@@ -415,7 +415,7 @@ template <class T, template <class...> class Op, class = void>
 struct IsOpableImpl : std::false_type {};
 
 template <class T, template <class...> class Op>
-struct IsOpableImpl<T, Op, absl::void_t<Op<T>>> : std::true_type {};
+struct IsOpableImpl<T, Op, iresearch_absl::void_t<Op<T>>> : std::true_type {};
 
 template <template <class...> class Op>
 struct IsOpable {
@@ -435,7 +435,7 @@ template <class T, template <class...> class Op, class = void>
 struct IsNothrowOpableImpl : std::false_type {};
 
 template <class T, template <class...> class Op>
-struct IsNothrowOpableImpl<T, Op, absl::enable_if_t<Op<T>::value>>
+struct IsNothrowOpableImpl<T, Op, iresearch_absl::enable_if_t<Op<T>::value>>
     : std::true_type {};
 
 template <template <class...> class Op>
@@ -452,7 +452,7 @@ struct IsNothrowOpable {
 // support a specific comparison operation has and a function for reporting an
 // error if a given type's support for that operation does not meet the expected
 // requirements.
-#define ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON(name, property, op)      \
+#define IRESEARCH_ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON(name, property, op)      \
   template <class T,                                                           \
             class Result = std::integral_constant<                             \
                 bool, noexcept((BoolFunction)(std::declval<const T&>() op      \
@@ -498,7 +498,7 @@ ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON(GreaterEqualComparable,
 ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON(GreaterThanComparable,
                                               greater_than_comparable, >);
 
-#undef ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON
+#undef IRESEARCH_ABSL_INTERNAL_PESSIMISTIC_MODEL_OF_COMPARISON
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -692,7 +692,7 @@ struct SyntacticConformanceProfileOf {
       conservative_hashable_support_of<T, ShouldCheckHashability>::Invoke()>;
 };
 
-#define ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(type, name)     \
+#define IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(type, name)     \
   template <default_constructible DefaultConstructibleValue,                   \
             move_constructible MoveConstructibleValue,                         \
             copy_constructible CopyConstructibleValue,                         \
@@ -714,10 +714,10 @@ struct SyntacticConformanceProfileOf {
       GreaterEqualComparableValue, GreaterThanComparableValue, SwappableValue, \
       HashableValue>::name
 
-#define ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(type)           \
-  ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(type,            \
+#define IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(type)           \
+  IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(type,            \
                                                          type##_support); \
-  ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(bool, is_##type)
+  IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL(bool, is_##type)
 
 ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(default_constructible);
 ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(move_constructible);
@@ -734,8 +734,8 @@ ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(greater_than_comparable);
 ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(swappable);
 ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF(hashable);
 
-#undef ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF
-#undef ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL
+#undef IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF
+#undef IRESEARCH_ABSL_INTERNAL_CONFORMANCE_TESTING_DATA_MEMBER_DEF_IMPL
 
 // Retrieve the enum with the minimum underlying value.
 // Note: std::min is not constexpr in C++11, which is why this is necessary.
@@ -908,7 +908,7 @@ template <class T, class /*Enabler*/ = void>
 struct IsProfileImpl : std::false_type {};
 
 template <class T>
-struct IsProfileImpl<T, absl::void_t<PropertiesOfT<T>>> : std::true_type {};
+struct IsProfileImpl<T, iresearch_absl::void_t<PropertiesOfT<T>>> : std::true_type {};
 
 template <class T>
 struct IsProfile : IsProfileImpl<T>::type {};
@@ -925,7 +925,7 @@ struct IsProfile : IsProfileImpl<T>::type {};
 struct RegularityDomain {};
 
 }  // namespace types_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_
+#endif  // IRESEARCH_ABSL_TYPES_INTERNAL_CONFORMANCE_PROFILE_H_

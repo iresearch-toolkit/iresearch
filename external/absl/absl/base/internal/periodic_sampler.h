@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_
-#define ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_
 
 #include <stdint.h>
 
@@ -22,8 +22,8 @@
 #include "absl/base/internal/exponential_biased.h"
 #include "absl/base/optimization.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // PeriodicSamplerBase provides the basic period sampler implementation.
@@ -77,7 +77,7 @@ class PeriodicSamplerBase {
   //   }
   //
   //   inline void Frobber() {
-  //     if (ABSL_PREDICT_FALSE(sampler.SubtleMaybeSample())) {
+  //     if (IRESEARCH_ABSL_PREDICT_FALSE(sampler.SubtleMaybeSample())) {
   //       FrobberSampled();
   //     } else {
   //       FrobberImpl();
@@ -121,7 +121,7 @@ class PeriodicSamplerBase {
   //
   // Option 1:
   //   int64_t stride_;
-  //   if (ABSL_PREDICT_TRUE(++stride_ < 0)) { ... }
+  //   if (IRESEARCH_ABSL_PREDICT_TRUE(++stride_ < 0)) { ... }
   //
   //   GCC   x64 (OK) : https://gcc.godbolt.org/z/R5MzzA
   //   GCC   ppc (OK) : https://gcc.godbolt.org/z/z7NZAt
@@ -131,7 +131,7 @@ class PeriodicSamplerBase {
   //
   // Option 2:
   //   int64_t stride_ = 0;
-  //   if (ABSL_PREDICT_TRUE(--stride_ >= 0)) { ... }
+  //   if (IRESEARCH_ABSL_PREDICT_TRUE(--stride_ >= 0)) { ... }
   //
   //   GCC   x64 (OK) : https://gcc.godbolt.org/z/jSQxYK
   //   GCC   ppc (OK) : https://gcc.godbolt.org/z/VJdYaA
@@ -141,7 +141,7 @@ class PeriodicSamplerBase {
   //
   // Option 3:
   //   uint64_t stride_;
-  //   if (ABSL_PREDICT_TRUE(static_cast<int64_t>(++stride_) < 0)) { ... }
+  //   if (IRESEARCH_ABSL_PREDICT_TRUE(static_cast<int64_t>(++stride_) < 0)) { ... }
   //
   //   GCC   x64 (OK) : https://gcc.godbolt.org/z/bFbfPy
   //   GCC   ppc (OK) : https://gcc.godbolt.org/z/S9KkUE
@@ -154,14 +154,14 @@ class PeriodicSamplerBase {
 
 inline bool PeriodicSamplerBase::SubtleMaybeSample() noexcept {
   // See comments on `stride_` for the unsigned increment / signed compare.
-  if (ABSL_PREDICT_TRUE(static_cast<int64_t>(++stride_) < 0)) {
+  if (IRESEARCH_ABSL_PREDICT_TRUE(static_cast<int64_t>(++stride_) < 0)) {
     return false;
   }
   return true;
 }
 
 inline bool PeriodicSamplerBase::Sample() noexcept {
-  return ABSL_PREDICT_FALSE(SubtleMaybeSample()) ? SubtleConfirmSample()
+  return IRESEARCH_ABSL_PREDICT_FALSE(SubtleMaybeSample()) ? SubtleConfirmSample()
                                                  : false;
 }
 
@@ -205,7 +205,7 @@ template <typename Tag, int default_period>
 std::atomic<int> PeriodicSampler<Tag, default_period>::period_(default_period);
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_PERIODIC_SAMPLER_H_

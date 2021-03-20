@@ -36,5 +36,5 @@ bool GetFileMappingHint(const void **, const void **, uint64_t *, const char **)
 void InitializeSymbolizer(const char*) {}
 bool Symbolize(const void *, char *, int) { return false; }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

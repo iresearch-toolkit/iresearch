@@ -21,15 +21,15 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 void Notification::Notify() {
   MutexLock l(&this->mutex_);
 
 #ifndef NDEBUG
-  if (ABSL_PREDICT_FALSE(notified_yet_.load(std::memory_order_relaxed))) {
-    ABSL_RAW_LOG(
+  if (IRESEARCH_ABSL_PREDICT_FALSE(notified_yet_.load(std::memory_order_relaxed))) {
+    IRESEARCH_ABSL_RAW_LOG(
         FATAL,
         "Notify() method called more than once for Notification object %p",
         static_cast<void *>(this));
@@ -54,7 +54,7 @@ void Notification::WaitForNotification() const {
 }
 
 bool Notification::WaitForNotificationWithTimeout(
-    absl::Duration timeout) const {
+    iresearch_absl::Duration timeout) const {
   bool notified = HasBeenNotifiedInternal(&this->notified_yet_);
   if (!notified) {
     notified = this->mutex_.LockWhenWithTimeout(
@@ -64,7 +64,7 @@ bool Notification::WaitForNotificationWithTimeout(
   return notified;
 }
 
-bool Notification::WaitForNotificationWithDeadline(absl::Time deadline) const {
+bool Notification::WaitForNotificationWithDeadline(iresearch_absl::Time deadline) const {
   bool notified = HasBeenNotifiedInternal(&this->notified_yet_);
   if (!notified) {
     notified = this->mutex_.LockWhenWithDeadline(
@@ -74,5 +74,5 @@ bool Notification::WaitForNotificationWithDeadline(absl::Time deadline) const {
   return notified;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

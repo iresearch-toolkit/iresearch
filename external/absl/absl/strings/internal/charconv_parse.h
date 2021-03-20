@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_
-#define ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_
 
 #include <cstdint>
 
 #include "absl/base/config.h"
 #include "absl/strings/charconv.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 // Enum indicating whether a parsed float is a number or special value.
@@ -86,14 +86,14 @@ struct ParsedFloat {
 // *not* consumed.  The `hex` bit from format_flags is ignored by ParseFloat.
 template <int base>
 ParsedFloat ParseFloat(const char* begin, const char* end,
-                       absl::chars_format format_flags);
+                       iresearch_absl::chars_format format_flags);
 
 extern template ParsedFloat ParseFloat<10>(const char* begin, const char* end,
-                                           absl::chars_format format_flags);
+                                           iresearch_absl::chars_format format_flags);
 extern template ParsedFloat ParseFloat<16>(const char* begin, const char* end,
-                                           absl::chars_format format_flags);
+                                           iresearch_absl::chars_format format_flags);
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
-#endif  // ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_CHARCONV_PARSE_H_

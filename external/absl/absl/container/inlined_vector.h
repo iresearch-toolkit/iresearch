@@ -32,8 +32,8 @@
 // the default allocator (defined as `std::allocator<T>`). Optionally, a custom
 // allocator type may be specified as `A` in `absl::InlinedVector<T, N, A>`.
 
-#ifndef ABSL_CONTAINER_INLINED_VECTOR_H_
-#define ABSL_CONTAINER_INLINED_VECTOR_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INLINED_VECTOR_H_
+#define IRESEARCH_ABSL_CONTAINER_INLINED_VECTOR_H_
 
 #include <algorithm>
 #include <cassert>
@@ -54,8 +54,8 @@
 #include "absl/container/internal/inlined_vector.h"
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 // -----------------------------------------------------------------------------
 // InlinedVector
 // -----------------------------------------------------------------------------
@@ -84,10 +84,10 @@ class InlinedVector {
   using DefaultValueAdapter = typename Storage::DefaultValueAdapter;
 
   template <typename Iterator>
-  using EnableIfAtLeastForwardIterator = absl::enable_if_t<
+  using EnableIfAtLeastForwardIterator = iresearch_absl::enable_if_t<
       inlined_vector_internal::IsAtLeastForwardIterator<Iterator>::value>;
   template <typename Iterator>
-  using DisableIfAtLeastForwardIterator = absl::enable_if_t<
+  using DisableIfAtLeastForwardIterator = iresearch_absl::enable_if_t<
       !inlined_vector_internal::IsAtLeastForwardIterator<Iterator>::value>;
 
  public:
@@ -190,7 +190,7 @@ class InlinedVector {
   // Thus, the move constructor is non-throwing if the allocator is non-throwing
   // or `value_type`'s move constructor is specified as `noexcept`.
   InlinedVector(InlinedVector&& other) noexcept(
-      absl::allocator_is_nothrow<allocator_type>::value ||
+      iresearch_absl::allocator_is_nothrow<allocator_type>::value ||
       std::is_nothrow_move_constructible<value_type>::value)
       : storage_(*other.storage_.GetAllocPtr()) {
     if (IsMemcpyOk::value) {
@@ -223,7 +223,7 @@ class InlinedVector {
   // allocation is performed, this constructor can only be `noexcept` if the
   // specified allocator is also `noexcept`.
   InlinedVector(InlinedVector&& other, const allocator_type& alloc) noexcept(
-      absl::allocator_is_nothrow<allocator_type>::value)
+      iresearch_absl::allocator_is_nothrow<allocator_type>::value)
       : storage_(alloc) {
     if (IsMemcpyOk::value) {
       storage_.MemcpyFrom(other.storage_);
@@ -308,14 +308,14 @@ class InlinedVector {
   //
   // Returns a `reference` to the `i`th element of the inlined vector.
   reference operator[](size_type i) {
-    ABSL_HARDENING_ASSERT(i < size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(i < size());
     return data()[i];
   }
 
   // Overload of `InlinedVector::operator[](...)` that returns a
   // `const_reference` to the `i`th element of the inlined vector.
   const_reference operator[](size_type i) const {
-    ABSL_HARDENING_ASSERT(i < size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(i < size());
     return data()[i];
   }
 
@@ -326,7 +326,7 @@ class InlinedVector {
   // NOTE: if `i` is not within the required range of `InlinedVector::at(...)`,
   // in both debug and non-debug builds, `std::out_of_range` will be thrown.
   reference at(size_type i) {
-    if (ABSL_PREDICT_FALSE(i >= size())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(i >= size())) {
       base_internal::ThrowStdOutOfRange(
           "`InlinedVector::at(size_type)` failed bounds check");
     }
@@ -339,7 +339,7 @@ class InlinedVector {
   // NOTE: if `i` is not within the required range of `InlinedVector::at(...)`,
   // in both debug and non-debug builds, `std::out_of_range` will be thrown.
   const_reference at(size_type i) const {
-    if (ABSL_PREDICT_FALSE(i >= size())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(i >= size())) {
       base_internal::ThrowStdOutOfRange(
           "`InlinedVector::at(size_type) const` failed bounds check");
     }
@@ -350,14 +350,14 @@ class InlinedVector {
   //
   // Returns a `reference` to the first element of the inlined vector.
   reference front() {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[0];
   }
 
   // Overload of `InlinedVector::front()` that returns a `const_reference` to
   // the first element of the inlined vector.
   const_reference front() const {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[0];
   }
 
@@ -365,14 +365,14 @@ class InlinedVector {
   //
   // Returns a `reference` to the last element of the inlined vector.
   reference back() {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[size() - 1];
   }
 
   // Overload of `InlinedVector::back()` that returns a `const_reference` to the
   // last element of the inlined vector.
   const_reference back() const {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[size() - 1];
   }
 
@@ -459,7 +459,7 @@ class InlinedVector {
   // Overload of `InlinedVector::operator=(...)` that replaces the elements of
   // the inlined vector with copies of the elements of `other`.
   InlinedVector& operator=(const InlinedVector& other) {
-    if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(this != std::addressof(other))) {
       const_pointer other_data = other.data();
       assign(other_data, other_data + other.size());
     }
@@ -473,7 +473,7 @@ class InlinedVector {
   // NOTE: as a result of calling this overload, `other` is left in a valid but
   // unspecified state.
   InlinedVector& operator=(InlinedVector&& other) {
-    if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(this != std::addressof(other))) {
       if (IsMemcpyOk::value || other.storage_.GetIsAllocated()) {
         inlined_vector_internal::DestroyElements(storage_.GetAllocPtr(), data(),
                                                  size());
@@ -538,7 +538,7 @@ class InlinedVector {
   // NOTE: If `n` is smaller than `size()`, extra elements are destroyed. If `n`
   // is larger than `size()`, new elements are value-initialized.
   void resize(size_type n) {
-    ABSL_HARDENING_ASSERT(n <= max_size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(n <= max_size());
     storage_.Resize(DefaultValueAdapter(), n);
   }
 
@@ -548,7 +548,7 @@ class InlinedVector {
   // NOTE: if `n` is smaller than `size()`, extra elements are destroyed. If `n`
   // is larger than `size()`, new elements are copied-constructed from `v`.
   void resize(size_type n, const_reference v) {
-    ABSL_HARDENING_ASSERT(n <= max_size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(n <= max_size());
     storage_.Resize(CopyValueAdapter(v), n);
   }
 
@@ -570,10 +570,10 @@ class InlinedVector {
   // of `v` starting at `pos`, returning an `iterator` pointing to the first of
   // the newly inserted elements.
   iterator insert(const_iterator pos, size_type n, const_reference v) {
-    ABSL_HARDENING_ASSERT(pos >= begin());
-    ABSL_HARDENING_ASSERT(pos <= end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos <= end());
 
-    if (ABSL_PREDICT_TRUE(n != 0)) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(n != 0)) {
       value_type dealias = v;
       return storage_.Insert(pos, CopyValueAdapter(dealias), n);
     } else {
@@ -597,10 +597,10 @@ class InlinedVector {
             EnableIfAtLeastForwardIterator<ForwardIterator>* = nullptr>
   iterator insert(const_iterator pos, ForwardIterator first,
                   ForwardIterator last) {
-    ABSL_HARDENING_ASSERT(pos >= begin());
-    ABSL_HARDENING_ASSERT(pos <= end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos <= end());
 
-    if (ABSL_PREDICT_TRUE(first != last)) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(first != last)) {
       return storage_.Insert(pos, IteratorValueAdapter<ForwardIterator>(first),
                              std::distance(first, last));
     } else {
@@ -616,8 +616,8 @@ class InlinedVector {
   template <typename InputIterator,
             DisableIfAtLeastForwardIterator<InputIterator>* = nullptr>
   iterator insert(const_iterator pos, InputIterator first, InputIterator last) {
-    ABSL_HARDENING_ASSERT(pos >= begin());
-    ABSL_HARDENING_ASSERT(pos <= end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos <= end());
 
     size_type index = std::distance(cbegin(), pos);
     for (size_type i = index; first != last; ++i, static_cast<void>(++first)) {
@@ -633,8 +633,8 @@ class InlinedVector {
   // `pos`, returning an `iterator` pointing to the newly emplaced element.
   template <typename... Args>
   iterator emplace(const_iterator pos, Args&&... args) {
-    ABSL_HARDENING_ASSERT(pos >= begin());
-    ABSL_HARDENING_ASSERT(pos <= end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos <= end());
 
     value_type dealias(std::forward<Args>(args)...);
     return storage_.Insert(pos,
@@ -667,7 +667,7 @@ class InlinedVector {
   //
   // Destroys the element at `back()`, reducing the size by `1`.
   void pop_back() noexcept {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
 
     AllocatorTraits::destroy(*storage_.GetAllocPtr(), data() + (size() - 1));
     storage_.SubtractSize(1);
@@ -680,8 +680,8 @@ class InlinedVector {
   //
   // NOTE: may return `end()`, which is not dereferencable.
   iterator erase(const_iterator pos) {
-    ABSL_HARDENING_ASSERT(pos >= begin());
-    ABSL_HARDENING_ASSERT(pos < end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(pos < end());
 
     return storage_.Erase(pos, pos + 1);
   }
@@ -692,11 +692,11 @@ class InlinedVector {
   //
   // NOTE: may return `end()`, which is not dereferencable.
   iterator erase(const_iterator from, const_iterator to) {
-    ABSL_HARDENING_ASSERT(from >= begin());
-    ABSL_HARDENING_ASSERT(from <= to);
-    ABSL_HARDENING_ASSERT(to <= end());
+    IRESEARCH_ABSL_HARDENING_ASSERT(from >= begin());
+    IRESEARCH_ABSL_HARDENING_ASSERT(from <= to);
+    IRESEARCH_ABSL_HARDENING_ASSERT(to <= end());
 
-    if (ABSL_PREDICT_TRUE(from != to)) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(from != to)) {
       return storage_.Erase(from, to);
     } else {
       return const_cast<iterator>(from);
@@ -741,14 +741,14 @@ class InlinedVector {
   //
   // Swaps the contents of the inlined vector with `other`.
   void swap(InlinedVector& other) {
-    if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
+    if (IRESEARCH_ABSL_PREDICT_TRUE(this != std::addressof(other))) {
       storage_.Swap(std::addressof(other.storage_));
     }
   }
 
  private:
   template <typename H, typename TheT, size_t TheN, typename TheA>
-  friend H AbslHashValue(H h, const absl::InlinedVector<TheT, TheN, TheA>& a);
+  friend H AbslHashValue(H h, const iresearch_absl::InlinedVector<TheT, TheN, TheA>& a);
 
   Storage storage_;
 };
@@ -761,8 +761,8 @@ class InlinedVector {
 //
 // Swaps the contents of two inlined vectors.
 template <typename T, size_t N, typename A>
-void swap(absl::InlinedVector<T, N, A>& a,
-          absl::InlinedVector<T, N, A>& b) noexcept(noexcept(a.swap(b))) {
+void swap(iresearch_absl::InlinedVector<T, N, A>& a,
+          iresearch_absl::InlinedVector<T, N, A>& b) noexcept(noexcept(a.swap(b))) {
   a.swap(b);
 }
 
@@ -770,19 +770,19 @@ void swap(absl::InlinedVector<T, N, A>& a,
 //
 // Tests for value-equality of two inlined vectors.
 template <typename T, size_t N, typename A>
-bool operator==(const absl::InlinedVector<T, N, A>& a,
-                const absl::InlinedVector<T, N, A>& b) {
+bool operator==(const iresearch_absl::InlinedVector<T, N, A>& a,
+                const iresearch_absl::InlinedVector<T, N, A>& b) {
   auto a_data = a.data();
   auto b_data = b.data();
-  return absl::equal(a_data, a_data + a.size(), b_data, b_data + b.size());
+  return iresearch_absl::equal(a_data, a_data + a.size(), b_data, b_data + b.size());
 }
 
 // `operator!=(...)`
 //
 // Tests for value-inequality of two inlined vectors.
 template <typename T, size_t N, typename A>
-bool operator!=(const absl::InlinedVector<T, N, A>& a,
-                const absl::InlinedVector<T, N, A>& b) {
+bool operator!=(const iresearch_absl::InlinedVector<T, N, A>& a,
+                const iresearch_absl::InlinedVector<T, N, A>& b) {
   return !(a == b);
 }
 
@@ -791,8 +791,8 @@ bool operator!=(const absl::InlinedVector<T, N, A>& a,
 // Tests whether the value of an inlined vector is less than the value of
 // another inlined vector using a lexicographical comparison algorithm.
 template <typename T, size_t N, typename A>
-bool operator<(const absl::InlinedVector<T, N, A>& a,
-               const absl::InlinedVector<T, N, A>& b) {
+bool operator<(const iresearch_absl::InlinedVector<T, N, A>& a,
+               const iresearch_absl::InlinedVector<T, N, A>& b) {
   auto a_data = a.data();
   auto b_data = b.data();
   return std::lexicographical_compare(a_data, a_data + a.size(), b_data,
@@ -804,8 +804,8 @@ bool operator<(const absl::InlinedVector<T, N, A>& a,
 // Tests whether the value of an inlined vector is greater than the value of
 // another inlined vector using a lexicographical comparison algorithm.
 template <typename T, size_t N, typename A>
-bool operator>(const absl::InlinedVector<T, N, A>& a,
-               const absl::InlinedVector<T, N, A>& b) {
+bool operator>(const iresearch_absl::InlinedVector<T, N, A>& a,
+               const iresearch_absl::InlinedVector<T, N, A>& b) {
   return b < a;
 }
 
@@ -814,8 +814,8 @@ bool operator>(const absl::InlinedVector<T, N, A>& a,
 // Tests whether the value of an inlined vector is less than or equal to the
 // value of another inlined vector using a lexicographical comparison algorithm.
 template <typename T, size_t N, typename A>
-bool operator<=(const absl::InlinedVector<T, N, A>& a,
-                const absl::InlinedVector<T, N, A>& b) {
+bool operator<=(const iresearch_absl::InlinedVector<T, N, A>& a,
+                const iresearch_absl::InlinedVector<T, N, A>& b) {
   return !(b < a);
 }
 
@@ -824,8 +824,8 @@ bool operator<=(const absl::InlinedVector<T, N, A>& a,
 // Tests whether the value of an inlined vector is greater than or equal to the
 // value of another inlined vector using a lexicographical comparison algorithm.
 template <typename T, size_t N, typename A>
-bool operator>=(const absl::InlinedVector<T, N, A>& a,
-                const absl::InlinedVector<T, N, A>& b) {
+bool operator>=(const iresearch_absl::InlinedVector<T, N, A>& a,
+                const iresearch_absl::InlinedVector<T, N, A>& b) {
   return !(a < b);
 }
 
@@ -834,12 +834,12 @@ bool operator>=(const absl::InlinedVector<T, N, A>& a,
 // Provides `absl::Hash` support for `absl::InlinedVector`. It is uncommon to
 // call this directly.
 template <typename H, typename T, size_t N, typename A>
-H AbslHashValue(H h, const absl::InlinedVector<T, N, A>& a) {
+H AbslHashValue(H h, const iresearch_absl::InlinedVector<T, N, A>& a) {
   auto size = a.size();
   return H::combine(H::combine_contiguous(std::move(h), a.data(), size), size);
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INLINED_VECTOR_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INLINED_VECTOR_H_

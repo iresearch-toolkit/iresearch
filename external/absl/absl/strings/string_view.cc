@@ -14,7 +14,7 @@
 
 #include "absl/strings/string_view.h"
 
-#ifndef ABSL_USES_STD_STRING_VIEW
+#ifndef IRESEARCH_ABSL_USES_STD_STRING_VIEW
 
 #include <algorithm>
 #include <climits>
@@ -23,8 +23,8 @@
 
 #include "absl/strings/internal/memutil.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace {
 void WritePadding(std::ostream& o, size_t pad) {
@@ -219,9 +219,9 @@ string_view::size_type string_view::find_last_not_of(char c,
 // MSVC to choose only one definition for the symbol it decorates. See details
 // at https://msdn.microsoft.com/en-us/library/34h23df8(v=vs.100).aspx
 #ifdef _MSC_VER
-#define ABSL_STRING_VIEW_SELECTANY __declspec(selectany)
+#define IRESEARCH_ABSL_STRING_VIEW_SELECTANY __declspec(selectany)
 #else
-#define ABSL_STRING_VIEW_SELECTANY
+#define IRESEARCH_ABSL_STRING_VIEW_SELECTANY
 #endif
 
 ABSL_STRING_VIEW_SELECTANY
@@ -229,7 +229,7 @@ constexpr string_view::size_type string_view::npos;
 ABSL_STRING_VIEW_SELECTANY
 constexpr string_view::size_type string_view::kMaxSize;
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_USES_STD_STRING_VIEW
+#endif  // IRESEARCH_ABSL_USES_STD_STRING_VIEW

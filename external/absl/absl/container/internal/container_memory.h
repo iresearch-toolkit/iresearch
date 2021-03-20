@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_
-#define ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_
 
 #include <cassert>
 #include <cstddef>
@@ -28,16 +28,16 @@
 #include "absl/meta/type_traits.h"
 #include "absl/utility/utility.h"
 
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
 #include <sanitizer/asan_interface.h>
 #endif
 
-#ifdef ABSL_HAVE_MEMORY_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_MEMORY_SANITIZER
 #include <sanitizer/msan_interface.h>
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 template <size_t Alignment>
@@ -55,8 +55,8 @@ void* Allocate(Alloc* alloc, size_t n) {
   static_assert(Alignment > 0, "");
   assert(n && "n must be positive");
   using M = AlignedType<Alignment>;
-  using A = typename absl::allocator_traits<Alloc>::template rebind_alloc<M>;
-  using AT = typename absl::allocator_traits<Alloc>::template rebind_traits<M>;
+  using A = typename iresearch_absl::allocator_traits<Alloc>::template rebind_alloc<M>;
+  using AT = typename iresearch_absl::allocator_traits<Alloc>::template rebind_traits<M>;
   // On macOS, "mem_alloc" is a #define with one argument defined in
   // rpc/types.h, so we can't name the variable "mem_alloc" and initialize it
   // with the "foo(bar)" syntax.
@@ -74,8 +74,8 @@ void Deallocate(Alloc* alloc, void* p, size_t n) {
   static_assert(Alignment > 0, "");
   assert(n && "n must be positive");
   using M = AlignedType<Alignment>;
-  using A = typename absl::allocator_traits<Alloc>::template rebind_alloc<M>;
-  using AT = typename absl::allocator_traits<Alloc>::template rebind_traits<M>;
+  using A = typename iresearch_absl::allocator_traits<Alloc>::template rebind_alloc<M>;
+  using AT = typename iresearch_absl::allocator_traits<Alloc>::template rebind_traits<M>;
   // On macOS, "mem_alloc" is a #define with one argument defined in
   // rpc/types.h, so we can't name the variable "mem_alloc" and initialize it
   // with the "foo(bar)" syntax.
@@ -90,8 +90,8 @@ namespace memory_internal {
 // specified in the tuple.
 template <class Alloc, class T, class Tuple, size_t... I>
 void ConstructFromTupleImpl(Alloc* alloc, T* ptr, Tuple&& t,
-                            absl::index_sequence<I...>) {
-  absl::allocator_traits<Alloc>::construct(
+                            iresearch_absl::index_sequence<I...>) {
+  iresearch_absl::allocator_traits<Alloc>::construct(
       *alloc, ptr, std::get<I>(std::forward<Tuple>(t))...);
 }
 
@@ -107,13 +107,13 @@ struct WithConstructedImplF {
 
 template <class T, class Tuple, size_t... Is, class F>
 decltype(std::declval<F>()(std::declval<T>())) WithConstructedImpl(
-    Tuple&& t, absl::index_sequence<Is...>, F&& f) {
+    Tuple&& t, iresearch_absl::index_sequence<Is...>, F&& f) {
   return WithConstructedImplF<T, F>{std::forward<F>(f)}(
       std::get<Is>(std::forward<Tuple>(t))...);
 }
 
 template <class T, size_t... Is>
-auto TupleRefImpl(T&& t, absl::index_sequence<Is...>)
+auto TupleRefImpl(T&& t, iresearch_absl::index_sequence<Is...>)
     -> decltype(std::forward_as_tuple(std::get<Is>(std::forward<T>(t))...)) {
   return std::forward_as_tuple(std::get<Is>(std::forward<T>(t))...);
 }
@@ -123,11 +123,11 @@ auto TupleRefImpl(T&& t, absl::index_sequence<Is...>)
 template <class T>
 auto TupleRef(T&& t) -> decltype(
     TupleRefImpl(std::forward<T>(t),
-                 absl::make_index_sequence<
+                 iresearch_absl::make_index_sequence<
                      std::tuple_size<typename std::decay<T>::type>::value>())) {
   return TupleRefImpl(
       std::forward<T>(t),
-      absl::make_index_sequence<
+      iresearch_absl::make_index_sequence<
           std::tuple_size<typename std::decay<T>::type>::value>());
 }
 
@@ -148,7 +148,7 @@ template <class Alloc, class T, class Tuple>
 void ConstructFromTuple(Alloc* alloc, T* ptr, Tuple&& t) {
   memory_internal::ConstructFromTupleImpl(
       alloc, ptr, std::forward<Tuple>(t),
-      absl::make_index_sequence<
+      iresearch_absl::make_index_sequence<
           std::tuple_size<typename std::decay<Tuple>::type>::value>());
 }
 
@@ -159,7 +159,7 @@ decltype(std::declval<F>()(std::declval<T>())) WithConstructed(
     Tuple&& t, F&& f) {
   return memory_internal::WithConstructedImpl<T>(
       std::forward<Tuple>(t),
-      absl::make_index_sequence<
+      iresearch_absl::make_index_sequence<
           std::tuple_size<typename std::decay<Tuple>::type>::value>(),
       std::forward<F>(f));
 }
@@ -217,10 +217,10 @@ DecomposeValue(F&& f, Arg&& arg) {
 
 // Helper functions for asan and msan.
 inline void SanitizerPoisonMemoryRegion(const void* m, size_t s) {
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   ASAN_POISON_MEMORY_REGION(m, s);
 #endif
-#ifdef ABSL_HAVE_MEMORY_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_MEMORY_SANITIZER
   __msan_poison(m, s);
 #endif
   (void)m;
@@ -228,10 +228,10 @@ inline void SanitizerPoisonMemoryRegion(const void* m, size_t s) {
 }
 
 inline void SanitizerUnpoisonMemoryRegion(const void* m, size_t s) {
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   ASAN_UNPOISON_MEMORY_REGION(m, s);
 #endif
-#ifdef ABSL_HAVE_MEMORY_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_MEMORY_SANITIZER
   __msan_unpoison(m, s);
 #endif
   (void)m;
@@ -329,11 +329,11 @@ union map_slot_type {
   ~map_slot_type() = delete;
   using value_type = std::pair<const K, V>;
   using mutable_value_type =
-      std::pair<absl::remove_const_t<K>, absl::remove_const_t<V>>;
+      std::pair<iresearch_absl::remove_const_t<K>, iresearch_absl::remove_const_t<V>>;
 
   value_type value;
   mutable_value_type mutable_value;
-  absl::remove_const_t<K> key;
+  iresearch_absl::remove_const_t<K> key;
 };
 
 template <class K, class V>
@@ -381,10 +381,10 @@ struct map_slot_policy {
   static void construct(Allocator* alloc, slot_type* slot, Args&&... args) {
     emplace(slot);
     if (kMutableKeys::value) {
-      absl::allocator_traits<Allocator>::construct(*alloc, &slot->mutable_value,
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &slot->mutable_value,
                                                    std::forward<Args>(args)...);
     } else {
-      absl::allocator_traits<Allocator>::construct(*alloc, &slot->value,
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &slot->value,
                                                    std::forward<Args>(args)...);
     }
   }
@@ -394,10 +394,10 @@ struct map_slot_policy {
   static void construct(Allocator* alloc, slot_type* slot, slot_type* other) {
     emplace(slot);
     if (kMutableKeys::value) {
-      absl::allocator_traits<Allocator>::construct(
+      iresearch_absl::allocator_traits<Allocator>::construct(
           *alloc, &slot->mutable_value, std::move(other->mutable_value));
     } else {
-      absl::allocator_traits<Allocator>::construct(*alloc, &slot->value,
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &slot->value,
                                                    std::move(other->value));
     }
   }
@@ -405,9 +405,9 @@ struct map_slot_policy {
   template <class Allocator>
   static void destroy(Allocator* alloc, slot_type* slot) {
     if (kMutableKeys::value) {
-      absl::allocator_traits<Allocator>::destroy(*alloc, &slot->mutable_value);
+      iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, &slot->mutable_value);
     } else {
-      absl::allocator_traits<Allocator>::destroy(*alloc, &slot->value);
+      iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, &slot->value);
     }
   }
 
@@ -416,10 +416,10 @@ struct map_slot_policy {
                        slot_type* old_slot) {
     emplace(new_slot);
     if (kMutableKeys::value) {
-      absl::allocator_traits<Allocator>::construct(
+      iresearch_absl::allocator_traits<Allocator>::construct(
           *alloc, &new_slot->mutable_value, std::move(old_slot->mutable_value));
     } else {
-      absl::allocator_traits<Allocator>::construct(*alloc, &new_slot->value,
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &new_slot->value,
                                                    std::move(old_slot->value));
     }
     destroy(alloc, old_slot);
@@ -432,11 +432,11 @@ struct map_slot_policy {
       swap(a->mutable_value, b->mutable_value);
     } else {
       value_type tmp = std::move(a->value);
-      absl::allocator_traits<Allocator>::destroy(*alloc, &a->value);
-      absl::allocator_traits<Allocator>::construct(*alloc, &a->value,
+      iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, &a->value);
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &a->value,
                                                    std::move(b->value));
-      absl::allocator_traits<Allocator>::destroy(*alloc, &b->value);
-      absl::allocator_traits<Allocator>::construct(*alloc, &b->value,
+      iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, &b->value);
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &b->value,
                                                    std::move(tmp));
     }
   }
@@ -446,15 +446,15 @@ struct map_slot_policy {
     if (kMutableKeys::value) {
       dest->mutable_value = std::move(src->mutable_value);
     } else {
-      absl::allocator_traits<Allocator>::destroy(*alloc, &dest->value);
-      absl::allocator_traits<Allocator>::construct(*alloc, &dest->value,
+      iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, &dest->value);
+      iresearch_absl::allocator_traits<Allocator>::construct(*alloc, &dest->value,
                                                    std::move(src->value));
     }
   }
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_CONTAINER_MEMORY_H_

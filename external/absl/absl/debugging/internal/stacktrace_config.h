@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 
- * Defines ABSL_STACKTRACE_INL_HEADER to the *-inl.h containing
+ * Defines IRESEARCH_ABSL_STACKTRACE_INL_HEADER to the *-inl.h containing
  * actual unwinder implementation.
  * This header is "private" to stacktrace.cc.
  * DO NOT include it into any other files.
 */
-#ifndef ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_
-#define ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_
+#define IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_
 
-#if defined(ABSL_STACKTRACE_INL_HEADER)
-#error ABSL_STACKTRACE_INL_HEADER cannot be directly set
+#if defined(IRESEARCH_ABSL_STACKTRACE_INL_HEADER)
+#error IRESEARCH_ABSL_STACKTRACE_INL_HEADER cannot be directly set
 
 #elif defined(_WIN32)
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
     "absl/debugging/internal/stacktrace_win32-inl.inc"
 
 #elif defined(__APPLE__)
@@ -42,7 +42,7 @@
 // `defined(__APPLE__)` check.
 #if __has_feature(cxx_thread_local) && \
     !(TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_9_0)
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_generic-inl.inc"
 #endif
 
@@ -52,28 +52,28 @@
     (defined(__i386__) || defined(__x86_64__) || defined(__aarch64__))
 // Note: The libunwind-based implementation is not available to open-source
 // users.
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_libunwind-inl.inc"
 #define STACKTRACE_USES_LIBUNWIND 1
 #elif defined(NO_FRAME_POINTER) && defined(__has_include)
 #if __has_include(<execinfo.h>)
 // Note: When using glibc this may require -funwind-tables to function properly.
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_generic-inl.inc"
 #endif
 #elif defined(__i386__) || defined(__x86_64__)
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_x86-inl.inc"
 #elif defined(__ppc__) || defined(__PPC__)
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_powerpc-inl.inc"
 #elif defined(__aarch64__)
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_aarch64-inl.inc"
 #elif defined(__has_include)
 #if __has_include(<execinfo.h>)
 // Note: When using glibc this may require -funwind-tables to function properly.
-#define ABSL_STACKTRACE_INL_HEADER \
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_generic-inl.inc"
 #endif
 #endif
@@ -81,9 +81,9 @@
 #endif
 
 // Fallback to the empty implementation.
-#if !defined(ABSL_STACKTRACE_INL_HEADER)
-#define ABSL_STACKTRACE_INL_HEADER \
+#if !defined(IRESEARCH_ABSL_STACKTRACE_INL_HEADER)
+#define IRESEARCH_ABSL_STACKTRACE_INL_HEADER \
   "absl/debugging/internal/stacktrace_unimplemented-inl.inc"
 #endif
 
-#endif  // ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACKTRACE_CONFIG_H_

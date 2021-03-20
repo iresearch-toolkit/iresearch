@@ -27,15 +27,15 @@
 // See https://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer
 //
 // -----------------------------------------------------------------------------
-#ifndef ABSL_DEBUGGING_LEAK_CHECK_H_
-#define ABSL_DEBUGGING_LEAK_CHECK_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_LEAK_CHECK_H_
+#define IRESEARCH_ABSL_DEBUGGING_LEAK_CHECK_H_
 
 #include <cstddef>
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // HaveLeakSanitizer()
 //
@@ -107,7 +107,7 @@ void RegisterLivePointers(const void* ptr, size_t size);
 // `RegisterLivePointers()`, enabling leak checking of those pointers.
 void UnRegisterLivePointers(const void* ptr, size_t size);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_DEBUGGING_LEAK_CHECK_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_LEAK_CHECK_H_

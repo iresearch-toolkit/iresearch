@@ -210,8 +210,12 @@ class basic_string_ref {
     return IRS_ASSERT(!empty()), data_[0];
   }
 
-  constexpr operator std::basic_string<char_type>() const {
+  constexpr explicit operator std::basic_string<char_type>() const {
     return std::basic_string<char_type>(data_, size_);
+  }
+
+  constexpr operator std::basic_string_view<char_type>() const {
+    return std::basic_string_view<char_type>(data_, size_);
   }
 
   // friends

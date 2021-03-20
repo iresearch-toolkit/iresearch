@@ -1,5 +1,5 @@
-#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_
-#define ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_
 
 #include "absl/base/attributes.h"
 #include "absl/strings/internal/str_format/arg.h"
@@ -7,14 +7,14 @@
 
 // Compile time check support for entry points.
 
-#ifndef ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
-#if ABSL_HAVE_ATTRIBUTE(enable_if) && !defined(__native_client__)
-#define ABSL_INTERNAL_ENABLE_FORMAT_CHECKER 1
-#endif  // ABSL_HAVE_ATTRIBUTE(enable_if) && !defined(__native_client__)
-#endif  // ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#ifndef IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(enable_if) && !defined(__native_client__)
+#define IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER 1
+#endif  // IRESEARCH_ABSL_HAVE_ATTRIBUTE(enable_if) && !defined(__native_client__)
+#endif  // IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 
 constexpr bool AllOf() { return true; }
@@ -24,7 +24,7 @@ constexpr bool AllOf(bool b, T... t) {
   return b && AllOf(t...);
 }
 
-#ifdef ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#ifdef IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
 constexpr bool ContainsChar(const char* chars, char c) {
   return *chars == c || (*chars && ContainsChar(chars + 1, c));
@@ -310,10 +310,10 @@ constexpr bool ValidFormatImpl(string_view format) {
       .Run();
 }
 
-#endif  // ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
+#endif  // IRESEARCH_ABSL_INTERNAL_ENABLE_FORMAT_CHECKER
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_CHECKER_H_

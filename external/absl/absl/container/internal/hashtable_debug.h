@@ -25,10 +25,10 @@
 // well in a different one.
 //
 // This library supports std::unordered_{set,map}, dense_hash_{set,map} and
-// absl::{flat,node,string}_hash_{set,map}.
+// iresearch_absl::{flat,node,string}_hash_{set,map}.
 
-#ifndef ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_
-#define ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_
 
 #include <cstddef>
 #include <algorithm>
@@ -37,8 +37,8 @@
 
 #include "absl/container/internal/hashtable_debug_hooks.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 // Returns the number of probes required to lookup `key`.  Returns 0 for a
@@ -48,7 +48,7 @@ namespace container_internal {
 template <typename C>
 size_t GetHashtableDebugNumProbes(
     const C& c, const typename C::key_type& key) {
-  return absl::container_internal::hashtable_debug_internal::
+  return iresearch_absl::container_internal::hashtable_debug_internal::
       HashtableDebugAccess<C>::GetNumProbes(c, key);
 }
 
@@ -60,7 +60,7 @@ std::vector<size_t> GetHashtableDebugNumProbesHistogram(const C& container) {
   for (auto it = container.begin(); it != container.end(); ++it) {
     size_t num_probes = GetHashtableDebugNumProbes(
         container,
-        absl::container_internal::hashtable_debug_internal::GetKey<C>(*it, 0));
+        iresearch_absl::container_internal::hashtable_debug_internal::GetKey<C>(*it, 0));
     v.resize((std::max)(v.size(), num_probes + 1));
     v[num_probes]++;
   }
@@ -91,7 +91,7 @@ HashtableDebugProbeSummary GetHashtableDebugProbeSummary(const C& container) {
 // and not freed.
 template <typename C>
 size_t AllocatedByteSize(const C& c) {
-  return absl::container_internal::hashtable_debug_internal::
+  return iresearch_absl::container_internal::hashtable_debug_internal::
       HashtableDebugAccess<C>::AllocatedByteSize(c);
 }
 
@@ -99,12 +99,12 @@ size_t AllocatedByteSize(const C& c) {
 // and `c.size()` is equal to `num_elements`.
 template <typename C>
 size_t LowerBoundAllocatedByteSize(size_t num_elements) {
-  return absl::container_internal::hashtable_debug_internal::
+  return iresearch_absl::container_internal::hashtable_debug_internal::
       HashtableDebugAccess<C>::LowerBoundAllocatedByteSize(num_elements);
 }
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_HASHTABLE_DEBUG_H_

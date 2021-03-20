@@ -127,6 +127,7 @@ struct text_token_stream::state_t {
 } // ROOT
 
 namespace {
+using namespace irs;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

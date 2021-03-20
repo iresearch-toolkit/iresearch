@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
+# we use of xxx_ROOT variables for modules sources search
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 OLD)
+endif()
+
 ################################################################################
 ### set required standard version
 ################################################################################

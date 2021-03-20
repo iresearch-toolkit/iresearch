@@ -21,8 +21,8 @@
 // converting numbers to strings, use `StrCat()` or `StrAppend()` in str_cat.h,
 // which automatically detect and convert most number values appropriately.
 
-#ifndef ABSL_STRINGS_NUMBERS_H_
-#define ABSL_STRINGS_NUMBERS_H_
+#ifndef IRESEARCH_ABSL_STRINGS_NUMBERS_H_
+#define IRESEARCH_ABSL_STRINGS_NUMBERS_H_
 
 #ifdef __SSE4_2__
 
@@ -56,8 +56,8 @@
 #include "absl/numeric/int128.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // SimpleAtoi()
 //
@@ -68,7 +68,7 @@ ABSL_NAMESPACE_BEGIN
 // encountered, this function returns `false`, leaving `out` in an unspecified
 // state.
 template <typename int_type>
-ABSL_MUST_USE_RESULT bool SimpleAtoi(absl::string_view str, int_type* out);
+IRESEARCH_ABSL_MUST_USE_RESULT bool SimpleAtoi(iresearch_absl::string_view str, int_type* out);
 
 // SimpleAtof()
 //
@@ -79,7 +79,7 @@ ABSL_MUST_USE_RESULT bool SimpleAtoi(absl::string_view str, int_type* out);
 // allowed formats for `str`, except SimpleAtof() is locale-independent and will
 // always use the "C" locale. If any errors are encountered, this function
 // returns `false`, leaving `out` in an unspecified state.
-ABSL_MUST_USE_RESULT bool SimpleAtof(absl::string_view str, float* out);
+IRESEARCH_ABSL_MUST_USE_RESULT bool SimpleAtof(iresearch_absl::string_view str, float* out);
 
 // SimpleAtod()
 //
@@ -90,7 +90,7 @@ ABSL_MUST_USE_RESULT bool SimpleAtof(absl::string_view str, float* out);
 // allowed formats for `str`, except SimpleAtod is locale-independent and will
 // always use the "C" locale. If any errors are encountered, this function
 // returns `false`, leaving `out` in an unspecified state.
-ABSL_MUST_USE_RESULT bool SimpleAtod(absl::string_view str, double* out);
+IRESEARCH_ABSL_MUST_USE_RESULT bool SimpleAtod(iresearch_absl::string_view str, double* out);
 
 // SimpleAtob()
 //
@@ -100,22 +100,22 @@ ABSL_MUST_USE_RESULT bool SimpleAtod(absl::string_view str, double* out);
 // are interpreted as boolean `false`: "false", "f", "no", "n", "0". If any
 // errors are encountered, this function returns `false`, leaving `out` in an
 // unspecified state.
-ABSL_MUST_USE_RESULT bool SimpleAtob(absl::string_view str, bool* out);
+IRESEARCH_ABSL_MUST_USE_RESULT bool SimpleAtob(iresearch_absl::string_view str, bool* out);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // End of public API.  Implementation details follow.
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace numbers_internal {
 
 // Digit conversion.
-ABSL_DLL extern const char kHexChar[17];  // 0123456789abcdef
-ABSL_DLL extern const char
+IRESEARCH_ABSL_DLL extern const char kHexChar[17];  // 0123456789abcdef
+IRESEARCH_ABSL_DLL extern const char
     kHexTable[513];  // 000102030405060708090a0b0c0d0e0f1011...
-ABSL_DLL extern const char
+IRESEARCH_ABSL_DLL extern const char
     two_ASCII_digits[100][2];  // 00, 01, 02, 03...
 
 // Writes a two-character representation of 'i' to 'buf'. 'i' must be in the
@@ -130,11 +130,11 @@ inline void PutTwoDigits(size_t i, char* buf) {
 }
 
 // safe_strto?() functions for implementing SimpleAtoi()
-bool safe_strto32_base(absl::string_view text, int32_t* value, int base);
-bool safe_strto64_base(absl::string_view text, int64_t* value, int base);
-bool safe_strtou32_base(absl::string_view text, uint32_t* value, int base);
-bool safe_strtou64_base(absl::string_view text, uint64_t* value, int base);
-bool safe_strtou128_base(absl::string_view text, absl::uint128* value,
+bool safe_strto32_base(iresearch_absl::string_view text, int32_t* value, int base);
+bool safe_strto64_base(iresearch_absl::string_view text, int64_t* value, int base);
+bool safe_strtou32_base(iresearch_absl::string_view text, uint32_t* value, int base);
+bool safe_strtou64_base(iresearch_absl::string_view text, uint64_t* value, int base);
+bool safe_strtou128_base(iresearch_absl::string_view text, iresearch_absl::uint128* value,
                          int base);
 
 static const int kFastToBufferSize = 32;
@@ -183,7 +183,7 @@ char* FastIntToBuffer(int_type i, char* buffer) {
 // Implementation of SimpleAtoi, generalized to support arbitrary base (used
 // with base different from 10 elsewhere in Abseil implementation).
 template <typename int_type>
-ABSL_MUST_USE_RESULT bool safe_strtoi_base(absl::string_view s, int_type* out,
+IRESEARCH_ABSL_MUST_USE_RESULT bool safe_strtoi_base(iresearch_absl::string_view s, int_type* out,
                                            int base) {
   static_assert(sizeof(*out) == 4 || sizeof(*out) == 8,
                 "SimpleAtoi works only with 32-bit or 64-bit integers.");
@@ -225,7 +225,7 @@ ABSL_MUST_USE_RESULT bool safe_strtoi_base(absl::string_view s, int_type* out,
 // since 0 has one digit).
 inline size_t FastHexToBufferZeroPad16(uint64_t val, char* out) {
 #ifdef __SSE4_2__
-  uint64_t be = absl::big_endian::FromHost64(val);
+  uint64_t be = iresearch_absl::big_endian::FromHost64(val);
   const auto kNibbleMask = _mm_set1_epi8(0xf);
   const auto kHexDigits = _mm_setr_epi8('0', '1', '2', '3', '4', '5', '6', '7',
                                         '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
@@ -238,12 +238,12 @@ inline size_t FastHexToBufferZeroPad16(uint64_t val, char* out) {
 #else
   for (int i = 0; i < 8; ++i) {
     auto byte = (val >> (56 - 8 * i)) & 0xFF;
-    auto* hex = &absl::numbers_internal::kHexTable[byte * 2];
+    auto* hex = &iresearch_absl::numbers_internal::kHexTable[byte * 2];
     std::memcpy(out + 2 * i, hex, 2);
   }
 #endif
   // | 0x1 so that even 0 has 1 digit.
-  return 16 - absl::base_internal::CountLeadingZeros64(val | 0x1) / 4;
+  return 16 - iresearch_absl::base_internal::CountLeadingZeros64(val | 0x1) / 4;
 }
 
 }  // namespace numbers_internal
@@ -256,16 +256,16 @@ inline size_t FastHexToBufferZeroPad16(uint64_t val, char* out) {
 // preceded by ASCII whitespace, with a value in the range of the corresponding
 // integer type.
 template <typename int_type>
-ABSL_MUST_USE_RESULT bool SimpleAtoi(absl::string_view str, int_type* out) {
+IRESEARCH_ABSL_MUST_USE_RESULT bool SimpleAtoi(iresearch_absl::string_view str, int_type* out) {
   return numbers_internal::safe_strtoi_base(str, out, 10);
 }
 
-ABSL_MUST_USE_RESULT inline bool SimpleAtoi(absl::string_view str,
-                                            absl::uint128* out) {
+IRESEARCH_ABSL_MUST_USE_RESULT inline bool SimpleAtoi(iresearch_absl::string_view str,
+                                            iresearch_absl::uint128* out) {
   return numbers_internal::safe_strtou128_base(str, out, 10);
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_NUMBERS_H_
+#endif  // IRESEARCH_ABSL_STRINGS_NUMBERS_H_

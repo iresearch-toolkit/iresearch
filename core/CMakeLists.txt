@@ -38,6 +38,11 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
+
+#for some reason TARGET_PROPERTY generator expression does not work for this target
+get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
+
+
 if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
@@ -373,9 +378,11 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  velocypack
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
@@ -390,6 +397,9 @@ target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
+target_include_directories(${IResearch_TARGET_NAME}-static
+  PUBLIC ${VPACK_INCLUDE_PATH}
+)
 
 # setup MSVC specific compiler flags
 if(MSVC)
@@ -443,6 +453,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
+  velocypack
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -453,6 +464,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -465,7 +477,14 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   ${ABSL_LIBRARY_STATIC}
+  velocypack
 )
+
+
+target_include_directories(${IResearch_TARGET_NAME}-shared
+  PUBLIC ${VPACK_INCLUDE_PATH}
+)
+
 
 if (CLANG_TIDY_EXE)
   set_target_properties(
@@ -491,11 +510,20 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>"
+  "$<TARGET_FILE:velocypack>"
 )
+
+if (TARGET zlibstatic)
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
+else()
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
+endif()
 
 if (MSVC)
   foreach(ELEMENT
@@ -993,6 +1021,64 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-static
+)
+
+################################################################################
+### analysis plugin : text segmentation
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  SHARED
+  ./analysis/segmentation_token_stream.cpp
+  ./analysis/segmentation_token_stream.hpp
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared ${IResearch_TARGET_NAME}-unicorn)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  STATIC
+  ./analysis/segmentation_token_stream.cpp
+)
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IResearch_TARGET_NAME}-unicorn)
+
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+)
+
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-static
 )
 

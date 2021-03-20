@@ -14,15 +14,15 @@
 
 #include "absl/types/bad_optional_access.h"
 
-#ifndef ABSL_USES_STD_OPTIONAL
+#ifndef IRESEARCH_ABSL_USES_STD_OPTIONAL
 
 #include <cstdlib>
 
 #include "absl/base/config.h"
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 bad_optional_access::~bad_optional_access() = default;
 
@@ -33,16 +33,16 @@ const char* bad_optional_access::what() const noexcept {
 namespace optional_internal {
 
 void throw_bad_optional_access() {
-#ifdef ABSL_HAVE_EXCEPTIONS
+#ifdef IRESEARCH_ABSL_HAVE_EXCEPTIONS
   throw bad_optional_access();
 #else
-  ABSL_RAW_LOG(FATAL, "Bad optional access");
+  IRESEARCH_ABSL_RAW_LOG(FATAL, "Bad optional access");
   abort();
 #endif
 }
 
 }  // namespace optional_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_USES_STD_OPTIONAL
+#endif  // IRESEARCH_ABSL_USES_STD_OPTIONAL

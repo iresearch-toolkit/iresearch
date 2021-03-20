@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_
-#define ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_
+#define IRESEARCH_ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // Return whether the byte at *addr is readable, without faulting.
@@ -26,7 +26,7 @@ namespace debugging_internal {
 bool AddressIsReadable(const void *addr);
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_INTERNAL_ADDRESS_IS_READABLE_H_

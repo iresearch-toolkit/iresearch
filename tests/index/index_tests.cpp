@@ -80,7 +80,7 @@ bool token_stream_payload::next() {
 // ----------------------------------------------------------------------------
 
 string_field::string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
 ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
@@ -88,7 +88,7 @@ string_field::string_field(
 }
 
 string_field::string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
   ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
@@ -127,7 +127,7 @@ irs::token_stream& string_field::get_tokens() const {
 // ----------------------------------------------------------------------------
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
 ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
@@ -135,7 +135,7 @@ string_ref_field::string_ref_field(
 }
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
   ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
@@ -182,14 +182,14 @@ void europarl_doc_template::init() {
   {
     insert(std::make_shared<tests::long_field>());
     auto& field = static_cast<tests::long_field&>(indexed.back());
-    field.name(irs::string_ref("date"));
+    field.name("date");
   }
   insert(std::make_shared<tests::templates::string_field>("datestr"));
   insert(std::make_shared<tests::templates::string_field>("body"));
   {
     insert(std::make_shared<tests::int_field>());
     auto& field = static_cast<tests::int_field&>(indexed.back());
-    field.name(irs::string_ref("id"));
+    field.name("id");
   }
   insert(std::make_shared<string_field>("idstr"));
 }
@@ -241,29 +241,29 @@ void generic_json_field_factory(
     const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str
     ));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
@@ -290,29 +290,29 @@ void payloaded_json_field_factory(
 
     // not analyzed field
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str
     ));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
@@ -324,7 +324,7 @@ void normalized_string_json_field_factory(
   static irs::flags norm{ irs::type<irs::norm>::get() };
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str,
       norm
       ));
@@ -381,7 +381,7 @@ class index_test_case : public tests::index_test_base {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -929,7 +929,7 @@ class index_test_case : public tests::index_test_base {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -2664,7 +2664,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2745,7 +2745,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2877,7 +2877,7 @@ TEST_P(index_test_case, document_context) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4296,7 +4296,7 @@ TEST_P(index_test_case, doc_removal) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4818,7 +4818,7 @@ TEST_P(index_test_case, doc_update) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -5599,7 +5599,7 @@ TEST_P(index_test_case, import_reader) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -6016,7 +6016,7 @@ TEST_P(index_test_case, refresh_reader) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -6348,7 +6348,7 @@ TEST_P(index_test_case, segment_column_user_system) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -6360,7 +6360,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
-      irs::string_ref("test-field"),
+      "test-field",
       "test-value",
       irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
     ), true, false);
@@ -6451,7 +6451,7 @@ TEST_P(index_test_case, import_concurrent) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6533,7 +6533,7 @@ TEST_P(index_test_case, import_concurrent) {
     auto docsItr = termItr->postings(iresearch::flags());
     while (docsItr->next()) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
       ++removed;
     }
     ASSERT_FALSE(docsItr->next());
@@ -6552,7 +6552,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6659,7 +6659,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6678,7 +6678,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6798,7 +6798,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6817,7 +6817,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6940,7 +6940,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6959,7 +6959,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -7069,7 +7069,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -7094,7 +7094,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7149,7 +7149,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7264,7 +7264,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7882,7 +7882,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8062,7 +8062,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8400,7 +8400,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8538,7 +8538,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -11830,7 +11830,7 @@ TEST_P(index_test_case, segment_consolidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -12530,7 +12530,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12621,7 +12621,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12695,7 +12695,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -13256,7 +13256,7 @@ TEST_P(index_test_case, segment_options) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -13667,7 +13667,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   };
 
   struct empty_field {
-    irs::string_ref name() const { return "test"; };
+    std::string name() const { return "test"; };
     irs::flags features() const {
       return { irs::type<irs::position>::get(),
                irs::type<irs::frequency>::get(),
@@ -14110,7 +14110,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
           ));
       }
@@ -14121,7 +14121,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{ 0 };
-  irs::bstring input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  irs::bstring input_payload = static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("init")));
   bool payload_provider_result{ false };
   writer_options.meta_payload_provider = 
     [&payload_provider_result, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {

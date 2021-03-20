@@ -12,14 +12,14 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-#ifndef ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_
-#define ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_
+#ifndef IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_
+#define IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_
 
 #include "absl/base/config.h"
 #include "absl/time/internal/cctz/include/cctz/civil_time_detail.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -326,7 +326,7 @@ using detail::get_yearday;
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_
+#endif  // IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_CIVIL_TIME_H_

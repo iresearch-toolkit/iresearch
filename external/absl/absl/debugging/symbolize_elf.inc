@@ -157,14 +157,14 @@ struct FileMappingHint {
 // Moreover, we are using only TryLock(), if the decorator list
 // is being modified (is busy), we skip all decorators, and possibly
 // loose some info. Sorry, that's the best we could do.
-ABSL_CONST_INIT absl::base_internal::SpinLock g_decorators_mu(
+IRESEARCH_ABSL_CONST_INIT absl::base_internal::SpinLock g_decorators_mu(
     absl::kConstInit, absl::base_internal::SCHEDULE_KERNEL_ONLY);
 
 const int kMaxFileMappingHints = 8;
 int g_num_file_mapping_hints;
 FileMappingHint g_file_mapping_hints[kMaxFileMappingHints];
 // Protects g_file_mapping_hints.
-ABSL_CONST_INIT absl::base_internal::SpinLock g_file_mapping_mu(
+IRESEARCH_ABSL_CONST_INIT absl::base_internal::SpinLock g_file_mapping_mu(
     absl::kConstInit, absl::base_internal::SCHEDULE_KERNEL_ONLY);
 
 // Async-signal-safe function to zero a buffer.
@@ -1549,7 +1549,7 @@ bool Symbolize(const void *pc, char *out, int out_size) {
   return ok;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 extern "C" bool AbslInternalGetFileMappingHint(const void **start,

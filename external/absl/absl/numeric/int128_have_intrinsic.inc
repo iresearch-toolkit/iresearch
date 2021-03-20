@@ -15,7 +15,7 @@
 
 // This file contains :int128 implementation details that depend on internal
 // representation when ABSL_HAVE_INTRINSIC_INT128 is defined. This file is
-// included by int128.h and relies on ABSL_INTERNAL_WCHAR_T being defined.
+// included by int128.h and relies on IRESEARCH_ABSL_INTERNAL_WCHAR_T being defined.
 
 namespace int128_internal {
 
@@ -107,8 +107,8 @@ constexpr int128::operator char32_t() const {
   return static_cast<char32_t>(v_);
 }
 
-constexpr int128::operator ABSL_INTERNAL_WCHAR_T() const {
-  return static_cast<ABSL_INTERNAL_WCHAR_T>(v_);
+constexpr int128::operator IRESEARCH_ABSL_INTERNAL_WCHAR_T() const {
+  return static_cast<IRESEARCH_ABSL_INTERNAL_WCHAR_T>(v_);
 }
 
 constexpr int128::operator short() const {  // NOLINT(runtime/int)

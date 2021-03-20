@@ -53,11 +53,11 @@
 //          Otherwise, bits [31..3] represent the time spent by the current lock
 //          holder to acquire the lock.  There may be outstanding waiter(s).
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
-ABSL_INTERNAL_ATOMIC_HOOK_ATTRIBUTES static base_internal::AtomicHook<void (*)(
+IRESEARCH_ABSL_INTERNAL_ATOMIC_HOOK_ATTRIBUTES static base_internal::AtomicHook<void (*)(
     const void *lock, int64_t wait_cycles)>
     submit_profile_data;
 
@@ -76,7 +76,7 @@ constexpr uint32_t SpinLock::kWaitTimeMask;
 // Uncommon constructors.
 SpinLock::SpinLock(base_internal::SchedulingMode mode)
     : lockword_(IsCooperative(mode) ? kSpinLockCooperative : 0) {
-  ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
+  IRESEARCH_ABSL_TSAN_MUTEX_CREATE(this, __tsan_mutex_not_static);
 }
 
 // Monitor the lock to see if its value changes within some time period
@@ -85,8 +85,8 @@ SpinLock::SpinLock(base_internal::SchedulingMode mode)
 uint32_t SpinLock::SpinLoop() {
   // We are already in the slow path of SpinLock, initialize the
   // adaptive_spin_count here.
-  ABSL_CONST_INIT static absl::once_flag init_adaptive_spin_count;
-  ABSL_CONST_INIT static int adaptive_spin_count = 0;
+  IRESEARCH_ABSL_CONST_INIT static iresearch_absl::once_flag init_adaptive_spin_count;
+  IRESEARCH_ABSL_CONST_INIT static int adaptive_spin_count = 0;
   base_internal::LowLevelCallOnce(&init_adaptive_spin_count, []() {
     adaptive_spin_count = base_internal::NumCPUs() > 1 ? 1000 : 1;
   });
@@ -145,11 +145,11 @@ void SpinLock::SlowLock() {
 
     // SpinLockDelay() calls into fiber scheduler, we need to see
     // synchronization there to avoid false positives.
-    ABSL_TSAN_MUTEX_PRE_DIVERT(this, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_PRE_DIVERT(this, 0);
     // Wait for an OS specific delay.
     base_internal::SpinLockDelay(&lockword_, lock_value, ++lock_wait_call_count,
                                  scheduling_mode);
-    ABSL_TSAN_MUTEX_POST_DIVERT(this, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_POST_DIVERT(this, 0);
     // Spin again after returning from the wait routine to give this thread
     // some chance of obtaining the lock.
     lock_value = SpinLoop();
@@ -167,9 +167,9 @@ void SpinLock::SlowUnlock(uint32_t lock_value) {
   // own acquisition having been contended.
   if ((lock_value & kWaitTimeMask) != kSpinLockSleeper) {
     const uint64_t wait_cycles = DecodeWaitCycles(lock_value);
-    ABSL_TSAN_MUTEX_PRE_DIVERT(this, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_PRE_DIVERT(this, 0);
     submit_profile_data(this, wait_cycles);
-    ABSL_TSAN_MUTEX_POST_DIVERT(this, 0);
+    IRESEARCH_ABSL_TSAN_MUTEX_POST_DIVERT(this, 0);
   }
 }
 
@@ -216,5 +216,5 @@ uint64_t SpinLock::DecodeWaitCycles(uint32_t lock_value) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

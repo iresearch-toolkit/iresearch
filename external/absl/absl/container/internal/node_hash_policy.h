@@ -30,8 +30,8 @@
 // It may also optionally define `value()` and `apply()`. For documentation on
 // these, see hash_policy_traits.h.
 
-#ifndef ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_
-#define ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_
 
 #include <cassert>
 #include <cstddef>
@@ -41,8 +41,8 @@
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 template <class Reference, class Policy>
@@ -86,7 +86,7 @@ struct node_hash_policy {
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_NODE_HASH_POLICY_H_

@@ -19,21 +19,21 @@
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 constexpr size_t Group::kWidth;
 
 // Returns "random" seed.
 inline size_t RandomSeed() {
-#if ABSL_HAVE_THREAD_LOCAL
+#if IRESEARCH_ABSL_HAVE_THREAD_LOCAL
   static thread_local size_t counter = 0;
   size_t value = ++counter;
-#else   // ABSL_HAVE_THREAD_LOCAL
+#else   // IRESEARCH_ABSL_HAVE_THREAD_LOCAL
   static std::atomic<size_t> counter(0);
   size_t value = counter.fetch_add(1, std::memory_order_relaxed);
-#endif  // ABSL_HAVE_THREAD_LOCAL
+#endif  // IRESEARCH_ABSL_HAVE_THREAD_LOCAL
   return value ^ static_cast<size_t>(reinterpret_cast<uintptr_t>(&counter));
 }
 
@@ -44,5 +44,5 @@ bool ShouldInsertBackwards(size_t hash, ctrl_t* ctrl) {
 }
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

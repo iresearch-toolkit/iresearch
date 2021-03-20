@@ -27,8 +27,8 @@
 // accidentally overflowing your stack if large input is passed to
 // your function.
 
-#ifndef ABSL_CONTAINER_FIXED_ARRAY_H_
-#define ABSL_CONTAINER_FIXED_ARRAY_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_FIXED_ARRAY_H_
+#define IRESEARCH_ABSL_CONTAINER_FIXED_ARRAY_H_
 
 #include <algorithm>
 #include <cassert>
@@ -50,8 +50,8 @@
 #include "absl/container/internal/compressed_tuple.h"
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 constexpr static auto kFixedArrayUseDefault = static_cast<size_t>(-1);
 
@@ -90,19 +90,19 @@ class FixedArray {
   // std::iterator_traits isn't guaranteed to be SFINAE-friendly until C++17,
   // but this seems to be mostly pedantic.
   template <typename Iterator>
-  using EnableIfForwardIterator = absl::enable_if_t<std::is_convertible<
+  using EnableIfForwardIterator = iresearch_absl::enable_if_t<std::is_convertible<
       typename std::iterator_traits<Iterator>::iterator_category,
       std::forward_iterator_tag>::value>;
   static constexpr bool NoexceptCopyable() {
     return std::is_nothrow_copy_constructible<StorageElement>::value &&
-           absl::allocator_is_nothrow<allocator_type>::value;
+           iresearch_absl::allocator_is_nothrow<allocator_type>::value;
   }
   static constexpr bool NoexceptMovable() {
     return std::is_nothrow_move_constructible<StorageElement>::value &&
-           absl::allocator_is_nothrow<allocator_type>::value;
+           iresearch_absl::allocator_is_nothrow<allocator_type>::value;
   }
   static constexpr bool DefaultConstructorIsNonTrivial() {
-    return !absl::is_trivially_default_constructible<StorageElement>::value;
+    return !iresearch_absl::is_trivially_default_constructible<StorageElement>::value;
   }
 
  public:
@@ -218,7 +218,7 @@ class FixedArray {
   // Returns a reference the ith element of the fixed array.
   // REQUIRES: 0 <= i < size()
   reference operator[](size_type i) {
-    ABSL_HARDENING_ASSERT(i < size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(i < size());
     return data()[i];
   }
 
@@ -226,7 +226,7 @@ class FixedArray {
   // ith element of the fixed array.
   // REQUIRES: 0 <= i < size()
   const_reference operator[](size_type i) const {
-    ABSL_HARDENING_ASSERT(i < size());
+    IRESEARCH_ABSL_HARDENING_ASSERT(i < size());
     return data()[i];
   }
 
@@ -235,7 +235,7 @@ class FixedArray {
   // Bounds-checked access.  Returns a reference to the ith element of the
   // fiexed array, or throws std::out_of_range
   reference at(size_type i) {
-    if (ABSL_PREDICT_FALSE(i >= size())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(i >= size())) {
       base_internal::ThrowStdOutOfRange("FixedArray::at failed bounds check");
     }
     return data()[i];
@@ -244,7 +244,7 @@ class FixedArray {
   // Overload of FixedArray::at() to return a const reference to the ith element
   // of the fixed array.
   const_reference at(size_type i) const {
-    if (ABSL_PREDICT_FALSE(i >= size())) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(i >= size())) {
       base_internal::ThrowStdOutOfRange("FixedArray::at failed bounds check");
     }
     return data()[i];
@@ -254,14 +254,14 @@ class FixedArray {
   //
   // Returns a reference to the first element of the fixed array.
   reference front() {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[0];
   }
 
   // Overload of FixedArray::front() to return a reference to the first element
   // of a fixed array of const values.
   const_reference front() const {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[0];
   }
 
@@ -269,14 +269,14 @@ class FixedArray {
   //
   // Returns a reference to the last element of the fixed array.
   reference back() {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[size() - 1];
   }
 
   // Overload of FixedArray::back() to return a reference to the last element
   // of a fixed array of const values.
   const_reference back() const {
-    ABSL_HARDENING_ASSERT(!empty());
+    IRESEARCH_ABSL_HARDENING_ASSERT(!empty());
     return data()[size() - 1];
   }
 
@@ -348,7 +348,7 @@ class FixedArray {
   // Relational operators. Equality operators are elementwise using
   // `operator==`, while order operators order FixedArrays lexicographically.
   friend bool operator==(const FixedArray& lhs, const FixedArray& rhs) {
-    return absl::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+    return iresearch_absl::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
   }
 
   friend bool operator!=(const FixedArray& lhs, const FixedArray& rhs) {
@@ -399,14 +399,14 @@ class FixedArray {
   //     error: call to int __builtin___sprintf_chk(etc...)
   //     will always overflow destination buffer [-Werror]
   //
-  template <typename OuterT, typename InnerT = absl::remove_extent_t<OuterT>,
+  template <typename OuterT, typename InnerT = iresearch_absl::remove_extent_t<OuterT>,
             size_t InnerN = std::extent<OuterT>::value>
   struct StorageElementWrapper {
     InnerT array[InnerN];
   };
 
   using StorageElement =
-      absl::conditional_t<std::is_array<value_type>::value,
+      iresearch_absl::conditional_t<std::is_array<value_type>::value,
                           StorageElementWrapper<value_type>, value_type>;
 
   static pointer AsValueType(pointer ptr) { return ptr; }
@@ -423,15 +423,15 @@ class FixedArray {
     void AnnotateConstruct(size_type n);
     void AnnotateDestruct(size_type n);
 
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
     void* RedzoneBegin() { return &redzone_begin_; }
     void* RedzoneEnd() { return &redzone_end_ + 1; }
-#endif  // ABSL_HAVE_ADDRESS_SANITIZER
+#endif  // IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
 
    private:
-    ABSL_ADDRESS_SANITIZER_REDZONE(redzone_begin_);
+    IRESEARCH_ABSL_ADDRESS_SANITIZER_REDZONE(redzone_begin_);
     alignas(StorageElement) char buff_[sizeof(StorageElement[inline_elements])];
-    ABSL_ADDRESS_SANITIZER_REDZONE(redzone_end_);
+    IRESEARCH_ABSL_ADDRESS_SANITIZER_REDZONE(redzone_end_);
   };
 
   class EmptyInlinedStorage {
@@ -442,7 +442,7 @@ class FixedArray {
   };
 
   using InlinedStorage =
-      absl::conditional_t<inline_elements == 0, EmptyInlinedStorage,
+      iresearch_absl::conditional_t<inline_elements == 0, EmptyInlinedStorage,
                           NonEmptyInlinedStorage>;
 
   // Storage
@@ -504,29 +504,29 @@ constexpr typename FixedArray<T, N, A>::size_type
 template <typename T, size_t N, typename A>
 void FixedArray<T, N, A>::NonEmptyInlinedStorage::AnnotateConstruct(
     typename FixedArray<T, N, A>::size_type n) {
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   if (!n) return;
-  ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(data(), RedzoneEnd(), RedzoneEnd(),
+  IRESEARCH_ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(data(), RedzoneEnd(), RedzoneEnd(),
                                      data() + n);
-  ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(RedzoneBegin(), data(), data(),
+  IRESEARCH_ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(RedzoneBegin(), data(), data(),
                                      RedzoneBegin());
-#endif  // ABSL_HAVE_ADDRESS_SANITIZER
+#endif  // IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   static_cast<void>(n);  // Mark used when not in asan mode
 }
 
 template <typename T, size_t N, typename A>
 void FixedArray<T, N, A>::NonEmptyInlinedStorage::AnnotateDestruct(
     typename FixedArray<T, N, A>::size_type n) {
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   if (!n) return;
-  ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(data(), RedzoneEnd(), data() + n,
+  IRESEARCH_ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(data(), RedzoneEnd(), data() + n,
                                      RedzoneEnd());
-  ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(RedzoneBegin(), data(), RedzoneBegin(),
+  IRESEARCH_ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(RedzoneBegin(), data(), RedzoneBegin(),
                                      data());
-#endif  // ABSL_HAVE_ADDRESS_SANITIZER
+#endif  // IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
   static_cast<void>(n);  // Mark used when not in asan mode
 }
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_FIXED_ARRAY_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_FIXED_ARRAY_H_

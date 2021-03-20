@@ -33,8 +33,8 @@
 #include "absl/debugging/stacktrace.h"
 #include "absl/debugging/symbolize.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // Returns the program counter from signal context, nullptr if
@@ -49,7 +49,7 @@ void* GetProgramCounter(void* vuc) {
 #elif defined(__arm__)
     return reinterpret_cast<void*>(context->uc_mcontext.arm_pc);
 #elif defined(__i386__)
-    if (14 < ABSL_ARRAYSIZE(context->uc_mcontext.gregs))
+    if (14 < IRESEARCH_ABSL_ARRAYSIZE(context->uc_mcontext.gregs))
       return reinterpret_cast<void*>(context->uc_mcontext.gregs[14]);
 #elif defined(__mips__)
     return reinterpret_cast<void*>(context->uc_mcontext.pc);
@@ -64,7 +64,7 @@ void* GetProgramCounter(void* vuc) {
 #elif defined(__s390__) && defined(__s390x__)
     return reinterpret_cast<void*>(context->uc_mcontext.psw.addr);
 #elif defined(__x86_64__)
-    if (16 < ABSL_ARRAYSIZE(context->uc_mcontext.gregs))
+    if (16 < IRESEARCH_ABSL_ARRAYSIZE(context->uc_mcontext.gregs))
       return reinterpret_cast<void*>(context->uc_mcontext.gregs[16]);
 #else
 #error "Undefined Architecture."
@@ -118,7 +118,7 @@ static void DumpPCAndFrameSizeAndSymbol(void (*writerfn)(const char*, void*),
                                         const char* const prefix) {
   char tmp[1024];
   const char* symbol = "(unknown)";
-  if (absl::Symbolize(symbolize_pc, tmp, sizeof(tmp))) {
+  if (iresearch_absl::Symbolize(symbolize_pc, tmp, sizeof(tmp))) {
     symbol = tmp;
   }
   char buf[1024];
@@ -183,5 +183,5 @@ void DumpPCAndFrameSizesAndStackTrace(
 }
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

@@ -35,6 +35,7 @@
 
 
 namespace {
+using namespace irs;
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param

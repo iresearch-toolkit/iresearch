@@ -14,7 +14,7 @@
 
 #include "absl/base/internal/unscaledcycleclock.h"
 
-#if ABSL_USE_UNSCALED_CYCLECLOCK
+#if IRESEARCH_ABSL_USE_UNSCALED_CYCLECLOCK
 
 #if defined(_WIN32)
 #include <intrin.h>
@@ -31,8 +31,8 @@
 
 #include "absl/base/internal/sysinfo.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 #if defined(__i386__)
@@ -134,7 +134,7 @@ double UnscaledCycleClock::Frequency() {
 #endif
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_USE_UNSCALED_CYCLECLOCK
+#endif  // IRESEARCH_ABSL_USE_UNSCALED_CYCLECLOCK

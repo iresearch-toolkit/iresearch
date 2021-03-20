@@ -47,8 +47,8 @@
 //  * Y receives a `true` return value from either `HasBeenNotified()` or
 //    `WaitForNotificationWithTimeout()`.
 
-#ifndef ABSL_SYNCHRONIZATION_NOTIFICATION_H_
-#define ABSL_SYNCHRONIZATION_NOTIFICATION_H_
+#ifndef IRESEARCH_ABSL_SYNCHRONIZATION_NOTIFICATION_H_
+#define IRESEARCH_ABSL_SYNCHRONIZATION_NOTIFICATION_H_
 
 #include <atomic>
 
@@ -56,8 +56,8 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // -----------------------------------------------------------------------------
 // Notification
@@ -90,14 +90,14 @@ class Notification {
   // Blocks until either the notification's "notified" state is `true` (which
   // may occur immediately) or the timeout has elapsed, returning the value of
   // its "notified" state in either case.
-  bool WaitForNotificationWithTimeout(absl::Duration timeout) const;
+  bool WaitForNotificationWithTimeout(iresearch_absl::Duration timeout) const;
 
   // Notification::WaitForNotificationWithDeadline()
   //
   // Blocks until either the notification's "notified" state is `true` (which
   // may occur immediately) or the deadline has expired, returning the value of
   // its "notified" state in either case.
-  bool WaitForNotificationWithDeadline(absl::Time deadline) const;
+  bool WaitForNotificationWithDeadline(iresearch_absl::Time deadline) const;
 
   // Notification::Notify()
   //
@@ -117,7 +117,7 @@ class Notification {
   std::atomic<bool> notified_yet_;  // written under mutex_
 };
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_SYNCHRONIZATION_NOTIFICATION_H_
+#endif  // IRESEARCH_ABSL_SYNCHRONIZATION_NOTIFICATION_H_

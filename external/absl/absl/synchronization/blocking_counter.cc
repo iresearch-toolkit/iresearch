@@ -16,8 +16,8 @@
 
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // Return whether int *arg is zero.
 static bool IsZero(void *arg) {
@@ -28,7 +28,7 @@ bool BlockingCounter::DecrementCount() {
   MutexLock l(&lock_);
   count_--;
   if (count_ < 0) {
-    ABSL_RAW_LOG(
+    IRESEARCH_ABSL_RAW_LOG(
         FATAL,
         "BlockingCounter::DecrementCount() called too many times.  count=%d",
         count_);
@@ -38,11 +38,11 @@ bool BlockingCounter::DecrementCount() {
 
 void BlockingCounter::Wait() {
   MutexLock l(&this->lock_);
-  ABSL_RAW_CHECK(count_ >= 0, "BlockingCounter underflow");
+  IRESEARCH_ABSL_RAW_CHECK(count_ >= 0, "BlockingCounter underflow");
 
   // only one thread may call Wait(). To support more than one thread,
   // implement a counter num_to_exit, like in the Barrier class.
-  ABSL_RAW_CHECK(num_waiting_ == 0, "multiple threads called Wait()");
+  IRESEARCH_ABSL_RAW_CHECK(num_waiting_ == 0, "multiple threads called Wait()");
   num_waiting_++;
 
   this->lock_.Await(Condition(IsZero, &this->count_));
@@ -53,5 +53,5 @@ void BlockingCounter::Wait() {
   // after we return from this method.
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

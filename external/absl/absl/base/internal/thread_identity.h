@@ -17,8 +17,8 @@
 // When a thread terminates, its ThreadIdentity object may be reused for a
 // thread created later.
 
-#ifndef ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
-#define ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
 
 #ifndef _WIN32
 #include <pthread.h>
@@ -33,8 +33,8 @@
 #include "absl/base/config.h"
 #include "absl/base/internal/per_thread_tls.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 struct SynchLocksHeld;
 struct SynchWaitParams;
@@ -44,9 +44,9 @@ namespace base_internal {
 class SpinLock;
 struct ThreadIdentity;
 
-// Used by the implementation of absl::Mutex and absl::CondVar.
+// Used by the implementation of iresearch_absl::Mutex and iresearch_absl::CondVar.
 struct PerThreadSynch {
-  // The internal representation of absl::Mutex and absl::CondVar rely
+  // The internal representation of iresearch_absl::Mutex and iresearch_absl::CondVar rely
   // on the alignment of PerThreadSynch. Both store the address of the
   // PerThreadSynch in the high-order bits of their internal state,
   // which means the low kLowZeroBits of the address of PerThreadSynch
@@ -142,7 +142,7 @@ struct ThreadIdentity {
   // ThreadIdentity itself.
   PerThreadSynch per_thread_synch;
 
-  // Private: Reserved for absl::synchronization_internal::Waiter.
+  // Private: Reserved for iresearch_absl::synchronization_internal::Waiter.
   struct WaiterState {
     char data[128];
   } waiter_state;
@@ -188,49 +188,49 @@ void ClearCurrentThreadIdentity();
 
 // May be chosen at compile time via: -DABSL_FORCE_THREAD_IDENTITY_MODE=<mode
 // index>
-#ifdef ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
-#error ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC cannot be direcly set
+#ifdef IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
+#error IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC cannot be direcly set
 #else
-#define ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC 0
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC 0
 #endif
 
-#ifdef ABSL_THREAD_IDENTITY_MODE_USE_TLS
-#error ABSL_THREAD_IDENTITY_MODE_USE_TLS cannot be direcly set
+#ifdef IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_TLS
+#error IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_TLS cannot be direcly set
 #else
-#define ABSL_THREAD_IDENTITY_MODE_USE_TLS 1
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_TLS 1
 #endif
 
-#ifdef ABSL_THREAD_IDENTITY_MODE_USE_CPP11
-#error ABSL_THREAD_IDENTITY_MODE_USE_CPP11 cannot be direcly set
+#ifdef IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_CPP11
+#error IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_CPP11 cannot be direcly set
 #else
-#define ABSL_THREAD_IDENTITY_MODE_USE_CPP11 2
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_CPP11 2
 #endif
 
-#ifdef ABSL_THREAD_IDENTITY_MODE
-#error ABSL_THREAD_IDENTITY_MODE cannot be direcly set
-#elif defined(ABSL_FORCE_THREAD_IDENTITY_MODE)
-#define ABSL_THREAD_IDENTITY_MODE ABSL_FORCE_THREAD_IDENTITY_MODE
+#ifdef IRESEARCH_ABSL_THREAD_IDENTITY_MODE
+#error IRESEARCH_ABSL_THREAD_IDENTITY_MODE cannot be direcly set
+#elif defined(IRESEARCH_ABSL_FORCE_THREAD_IDENTITY_MODE)
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE IRESEARCH_ABSL_FORCE_THREAD_IDENTITY_MODE
 #elif defined(_WIN32) && !defined(__MINGW32__)
-#define ABSL_THREAD_IDENTITY_MODE ABSL_THREAD_IDENTITY_MODE_USE_CPP11
-#elif ABSL_PER_THREAD_TLS && defined(__GOOGLE_GRTE_VERSION__) && \
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_CPP11
+#elif IRESEARCH_ABSL_PER_THREAD_TLS && defined(__GOOGLE_GRTE_VERSION__) && \
     (__GOOGLE_GRTE_VERSION__ >= 20140228L)
 // Support for async-safe TLS was specifically added in GRTEv4.  It's not
 // present in the upstream eglibc.
 // Note:  Current default for production systems.
-#define ABSL_THREAD_IDENTITY_MODE ABSL_THREAD_IDENTITY_MODE_USE_TLS
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_TLS
 #else
-#define ABSL_THREAD_IDENTITY_MODE \
-  ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
+#define IRESEARCH_ABSL_THREAD_IDENTITY_MODE \
+  IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
 #endif
 
-#if ABSL_THREAD_IDENTITY_MODE == ABSL_THREAD_IDENTITY_MODE_USE_TLS || \
-    ABSL_THREAD_IDENTITY_MODE == ABSL_THREAD_IDENTITY_MODE_USE_CPP11
+#if IRESEARCH_ABSL_THREAD_IDENTITY_MODE == IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_TLS || \
+    IRESEARCH_ABSL_THREAD_IDENTITY_MODE == IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_CPP11
 
-#if ABSL_PER_THREAD_TLS
-ABSL_CONST_INIT extern ABSL_PER_THREAD_TLS_KEYWORD ThreadIdentity*
+#if IRESEARCH_ABSL_PER_THREAD_TLS
+IRESEARCH_ABSL_CONST_INIT extern IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD ThreadIdentity*
     thread_identity_ptr;
-#elif defined(ABSL_HAVE_THREAD_LOCAL)
-ABSL_CONST_INIT extern thread_local ThreadIdentity* thread_identity_ptr;
+#elif defined(IRESEARCH_ABSL_HAVE_THREAD_LOCAL)
+IRESEARCH_ABSL_CONST_INIT extern thread_local ThreadIdentity* thread_identity_ptr;
 #else
 #error Thread-local storage not detected on this platform
 #endif
@@ -241,19 +241,19 @@ ABSL_CONST_INIT extern thread_local ThreadIdentity* thread_identity_ptr;
 // DLL boundary so, with DLLs, we opt to have the function not be inlined. Note
 // that `CurrentThreadIdentityIfPresent` is declared above so we can exclude
 // this entire inline definition when compiling as a DLL.
-#if !defined(ABSL_BUILD_DLL) && !defined(ABSL_CONSUME_DLL)
+#if !defined(IRESEARCH_ABSL_BUILD_DLL) && !defined(IRESEARCH_ABSL_CONSUME_DLL)
 inline ThreadIdentity* CurrentThreadIdentityIfPresent() {
   return thread_identity_ptr;
 }
 #endif
 
-#elif ABSL_THREAD_IDENTITY_MODE != \
-    ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
-#error Unknown ABSL_THREAD_IDENTITY_MODE
+#elif IRESEARCH_ABSL_THREAD_IDENTITY_MODE != \
+    IRESEARCH_ABSL_THREAD_IDENTITY_MODE_USE_POSIX_SETSPECIFIC
+#error Unknown IRESEARCH_ABSL_THREAD_IDENTITY_MODE
 #endif
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_THREAD_IDENTITY_H_
