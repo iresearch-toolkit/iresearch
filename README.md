@@ -239,6 +239,10 @@ point SNOWBALL_ROOT at the source directory to build together with IResearch
 SNOWBALL_ROOT=<path-to-snowball>
 ```
 
+### [VelocyPack](https://github.com/arangodb/velocypack)
+
+point VPACK_ROOT at the source directory to build together with IResearch
+
 ### [BFD](https://sourceware.org/binutils/) <optional>
 
 #### install (*nix)
@@ -578,7 +582,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 - Apple Clang: 9
 
 ## License
-Copyright (c) 2017-2020 ArangoDB GmbH
+Copyright (c) 2017-2021 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 
