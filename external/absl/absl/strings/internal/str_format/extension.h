@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_
-#define ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_
 
 #include <limits.h>
 
@@ -28,8 +28,8 @@
 #include "absl/strings/internal/str_format/output.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 enum class FormatConversionChar : uint8_t;
 enum class FormatConversionCharSet : uint64_t;
@@ -142,7 +142,7 @@ struct Flags {
 };
 
 // clang-format off
-#define ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(X_VAL, X_SEP) \
+#define IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(X_VAL, X_SEP) \
   /* text */ \
   X_VAL(c) X_SEP X_VAL(s) X_SEP \
   /* ints */ \
@@ -159,7 +159,7 @@ struct Flags {
 // internally that match the values declared in FormatConversionChar in
 // str_format.h. This is meant to allow internal libraries to use the same
 // declared interface type as the public interface
-// (absl::StrFormatConversionChar) while keeping the definition in a public
+// (iresearch_absl::StrFormatConversionChar) while keeping the definition in a public
 // header.
 // Internal libraries should use the form
 // `FormatConversionCharInternal::c`, `FormatConversionCharInternal::kNone` for
@@ -179,11 +179,11 @@ struct FormatConversionCharInternal {
   };
   // clang-format on
  public:
-#define ABSL_INTERNAL_X_VAL(id)              \
+#define IRESEARCH_ABSL_INTERNAL_X_VAL(id)              \
   static constexpr FormatConversionChar id = \
       static_cast<FormatConversionChar>(Enum::id);
-  ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_X_VAL, )
-#undef ABSL_INTERNAL_X_VAL
+  IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_X_VAL, )
+#undef IRESEARCH_ABSL_INTERNAL_X_VAL
   static constexpr FormatConversionChar kNone =
       static_cast<FormatConversionChar>(Enum::kNone);
 };
@@ -191,11 +191,11 @@ struct FormatConversionCharInternal {
 
 inline FormatConversionChar FormatConversionCharFromChar(char c) {
   switch (c) {
-#define ABSL_INTERNAL_X_VAL(id) \
+#define IRESEARCH_ABSL_INTERNAL_X_VAL(id) \
   case #id[0]:                  \
     return FormatConversionCharInternal::id;
-    ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_X_VAL, )
-#undef ABSL_INTERNAL_X_VAL
+    IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_X_VAL, )
+#undef IRESEARCH_ABSL_INTERNAL_X_VAL
   }
   return FormatConversionCharInternal::kNone;
 }
@@ -231,18 +231,18 @@ inline char FormatConversionCharToChar(FormatConversionChar c) {
   if (c == FormatConversionCharInternal::kNone) {
     return '\0';
 
-#define ABSL_INTERNAL_X_VAL(e)                       \
+#define IRESEARCH_ABSL_INTERNAL_X_VAL(e)                       \
   } else if (c == FormatConversionCharInternal::e) { \
     return #e[0];
-#define ABSL_INTERNAL_X_SEP
-  ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_X_VAL,
-                                         ABSL_INTERNAL_X_SEP)
+#define IRESEARCH_ABSL_INTERNAL_X_SEP
+  IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_X_VAL,
+                                         IRESEARCH_ABSL_INTERNAL_X_SEP)
   } else {
     return '\0';
   }
 
-#undef ABSL_INTERNAL_X_VAL
-#undef ABSL_INTERNAL_X_SEP
+#undef IRESEARCH_ABSL_INTERNAL_X_VAL
+#undef IRESEARCH_ABSL_INTERNAL_X_SEP
 }
 
 // The associated char.
@@ -334,12 +334,12 @@ constexpr uint64_t FormatConversionCharToConvInt(FormatConversionChar c) {
 
 constexpr uint64_t FormatConversionCharToConvInt(char conv) {
   return
-#define ABSL_INTERNAL_CHAR_SET_CASE(c)                                 \
+#define IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE(c)                                 \
   conv == #c[0]                                                        \
       ? FormatConversionCharToConvInt(FormatConversionCharInternal::c) \
       :
-      ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_CHAR_SET_CASE, )
-#undef ABSL_INTERNAL_CHAR_SET_CASE
+      IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE, )
+#undef IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE
                   conv == '*'
           ? 1
           : 0;
@@ -351,11 +351,11 @@ constexpr FormatConversionCharSet FormatConversionCharToConvValue(char conv) {
 }
 
 struct FormatConversionCharSetInternal {
-#define ABSL_INTERNAL_CHAR_SET_CASE(c)         \
+#define IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE(c)         \
   static constexpr FormatConversionCharSet c = \
       FormatConversionCharToConvValue(#c[0]);
-  ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_CHAR_SET_CASE, )
-#undef ABSL_INTERNAL_CHAR_SET_CASE
+  IRESEARCH_ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE, )
+#undef IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE
 
   // Used for width/precision '*' specification.
   static constexpr FormatConversionCharSet kStar =
@@ -380,7 +380,7 @@ constexpr FormatConversionCharSet operator|(FormatConversionCharSet a,
   return FormatConversionCharSetUnion(a, b);
 }
 
-// Overloaded conversion functions to support absl::ParsedFormat.
+// Overloaded conversion functions to support iresearch_absl::ParsedFormat.
 // Get a conversion with a single character in it.
 constexpr FormatConversionCharSet ToFormatConversionCharSet(char c) {
   return static_cast<FormatConversionCharSet>(
@@ -421,7 +421,7 @@ inline size_t Excess(size_t used, size_t capacity) {
 
 }  // namespace str_format_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_

@@ -27,8 +27,8 @@
 // In most cases, your default choice for a hash map should be a map of type
 // `flat_hash_map`.
 
-#ifndef ABSL_CONTAINER_FLAT_HASH_MAP_H_
-#define ABSL_CONTAINER_FLAT_HASH_MAP_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_FLAT_HASH_MAP_H_
+#define IRESEARCH_ABSL_CONTAINER_FLAT_HASH_MAP_H_
 
 #include <cstddef>
 #include <new>
@@ -41,15 +41,15 @@
 #include "absl/container/internal/raw_hash_map.h"  // IWYU pragma: export
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 template <class K, class V>
 struct FlatHashMapPolicy;
 }  // namespace container_internal
 
 // -----------------------------------------------------------------------------
-// absl::flat_hash_map
+// iresearch_absl::flat_hash_map
 // -----------------------------------------------------------------------------
 //
 // An `absl::flat_hash_map<K, V>` is an unordered associative container which
@@ -86,7 +86,7 @@ struct FlatHashMapPolicy;
 // Example:
 //
 //   // Create a flat hash map of three strings (that map to strings)
-//   absl::flat_hash_map<std::string, std::string> ducks =
+//   iresearch_absl::flat_hash_map<std::string, std::string> ducks =
 //     {{"a", "huey"}, {"b", "dewey"}, {"c", "louie"}};
 //
 //  // Insert a new element into the flat hash map
@@ -102,11 +102,11 @@ struct FlatHashMapPolicy;
 //    std::cout << "Result: " << result->second << std::endl;
 //  }
 template <class K, class V,
-          class Hash = absl::container_internal::hash_default_hash<K>,
-          class Eq = absl::container_internal::hash_default_eq<K>,
+          class Hash = iresearch_absl::container_internal::hash_default_hash<K>,
+          class Eq = iresearch_absl::container_internal::hash_default_eq<K>,
           class Allocator = std::allocator<std::pair<const K, V>>>
-class flat_hash_map : public absl::container_internal::raw_hash_map<
-                          absl::container_internal::FlatHashMapPolicy<K, V>,
+class flat_hash_map : public iresearch_absl::container_internal::raw_hash_map<
+                          iresearch_absl::container_internal::FlatHashMapPolicy<K, V>,
                           Hash, Eq, Allocator> {
   using Base = typename flat_hash_map::raw_hash_map;
 
@@ -119,38 +119,38 @@ class flat_hash_map : public absl::container_internal::raw_hash_map<
   // *  Default constructor
   //
   //    // No allocation for the table's elements is made.
-  //    absl::flat_hash_map<int, std::string> map1;
+  //    iresearch_absl::flat_hash_map<int, std::string> map1;
   //
   // * Initializer List constructor
   //
-  //   absl::flat_hash_map<int, std::string> map2 =
+  //   iresearch_absl::flat_hash_map<int, std::string> map2 =
   //       {{1, "huey"}, {2, "dewey"}, {3, "louie"},};
   //
   // * Copy constructor
   //
-  //   absl::flat_hash_map<int, std::string> map3(map2);
+  //   iresearch_absl::flat_hash_map<int, std::string> map3(map2);
   //
   // * Copy assignment operator
   //
   //  // Hash functor and Comparator are copied as well
-  //  absl::flat_hash_map<int, std::string> map4;
+  //  iresearch_absl::flat_hash_map<int, std::string> map4;
   //  map4 = map3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::flat_hash_map<int, std::string> map5(std::move(map4));
+  //   iresearch_absl::flat_hash_map<int, std::string> map5(std::move(map4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::flat_hash_map<int, std::string> map6;
+  //   iresearch_absl::flat_hash_map<int, std::string> map6;
   //   map6 = std::move(map5);
   //
   // * Range constructor
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
-  //   absl::flat_hash_map<int, std::string> map7(v.begin(), v.end());
+  //   iresearch_absl::flat_hash_map<int, std::string> map7(v.begin(), v.end());
   flat_hash_map() {}
   using Base::Base;
 
@@ -574,10 +574,10 @@ struct FlatHashMapPolicy {
   }
 
   template <class F, class... Args>
-  static decltype(absl::container_internal::DecomposePair(
+  static decltype(iresearch_absl::container_internal::DecomposePair(
       std::declval<F>(), std::declval<Args>()...))
   apply(F&& f, Args&&... args) {
-    return absl::container_internal::DecomposePair(std::forward<F>(f),
+    return iresearch_absl::container_internal::DecomposePair(std::forward<F>(f),
                                                    std::forward<Args>(args)...);
   }
 
@@ -596,11 +596,11 @@ namespace container_algorithm_internal {
 // Specialization of trait in absl/algorithm/container.h
 template <class Key, class T, class Hash, class KeyEqual, class Allocator>
 struct IsUnorderedContainer<
-    absl::flat_hash_map<Key, T, Hash, KeyEqual, Allocator>> : std::true_type {};
+    iresearch_absl::flat_hash_map<Key, T, Hash, KeyEqual, Allocator>> : std::true_type {};
 
 }  // namespace container_algorithm_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_FLAT_HASH_MAP_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_FLAT_HASH_MAP_H_

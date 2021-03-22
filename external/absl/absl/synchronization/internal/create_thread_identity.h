@@ -22,14 +22,14 @@
 // and low_level_alloc) than accessing an existing one.  This separation allows
 // us to have a smaller //absl/base:base.
 
-#ifndef ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_
-#define ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_
+#ifndef IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_
+#define IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_
 
 #include "absl/base/internal/thread_identity.h"
 #include "absl/base/port.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace synchronization_internal {
 
 // Allocates and attaches a ThreadIdentity object for the calling thread.
@@ -47,14 +47,14 @@ void ReclaimThreadIdentity(void* v);
 inline base_internal::ThreadIdentity* GetOrCreateCurrentThreadIdentity() {
   base_internal::ThreadIdentity* identity =
       base_internal::CurrentThreadIdentityIfPresent();
-  if (ABSL_PREDICT_FALSE(identity == nullptr)) {
+  if (IRESEARCH_ABSL_PREDICT_FALSE(identity == nullptr)) {
     return CreateThreadIdentity();
   }
   return identity;
 }
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_
+#endif  // IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_CREATE_THREAD_IDENTITY_H_

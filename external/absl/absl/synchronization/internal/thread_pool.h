@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_
-#define ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_
+#ifndef IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_
+#define IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_
 
 #include <cassert>
 #include <cstddef>
@@ -25,8 +25,8 @@
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace synchronization_internal {
 
 // A simple ThreadPool implementation for tests.
@@ -43,7 +43,7 @@ class ThreadPool {
 
   ~ThreadPool() {
     {
-      absl::MutexLock l(&mu_);
+      iresearch_absl::MutexLock l(&mu_);
       for (size_t i = 0; i < threads_.size(); i++) {
         queue_.push(nullptr);  // Shutdown signal.
       }
@@ -56,12 +56,12 @@ class ThreadPool {
   // Schedule a function to be run on a ThreadPool thread immediately.
   void Schedule(std::function<void()> func) {
     assert(func != nullptr);
-    absl::MutexLock l(&mu_);
+    iresearch_absl::MutexLock l(&mu_);
     queue_.push(std::move(func));
   }
 
  private:
-  bool WorkAvailable() const ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+  bool WorkAvailable() const IRESEARCH_ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     return !queue_.empty();
   }
 
@@ -69,8 +69,8 @@ class ThreadPool {
     while (true) {
       std::function<void()> func;
       {
-        absl::MutexLock l(&mu_);
-        mu_.Await(absl::Condition(this, &ThreadPool::WorkAvailable));
+        iresearch_absl::MutexLock l(&mu_);
+        mu_.Await(iresearch_absl::Condition(this, &ThreadPool::WorkAvailable));
         func = std::move(queue_.front());
         queue_.pop();
       }
@@ -81,13 +81,13 @@ class ThreadPool {
     }
   }
 
-  absl::Mutex mu_;
-  std::queue<std::function<void()>> queue_ ABSL_GUARDED_BY(mu_);
+  iresearch_absl::Mutex mu_;
+  std::queue<std::function<void()>> queue_ IRESEARCH_ABSL_GUARDED_BY(mu_);
   std::vector<std::thread> threads_;
 };
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_
+#endif  // IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_THREAD_POOL_H_

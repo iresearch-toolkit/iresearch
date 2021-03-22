@@ -22,8 +22,8 @@
 // The semantics of PerThreadSem are the same as that of a counting semaphore.
 // Each thread maintains an abstract "count" value associated with its identity.
 
-#ifndef ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_
-#define ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_
+#ifndef IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_
+#define IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_
 
 #include <atomic>
 
@@ -31,8 +31,8 @@
 #include "absl/synchronization/internal/create_thread_identity.h"
 #include "absl/synchronization/internal/kernel_timeout.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class Mutex;
 
@@ -80,13 +80,13 @@ class PerThreadSem {
 
   // Permitted callers.
   friend class PerThreadSemTest;
-  friend class absl::Mutex;
-  friend absl::base_internal::ThreadIdentity* CreateThreadIdentity();
+  friend class iresearch_absl::Mutex;
+  friend iresearch_absl::base_internal::ThreadIdentity* CreateThreadIdentity();
   friend void ReclaimThreadIdentity(void* v);
 };
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // In some build configurations we pass --detect-odr-violations to the
@@ -97,19 +97,19 @@ ABSL_NAMESPACE_END
 // check.
 extern "C" {
 void AbslInternalPerThreadSemPost(
-    absl::base_internal::ThreadIdentity* identity);
+    iresearch_absl::base_internal::ThreadIdentity* identity);
 bool AbslInternalPerThreadSemWait(
-    absl::synchronization_internal::KernelTimeout t);
+    iresearch_absl::synchronization_internal::KernelTimeout t);
 }  // extern "C"
 
-void absl::synchronization_internal::PerThreadSem::Post(
-    absl::base_internal::ThreadIdentity* identity) {
+void iresearch_absl::synchronization_internal::PerThreadSem::Post(
+    iresearch_absl::base_internal::ThreadIdentity* identity) {
   AbslInternalPerThreadSemPost(identity);
 }
 
-bool absl::synchronization_internal::PerThreadSem::Wait(
-    absl::synchronization_internal::KernelTimeout t) {
+bool iresearch_absl::synchronization_internal::PerThreadSem::Wait(
+    iresearch_absl::synchronization_internal::KernelTimeout t) {
   return AbslInternalPerThreadSemWait(t);
 }
 
-#endif  // ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_
+#endif  // IRESEARCH_ABSL_SYNCHRONIZATION_INTERNAL_PER_THREAD_SEM_H_

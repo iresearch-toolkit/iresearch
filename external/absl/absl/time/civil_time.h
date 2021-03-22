@@ -55,28 +55,28 @@
 // Example:
 //
 //   // Construct a civil-time object for a specific day
-//   const absl::CivilDay cd(1969, 07, 20);
+//   const iresearch_absl::CivilDay cd(1969, 07, 20);
 //
 //   // Construct a civil-time object for a specific second
-//   const absl::CivilSecond cd(2018, 8, 1, 12, 0, 1);
+//   const iresearch_absl::CivilSecond cd(2018, 8, 1, 12, 0, 1);
 //
 // Note: In C++14 and later, this library is usable in a constexpr context.
 //
 // Example:
 //
 //   // Valid in C++14
-//   constexpr absl::CivilDay cd(1969, 07, 20);
+//   constexpr iresearch_absl::CivilDay cd(1969, 07, 20);
 
-#ifndef ABSL_TIME_CIVIL_TIME_H_
-#define ABSL_TIME_CIVIL_TIME_H_
+#ifndef IRESEARCH_ABSL_TIME_CIVIL_TIME_H_
+#define IRESEARCH_ABSL_TIME_CIVIL_TIME_H_
 
 #include <string>
 
 #include "absl/strings/string_view.h"
 #include "absl/time/internal/cctz/include/cctz/civil_time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace time_internal {
 struct second_tag : cctz::detail::second_tag {};
@@ -108,24 +108,24 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 //
 // Examples:
 //
-//   absl::CivilDay default_value;               // 1970-01-01 00:00:00
+//   iresearch_absl::CivilDay default_value;               // 1970-01-01 00:00:00
 //
-//   absl::CivilDay a(2015, 2, 3);               // 2015-02-03 00:00:00
-//   absl::CivilDay b(2015, 2, 3, 4, 5, 6);      // 2015-02-03 00:00:00
-//   absl::CivilDay c(2015);                     // 2015-01-01 00:00:00
+//   iresearch_absl::CivilDay a(2015, 2, 3);               // 2015-02-03 00:00:00
+//   iresearch_absl::CivilDay b(2015, 2, 3, 4, 5, 6);      // 2015-02-03 00:00:00
+//   iresearch_absl::CivilDay c(2015);                     // 2015-01-01 00:00:00
 //
-//   absl::CivilSecond ss(2015, 2, 3, 4, 5, 6);  // 2015-02-03 04:05:06
-//   absl::CivilMinute mm(ss);                   // 2015-02-03 04:05:00
-//   absl::CivilHour hh(mm);                     // 2015-02-03 04:00:00
-//   absl::CivilDay d(hh);                       // 2015-02-03 00:00:00
-//   absl::CivilMonth m(d);                      // 2015-02-01 00:00:00
-//   absl::CivilYear y(m);                       // 2015-01-01 00:00:00
+//   iresearch_absl::CivilSecond ss(2015, 2, 3, 4, 5, 6);  // 2015-02-03 04:05:06
+//   iresearch_absl::CivilMinute mm(ss);                   // 2015-02-03 04:05:00
+//   iresearch_absl::CivilHour hh(mm);                     // 2015-02-03 04:00:00
+//   iresearch_absl::CivilDay d(hh);                       // 2015-02-03 00:00:00
+//   iresearch_absl::CivilMonth m(d);                      // 2015-02-01 00:00:00
+//   iresearch_absl::CivilYear y(m);                       // 2015-01-01 00:00:00
 //
-//   m = absl::CivilMonth(y);                    // 2015-01-01 00:00:00
-//   d = absl::CivilDay(m);                      // 2015-01-01 00:00:00
-//   hh = absl::CivilHour(d);                    // 2015-01-01 00:00:00
-//   mm = absl::CivilMinute(hh);                 // 2015-01-01 00:00:00
-//   ss = absl::CivilSecond(mm);                 // 2015-01-01 00:00:00
+//   m = iresearch_absl::CivilMonth(y);                    // 2015-01-01 00:00:00
+//   d = iresearch_absl::CivilDay(m);                      // 2015-01-01 00:00:00
+//   hh = iresearch_absl::CivilHour(d);                    // 2015-01-01 00:00:00
+//   mm = iresearch_absl::CivilMinute(hh);                 // 2015-01-01 00:00:00
+//   ss = iresearch_absl::CivilSecond(mm);                 // 2015-01-01 00:00:00
 //
 // Each civil-time class is aligned to the civil-time field indicated in the
 // class's name after normalization. Alignment is performed by setting all the
@@ -135,20 +135,20 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 // string format used here is not important; it's just a shorthand way of
 // showing the six YMDHMS fields.)
 //
-//   absl::CivilSecond   : 2015-11-22 12:34:56
-//   absl::CivilMinute   : 2015-11-22 12:34:00
-//   absl::CivilHour     : 2015-11-22 12:00:00
-//   absl::CivilDay      : 2015-11-22 00:00:00
-//   absl::CivilMonth    : 2015-11-01 00:00:00
-//   absl::CivilYear     : 2015-01-01 00:00:00
+//   iresearch_absl::CivilSecond   : 2015-11-22 12:34:56
+//   iresearch_absl::CivilMinute   : 2015-11-22 12:34:00
+//   iresearch_absl::CivilHour     : 2015-11-22 12:00:00
+//   iresearch_absl::CivilDay      : 2015-11-22 00:00:00
+//   iresearch_absl::CivilMonth    : 2015-11-01 00:00:00
+//   iresearch_absl::CivilYear     : 2015-01-01 00:00:00
 //
 // Each civil-time type performs arithmetic on the field to which it is
-// aligned. This means that adding 1 to an absl::CivilDay increments the day
-// field (normalizing as necessary), and subtracting 7 from an absl::CivilMonth
+// aligned. This means that adding 1 to an iresearch_absl::CivilDay increments the day
+// field (normalizing as necessary), and subtracting 7 from an iresearch_absl::CivilMonth
 // operates on the month field (normalizing as necessary). All arithmetic
 // produces a valid civil time. Difference requires two similarly aligned
 // civil-time objects and returns the scalar answer in units of the objects'
-// alignment. For example, the difference between two absl::CivilHour objects
+// alignment. For example, the difference between two iresearch_absl::CivilHour objects
 // will give an answer in units of civil hours.
 //
 // ALIGNMENT CONVERSION
@@ -156,24 +156,24 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 // The alignment of a civil-time object cannot change, but the object may be
 // used to construct a new object with a different alignment. This is referred
 // to as "realigning". When realigning to a type with the same or more
-// precision (e.g., absl::CivilDay -> absl::CivilSecond), the conversion may be
+// precision (e.g., iresearch_absl::CivilDay -> iresearch_absl::CivilSecond), the conversion may be
 // performed implicitly since no information is lost. However, if information
 // could be discarded (e.g., CivilSecond -> CivilDay), the conversion must
 // be explicit at the call site.
 //
 // Examples:
 //
-//   void UseDay(absl::CivilDay day);
+//   void UseDay(iresearch_absl::CivilDay day);
 //
-//   absl::CivilSecond cs;
+//   iresearch_absl::CivilSecond cs;
 //   UseDay(cs);                  // Won't compile because data may be discarded
-//   UseDay(absl::CivilDay(cs));  // OK: explicit conversion
+//   UseDay(iresearch_absl::CivilDay(cs));  // OK: explicit conversion
 //
-//   absl::CivilDay cd;
+//   iresearch_absl::CivilDay cd;
 //   UseDay(cd);                  // OK: no conversion needed
 //
-//   absl::CivilMonth cm;
-//   UseDay(cm);                  // OK: implicit conversion to absl::CivilDay
+//   iresearch_absl::CivilMonth cm;
+//   UseDay(cm);                  // OK: implicit conversion to iresearch_absl::CivilDay
 //
 // NORMALIZATION
 //
@@ -187,11 +187,11 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 // Examples:
 //
 //   // Out-of-range; normalized to 2016-11-01
-//   absl::CivilDay d(2016, 10, 32);
+//   iresearch_absl::CivilDay d(2016, 10, 32);
 //   // Out-of-range, negative: normalized to 2016-10-30T23
-//   absl::CivilHour h1(2016, 10, 31, -1);
+//   iresearch_absl::CivilHour h1(2016, 10, 31, -1);
 //   // Normalization is cumulative: normalized to 2016-10-30T23
-//   absl::CivilHour h2(2016, 10, 32, -25);
+//   iresearch_absl::CivilHour h2(2016, 10, 32, -25);
 //
 // Note: If normalization is undesired, you can signal an error by comparing
 // the constructor arguments to the normalized values returned by the YMDHMS
@@ -205,17 +205,17 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 //
 // Examples:
 //
-//   absl::CivilDay feb_3(2015, 2, 3);  // 2015-02-03 00:00:00
-//   absl::CivilDay mar_4(2015, 3, 4);  // 2015-03-04 00:00:00
+//   iresearch_absl::CivilDay feb_3(2015, 2, 3);  // 2015-02-03 00:00:00
+//   iresearch_absl::CivilDay mar_4(2015, 3, 4);  // 2015-03-04 00:00:00
 //   // feb_3 < mar_4
-//   // absl::CivilYear(feb_3) == absl::CivilYear(mar_4)
+//   // iresearch_absl::CivilYear(feb_3) == iresearch_absl::CivilYear(mar_4)
 //
-//   absl::CivilSecond feb_3_noon(2015, 2, 3, 12, 0, 0);  // 2015-02-03 12:00:00
+//   iresearch_absl::CivilSecond feb_3_noon(2015, 2, 3, 12, 0, 0);  // 2015-02-03 12:00:00
 //   // feb_3 < feb_3_noon
-//   // feb_3 == absl::CivilDay(feb_3_noon)
+//   // feb_3 == iresearch_absl::CivilDay(feb_3_noon)
 //
 //   // Iterates all the days of February 2015.
-//   for (absl::CivilDay d(2015, 2, 1); d < absl::CivilMonth(2015, 3); ++d) {
+//   for (iresearch_absl::CivilDay d(2015, 2, 1); d < iresearch_absl::CivilMonth(2015, 3); ++d) {
 //     // ...
 //   }
 //
@@ -228,13 +228,13 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 //
 // Example:
 //
-//   absl::CivilDay a(2015, 2, 3);
+//   iresearch_absl::CivilDay a(2015, 2, 3);
 //   ++a;                              // 2015-02-04 00:00:00
 //   --a;                              // 2015-02-03 00:00:00
-//   absl::CivilDay b = a + 1;         // 2015-02-04 00:00:00
-//   absl::CivilDay c = 1 + b;         // 2015-02-05 00:00:00
+//   iresearch_absl::CivilDay b = a + 1;         // 2015-02-04 00:00:00
+//   iresearch_absl::CivilDay c = 1 + b;         // 2015-02-05 00:00:00
 //   int n = c - a;                    // n = 2 (civil days)
-//   int m = c - absl::CivilMonth(c);  // Won't compile: different types.
+//   int m = c - iresearch_absl::CivilMonth(c);  // Won't compile: different types.
 //
 // ACCESSORS
 //
@@ -253,7 +253,7 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 //
 // Example:
 //
-//   absl::CivilDay d(2015, 6, 28);
+//   iresearch_absl::CivilDay d(2015, 6, 28);
 //   // d.year() == 2015
 //   // d.month() == 6
 //   // d.day() == 28
@@ -300,23 +300,23 @@ struct year_tag : month_tag, cctz::detail::year_tag {};
 //
 // Example:
 //
-//   const absl::CivilDay d(2015, 1, 31);
+//   const iresearch_absl::CivilDay d(2015, 1, 31);
 //
 //   // Answer 1:
 //   // Add 1 to the month field in the constructor, and rely on normalization.
-//   const auto normalized = absl::CivilDay(d.year(), d.month() + 1, d.day());
+//   const auto normalized = iresearch_absl::CivilDay(d.year(), d.month() + 1, d.day());
 //   // normalized == 2015-03-03 (aka Feb 31)
 //
 //   // Answer 2:
 //   // Add 1 to month field, capping to the end of next month.
-//   const auto next_month = absl::CivilMonth(d) + 1;
-//   const auto last_day_of_next_month = absl::CivilDay(next_month + 1) - 1;
+//   const auto next_month = iresearch_absl::CivilMonth(d) + 1;
+//   const auto last_day_of_next_month = iresearch_absl::CivilDay(next_month + 1) - 1;
 //   const auto capped = std::min(normalized, last_day_of_next_month);
 //   // capped == 2015-02-28
 //
 //   // Answer 3:
 //   // Signal an error if the normalized answer is not in next month.
-//   if (absl::CivilMonth(normalized) != next_month) {
+//   if (iresearch_absl::CivilMonth(normalized) != next_month) {
 //     // error, month overflow
 //   }
 //
@@ -340,9 +340,9 @@ using CivilYear =
 //
 // Example:
 //
-//   absl::CivilSecond cs = ...;
-//   absl::civil_year_t y = cs.year();
-//   cs = absl::CivilSecond(y, 1, 1, 0, 0, 0);  // CivilSecond(CivilYear(cs))
+//   iresearch_absl::CivilSecond cs = ...;
+//   iresearch_absl::civil_year_t y = cs.year();
+//   cs = iresearch_absl::CivilSecond(y, 1, 1, 0, 0, 0);  // CivilSecond(CivilYear(cs))
 //
 using civil_year_t = time_internal::cctz::year_t;
 
@@ -355,7 +355,7 @@ using civil_year_t = time_internal::cctz::year_t;
 //
 // Example:
 //
-//   absl::civil_diff_t n_sec = cs1 - cs2;             // cs1 == cs2 + n_sec;
+//   iresearch_absl::civil_diff_t n_sec = cs1 - cs2;             // cs1 == cs2 + n_sec;
 //
 using civil_diff_t = time_internal::cctz::diff_t;
 
@@ -365,18 +365,18 @@ using civil_diff_t = time_internal::cctz::diff_t;
 // The Weekday enum class represents the civil-time concept of a "weekday" with
 // members for all days of the week.
 //
-//   absl::Weekday wd = absl::Weekday::thursday;
+//   iresearch_absl::Weekday wd = iresearch_absl::Weekday::thursday;
 //
 using Weekday = time_internal::cctz::weekday;
 
 // GetWeekday()
 //
-// Returns the absl::Weekday for the given (realigned) civil-time value.
+// Returns the iresearch_absl::Weekday for the given (realigned) civil-time value.
 //
 // Example:
 //
-//   absl::CivilDay a(2015, 8, 13);
-//   absl::Weekday wd = absl::GetWeekday(a);  // wd == absl::Weekday::thursday
+//   iresearch_absl::CivilDay a(2015, 8, 13);
+//   iresearch_absl::Weekday wd = iresearch_absl::GetWeekday(a);  // wd == iresearch_absl::Weekday::thursday
 //
 inline Weekday GetWeekday(CivilSecond cs) {
   return time_internal::cctz::get_weekday(cs);
@@ -385,8 +385,8 @@ inline Weekday GetWeekday(CivilSecond cs) {
 // NextWeekday()
 // PrevWeekday()
 //
-// Returns the absl::CivilDay that strictly follows or precedes a given
-// absl::CivilDay, and that falls on the given absl::Weekday.
+// Returns the iresearch_absl::CivilDay that strictly follows or precedes a given
+// iresearch_absl::CivilDay, and that falls on the given iresearch_absl::Weekday.
 //
 // Example, given the following month:
 //
@@ -399,18 +399,18 @@ inline Weekday GetWeekday(CivilSecond cs) {
 //   23 24 25 26 27 28 29
 //   30 31
 //
-//   absl::CivilDay a(2015, 8, 13);
-//   // absl::GetWeekday(a) == absl::Weekday::thursday
-//   absl::CivilDay b = absl::NextWeekday(a, absl::Weekday::thursday);
+//   iresearch_absl::CivilDay a(2015, 8, 13);
+//   // iresearch_absl::GetWeekday(a) == iresearch_absl::Weekday::thursday
+//   iresearch_absl::CivilDay b = iresearch_absl::NextWeekday(a, iresearch_absl::Weekday::thursday);
 //   // b = 2015-08-20
-//   absl::CivilDay c = absl::PrevWeekday(a, absl::Weekday::thursday);
+//   iresearch_absl::CivilDay c = iresearch_absl::PrevWeekday(a, iresearch_absl::Weekday::thursday);
 //   // c = 2015-08-06
 //
-//   absl::CivilDay d = ...
+//   iresearch_absl::CivilDay d = ...
 //   // Gets the following Thursday if d is not already Thursday
-//   absl::CivilDay thurs1 = absl::NextWeekday(d - 1, absl::Weekday::thursday);
+//   iresearch_absl::CivilDay thurs1 = iresearch_absl::NextWeekday(d - 1, iresearch_absl::Weekday::thursday);
 //   // Gets the previous Thursday if d is not already Thursday
-//   absl::CivilDay thurs2 = absl::PrevWeekday(d + 1, absl::Weekday::thursday);
+//   iresearch_absl::CivilDay thurs2 = iresearch_absl::PrevWeekday(d + 1, iresearch_absl::Weekday::thursday);
 //
 inline CivilDay NextWeekday(CivilDay cd, Weekday wd) {
   return CivilDay(time_internal::cctz::next_weekday(cd, wd));
@@ -425,10 +425,10 @@ inline CivilDay PrevWeekday(CivilDay cd, Weekday wd) {
 //
 // Example:
 //
-//   absl::CivilDay a(2015, 1, 1);
-//   int yd_jan_1 = absl::GetYearDay(a);   // yd_jan_1 = 1
-//   absl::CivilDay b(2015, 12, 31);
-//   int yd_dec_31 = absl::GetYearDay(b);  // yd_dec_31 = 365
+//   iresearch_absl::CivilDay a(2015, 1, 1);
+//   int yd_jan_1 = iresearch_absl::GetYearDay(a);   // yd_jan_1 = 1
+//   iresearch_absl::CivilDay b(2015, 12, 31);
+//   int yd_dec_31 = iresearch_absl::GetYearDay(b);  // yd_dec_31 = 365
 //
 inline int GetYearDay(CivilSecond cs) {
   return time_internal::cctz::get_yearday(cs);
@@ -450,8 +450,8 @@ inline int GetYearDay(CivilSecond cs) {
 //
 // Example:
 //
-//   absl::CivilDay d = absl::CivilDay(1969, 7, 20);
-//   std::string day_string = absl::FormatCivilTime(d);  // "1969-07-20"
+//   iresearch_absl::CivilDay d = iresearch_absl::CivilDay(1969, 7, 20);
+//   std::string day_string = iresearch_absl::FormatCivilTime(d);  // "1969-07-20"
 //
 std::string FormatCivilTime(CivilSecond c);
 std::string FormatCivilTime(CivilMinute c);
@@ -460,7 +460,7 @@ std::string FormatCivilTime(CivilDay c);
 std::string FormatCivilTime(CivilMonth c);
 std::string FormatCivilTime(CivilYear c);
 
-// absl::ParseCivilTime()
+// iresearch_absl::ParseCivilTime()
 //
 // Parses a civil-time value from the specified `absl::string_view` into the
 // passed output parameter. Returns `true` upon successful parsing.
@@ -478,18 +478,18 @@ std::string FormatCivilTime(CivilYear c);
 //
 // Example:
 //
-//   absl::CivilDay d;
-//   bool ok = absl::ParseCivilTime("2018-01-02", &d); // OK
+//   iresearch_absl::CivilDay d;
+//   bool ok = iresearch_absl::ParseCivilTime("2018-01-02", &d); // OK
 //
 // Note that parsing will fail if the string's format does not match the
 // expected type exactly. `ParseLenientCivilTime()` below is more lenient.
 //
-bool ParseCivilTime(absl::string_view s, CivilSecond* c);
-bool ParseCivilTime(absl::string_view s, CivilMinute* c);
-bool ParseCivilTime(absl::string_view s, CivilHour* c);
-bool ParseCivilTime(absl::string_view s, CivilDay* c);
-bool ParseCivilTime(absl::string_view s, CivilMonth* c);
-bool ParseCivilTime(absl::string_view s, CivilYear* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilSecond* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilMinute* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilHour* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilDay* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilMonth* c);
+bool ParseCivilTime(iresearch_absl::string_view s, CivilYear* c);
 
 // ParseLenientCivilTime()
 //
@@ -499,17 +499,17 @@ bool ParseCivilTime(absl::string_view s, CivilYear* c);
 //
 // Example:
 //
-//   absl::CivilDay d;
-//   bool ok = absl::ParseLenientCivilTime("1969-07-20", &d); // OK
-//   ok = absl::ParseLenientCivilTime("1969-07-20T10", &d);   // OK: T10 floored
-//   ok = absl::ParseLenientCivilTime("1969-07", &d);   // OK: day defaults to 1
+//   iresearch_absl::CivilDay d;
+//   bool ok = iresearch_absl::ParseLenientCivilTime("1969-07-20", &d); // OK
+//   ok = iresearch_absl::ParseLenientCivilTime("1969-07-20T10", &d);   // OK: T10 floored
+//   ok = iresearch_absl::ParseLenientCivilTime("1969-07", &d);   // OK: day defaults to 1
 //
-bool ParseLenientCivilTime(absl::string_view s, CivilSecond* c);
-bool ParseLenientCivilTime(absl::string_view s, CivilMinute* c);
-bool ParseLenientCivilTime(absl::string_view s, CivilHour* c);
-bool ParseLenientCivilTime(absl::string_view s, CivilDay* c);
-bool ParseLenientCivilTime(absl::string_view s, CivilMonth* c);
-bool ParseLenientCivilTime(absl::string_view s, CivilYear* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilSecond* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilMinute* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilHour* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilDay* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilMonth* c);
+bool ParseLenientCivilTime(iresearch_absl::string_view s, CivilYear* c);
 
 namespace time_internal {  // For functions found via ADL on civil-time tags.
 
@@ -520,7 +520,7 @@ namespace time_internal {  // For functions found via ADL on civil-time tags.
 //
 // Example:
 //
-//   absl::CivilDay d = absl::CivilDay(1969, 7, 20);
+//   iresearch_absl::CivilDay d = iresearch_absl::CivilDay(1969, 7, 20);
 //   std::cout << "Date is: " << d << "\n";
 //
 std::ostream& operator<<(std::ostream& os, CivilYear y);
@@ -532,7 +532,7 @@ std::ostream& operator<<(std::ostream& os, CivilSecond s);
 
 }  // namespace time_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TIME_CIVIL_TIME_H_
+#endif  // IRESEARCH_ABSL_TIME_CIVIL_TIME_H_

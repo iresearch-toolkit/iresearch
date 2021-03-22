@@ -16,8 +16,8 @@
 
 // Allow dynamic symbol lookup for in-memory Elf images.
 
-#ifndef ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_
-#define ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_
+#define IRESEARCH_ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_
 
 // Including this will define the __GLIBC__ macro if glibc is being
 // used.
@@ -27,21 +27,21 @@
 
 // Maybe one day we can rewrite this file not to require the elf
 // symbol extensions in glibc, but for right now we need them.
-#ifdef ABSL_HAVE_ELF_MEM_IMAGE
-#error ABSL_HAVE_ELF_MEM_IMAGE cannot be directly set
+#ifdef IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE
+#error IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE cannot be directly set
 #endif
 
 #if defined(__ELF__) && defined(__GLIBC__) && !defined(__native_client__) && \
     !defined(__asmjs__) && !defined(__wasm__)
-#define ABSL_HAVE_ELF_MEM_IMAGE 1
+#define IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE 1
 #endif
 
-#ifdef ABSL_HAVE_ELF_MEM_IMAGE
+#ifdef IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE
 
 #include <link.h>  // for ElfW
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // An in-memory ELF image (may not exist on disk).
@@ -126,9 +126,9 @@ class ElfMemImage {
 };
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HAVE_ELF_MEM_IMAGE
+#endif  // IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE
 
-#endif  // ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_INTERNAL_ELF_MEM_IMAGE_H_

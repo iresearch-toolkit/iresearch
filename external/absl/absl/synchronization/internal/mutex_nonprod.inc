@@ -245,5 +245,5 @@ class SynchronizationStorage {
 };
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

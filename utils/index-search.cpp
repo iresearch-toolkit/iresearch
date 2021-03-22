@@ -277,7 +277,7 @@ irs::filter::prepared::ptr prepareFilter(
 
      bool reading_threshold = true;
      // the first 'term' should be threshold in tenth - e.g. if value is 7 this means 0.7
-     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
        if (reading_threshold) {
          reading_threshold = false;
          opts->threshold = float_t(std::stoll(tmpBuf))/ 10.f;
@@ -297,7 +297,7 @@ irs::filter::prepared::ptr prepareFilter(
 
     irs::And query;
 
-    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
       auto& part = query.add<irs::by_term>();
       *part.mutable_field() = "body";
       irs::assign(
@@ -318,7 +318,7 @@ irs::filter::prepared::ptr prepareFilter(
 
     irs::Or query;
 
-    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
       auto& part = query.add<irs::by_term>();
       *part.mutable_field() = "body";
       irs::assign(
@@ -381,7 +381,7 @@ irs::filter::prepared::ptr prepareFilter(
      irs::Or query;
      // the first 'term' should be number of minimum matched
      bool reading_min_match = true;
-     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
        if (reading_min_match) {
          reading_min_match = false;
          query.min_match_count(std::stoll(tmpBuf));
@@ -442,10 +442,8 @@ int search(
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
   static const std::map<std::string, irs::type_info> text_formats = {
-    { "csv", irs::type<irs::text_format::csv>::get() },
     { "json", irs::type<irs::text_format::json>::get() },
     { "text", irs::type<irs::text_format::text>::get() },
-    { "xml", irs::type<irs::text_format::xml>::get() },
   };
   auto arg_format_itr = text_formats.find(scorer_arg_format);
 

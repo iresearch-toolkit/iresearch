@@ -18,8 +18,8 @@
 // `BufferRawSink` is a simple output sink for a char buffer. Used by SnprintF.
 // `FILERawSink` is a std::FILE* based sink. Used by PrintF and FprintF.
 
-#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_
-#define ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_
 
 #include <cstdio>
 #include <ostream>
@@ -28,8 +28,8 @@
 #include "absl/base/port.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 
 // RawSink implementation that writes into a char* buffer.
@@ -90,7 +90,7 @@ auto InvokeFlush(T* out, string_view s) -> decltype(AbslFormatFlush(out, s)) {
 }
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_OUTPUT_H_

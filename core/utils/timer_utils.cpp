@@ -31,6 +31,7 @@
 #include "singleton.hpp"
 
 namespace {
+using namespace irs;
 
 class timer_states: public irs::singleton<timer_states> {
  public:

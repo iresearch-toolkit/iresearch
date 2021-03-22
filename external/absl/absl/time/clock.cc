@@ -33,29 +33,29 @@
 #include "absl/base/port.h"
 #include "absl/base/thread_annotations.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 Time Now() {
   // TODO(bww): Get a timespec instead so we don't have to divide.
-  int64_t n = absl::GetCurrentTimeNanos();
+  int64_t n = iresearch_absl::GetCurrentTimeNanos();
   if (n >= 0) {
     return time_internal::FromUnixDuration(
         time_internal::MakeDuration(n / 1000000000, n % 1000000000 * 4));
   }
-  return time_internal::FromUnixDuration(absl::Nanoseconds(n));
+  return time_internal::FromUnixDuration(iresearch_absl::Nanoseconds(n));
 }
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // Decide if we should use the fast GetCurrentTimeNanos() algorithm
 // based on the cyclecounter, otherwise just get the time directly
 // from the OS on every call. This can be chosen at compile-time via
 // -DABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS=[0|1]
-#ifndef ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS
-#if ABSL_USE_UNSCALED_CYCLECLOCK
-#define ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS 1
+#ifndef IRESEARCH_ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS
+#if IRESEARCH_ABSL_USE_UNSCALED_CYCLECLOCK
+#define IRESEARCH_ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS 1
 #else
-#define ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS 0
+#define IRESEARCH_ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS 0
 #endif
 #endif
 
@@ -72,12 +72,12 @@ ABSL_NAMESPACE_END
 #endif
 
 #if !ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 int64_t GetCurrentTimeNanos() {
   return GET_CURRENT_TIME_NANOS_FROM_SYSTEM();
 }
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 #else  // Use the cyclecounter-based implementation below.
 
@@ -94,8 +94,8 @@ static int64_t stats_calibrations;
 static int64_t stats_slow_paths;
 static int64_t stats_fast_slow_paths;
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 // This is a friend wrapper around UnscaledCycleClock::Now()
 // (needed to access UnscaledCycleClock).
@@ -226,9 +226,9 @@ static_assert(((kMinNSBetweenSamples << (kScale + 1)) >> (kScale + 1)) ==
 
 // A reader-writer lock protecting the static locations below.
 // See SeqAcquire() and SeqRelease() above.
-ABSL_CONST_INIT static absl::base_internal::SpinLock lock(
-    absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
-ABSL_CONST_INIT static std::atomic<uint64_t> seq(0);
+IRESEARCH_ABSL_CONST_INIT static iresearch_absl::base_internal::SpinLock lock(
+    iresearch_absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
+IRESEARCH_ABSL_CONST_INIT static std::atomic<uint64_t> seq(0);
 
 // data from a sample of the kernel's time value
 struct TimeSampleAtomic {
@@ -251,7 +251,7 @@ struct TimeSample {
 
 static struct TimeSampleAtomic last_sample;   // the last sample; under seq
 
-static int64_t GetCurrentTimeNanosSlowPath() ABSL_ATTRIBUTE_COLD;
+static int64_t GetCurrentTimeNanosSlowPath() IRESEARCH_ABSL_ATTRIBUTE_COLD;
 
 // Read the contents of *atomic into *sample.
 // Each field is read atomically, but to maintain atomicity between fields,
@@ -376,7 +376,7 @@ static uint64_t SafeDivideAndScale(uint64_t a, uint64_t b) {
 
 static uint64_t UpdateLastSample(
     uint64_t now_cycles, uint64_t now_ns, uint64_t delta_cycles,
-    const struct TimeSample *sample) ABSL_ATTRIBUTE_COLD;
+    const struct TimeSample *sample) IRESEARCH_ABSL_ATTRIBUTE_COLD;
 
 // The slow path of GetCurrentTimeNanos().  This is taken while gathering
 // initial samples, when enough time has elapsed since the last sample, and if
@@ -390,7 +390,7 @@ static uint64_t UpdateLastSample(
 // TODO(absl-team): Remove this attribute when our compiler is smart enough
 // to do the right thing.
 ABSL_ATTRIBUTE_NOINLINE
-static int64_t GetCurrentTimeNanosSlowPath() ABSL_LOCKS_EXCLUDED(lock) {
+static int64_t GetCurrentTimeNanosSlowPath() IRESEARCH_ABSL_LOCKS_EXCLUDED(lock) {
   // Serialize access to slow-path.  Fast-path readers are not blocked yet, and
   // code below must not modify last_sample until the seqlock is acquired.
   lock.Lock();
@@ -435,7 +435,7 @@ static int64_t GetCurrentTimeNanosSlowPath() ABSL_LOCKS_EXCLUDED(lock) {
 static uint64_t UpdateLastSample(uint64_t now_cycles, uint64_t now_ns,
                                  uint64_t delta_cycles,
                                  const struct TimeSample *sample)
-    ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock) {
+    IRESEARCH_ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock) {
   uint64_t estimated_base_ns = now_ns;
   uint64_t lock_value = SeqAcquire(&seq);  // acquire seqlock to block readers
 
@@ -520,32 +520,32 @@ static uint64_t UpdateLastSample(uint64_t now_cycles, uint64_t now_ns,
 
   return estimated_base_ns;
 }
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
-#endif  // ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS
+#endif  // IRESEARCH_ABSL_USE_CYCLECLOCK_FOR_GET_CURRENT_TIME_NANOS
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace {
 
 // Returns the maximum duration that SleepOnce() can sleep for.
-constexpr absl::Duration MaxSleep() {
+constexpr iresearch_absl::Duration MaxSleep() {
 #ifdef _WIN32
   // Windows Sleep() takes unsigned long argument in milliseconds.
-  return absl::Milliseconds(
+  return iresearch_absl::Milliseconds(
       std::numeric_limits<unsigned long>::max());  // NOLINT(runtime/int)
 #else
-  return absl::Seconds(std::numeric_limits<time_t>::max());
+  return iresearch_absl::Seconds(std::numeric_limits<time_t>::max());
 #endif
 }
 
 // Sleeps for the given duration.
 // REQUIRES: to_sleep <= MaxSleep().
-void SleepOnce(absl::Duration to_sleep) {
+void SleepOnce(iresearch_absl::Duration to_sleep) {
 #ifdef _WIN32
-  Sleep(to_sleep / absl::Milliseconds(1));
+  Sleep(to_sleep / iresearch_absl::Milliseconds(1));
 #else
-  struct timespec sleep_time = absl::ToTimespec(to_sleep);
+  struct timespec sleep_time = iresearch_absl::ToTimespec(to_sleep);
   while (nanosleep(&sleep_time, &sleep_time) != 0 && errno == EINTR) {
     // Ignore signals and wait for the full interval to elapse.
   }
@@ -553,15 +553,15 @@ void SleepOnce(absl::Duration to_sleep) {
 }
 
 }  // namespace
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 extern "C" {
 
-ABSL_ATTRIBUTE_WEAK void AbslInternalSleepFor(absl::Duration duration) {
-  while (duration > absl::ZeroDuration()) {
-    absl::Duration to_sleep = std::min(duration, absl::MaxSleep());
-    absl::SleepOnce(to_sleep);
+ABSL_ATTRIBUTE_WEAK void AbslInternalSleepFor(iresearch_absl::Duration duration) {
+  while (duration > iresearch_absl::ZeroDuration()) {
+    iresearch_absl::Duration to_sleep = std::min(duration, iresearch_absl::MaxSleep());
+    iresearch_absl::SleepOnce(to_sleep);
     duration -= to_sleep;
   }
 }

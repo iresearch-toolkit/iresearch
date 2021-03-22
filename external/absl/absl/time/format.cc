@@ -22,16 +22,16 @@
 #include "absl/time/internal/cctz/include/cctz/time_zone.h"
 #include "absl/time/time.h"
 
-namespace cctz = absl::time_internal::cctz;
+namespace cctz = iresearch_absl::time_internal::cctz;
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-ABSL_DLL extern const char RFC3339_full[] = "%Y-%m-%d%ET%H:%M:%E*S%Ez";
-ABSL_DLL extern const char RFC3339_sec[] = "%Y-%m-%d%ET%H:%M:%S%Ez";
+IRESEARCH_ABSL_DLL extern const char RFC3339_full[] = "%Y-%m-%d%ET%H:%M:%E*S%Ez";
+IRESEARCH_ABSL_DLL extern const char RFC3339_sec[] = "%Y-%m-%d%ET%H:%M:%S%Ez";
 
-ABSL_DLL extern const char RFC1123_full[] = "%a, %d %b %E4Y %H:%M:%S %z";
-ABSL_DLL extern const char RFC1123_no_wday[] = "%d %b %E4Y %H:%M:%S %z";
+IRESEARCH_ABSL_DLL extern const char RFC1123_full[] = "%a, %d %b %E4Y %H:%M:%S %z";
+IRESEARCH_ABSL_DLL extern const char RFC1123_no_wday[] = "%d %b %E4Y %H:%M:%S %z";
 
 namespace {
 
@@ -51,7 +51,7 @@ inline cctz::time_point<cctz::seconds> unix_epoch() {
 // Splits a Time into seconds and femtoseconds, which can be used with CCTZ.
 // Requires that 't' is finite. See duration.cc for details about rep_hi and
 // rep_lo.
-cctz_parts Split(absl::Time t) {
+cctz_parts Split(iresearch_absl::Time t) {
   const auto d = time_internal::ToUnixDuration(t);
   const int64_t rep_hi = time_internal::GetRepHi(d);
   const int64_t rep_lo = time_internal::GetRepLo(d);
@@ -71,33 +71,33 @@ absl::Time Join(const cctz_parts& parts) {
 
 }  // namespace
 
-std::string FormatTime(absl::string_view format, absl::Time t,
-                       absl::TimeZone tz) {
-  if (t == absl::InfiniteFuture()) return std::string(kInfiniteFutureStr);
-  if (t == absl::InfinitePast()) return std::string(kInfinitePastStr);
+std::string FormatTime(iresearch_absl::string_view format, iresearch_absl::Time t,
+                       iresearch_absl::TimeZone tz) {
+  if (t == iresearch_absl::InfiniteFuture()) return std::string(kInfiniteFutureStr);
+  if (t == iresearch_absl::InfinitePast()) return std::string(kInfinitePastStr);
   const auto parts = Split(t);
   return cctz::detail::format(std::string(format), parts.sec, parts.fem,
                               cctz::time_zone(tz));
 }
 
-std::string FormatTime(absl::Time t, absl::TimeZone tz) {
+std::string FormatTime(iresearch_absl::Time t, iresearch_absl::TimeZone tz) {
   return FormatTime(RFC3339_full, t, tz);
 }
 
-std::string FormatTime(absl::Time t) {
-  return absl::FormatTime(RFC3339_full, t, absl::LocalTimeZone());
+std::string FormatTime(iresearch_absl::Time t) {
+  return iresearch_absl::FormatTime(RFC3339_full, t, iresearch_absl::LocalTimeZone());
 }
 
-bool ParseTime(absl::string_view format, absl::string_view input,
-               absl::Time* time, std::string* err) {
-  return absl::ParseTime(format, input, absl::UTCTimeZone(), time, err);
+bool ParseTime(iresearch_absl::string_view format, iresearch_absl::string_view input,
+               iresearch_absl::Time* time, std::string* err) {
+  return iresearch_absl::ParseTime(format, input, iresearch_absl::UTCTimeZone(), time, err);
 }
 
 // If the input string does not contain an explicit UTC offset, interpret
 // the fields with respect to the given TimeZone.
-bool ParseTime(absl::string_view format, absl::string_view input,
-               absl::TimeZone tz, absl::Time* time, std::string* err) {
-  auto strip_leading_space = [](absl::string_view* sv) {
+bool ParseTime(iresearch_absl::string_view format, iresearch_absl::string_view input,
+               iresearch_absl::TimeZone tz, iresearch_absl::Time* time, std::string* err) {
+  auto strip_leading_space = [](iresearch_absl::string_view* sv) {
     while (!sv->empty()) {
       if (!std::isspace(sv->front())) return;
       sv->remove_prefix(1);
@@ -108,7 +108,7 @@ bool ParseTime(absl::string_view format, absl::string_view input,
   struct Literal {
     const char* name;
     size_t size;
-    absl::Time value;
+    iresearch_absl::Time value;
   };
   static Literal literals[] = {
       {kInfiniteFutureStr, strlen(kInfiniteFutureStr), InfiniteFuture()},
@@ -116,8 +116,8 @@ bool ParseTime(absl::string_view format, absl::string_view input,
   };
   strip_leading_space(&input);
   for (const auto& lit : literals) {
-    if (absl::StartsWith(input, absl::string_view(lit.name, lit.size))) {
-      absl::string_view tail = input;
+    if (iresearch_absl::StartsWith(input, iresearch_absl::string_view(lit.name, lit.size))) {
+      iresearch_absl::string_view tail = input;
       tail.remove_prefix(lit.size);
       strip_leading_space(&tail);
       if (tail.empty()) {
@@ -140,21 +140,21 @@ bool ParseTime(absl::string_view format, absl::string_view input,
   return b;
 }
 
-// Functions required to support absl::Time flags.
-bool AbslParseFlag(absl::string_view text, absl::Time* t, std::string* error) {
-  return absl::ParseTime(RFC3339_full, text, absl::UTCTimeZone(), t, error);
+// Functions required to support iresearch_absl::Time flags.
+bool AbslParseFlag(iresearch_absl::string_view text, iresearch_absl::Time* t, std::string* error) {
+  return iresearch_absl::ParseTime(RFC3339_full, text, iresearch_absl::UTCTimeZone(), t, error);
 }
 
-std::string AbslUnparseFlag(absl::Time t) {
-  return absl::FormatTime(RFC3339_full, t, absl::UTCTimeZone());
+std::string AbslUnparseFlag(iresearch_absl::Time t) {
+  return iresearch_absl::FormatTime(RFC3339_full, t, iresearch_absl::UTCTimeZone());
 }
-bool ParseFlag(const std::string& text, absl::Time* t, std::string* error) {
-  return absl::ParseTime(RFC3339_full, text, absl::UTCTimeZone(), t, error);
-}
-
-std::string UnparseFlag(absl::Time t) {
-  return absl::FormatTime(RFC3339_full, t, absl::UTCTimeZone());
+bool ParseFlag(const std::string& text, iresearch_absl::Time* t, std::string* error) {
+  return iresearch_absl::ParseTime(RFC3339_full, text, iresearch_absl::UTCTimeZone(), t, error);
 }
 
-ABSL_NAMESPACE_END
+std::string UnparseFlag(iresearch_absl::Time t) {
+  return iresearch_absl::FormatTime(RFC3339_full, t, iresearch_absl::UTCTimeZone());
+}
+
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
-#define ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
 
 #include <array>
 #include <ostream>
@@ -21,10 +21,10 @@
 #include "absl/base/attributes.h"
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-// absl::LogSeverity
+// iresearch_absl::LogSeverity
 //
 // Four severity levels are defined. Logging APIs should terminate the program
 // when a message is logged at severity `kFatal`; the other levels have no
@@ -39,14 +39,14 @@ ABSL_NAMESPACE_BEGIN
 // Exmaple:
 //
 //   // Effectively disables all logging:
-//   SetMinLogLevel(static_cast<absl::LogSeverity>(100));
+//   SetMinLogLevel(static_cast<iresearch_absl::LogSeverity>(100));
 //
 // Abseil flags may be defined with type `LogSeverity`. Dependency layering
 // constraints require that the `AbslParseFlag()` overload be declared and
 // defined in the flags library itself rather than here. The `AbslUnparseFlag()`
 // overload is defined there as well for consistency.
 //
-// absl::LogSeverity Flag String Representation
+// iresearch_absl::LogSeverity Flag String Representation
 //
 // An `absl::LogSeverity` has a string representation used for parsing
 // command-line flags based on the enumerator name (e.g. `kFatal`) or
@@ -77,45 +77,45 @@ enum class LogSeverity : int {
 //
 // Returns an iterable of all standard `absl::LogSeverity` values, ordered from
 // least to most severe.
-constexpr std::array<absl::LogSeverity, 4> LogSeverities() {
-  return {{absl::LogSeverity::kInfo, absl::LogSeverity::kWarning,
-           absl::LogSeverity::kError, absl::LogSeverity::kFatal}};
+constexpr std::array<iresearch_absl::LogSeverity, 4> LogSeverities() {
+  return {{iresearch_absl::LogSeverity::kInfo, iresearch_absl::LogSeverity::kWarning,
+           iresearch_absl::LogSeverity::kError, iresearch_absl::LogSeverity::kFatal}};
 }
 
 // LogSeverityName()
 //
 // Returns the all-caps string representation (e.g. "INFO") of the specified
 // severity level if it is one of the standard levels and "UNKNOWN" otherwise.
-constexpr const char* LogSeverityName(absl::LogSeverity s) {
-  return s == absl::LogSeverity::kInfo
+constexpr const char* LogSeverityName(iresearch_absl::LogSeverity s) {
+  return s == iresearch_absl::LogSeverity::kInfo
              ? "INFO"
-             : s == absl::LogSeverity::kWarning
+             : s == iresearch_absl::LogSeverity::kWarning
                    ? "WARNING"
-                   : s == absl::LogSeverity::kError
+                   : s == iresearch_absl::LogSeverity::kError
                          ? "ERROR"
-                         : s == absl::LogSeverity::kFatal ? "FATAL" : "UNKNOWN";
+                         : s == iresearch_absl::LogSeverity::kFatal ? "FATAL" : "UNKNOWN";
 }
 
 // NormalizeLogSeverity()
 //
 // Values less than `kInfo` normalize to `kInfo`; values greater than `kFatal`
 // normalize to `kError` (**NOT** `kFatal`).
-constexpr absl::LogSeverity NormalizeLogSeverity(absl::LogSeverity s) {
-  return s < absl::LogSeverity::kInfo
-             ? absl::LogSeverity::kInfo
-             : s > absl::LogSeverity::kFatal ? absl::LogSeverity::kError : s;
+constexpr iresearch_absl::LogSeverity NormalizeLogSeverity(iresearch_absl::LogSeverity s) {
+  return s < iresearch_absl::LogSeverity::kInfo
+             ? iresearch_absl::LogSeverity::kInfo
+             : s > iresearch_absl::LogSeverity::kFatal ? iresearch_absl::LogSeverity::kError : s;
 }
-constexpr absl::LogSeverity NormalizeLogSeverity(int s) {
-  return absl::NormalizeLogSeverity(static_cast<absl::LogSeverity>(s));
+constexpr iresearch_absl::LogSeverity NormalizeLogSeverity(int s) {
+  return iresearch_absl::NormalizeLogSeverity(static_cast<iresearch_absl::LogSeverity>(s));
 }
 
 // operator<<
 //
 // The exact representation of a streamed `absl::LogSeverity` is deliberately
 // unspecified; do not rely on it.
-std::ostream& operator<<(std::ostream& os, absl::LogSeverity s);
+std::ostream& operator<<(std::ostream& os, iresearch_absl::LogSeverity s);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_LOG_SEVERITY_H_

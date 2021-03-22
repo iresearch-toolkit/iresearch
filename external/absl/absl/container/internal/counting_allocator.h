@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_
-#define ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_
 
 #include <cstdint>
 #include <memory>
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 // This is a stateful allocator, but the state lives outside of the
@@ -108,7 +108,7 @@ class CountingAllocator {
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_COUNTING_ALLOCATOR_H_

@@ -19,15 +19,15 @@
 
 #if !defined(__linux__) || defined(__ANDROID__)
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // On platforms other than Linux, just return true.
 bool AddressIsReadable(const void* /* addr */) { return true; }
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #else
@@ -43,14 +43,14 @@ ABSL_NAMESPACE_END
 #include "absl/base/internal/errno_saver.h"
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // Pack a pid and two file descriptors into a 64-bit word,
 // using 16, 24, and 24 bits for each respectively.
 static uint64_t Pack(uint64_t pid, uint64_t read_fd, uint64_t write_fd) {
-  ABSL_RAW_CHECK((read_fd >> 24) == 0 && (write_fd >> 24) == 0,
+  IRESEARCH_ABSL_RAW_CHECK((read_fd >> 24) == 0 && (write_fd >> 24) == 0,
                  "fd out of range");
   return (pid << 48) | ((read_fd & 0xffffff) << 24) | (write_fd & 0xffffff);
 }
@@ -70,7 +70,7 @@ static void Unpack(uint64_t x, int *pid, int *read_fd, int *write_fd) {
 static std::atomic<uint64_t> pid_and_fds;  // initially 0, an invalid pid.
 
 bool AddressIsReadable(const void *addr) {
-  absl::base_internal::ErrnoSaver errno_saver;
+  iresearch_absl::base_internal::ErrnoSaver errno_saver;
   // We test whether a byte is readable by using write().  Normally, this would
   // be done via a cached file descriptor to /dev/null, but linux fails to
   // check whether the byte is readable when the destination is /dev/null, so
@@ -93,7 +93,7 @@ bool AddressIsReadable(const void *addr) {
       int p[2];
       // new pipe
       if (pipe(p) != 0) {
-        ABSL_RAW_LOG(FATAL, "Failed to create pipe, errno=%d", errno);
+        IRESEARCH_ABSL_RAW_LOG(FATAL, "Failed to create pipe, errno=%d", errno);
       }
       fcntl(p[0], F_SETFD, FD_CLOEXEC);
       fcntl(p[1], F_SETFD, FD_CLOEXEC);
@@ -133,7 +133,7 @@ bool AddressIsReadable(const void *addr) {
 }
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #endif

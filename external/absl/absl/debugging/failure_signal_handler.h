@@ -24,10 +24,10 @@
 //
 // int main(int argc, char** argv) {
 //   // Initialize the symbolizer to get a human-readable stack trace
-//   absl::InitializeSymbolizer(argv[0]);
+//   iresearch_absl::InitializeSymbolizer(argv[0]);
 //
-//   absl::FailureSignalHandlerOptions options;
-//   absl::InstallFailureSignalHandler(options);
+//   iresearch_absl::FailureSignalHandlerOptions options;
+//   iresearch_absl::InstallFailureSignalHandler(options);
 //   DoSomethingInteresting();
 //   return 0;
 // }
@@ -41,13 +41,13 @@
 // handler installed (which would be triggered if Abseil's failure signal
 // handler sets `call_previous_handler` to `true`).
 
-#ifndef ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_
-#define ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_
+#define IRESEARCH_ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // FailureSignalHandlerOptions
 //
@@ -115,7 +115,7 @@ namespace debugging_internal {
 const char* FailureSignalToString(int signo);
 }  // namespace debugging_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_FAILURE_SIGNAL_HANDLER_H_

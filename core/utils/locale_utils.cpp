@@ -73,7 +73,7 @@ namespace std {
 } // std
 
 namespace {
-
+using namespace irs;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of internal buffers, arbitrary size
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,9 +148,11 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
   std::string tmp;
 
   // use system encoding if encoding.null()
-  if (key.null()) {
+  if (encoding.null()) {
     tmp = system_encoding();
     key = tmp;
+  } else {
+    tmp = static_cast<std::string>(key);
   }
 
   auto lock = irs::make_lock_guard(mutex);
@@ -159,7 +161,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     encodings,
     generator,
     irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
-    key
+    std::move(tmp)
   ).first->second;
 }
 
@@ -275,7 +277,7 @@ int codecvtu_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -374,7 +376,7 @@ int codecvt16_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -447,7 +449,7 @@ int codecvt16_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt16_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -595,7 +597,7 @@ int codecvt32_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -743,7 +745,7 @@ int codecvt32_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt32_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -929,7 +931,7 @@ bool codecvt8u_facet::append(
 }
 
 std::codecvt_base::result codecvt8u_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1075,7 +1077,7 @@ int codecvt8u_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8u_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -1449,7 +1451,7 @@ int codecvt_base<InternType>::do_length(
 
 template<typename InternType>
 std::codecvt_base::result codecvt_base<InternType>::do_unshift(
-    state_type& state,
+    state_type&,
     extern_type* to,
     extern_type* to_end,
     extern_type*& to_next
@@ -1598,7 +1600,7 @@ int codecvt8_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -1724,7 +1726,7 @@ int codecvt8_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvt8_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -2025,7 +2027,7 @@ int codecvtw_facet::do_encoding() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_in(
-    state_type& state,
+    state_type&,
     const extern_type* from,
     const extern_type* from_end,
     const extern_type*& from_next,
@@ -2224,7 +2226,7 @@ int codecvtw_facet::do_max_length() const noexcept {
 }
 
 std::codecvt_base::result codecvtw_facet::do_out(
-    state_type& state,
+    state_type&,
     const intern_type* from,
     const intern_type* from_end,
     const intern_type*& from_next,
@@ -3195,7 +3197,7 @@ template<typename T>
 
     len -= hi || full_width ? 0 : 1;
 
-    for (size_t i = lpad < len ? 0 : lpad - len; i; --i) {
+    for (size_t j = lpad < len ? 0 : lpad - len; j; --j) {
       *out++ = fill;
       ++size;
     }
@@ -3478,7 +3480,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
     data += length;
 
     // normalize encoding and compare to 'utf8' (data already in lower case)
-    std::string buf = encoding_;
+    std::string buf = static_cast<std::string>(encoding_);
     auto* str = &buf[0];
     auto end = std::remove_if(
       str, str + buf.size(),
@@ -3746,7 +3748,7 @@ std::locale locale(
   }
 
   locale_info_facet info(name);
-  std::string locale_name = info.language();
+  std::string locale_name = static_cast<std::string>(info.language());
 
   if (!info.country().empty()) {
     locale_name.append(1, '_').append(info.country());

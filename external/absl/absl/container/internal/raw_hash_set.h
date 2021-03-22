@@ -88,8 +88,8 @@
 // This probing function guarantees that after N probes, all the groups of the
 // table will be probed exactly once.
 
-#ifndef ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_
-#define ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_
 
 #include <algorithm>
 #include <cmath>
@@ -118,8 +118,8 @@
 #include "absl/meta/type_traits.h"
 #include "absl/utility/utility.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 template <typename AllocType>
@@ -172,7 +172,7 @@ struct IsDecomposable : std::false_type {};
 
 template <class Policy, class Hash, class Eq, class... Ts>
 struct IsDecomposable<
-    absl::void_t<decltype(
+    iresearch_absl::void_t<decltype(
         Policy::apply(RequireUsableKey<typename Policy::key_type, Hash, Eq>(),
                       std::declval<Ts>()...))>,
     Policy, Hash, Eq, Ts...> : std::true_type {};
@@ -327,7 +327,7 @@ inline bool IsFull(ctrl_t c) { return c >= 0; }
 inline bool IsDeleted(ctrl_t c) { return c == kDeleted; }
 inline bool IsEmptyOrDeleted(ctrl_t c) { return c < kSentinel; }
 
-#if ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
+#if IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
 
 // https://github.com/abseil/abseil-cpp/issues/209
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87853
@@ -361,7 +361,7 @@ struct GroupSse2Impl {
 
   // Returns a bitmask representing the positions of empty slots.
   BitMask<uint32_t, kWidth> MatchEmpty() const {
-#if ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSSE3
+#if IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSSE3
     // This only works because kEmpty is -128.
     return BitMask<uint32_t, kWidth>(
         _mm_movemask_epi8(_mm_sign_epi8(ctrl, ctrl)));
@@ -387,7 +387,7 @@ struct GroupSse2Impl {
   void ConvertSpecialToEmptyAndFullToDeleted(ctrl_t* dst) const {
     auto msbs = _mm_set1_epi8(static_cast<char>(-128));
     auto x126 = _mm_set1_epi8(126);
-#if ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSSE3
+#if IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSSE3
     auto res = _mm_or_si128(_mm_shuffle_epi8(x126, ctrl), msbs);
 #else
     auto zero = _mm_setzero_si128();
@@ -399,7 +399,7 @@ struct GroupSse2Impl {
 
   __m128i ctrl;
 };
-#endif  // ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
+#endif  // IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
 
 struct GroupPortableImpl {
   static constexpr size_t kWidth = 8;
@@ -453,7 +453,7 @@ struct GroupPortableImpl {
   uint64_t ctrl;
 };
 
-#if ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
+#if IRESEARCH_ABSL_INTERNAL_RAW_HASH_SET_HAVE_SSE2
 using Group = GroupSse2Impl;
 #else
 using Group = GroupPortableImpl;
@@ -512,13 +512,13 @@ inline size_t GrowthToLowerboundCapacity(size_t growth) {
 }
 
 inline void AssertIsFull(ctrl_t* ctrl) {
-  ABSL_HARDENING_ASSERT((ctrl != nullptr && IsFull(*ctrl)) &&
+  IRESEARCH_ABSL_HARDENING_ASSERT((ctrl != nullptr && IsFull(*ctrl)) &&
                         "Invalid operation on iterator. The element might have "
                         "been erased, or the table might have rehashed.");
 }
 
 inline void AssertIsValid(ctrl_t* ctrl) {
-  ABSL_HARDENING_ASSERT((ctrl == nullptr || IsFull(*ctrl)) &&
+  IRESEARCH_ABSL_HARDENING_ASSERT((ctrl == nullptr || IsFull(*ctrl)) &&
                         "Invalid operation on iterator. The element might have "
                         "been erased, or the table might have rehashed.");
 }
@@ -562,9 +562,9 @@ class raw_hash_set {
   using value_type = typename PolicyTraits::value_type;
   using reference = value_type&;
   using const_reference = const value_type&;
-  using pointer = typename absl::allocator_traits<
+  using pointer = typename iresearch_absl::allocator_traits<
       allocator_type>::template rebind_traits<value_type>::pointer;
-  using const_pointer = typename absl::allocator_traits<
+  using const_pointer = typename iresearch_absl::allocator_traits<
       allocator_type>::template rebind_traits<value_type>::const_pointer;
 
   // Alias used for heterogeneous lookup functions.
@@ -579,17 +579,17 @@ class raw_hash_set {
   auto KeyTypeCanBeHashed(const Hash& h, const key_type& k) -> decltype(h(k));
   auto KeyTypeCanBeEq(const Eq& eq, const key_type& k) -> decltype(eq(k, k));
 
-  using Layout = absl::container_internal::Layout<ctrl_t, slot_type>;
+  using Layout = iresearch_absl::container_internal::Layout<ctrl_t, slot_type>;
 
   static Layout MakeLayout(size_t capacity) {
     assert(IsValidCapacity(capacity));
     return Layout(capacity + Group::kWidth + 1, capacity);
   }
 
-  using AllocTraits = absl::allocator_traits<allocator_type>;
-  using SlotAlloc = typename absl::allocator_traits<
+  using AllocTraits = iresearch_absl::allocator_traits<allocator_type>;
+  using SlotAlloc = typename iresearch_absl::allocator_traits<
       allocator_type>::template rebind_alloc<slot_type>;
-  using SlotAllocTraits = typename absl::allocator_traits<
+  using SlotAllocTraits = typename iresearch_absl::allocator_traits<
       allocator_type>::template rebind_traits<slot_type>;
 
   static_assert(std::is_lvalue_reference<reference>::value,
@@ -609,7 +609,7 @@ class raw_hash_set {
   // cases.
   template <class T>
   using RequiresInsertable = typename std::enable_if<
-      absl::disjunction<std::is_convertible<T, init_type>,
+      iresearch_absl::disjunction<std::is_convertible<T, init_type>,
                         SameAsElementReference<T>>::value,
       int>::type;
 
@@ -635,9 +635,9 @@ class raw_hash_set {
     using iterator_category = std::forward_iterator_tag;
     using value_type = typename raw_hash_set::value_type;
     using reference =
-        absl::conditional_t<PolicyTraits::constant_iterators::value,
+        iresearch_absl::conditional_t<PolicyTraits::constant_iterators::value,
                             const value_type&, value_type&>;
-    using pointer = absl::remove_reference_t<reference>*;
+    using pointer = iresearch_absl::remove_reference_t<reference>*;
     using difference_type = typename raw_hash_set::difference_type;
 
     iterator() {}
@@ -679,7 +679,7 @@ class raw_hash_set {
     iterator(ctrl_t* ctrl, slot_type* slot) : ctrl_(ctrl), slot_(slot) {
       // This assumption helps the compiler know that any non-end iterator is
       // not equal to any end iterator.
-      ABSL_INTERNAL_ASSUME(ctrl != nullptr);
+      IRESEARCH_ABSL_INTERNAL_ASSUME(ctrl != nullptr);
     }
 
     void skip_empty_or_deleted() {
@@ -688,7 +688,7 @@ class raw_hash_set {
         ctrl_ += shift;
         slot_ += shift;
       }
-      if (ABSL_PREDICT_FALSE(*ctrl_ == kSentinel)) ctrl_ = nullptr;
+      if (IRESEARCH_ABSL_PREDICT_FALSE(*ctrl_ == kSentinel)) ctrl_ = nullptr;
     }
 
     ctrl_t* ctrl_ = nullptr;
@@ -798,14 +798,14 @@ class raw_hash_set {
   //
   //   // Turns {"abc", "def"} into std::initializer_list<const char*>, then
   //   // copies the strings into the set.
-  //   absl::flat_hash_set<std::string> s = {"abc", "def"};
+  //   iresearch_absl::flat_hash_set<std::string> s = {"abc", "def"};
   //
   // The same trick is used in insert().
   //
   // The enabler is necessary to prevent this constructor from triggering where
   // the copy constructor is meant to be called.
   //
-  //   absl::flat_hash_set<int> a, b{a};
+  //   iresearch_absl::flat_hash_set<int> a, b{a};
   //
   // RequiresNotInit<T> is a workaround for gcc prior to 7.1.
   template <class T, RequiresNotInit<T> = 0, RequiresInsertable<T> = 0>
@@ -869,11 +869,11 @@ class raw_hash_set {
       std::is_nothrow_copy_constructible<hasher>::value&&
           std::is_nothrow_copy_constructible<key_equal>::value&&
               std::is_nothrow_copy_constructible<allocator_type>::value)
-      : ctrl_(absl::exchange(that.ctrl_, EmptyGroup())),
-        slots_(absl::exchange(that.slots_, nullptr)),
-        size_(absl::exchange(that.size_, 0)),
-        capacity_(absl::exchange(that.capacity_, 0)),
-        infoz_(absl::exchange(that.infoz_, HashtablezInfoHandle())),
+      : ctrl_(iresearch_absl::exchange(that.ctrl_, EmptyGroup())),
+        slots_(iresearch_absl::exchange(that.slots_, nullptr)),
+        size_(iresearch_absl::exchange(that.size_, 0)),
+        capacity_(iresearch_absl::exchange(that.capacity_, 0)),
+        infoz_(iresearch_absl::exchange(that.infoz_, HashtablezInfoHandle())),
         // Hash, equality and allocator are copied instead of moved because
         // `that` must be left valid. If Hash is std::function<Key>, moving it
         // would create a nullptr functor that cannot be called.
@@ -913,7 +913,7 @@ class raw_hash_set {
   }
 
   raw_hash_set& operator=(raw_hash_set&& that) noexcept(
-      absl::allocator_traits<allocator_type>::is_always_equal::value&&
+      iresearch_absl::allocator_traits<allocator_type>::is_always_equal::value&&
           std::is_nothrow_move_assignable<hasher>::value&&
               std::is_nothrow_move_assignable<key_equal>::value) {
     // TODO(sbenza): We should only use the operations from the noexcept clause
@@ -944,7 +944,7 @@ class raw_hash_set {
   size_t capacity() const { return capacity_; }
   size_t max_size() const { return (std::numeric_limits<size_t>::max)(); }
 
-  ABSL_ATTRIBUTE_REINITIALIZES void clear() {
+  IRESEARCH_ABSL_ATTRIBUTE_REINITIALIZES void clear() {
     // Iterating over this container is O(bucket_count()). When bucket_count()
     // is much greater than size(), iteration becomes prohibitively expensive.
     // For clear() it is more important to reuse the allocated array when the
@@ -1320,12 +1320,12 @@ class raw_hash_set {
     while (true) {
       Group g{ctrl_ + seq.offset()};
       for (int i : g.Match(H2(hash))) {
-        if (ABSL_PREDICT_TRUE(PolicyTraits::apply(
+        if (IRESEARCH_ABSL_PREDICT_TRUE(PolicyTraits::apply(
                 EqualElement<K>{key, eq_ref()},
                 PolicyTraits::element(slots_ + seq.offset(i)))))
           return iterator_at(seq.offset(i));
       }
-      if (ABSL_PREDICT_TRUE(g.MatchEmpty())) return end();
+      if (IRESEARCH_ABSL_PREDICT_TRUE(g.MatchEmpty())) return end();
       seq.next();
       assert(seq.index() < capacity_ && "full table!");
     }
@@ -1397,7 +1397,7 @@ class raw_hash_set {
 
  private:
   template <class Container, typename Enabler>
-  friend struct absl::container_internal::hashtable_debug_internal::
+  friend struct iresearch_absl::container_internal::hashtable_debug_internal::
       HashtableDebugAccess;
 
   struct FindElement {
@@ -1555,7 +1555,7 @@ class raw_hash_set {
     infoz_.RecordRehash(total_probe_length);
   }
 
-  void drop_deletes_without_resize() ABSL_ATTRIBUTE_NOINLINE {
+  void drop_deletes_without_resize() IRESEARCH_ABSL_ATTRIBUTE_NOINLINE {
     assert(IsValidCapacity(capacity_));
     assert(!is_small());
     // Algorithm:
@@ -1594,7 +1594,7 @@ class raw_hash_set {
       };
 
       // Element doesn't move.
-      if (ABSL_PREDICT_TRUE(probe_index(new_i) == probe_index(i))) {
+      if (IRESEARCH_ABSL_PREDICT_TRUE(probe_index(new_i) == probe_index(i))) {
         set_ctrl(i, H2(hash));
         continue;
       }
@@ -1638,11 +1638,11 @@ class raw_hash_set {
     while (true) {
       Group g{ctrl_ + seq.offset()};
       for (int i : g.Match(H2(hash))) {
-        if (ABSL_PREDICT_TRUE(PolicyTraits::element(slots_ + seq.offset(i)) ==
+        if (IRESEARCH_ABSL_PREDICT_TRUE(PolicyTraits::element(slots_ + seq.offset(i)) ==
                               elem))
           return true;
       }
-      if (ABSL_PREDICT_TRUE(g.MatchEmpty())) return false;
+      if (IRESEARCH_ABSL_PREDICT_TRUE(g.MatchEmpty())) return false;
       seq.next();
       assert(seq.index() < capacity_ && "full table!");
     }
@@ -1704,21 +1704,21 @@ class raw_hash_set {
     while (true) {
       Group g{ctrl_ + seq.offset()};
       for (int i : g.Match(H2(hash))) {
-        if (ABSL_PREDICT_TRUE(PolicyTraits::apply(
+        if (IRESEARCH_ABSL_PREDICT_TRUE(PolicyTraits::apply(
                 EqualElement<K>{key, eq_ref()},
                 PolicyTraits::element(slots_ + seq.offset(i)))))
           return {seq.offset(i), false};
       }
-      if (ABSL_PREDICT_TRUE(g.MatchEmpty())) break;
+      if (IRESEARCH_ABSL_PREDICT_TRUE(g.MatchEmpty())) break;
       seq.next();
       assert(seq.index() < capacity_ && "full table!");
     }
     return {prepare_insert(hash), true};
   }
 
-  size_t prepare_insert(size_t hash) ABSL_ATTRIBUTE_NOINLINE {
+  size_t prepare_insert(size_t hash) IRESEARCH_ABSL_ATTRIBUTE_NOINLINE {
     auto target = find_first_non_full(hash);
-    if (ABSL_PREDICT_FALSE(growth_left() == 0 &&
+    if (IRESEARCH_ABSL_PREDICT_FALSE(growth_left() == 0 &&
                            !IsDeleted(ctrl_[target.offset]))) {
       rehash_and_grow_if_necessary();
       target = find_first_non_full(hash);
@@ -1820,7 +1820,7 @@ class raw_hash_set {
   size_t size_ = 0;                // number of full slots
   size_t capacity_ = 0;            // total number of slots
   HashtablezInfoHandle infoz_;
-  absl::container_internal::CompressedTuple<size_t /* growth_left */, hasher,
+  iresearch_absl::container_internal::CompressedTuple<size_t /* growth_left */, hasher,
                                             key_equal, allocator_type>
       settings_{0, hasher{}, key_equal{}, allocator_type{}};
 };
@@ -1838,7 +1838,7 @@ void EraseIf(Predicate pred, raw_hash_set<P, H, E, A>* c) {
 
 namespace hashtable_debug_internal {
 template <typename Set>
-struct HashtableDebugAccess<Set, absl::void_t<typename Set::raw_hash_set>> {
+struct HashtableDebugAccess<Set, iresearch_absl::void_t<typename Set::raw_hash_set>> {
   using Traits = typename Set::PolicyTraits;
   using Slot = typename Traits::slot_type;
 
@@ -1897,7 +1897,7 @@ struct HashtableDebugAccess<Set, absl::void_t<typename Set::raw_hash_set>> {
 
 }  // namespace hashtable_debug_internal
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_SET_H_

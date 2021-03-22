@@ -25,7 +25,7 @@ static const uintptr_t kUnknownFrameSize = 0;
 // Returns the address of the VDSO __kernel_rt_sigreturn function, if present.
 static const unsigned char* GetKernelRtSigreturnAddress() {
   constexpr uintptr_t kImpossibleAddress = 1;
-  ABSL_CONST_INIT static std::atomic<uintptr_t> memoized{kImpossibleAddress};
+  IRESEARCH_ABSL_CONST_INIT static std::atomic<uintptr_t> memoized{kImpossibleAddress};
   uintptr_t address = memoized.load(std::memory_order_relaxed);
   if (address != kImpossibleAddress) {
     return reinterpret_cast<const unsigned char*>(address);
@@ -190,7 +190,7 @@ bool StackTraceWorksForTest() {
   return true;
 }
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #endif  // ABSL_DEBUGGING_INTERNAL_STACKTRACE_AARCH64_INL_H_

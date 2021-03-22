@@ -53,6 +53,7 @@ target_compile_definitions(
 
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build
@@ -135,3 +136,24 @@ set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 ################################################################################
 
 add_subdirectory(absl)
+
+################################################################################
+### unicorn library
+################################################################################
+
+add_subdirectory(unicorn)
+
+################################################################################
+### velocypack library
+################################################################################
+if (NOT TARGET velocypack)
+  if ("${VPACK_ROOT}" STREQUAL "")
+    set(VPACK_ROOT "$ENV{VPACK_ROOT}")
+  endif()
+
+  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
+    add_subdirectory(${VPACK_ROOT}
+                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                    EXCLUDE_FROM_ALL)
+  endif()
+endif()

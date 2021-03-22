@@ -19,12 +19,12 @@
 //
 // This header file defines portable macros for performance optimization.
 
-#ifndef ABSL_BASE_OPTIMIZATION_H_
-#define ABSL_BASE_OPTIMIZATION_H_
+#ifndef IRESEARCH_ABSL_BASE_OPTIMIZATION_H_
+#define IRESEARCH_ABSL_BASE_OPTIMIZATION_H_
 
 #include "absl/base/config.h"
 
-// ABSL_BLOCK_TAIL_CALL_OPTIMIZATION
+// IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION
 //
 // Instructs the compiler to avoid optimizing tail-call recursion. Use of this
 // macro is useful when you wish to preserve the existing function order within
@@ -34,26 +34,26 @@
 //
 //   int f() {
 //     int result = g();
-//     ABSL_BLOCK_TAIL_CALL_OPTIMIZATION();
+//     IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION();
 //     return result;
 //   }
 #if defined(__pnacl__)
-#define ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() if (volatile int x = 0) { (void)x; }
+#define IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() if (volatile int x = 0) { (void)x; }
 #elif defined(__clang__)
 // Clang will not tail call given inline volatile assembly.
-#define ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __asm__ __volatile__("")
+#define IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __asm__ __volatile__("")
 #elif defined(__GNUC__)
 // GCC will not tail call given inline volatile assembly.
-#define ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __asm__ __volatile__("")
+#define IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __asm__ __volatile__("")
 #elif defined(_MSC_VER)
 #include <intrin.h>
 // The __nop() intrinsic blocks the optimisation.
-#define ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __nop()
+#define IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() __nop()
 #else
-#define ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() if (volatile int x = 0) { (void)x; }
+#define IRESEARCH_ABSL_BLOCK_TAIL_CALL_OPTIMIZATION() if (volatile int x = 0) { (void)x; }
 #endif
 
-// ABSL_CACHELINE_SIZE
+// IRESEARCH_ABSL_CACHELINE_SIZE
 //
 // Explicitly defines the size of the L1 cache for purposes of alignment.
 // Setting the cacheline size allows you to specify that certain objects be
@@ -71,32 +71,32 @@
 #if defined(__GNUC__)
 // Cache line alignment
 #if defined(__i386__) || defined(__x86_64__)
-#define ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
 #elif defined(__powerpc64__)
-#define ABSL_CACHELINE_SIZE 128
+#define IRESEARCH_ABSL_CACHELINE_SIZE 128
 #elif defined(__aarch64__)
 // We would need to read special register ctr_el0 to find out L1 dcache size.
 // This value is a good estimate based on a real aarch64 machine.
-#define ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
 #elif defined(__arm__)
 // Cache line sizes for ARM: These values are not strictly correct since
 // cache line sizes depend on implementations, not architectures.  There
 // are even implementations with cache line sizes configurable at boot
 // time.
 #if defined(__ARM_ARCH_5T__)
-#define ABSL_CACHELINE_SIZE 32
+#define IRESEARCH_ABSL_CACHELINE_SIZE 32
 #elif defined(__ARM_ARCH_7A__)
-#define ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
 #endif
 #endif
 
-#ifndef ABSL_CACHELINE_SIZE
+#ifndef IRESEARCH_ABSL_CACHELINE_SIZE
 // A reasonable default guess.  Note that overestimates tend to waste more
 // space, while underestimates tend to waste more time.
-#define ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
 #endif
 
-// ABSL_CACHELINE_ALIGNED
+// IRESEARCH_ABSL_CACHELINE_ALIGNED
 //
 // Indicates that the declared object be cache aligned using
 // `ABSL_CACHELINE_SIZE` (see above). Cacheline aligning objects allows you to
@@ -126,9 +126,9 @@
 // this attribute, so prefer to put it at the beginning of your declaration.
 // For example,
 //
-//   ABSL_CACHELINE_ALIGNED static Foo* foo = ...
+//   IRESEARCH_ABSL_CACHELINE_ALIGNED static Foo* foo = ...
 //
-//   class ABSL_CACHELINE_ALIGNED Bar { ...
+//   class IRESEARCH_ABSL_CACHELINE_ALIGNED Bar { ...
 //
 // Recommendations:
 //
@@ -138,23 +138,23 @@
 //    the generated machine code.
 // 3) Prefer applying this attribute to individual variables. Avoid
 //    applying it to types. This tends to localize the effect.
-#define ABSL_CACHELINE_ALIGNED __attribute__((aligned(ABSL_CACHELINE_SIZE)))
+#define IRESEARCH_ABSL_CACHELINE_ALIGNED __attribute__((aligned(IRESEARCH_ABSL_CACHELINE_SIZE)))
 #elif defined(_MSC_VER)
-#define ABSL_CACHELINE_SIZE 64
-#define ABSL_CACHELINE_ALIGNED __declspec(align(ABSL_CACHELINE_SIZE))
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_ALIGNED __declspec(align(IRESEARCH_ABSL_CACHELINE_SIZE))
 #else
-#define ABSL_CACHELINE_SIZE 64
-#define ABSL_CACHELINE_ALIGNED
+#define IRESEARCH_ABSL_CACHELINE_SIZE 64
+#define IRESEARCH_ABSL_CACHELINE_ALIGNED
 #endif
 
-// ABSL_PREDICT_TRUE, ABSL_PREDICT_FALSE
+// IRESEARCH_ABSL_PREDICT_TRUE, IRESEARCH_ABSL_PREDICT_FALSE
 //
 // Enables the compiler to prioritize compilation using static analysis for
 // likely paths within a boolean branch.
 //
 // Example:
 //
-//   if (ABSL_PREDICT_TRUE(expression)) {
+//   if (IRESEARCH_ABSL_PREDICT_TRUE(expression)) {
 //     return result;                        // Faster if more likely
 //   } else {
 //     return 0;
@@ -169,16 +169,16 @@
 // branch in a codebase is likely counterproductive; however, annotating
 // specific branches that are both hot and consistently mispredicted is likely
 // to yield performance improvements.
-#if ABSL_HAVE_BUILTIN(__builtin_expect) || \
+#if IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_expect) || \
     (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_PREDICT_FALSE(x) (__builtin_expect(false || (x), false))
-#define ABSL_PREDICT_TRUE(x) (__builtin_expect(false || (x), true))
+#define IRESEARCH_ABSL_PREDICT_FALSE(x) (__builtin_expect(false || (x), false))
+#define IRESEARCH_ABSL_PREDICT_TRUE(x) (__builtin_expect(false || (x), true))
 #else
-#define ABSL_PREDICT_FALSE(x) (x)
-#define ABSL_PREDICT_TRUE(x) (x)
+#define IRESEARCH_ABSL_PREDICT_FALSE(x) (x)
+#define IRESEARCH_ABSL_PREDICT_TRUE(x) (x)
 #endif
 
-// ABSL_INTERNAL_ASSUME(cond)
+// IRESEARCH_ABSL_INTERNAL_ASSUME(cond)
 // Informs the compiler than a condition is always true and that it can assume
 // it to be true for optimization purposes. The call has undefined behavior if
 // the condition is false.
@@ -189,30 +189,30 @@
 // Example:
 //
 //   int x = ...;
-//   ABSL_INTERNAL_ASSUME(x >= 0);
+//   IRESEARCH_ABSL_INTERNAL_ASSUME(x >= 0);
 //   // The compiler can optimize the division to a simple right shift using the
 //   // assumption specified above.
 //   int y = x / 16;
 //
 #if !defined(NDEBUG)
-#define ABSL_INTERNAL_ASSUME(cond) assert(cond)
-#elif ABSL_HAVE_BUILTIN(__builtin_assume)
-#define ABSL_INTERNAL_ASSUME(cond) __builtin_assume(cond)
-#elif defined(__GNUC__) || ABSL_HAVE_BUILTIN(__builtin_unreachable)
-#define ABSL_INTERNAL_ASSUME(cond)        \
+#define IRESEARCH_ABSL_INTERNAL_ASSUME(cond) assert(cond)
+#elif IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_assume)
+#define IRESEARCH_ABSL_INTERNAL_ASSUME(cond) __builtin_assume(cond)
+#elif defined(__GNUC__) || IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_unreachable)
+#define IRESEARCH_ABSL_INTERNAL_ASSUME(cond)        \
   do {                                    \
     if (!(cond)) __builtin_unreachable(); \
   } while (0)
 #elif defined(_MSC_VER)
-#define ABSL_INTERNAL_ASSUME(cond) __assume(cond)
+#define IRESEARCH_ABSL_INTERNAL_ASSUME(cond) __assume(cond)
 #else
-#define ABSL_INTERNAL_ASSUME(cond)      \
+#define IRESEARCH_ABSL_INTERNAL_ASSUME(cond)      \
   do {                                  \
     static_cast<void>(false && (cond)); \
   } while (0)
 #endif
 
-// ABSL_INTERNAL_UNIQUE_SMALL_NAME(cond)
+// IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME(cond)
 // This macro forces small unique name on a static file level symbols like
 // static local variables or static functions. This is intended to be used in
 // macro definitions to optimize the cost of generated code. Do NOT use it on
@@ -223,19 +223,19 @@
 //
 // #define MY_MACRO(txt)
 // namespace {
-//  char VeryVeryLongVarName[] ABSL_INTERNAL_UNIQUE_SMALL_NAME() = txt;
-//  const char* VeryVeryLongFuncName() ABSL_INTERNAL_UNIQUE_SMALL_NAME();
+//  char VeryVeryLongVarName[] IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME() = txt;
+//  const char* VeryVeryLongFuncName() IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME();
 //  const char* VeryVeryLongFuncName() { return txt; }
 // }
 //
 
 #if defined(__GNUC__)
-#define ABSL_INTERNAL_UNIQUE_SMALL_NAME2(x) #x
-#define ABSL_INTERNAL_UNIQUE_SMALL_NAME1(x) ABSL_INTERNAL_UNIQUE_SMALL_NAME2(x)
-#define ABSL_INTERNAL_UNIQUE_SMALL_NAME() \
-  asm(ABSL_INTERNAL_UNIQUE_SMALL_NAME1(.absl.__COUNTER__))
+#define IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME2(x) #x
+#define IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME1(x) IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME2(x)
+#define IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME() \
+  asm(IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME1(.absl.__COUNTER__))
 #else
-#define ABSL_INTERNAL_UNIQUE_SMALL_NAME()
+#define IRESEARCH_ABSL_INTERNAL_UNIQUE_SMALL_NAME()
 #endif
 
-#endif  // ABSL_BASE_OPTIMIZATION_H_
+#endif  // IRESEARCH_ABSL_BASE_OPTIMIZATION_H_

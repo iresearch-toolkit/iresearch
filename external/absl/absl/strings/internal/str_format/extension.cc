@@ -19,8 +19,8 @@
 #include <algorithm>
 #include <string>
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 
 std::string Flags::ToString() const {
@@ -33,17 +33,17 @@ std::string Flags::ToString() const {
   return s;
 }
 
-#define ABSL_INTERNAL_X_VAL(id) \
-  constexpr absl::FormatConversionChar FormatConversionCharInternal::id;
-ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_X_VAL, )
-#undef ABSL_INTERNAL_X_VAL
+#define IRESEARCH_ABSL_INTERNAL_X_VAL(id) \
+  constexpr iresearch_absl::FormatConversionChar FormatConversionCharInternal::id;
+ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_X_VAL, )
+#undef IRESEARCH_ABSL_INTERNAL_X_VAL
 // NOLINTNEXTLINE(readability-redundant-declaration)
-constexpr absl::FormatConversionChar FormatConversionCharInternal::kNone;
+constexpr iresearch_absl::FormatConversionChar FormatConversionCharInternal::kNone;
 
-#define ABSL_INTERNAL_CHAR_SET_CASE(c) \
+#define IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE(c) \
   constexpr FormatConversionCharSet FormatConversionCharSetInternal::c;
-ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(ABSL_INTERNAL_CHAR_SET_CASE, )
-#undef ABSL_INTERNAL_CHAR_SET_CASE
+ABSL_INTERNAL_CONVERSION_CHARS_EXPAND_(IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE, )
+#undef IRESEARCH_ABSL_INTERNAL_CHAR_SET_CASE
 
 // NOLINTNEXTLINE(readability-redundant-declaration)
 constexpr FormatConversionCharSet FormatConversionCharSetInternal::kStar;
@@ -71,5 +71,5 @@ bool FormatSinkImpl::PutPaddedString(string_view value, int width,
 }
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

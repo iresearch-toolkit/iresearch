@@ -31,8 +31,8 @@
 #include "absl/base/internal/raw_logging.h"
 #include "absl/time/time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 void SetMutexDeadlockDetectionMode(OnDeadlockCycle) {}
 void EnableMutexInvariantDebugging(bool) {}
@@ -42,16 +42,16 @@ namespace synchronization_internal {
 namespace {
 
 // Return the current time plus the timeout.
-absl::Time DeadlineFromTimeout(absl::Duration timeout) {
-  return absl::Now() + timeout;
+absl::Time DeadlineFromTimeout(iresearch_absl::Duration timeout) {
+  return iresearch_absl::Now() + timeout;
 }
 
 // Limit the deadline to a positive, 32-bit time_t value to accommodate
 // implementation restrictions.  This also deals with InfinitePast and
 // InfiniteFuture.
-absl::Time LimitedDeadline(absl::Time deadline) {
-  deadline = std::max(absl::FromTimeT(0), deadline);
-  deadline = std::min(deadline, absl::FromTimeT(0x7fffffff));
+absl::Time LimitedDeadline(iresearch_absl::Time deadline) {
+  deadline = std::max(iresearch_absl::FromTimeT(0), deadline);
+  deadline = std::min(deadline, iresearch_absl::FromTimeT(0x7fffffff));
   return deadline;
 }
 
@@ -97,10 +97,10 @@ void CondVarImpl::Wait(MutexImpl* mu) {
   std_cv_.wait(mu->std_mutex_);
 }
 
-bool CondVarImpl::WaitWithDeadline(MutexImpl* mu, absl::Time deadline) {
+bool CondVarImpl::WaitWithDeadline(MutexImpl* mu, iresearch_absl::Time deadline) {
   mu->released_.SignalAll();
   time_t when = ToTimeT(deadline);
-  int64_t nanos = ToInt64Nanoseconds(deadline - absl::FromTimeT(when));
+  int64_t nanos = ToInt64Nanoseconds(deadline - iresearch_absl::FromTimeT(when));
   std::chrono::system_clock::time_point deadline_tp =
       std::chrono::system_clock::from_time_t(when) +
       std::chrono::duration_cast<std::chrono::system_clock::duration>(
@@ -115,19 +115,19 @@ bool CondVarImpl::WaitWithDeadline(MutexImpl* mu, absl::Time deadline) {
 #else  // ! _WIN32
 
 MutexImpl::MutexImpl() {
-  ABSL_RAW_CHECK(pthread_mutex_init(&pthread_mutex_, nullptr) == 0,
+  IRESEARCH_ABSL_RAW_CHECK(pthread_mutex_init(&pthread_mutex_, nullptr) == 0,
                  "pthread error");
 }
 
 MutexImpl::~MutexImpl() {
   if (locked_) {
-    ABSL_RAW_CHECK(pthread_mutex_unlock(&pthread_mutex_) == 0, "pthread error");
+    IRESEARCH_ABSL_RAW_CHECK(pthread_mutex_unlock(&pthread_mutex_) == 0, "pthread error");
   }
-  ABSL_RAW_CHECK(pthread_mutex_destroy(&pthread_mutex_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_mutex_destroy(&pthread_mutex_) == 0, "pthread error");
 }
 
 void MutexImpl::Lock() {
-  ABSL_RAW_CHECK(pthread_mutex_lock(&pthread_mutex_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_mutex_lock(&pthread_mutex_) == 0, "pthread error");
   locked_ = true;
 }
 
@@ -140,38 +140,38 @@ bool MutexImpl::TryLock() {
 void MutexImpl::Unlock() {
   locked_ = false;
   released_.SignalAll();
-  ABSL_RAW_CHECK(pthread_mutex_unlock(&pthread_mutex_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_mutex_unlock(&pthread_mutex_) == 0, "pthread error");
 }
 
 CondVarImpl::CondVarImpl() {
-  ABSL_RAW_CHECK(pthread_cond_init(&pthread_cv_, nullptr) == 0,
+  IRESEARCH_ABSL_RAW_CHECK(pthread_cond_init(&pthread_cv_, nullptr) == 0,
                  "pthread error");
 }
 
 CondVarImpl::~CondVarImpl() {
-  ABSL_RAW_CHECK(pthread_cond_destroy(&pthread_cv_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_cond_destroy(&pthread_cv_) == 0, "pthread error");
 }
 
 void CondVarImpl::Signal() {
-  ABSL_RAW_CHECK(pthread_cond_signal(&pthread_cv_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_cond_signal(&pthread_cv_) == 0, "pthread error");
 }
 
 void CondVarImpl::SignalAll() {
-  ABSL_RAW_CHECK(pthread_cond_broadcast(&pthread_cv_) == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(pthread_cond_broadcast(&pthread_cv_) == 0, "pthread error");
 }
 
 void CondVarImpl::Wait(MutexImpl* mu) {
   mu->released_.SignalAll();
-  ABSL_RAW_CHECK(pthread_cond_wait(&pthread_cv_, &mu->pthread_mutex_) == 0,
+  IRESEARCH_ABSL_RAW_CHECK(pthread_cond_wait(&pthread_cv_, &mu->pthread_mutex_) == 0,
                  "pthread error");
 }
 
-bool CondVarImpl::WaitWithDeadline(MutexImpl* mu, absl::Time deadline) {
+bool CondVarImpl::WaitWithDeadline(MutexImpl* mu, iresearch_absl::Time deadline) {
   mu->released_.SignalAll();
   struct timespec ts = ToTimespec(deadline);
   int rc = pthread_cond_timedwait(&pthread_cv_, &mu->pthread_mutex_, &ts);
   if (rc == ETIMEDOUT) return true;
-  ABSL_RAW_CHECK(rc == 0, "pthread error");
+  IRESEARCH_ABSL_RAW_CHECK(rc == 0, "pthread error");
   return false;
 }
 
@@ -185,7 +185,7 @@ void MutexImpl::Await(const Condition& cond) {
   } while (!cond.Eval());
 }
 
-bool MutexImpl::AwaitWithDeadline(const Condition& cond, absl::Time deadline) {
+bool MutexImpl::AwaitWithDeadline(const Condition& cond, iresearch_absl::Time deadline) {
   if (cond.Eval()) return true;
   released_.SignalAll();
   while (true) {
@@ -217,22 +217,22 @@ void Mutex::LockWhen(const Condition& cond) {
   Await(cond);
 }
 
-bool Mutex::AwaitWithDeadline(const Condition& cond, absl::Time deadline) {
+bool Mutex::AwaitWithDeadline(const Condition& cond, iresearch_absl::Time deadline) {
   return impl()->AwaitWithDeadline(
       cond, synchronization_internal::LimitedDeadline(deadline));
 }
 
-bool Mutex::AwaitWithTimeout(const Condition& cond, absl::Duration timeout) {
+bool Mutex::AwaitWithTimeout(const Condition& cond, iresearch_absl::Duration timeout) {
   return AwaitWithDeadline(
       cond, synchronization_internal::DeadlineFromTimeout(timeout));
 }
 
-bool Mutex::LockWhenWithDeadline(const Condition& cond, absl::Time deadline) {
+bool Mutex::LockWhenWithDeadline(const Condition& cond, iresearch_absl::Time deadline) {
   Lock();
   return AwaitWithDeadline(cond, deadline);
 }
 
-bool Mutex::LockWhenWithTimeout(const Condition& cond, absl::Duration timeout) {
+bool Mutex::LockWhenWithTimeout(const Condition& cond, iresearch_absl::Duration timeout) {
   return LockWhenWithDeadline(
       cond, synchronization_internal::DeadlineFromTimeout(timeout));
 }
@@ -243,11 +243,11 @@ void Mutex::ReaderLockWhen(const Condition& cond) {
 }
 
 bool Mutex::ReaderLockWhenWithTimeout(const Condition& cond,
-                                      absl::Duration timeout) {
+                                      iresearch_absl::Duration timeout) {
   return LockWhenWithTimeout(cond, timeout);
 }
 bool Mutex::ReaderLockWhenWithDeadline(const Condition& cond,
-                                       absl::Time deadline) {
+                                       iresearch_absl::Time deadline) {
   return LockWhenWithDeadline(cond, deadline);
 }
 
@@ -268,18 +268,18 @@ void CondVar::SignalAll() { impl()->SignalAll(); }
 
 void CondVar::Wait(Mutex* mu) { return impl()->Wait(mu->impl()); }
 
-bool CondVar::WaitWithDeadline(Mutex* mu, absl::Time deadline) {
+bool CondVar::WaitWithDeadline(Mutex* mu, iresearch_absl::Time deadline) {
   return impl()->WaitWithDeadline(
       mu->impl(), synchronization_internal::LimitedDeadline(deadline));
 }
 
-bool CondVar::WaitWithTimeout(Mutex* mu, absl::Duration timeout) {
-  return WaitWithDeadline(mu, absl::Now() + timeout);
+bool CondVar::WaitWithTimeout(Mutex* mu, iresearch_absl::Duration timeout) {
+  return WaitWithDeadline(mu, iresearch_absl::Now() + timeout);
 }
 
 void CondVar::EnableDebugLog(const char*) {}
 
-#ifdef ABSL_HAVE_THREAD_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_THREAD_SANITIZER
 extern "C" void __tsan_read1(void *addr);
 #else
 #define __tsan_read1(addr)  // do nothing if TSan not enabled
@@ -321,5 +321,5 @@ bool Condition::Eval() const {
 
 void RegisterSymbolizer(bool (*)(const void*, char*, int)) {}
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

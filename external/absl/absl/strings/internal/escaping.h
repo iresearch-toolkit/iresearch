@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_STRINGS_INTERNAL_ESCAPING_H_
-#define ABSL_STRINGS_INTERNAL_ESCAPING_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_ESCAPING_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_ESCAPING_H_
 
 #include <cassert>
 
 #include "absl/strings/internal/resize_uninitialized.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
-ABSL_CONST_INIT extern const char kBase64Chars[];
+IRESEARCH_ABSL_CONST_INIT extern const char kBase64Chars[];
 
 // Calculates how long a string will be when it is base64 encoded given its
 // length and whether or not the result should be padded.
@@ -52,7 +52,7 @@ void Base64EscapeInternal(const unsigned char* src, size_t szsrc, String* dest,
 }
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_ESCAPING_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_ESCAPING_H_

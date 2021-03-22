@@ -157,8 +157,8 @@
 // creates a `Layout` object, which exposes the same functionality by inheriting
 // from `LayoutImpl<>`.
 
-#ifndef ABSL_CONTAINER_INTERNAL_LAYOUT_H_
-#define ABSL_CONTAINER_INTERNAL_LAYOUT_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_LAYOUT_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_LAYOUT_H_
 
 #include <assert.h>
 #include <stddef.h>
@@ -177,20 +177,20 @@
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
 
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
 #include <sanitizer/asan_interface.h>
 #endif
 
 #if defined(__GXX_RTTI)
-#define ABSL_INTERNAL_HAS_CXA_DEMANGLE
+#define IRESEARCH_ABSL_INTERNAL_HAS_CXA_DEMANGLE
 #endif
 
-#ifdef ABSL_INTERNAL_HAS_CXA_DEMANGLE
+#ifdef IRESEARCH_ABSL_INTERNAL_HAS_CXA_DEMANGLE
 #include <cxxabi.h>
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 // A type wrapper that instructs `Layout` to use the specific alignment for the
@@ -250,13 +250,13 @@ struct AlignOf<Aligned<T, N>> {
 
 // Does `Ts...` contain `T`?
 template <class T, class... Ts>
-using Contains = absl::disjunction<std::is_same<T, Ts>...>;
+using Contains = iresearch_absl::disjunction<std::is_same<T, Ts>...>;
 
 template <class From, class To>
 using CopyConst =
     typename std::conditional<std::is_const<From>::value, const To, To>::type;
 
-// Note: We're not qualifying this with absl:: because it doesn't compile under
+// Note: We're not qualifying this with iresearch_absl:: because it doesn't compile under
 // MSVC.
 template <class T>
 using SliceType = Span<T>;
@@ -296,15 +296,15 @@ std::string TypeName() {
   std::string out;
   int status = 0;
   char* demangled = nullptr;
-#ifdef ABSL_INTERNAL_HAS_CXA_DEMANGLE
+#ifdef IRESEARCH_ABSL_INTERNAL_HAS_CXA_DEMANGLE
   demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
 #endif
   if (status == 0 && demangled != nullptr) {  // Demangling succeeded.
-    absl::StrAppend(&out, "<", demangled, ">");
+    iresearch_absl::StrAppend(&out, "<", demangled, ">");
     free(demangled);
   } else {
 #if defined(__GXX_RTTI) || defined(_CPPRTTI)
-    absl::StrAppend(&out, "<", typeid(T).name(), ">");
+    iresearch_absl::StrAppend(&out, "<", typeid(T).name(), ">");
 #endif
   }
   return out;
@@ -338,11 +338,11 @@ class LayoutImpl;
 // `Min(sizeof...(Elements), NumSizes + 1)` (the number of arrays for which we
 // can compute offsets).
 template <class... Elements, size_t... SizeSeq, size_t... OffsetSeq>
-class LayoutImpl<std::tuple<Elements...>, absl::index_sequence<SizeSeq...>,
-                 absl::index_sequence<OffsetSeq...>> {
+class LayoutImpl<std::tuple<Elements...>, iresearch_absl::index_sequence<SizeSeq...>,
+                 iresearch_absl::index_sequence<OffsetSeq...>> {
  private:
   static_assert(sizeof...(Elements) > 0, "At least one field is required");
-  static_assert(absl::conjunction<IsLegalElementType<Elements>...>::value,
+  static_assert(iresearch_absl::conjunction<IsLegalElementType<Elements>...>::value,
                 "Invalid element type (see IsLegalElementType)");
 
   enum {
@@ -616,7 +616,7 @@ class LayoutImpl<std::tuple<Elements...>, absl::index_sequence<SizeSeq...>,
   void PoisonPadding(const Char* p) const {
     static_assert(N < NumOffsets, "Index out of bounds");
     (void)p;
-#ifdef ABSL_HAVE_ADDRESS_SANITIZER
+#ifdef IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER
     PoisonPadding<Char, N - 1>(p);
     // The `if` is an optimization. It doesn't affect the observable behaviour.
     if (ElementAlignment<N - 1>::value % ElementAlignment<N>::value) {
@@ -648,16 +648,16 @@ class LayoutImpl<std::tuple<Elements...>, absl::index_sequence<SizeSeq...>,
     const size_t sizes[] = {SizeOf<ElementType<OffsetSeq>>()...};
     const std::string types[] = {
         adl_barrier::TypeName<ElementType<OffsetSeq>>()...};
-    std::string res = absl::StrCat("@0", types[0], "(", sizes[0], ")");
+    std::string res = iresearch_absl::StrCat("@0", types[0], "(", sizes[0], ")");
     for (size_t i = 0; i != NumOffsets - 1; ++i) {
-      absl::StrAppend(&res, "[", size_[i], "]; @", offsets[i + 1], types[i + 1],
+      iresearch_absl::StrAppend(&res, "[", size_[i], "]; @", offsets[i + 1], types[i + 1],
                       "(", sizes[i + 1], ")");
     }
     // NumSizes is a constant that may be zero. Some compilers cannot see that
     // inside the if statement "size_[NumSizes - 1]" must be valid.
     int last = static_cast<int>(NumSizes) - 1;
     if (NumTypes == NumSizes && last >= 0) {
-      absl::StrAppend(&res, "[", size_[last], "]");
+      iresearch_absl::StrAppend(&res, "[", size_[last], "]");
     }
     return res;
   }
@@ -669,8 +669,8 @@ class LayoutImpl<std::tuple<Elements...>, absl::index_sequence<SizeSeq...>,
 
 template <size_t NumSizes, class... Ts>
 using LayoutType = LayoutImpl<
-    std::tuple<Ts...>, absl::make_index_sequence<NumSizes>,
-    absl::make_index_sequence<adl_barrier::Min(sizeof...(Ts), NumSizes + 1)>>;
+    std::tuple<Ts...>, iresearch_absl::make_index_sequence<NumSizes>,
+    iresearch_absl::make_index_sequence<adl_barrier::Min(sizeof...(Ts), NumSizes + 1)>>;
 
 }  // namespace internal_layout
 
@@ -685,7 +685,7 @@ class Layout : public internal_layout::LayoutType<sizeof...(Ts), Ts...> {
  public:
   static_assert(sizeof...(Ts) > 0, "At least one field is required");
   static_assert(
-      absl::conjunction<internal_layout::IsLegalElementType<Ts>...>::value,
+      iresearch_absl::conjunction<internal_layout::IsLegalElementType<Ts>...>::value,
       "Invalid element type (see IsLegalElementType)");
 
   // The result type of `Partial()` with `NumSizes` arguments.
@@ -721,7 +721,7 @@ class Layout : public internal_layout::LayoutType<sizeof...(Ts), Ts...> {
   template <class... Sizes>
   static constexpr PartialType<sizeof...(Sizes)> Partial(Sizes&&... sizes) {
     static_assert(sizeof...(Sizes) <= sizeof...(Ts), "");
-    return PartialType<sizeof...(Sizes)>(absl::forward<Sizes>(sizes)...);
+    return PartialType<sizeof...(Sizes)>(iresearch_absl::forward<Sizes>(sizes)...);
   }
 
   // Creates a layout with the sizes of all arrays specified. If you know
@@ -737,7 +737,7 @@ class Layout : public internal_layout::LayoutType<sizeof...(Ts), Ts...> {
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_LAYOUT_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_LAYOUT_H_

@@ -57,8 +57,8 @@
 #include "absl/base/internal/unscaledcycleclock.h"
 #include "absl/base/thread_annotations.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 static int GetNumCPUs() {
@@ -141,7 +141,7 @@ static bool ReadLongFromFile(const char *file, long *value) {
   return ret;
 }
 
-#if defined(ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY)
+#if defined(IRESEARCH_ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY)
 
 // Reads a monotonic time source and returns a value in
 // nanoseconds. The returned value uses an arbitrary epoch, not the
@@ -226,7 +226,7 @@ static double MeasureTscFrequency() {
   return last_measurement;
 }
 
-#endif  // ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY
+#endif  // IRESEARCH_ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY
 
 static double GetNominalCPUFrequency() {
   long freq = 0;
@@ -243,7 +243,7 @@ static double GetNominalCPUFrequency() {
     return freq * 1e3;  // Value is kHz.
   }
 
-#if defined(ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY)
+#if defined(IRESEARCH_ABSL_INTERNAL_UNSCALED_CYCLECLOCK_FREQUENCY_IS_CPU_FREQUENCY)
   // On these platforms, the TSC frequency is the nominal CPU
   // frequency.  But without having the kernel export it directly
   // though /sys/devices/system/cpu/cpu0/tsc_freq_khz, there is no
@@ -271,8 +271,8 @@ static double GetNominalCPUFrequency() {
 
 #endif
 
-ABSL_CONST_INIT static once_flag init_num_cpus_once;
-ABSL_CONST_INIT static int num_cpus = 0;
+IRESEARCH_ABSL_CONST_INIT static once_flag init_num_cpus_once;
+IRESEARCH_ABSL_CONST_INIT static int num_cpus = 0;
 
 // NumCPUs() may be called before main() and before malloc is properly
 // initialized, therefore this must not allocate memory.
@@ -283,8 +283,8 @@ int NumCPUs() {
 }
 
 // A default frequency of 0.0 might be dangerous if it is used in division.
-ABSL_CONST_INIT static once_flag init_nominal_cpu_frequency_once;
-ABSL_CONST_INIT static double nominal_cpu_frequency = 1.0;
+IRESEARCH_ABSL_CONST_INIT static once_flag init_nominal_cpu_frequency_once;
+IRESEARCH_ABSL_CONST_INIT static double nominal_cpu_frequency = 1.0;
 
 // NominalCPUFrequency() may be called before main() and before malloc is
 // properly initialized, therefore this must not allocate memory.
@@ -346,16 +346,16 @@ pid_t GetTID() {
 #else
 
 // Fallback implementation of GetTID using pthread_getspecific.
-ABSL_CONST_INIT static once_flag tid_once;
-ABSL_CONST_INIT static pthread_key_t tid_key;
-ABSL_CONST_INIT static absl::base_internal::SpinLock tid_lock(
-    absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
+IRESEARCH_ABSL_CONST_INIT static once_flag tid_once;
+IRESEARCH_ABSL_CONST_INIT static pthread_key_t tid_key;
+IRESEARCH_ABSL_CONST_INIT static iresearch_absl::base_internal::SpinLock tid_lock(
+    iresearch_absl::kConstInit, base_internal::SCHEDULE_KERNEL_ONLY);
 
 // We set a bit per thread in this array to indicate that an ID is in
 // use. ID 0 is unused because it is the default value returned by
 // pthread_getspecific().
-ABSL_CONST_INIT static std::vector<uint32_t> *tid_array
-    ABSL_GUARDED_BY(tid_lock) = nullptr;
+IRESEARCH_ABSL_CONST_INIT static std::vector<uint32_t> *tid_array
+    IRESEARCH_ABSL_GUARDED_BY(tid_lock) = nullptr;
 static constexpr int kBitsPerWord = 32;  // tid_array is uint32_t.
 
 // Returns the TID to tid_array.
@@ -363,7 +363,7 @@ static void FreeTID(void *v) {
   intptr_t tid = reinterpret_cast<intptr_t>(v);
   int word = tid / kBitsPerWord;
   uint32_t mask = ~(1u << (tid % kBitsPerWord));
-  absl::base_internal::SpinLockHolder lock(&tid_lock);
+  iresearch_absl::base_internal::SpinLockHolder lock(&tid_lock);
   assert(0 <= word && static_cast<size_t>(word) < tid_array->size());
   (*tid_array)[word] &= mask;
 }
@@ -376,14 +376,14 @@ static void InitGetTID() {
   }
 
   // Initialize tid_array.
-  absl::base_internal::SpinLockHolder lock(&tid_lock);
+  iresearch_absl::base_internal::SpinLockHolder lock(&tid_lock);
   tid_array = new std::vector<uint32_t>(1);
   (*tid_array)[0] = 1;  // ID 0 is never-allocated.
 }
 
 // Return a per-thread small integer ID from pthread's thread-specific data.
 pid_t GetTID() {
-  absl::call_once(tid_once, InitGetTID);
+  iresearch_absl::call_once(tid_once, InitGetTID);
 
   intptr_t tid = reinterpret_cast<intptr_t>(pthread_getspecific(tid_key));
   if (tid != 0) {
@@ -394,7 +394,7 @@ pid_t GetTID() {
   size_t word;
   {
     // Search for the first unused ID.
-    absl::base_internal::SpinLockHolder lock(&tid_lock);
+    iresearch_absl::base_internal::SpinLockHolder lock(&tid_lock);
     // First search for a word in the array that is not all ones.
     word = 0;
     while (word < tid_array->size() && ~(*tid_array)[word] == 0) {
@@ -426,14 +426,14 @@ pid_t GetTID() {
 // userspace construct) to avoid unnecessary system calls. Without this caching,
 // it can take roughly 98ns, while it takes roughly 1ns with this caching.
 pid_t GetCachedTID() {
-#if ABSL_HAVE_THREAD_LOCAL
+#if IRESEARCH_ABSL_HAVE_THREAD_LOCAL
   static thread_local pid_t thread_id = GetTID();
   return thread_id;
 #else
   return GetTID();
-#endif  // ABSL_HAVE_THREAD_LOCAL
+#endif  // IRESEARCH_ABSL_HAVE_THREAD_LOCAL
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

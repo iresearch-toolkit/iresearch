@@ -14,7 +14,7 @@
 
 // This file is a no-op if the required LowLevelAlloc support is missing.
 #include "absl/base/internal/low_level_alloc.h"
-#ifndef ABSL_LOW_LEVEL_ALLOC_MISSING
+#ifndef IRESEARCH_ABSL_LOW_LEVEL_ALLOC_MISSING
 
 #include "absl/synchronization/internal/per_thread_sem.h"
 
@@ -24,8 +24,8 @@
 #include "absl/base/internal/thread_identity.h"
 #include "absl/synchronization/internal/waiter.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace synchronization_internal {
 
 void PerThreadSem::SetThreadBlockedCounter(std::atomic<int> *counter) {
@@ -63,21 +63,21 @@ void PerThreadSem::Tick(base_internal::ThreadIdentity *identity) {
 }
 
 }  // namespace synchronization_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 extern "C" {
 
 ABSL_ATTRIBUTE_WEAK void AbslInternalPerThreadSemPost(
-    absl::base_internal::ThreadIdentity *identity) {
-  absl::synchronization_internal::Waiter::GetWaiter(identity)->Post();
+    iresearch_absl::base_internal::ThreadIdentity *identity) {
+  iresearch_absl::synchronization_internal::Waiter::GetWaiter(identity)->Post();
 }
 
 ABSL_ATTRIBUTE_WEAK bool AbslInternalPerThreadSemWait(
-    absl::synchronization_internal::KernelTimeout t) {
+    iresearch_absl::synchronization_internal::KernelTimeout t) {
   bool timeout = false;
-  absl::base_internal::ThreadIdentity *identity;
-  identity = absl::synchronization_internal::GetOrCreateCurrentThreadIdentity();
+  iresearch_absl::base_internal::ThreadIdentity *identity;
+  identity = iresearch_absl::synchronization_internal::GetOrCreateCurrentThreadIdentity();
 
   // Ensure wait_start != 0.
   int ticker = identity->ticker.load(std::memory_order_relaxed);
@@ -90,7 +90,7 @@ ABSL_ATTRIBUTE_WEAK bool AbslInternalPerThreadSemWait(
   }
 
   timeout =
-      !absl::synchronization_internal::Waiter::GetWaiter(identity)->Wait(t);
+      !iresearch_absl::synchronization_internal::Waiter::GetWaiter(identity)->Wait(t);
 
   if (identity->blocked_count_ptr != nullptr) {
     identity->blocked_count_ptr->fetch_sub(1, std::memory_order_relaxed);
@@ -103,4 +103,4 @@ ABSL_ATTRIBUTE_WEAK bool AbslInternalPerThreadSemWait(
 
 }  // extern "C"
 
-#endif  // ABSL_LOW_LEVEL_ALLOC_MISSING
+#endif  // IRESEARCH_ABSL_LOW_LEVEL_ALLOC_MISSING

@@ -40,7 +40,7 @@ void analyzed_json_field_factory(
  
   class string_field : public templates::string_field {
    public:
-    string_field(const irs::string_ref& name, const irs::string_ref& value)
+    string_field(const std::string& name, const irs::string_ref& value)
       : templates::string_field(name, value) {
     }
 
@@ -59,7 +59,7 @@ void analyzed_json_field_factory(
 
     // not analyzed field
     doc.insert(std::make_shared<string_field>(
-      irs::string_ref(name),
+      name,
       data.str
     ));
   }

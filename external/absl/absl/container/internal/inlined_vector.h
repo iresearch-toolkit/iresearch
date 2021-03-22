@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_
-#define ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_
 
 #include <algorithm>
 #include <cstddef>
@@ -29,8 +29,8 @@
 #include "absl/meta/type_traits.h"
 #include "absl/types/span.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace inlined_vector_internal {
 
 template <typename Iterator>
@@ -40,17 +40,17 @@ using IsAtLeastForwardIterator = std::is_convertible<
 
 template <typename AllocatorType,
           typename ValueType =
-              typename absl::allocator_traits<AllocatorType>::value_type>
+              typename iresearch_absl::allocator_traits<AllocatorType>::value_type>
 using IsMemcpyOk =
-    absl::conjunction<std::is_same<AllocatorType, std::allocator<ValueType>>,
-                      absl::is_trivially_copy_constructible<ValueType>,
-                      absl::is_trivially_copy_assignable<ValueType>,
-                      absl::is_trivially_destructible<ValueType>>;
+    iresearch_absl::conjunction<std::is_same<AllocatorType, std::allocator<ValueType>>,
+                      iresearch_absl::is_trivially_copy_constructible<ValueType>,
+                      iresearch_absl::is_trivially_copy_assignable<ValueType>,
+                      iresearch_absl::is_trivially_destructible<ValueType>>;
 
 template <typename AllocatorType, typename Pointer, typename SizeType>
 void DestroyElements(AllocatorType* alloc_ptr, Pointer destroy_first,
                      SizeType destroy_size) {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
 
   if (destroy_first != nullptr) {
     for (auto i = destroy_size; i != 0;) {
@@ -80,12 +80,12 @@ template <typename AllocatorType, typename Pointer, typename ValueAdapter,
 void ConstructElements(AllocatorType* alloc_ptr, Pointer construct_first,
                        ValueAdapter* values_ptr, SizeType construct_size) {
   for (SizeType i = 0; i < construct_size; ++i) {
-    ABSL_INTERNAL_TRY {
+    IRESEARCH_ABSL_INTERNAL_TRY {
       values_ptr->ConstructNext(alloc_ptr, construct_first + i);
     }
-    ABSL_INTERNAL_CATCH_ANY {
+    IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
       inlined_vector_internal::DestroyElements(alloc_ptr, construct_first, i);
-      ABSL_INTERNAL_RETHROW;
+      IRESEARCH_ABSL_INTERNAL_RETHROW;
     }
   }
 }
@@ -100,7 +100,7 @@ void AssignElements(Pointer assign_first, ValueAdapter* values_ptr,
 
 template <typename AllocatorType>
 struct StorageView {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using Pointer = typename AllocatorTraits::pointer;
   using SizeType = typename AllocatorTraits::size_type;
 
@@ -111,7 +111,7 @@ struct StorageView {
 
 template <typename AllocatorType, typename Iterator>
 class IteratorValueAdapter {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using Pointer = typename AllocatorTraits::pointer;
 
  public:
@@ -133,7 +133,7 @@ class IteratorValueAdapter {
 
 template <typename AllocatorType>
 class CopyValueAdapter {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using ValueType = typename AllocatorTraits::value_type;
   using Pointer = typename AllocatorTraits::pointer;
   using ConstPointer = typename AllocatorTraits::const_pointer;
@@ -153,7 +153,7 @@ class CopyValueAdapter {
 
 template <typename AllocatorType>
 class DefaultValueAdapter {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using ValueType = typename AllocatorTraits::value_type;
   using Pointer = typename AllocatorTraits::pointer;
 
@@ -169,7 +169,7 @@ class DefaultValueAdapter {
 
 template <typename AllocatorType>
 class AllocationTransaction {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using Pointer = typename AllocatorTraits::pointer;
   using SizeType = typename AllocatorTraits::size_type;
 
@@ -209,7 +209,7 @@ class AllocationTransaction {
 
 template <typename AllocatorType>
 class ConstructionTransaction {
-  using AllocatorTraits = absl::allocator_traits<AllocatorType>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<AllocatorType>;
   using Pointer = typename AllocatorTraits::pointer;
   using SizeType = typename AllocatorTraits::size_type;
 
@@ -252,7 +252,7 @@ class ConstructionTransaction {
 template <typename T, size_t N, typename A>
 class Storage {
  public:
-  using AllocatorTraits = absl::allocator_traits<A>;
+  using AllocatorTraits = iresearch_absl::allocator_traits<A>;
   using allocator_type = typename AllocatorTraits::allocator_type;
   using value_type = typename AllocatorTraits::value_type;
   using pointer = typename AllocatorTraits::pointer;
@@ -503,9 +503,9 @@ auto Storage<T, N, A>::Assign(ValueAdapter values, size_type new_size) -> void {
 
   AllocationTransaction allocation_tx(GetAllocPtr());
 
-  absl::Span<value_type> assign_loop;
-  absl::Span<value_type> construct_loop;
-  absl::Span<value_type> destroy_loop;
+  iresearch_absl::Span<value_type> assign_loop;
+  iresearch_absl::Span<value_type> construct_loop;
+  iresearch_absl::Span<value_type> destroy_loop;
 
   if (new_size > storage_view.capacity) {
     size_type new_capacity = ComputeCapacity(storage_view.capacity, new_size);
@@ -549,9 +549,9 @@ auto Storage<T, N, A>::Resize(ValueAdapter values, size_type new_size) -> void {
   AllocationTransaction allocation_tx(GetAllocPtr());
   ConstructionTransaction construction_tx(GetAllocPtr());
 
-  absl::Span<value_type> construct_loop;
-  absl::Span<value_type> move_construct_loop;
-  absl::Span<value_type> destroy_loop;
+  iresearch_absl::Span<value_type> construct_loop;
+  iresearch_absl::Span<value_type> move_construct_loop;
+  iresearch_absl::Span<value_type> destroy_loop;
 
   if (new_size > storage_view.capacity) {
     size_type new_capacity = ComputeCapacity(storage_view.capacity, new_size);
@@ -636,19 +636,19 @@ auto Storage<T, N, A>::Insert(const_iterator pos, ValueAdapter values,
     IteratorValueAdapter<MoveIterator> move_construction_values(
         MoveIterator(storage_view.data +
                      (move_construction_destination_index - insert_count)));
-    absl::Span<value_type> move_construction = {
+    iresearch_absl::Span<value_type> move_construction = {
         storage_view.data + move_construction_destination_index,
         new_size - move_construction_destination_index};
 
     pointer move_assignment_values = storage_view.data + insert_index;
-    absl::Span<value_type> move_assignment = {
+    iresearch_absl::Span<value_type> move_assignment = {
         storage_view.data + insert_end_index,
         move_construction_destination_index - insert_end_index};
 
-    absl::Span<value_type> insert_assignment = {move_assignment_values,
+    iresearch_absl::Span<value_type> insert_assignment = {move_assignment_values,
                                                 move_construction.size()};
 
-    absl::Span<value_type> insert_construction = {
+    iresearch_absl::Span<value_type> insert_construction = {
         insert_assignment.data() + insert_assignment.size(),
         insert_count - insert_assignment.size()};
 
@@ -704,14 +704,14 @@ auto Storage<T, N, A>::EmplaceBack(Args&&... args) -> reference {
                              std::forward<Args>(args)...);
 
   if (allocation_tx.DidAllocate()) {
-    ABSL_INTERNAL_TRY {
+    IRESEARCH_ABSL_INTERNAL_TRY {
       inlined_vector_internal::ConstructElements(
           GetAllocPtr(), allocation_tx.GetData(), &move_values,
           storage_view.size);
     }
-    ABSL_INTERNAL_CATCH_ANY {
+    IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
       AllocatorTraits::destroy(*GetAllocPtr(), last_ptr);
-      ABSL_INTERNAL_RETHROW;
+      IRESEARCH_ABSL_INTERNAL_RETHROW;
     }
 
     inlined_vector_internal::DestroyElements(GetAllocPtr(), storage_view.data,
@@ -755,7 +755,7 @@ template <typename T, size_t N, typename A>
 auto Storage<T, N, A>::Reserve(size_type requested_capacity) -> void {
   StorageView storage_view = MakeStorageView();
 
-  if (ABSL_PREDICT_FALSE(requested_capacity <= storage_view.capacity)) return;
+  if (IRESEARCH_ABSL_PREDICT_FALSE(requested_capacity <= storage_view.capacity)) return;
 
   AllocationTransaction allocation_tx(GetAllocPtr());
 
@@ -785,7 +785,7 @@ auto Storage<T, N, A>::ShrinkToFit() -> void {
   StorageView storage_view{GetAllocatedData(), GetSize(),
                            GetAllocatedCapacity()};
 
-  if (ABSL_PREDICT_FALSE(storage_view.size == storage_view.capacity)) return;
+  if (IRESEARCH_ABSL_PREDICT_FALSE(storage_view.size == storage_view.capacity)) return;
 
   AllocationTransaction allocation_tx(GetAllocPtr());
 
@@ -800,13 +800,13 @@ auto Storage<T, N, A>::ShrinkToFit() -> void {
     construct_data = GetInlinedData();
   }
 
-  ABSL_INTERNAL_TRY {
+  IRESEARCH_ABSL_INTERNAL_TRY {
     inlined_vector_internal::ConstructElements(GetAllocPtr(), construct_data,
                                                &move_values, storage_view.size);
   }
-  ABSL_INTERNAL_CATCH_ANY {
+  IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
     SetAllocatedData(storage_view.data, storage_view.capacity);
-    ABSL_INTERNAL_RETHROW;
+    IRESEARCH_ABSL_INTERNAL_RETHROW;
   }
 
   inlined_vector_internal::DestroyElements(GetAllocPtr(), storage_view.data,
@@ -862,15 +862,15 @@ auto Storage<T, N, A>::Swap(Storage* other_storage_ptr) -> void {
     IteratorValueAdapter<MoveIterator> move_values(
         MoveIterator(inlined_ptr->GetInlinedData()));
 
-    ABSL_INTERNAL_TRY {
+    IRESEARCH_ABSL_INTERNAL_TRY {
       inlined_vector_internal::ConstructElements(
           inlined_ptr->GetAllocPtr(), allocated_ptr->GetInlinedData(),
           &move_values, inlined_ptr->GetSize());
     }
-    ABSL_INTERNAL_CATCH_ANY {
+    IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
       allocated_ptr->SetAllocatedData(allocated_storage_view.data,
                                       allocated_storage_view.capacity);
-      ABSL_INTERNAL_RETHROW;
+      IRESEARCH_ABSL_INTERNAL_RETHROW;
     }
 
     inlined_vector_internal::DestroyElements(inlined_ptr->GetAllocPtr(),
@@ -886,7 +886,7 @@ auto Storage<T, N, A>::Swap(Storage* other_storage_ptr) -> void {
 }
 
 }  // namespace inlined_vector_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_INLINED_VECTOR_INTERNAL_H_

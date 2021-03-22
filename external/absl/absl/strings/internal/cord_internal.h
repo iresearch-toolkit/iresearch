@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_
-#define ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_
 
 #include <atomic>
 #include <cassert>
@@ -26,8 +26,8 @@
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace cord_internal {
 
 // Wraps std::atomic for reference counting.
@@ -132,23 +132,23 @@ struct CordRepExternal : public CordRep {
 struct Rank1 {};
 struct Rank0 : Rank1 {};
 
-template <typename Releaser, typename = ::absl::base_internal::invoke_result_t<
-                                 Releaser, absl::string_view>>
-void InvokeReleaser(Rank0, Releaser&& releaser, absl::string_view data) {
-  ::absl::base_internal::invoke(std::forward<Releaser>(releaser), data);
+template <typename Releaser, typename = ::iresearch_absl::base_internal::invoke_result_t<
+                                 Releaser, iresearch_absl::string_view>>
+void InvokeReleaser(Rank0, Releaser&& releaser, iresearch_absl::string_view data) {
+  ::iresearch_absl::base_internal::invoke(std::forward<Releaser>(releaser), data);
 }
 
 template <typename Releaser,
-          typename = ::absl::base_internal::invoke_result_t<Releaser>>
-void InvokeReleaser(Rank1, Releaser&& releaser, absl::string_view) {
-  ::absl::base_internal::invoke(std::forward<Releaser>(releaser));
+          typename = ::iresearch_absl::base_internal::invoke_result_t<Releaser>>
+void InvokeReleaser(Rank1, Releaser&& releaser, iresearch_absl::string_view) {
+  ::iresearch_absl::base_internal::invoke(std::forward<Releaser>(releaser));
 }
 
 // We use CompressedTuple so that we can benefit from EBCO.
 template <typename Releaser>
 struct CordRepExternalImpl
     : public CordRepExternal,
-      public ::absl::container_internal::CompressedTuple<Releaser> {
+      public ::iresearch_absl::container_internal::CompressedTuple<Releaser> {
   // The extra int arg is so that we can avoid interfering with copy/move
   // constructors while still benefitting from perfect forwarding.
   template <typename T>
@@ -159,7 +159,7 @@ struct CordRepExternalImpl
 
   ~CordRepExternalImpl() {
     InvokeReleaser(Rank0{}, std::move(this->template get<0>()),
-                   absl::string_view(base, length));
+                   iresearch_absl::string_view(base, length));
   }
 
   static void Release(CordRepExternal* rep) {
@@ -168,6 +168,6 @@ struct CordRepExternalImpl
 };
 
 }  // namespace cord_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
-#endif  // ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_CORD_INTERNAL_H_

@@ -22,8 +22,8 @@
 // fix, so that (for example) non-const references may be passed to the invoked
 // function.
 
-#ifndef ABSL_BASE_CALL_ONCE_H_
-#define ABSL_BASE_CALL_ONCE_H_
+#ifndef IRESEARCH_ABSL_BASE_CALL_ONCE_H_
+#define IRESEARCH_ABSL_BASE_CALL_ONCE_H_
 
 #include <algorithm>
 #include <atomic>
@@ -40,13 +40,13 @@
 #include "absl/base/optimization.h"
 #include "absl/base/port.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class once_flag;
 
 namespace base_internal {
-std::atomic<uint32_t>* ControlWord(absl::once_flag* flag);
+std::atomic<uint32_t>* ControlWord(iresearch_absl::once_flag* flag);
 }  // namespace base_internal
 
 // call_once()
@@ -66,15 +66,15 @@ std::atomic<uint32_t>* ControlWord(absl::once_flag* flag);
 // class MyInitClass {
 //  public:
 //  ...
-//  mutable absl::once_flag once_;
+//  mutable iresearch_absl::once_flag once_;
 //
 //  MyInitClass* init() const {
-//    absl::call_once(once_, &MyInitClass::Init, this);
+//    iresearch_absl::call_once(once_, &MyInitClass::Init, this);
 //    return ptr_;
 //  }
 //
 template <typename Callable, typename... Args>
-void call_once(absl::once_flag& flag, Callable&& fn, Args&&... args);
+void call_once(iresearch_absl::once_flag& flag, Callable&& fn, Args&&... args);
 
 // once_flag
 //
@@ -103,7 +103,7 @@ namespace base_internal {
 // Like call_once, but uses KERNEL_ONLY scheduling. Intended to be used to
 // initialize entities used by the scheduler implementation.
 template <typename Callable, typename... Args>
-void LowLevelCallOnce(absl::once_flag* flag, Callable&& fn, Args&&... args);
+void LowLevelCallOnce(iresearch_absl::once_flag* flag, Callable&& fn, Args&&... args);
 
 // Disables scheduling while on stack when scheduling mode is non-cooperative.
 // No effect for cooperative scheduling modes.
@@ -154,7 +154,7 @@ void CallOnceImpl(std::atomic<uint32_t>* control,
         old_control != kOnceRunning &&
         old_control != kOnceWaiter &&
         old_control != kOnceDone) {
-      ABSL_RAW_LOG(FATAL, "Unexpected value for control word: 0x%lx",
+      IRESEARCH_ABSL_RAW_LOG(FATAL, "Unexpected value for control word: 0x%lx",
                    static_cast<unsigned long>(old_control));  // NOLINT
     }
   }
@@ -173,7 +173,7 @@ void CallOnceImpl(std::atomic<uint32_t>* control,
   uint32_t old_control = kOnceInit;
   if (control->compare_exchange_strong(old_control, kOnceRunning,
                                        std::memory_order_relaxed) ||
-      base_internal::SpinLockWait(control, ABSL_ARRAYSIZE(trans), trans,
+      base_internal::SpinLockWait(control, IRESEARCH_ABSL_ARRAYSIZE(trans), trans,
                                   scheduling_mode) == kOnceInit) {
     base_internal::invoke(std::forward<Callable>(fn),
                           std::forward<Args>(args)...);
@@ -197,10 +197,10 @@ inline std::atomic<uint32_t>* ControlWord(once_flag* flag) {
 }
 
 template <typename Callable, typename... Args>
-void LowLevelCallOnce(absl::once_flag* flag, Callable&& fn, Args&&... args) {
+void LowLevelCallOnce(iresearch_absl::once_flag* flag, Callable&& fn, Args&&... args) {
   std::atomic<uint32_t>* once = base_internal::ControlWord(flag);
   uint32_t s = once->load(std::memory_order_acquire);
-  if (ABSL_PREDICT_FALSE(s != base_internal::kOnceDone)) {
+  if (IRESEARCH_ABSL_PREDICT_FALSE(s != base_internal::kOnceDone)) {
     base_internal::CallOnceImpl(once, base_internal::SCHEDULE_KERNEL_ONLY,
                                 std::forward<Callable>(fn),
                                 std::forward<Args>(args)...);
@@ -210,17 +210,17 @@ void LowLevelCallOnce(absl::once_flag* flag, Callable&& fn, Args&&... args) {
 }  // namespace base_internal
 
 template <typename Callable, typename... Args>
-void call_once(absl::once_flag& flag, Callable&& fn, Args&&... args) {
+void call_once(iresearch_absl::once_flag& flag, Callable&& fn, Args&&... args) {
   std::atomic<uint32_t>* once = base_internal::ControlWord(&flag);
   uint32_t s = once->load(std::memory_order_acquire);
-  if (ABSL_PREDICT_FALSE(s != base_internal::kOnceDone)) {
+  if (IRESEARCH_ABSL_PREDICT_FALSE(s != base_internal::kOnceDone)) {
     base_internal::CallOnceImpl(
         once, base_internal::SCHEDULE_COOPERATIVE_AND_KERNEL,
         std::forward<Callable>(fn), std::forward<Args>(args)...);
   }
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_CALL_ONCE_H_
+#endif  // IRESEARCH_ABSL_BASE_CALL_ONCE_H_

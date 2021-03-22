@@ -16,11 +16,11 @@
 // portability macros and functions.
 // This file is used for both C and C++!
 
-#ifndef ABSL_BASE_PORT_H_
-#define ABSL_BASE_PORT_H_
+#ifndef IRESEARCH_ABSL_BASE_PORT_H_
+#define IRESEARCH_ABSL_BASE_PORT_H_
 
 #include "absl/base/attributes.h"
 #include "absl/base/config.h"
 #include "absl/base/optimization.h"
 
-#endif  // ABSL_BASE_PORT_H_
+#endif  // IRESEARCH_ABSL_BASE_PORT_H_

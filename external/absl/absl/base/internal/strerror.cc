@@ -24,8 +24,8 @@
 
 #include "absl/base/internal/errno_saver.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 namespace {
 
@@ -51,7 +51,7 @@ const char* StrErrorAdaptor(int errnum, char* buf, size_t buflen) {
 }
 
 std::string StrErrorInternal(int errnum) {
-  absl::base_internal::ErrnoSaver errno_saver;
+  iresearch_absl::base_internal::ErrnoSaver errno_saver;
   char buf[100];
   const char* str = StrErrorAdaptor(errnum, buf, sizeof buf);
   if (*str == '\0') {
@@ -84,5 +84,5 @@ std::string StrError(int errnum) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

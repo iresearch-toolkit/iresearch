@@ -21,14 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_MASKING_STREAM_H
-#define IRESEARCH_TOKEN_MASKING_STREAM_H
+#ifndef IRESEARCH_TOKEN_STOPWORDS_STREAM_H
+#define IRESEARCH_TOKEN_STOPWORDS_STREAM_H
 
 #include <absl/container/flat_hash_set.h>
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
+#include "utils/hash_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -37,16 +38,17 @@ namespace analysis {
 /// @brief an analyzer capable of masking the input, treated as a single token,
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class token_masking_stream final
+class token_stopwords_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  static constexpr string_ref type_name() noexcept { return "mask"; }
+  using stopwords_set  = absl::flat_hash_set<std::string>;
+
+  static constexpr string_ref type_name() noexcept { return "stopwords"; }
 
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(absl::flat_hash_set<bstring>&& mask);
+  explicit token_stopwords_stream(stopwords_set&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
@@ -57,10 +59,9 @@ class token_masking_stream final
   using attributes = std::tuple<
     increment,
     offset,
-    payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-  absl::flat_hash_set<bstring> mask_;
+  stopwords_set stopwords_;
   attributes attrs_;
   bool term_eof_;
 };
@@ -68,4 +69,4 @@ class token_masking_stream final
 } // analysis
 } // ROOT
 
-#endif
+#endif // IRESEARCH_TOKEN_STOPWORDS_STREAM_H

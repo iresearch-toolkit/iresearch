@@ -21,8 +21,8 @@
 // the standard casts provided in the C++ standard. As with all cast operations,
 // use these with caution and only if alternatives do not exist.
 
-#ifndef ABSL_BASE_CASTS_H_
-#define ABSL_BASE_CASTS_H_
+#ifndef IRESEARCH_ABSL_BASE_CASTS_H_
+#define IRESEARCH_ABSL_BASE_CASTS_H_
 
 #include <cstring>
 #include <memory>
@@ -33,8 +33,8 @@
 #include "absl/base/macros.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace internal_casts {
 
@@ -99,7 +99,7 @@ struct is_bitcastable
 //
 // Such implicit cast chaining may be useful within template logic.
 template <typename To>
-constexpr To implicit_cast(typename absl::internal::identity_t<To> to) {
+constexpr To implicit_cast(typename iresearch_absl::internal::identity_t<To> to) {
   return to;
 }
 
@@ -168,7 +168,7 @@ template <
     typename std::enable_if<
         !internal_casts::is_bitcastable<Dest, Source>::value,
         int>::type = 0>
-ABSL_DEPRECATED(
+IRESEARCH_ABSL_DEPRECATED(
     "absl::bit_cast type requirements were violated. Update the types "
     "being used such that they are the same size and are both "
     "TriviallyCopyable.")
@@ -181,7 +181,7 @@ inline Dest bit_cast(const Source& source) {
   return dest;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_CASTS_H_
+#endif  // IRESEARCH_ABSL_BASE_CASTS_H_

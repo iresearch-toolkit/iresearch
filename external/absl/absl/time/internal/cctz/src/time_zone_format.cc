@@ -48,8 +48,8 @@
 #include "absl/time/internal/cctz/include/cctz/civil_time.h"
 #include "time_zone_if.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 namespace detail {
@@ -1025,5 +1025,5 @@ bool parse(const std::string& format, const std::string& input,
 }  // namespace detail
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

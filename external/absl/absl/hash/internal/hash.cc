@@ -14,8 +14,8 @@
 
 #include "absl/hash/internal/hash.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace hash_internal {
 
 uint64_t CityHashState::CombineLargeContiguousImpl32(uint64_t state,
@@ -23,7 +23,7 @@ uint64_t CityHashState::CombineLargeContiguousImpl32(uint64_t state,
                                                      size_t len) {
   while (len >= PiecewiseChunkSize()) {
     state =
-        Mix(state, absl::hash_internal::CityHash32(reinterpret_cast<const char*>(first),
+        Mix(state, iresearch_absl::hash_internal::CityHash32(reinterpret_cast<const char*>(first),
                                          PiecewiseChunkSize()));
     len -= PiecewiseChunkSize();
     first += PiecewiseChunkSize();
@@ -38,7 +38,7 @@ uint64_t CityHashState::CombineLargeContiguousImpl64(uint64_t state,
                                                      size_t len) {
   while (len >= PiecewiseChunkSize()) {
     state =
-        Mix(state, absl::hash_internal::CityHash64(reinterpret_cast<const char*>(first),
+        Mix(state, iresearch_absl::hash_internal::CityHash64(reinterpret_cast<const char*>(first),
                                          PiecewiseChunkSize()));
     len -= PiecewiseChunkSize();
     first += PiecewiseChunkSize();
@@ -48,8 +48,8 @@ uint64_t CityHashState::CombineLargeContiguousImpl64(uint64_t state,
                                std::integral_constant<int, 8>{});
 }
 
-ABSL_CONST_INIT const void* const CityHashState::kSeed = &kSeed;
+IRESEARCH_ABSL_CONST_INIT const void* const CityHashState::kSeed = &kSeed;
 
 }  // namespace hash_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

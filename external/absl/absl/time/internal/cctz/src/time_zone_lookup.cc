@@ -35,8 +35,8 @@
 #include "time_zone_fixed.h"
 #include "time_zone_impl.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -183,5 +183,5 @@ time_zone local_time_zone() {
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

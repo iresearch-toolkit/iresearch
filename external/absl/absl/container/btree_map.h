@@ -44,16 +44,16 @@
 // reason, `insert()` and `erase()` return a valid iterator at the current
 // position.
 
-#ifndef ABSL_CONTAINER_BTREE_MAP_H_
-#define ABSL_CONTAINER_BTREE_MAP_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_BTREE_MAP_H_
+#define IRESEARCH_ABSL_CONTAINER_BTREE_MAP_H_
 
 #include "absl/container/internal/btree.h"  // IWYU pragma: export
 #include "absl/container/internal/btree_container.h"  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-// absl::btree_map<>
+// iresearch_absl::btree_map<>
 //
 // An `absl::btree_map<K, V>` is an ordered associative container of
 // unique keys and associated values designed to be a more efficient replacement
@@ -85,37 +85,37 @@ class btree_map
   //
   // * Default constructor
   //
-  //   absl::btree_map<int, std::string> map1;
+  //   iresearch_absl::btree_map<int, std::string> map1;
   //
   // * Initializer List constructor
   //
-  //   absl::btree_map<int, std::string> map2 =
+  //   iresearch_absl::btree_map<int, std::string> map2 =
   //       {{1, "huey"}, {2, "dewey"}, {3, "louie"},};
   //
   // * Copy constructor
   //
-  //   absl::btree_map<int, std::string> map3(map2);
+  //   iresearch_absl::btree_map<int, std::string> map3(map2);
   //
   // * Copy assignment operator
   //
-  //  absl::btree_map<int, std::string> map4;
+  //  iresearch_absl::btree_map<int, std::string> map4;
   //  map4 = map3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::btree_map<int, std::string> map5(std::move(map4));
+  //   iresearch_absl::btree_map<int, std::string> map5(std::move(map4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::btree_map<int, std::string> map6;
+  //   iresearch_absl::btree_map<int, std::string> map6;
   //   map6 = std::move(map5);
   //
   // * Range constructor
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
-  //   absl::btree_map<int, std::string> map7(v.begin(), v.end());
+  //   iresearch_absl::btree_map<int, std::string> map7(v.begin(), v.end());
   btree_map() {}
   using Base::Base;
 
@@ -433,7 +433,7 @@ class btree_map
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_map<>, absl::btree_map<>)
+// iresearch_absl::swap(iresearch_absl::btree_map<>, iresearch_absl::btree_map<>)
 //
 // Swaps the contents of two `absl::btree_map` containers.
 template <typename K, typename V, typename C, typename A>
@@ -441,7 +441,7 @@ void swap(btree_map<K, V, C, A> &x, btree_map<K, V, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_map<>, Pred)
+// iresearch_absl::erase_if(iresearch_absl::btree_map<>, Pred)
 //
 // Erases all elements that satisfy the predicate pred from the container.
 template <typename K, typename V, typename C, typename A, typename Pred>
@@ -455,7 +455,7 @@ void erase_if(btree_map<K, V, C, A> &map, Pred pred) {
   }
 }
 
-// absl::btree_multimap
+// iresearch_absl::btree_multimap
 //
 // An `absl::btree_multimap<K, V>` is an ordered associative container of
 // keys and associated values designed to be a more efficient replacement for
@@ -488,37 +488,37 @@ class btree_multimap
   //
   // * Default constructor
   //
-  //   absl::btree_multimap<int, std::string> map1;
+  //   iresearch_absl::btree_multimap<int, std::string> map1;
   //
   // * Initializer List constructor
   //
-  //   absl::btree_multimap<int, std::string> map2 =
+  //   iresearch_absl::btree_multimap<int, std::string> map2 =
   //       {{1, "huey"}, {2, "dewey"}, {3, "louie"},};
   //
   // * Copy constructor
   //
-  //   absl::btree_multimap<int, std::string> map3(map2);
+  //   iresearch_absl::btree_multimap<int, std::string> map3(map2);
   //
   // * Copy assignment operator
   //
-  //  absl::btree_multimap<int, std::string> map4;
+  //  iresearch_absl::btree_multimap<int, std::string> map4;
   //  map4 = map3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::btree_multimap<int, std::string> map5(std::move(map4));
+  //   iresearch_absl::btree_multimap<int, std::string> map5(std::move(map4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::btree_multimap<int, std::string> map6;
+  //   iresearch_absl::btree_multimap<int, std::string> map6;
   //   map6 = std::move(map5);
   //
   // * Range constructor
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
-  //   absl::btree_multimap<int, std::string> map7(v.begin(), v.end());
+  //   iresearch_absl::btree_multimap<int, std::string> map7(v.begin(), v.end());
   btree_multimap() {}
   using Base::Base;
 
@@ -741,7 +741,7 @@ class btree_multimap
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_multimap<>, absl::btree_multimap<>)
+// iresearch_absl::swap(iresearch_absl::btree_multimap<>, iresearch_absl::btree_multimap<>)
 //
 // Swaps the contents of two `absl::btree_multimap` containers.
 template <typename K, typename V, typename C, typename A>
@@ -749,7 +749,7 @@ void swap(btree_multimap<K, V, C, A> &x, btree_multimap<K, V, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_multimap<>, Pred)
+// iresearch_absl::erase_if(iresearch_absl::btree_multimap<>, Pred)
 //
 // Erases all elements that satisfy the predicate pred from the container.
 template <typename K, typename V, typename C, typename A, typename Pred>
@@ -763,7 +763,7 @@ void erase_if(btree_multimap<K, V, C, A> &map, Pred pred) {
   }
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_BTREE_MAP_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_BTREE_MAP_H_

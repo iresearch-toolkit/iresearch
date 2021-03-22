@@ -12,41 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_
-#define ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_
 
 // This header defines two macros:
 //
 // If the platform supports thread-local storage:
 //
-// * ABSL_PER_THREAD_TLS_KEYWORD is the C keyword needed to declare a
+// * IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD is the C keyword needed to declare a
 //   thread-local variable
-// * ABSL_PER_THREAD_TLS is 1
+// * IRESEARCH_ABSL_PER_THREAD_TLS is 1
 //
 // Otherwise:
 //
-// * ABSL_PER_THREAD_TLS_KEYWORD is empty
-// * ABSL_PER_THREAD_TLS is 0
+// * IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD is empty
+// * IRESEARCH_ABSL_PER_THREAD_TLS is 0
 //
 // Microsoft C supports thread-local storage.
 // GCC supports it if the appropriate version of glibc is available,
-// which the programmer can indicate by defining ABSL_HAVE_TLS
+// which the programmer can indicate by defining IRESEARCH_ABSL_HAVE_TLS
 
-#include "absl/base/port.h"  // For ABSL_HAVE_TLS
+#include "absl/base/port.h"  // For IRESEARCH_ABSL_HAVE_TLS
 
-#if defined(ABSL_PER_THREAD_TLS)
-#error ABSL_PER_THREAD_TLS cannot be directly set
-#elif defined(ABSL_PER_THREAD_TLS_KEYWORD)
-#error ABSL_PER_THREAD_TLS_KEYWORD cannot be directly set
-#elif defined(ABSL_HAVE_TLS)
-#define ABSL_PER_THREAD_TLS_KEYWORD __thread
-#define ABSL_PER_THREAD_TLS 1
+#if defined(IRESEARCH_ABSL_PER_THREAD_TLS)
+#error IRESEARCH_ABSL_PER_THREAD_TLS cannot be directly set
+#elif defined(IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD)
+#error IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD cannot be directly set
+#elif defined(IRESEARCH_ABSL_HAVE_TLS)
+#define IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD __thread
+#define IRESEARCH_ABSL_PER_THREAD_TLS 1
 #elif defined(_MSC_VER)
-#define ABSL_PER_THREAD_TLS_KEYWORD __declspec(thread)
-#define ABSL_PER_THREAD_TLS 1
+#define IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD __declspec(thread)
+#define IRESEARCH_ABSL_PER_THREAD_TLS 1
 #else
-#define ABSL_PER_THREAD_TLS_KEYWORD
-#define ABSL_PER_THREAD_TLS 0
+#define IRESEARCH_ABSL_PER_THREAD_TLS_KEYWORD
+#define IRESEARCH_ABSL_PER_THREAD_TLS 0
 #endif
 
-#endif  // ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_PER_THREAD_TLS_H_

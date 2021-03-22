@@ -25,8 +25,8 @@
 // platforms like Windows, Mac, and embedded systems.  Before making
 // any changes here, make sure that you're not breaking any platforms.
 
-#ifndef ABSL_BASE_MACROS_H_
-#define ABSL_BASE_MACROS_H_
+#ifndef IRESEARCH_ABSL_BASE_MACROS_H_
+#define IRESEARCH_ABSL_BASE_MACROS_H_
 
 #include <cassert>
 #include <cstddef>
@@ -36,26 +36,26 @@
 #include "absl/base/optimization.h"
 #include "absl/base/port.h"
 
-// ABSL_ARRAYSIZE()
+// IRESEARCH_ABSL_ARRAYSIZE()
 //
 // Returns the number of elements in an array as a compile-time constant, which
 // can be used in defining new arrays. If you use this macro on a pointer by
 // mistake, you will get a compile-time error.
-#define ABSL_ARRAYSIZE(array) \
-  (sizeof(::absl::macros_internal::ArraySizeHelper(array)))
+#define IRESEARCH_ABSL_ARRAYSIZE(array) \
+  (sizeof(::iresearch_absl::macros_internal::ArraySizeHelper(array)))
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace macros_internal {
-// Note: this internal template function declaration is used by ABSL_ARRAYSIZE.
+// Note: this internal template function declaration is used by IRESEARCH_ABSL_ARRAYSIZE.
 // The function doesn't need a definition, as we only use its type.
 template <typename T, size_t N>
 auto ArraySizeHelper(const T (&array)[N]) -> char (&)[N];
 }  // namespace macros_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-// ABSL_BAD_CALL_IF()
+// IRESEARCH_ABSL_BAD_CALL_IF()
 //
 // Used on a function overload to trap bad calls: any call that matches the
 // overload will cause a compile-time error. This macro uses a clang-specific
@@ -63,39 +63,39 @@ ABSL_NAMESPACE_END
 // https://clang.llvm.org/docs/AttributeReference.html#enable-if
 //
 // Overloads which use this macro should be bracketed by
-// `#ifdef ABSL_BAD_CALL_IF`.
+// `#ifdef IRESEARCH_ABSL_BAD_CALL_IF`.
 //
 // Example:
 //
 //   int isdigit(int c);
-//   #ifdef ABSL_BAD_CALL_IF
+//   #ifdef IRESEARCH_ABSL_BAD_CALL_IF
 //   int isdigit(int c)
-//     ABSL_BAD_CALL_IF(c <= -1 || c > 255,
+//     IRESEARCH_ABSL_BAD_CALL_IF(c <= -1 || c > 255,
 //                       "'c' must have the value of an unsigned char or EOF");
-//   #endif // ABSL_BAD_CALL_IF
-#if ABSL_HAVE_ATTRIBUTE(enable_if)
-#define ABSL_BAD_CALL_IF(expr, msg) \
+//   #endif // IRESEARCH_ABSL_BAD_CALL_IF
+#if IRESEARCH_ABSL_HAVE_ATTRIBUTE(enable_if)
+#define IRESEARCH_ABSL_BAD_CALL_IF(expr, msg) \
   __attribute__((enable_if(expr, "Bad call trap"), unavailable(msg)))
 #endif
 
-// ABSL_ASSERT()
+// IRESEARCH_ABSL_ASSERT()
 //
 // In C++11, `assert` can't be used portably within constexpr functions.
-// ABSL_ASSERT functions as a runtime assert but works in C++11 constexpr
+// IRESEARCH_ABSL_ASSERT functions as a runtime assert but works in C++11 constexpr
 // functions.  Example:
 //
 // constexpr double Divide(double a, double b) {
-//   return ABSL_ASSERT(b != 0), a / b;
+//   return IRESEARCH_ABSL_ASSERT(b != 0), a / b;
 // }
 //
 // This macro is inspired by
 // https://akrzemi1.wordpress.com/2017/05/18/asserts-in-constexpr-functions/
 #if defined(NDEBUG)
-#define ABSL_ASSERT(expr) \
+#define IRESEARCH_ABSL_ASSERT(expr) \
   (false ? static_cast<void>(expr) : static_cast<void>(0))
 #else
-#define ABSL_ASSERT(expr)                           \
-  (ABSL_PREDICT_TRUE((expr)) ? static_cast<void>(0) \
+#define IRESEARCH_ABSL_ASSERT(expr)                           \
+  (IRESEARCH_ABSL_PREDICT_TRUE((expr)) ? static_cast<void>(0) \
                              : [] { assert(false && #expr); }())  // NOLINT
 #endif
 
@@ -103,19 +103,19 @@ ABSL_NAMESPACE_END
 // aborts the program in release mode (when NDEBUG is defined). The
 // implementation should abort the program as quickly as possible and ideally it
 // should not be possible to ignore the abort request.
-#if (ABSL_HAVE_BUILTIN(__builtin_trap) &&         \
-     ABSL_HAVE_BUILTIN(__builtin_unreachable)) || \
+#if (IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_trap) &&         \
+     IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_unreachable)) || \
     (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_INTERNAL_HARDENING_ABORT() \
+#define IRESEARCH_ABSL_INTERNAL_HARDENING_ABORT() \
   do {                                  \
     __builtin_trap();                   \
     __builtin_unreachable();            \
   } while (false)
 #else
-#define ABSL_INTERNAL_HARDENING_ABORT() abort()
+#define IRESEARCH_ABSL_INTERNAL_HARDENING_ABORT() abort()
 #endif
 
-// ABSL_HARDENING_ASSERT()
+// IRESEARCH_ABSL_HARDENING_ASSERT()
 //
 // `ABSL_HARDENING_ASSERT()` is like `ABSL_ASSERT()`, but used to implement
 // runtime assertions that should be enabled in hardened builds even when
@@ -126,22 +126,22 @@ ABSL_NAMESPACE_END
 //
 // See `ABSL_OPTION_HARDENED` in `absl/base/options.h` for more information on
 // hardened mode.
-#if ABSL_OPTION_HARDENED == 1 && defined(NDEBUG)
-#define ABSL_HARDENING_ASSERT(expr)                 \
-  (ABSL_PREDICT_TRUE((expr)) ? static_cast<void>(0) \
-                             : [] { ABSL_INTERNAL_HARDENING_ABORT(); }())
+#if IRESEARCH_ABSL_OPTION_HARDENED == 1 && defined(NDEBUG)
+#define IRESEARCH_ABSL_HARDENING_ASSERT(expr)                 \
+  (IRESEARCH_ABSL_PREDICT_TRUE((expr)) ? static_cast<void>(0) \
+                             : [] { IRESEARCH_ABSL_INTERNAL_HARDENING_ABORT(); }())
 #else
-#define ABSL_HARDENING_ASSERT(expr) ABSL_ASSERT(expr)
+#define IRESEARCH_ABSL_HARDENING_ASSERT(expr) IRESEARCH_ABSL_ASSERT(expr)
 #endif
 
-#ifdef ABSL_HAVE_EXCEPTIONS
-#define ABSL_INTERNAL_TRY try
-#define ABSL_INTERNAL_CATCH_ANY catch (...)
-#define ABSL_INTERNAL_RETHROW do { throw; } while (false)
-#else  // ABSL_HAVE_EXCEPTIONS
-#define ABSL_INTERNAL_TRY if (true)
-#define ABSL_INTERNAL_CATCH_ANY else if (false)
-#define ABSL_INTERNAL_RETHROW do {} while (false)
-#endif  // ABSL_HAVE_EXCEPTIONS
+#ifdef IRESEARCH_ABSL_HAVE_EXCEPTIONS
+#define IRESEARCH_ABSL_INTERNAL_TRY try
+#define IRESEARCH_ABSL_INTERNAL_CATCH_ANY catch (...)
+#define IRESEARCH_ABSL_INTERNAL_RETHROW do { throw; } while (false)
+#else  // IRESEARCH_ABSL_HAVE_EXCEPTIONS
+#define IRESEARCH_ABSL_INTERNAL_TRY if (true)
+#define IRESEARCH_ABSL_INTERNAL_CATCH_ANY else if (false)
+#define IRESEARCH_ABSL_INTERNAL_RETHROW do {} while (false)
+#endif  // IRESEARCH_ABSL_HAVE_EXCEPTIONS
 
-#endif  // ABSL_BASE_MACROS_H_
+#endif  // IRESEARCH_ABSL_BASE_MACROS_H_

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_
-#define ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_
+#ifndef IRESEARCH_ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_
+#define IRESEARCH_ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_
 
 #include <ostream>
 #include <string>
@@ -24,8 +24,8 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace hash_internal {
 
 // SpyHashState is an implementation of the HashState API that simply
@@ -40,7 +40,7 @@ namespace hash_internal {
 template <typename T>
 class SpyHashStateImpl : public HashStateBase<SpyHashStateImpl<T>> {
  public:
-  SpyHashStateImpl() : error_(std::make_shared<absl::optional<std::string>>()) {
+  SpyHashStateImpl() : error_(std::make_shared<iresearch_absl::optional<std::string>>()) {
     static_assert(std::is_void<T>::value, "");
   }
 
@@ -112,11 +112,11 @@ class SpyHashStateImpl : public HashStateBase<SpyHashStateImpl<T>> {
 
   static CompareResult Compare(const SpyHashStateImpl& a,
                                const SpyHashStateImpl& b) {
-    const std::string a_flat = absl::StrJoin(a.hash_representation_, "");
-    const std::string b_flat = absl::StrJoin(b.hash_representation_, "");
+    const std::string a_flat = iresearch_absl::StrJoin(a.hash_representation_, "");
+    const std::string b_flat = iresearch_absl::StrJoin(b.hash_representation_, "");
     if (a_flat == b_flat) return CompareResult::kEqual;
-    if (absl::EndsWith(a_flat, b_flat)) return CompareResult::kBSuffixA;
-    if (absl::EndsWith(b_flat, a_flat)) return CompareResult::kASuffixB;
+    if (iresearch_absl::EndsWith(a_flat, b_flat)) return CompareResult::kBSuffixA;
+    if (iresearch_absl::EndsWith(b_flat, a_flat)) return CompareResult::kASuffixB;
     return CompareResult::kUnequal;
   }
 
@@ -129,12 +129,12 @@ class SpyHashStateImpl : public HashStateBase<SpyHashStateImpl<T>> {
       size_t offset = 0;
       for (char c : s) {
         if (offset % 16 == 0) {
-          out << absl::StreamFormat("\n0x%04x: ", offset);
+          out << iresearch_absl::StreamFormat("\n0x%04x: ", offset);
         }
         if (offset % 2 == 0) {
           out << " ";
         }
-        out << absl::StreamFormat("%02x", c);
+        out << iresearch_absl::StreamFormat("%02x", c);
         ++offset;
       }
       out << "\n";
@@ -167,7 +167,7 @@ class SpyHashStateImpl : public HashStateBase<SpyHashStateImpl<T>> {
 
   using SpyHashStateImpl::HashStateBase::combine_contiguous;
 
-  absl::optional<std::string> error() const {
+  iresearch_absl::optional<std::string> error() const {
     if (moved_from_) {
       return "Returned a moved-from instance of the hash state object.";
     }
@@ -187,7 +187,7 @@ class SpyHashStateImpl : public HashStateBase<SpyHashStateImpl<T>> {
   // This is a shared_ptr because we want all instances of the particular
   // SpyHashState run to share the field. This way we can set the error for
   // use-after-move and all the copies will see it.
-  std::shared_ptr<absl::optional<std::string>> error_;
+  std::shared_ptr<iresearch_absl::optional<std::string>> error_;
   bool moved_from_ = false;
 };
 
@@ -212,7 +212,7 @@ bool RunOnStartup<f>::run = (f(), true);
 template <
     typename T, typename U,
     // Only trigger for when (T != U),
-    typename = absl::enable_if_t<!std::is_same<T, U>::value>,
+    typename = iresearch_absl::enable_if_t<!std::is_same<T, U>::value>,
     // This statement works in two ways:
     //  - First, it instantiates RunOnStartup and forces the initialization of
     //    `run`, which set the global variable.
@@ -225,7 +225,7 @@ void AbslHashValue(SpyHashStateImpl<T>, const U&);
 using SpyHashState = SpyHashStateImpl<void>;
 
 }  // namespace hash_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_
+#endif  // IRESEARCH_ABSL_HASH_INTERNAL_SPY_HASH_STATE_H_

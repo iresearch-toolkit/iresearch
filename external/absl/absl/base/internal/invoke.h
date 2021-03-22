@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// absl::base_internal::invoke(f, args...) is an implementation of
+// iresearch_absl::base_internal::invoke(f, args...) is an implementation of
 // INVOKE(f, args...) from section [func.require] of the C++ standard.
 //
 // [func.require]
@@ -32,8 +32,8 @@
 // The implementation is SFINAE-friendly: substitution failure within invoke()
 // isn't an error.
 
-#ifndef ABSL_BASE_INTERNAL_INVOKE_H_
-#define ABSL_BASE_INTERNAL_INVOKE_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_INVOKE_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_INVOKE_H_
 
 #include <algorithm>
 #include <type_traits>
@@ -44,8 +44,8 @@
 // The following code is internal implementation detail.  See the comment at the
 // top of this file for the API documentation.
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // The five classes below each implement one of the clauses from the definition
@@ -73,7 +73,7 @@ struct MemFunAndRef : StrippedAccept<MemFunAndRef> {
   template <typename MemFunType, typename C, typename Obj, typename... Args>
   struct AcceptImpl<MemFunType C::*, Obj, Args...>
       : std::integral_constant<bool, std::is_base_of<C, Obj>::value &&
-                                         absl::is_function<MemFunType>::value> {
+                                         iresearch_absl::is_function<MemFunType>::value> {
   };
 
   template <typename MemFun, typename Obj, typename... Args>
@@ -94,7 +94,7 @@ struct MemFunAndPtr : StrippedAccept<MemFunAndPtr> {
   template <typename MemFunType, typename C, typename Ptr, typename... Args>
   struct AcceptImpl<MemFunType C::*, Ptr, Args...>
       : std::integral_constant<bool, !std::is_base_of<C, Ptr>::value &&
-                                         absl::is_function<MemFunType>::value> {
+                                         iresearch_absl::is_function<MemFunType>::value> {
   };
 
   template <typename MemFun, typename Ptr, typename... Args>
@@ -116,7 +116,7 @@ struct DataMemAndRef : StrippedAccept<DataMemAndRef> {
   template <typename R, typename C, typename Obj>
   struct AcceptImpl<R C::*, Obj>
       : std::integral_constant<bool, std::is_base_of<C, Obj>::value &&
-                                         !absl::is_function<R>::value> {};
+                                         !iresearch_absl::is_function<R>::value> {};
 
   template <typename DataMem, typename Ref>
   static decltype(std::declval<Ref>().*std::declval<DataMem>()) Invoke(
@@ -134,7 +134,7 @@ struct DataMemAndPtr : StrippedAccept<DataMemAndPtr> {
   template <typename R, typename C, typename Ptr>
   struct AcceptImpl<R C::*, Ptr>
       : std::integral_constant<bool, !std::is_base_of<C, Ptr>::value &&
-                                         !absl::is_function<R>::value> {};
+                                         !iresearch_absl::is_function<R>::value> {};
 
   template <typename DataMem, typename Ptr>
   static decltype((*std::declval<Ptr>()).*std::declval<DataMem>()) Invoke(
@@ -181,7 +181,7 @@ invoke_result_t<F, Args...> invoke(F&& f, Args&&... args) {
                                            std::forward<Args>(args)...);
 }
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_INVOKE_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_INVOKE_H_
