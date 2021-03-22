@@ -239,6 +239,10 @@ point SNOWBALL_ROOT at the source directory to build together with IResearch
 SNOWBALL_ROOT=<path-to-snowball>
 ```
 
+### [VelocyPack](https://github.com/arangodb/velocypack)
+
+point VPACK_ROOT at the source directory to build together with IResearch
+
 ### [BFD](https://sourceware.org/binutils/) <optional>
 
 #### install (*nix)
