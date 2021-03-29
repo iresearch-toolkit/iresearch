@@ -64,7 +64,7 @@ class columns_writer {
     void prepare(key_type key) {
       if (IRS_LIKELY(key > pending_key_)) {
         if (IRS_LIKELY(pending_key_ != Invalid)) {
-          docs_writer_.add(pending_key_);
+          docs_writer_.push_back(pending_key_);
 
           const uint64_t offset = data_.stream.file_pointer();
           *length_++ = offset - pending_offset_;
@@ -114,12 +114,17 @@ class columns_writer {
       auto& index_out = *ctx_->index_out_;
       auto& data_out = *ctx_->data_out_;
 
-
       index_out.write_int(minmax_length.first);
       index_out.write_int(minmax_length.second);
 
       if (minmax_length.second > minmax_length.first) {
         // write block address map
+        index_out.write_long(data_out.file_pointer()); // data offset
+        data_out << this->data_; // FIXME write directly???
+        index_out.write_long(data_out.file_pointer()); // lengths offset
+
+
+
 
       }
 

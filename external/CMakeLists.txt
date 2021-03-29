@@ -155,5 +155,14 @@ if (NOT TARGET velocypack)
     add_subdirectory(${VPACK_ROOT}
                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
                     EXCLUDE_FROM_ALL)
+  else()
+   message(FATAL_ERROR "VPACK_ROOT not set")
   endif()
 endif()
+
+################################################################################
+### Highway library
+################################################################################
+
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(highway)

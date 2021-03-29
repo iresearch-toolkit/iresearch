@@ -383,6 +383,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  hwy
   velocypack
 )
 
@@ -390,16 +391,15 @@ target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-static
   PUBLIC ${VPACK_INCLUDE_PATH}
+  PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # setup MSVC specific compiler flags

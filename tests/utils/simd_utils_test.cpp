@@ -26,8 +26,46 @@
 #include "utils/std.hpp"
 #include "utils/simd_utils.hpp"
 
+TEST(simd_utils_test, avg32) {
+  using namespace hwy::HWY_NAMESPACE;
+  using namespace irs;
+
+  HWY_ALIGN uint32_t values[1024];
+  std::iota(std::begin(values), std::end(values), 42);
+
+  HWY_ALIGN uint32_t encoded[1024];
+  std::memcpy(encoded, values, sizeof values);
+  const auto stats = irs::simd::avg_encode32<IRESEARCH_COUNTOF(encoded)>(encoded);
+
+  HWY_ALIGN uint32_t decoded[IRESEARCH_COUNTOF(encoded)];
+  irs::simd::avg_decode32<IRESEARCH_COUNTOF(encoded)>(encoded, decoded, stats.first, stats.second);
+
+  ASSERT_TRUE(std::equal(std::begin(values), std::end(values),
+                         std::begin(decoded), std::end(decoded)));
+}
+
+TEST(simd_utils_test, zigzag32) {
+  using namespace hwy::HWY_NAMESPACE;
+  using namespace irs;
+
+  auto expected = Iota(irs::simd::vi32, 0);
+  auto encoded = irs::simd::zig_zag_encode32(expected);
+  auto decoded = irs::simd::zig_zag_decode32(encoded);
+  ASSERT_TRUE(AllTrue(expected == decoded));
+}
+
+TEST(simd_utils_test, zigzag64) {
+  using namespace hwy::HWY_NAMESPACE;
+  using namespace irs;
+
+  auto expected = Iota(irs::simd::vi64, 0);
+  auto encoded = irs::simd::zig_zag_encode64(expected);
+  auto decoded = irs::simd::zig_zag_decode64(encoded);
+  ASSERT_TRUE(AllTrue(expected == decoded));
+}
+
 TEST(simd_utils_test, all_equal) {
-  uint32_t values[SIMDBlockSize*2];
+  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
   std::fill(std::begin(values), std::end(values), 42);
   ASSERT_TRUE(irs::simd::all_equal(std::begin(values), std::end(values)));
 
@@ -48,7 +86,7 @@ TEST(simd_utils_test, all_equal) {
 }
 
 TEST(simd_utils_test, fill_n) {
-  uint32_t values[SIMDBlockSize*2];
+  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
   std::fill(std::begin(values), std::end(values), 42);
   irs::simd::fill_n<IRESEARCH_COUNTOF(values)>(values, 84);
   ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
@@ -61,7 +99,7 @@ TEST(simd_utils_test, fill_n) {
 }
 
 TEST(simd_utils_test, maxmin) {
-  uint32_t values[SIMDBlockSize*2];
+  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
   std::iota(std::begin(values), std::end(values), 42);
   ASSERT_EQ(
     (std::pair<uint32_t, uint32_t>(42, 42 + IRESEARCH_COUNTOF(values) - 1)),

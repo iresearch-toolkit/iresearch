@@ -32,9 +32,24 @@ extern "C" {
 #include <simdcomp/include/simdcomputil.h>
 }
 
+#include <hwy/highway.h>
 
 namespace iresearch {
 namespace simd {
+
+using namespace hwy::HWY_NAMESPACE;
+
+using vu32_t = HWY_FULL(uint32_t);
+static constexpr vu32_t vu32;
+
+using vi32_t = HWY_FULL(int32_t);
+static constexpr vi32_t vi32;
+
+using vu64_t = HWY_FULL(uint64_t);
+static constexpr vu64_t vu64;
+
+using vi64_t = HWY_FULL(int64_t);
+static constexpr vi64_t vi64;
 
 template<size_t Length>
 FORCE_INLINE std::pair<uint32_t, uint32_t> maxmin(
@@ -56,45 +71,99 @@ FORCE_INLINE std::pair<uint32_t, uint32_t> maxmin(
 }
 
 template<size_t Length>
-inline void fill_n(
-    uint32_t* begin,
-    const uint32_t value) noexcept {
-  static_assert(0 == (Length % SIMDBlockSize));
+inline void fill_n(uint32_t* begin, const uint32_t value) noexcept {
+  constexpr size_t Step = MaxLanes(vu32);
+  static_assert(0 == (Length % Step));
 
-  auto* mmbegin = reinterpret_cast<__m128i*>(begin);
-  auto* mmend = reinterpret_cast<__m128i*>(begin + Length);
-  const auto mmvalue = _mm_set1_epi32(value);
-
-  for (; mmbegin != mmend; mmbegin += 4) {
-    _mm_storeu_si128(mmbegin    , mmvalue);
-    _mm_storeu_si128(mmbegin + 1, mmvalue);
-    _mm_storeu_si128(mmbegin + 2, mmvalue);
-    _mm_storeu_si128(mmbegin + 3, mmvalue);
+  const auto vvalue = Set(vu32, value);
+  for (size_t i = 0; i < Length; i += Step) {
+    Store(vvalue, vu32, begin + i);
   }
 }
 
 inline bool all_equal(
     const uint32_t* RESTRICT begin,
     const uint32_t* RESTRICT end) noexcept {
-  assert(0 == (std::distance(begin, end) % sizeof(__m128i)));
+  constexpr size_t Step = MaxLanes(vu32);
+  assert(0 == (std::distance(begin, end) % Step));
 
   if (begin == end) {
     return true;
   }
 
-  const __m128i* mmbegin = reinterpret_cast<const __m128i*>(begin);
-  const __m128i* mmend = reinterpret_cast<const __m128i*>(end);
-  const __m128i value = _mm_set1_epi32(*begin);
-
-  while (mmbegin != mmend) {
-    const __m128i neq = _mm_xor_si128(value, _mm_loadu_si128(mmbegin++));
-
-    if (!_mm_test_all_zeros(neq,neq)) {
+  const auto value = Set(vu32, *begin);
+  for (; begin != end; begin += Step) {
+    if (!AllTrue(value == LoadU(vu32, begin))) {
       return false;
     }
   }
 
   return true;
+}
+
+FORCE_INLINE Vec<vu32_t> zig_zag_encode32(Vec<vi32_t> v) noexcept {
+  const auto uv = BitCast(vu32, v);
+  return ((uv >> Set(vu32, 31)) ^ (uv << Set(vu32, 1)));
+}
+
+FORCE_INLINE Vec<vi32_t> zig_zag_decode32(Vec<vu32_t> uv) noexcept {
+  const auto v = BitCast(vi32, uv);
+  return ((v >> Set(vi32, 1)) ^ (Zero(vi32)-(v & Set(vi32, 1))));
+}
+
+FORCE_INLINE Vec<vu64_t> zig_zag_encode64(Vec<vi64_t> v) noexcept {
+  const auto uv = BitCast(vu64, v);
+  return ((uv >> Set(vu64, 63)) ^ (uv << Set(vu64, 1)));
+}
+
+FORCE_INLINE Vec<vi64_t> zig_zag_decode64(Vec<vu64_t> uv) noexcept {
+  const auto v = BitCast(vi64, uv);
+  return ((v >> Set(vi64, 1)) ^ (Zero(vi64)-(v & Set(vi64, 1))));
+}
+
+//FIXME simd for delta encoding
+
+// Encodes block denoted by [begin;end) using average encoding algorithm
+// Returns block std::pair{ base, average }
+template<size_t Length>
+inline std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
+  static_assert(Length);
+  constexpr size_t Step = MaxLanes(vu32);
+  static_assert(0 == (Length % Step));
+  assert(begin[Length-1] >= begin[0]);
+
+  const uint32_t base = *begin;
+
+  const int32_t avg = static_cast<int32_t>(
+    static_cast<float_t>(begin[Length-1] - begin[0]) / std::max(size_t(1), Length - 1));
+
+  auto vbase = Iota(vi32, 0) * Set(vi32, avg) + Set(vi32, base);
+  const auto vavg = Set(vi32, avg) * Set(vi32, Step);
+
+  for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
+    const auto v = Load(vi32, reinterpret_cast<int32_t*>(begin + i)) - vbase;
+    Store(zig_zag_encode32(v), vu32, begin + i);
+  }
+
+  return std::make_pair(base, avg);
+}
+
+template<size_t Length>
+inline void avg_decode32(
+    const uint32_t* begin, uint32_t* out,
+    uint32_t base, uint32_t avg) noexcept {
+  static_assert(Length);
+  constexpr size_t Step = MaxLanes(vu32);
+  static_assert(0 == (Length % Step));
+  assert(begin[Length-1] >= begin[0]);
+
+  auto vbase = Iota(vi32, 0) * Set(vi32, avg) + Set(vi32, base);
+  const auto vavg = Set(vi32, avg) * Set(vi32, Step);
+
+  for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
+    const auto v = Load(vu32, begin + i);
+    Store(zig_zag_decode32(v) + vbase, vi32, reinterpret_cast<int32_t*>(out + i));
+  }
 }
 
 }
