@@ -65,7 +65,8 @@ TEST(simd_utils_test, zigzag64) {
 }
 
 TEST(simd_utils_test, all_equal) {
-  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
+  constexpr size_t BLOCK_SIZE = 128;
+  HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::fill(std::begin(values), std::end(values), 42);
   ASSERT_TRUE(irs::simd::all_equal(std::begin(values), std::end(values)));
 
@@ -86,20 +87,22 @@ TEST(simd_utils_test, all_equal) {
 }
 
 TEST(simd_utils_test, fill_n) {
-  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
+  constexpr size_t BLOCK_SIZE = 128;
+  HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::fill(std::begin(values), std::end(values), 42);
   irs::simd::fill_n<IRESEARCH_COUNTOF(values)>(values, 84);
   ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
               [](const auto v) { return v == 84; }));
-  irs::simd::fill_n<SIMDBlockSize>(values, 128);
-  ASSERT_TRUE(std::all_of(std::begin(values), std::begin(values) + SIMDBlockSize,
+  irs::simd::fill_n<BLOCK_SIZE>(values, 128);
+  ASSERT_TRUE(std::all_of(std::begin(values), std::begin(values) + BLOCK_SIZE,
               [](const auto v) { return v == 128; }));
-  ASSERT_TRUE(std::all_of(std::begin(values) + SIMDBlockSize, std::end(values),
+  ASSERT_TRUE(std::all_of(std::begin(values) + BLOCK_SIZE, std::end(values),
               [](const auto v) { return v == 84; }));
 }
 
 TEST(simd_utils_test, maxmin) {
-  HWY_ALIGN uint32_t values[SIMDBlockSize*2];
+  constexpr size_t BLOCK_SIZE = 128;
+  HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::iota(std::begin(values), std::end(values), 42);
   ASSERT_EQ(
     (std::pair<uint32_t, uint32_t>(42, 42 + IRESEARCH_COUNTOF(values) - 1)),

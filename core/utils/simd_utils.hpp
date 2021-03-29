@@ -25,14 +25,9 @@
 
 #include "shared.hpp"
 
-#include <cassert>
-#include <smmintrin.h>
-
-extern "C" {
-#include <simdcomp/include/simdcomputil.h>
-}
-
 #include <hwy/highway.h>
+
+#include "utils/bit_packing.hpp"
 
 namespace iresearch {
 namespace simd {
@@ -52,22 +47,35 @@ using vi64_t = HWY_FULL(int64_t);
 static constexpr vi64_t vi64;
 
 template<size_t Length>
-FORCE_INLINE std::pair<uint32_t, uint32_t> maxmin(
+inline std::pair<uint32_t, uint32_t> maxmin(
     const uint32_t* begin) noexcept {
-  static_assert(0 == (Length % SIMDBlockSize));
+  constexpr size_t Step = MaxLanes(vu32);
+  static_assert(0 == (Length % Step));
 
-  uint32_t accmin, accmax;
-  simdmaxmin(begin, &accmin, &accmax);
+  auto minacc = Load(vu32, begin);
+  auto maxacc = minacc;
+  for (size_t i = Step; i < Length; i += Step) {
+    const auto v = Load(vu32, begin + i);
+    minacc = Min(minacc, v);
+    maxacc = Max(maxacc, v);
+  }
+  return { GetLane(MinOfLanes(minacc)), GetLane(MaxOfLanes(maxacc)) };
+}
 
-  const uint32_t* end = begin + Length;
-  for (begin += SIMDBlockSize ; begin != end; begin += SIMDBlockSize) {
-    uint32_t min, max;
-    simdmaxmin(begin, &min, &max);
-    accmin = std::min(min, accmin);
-    accmax = std::max(max, accmax);
+template<size_t Length>
+inline uint32_t maxbits(
+    const uint32_t* begin) noexcept {
+  constexpr size_t Step = MaxLanes(vu32);
+  static_assert(0 == (Length % Step));
+
+  auto oracc = Load(vu32, begin);
+  for (size_t i = Step; i < Length; i += Step) {
+    const auto v = Load(vu32, begin + i);
+    oracc = Or(oracc, v);
   }
 
-  return {accmin, accmax};
+  // FIXME use OrOfLanes instead
+  return packed::bits_required_32(GetLane(MaxOfLanes(oracc)));
 }
 
 template<size_t Length>
@@ -144,6 +152,9 @@ inline std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
     const auto v = Load(vi32, reinterpret_cast<int32_t*>(begin + i)) - vbase;
     Store(zig_zag_encode32(v), vu32, begin + i);
   }
+
+  // FIXME
+  //  subtract min
 
   return std::make_pair(base, avg);
 }
