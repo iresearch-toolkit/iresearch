@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+
+extern "C" {
+#include <simdbitpacking.h>
+}
+
 #include "store/store_utils.hpp"
-#ifdef IRESEARCH_SSE2
-#include "store/store_utils_simd.hpp"
-#endif
 #include "utils/bytes_utils.hpp"
 
 using namespace irs;
@@ -229,11 +231,19 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   irs::bstring buf;
   irs::bytes_output out(buf);
 
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + BLOCK_SIZE, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + BLOCK_SIZE, encoded, bits);
+  };
+
   // write first n compressed blocks
   {
     auto begin = src.data();
     for (size_t i = 0; i < blocks; ++i) {
-      irs::encode::bitpack::write_block(out, begin, BLOCK_SIZE, encoded);
+      irs::bitpack::write_block32<BLOCK_SIZE>(pack, out, begin, encoded);
       begin += BLOCK_SIZE;
     }
   }
@@ -246,7 +256,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   {
     auto begin = read.data();
     for (size_t i = 0; i < blocks; ++i) {
-      irs::encode::bitpack::read_block(in, BLOCK_SIZE, encoded, begin);
+      irs::bitpack::read_block32<BLOCK_SIZE>(unpack, in, encoded, begin);
       begin += BLOCK_SIZE;
     }
   }
@@ -258,15 +268,23 @@ void packed_read_write_block_core(const std::vector<uint32_t> &src) {
   const size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
 
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + size, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + size, encoded, bits);
+  };
+
   // compress data to stream
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block(out, src.data(), encoded);
+  irs::bitpack::write_block32(pack, out, src.data(), BLOCK_SIZE, encoded);
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
   irs::bytes_ref_input in(buf);
-  irs::encode::bitpack::read_block(in, encoded, read.data());
+  irs::bitpack::read_block32(unpack, in, encoded, BLOCK_SIZE, read.data());
 
   ASSERT_EQ(src, read);
 }
@@ -323,15 +341,23 @@ void read_write_core_container(
 }
 
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + size, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + size, encoded, bits);
+  };
+
   // write block
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
+  irs::bitpack::write_block32(pack, out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
   bytes_input in(buf);
   std::vector<uint32_t> read(source.size());
-  irs::encode::bitpack::read_block(in, source.size(), &enc_dec_buf[0], read.data());
+  irs::bitpack::read_block32(unpack, in, &enc_dec_buf[0], source.size(), read.data());
 
   ASSERT_EQ(source, read);
 }
@@ -392,15 +418,29 @@ void read_write_block_optimized(const std::array<uint32_t, N>& source) {
   std::array<uint32_t, N> enc_dec_buf;
   std::fill_n(enc_dec_buf.data(), N, std::numeric_limits<uint32_t>::max());
 
+  auto pack_block = [](
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    std::memset(encoded, 0, sizeof(uint32_t) * N); // FIXME do we need memset???
+    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+    return bits;
+  };
+
+  auto unpack_block = [](
+      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+  };
+
   // write block
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block_simd(out, source.data(), enc_dec_buf.data());
+  irs::bitpack::write_block32<N>(pack_block, out, source.data(), enc_dec_buf.data());
 
   // read block
   bytes_input in(buf);
   std::array<uint32_t, N> read;
-  irs::encode::bitpack::read_block_simd(in, enc_dec_buf.data(), read.data());
+  irs::bitpack::read_block32<N>(unpack_block, in, enc_dec_buf.data(), read.data());
 
   ASSERT_EQ(source, read);
 }
@@ -849,6 +889,10 @@ TEST(store_utils_tests, avg_encode_decode) {
 }
 
 TEST(store_utils_tests, avg_encode_block_read_write) {
+  auto pack = [](auto, auto, auto, auto) {
+    ASSERT_TRUE(false); // must not be called
+  };
+
   // rl case
   {
     const size_t count = 1024; // 1024 % packed::BLOCK_SIZE_64 == 0
@@ -873,20 +917,21 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     irs::bstring out_buf;
     irs::bytes_output out(out_buf);
     irs::encode::avg::write_block(
-      out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data()
-    );
+      pack, out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data());
 
     ASSERT_EQ(
-      irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint32_t>::vsize(irs::encode::bitpack::ALL_EQUAL) + irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
-      out_buf.size()
-    );
+      irs::bytes_io<uint64_t>::vsize(step) +
+      irs::bytes_io<uint64_t>::vsize(step) +
+      irs::bytes_io<uint32_t>::vsize(irs::bitpack::ALL_EQUAL) +
+      irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
+      out_buf.size());
 
     {
       tests::detail::bytes_input in(out_buf);
       const uint64_t base = in.read_vlong();
       const uint64_t avg= in.read_vlong();
       const uint64_t bits = in.read_vint();
-      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+      ASSERT_EQ(uint32_t(irs::bitpack::ALL_EQUAL), bits);
       ASSERT_EQ(step, base);
       ASSERT_EQ(step, avg);
     }
@@ -910,7 +955,7 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
       const uint64_t base = in.read_vlong();
       const uint64_t avg = in.read_vlong();
       const uint32_t bits = in.read_vint();
-      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+      ASSERT_EQ(uint32_t(irs::bitpack::ALL_EQUAL), bits);
 
       bool success = true;
       auto begin = values.begin();

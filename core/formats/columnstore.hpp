@@ -37,6 +37,95 @@
 namespace iresearch {
 namespace columns {
 
+template<size_t Size>
+class offset_block {
+ public:
+  static constexpr size_t SIZE = Size;
+
+  void push_back(uint64_t offset) noexcept {
+    assert(offset_ >= offsets_);
+    assert(offset_ < offsets_ + Size);
+    *offset_++ = offset;
+    assert(offset >= offset_[-1]);
+  }
+
+  void pop_back() noexcept {
+    assert(offset_ > offsets_);
+    *offset_-- = 0;
+  }
+
+  // returns total number of items
+  uint32_t total() const noexcept {
+    return flushed()+ size();
+  }
+
+  // returns total number of flushed items
+  uint32_t flushed() const noexcept {
+    return flushed_;
+  }
+
+  // returns number of items to be flushed
+  uint32_t size() const noexcept {
+    assert(offset_ >= offsets_);
+    return uint32_t(offset_ - offsets_);
+  }
+
+  bool empty() const noexcept {
+    return offset_ == offsets_;
+  }
+
+  bool full() const noexcept {
+    return offset_ == std::end(offsets_);
+  }
+
+  uint64_t max_offset() const noexcept {
+    assert(offset_ > offsets_);
+    return *(offset_-1);
+  }
+
+  bool flush(data_output& out, uint32_t* buf);
+
+ private:
+  // order is important (see max_key())
+  uint64_t offsets_[Size]{};
+  uint64_t* offset_{ offsets_ };
+  uint32_t flushed_{}; // number of flushed items
+}; // offset_block
+
+template<size_t Size>
+bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
+  if (empty()) {
+    return true;
+  }
+
+  const auto size = this->size();
+
+  bool fixed_length = false;
+
+  // adjust number of elements to pack to the nearest value
+  // that is multiple of the block size
+  const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+  assert(block_size >= size);
+
+  assert(std::is_sorted(offsets_, offset_));
+  const auto stats = encode::avg::encode(offsets_, offset_);
+  const auto bits = encode::avg::write_block(
+    out, stats.first, stats.second,
+    offsets_, block_size, buf);
+
+  if (0 == offsets_[0] && bitpack::rl(bits)) {
+    fixed_length = true;
+  }
+
+  flushed_ += size;
+
+  // reset pointers and clear data
+  offset_ = offsets_;
+  std::memset(offsets_, 0, sizeof offsets_);
+
+  return fixed_length;
+}
+
 template<typename Key, Key Invalid, size_t BlockSize>
 class columns_writer {
  public:
@@ -66,15 +155,17 @@ class columns_writer {
         if (IRS_LIKELY(pending_key_ != Invalid)) {
           docs_writer_.push_back(pending_key_);
 
-          const uint64_t offset = data_.stream.file_pointer();
-          *length_++ = offset - pending_offset_;
+          *++length_ = data_.stream.file_pointer();
+
+          if (block_.full()) {
+            block_.flush()
+          }
 
           if (std::end(lengths_) == length_) {
             flush();
           }
 
           last_key_ = pending_key_;
-          pending_offset_ = offset;
         }
 
         pending_key_ = key;
@@ -114,18 +205,20 @@ class columns_writer {
       auto& index_out = *ctx_->index_out_;
       auto& data_out = *ctx_->data_out_;
 
-      index_out.write_int(minmax_length.first);
-      index_out.write_int(minmax_length.second);
+      blocks_.stream.write_int(minmax_length.first);
+      blocks_.stream.write_int(minmax_length.second);
 
-      if (minmax_length.second > minmax_length.first) {
+      if (minmax_length.second >= minmax_length.first) {
         // write block address map
-        index_out.write_long(data_out.file_pointer()); // data offset
+        blocks_.stream.write_long(data_out.file_pointer()); // data offset
         data_out << this->data_; // FIXME write directly???
-        index_out.write_long(data_out.file_pointer()); // lengths offset
 
-
-
-
+        if (minmax_length.second > minmax_length.first) {
+          blocks_.stream.write_long(data_out.file_pointer()); // lengths offset
+          const auto stats = simd::avg_encode32<IRESEARCH_COUNTOF(lengths_)>(lengths_);
+          data_out.write_int(stats.first);
+          data_out.write_int(stats.second);
+        }
       }
 
 //      // do not take into account last block
@@ -163,7 +256,7 @@ class columns_writer {
 
       // reset to previous offset
       pending_key_ = last_key_;
-      data_.stream.seek(pending_offset_);
+      data_.stream.seek(*length_--);
     }
 
    private:
@@ -171,12 +264,12 @@ class columns_writer {
     irs::type_info comp_type_;
     compression::compressor::ptr comp_;
     encryption::stream* cipher_;
+    memory_output blocks_;
     memory_output data_;
     memory_output docs_;
     sparse_bitmap_writer docs_writer_{docs_.stream};
-    uint32_t lengths_[BlockSize]{};
-    uint32_t* length_{lengths_};
-    uint64_t pending_offset_{};
+    offset_block<BlockSize> block_;
+    offset_block<BlockSize> column_;
     key_type pending_key_{Invalid};
     key_type last_key_{ Invalid };
   }; // column

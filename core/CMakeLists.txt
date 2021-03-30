@@ -141,7 +141,6 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
-  ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/thread_utils.cpp
   ./utils/attributes.cpp

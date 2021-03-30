@@ -37,63 +37,38 @@ namespace packed {
 const uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
 const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
 
-inline uint32_t bits_required_64(uint64_t val) noexcept {
-  return 0 == val ? 0 : 64 - uint32_t(irs::math::clz64(val));
+FORCE_INLINE uint32_t bits_required_64(uint64_t val) noexcept {
+  return math::math_traits<uint64_t>::bits_required(val);
 }
 
-inline uint32_t bits_required_64(
-    const uint64_t* begin,
-    const uint64_t* end) noexcept {
-  uint64_t accum = 0;
-
-  while (begin != end) {
-    accum |= *begin++;
-  }
-
-  return bits_required_64(accum);
+FORCE_INLINE uint32_t bits_required_32(uint32_t val) noexcept {
+  return math::math_traits<uint32_t>::bits_required(val);
 }
 
-inline uint32_t bits_required_32(uint32_t val) noexcept {
-  return 0 == val ? 0 : 32 - irs::math::clz32(val);
-}
-
-inline uint32_t bits_required_32(
-    const uint32_t* begin,
-    const uint32_t* end
-) noexcept {
-  uint32_t accum = 0;
-
-  while (begin != end) {
-    accum |= *begin++;
-  }
-
-  return bits_required_32(accum);
-}
-
-inline uint32_t bytes_required_32(uint32_t count, uint32_t bits) noexcept {
+FORCE_INLINE constexpr uint32_t bytes_required_32(uint32_t count, uint32_t bits) noexcept {
   return math::div_ceil32(count*bits, 8);
 }
 
-inline uint64_t bytes_required_64(uint64_t count, uint64_t bits) noexcept {
+FORCE_INLINE constexpr uint64_t bytes_required_64(uint64_t count, uint64_t bits) noexcept {
   return math::div_ceil64(count*bits, 8);
 }
 
-inline uint32_t blocks_required_32(uint32_t count, uint32_t bits) noexcept {
+FORCE_INLINE constexpr uint32_t blocks_required_32(uint32_t count, uint32_t bits) noexcept {
   return math::div_ceil32(count*bits, 8*sizeof(uint32_t));
 }
 
-inline uint64_t blocks_required_64(uint64_t count, uint64_t bits) noexcept {
+FORCE_INLINE constexpr uint64_t blocks_required_64(uint64_t count, uint64_t bits) noexcept {
   return math::div_ceil64(count*bits, 8*sizeof(uint64_t));
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns number of elements required to store unpacked data
 //////////////////////////////////////////////////////////////////////////////
-inline uint64_t items_required(uint32_t count) noexcept {
+FORCE_INLINE constexpr uint64_t items_required(uint32_t count) noexcept {
   return BLOCK_SIZE_32 * math::div_ceil32(count, BLOCK_SIZE_32);
 }
 
-inline uint64_t iterations_required(uint32_t count) noexcept {
+FORCE_INLINE constexpr uint64_t iterations_required(uint32_t count) noexcept {
   return items_required(count) / BLOCK_SIZE_32;
 }
 

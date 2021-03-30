@@ -46,62 +46,84 @@ static constexpr vu64_t vu64;
 using vi64_t = HWY_FULL(int64_t);
 static constexpr vi64_t vi64;
 
-template<size_t Length>
-inline std::pair<uint32_t, uint32_t> maxmin(
-    const uint32_t* begin) noexcept {
-  constexpr size_t Step = MaxLanes(vu32);
+template<size_t Length, typename Simd, typename T>
+inline std::pair<T, T> maxmin(
+    const Simd simd_tag,
+    const T* begin) noexcept {
+  constexpr size_t Step = MaxLanes(simd_tag);
   static_assert(0 == (Length % Step));
 
-  auto minacc = Load(vu32, begin);
+  auto minacc = Load(simd_tag, begin);
   auto maxacc = minacc;
   for (size_t i = Step; i < Length; i += Step) {
-    const auto v = Load(vu32, begin + i);
+    const auto v = Load(simd_tag, begin + i);
     minacc = Min(minacc, v);
     maxacc = Max(maxacc, v);
   }
-  return { GetLane(MinOfLanes(minacc)), GetLane(MaxOfLanes(maxacc)) };
+  return {
+    GetLane(MinOfLanes(minacc)),
+    GetLane(MaxOfLanes(maxacc))
+  };
 }
 
-template<size_t Length>
+template<typename Simd, typename T>
 inline uint32_t maxbits(
-    const uint32_t* begin) noexcept {
-  constexpr size_t Step = MaxLanes(vu32);
-  static_assert(0 == (Length % Step));
+    const Simd simd_tag,
+    const T* begin,
+    size_t size) noexcept {
+  constexpr size_t Step = MaxLanes(simd_tag);
+  assert(0 == (size % Step));
 
-  auto oracc = Load(vu32, begin);
-  for (size_t i = Step; i < Length; i += Step) {
-    const auto v = Load(vu32, begin + i);
+  auto oracc = Load(simd_tag, begin);
+  for (size_t i = Step; i < size; i += Step) {
+    const auto v = Load(simd_tag, begin + i);
     oracc = Or(oracc, v);
   }
 
   // FIXME use OrOfLanes instead
-  return packed::bits_required_32(GetLane(MaxOfLanes(oracc)));
+  return math::math_traits<T>::bits_required(GetLane(MaxOfLanes(oracc)));
 }
 
-template<size_t Length>
-inline void fill_n(uint32_t* begin, const uint32_t value) noexcept {
-  constexpr size_t Step = MaxLanes(vu32);
-  static_assert(0 == (Length % Step));
+template<size_t Length, typename Simd, typename T>
+FORCE_INLINE uint32_t maxbits(
+    const Simd simd_tag,
+    const T* begin) noexcept {
+  static_assert(0 == (Length % MaxLanes(simd_tag)));
+  return maxbits(simd_tag, begin, Length);
+}
 
-  const auto vvalue = Set(vu32, value);
-  for (size_t i = 0; i < Length; i += Step) {
-    Store(vvalue, vu32, begin + i);
+template<typename Simd, typename T>
+inline void fill_n(const Simd simd_tag, T* begin, size_t size, const T value) noexcept {
+  constexpr size_t Step = MaxLanes(simd_tag);
+  assert(0 == (size % Step));
+
+  const auto vvalue = Set(simd_tag, value);
+  for (size_t i = 0; i < size; i += Step) {
+    Store(vvalue, simd_tag, begin + i);
   }
 }
 
+template<size_t Length, typename Simd, typename T>
+FORCE_INLINE void fill_n(const Simd simd_tag, T* begin, const T value) noexcept {
+  static_assert(0 == (Length % MaxLanes(simd_tag)));
+  fill_n(simd_tag, begin, Length, value);
+}
+
+template<typename Simd, typename T>
 inline bool all_equal(
-    const uint32_t* RESTRICT begin,
-    const uint32_t* RESTRICT end) noexcept {
-  constexpr size_t Step = MaxLanes(vu32);
+    const Simd simd_tag,
+    const T* RESTRICT begin,
+    const T* RESTRICT end) noexcept {
+  constexpr size_t Step = MaxLanes(simd_tag);
   assert(0 == (std::distance(begin, end) % Step));
 
   if (begin == end) {
     return true;
   }
 
-  const auto value = Set(vu32, *begin);
+  const auto value = Set(simd_tag, *begin);
   for (; begin != end; begin += Step) {
-    if (!AllTrue(value == LoadU(vu32, begin))) {
+    if (!AllTrue(value == LoadU(simd_tag, begin))) {
       return false;
     }
   }

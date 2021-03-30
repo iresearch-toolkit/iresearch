@@ -20,6 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "formats_10.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -28,13 +30,14 @@
 #include <list>
 #include <numeric>
 
-#include "shared.hpp"
+extern "C" {
+#include <simdbitpacking.h>
+}
 
+#include "shared.hpp"
 #include "skip_list.hpp"
 
 //#include "columnstore.hpp"
-//#include "utils/simd_utils.hpp"
-#include "formats_10.hpp"
 #include "formats_10_attributes.hpp"
 #include "formats_burst_trie.hpp"
 #include "format_utils.hpp"
@@ -52,7 +55,7 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 
-#include "utils/bit_packing.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/lz4compression.hpp"
@@ -68,13 +71,10 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/std.hpp"
-
-#ifdef IRESEARCH_SSE2
-#include "store/store_utils_simd.hpp"
-#endif
+#include "utils/simd_utils.hpp"
 
 #if defined(_MSC_VER)
-  #pragma warning(disable : 4351)
+#pragma warning(disable : 4351)
 #endif
 
 namespace {
@@ -87,18 +87,60 @@ constexpr string_ref MODULE_NAME = "10";
 struct format_traits {
   static constexpr uint32_t BLOCK_SIZE = 128;
 
+  FORCE_INLINE static void pack_block32(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    packed::pack_block(decoded, encoded, bits);
+    packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
+    packed::pack_block(decoded + 2*packed::BLOCK_SIZE_32, encoded + 2*bits, bits);
+    packed::pack_block(decoded + 3*packed::BLOCK_SIZE_32, encoded + 3*bits, bits);
+  }
+
+  FORCE_INLINE static void unpack_block32(
+      uint32_t* RESTRICT decoded,
+      const uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    packed::unpack_block(encoded, decoded, bits);
+    packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
+    packed::unpack_block(encoded + 2*bits, decoded + 2*packed::BLOCK_SIZE_32, bits);
+    packed::unpack_block(encoded + 3*bits, decoded + 3*packed::BLOCK_SIZE_32, bits);
+  }
+
+  FORCE_INLINE static void pack32(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      size_t size,
+      const uint32_t bits) noexcept {
+    assert(encoded);
+    assert(decoded);
+    assert(size);
+    packed::pack(decoded, decoded + size, encoded, bits);
+  }
+
+  FORCE_INLINE static void pack64(
+      const uint64_t* RESTRICT decoded,
+      uint64_t* RESTRICT encoded,
+      size_t size,
+      const uint32_t bits) noexcept {
+    assert(encoded);
+    assert(decoded);
+    assert(size);
+    packed::pack(decoded, decoded + size, encoded, bits);
+  }
+
   FORCE_INLINE static void write_block(
       index_output& out, const uint32_t* in, uint32_t* buf) {
-    encode::bitpack::write_block(out, in, buf);
+    bitpack::write_block32<BLOCK_SIZE>(&pack_block32, out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
       index_input& in, uint32_t* buf,  uint32_t* out) {
-    encode::bitpack::read_block(in, buf, out);
+    bitpack::read_block32<BLOCK_SIZE>(&unpack_block32, in, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in) {
-    encode::bitpack::skip_block32(in, BLOCK_SIZE);
+    bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits
 
@@ -2922,10 +2964,11 @@ class index_block {
       assert(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
+        &format_traits::pack32,
         out, stats.first, stats.second,
         keys_, block_size, reinterpret_cast<uint32_t*>(buf));
 
-      if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
+      if (1 == stats.second && 0 == keys_[0] && bitpack::rl(bits)) {
         props |= CP_DENSE;
       }
     }
@@ -2940,10 +2983,11 @@ class index_block {
       assert(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
+        &format_traits::pack64,
         out, stats.first, stats.second,
         offsets_, block_size, buf);
 
-      if (0 == offsets_[0] && encode::bitpack::rl(bits)) {
+      if (0 == offsets_[0] && bitpack::rl(bits)) {
         props |= CP_FIXED;
       }
     }
@@ -5729,20 +5773,34 @@ REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 #ifdef IRESEARCH_SSE2
 
 struct format_traits_simd {
-  static constexpr uint32_t BLOCK_SIZE = 128;
+  static constexpr uint32_t BLOCK_SIZE = SIMDBlockSize;
+
+  FORCE_INLINE static uint32_t pack_block(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    std::memset(encoded, 0, sizeof(uint32_t) * BLOCK_SIZE); // FIXME do we need memset???
+    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+    return bits;
+  }
+
+  FORCE_INLINE static void unpack_block(
+      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+  }
 
   FORCE_INLINE static void write_block(
       index_output& out, const uint32_t* in, uint32_t* buf) {
-    encode::bitpack::write_block_simd(out, in, buf);
+    bitpack::write_block32<BLOCK_SIZE>(&pack_block, out, in, buf);
   }
 
   FORCE_INLINE static void read_block(
       index_input& in, uint32_t* buf, uint32_t* out) {
-    encode::bitpack::read_block_simd(in, buf, out);
+    bitpack::read_block32<BLOCK_SIZE>(&unpack_block, in, buf, out);
   }
 
   FORCE_INLINE static void skip_block(index_input& in) {
-    encode::bitpack::skip_block32(in, BLOCK_SIZE);
+    bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits_simd
 

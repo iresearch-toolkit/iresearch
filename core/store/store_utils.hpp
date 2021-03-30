@@ -30,9 +30,9 @@
 #include "data_input.hpp"
 
 #include "utils/string.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
-#include "utils/bit_packing.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/std.hpp"
@@ -462,115 +462,6 @@ class IRESEARCH_API bytes_ref_input : public index_input {
 namespace encode {
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                bit packing encode/decode helpers
-// ----------------------------------------------------------------------------
-//
-// Normal packed block has the following structure:
-//   <BlockHeader>
-//     </NumberOfBits>
-//   </BlockHeader>
-//   </PackedData>
-//
-// In case if all elements in a block are equal:
-//   <BlockHeader>
-//     <ALL_EQUAL>
-//   </BlockHeader>
-//   </PackedData>
-//
-// ----------------------------------------------------------------------------
-
-namespace bitpack {
-
-const uint32_t ALL_EQUAL = 0U;
-
-// returns true if one can use run length encoding for the specified numberof bits
-inline bool rl(const uint32_t bits) {
-  return ALL_EQUAL == bits;
-}
-
-// skip block of the specified size that was previously
-// written with the corresponding 'write_block' function
-IRESEARCH_API void skip_block32(index_input& in, uint32_t size);
-
-// skip block of the specified size that was previously
-// written with the corresponding 'write_block' function
-IRESEARCH_API void skip_block64(index_input& in, uint64_t size);
-
-// reads block of the specified size from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t size,
-  uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded);
-
-// reads block of 128 integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded);
-
-// reads block of the specified size from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint32_t size,
-  uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded);
-
-// reads block of 128 integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block' funcion
-IRESEARCH_API void read_block(
-  data_input& in,
-  uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded);
-
-// writes block of 128 integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint32_t* RESTRICT decoded,
-  uint32_t* RESTRICT encoded);
-
-// writes block of the specified size to stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint32_t* RESTRICT decoded,
-  uint32_t size,
-  uint32_t* RESTRICT encoded);
-
-// writes block of the specified size to stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint64_t* RESTRICT decoded,
-  uint64_t size, // same type as 'decoded'/'encoded'
-  uint64_t* RESTRICT encoded);
-
-// writes block of 128 integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block(
-  data_output& out,
-  const uint64_t* RESTRICT decoded,
-  uint64_t* RESTRICT encoded);
-
-}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                      delta encode/decode helpers
 // ----------------------------------------------------------------------------
 
@@ -717,7 +608,9 @@ inline void decode(
   });
 }
 
+template<typename PackFunc>
 inline uint32_t write_block(
+    PackFunc&& pack,
     data_output& out,
     const uint64_t base,
     const uint64_t avg,
@@ -726,10 +619,14 @@ inline uint32_t write_block(
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
-  return bitpack::write_block(out, decoded, size, encoded);
+  return irs::bitpack::write_block64(
+    std::forward<PackFunc>(pack),
+    out, decoded, size, encoded);
 }
 
+template<typename PackFunc>
 inline uint32_t write_block(
+    PackFunc&& pack,
     data_output& out,
     const uint32_t base,
     const uint32_t avg,
@@ -738,21 +635,23 @@ inline uint32_t write_block(
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
-  return bitpack::write_block(out, decoded, size, encoded);
+  return irs::bitpack::write_block32(
+    std::forward<PackFunc>(pack),
+    out, decoded, size, encoded);
 }
 
 // Skips average encoded 64-bit block
 inline void skip_block64(index_input& in, size_t size) {
   in.read_vlong(); // skip base
   in.read_vlong(); // skip avg
-  bitpack::skip_block64(in, size);
+  irs::bitpack::skip_block64(in, size);
 }
 
 // Skips average encoded 64-bit block
 inline void skip_block32(index_input& in, uint32_t size) {
   in.read_vint(); // skip base
   in.read_vint(); // skip avg
-  bitpack::skip_block32(in, size);
+  irs::bitpack::skip_block32(in, size);
 }
 
 template<typename Visitor>
@@ -789,9 +688,9 @@ inline bool check_block_rl64(
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return expected_avg == avg
-    && bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return expected_avg == avg &&
+         irs::bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool check_block_rl32(
@@ -802,9 +701,9 @@ inline bool check_block_rl32(
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return expected_avg == avg
-    && bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return expected_avg == avg &&
+         irs::bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool read_block_rl64(
@@ -816,8 +715,8 @@ inline bool read_block_rl64(
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return irs::bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 inline bool read_block_rl32(
@@ -829,8 +728,8 @@ inline bool read_block_rl32(
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return bitpack::ALL_EQUAL == bits
-    && 0 == value; // delta
+  return irs::bitpack::ALL_EQUAL == bits &&
+         0 == value; // delta
 }
 
 template<typename Visitor>
@@ -843,7 +742,7 @@ inline void visit_block_packed_tail(
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
 
-  if (bitpack::ALL_EQUAL == bits) {
+  if (irs::bitpack::ALL_EQUAL == bits) {
     visit_block_rl64(in, base, avg, size, visitor);
     return;
   }
@@ -868,7 +767,7 @@ inline void visit_block_packed_tail(
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
 
-  if (bitpack::ALL_EQUAL == bits) {
+  if (irs::bitpack::ALL_EQUAL == bits) {
     visit_block_rl32(in, base, avg, size, visitor);
     return;
   }
@@ -893,7 +792,7 @@ inline void visit_block_packed(
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
 
-  if (bitpack::ALL_EQUAL == bits) {
+  if (irs::bitpack::ALL_EQUAL == bits) {
     visit_block_rl64(in, base, avg, size, visitor);
     return;
   }
@@ -916,7 +815,7 @@ inline void visit_block_packed(
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
 
-  if (bitpack::ALL_EQUAL == bits) {
+  if (irs::bitpack::ALL_EQUAL == bits) {
     visit_block_rl32(in, base, avg, size, visitor);
     return;
   }
