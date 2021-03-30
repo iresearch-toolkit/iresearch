@@ -32,6 +32,7 @@
 
 extern "C" {
 #include <simdbitpacking.h>
+#include <avxbitpacking.h>
 }
 
 #include "shared.hpp"
@@ -85,6 +86,8 @@ using namespace irs;
 constexpr string_ref MODULE_NAME = "10";
 
 struct format_traits {
+  using align_type = uint32_t;
+
   static constexpr uint32_t BLOCK_SIZE = 128;
 
   FORCE_INLINE static void pack_block32(
@@ -400,6 +403,7 @@ class postings_writer_base : public irs::postings_writer {
     }
 
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
+    //FIXME alignment
     doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     uint32_t freqs[BLOCK_SIZE]{};
     doc_id_t* delta{ deltas };
@@ -424,6 +428,7 @@ class postings_writer_base : public irs::postings_writer {
       size = 0;
     }
 
+    //FIXME alignment
     uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
     uint32_t last{};            // last buffered position
     uint32_t block_last{};      // last position in a block
@@ -456,6 +461,7 @@ class postings_writer_base : public irs::postings_writer {
     }
 
     bstring pay_buf_;                       // buffer for payload
+    //FIXME alignment
     uint32_t pay_sizes[BLOCK_SIZE]{};       // buffer to store payloads sizes
     uint32_t offs_start_buf[BLOCK_SIZE]{};  // buffer to store start offsets
     uint32_t offs_len_buf[BLOCK_SIZE]{};    // buffer to store offset lengths
@@ -1116,12 +1122,15 @@ struct position_impl<IteratorTraits, true, true>
     base::skip(count);
   }
 
+  alignas(typename IteratorTraits::align_type)
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
+  alignas(typename IteratorTraits::align_type)
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
+  alignas(typename IteratorTraits::align_type)
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   index_input::ptr pay_in_;
   offset offs_;
   payload pay_;
-  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
-  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
 }; // position_impl
@@ -1253,9 +1262,10 @@ struct position_impl<IteratorTraits, false, true>
     base::skip(count);
   }
 
+  alignas(typename IteratorTraits::align_type)
+  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   index_input::ptr pay_in_;
   payload pay_;
-  uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
 }; // position_impl
@@ -1347,10 +1357,12 @@ struct position_impl<IteratorTraits, true, false>
     base::skip_offsets(*pay_in_);
   }
 
+  alignas(typename IteratorTraits::align_type)
+  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
+  alignas(typename IteratorTraits::align_type)
+  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
   index_input::ptr pay_in_;
   offset offs_;
-  uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
-  uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
 }; // position_impl
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1456,6 +1468,7 @@ struct position_impl<IteratorTraits, false, false> {
     size_t file_pointer_ = std::numeric_limits<size_t>::max();
   };
 
+  alignas(typename IteratorTraits::align_type)
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
@@ -1891,12 +1904,15 @@ class doc_iterator final : public irs::doc_iterator {
     doc_freq_ = doc_freqs_;
   }
 
+  alignas(typename IteratorTraits::align_type)
+  uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
+  alignas(typename IteratorTraits::align_type)
+  doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
+  alignas(typename IteratorTraits::align_type)
+  uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
-  doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
-  uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
@@ -5772,7 +5788,8 @@ REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
 #ifdef IRESEARCH_SSE2
 
-struct format_traits_simd {
+struct format_traits_sse4 {
+  using align_type = __m128i;
   static constexpr uint32_t BLOCK_SIZE = SIMDBlockSize;
 
   FORCE_INLINE static uint32_t pack_block(
@@ -5802,7 +5819,7 @@ struct format_traits_simd {
   FORCE_INLINE static void skip_block(index_input& in) {
     bitpack::skip_block32(in, BLOCK_SIZE);
   }
-}; // format_traits_simd
+}; // format_traits_sse
 
 class format12simd final : public format12 {
  public:
@@ -5824,14 +5841,14 @@ irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state)
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
 
   if (volatile_state) {
-    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
+    return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits_sse4, false>>(VERSION);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits_simd, true>>();
+  return memory::make_unique<::postings_reader<format_traits_sse4, true>>();
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
@@ -5871,14 +5888,14 @@ irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state)
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
 
   if (volatile_state) {
-    return memory::make_unique<::postings_writer<format_traits_simd, true>>(VERSION);
+    return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
-  return memory::make_unique<::postings_writer<format_traits_simd, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits_sse4, false>>(VERSION);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits_simd, false>>();
+  return memory::make_unique<::postings_reader<format_traits_sse4, false>>();
 }
 
 /*static*/ irs::format::ptr format13simd::make() {
@@ -5927,6 +5944,44 @@ irs::field_writer::ptr format14simd::get_field_writer(bool volatile_state) const
 REGISTER_FORMAT_MODULE(::format14simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
+
+#ifdef IRESEARCH_AVX2
+
+struct format_traits_avx2 {
+  using align_type = __m256i;
+
+  static constexpr uint32_t BLOCK_SIZE = AVXBlockSize;
+
+  FORCE_INLINE static uint32_t pack_block(
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    std::memset(encoded, 0, sizeof(uint32_t) * BLOCK_SIZE); // FIXME do we need memset???
+    ::avxpackwithoutmask(decoded, reinterpret_cast<__m256i*>(encoded), bits);
+    return bits;
+  }
+
+  FORCE_INLINE static void unpack_block(
+      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
+    ::avxunpack(reinterpret_cast<const _m256i*>(encoded), decoded, bits);
+  }
+
+  FORCE_INLINE static void write_block(
+      index_output& out, const uint32_t* in, uint32_t* buf) {
+    bitpack::write_block32<BLOCK_SIZE>(&pack_block, out, in, buf);
+  }
+
+  FORCE_INLINE static void read_block(
+      index_input& in, uint32_t* buf, uint32_t* out) {
+    bitpack::read_block32<BLOCK_SIZE>(&unpack_block, in, buf, out);
+  }
+
+  FORCE_INLINE static void skip_block(index_input& in) {
+    bitpack::skip_block32(in, BLOCK_SIZE);
+  }
+}; // format_traits_sse
+
+#endif
 
 }
 

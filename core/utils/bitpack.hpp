@@ -232,6 +232,7 @@ void read_block32(
     const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
+      // FIXME allow potenially misaligned reads???
       unpack(decoded, reinterpret_cast<const uint32_t*>(buf), bits);
       return;
     }
