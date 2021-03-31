@@ -369,7 +369,7 @@ class postings_writer_base : public irs::postings_writer {
     alloc_.deallocate(state);
   }
 
-  struct stream {
+  struct skip_buffer {
     void reset() noexcept {
       start = end = 0;
     }
@@ -379,50 +379,50 @@ class postings_writer_base : public irs::postings_writer {
     uint64_t end{};                       // end position of block
   }; // stream
 
-  struct doc_stream : stream {
+  struct doc_buffer : skip_buffer {
     bool full() const noexcept {
-      return delta == std::end(deltas);
+      return doc == std::end(docs);
     }
 
     bool empty() const noexcept {
-      return delta == deltas;
+      return doc == std::begin(docs);
     }
 
     void push(doc_id_t doc, uint32_t freq) noexcept {
-      *this->delta++ = doc - last;
+      *this->doc++ = doc;
       *this->freq++ = freq;
       last = doc;
     }
 
     void reset() noexcept {
-      stream::reset();
-      delta = deltas;
+      skip_buffer::reset();
+      doc = docs;
       freq = freqs;
       last = doc_limits::invalid();
-      block_last = doc_limits::invalid();
+      block_last = doc_limits::min();
     }
 
-    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
     //FIXME alignment
-    doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
+    doc_id_t docs[BLOCK_SIZE]{}; // document deltas
     uint32_t freqs[BLOCK_SIZE]{};
-    doc_id_t* delta{ deltas };
+    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
+    doc_id_t* doc{ docs };
     uint32_t* freq{ freqs };
     doc_id_t last{ doc_limits::invalid() }; // last buffered document id
-    doc_id_t block_last{ doc_limits::invalid() }; // last document id in a block
-  }; // doc_stream
+    doc_id_t block_last{ doc_limits::min() }; // last document id in a block
+  }; // doc_buffer
 
-  struct pos_stream : stream {
-    using ptr = std::unique_ptr<pos_stream>;
+  struct pos_buffer : skip_buffer {
+    using ptr = std::unique_ptr<pos_buffer>;
 
     bool full() const { return BLOCK_SIZE == size; }
     void next(uint32_t pos) { last = pos, ++size; }
     void pos(uint32_t pos) {
-        buf[size] = pos;
+      buf[size] = pos;
     }
 
     void reset() noexcept {
-      stream::reset();
+      skip_buffer::reset();
       last = 0;
       block_last = 0;
       size = 0;
@@ -435,8 +435,8 @@ class postings_writer_base : public irs::postings_writer {
     uint32_t size{};            // number of buffered elements
   }; // pos_stream
 
-  struct pay_stream : stream {
-    using ptr = std::unique_ptr<pay_stream>;
+  struct pay_buffer : skip_buffer {
+    using ptr = std::unique_ptr<pay_buffer>;
 
     void push_payload(uint32_t i, const bytes_ref& pay) {
       if (!pay.empty()) {
@@ -454,17 +454,17 @@ class postings_writer_base : public irs::postings_writer {
     }
 
     void reset() noexcept {
-      stream::reset();
+      skip_buffer::reset();
       pay_buf_.clear();
       block_last = 0;
       last = 0;
     }
 
-    bstring pay_buf_;                       // buffer for payload
     //FIXME alignment
     uint32_t pay_sizes[BLOCK_SIZE]{};       // buffer to store payloads sizes
     uint32_t offs_start_buf[BLOCK_SIZE]{};  // buffer to store start offsets
     uint32_t offs_len_buf[BLOCK_SIZE]{};    // buffer to store offset lengths
+    bstring pay_buf_;                       // buffer for payload
     size_t block_last{};                    // last payload buffer length in a block
     uint32_t last{};                        // last start offset
   }; // pay_stream
@@ -490,9 +490,9 @@ class postings_writer_base : public irs::postings_writer {
   index_output::ptr pos_out_;       // positions
   index_output::ptr pay_out_;       // payload (payl + offs)
   uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
-  doc_stream doc_;                  // document stream
-  pos_stream::ptr pos_;             // proximity stream
-  pay_stream::ptr pay_;             // payloads and offsets stream
+  doc_buffer doc_;                  // document stream
+  pos_buffer::ptr pos_;             // proximity stream
+  pay_buffer::ptr pay_;             // payloads and offsets stream
   size_t docs_count_{};             // number of processed documents
   const int32_t postings_format_version_;
   const int32_t terms_format_version_;
@@ -516,7 +516,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   if (features.check<position>()) {
     // prepare proximity stream
     if (!pos_) {
-      pos_ = memory::make_unique<pos_stream>();
+      pos_ = memory::make_unique<pos_buffer>();
     }
 
     pos_->reset();
@@ -525,7 +525,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     if (features.check<payload>() || features.check<offset>()) {
       // prepare payload stream
       if (!pay_) {
-        pay_ = memory::make_unique<pay_stream>();
+        pay_ = memory::make_unique<pay_buffer>();
       }
 
       pay_->reset();
@@ -639,8 +639,8 @@ void postings_writer_base::begin_term() {
     }
   }
 
-  doc_.last = doc_limits::min(); // for proper delta of 1st id
-  doc_.block_last = doc_limits::invalid();
+  doc_.last = doc_limits::invalid();
+  doc_.block_last = doc_limits::min();
   skip_.reset();
 }
 
@@ -661,7 +661,7 @@ void postings_writer_base::end_doc() {
       }
     }
 
-    doc_.delta = doc_.deltas;
+    doc_.doc = doc_.docs;
     doc_.freq = doc_.freqs;
   }
 }
@@ -672,30 +672,34 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   if (1 == meta.docs_count) {
-    meta.e_single_doc = doc_.deltas[0];
+    meta.e_single_doc = doc_.docs[0] - doc_limits::min();
   } else {
     // write remaining documents using
     // variable length encoding
     auto& out = *doc_out_;
-    auto* doc_delta = doc_.deltas;
+    auto* doc = doc_.docs;
+    auto prev = doc_.block_last;
 
     if (features_.freq()) {
       auto* doc_freq = doc_.freqs;
-      for (; doc_delta < doc_.delta; ++doc_delta) {
+      for (; doc < doc_.doc; ++doc) {
         const uint32_t freq = *doc_freq;
+        const doc_id_t delta = *doc - prev;
 
         if (1 == freq) {
-          out.write_vint(shift_pack_32(*doc_delta, true));
+          out.write_vint(shift_pack_32(delta, true));
         } else {
-          out.write_vint(shift_pack_32(*doc_delta, false));
+          out.write_vint(shift_pack_32(delta, false));
           out.write_vint(freq);
         }
 
         ++doc_freq;
+        prev = *doc;
       }
     } else {
-      for (; doc_delta < doc_.delta; ++doc_delta) {
-        out.write_vint(*doc_delta);
+      for (; doc < doc_.doc; ++doc) {
+        out.write_vint(*doc - prev);
+        prev = *doc;
       }
     }
   }
@@ -774,9 +778,9 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   docs_count_ = 0;
-  doc_.delta = doc_.deltas;
+  doc_.doc = doc_.docs;
   doc_.freq = doc_.freqs;
-  doc_.last = 0;
+  doc_.last = doc_limits::invalid();
   meta.doc_start = doc_.start;
 
   if (pos_) {
@@ -794,7 +798,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
 template<typename FormatTraits>
 void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
-  if (doc_limits::valid(doc_.block_last) && doc_.empty()) {
+  if (doc_limits::valid(doc_.last) && doc_.empty()) {
     skip_.skip(docs_count_);
   }
 
@@ -807,7 +811,9 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
   doc_.push(id, freq ? freq->value : 0);
 
   if (doc_.full()) {
-    FormatTraits::write_block(*doc_out_, doc_.deltas, buf_);
+    // FIXME do aligned
+    simd::delta_encode<BLOCK_SIZE, false>(simd::vu32, doc_.docs, doc_.block_last);
+    FormatTraits::write_block(*doc_out_, doc_.docs, buf_);
 
     if (freq) {
       FormatTraits::write_block(*doc_out_, doc_.freqs, buf_);
