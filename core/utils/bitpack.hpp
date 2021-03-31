@@ -63,7 +63,7 @@ constexpr bool rl(const uint32_t bits) noexcept {
 inline void skip_block32(index_input& in, uint32_t size) {
   assert(size);
 
-  const uint32_t bits = in.read_vint();
+  const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
     in.read_vint();
   } else {
@@ -76,7 +76,7 @@ inline void skip_block32(index_input& in, uint32_t size) {
 inline void skip_block64(index_input& in, uint64_t size) {
   assert(size);
 
-  const uint32_t bits = in.read_vint();
+  const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
     in.read_vlong();
   } else {
@@ -99,18 +99,18 @@ uint32_t write_block32(
   assert(decoded);
 
   if (simd::all_equal<false>(simd::vu32, decoded, decoded + Size)) {
-    out.write_vint(ALL_EQUAL);
+    out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
   const uint32_t bits = simd::maxbits<Size, false>(simd::vu32, decoded);
+  const size_t buf_size = packed::bytes_required_32(Size, bits);
+  std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(
-    reinterpret_cast<const byte_type*>(encoded),
-    packed::bytes_required_32(Size, bits));
+  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
 
   return bits;
 }
@@ -130,19 +130,19 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-  if (irstd::all_equal(decoded, decoded + size)) {
-    out.write_vint(ALL_EQUAL);
+  if (simd::all_equal<false>(simd::vu32, decoded, decoded + size)) {
+    out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
   const uint32_t bits = simd::maxbits<false>(simd::vu32, decoded, size);
+  const size_t buf_size = packed::bytes_required_32(size, bits);
+  std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(
-    reinterpret_cast<const byte_type*>(encoded),
-    packed::bytes_required_32(size, bits));
+  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
 
   return bits;
 }
@@ -162,18 +162,18 @@ uint32_t write_block64(
   assert(decoded);
 
   if (simd::all_equal<false>(simd::vu64, decoded, decoded + Size)) {
-    out.write_vint(ALL_EQUAL);
+    out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
   const uint32_t bits = simd::maxbits<Size, false>(simd::vu64, decoded);
+  const size_t buf_size = packed::bytes_required_64(Size, bits);
+  std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(
-    reinterpret_cast<const byte_type*>(encoded),
-    packed::bytes_required_64(Size, bits));
+  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
 
   return bits;
 }
@@ -194,25 +194,25 @@ uint32_t write_block64(
   assert(decoded);
 
   if (simd::all_equal<false>(simd::vu64, decoded, decoded + size)) {
-    out.write_vint(ALL_EQUAL);
+    out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
   const uint32_t bits = simd::maxbits<false>(simd::vu64, decoded, size);
+  const size_t buf_size = packed::bytes_required_64(size, bits);
+  std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(
-    reinterpret_cast<const byte_type*>(encoded),
-    packed::bytes_required_64(size, bits));
+  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
 
   return bits;
 }
 
 // reads block of 'Size' 32 bit integers from the stream
 // that was previously encoded with the corresponding
-// 'write_block32' funcion
+// 'write_block32' function
 template<size_t Size, typename UnpackFunc>
 void read_block32(
     UnpackFunc&& unpack,
@@ -223,7 +223,7 @@ void read_block32(
   assert(encoded);
   assert(decoded);
 
-  const uint32_t bits = in.read_vint();
+  const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
     simd::fill_n<Size, false>(simd::vu32, decoded, in.read_vint());
   } else {
@@ -255,7 +255,7 @@ void read_block32(
 
 // reads block of 'size' 32 bit integers from the stream
 // that was previously encoded with the corresponding
-// 'write_block32' funcion
+// 'write_block32' function
 template<typename UnpackFunc>
 void read_block32(
     UnpackFunc&& unpack,
@@ -267,7 +267,7 @@ void read_block32(
   assert(encoded);
   assert(decoded);
 
-  const uint32_t bits = in.read_vint();
+  const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
     simd::fill_n<false>(simd::vu32, decoded, size, in.read_vint());
   } else {
@@ -298,7 +298,7 @@ void read_block32(
 
 // reads block of 'Size' 64 bit integers from the stream
 // that was previously encoded with the corresponding
-// 'write_block64' funcion
+// 'write_block64' function
 template<size_t Size, typename UnpackFunc>
 void read_block64(
     UnpackFunc&& unpack,
@@ -311,7 +311,7 @@ void read_block64(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<Size>(simd::vu64, decoded, in.read_vlong());
+    simd::fill_n<Size, false>(simd::vu64, decoded, in.read_vlong());
   } else {
     const size_t required = packed::bytes_required_64(Size, bits);
 

@@ -1047,6 +1047,9 @@ void field_writer::write(
   assert(docs);
 
   for (; terms.next();) {
+  if (ref_cast<char>(terms.value()) == "a") {
+    int i = 5;
+  }
     auto postings = terms.postings(features);
     auto meta = pw_->write(*postings);
 

@@ -5792,18 +5792,16 @@ struct format_traits_sse4 {
   using align_type = __m128i;
   static constexpr uint32_t BLOCK_SIZE = SIMDBlockSize;
 
-  FORCE_INLINE static uint32_t pack_block(
+  FORCE_INLINE static void pack_block(
       const uint32_t* RESTRICT decoded,
       uint32_t* RESTRICT encoded,
       const uint32_t bits) noexcept {
-    std::memset(encoded, 0, sizeof(uint32_t) * BLOCK_SIZE); // FIXME do we need memset???
-    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
-    return bits;
+    ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded), bits);
   }
 
   FORCE_INLINE static void unpack_block(
       uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
-    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+    ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
   }
 
   FORCE_INLINE static void write_block(
@@ -5952,18 +5950,16 @@ struct format_traits_avx2 {
 
   static constexpr uint32_t BLOCK_SIZE = AVXBlockSize;
 
-  FORCE_INLINE static uint32_t pack_block(
+  FORCE_INLINE static void pack_block(
       const uint32_t* RESTRICT decoded,
       uint32_t* RESTRICT encoded,
       const uint32_t bits) noexcept {
-    std::memset(encoded, 0, sizeof(uint32_t) * BLOCK_SIZE); // FIXME do we need memset???
-    ::avxpackwithoutmask(decoded, reinterpret_cast<__m256i*>(encoded), bits);
-    return bits;
+    ::avxpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded), bits);
   }
 
   FORCE_INLINE static void unpack_block(
       uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
-    ::avxunpack(reinterpret_cast<const _m256i*>(encoded), decoded, bits);
+    ::avxunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
   }
 
   FORCE_INLINE static void write_block(
