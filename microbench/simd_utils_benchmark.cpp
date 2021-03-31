@@ -5,7 +5,27 @@
 
 namespace {
 
-void BM_avg(benchmark::State& state) {
+void BM_delta_encode(benchmark::State& state) {
+  uint32_t values[8192];
+  for (auto _ : state) {
+    std::iota(std::begin(values), std::end(values), 0);
+    irs::encode::delta::encode(std::begin(values), std::end(values));
+  }
+}
+
+BENCHMARK(BM_delta_encode);
+
+void BM_delta_encode_simd(benchmark::State& state) {
+  HWY_ALIGN uint32_t values[8192];
+  for (auto _ : state) {
+    std::iota(std::begin(values), std::end(values), 0);
+    irs::simd::delta_encode<IRESEARCH_COUNTOF(values)>(irs::simd::vu32, values, 0U);
+  }
+}
+
+BENCHMARK(BM_delta_encode_simd);
+
+void BM_avg_encode(benchmark::State& state) {
   uint32_t values[8192];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), 0);
@@ -15,11 +35,11 @@ void BM_avg(benchmark::State& state) {
 
 BENCHMARK(BM_avg_encode);
 
-void BM_avg_simd(benchmark::State& state) {
+void BM_avg_encode_simd(benchmark::State& state) {
   HWY_ALIGN uint32_t values[8192];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), 0);
-    irs::simd::avg_encode<IRESEARCH_COUNTOF(values)>(values);
+    irs::simd::avg_encode32<IRESEARCH_COUNTOF(values)>(values);
   }
 }
 

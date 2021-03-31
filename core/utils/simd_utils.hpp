@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_SIMD_UTILS_H
 #define IRESEARCH_SIMD_UTILS_H
 
-#include "shared.hpp"
-
+#include <algorithm>
 #include <hwy/highway.h>
 
+#include "shared.hpp"
 #include "utils/bit_packing.hpp"
 
 namespace iresearch {
@@ -46,17 +46,39 @@ static constexpr vu64_t vu64;
 using vi64_t = HWY_FULL(int64_t);
 static constexpr vi64_t vi64;
 
-template<size_t Length, typename Simd, typename T>
-inline std::pair<T, T> maxmin(
+template<bool Aligned>
+struct simd_helper {
+  template<typename Simd, typename T, typename Ptr>
+  static void store(T value, const Simd simd_tag, Ptr p) {
+    if constexpr (Aligned) {
+      Store(value, simd_tag, p);
+    } else {
+      StoreU(value, simd_tag, p);
+    }
+  }
+
+  template<typename Simd, typename Ptr>
+  static decltype(Load(Simd{}, Ptr{})) load(const Simd simd_tag, Ptr p) {
+    if constexpr (Aligned) {
+      return Load(simd_tag, p);
+    } else {
+      return LoadU(simd_tag, p);
+    }
+  }
+};
+
+template<size_t Length, bool Aligned, typename Simd, typename T>
+std::pair<T, T> maxmin(
     const Simd simd_tag,
     const T* begin) noexcept {
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
   static_assert(0 == (Length % Step));
 
-  auto minacc = Load(simd_tag, begin);
+  auto minacc = simd_helper::load(simd_tag, begin);
   auto maxacc = minacc;
   for (size_t i = Step; i < Length; i += Step) {
-    const auto v = Load(simd_tag, begin + i);
+    const auto v = simd_helper::load(simd_tag, begin + i);
     minacc = Min(minacc, v);
     maxacc = Max(maxacc, v);
   }
@@ -66,17 +88,18 @@ inline std::pair<T, T> maxmin(
   };
 }
 
-template<typename Simd, typename T>
-inline uint32_t maxbits(
+template<bool Aligned, typename Simd, typename T>
+uint32_t maxbits(
     const Simd simd_tag,
     const T* begin,
     size_t size) noexcept {
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
   assert(0 == (size % Step));
 
-  auto oracc = Load(simd_tag, begin);
+  auto oracc = simd_helper::load(simd_tag, begin);
   for (size_t i = Step; i < size; i += Step) {
-    const auto v = Load(simd_tag, begin + i);
+    const auto v = simd_helper::load(simd_tag, begin + i);
     oracc = Or(oracc, v);
   }
 
@@ -84,36 +107,38 @@ inline uint32_t maxbits(
   return math::math_traits<T>::bits_required(GetLane(MaxOfLanes(oracc)));
 }
 
-template<size_t Length, typename Simd, typename T>
+template<size_t Length, bool Aligned, typename Simd, typename T>
 FORCE_INLINE uint32_t maxbits(
     const Simd simd_tag,
     const T* begin) noexcept {
   static_assert(0 == (Length % MaxLanes(simd_tag)));
-  return maxbits(simd_tag, begin, Length);
+  return maxbits<Aligned>(simd_tag, begin, Length);
 }
 
-template<typename Simd, typename T>
-inline void fill_n(const Simd simd_tag, T* begin, size_t size, const T value) noexcept {
+template<bool Aligned, typename Simd, typename T>
+void fill_n(const Simd simd_tag, T* begin, size_t size, const T value) noexcept {
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
   assert(0 == (size % Step));
 
   const auto vvalue = Set(simd_tag, value);
   for (size_t i = 0; i < size; i += Step) {
-    Store(vvalue, simd_tag, begin + i);
+    simd_helper::store(vvalue, simd_tag, begin + i);
   }
 }
 
-template<size_t Length, typename Simd, typename T>
+template<size_t Length, bool Aligned, typename Simd, typename T>
 FORCE_INLINE void fill_n(const Simd simd_tag, T* begin, const T value) noexcept {
   static_assert(0 == (Length % MaxLanes(simd_tag)));
-  fill_n(simd_tag, begin, Length, value);
+  fill_n<Aligned>(simd_tag, begin, Length, value);
 }
 
-template<typename Simd, typename T>
-inline bool all_equal(
+template<bool Aligned, typename Simd, typename T>
+bool all_equal(
     const Simd simd_tag,
     const T* RESTRICT begin,
     const T* RESTRICT end) noexcept {
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
   assert(0 == (std::distance(begin, end) % Step));
 
@@ -123,7 +148,7 @@ inline bool all_equal(
 
   const auto value = Set(simd_tag, *begin);
   for (; begin != end; begin += Step) {
-    if (!AllTrue(value == LoadU(simd_tag, begin))) {
+    if (!AllTrue(value == simd_helper::load(simd_tag, begin))) {
       return false;
     }
   }
@@ -151,14 +176,31 @@ FORCE_INLINE Vec<vi64_t> zig_zag_decode64(Vec<vu64_t> uv) noexcept {
   return ((v >> Set(vi64, 1)) ^ (Zero(vi64)-(v & Set(vi64, 1))));
 }
 
-//FIXME simd for delta encoding
+template<size_t Length, bool Aligned, typename Simd, typename T>
+void delta_encode(const Simd simd_tag, T* begin, T init) noexcept {
+  using simd_helper = simd_helper<Aligned>;
+  constexpr size_t Step = MaxLanes(simd_tag);
+  static_assert(Length);
+  static_assert(0 == (Length % Step));
+  assert(std::is_sorted(begin, begin + Length));
+
+  auto prev = Set(simd_tag, init);
+
+  for (size_t i = 0; i < Length; i += Step) {
+    const auto vec = simd_helper::load(simd_tag, begin + i);
+    const auto delta = vec - CombineShiftRightLanes<Step - 1>(vec, prev);
+    simd_helper::store(delta, simd_tag, begin + i);
+    prev = vec;
+  }
+}
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-template<size_t Length>
-inline std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
-  static_assert(Length);
+template<size_t Length, bool Aligned>
+std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(vu32);
+  static_assert(Length);
   static_assert(0 == (Length % Step));
   assert(begin[Length-1] >= begin[0]);
 
@@ -171,8 +213,9 @@ inline std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
   const auto vavg = Set(vi32, avg) * Set(vi32, Step);
 
   for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
-    const auto v = Load(vi32, reinterpret_cast<int32_t*>(begin + i)) - vbase;
-    Store(zig_zag_encode32(v), vu32, begin + i);
+    auto* p = begin + i;
+    const auto v = simd_helper::load(vi32, reinterpret_cast<int32_t*>(p)) - vbase;
+    simd_helper::store(zig_zag_encode32(v), vu32, p);
   }
 
   // FIXME
@@ -181,12 +224,13 @@ inline std::pair<uint32_t, uint32_t> avg_encode32(uint32_t* begin) noexcept {
   return std::make_pair(base, avg);
 }
 
-template<size_t Length>
+template<size_t Length, bool Aligned>
 inline void avg_decode32(
     const uint32_t* begin, uint32_t* out,
     uint32_t base, uint32_t avg) noexcept {
-  static_assert(Length);
+  using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(vu32);
+  static_assert(Length);
   static_assert(0 == (Length % Step));
   assert(begin[Length-1] >= begin[0]);
 
@@ -194,8 +238,8 @@ inline void avg_decode32(
   const auto vavg = Set(vi32, avg) * Set(vi32, Step);
 
   for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
-    const auto v = Load(vu32, begin + i);
-    Store(zig_zag_decode32(v) + vbase, vi32, reinterpret_cast<int32_t*>(out + i));
+    const auto v = simd_helper::load(vu32, begin + i);
+    simd_helper::store(zig_zag_decode32(v) + vbase, vi32, reinterpret_cast<int32_t*>(out + i));
   }
 }
 

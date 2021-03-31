@@ -6,8 +6,6 @@ namespace {
 
 using namespace irs::analysis;
 
-BENCHMARK(BM_zigzag_simd);
-
 void BM_segmentation_analyzer(benchmark::State& state) {
   segmentation_token_stream::options_t opts;
   opts.case_convert = segmentation_token_stream::options_t::case_convert_t::LOWER;
