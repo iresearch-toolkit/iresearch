@@ -812,7 +812,7 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
 
   if (doc_.full()) {
     // FIXME do aligned
-    simd::delta_encode<BLOCK_SIZE, false>(simd::vu32, doc_.docs, doc_.block_last);
+    simd::delta_encode<BLOCK_SIZE, false>(doc_.docs, doc_.block_last);
     FormatTraits::write_block(*doc_out_, doc_.docs, buf_);
 
     if (freq) {

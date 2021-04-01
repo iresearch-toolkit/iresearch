@@ -27,29 +27,29 @@
 #include "utils/simd_utils.hpp"
 
 TEST(simd_utils_test, delta32) {
-  using namespace hwy::HWY_NAMESPACE;
-  using namespace irs;
-
   HWY_ALIGN uint32_t values[1024];
   std::iota(std::begin(values), std::end(values), 42);
 
-  HWY_ALIGN uint32_t encoded[1024];
-  std::memcpy(encoded, values, sizeof values);
-  irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true>(irs::simd::vu32, encoded, encoded[0] - 1);
+  // 128-bit
+  {
+    HWY_ALIGN uint32_t encoded[1024];
+    std::memcpy(encoded, values, sizeof values);
+    irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 0>(encoded, encoded[0] - 1);
+    ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
+  }
 
-  ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
-
-  //HWY_ALIGN uint32_t decoded[IRESEARCH_COUNTOF(encoded)];
-  //irs::simd::avg_decode32<IRESEARCH_COUNTOF(encoded)>(encoded, decoded, stats.first, stats.second);
-
-  //ASSERT_TRUE(std::equal(std::begin(values), std::end(values),
-  //                       std::begin(decoded), std::end(decoded)));
+#if HWY_CAP_GE256
+  // 256-bit and greater
+  {
+    HWY_ALIGN uint32_t encoded[1024];
+    std::memcpy(encoded, values, sizeof values);
+    irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 1>(encoded, encoded[0] - 1);
+    ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
+  }
+#endif
 }
 
 TEST(simd_utils_test, avg32) {
-  using namespace hwy::HWY_NAMESPACE;
-  using namespace irs;
-
   HWY_ALIGN uint32_t values[1024];
   std::iota(std::begin(values), std::end(values), 42);
 
@@ -65,20 +65,14 @@ TEST(simd_utils_test, avg32) {
 }
 
 TEST(simd_utils_test, zigzag32) {
-  using namespace hwy::HWY_NAMESPACE;
-  using namespace irs;
-
-  auto expected = Iota(irs::simd::vi32, 0);
+  auto expected = Iota(HWY_FULL(int32_t){}, 0);
   auto encoded = irs::simd::zig_zag_encode32(expected);
   auto decoded = irs::simd::zig_zag_decode32(encoded);
   ASSERT_TRUE(AllTrue(expected == decoded));
 }
 
 TEST(simd_utils_test, zigzag64) {
-  using namespace hwy::HWY_NAMESPACE;
-  using namespace irs;
-
-  auto expected = Iota(irs::simd::vi64, 0);
+  auto expected = Iota(HWY_FULL(int64_t){}, 0);
   auto encoded = irs::simd::zig_zag_encode64(expected);
   auto decoded = irs::simd::zig_zag_decode64(encoded);
   ASSERT_TRUE(AllTrue(expected == decoded));
@@ -88,12 +82,10 @@ TEST(simd_utils_test, all_equal) {
   constexpr size_t BLOCK_SIZE = 128;
   HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::fill(std::begin(values), std::end(values), 42);
-  ASSERT_TRUE(irs::simd::all_equal<true>(
-    irs::simd::vu32, std::begin(values), std::end(values)));
+  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
 
   values[0] = 0;
-  ASSERT_FALSE(irs::simd::all_equal<true>(
-    irs::simd::vu32, std::begin(values), std::end(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
 
   {
     auto* begin = values;
@@ -105,18 +97,17 @@ TEST(simd_utils_test, all_equal) {
       begin += 4;
     }
   }
-  ASSERT_FALSE(irs::simd::all_equal<true>(
-    irs::simd::vu32, std::begin(values), std::end(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
 }
 
 TEST(simd_utils_test, fill_n) {
   constexpr size_t BLOCK_SIZE = 128;
   HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::fill(std::begin(values), std::end(values), 42);
-  irs::simd::fill_n<IRESEARCH_COUNTOF(values), true>(irs::simd::vu32, values, 84U);
+  irs::simd::fill_n<IRESEARCH_COUNTOF(values), true>(values, 84U);
   ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
               [](const auto v) { return v == 84; }));
-  irs::simd::fill_n<IRESEARCH_COUNTOF(values), true>(irs::simd::vu32, values, 128U);
+  irs::simd::fill_n<IRESEARCH_COUNTOF(values), true>(values, 128U);
   ASSERT_TRUE(std::all_of(std::begin(values), std::begin(values) + BLOCK_SIZE,
               [](const auto v) { return v == 128; }));
   ASSERT_TRUE(std::all_of(std::begin(values) + BLOCK_SIZE, std::end(values),
@@ -129,7 +120,7 @@ TEST(simd_utils_test, maxmin) {
   std::iota(std::begin(values), std::end(values), 42);
   ASSERT_EQ(
     (std::pair<uint32_t, uint32_t>(42, 42 + IRESEARCH_COUNTOF(values) - 1)),
-    (irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(irs::simd::vu32, values)));
+    (irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(values)));
 }
 
 

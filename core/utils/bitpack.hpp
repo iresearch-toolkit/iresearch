@@ -98,13 +98,13 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(simd::vu32, decoded, decoded + Size)) {
+  if (simd::all_equal<false>(decoded, decoded + Size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
-  const uint32_t bits = simd::maxbits<Size, false>(simd::vu32, decoded);
+  const uint32_t bits = simd::maxbits<Size, false>(decoded);
   const size_t buf_size = packed::bytes_required_32(Size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
@@ -130,13 +130,13 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(simd::vu32, decoded, decoded + size)) {
+  if (simd::all_equal<false>(decoded, decoded + size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
-  const uint32_t bits = simd::maxbits<false>(simd::vu32, decoded, size);
+  const uint32_t bits = simd::maxbits<false>(decoded, size);
   const size_t buf_size = packed::bytes_required_32(size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
@@ -161,13 +161,13 @@ uint32_t write_block64(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(simd::vu64, decoded, decoded + Size)) {
+  if (simd::all_equal<false>(decoded, decoded + Size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
-  const uint32_t bits = simd::maxbits<Size, false>(simd::vu64, decoded);
+  const uint32_t bits = simd::maxbits<Size, false>(decoded);
   const size_t buf_size = packed::bytes_required_64(Size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
@@ -193,13 +193,13 @@ uint32_t write_block64(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(simd::vu64, decoded, decoded + size)) {
+  if (simd::all_equal<false>(decoded, decoded + size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
   }
 
-  const uint32_t bits = simd::maxbits<false>(simd::vu64, decoded, size);
+  const uint32_t bits = simd::maxbits<false>(decoded, size);
   const size_t buf_size = packed::bytes_required_64(size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
@@ -225,7 +225,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<Size, false>(simd::vu32, decoded, in.read_vint());
+    simd::fill_n<Size, false>(decoded, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(Size, bits);
 
@@ -269,7 +269,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<false>(simd::vu32, decoded, size, in.read_vint());
+    simd::fill_n<false>(decoded, size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(size, bits);
 
@@ -311,7 +311,7 @@ void read_block64(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<Size, false>(simd::vu64, decoded, in.read_vlong());
+    simd::fill_n<Size, false>(decoded, in.read_vlong());
   } else {
     const size_t required = packed::bytes_required_64(Size, bits);
 
