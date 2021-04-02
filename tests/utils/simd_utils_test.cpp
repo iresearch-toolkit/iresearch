@@ -55,10 +55,10 @@ TEST(simd_utils_test, avg32) {
 
   HWY_ALIGN uint32_t encoded[1024];
   std::memcpy(encoded, values, sizeof values);
-  const auto stats = irs::simd::avg_encode32<IRESEARCH_COUNTOF(encoded), true>(encoded);
+  const auto stats = irs::simd::avg_encode<IRESEARCH_COUNTOF(encoded), true>(encoded);
 
   HWY_ALIGN uint32_t decoded[IRESEARCH_COUNTOF(encoded)];
-  irs::simd::avg_decode32<IRESEARCH_COUNTOF(encoded), true>(encoded, decoded, stats.first, stats.second);
+  irs::simd::avg_decode<IRESEARCH_COUNTOF(encoded), true>(encoded, decoded, stats.first, stats.second);
 
   ASSERT_TRUE(std::equal(std::begin(values), std::end(values),
                          std::begin(decoded), std::end(decoded)));
@@ -66,15 +66,15 @@ TEST(simd_utils_test, avg32) {
 
 TEST(simd_utils_test, zigzag32) {
   auto expected = Iota(HWY_FULL(int32_t){}, 0);
-  auto encoded = irs::simd::zig_zag_encode32(expected);
-  auto decoded = irs::simd::zig_zag_decode32(encoded);
+  auto encoded = irs::simd::zig_zag_encode(expected);
+  auto decoded = irs::simd::zig_zag_decode(encoded);
   ASSERT_TRUE(AllTrue(expected == decoded));
 }
 
 TEST(simd_utils_test, zigzag64) {
   auto expected = Iota(HWY_FULL(int64_t){}, 0);
-  auto encoded = irs::simd::zig_zag_encode64(expected);
-  auto decoded = irs::simd::zig_zag_decode64(encoded);
+  auto encoded = irs::simd::zig_zag_encode(expected);
+  auto decoded = irs::simd::zig_zag_decode(encoded);
   ASSERT_TRUE(AllTrue(expected == decoded));
 }
 

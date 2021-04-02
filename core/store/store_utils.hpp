@@ -619,7 +619,7 @@ inline uint32_t write_block(
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
-  return irs::bitpack::write_block64(
+  return bitpack::write_block64(
     std::forward<PackFunc>(pack),
     out, decoded, size, encoded);
 }
@@ -635,7 +635,7 @@ inline uint32_t write_block(
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
-  return irs::bitpack::write_block32(
+  return bitpack::write_block32(
     std::forward<PackFunc>(pack),
     out, decoded, size, encoded);
 }
@@ -644,14 +644,14 @@ inline uint32_t write_block(
 inline void skip_block64(index_input& in, size_t size) {
   in.read_vlong(); // skip base
   in.read_vlong(); // skip avg
-  irs::bitpack::skip_block64(in, size);
+  bitpack::skip_block64(in, size);
 }
 
 // Skips average encoded 64-bit block
 inline void skip_block32(index_input& in, uint32_t size) {
   in.read_vint(); // skip base
   in.read_vint(); // skip avg
-  irs::bitpack::skip_block32(in, size);
+  bitpack::skip_block32(in, size);
 }
 
 template<typename Visitor>
@@ -689,7 +689,7 @@ inline bool check_block_rl64(
   const uint64_t value = in.read_vlong();
 
   return expected_avg == avg &&
-         irs::bitpack::ALL_EQUAL == bits &&
+         bitpack::ALL_EQUAL == bits &&
          0 == value; // delta
 }
 
@@ -702,12 +702,12 @@ inline bool check_block_rl32(
   const uint32_t value = in.read_vint();
 
   return expected_avg == avg &&
-         irs::bitpack::ALL_EQUAL == bits &&
+         bitpack::ALL_EQUAL == bits &&
          0 == value; // delta
 }
 
 inline bool read_block_rl64(
-    irs::data_input& in,
+    data_input& in,
     uint64_t& base,
     uint64_t& avg) {
   base = in.read_vlong();
@@ -715,12 +715,12 @@ inline bool read_block_rl64(
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return irs::bitpack::ALL_EQUAL == bits &&
+  return bitpack::ALL_EQUAL == bits &&
          0 == value; // delta
 }
 
 inline bool read_block_rl32(
-    irs::data_input& in,
+    data_input& in,
     uint32_t& base,
     uint32_t& avg) {
   base = in.read_vint();
@@ -728,7 +728,7 @@ inline bool read_block_rl32(
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return irs::bitpack::ALL_EQUAL == bits &&
+  return bitpack::ALL_EQUAL == bits &&
          0 == value; // delta
 }
 
@@ -742,7 +742,7 @@ inline void visit_block_packed_tail(
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
 
-  if (irs::bitpack::ALL_EQUAL == bits) {
+  if (bitpack::ALL_EQUAL == bits) {
     visit_block_rl64(in, base, avg, size, visitor);
     return;
   }
@@ -767,7 +767,7 @@ inline void visit_block_packed_tail(
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
 
-  if (irs::bitpack::ALL_EQUAL == bits) {
+  if (bitpack::ALL_EQUAL == bits) {
     visit_block_rl32(in, base, avg, size, visitor);
     return;
   }
@@ -792,7 +792,7 @@ inline void visit_block_packed(
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
 
-  if (irs::bitpack::ALL_EQUAL == bits) {
+  if (bitpack::ALL_EQUAL == bits) {
     visit_block_rl64(in, base, avg, size, visitor);
     return;
   }
@@ -815,7 +815,7 @@ inline void visit_block_packed(
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
 
-  if (irs::bitpack::ALL_EQUAL == bits) {
+  if (bitpack::ALL_EQUAL == bits) {
     visit_block_rl32(in, base, avg, size, visitor);
     return;
   }
