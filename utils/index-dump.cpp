@@ -63,6 +63,47 @@ int dump(
     return 1;
   }
 
+  auto codec = irs::formats::get("1_3simd");
+
+  if (!codec) {
+    return 1;
+  }
+
+  int res = 0;
+
+  auto visitor = [&](std::string file) {
+    const irs::segment_meta meta{
+      file.substr(0, file.size() - 3),
+      codec
+    };
+
+    auto cs = codec->get_columnstore_reader();
+    const bool ok = cs->prepare(*dir, meta);
+
+    if (!ok) {
+      res = 2;
+      return false;
+    }
+
+    const size_t num_columns = cs->size();
+
+    for (size_t i = 0; i < num_columns; ++i) {
+      const auto col = cs->column(i);
+
+      if (col) {
+        size_t num_values = col->size();
+      }
+    }
+
+    return true;
+  };
+
+  dir->visit(visitor);
+  return res;
+
+
+  /*
+
   auto reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
 
   stream << "Index" 
@@ -116,6 +157,7 @@ int dump(
     }
     ++i;
   }
+  */
 
   return 0;
 }
