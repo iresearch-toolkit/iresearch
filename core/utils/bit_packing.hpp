@@ -41,8 +41,32 @@ FORCE_INLINE uint32_t bits_required_64(uint64_t val) noexcept {
   return math::math_traits<uint64_t>::bits_required(val);
 }
 
+inline uint32_t bits_required_64(
+    const uint64_t* begin,
+    const uint64_t* end) noexcept {
+  uint64_t accum = 0;
+
+  while (begin != end) {
+    accum |= *begin++;
+  }
+
+  return bits_required_64(accum);
+}
+
 FORCE_INLINE uint32_t bits_required_32(uint32_t val) noexcept {
   return math::math_traits<uint32_t>::bits_required(val);
+}
+
+inline uint32_t bits_required_32(
+    const uint32_t* begin,
+    const uint32_t* end) noexcept {
+  uint32_t accum = 0;
+
+  while (begin != end) {
+    accum |= *begin++;
+  }
+
+  return bits_required_32(accum);
 }
 
 FORCE_INLINE constexpr uint32_t bytes_required_32(uint32_t count, uint32_t bits) noexcept {

@@ -55,25 +55,34 @@ struct simd_helper {
   }
 };
 
-template<size_t Length, bool Aligned, typename T>
-std::pair<T, T> maxmin(const T* begin) noexcept {
+template<bool Aligned, typename T>
+std::pair<T, T> maxmin(const T* begin, size_t size) noexcept {
   constexpr HWY_FULL(T) simd_tag;
-
   using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
-  static_assert(0 == (Length % Step));
+  constexpr size_t Unroll = 2*Step;
+  assert(0 == (size % Unroll*Step));
 
-  auto minacc = simd_helper::load(simd_tag, begin);
-  auto maxacc = minacc;
-  for (size_t i = Step; i < Length; i += Step) {
-    const auto v = simd_helper::load(simd_tag, begin + i);
-    minacc = Min(minacc, v);
-    maxacc = Max(maxacc, v);
+  auto minacc = Set(simd_tag, std::numeric_limits<T>::max());
+  auto maxacc = Set(simd_tag, std::numeric_limits<T>::min());
+
+  for (size_t i = 0; i < size; i += Unroll*Step) {
+    for (size_t j = 0; j < Unroll; ++j) {
+      const auto v = simd_helper::load(simd_tag, begin + i + j*Step);
+      minacc = Min(minacc, v);
+      maxacc = Max(maxacc, v);
+    }
   }
+
   return {
     GetLane(MinOfLanes(minacc)),
     GetLane(MaxOfLanes(maxacc))
   };
+}
+
+template<size_t Length, bool Aligned, typename T>
+std::pair<T, T> maxmin(const T* begin) noexcept {
+  return maxmin<Aligned>(begin, Length);
 }
 
 template<bool Aligned, typename T>
@@ -81,12 +90,14 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  assert(0 == (size % Step));
+  constexpr size_t Unroll = 2*Step;
+  assert(0 == (size % Unroll*Step));
 
-  auto oracc = simd_helper::load(simd_tag, begin);
-  for (size_t i = Step; i < size; i += Step) {
-    const auto v = simd_helper::load(simd_tag, begin + i);
-    oracc = Or(oracc, v);
+  auto oracc = Zero(simd_tag);
+  for (size_t i = 0; i < size; i += Unroll*Step) {
+    for (size_t j = 0; j < Unroll; ++j) {
+      oracc = Or(oracc, simd_helper::load(simd_tag, begin + i + j*Step));
+    }
   }
 
   // FIXME use OrOfLanes instead
@@ -95,8 +106,6 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
 
 template<size_t Length, bool Aligned, typename T>
 FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
-  constexpr HWY_FULL(T) simd_tag;
-  static_assert(0 == (Length % MaxLanes(simd_tag)));
   return maxbits<Aligned>(begin, Length);
 }
 
@@ -105,11 +114,14 @@ void fill_n(T* begin, size_t size, const T value) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  assert(0 == (size % Step));
+  constexpr size_t Unroll = 2*Step;
+  assert(0 == (size % Unroll*Step));
 
   const auto vvalue = Set(simd_tag, value);
   for (size_t i = 0; i < size; i += Step) {
-    simd_helper::store(vvalue, simd_tag, begin + i);
+    for (size_t j = 0; j < Unroll; ++j) {
+      simd_helper::store(vvalue, simd_tag, begin + i + j*Step);
+    }
   }
 }
 
@@ -225,14 +237,18 @@ void subtract(T* begin, size_t size, T value) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  assert(0 == (size % Step));
+  constexpr size_t Unroll = 2*Step;
+  assert(0 == (size % Unroll*Step));
 
   size_t i = 0;
 
   const auto rhs = Set(simd_tag, value);
-  for (; i < size; i += Step) {
-    const auto lhs = simd_helper::load(simd_tag, begin + i);
-    simd_helper::store(lhs - rhs, simd_tag, begin + i);
+  for (; i < size; i += Unroll*Step) {
+    auto* p = begin + i;
+    for (size_t j = 0; j < Unroll; ++j) {
+      const auto lhs = simd_helper::load(simd_tag, p + j*Step);
+      simd_helper::store(lhs - rhs, simd_tag, p + j*Step);
+    }
   }
 }
 
@@ -259,8 +275,9 @@ template<
   constexpr HWY_FULL(signed_type) simd_tag;
   constexpr HWY_FULL(unsigned_type) simd_unsigned_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
+  constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % Step));
+  static_assert(0 == (Length % Unroll*Step));
   assert(begin[Length-1] >= begin[0]);
 
   const unsigned_type base = *begin;
@@ -271,10 +288,13 @@ template<
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);
 
-  for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
+  for (size_t i = 0; i < Length; i += Unroll*Step) {
     auto* p = begin + i;
-    const auto v = simd_helper::load(simd_tag, reinterpret_cast<signed_type*>(p)) - vbase;
-    simd_helper::store(zig_zag_encode(v), simd_unsigned_tag, p);
+    for (size_t j = 0; j < Unroll; j++) {
+      const auto v = simd_helper::load(simd_tag, reinterpret_cast<signed_type*>(p + j*Step)) - vbase;
+      simd_helper::store(zig_zag_encode(v), simd_unsigned_tag, p + j*Step);
+      vbase += vavg;
+    }
   }
 
   // FIXME
@@ -295,16 +315,22 @@ template<
   constexpr HWY_FULL(signed_type) simd_tag;
   constexpr HWY_FULL(unsigned_type) simd_unsigned_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
+  constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % Step));
+  static_assert(0 == (Length % Unroll*Step));
   assert(begin[Length-1] >= begin[0]);
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);
 
-  for (size_t i = 0; i < Length; i += Step, vbase += vavg) {
-    const auto v = simd_helper::load(simd_unsigned_tag, begin + i);
-    simd_helper::store(zig_zag_decode(v) + vbase, simd_tag, reinterpret_cast<signed_type*>(out + i));
+  for (size_t i = 0; i < Length; i += Unroll*Step) {
+    auto* pin = begin + i;
+    auto* pout = out + i;
+    for (size_t j = 0; j < Unroll; j++) {
+      const auto v = simd_helper::load(simd_unsigned_tag, pin + j*Step);
+      simd_helper::store(zig_zag_decode(v) + vbase, simd_tag, reinterpret_cast<signed_type*>(pout + j*Step));
+      vbase += vavg;
+    }
   }
 }
 
