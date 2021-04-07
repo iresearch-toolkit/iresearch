@@ -5495,7 +5495,7 @@ class format10 : public irs::version10::format {
   virtual document_mask_writer::ptr get_document_mask_writer() const override final;
   virtual document_mask_reader::ptr get_document_mask_reader() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override;
@@ -5504,7 +5504,7 @@ class format10 : public irs::version10::format {
   virtual columnstore_writer::ptr get_columnstore_writer() const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override final;
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5555,11 +5555,11 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
   return memory::to_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
-field_writer::ptr format10::get_field_writer(bool volatile_state) const {
+field_writer::ptr format10::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MIN,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 field_reader::ptr format10::get_field_reader() const  {
@@ -5584,10 +5584,10 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
   return memory::make_unique<columns::reader>();
 }
 
-irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format10::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_MIN;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
   }
 
@@ -5621,7 +5621,7 @@ class format11 : public format10 {
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
@@ -5640,11 +5640,11 @@ index_meta_writer::ptr format11::get_index_meta_writer() const {
     int32_t(::index_meta_writer::FORMAT_MAX));
 }
 
-field_writer::ptr format11::get_field_writer(bool volatile_state) const {
+field_writer::ptr format11::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::ENCRYPTION_MIN,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
@@ -5716,7 +5716,7 @@ class format13 : public format12 {
 
   format13() noexcept : format12(irs::type<format13>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5727,10 +5727,10 @@ class format13 : public format12 {
 
 const ::format13 FORMAT13_INSTANCE;
 
-irs::postings_writer::ptr format13::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format13::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_POSITIONS_ZEROBASED;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
   }
 
@@ -5764,7 +5764,7 @@ class format14 : public format13 {
 
   format14() noexcept : format13(irs::type<format14>::get()) { }
 
-  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
  protected:
   explicit format14(const irs::type_info& type) noexcept
@@ -5774,11 +5774,11 @@ class format14 : public format13 {
 
 const ::format14 FORMAT14_INSTANCE;
 
-irs::field_writer::ptr format14::get_field_writer(bool volatile_state) const {
+irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MAX,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 /*static*/ irs::format::ptr format14::make() {
@@ -5835,16 +5835,16 @@ class format12simd final : public format12 {
 
   format12simd() noexcept : format12(irs::type<format12simd>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 }; // format12simd
 
 const ::format12simd FORMAT12SIMD_INSTANCE;
 
-irs::postings_writer::ptr format12simd::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format12simd::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
@@ -5877,7 +5877,7 @@ class format13simd : public format13 {
 
   format13simd() noexcept : format13(irs::type<format13simd>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
@@ -5888,10 +5888,10 @@ class format13simd : public format13 {
 
 const ::format13simd FORMAT13SIMD_INSTANCE;
 
-irs::postings_writer::ptr format13simd::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format13simd::get_postings_writer(bool consolidation) const {
   constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
 
-  if (volatile_state) {
+  if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
   }
 
@@ -5923,7 +5923,7 @@ class format14simd : public format13simd {
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
-  virtual irs::field_writer::ptr get_field_writer(bool volatile_state) const override;
+  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
  protected:
   explicit format14simd(const irs::type_info& type) noexcept
@@ -5933,11 +5933,11 @@ class format14simd : public format13simd {
 
 const ::format14 FORMAT14SIMD_INSTANCE;
 
-irs::field_writer::ptr format14simd::get_field_writer(bool volatile_state) const {
+irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
     burst_trie::Version::MAX,
-    get_postings_writer(volatile_state),
-    volatile_state);
+    get_postings_writer(consolidation),
+    consolidation);
 }
 
 /*static*/ irs::format::ptr format14simd::make() {

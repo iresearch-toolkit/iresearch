@@ -676,7 +676,7 @@ irs::document_mask_writer::ptr format::get_document_mask_writer() const {
   return irs::memory::make_managed<tests::document_mask_writer>(data_);
 }
 
-irs::field_writer::ptr format::get_field_writer(bool /*volatile_attributes*/) const {
+irs::field_writer::ptr format::get_field_writer(bool /*consolidation*/) const {
   return irs::memory::make_unique<tests::field_writer>(data_);
 }
 

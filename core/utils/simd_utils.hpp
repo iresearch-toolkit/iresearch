@@ -202,6 +202,7 @@ void delta_encode(T* begin, T init) noexcept {
       simd_helper::store(vec - prev, simd_tag, begin + i);
     }
   } else if constexpr (O == 0) { // 128-bit
+    // FIXME this is true only for 32-bit values
     constexpr HWY_CAPPED(T, 4) simd_tag;
     const size_t Step = Lanes(simd_tag);
     assert(0 == (Length % Step));

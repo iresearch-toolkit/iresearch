@@ -30,6 +30,7 @@
 
 #include "store/memory_directory.hpp"
 
+#include "utils/bitpack.hpp"
 #include "utils/encryption.hpp"
 #include "utils/simd_utils.hpp"
 #include "utils/math_utils.hpp"
@@ -45,23 +46,18 @@ class offset_block {
   void push_back(uint64_t offset) noexcept {
     assert(offset_ >= offsets_);
     assert(offset_ < offsets_ + Size);
+
+    if (full()) {
+
+    }
+
     *offset_++ = offset;
     assert(offset >= offset_[-1]);
   }
 
   void pop_back() noexcept {
     assert(offset_ > offsets_);
-    *offset_-- = 0;
-  }
-
-  // returns total number of items
-  uint32_t total() const noexcept {
-    return flushed()+ size();
-  }
-
-  // returns total number of flushed items
-  uint32_t flushed() const noexcept {
-    return flushed_;
+    offset_--;
   }
 
   // returns number of items to be flushed
@@ -84,13 +80,26 @@ class offset_block {
   }
 
   bool flush(data_output& out, uint32_t* buf);
+  void flush();
 
  private:
-  // order is important (see max_key())
-  uint64_t offsets_[Size]{};
+  HWY_ALIGN uint64_t offsets_[Size]{};
   uint64_t* offset_{ offsets_ };
-  uint32_t flushed_{}; // number of flushed items
 }; // offset_block
+
+template<size_t Size>
+void offset_block<Size>::flush() {
+  assert(std::is_sorted(offsets_, offset_));
+  const auto stats = simd::avg_encode<Size, true>(offsets_);
+
+  bitpack::write_block64(
+    &packed::p
+  )
+
+
+
+}
+
 
 template<size_t Size>
 bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
@@ -117,8 +126,6 @@ bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
     fixed_length = true;
   }
 
-  flushed_ += size;
-
   // reset pointers and clear data
   offset_ = offsets_;
   std::memset(offsets_, 0, sizeof offsets_);
@@ -126,15 +133,9 @@ bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
   return fixed_length;
 }
 
-template<typename Key, Key Invalid, size_t BlockSize>
 class columns_writer {
  public:
-  static_assert (math::is_power2(BlockSize));
-
-  static_assert(std::is_same_v<Key, uint32_t> ||
-                std::is_same_v<Key, uint64_t>);
-
-  using key_type = Key;
+  static size_t constexpr BLOCK_SIZE = 65536;
 
  private:
   class column final : public irs::columnstore_writer::column_output {
@@ -148,32 +149,38 @@ class columns_writer {
         cipher_(cipher),
         data_(*ctx.alloc_) {
       assert(comp_); // ensured by `push_column'
+      data_offs_ = ctx_->index_out_->file_pointer();
     }
 
-    void prepare(key_type key) {
+    void prepare(doc_id_t key) {
       if (IRS_LIKELY(key > pending_key_)) {
-        if (IRS_LIKELY(pending_key_ != Invalid)) {
-          docs_writer_.push_back(pending_key_);
-
-          *++length_ = data_.stream.file_pointer();
-
-          if (block_.full()) {
-            block_.flush()
-          }
-
-          if (std::end(lengths_) == length_) {
-            flush();
-          }
-
-          last_key_ = pending_key_;
+        if (block_.full()) {
+          flush();
         }
 
-        pending_key_ = key;
+        docs_writer_.push_back(pending_key_);
+        block_.push_back(data_.stream.file_pointer()); // start offset
       }
     }
 
     bool empty() const noexcept {
-      return std::begin(lengths_) == length_;
+      return block_.empty();
+    }
+
+    void flush() {
+       auto& index_out = *ctx_->index_out_;
+       auto& data_out = *ctx_->data_out_;
+
+       const uint64_t data_offs = data_out.file_pointer();
+       data_.file >> data_out; // FIXME write directly???
+       const uint64_t index_offs = data_out.file_pointer();
+       block_.flush(); // FIXME flush block addr table, optimize cases with equal lengths
+
+       // FIXME we don't need to track data_offs/index_offs per block after merge
+       index_out.write_long(data_offs);
+       index_out.write_long(index_offs);
+
+       data_.stream.seek(0);
     }
 
     void finish() {
@@ -199,8 +206,7 @@ class columns_writer {
 //      blocks_index_.file >> out; // column blocks index
     }
 
-    void flush() {
-      const auto minmax_length = simd::maxmin(lengths_, IRESEARCH_COUNTOF(lengths_));
+    void flush() { const auto minmax_length = simd::maxmin<IRESEARCH_COUNTOF(lengths_)>(lengths_, IRESEARCH_COUNTOF(lengths_));
 
       auto& index_out = *ctx_->index_out_;
       auto& data_out = *ctx_->data_out_;
@@ -250,13 +256,13 @@ class columns_writer {
 
     virtual void reset() override {
       if (empty()) {
-        // nothing to reset
         return;
       }
 
       // reset to previous offset
-      pending_key_ = last_key_;
-      data_.stream.seek(*length_--);
+      docs_writer_.pop_back();
+      block_.pop_back();
+      data_.stream.seek(block_.max_offset());
     }
 
    private:
@@ -268,16 +274,16 @@ class columns_writer {
     memory_output data_;
     memory_output docs_;
     sparse_bitmap_writer docs_writer_{docs_.stream};
-    offset_block<BlockSize> block_;
-    offset_block<BlockSize> column_;
-    key_type pending_key_{Invalid};
-    key_type last_key_{ Invalid };
+    offset_block<BLOCK_SIZE> block_;
+    offset_block<BLOCK_SIZE> column_;
+    doc_id_t pending_key_;
   }; // column
 
   memory_allocator* alloc_{ &memory_allocator::global() };
   index_output* data_out_;
   index_output* index_out_;
   std::deque<column> columns_; // pointers remain valid
+  bool consolidation_;
 };
 
 class writer final : public columnstore_writer {

@@ -66,6 +66,7 @@ class sparse_bitmap_writer {
     static_assert(math::is_power2(BLOCK_SIZE));
     assert(doc_limits::valid(doc));
     assert(!doc_limits::eof(doc));
+    assert(doc > prev_);
 
     const uint32_t block = doc / BLOCK_SIZE;
 
@@ -75,6 +76,12 @@ class sparse_bitmap_writer {
     }
 
     set(doc % BLOCK_SIZE);
+    prev_ = doc;
+  }
+
+  void pop_back() noexcept {
+    irs::set_bit(bits_[prev_ / bits_required<size_t>()],
+                 prev_ % bits_required<size_t>());
   }
 
   void finish();
@@ -99,6 +106,7 @@ class sparse_bitmap_writer {
 
   index_output* out_;
   size_t bits_[NUM_BLOCKS]{};
+  doc_id_t prev_{};
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block
 }; // sparse_bitmap_writer

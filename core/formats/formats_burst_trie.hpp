@@ -51,7 +51,7 @@ enum class Version : int32_t {
 irs::field_writer::ptr make_writer(
   Version version,
   irs::postings_writer::ptr&& writer,
-  bool volatile_state);
+  bool consolidation);
 
 irs::field_reader::ptr make_reader(
   irs::postings_reader::ptr&& reader);
