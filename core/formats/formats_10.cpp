@@ -38,7 +38,7 @@ extern "C" {
 #include "shared.hpp"
 #include "skip_list.hpp"
 
-//#include "columnstore.hpp"
+#include "columnstore.hpp"
 #include "formats_10_attributes.hpp"
 #include "formats_burst_trie.hpp"
 #include "format_utils.hpp"
@@ -148,24 +148,6 @@ struct format_traits {
 }; // format_traits
 
 bytes_ref DUMMY; // placeholder for visiting logic in columnstore
-
-class noop_compressor final : compression::compressor {
- public:
-  static compression::compressor::ptr make() {
-    typedef compression::compressor::ptr ptr;
-    static noop_compressor INSTANCE;
-    return ptr(ptr(), &INSTANCE);
-  }
-
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) override {
-    return bytes_ref(in, size);
-  }
-
-  virtual void flush(data_output& /*out*/) override { }
-
- private:
-  noop_compressor() = default;
-}; // noop_compressor
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         features
@@ -3284,7 +3266,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   auto compressor = compression::get_compressor(compression, info.options());
 
   if (!compressor) {
-    compressor = noop_compressor::make();
+    compressor = compression::compressor::identity();
   }
 
   const auto id = columns_.size();

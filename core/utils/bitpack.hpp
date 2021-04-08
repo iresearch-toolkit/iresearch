@@ -84,37 +84,6 @@ inline void skip_block64(index_input& in, uint64_t size) {
   }
 }
 
-// writes block of 'Size' 32 bit integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-template<size_t Size, typename PackFunc>
-uint32_t write_block32(
-    PackFunc&& pack,
-    data_output& out,
-    const uint32_t* RESTRICT decoded,
-    uint32_t* RESTRICT encoded) {
-  static_assert(Size);
-  assert(encoded);
-  assert(decoded);
-
-  if (simd::all_equal<false>(decoded, decoded + Size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
-    return ALL_EQUAL;
-  }
-
-  const uint32_t bits = simd::maxbits<Size, false>(decoded);
-  const size_t buf_size = packed::bytes_required_32(Size, bits);
-  std::memset(encoded, 0, buf_size);
-  pack(decoded, encoded, bits);
-
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
-
-  return bits;
-}
-
 // writes block of 'size' 32 bit integers to a stream
 //   all values are equal -> RL encoding,
 //   otherwise            -> bit packing
@@ -136,7 +105,13 @@ uint32_t write_block32(
     return ALL_EQUAL;
   }
 
+  // prior AVX2 scalar version works faster for 32-bit values
+#ifdef HWY_CAP_GE256
   const uint32_t bits = simd::maxbits<false>(decoded, size);
+#else
+  const uint32_t bits = packed::maxbits32(decoded, decoded + size);
+#endif
+
   const size_t buf_size = packed::bytes_required_32(size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
@@ -147,35 +122,19 @@ uint32_t write_block32(
   return bits;
 }
 
-// writes block of 'Size' 64 bit integers to a stream
+// writes block of 'Size' 32 bit integers to a stream
 //   all values are equal -> RL encoding,
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
-uint32_t write_block64(
+uint32_t write_block32(
     PackFunc&& pack,
     data_output& out,
-    const uint64_t* RESTRICT decoded,
-    uint64_t* RESTRICT encoded) {
+    const uint32_t* RESTRICT decoded,
+    uint32_t* RESTRICT encoded) {
   static_assert(Size);
-  assert(encoded);
-  assert(decoded);
-
-  if (simd::all_equal<false>(decoded, decoded + Size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
-    return ALL_EQUAL;
-  }
-
-  const uint32_t bits = simd::maxbits<Size, false>(decoded);
-  const size_t buf_size = packed::bytes_required_64(Size, bits);
-  std::memset(encoded, 0, buf_size);
-  pack(decoded, encoded, bits);
-
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
-
-  return bits;
+  return write_block32(std::forward<PackFunc>(pack), out,
+                       decoded, Size, encoded);
 }
 
 // writes block of 'size' 64 bit integers to a stream
@@ -199,7 +158,9 @@ uint32_t write_block64(
     return ALL_EQUAL;
   }
 
-  const uint32_t bits = simd::maxbits<false>(decoded, size);
+  // scalar version is always faster for 64-bit values
+  const uint32_t bits = packed::maxbits64(decoded, decoded + size);
+
   const size_t buf_size = packed::bytes_required_64(size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
@@ -208,6 +169,21 @@ uint32_t write_block64(
   out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
 
   return bits;
+}
+
+// writes block of 'Size' 64 bit integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+template<size_t Size, typename PackFunc>
+uint32_t write_block64(
+    PackFunc&& pack,
+    data_output& out,
+    const uint64_t* RESTRICT decoded,
+    uint64_t* RESTRICT encoded) {
+  static_assert(Size);
+  return write_block64(std::forward<PackFunc>(pack), out,
+                       decoded, Size, encoded);
 }
 
 // reads block of 'Size' 32 bit integers from the stream
@@ -232,7 +208,6 @@ void read_block32(
     const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
     if (buf) {
-      // FIXME allow potenially misaligned reads???
       unpack(decoded, reinterpret_cast<const uint32_t*>(buf), bits);
       return;
     }

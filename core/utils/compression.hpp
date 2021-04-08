@@ -73,6 +73,9 @@ struct options {
 struct IRESEARCH_API compressor {
   using ptr = std::shared_ptr<compressor>;
 
+  /// @note returns a value as it is
+  static ptr identity() noexcept;
+
   virtual ~compressor() = default;
 
   /// @note caller is allowed to modify data pointed by 'in' up to 'size'
