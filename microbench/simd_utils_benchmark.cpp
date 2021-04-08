@@ -67,11 +67,12 @@ void BM_delta_encode_simd_unaligned(benchmark::State& state) {
 
 BENCHMARK(BM_delta_encode_simd_unaligned)->RangeMultiplier(2)->Range(128, 65536);
 */
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        avg_encode
+// --SECTION--                                                      avg_encode32
 // -----------------------------------------------------------------------------
 
-void BM_avg_encode(benchmark::State& state) {
+void BM_avg_encode32(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -79,9 +80,9 @@ void BM_avg_encode(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_avg_encode);
+BENCHMARK(BM_avg_encode32);
 
-void BM_avg_encode_simd_aligned(benchmark::State& state) {
+void BM_avg_encode32_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -89,9 +90,9 @@ void BM_avg_encode_simd_aligned(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_avg_encode_simd_aligned);
+BENCHMARK(BM_avg_encode32_simd_aligned);
 
-void BM_avg_encode_simd_unaligned(benchmark::State& state) {
+void BM_avg_encode32_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -99,7 +100,21 @@ void BM_avg_encode_simd_unaligned(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_avg_encode_simd_unaligned);
+BENCHMARK(BM_avg_encode32_simd_unaligned);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      avg_encode64
+// -----------------------------------------------------------------------------
+
+void BM_avg_encode64(benchmark::State& state) {
+  uint64_t values[BLOCK_SIZE];
+  for (auto _ : state) {
+    std::iota(std::begin(values), std::end(values), ::rand());
+    irs::encode::avg::encode(std::begin(values), std::end(values));
+  }
+}
+
+BENCHMARK(BM_avg_encode64);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          maxmin64

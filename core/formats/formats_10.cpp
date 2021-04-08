@@ -1128,11 +1128,8 @@ struct position_impl<IteratorTraits, true, true>
     base::skip(count);
   }
 
-  alignas(typename IteratorTraits::align_type)
   uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
-  alignas(typename IteratorTraits::align_type)
   uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
-  alignas(typename IteratorTraits::align_type)
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   index_input::ptr pay_in_;
   offset offs_;
@@ -1268,7 +1265,6 @@ struct position_impl<IteratorTraits, false, true>
     base::skip(count);
   }
 
-  alignas(typename IteratorTraits::align_type)
   uint32_t pay_lengths_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store payload lengths
   index_input::ptr pay_in_;
   payload pay_;
@@ -1363,9 +1359,7 @@ struct position_impl<IteratorTraits, true, false>
     base::skip_offsets(*pay_in_);
   }
 
-  alignas(typename IteratorTraits::align_type)
   uint32_t offs_start_deltas_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset starts
-  alignas(typename IteratorTraits::align_type)
   uint32_t offs_lengts_[postings_writer_base::BLOCK_SIZE]{}; // buffer to store offset lengths
   index_input::ptr pay_in_;
   offset offs_;
@@ -1474,7 +1468,6 @@ struct position_impl<IteratorTraits, false, false> {
     size_t file_pointer_ = std::numeric_limits<size_t>::max();
   };
 
-  alignas(typename IteratorTraits::align_type)
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
@@ -1910,11 +1903,8 @@ class doc_iterator final : public irs::doc_iterator {
     doc_freq_ = doc_freqs_;
   }
 
-  alignas(typename IteratorTraits::align_type)
   uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
-  alignas(typename IteratorTraits::align_type)
   doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
-  alignas(typename IteratorTraits::align_type)
   uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
@@ -5796,6 +5786,7 @@ REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
 struct format_traits_sse4 {
   using align_type = __m128i;
+
   static constexpr uint32_t BLOCK_SIZE = SIMDBlockSize;
 
   FORCE_INLINE static void pack_block(
@@ -5948,42 +5939,6 @@ irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const 
 REGISTER_FORMAT_MODULE(::format14simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
-
-#ifdef IRESEARCH_AVX2
-
-struct format_traits_avx2 {
-  using align_type = __m256i;
-
-  static constexpr uint32_t BLOCK_SIZE = AVXBlockSize;
-
-  FORCE_INLINE static void pack_block(
-      const uint32_t* RESTRICT decoded,
-      uint32_t* RESTRICT encoded,
-      const uint32_t bits) noexcept {
-    ::avxpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded), bits);
-  }
-
-  FORCE_INLINE static void unpack_block(
-      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
-    ::avxunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
-  }
-
-  FORCE_INLINE static void write_block(
-      index_output& out, const uint32_t* in, uint32_t* buf) {
-    bitpack::write_block32<BLOCK_SIZE>(&pack_block, out, in, buf);
-  }
-
-  FORCE_INLINE static void read_block(
-      index_input& in, uint32_t* buf, uint32_t* out) {
-    bitpack::read_block32<BLOCK_SIZE>(&unpack_block, in, buf, out);
-  }
-
-  FORCE_INLINE static void skip_block(index_input& in) {
-    bitpack::skip_block32(in, BLOCK_SIZE);
-  }
-}; // format_traits_sse
-
-#endif
 
 }
 
