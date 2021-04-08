@@ -118,7 +118,7 @@ void fill_n(T* begin, size_t size, const T value) noexcept {
   assert(0 == (size % Unroll*Step));
 
   const auto vvalue = Set(simd_tag, value);
-  for (size_t i = 0; i < size; i += Step) {
+  for (size_t i = 0; i < size; i += Unroll*Step) {
     for (size_t j = 0; j < Unroll; ++j) {
       simd_helper::store(vvalue, simd_tag, begin + i + j*Step);
     }
