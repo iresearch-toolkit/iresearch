@@ -26,6 +26,10 @@
 #include "utils/std.hpp"
 #include "utils/simd_utils.hpp"
 
+namespace {
+
+}
+
 TEST(simd_utils_test, delta32) {
   HWY_ALIGN uint32_t values[1024];
   std::iota(std::begin(values), std::end(values), 42);
@@ -49,7 +53,7 @@ TEST(simd_utils_test, delta32) {
 #endif
 }
 
-TEST(simd_utils_test, avg32) {
+TEST(simd_utils_test, avg) {
   HWY_ALIGN uint32_t values[1024];
   std::iota(std::begin(values), std::end(values), 42);
 
@@ -121,5 +125,22 @@ TEST(simd_utils_test, maxmin) {
     (irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(values)));
 }
 
+TEST(simd_utils_test, maxbits) {
+  constexpr size_t BLOCK_SIZE = 128;
 
+  // 32-bit
+  {
+    HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
+    std::iota(std::begin(values), std::end(values), 42);
+    const auto max = *std::max_element(std::begin(values), std::end(values));
+    ASSERT_EQ(irs::packed::maxbits32(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));
+  }
 
+  // 64-bit
+  {
+    HWY_ALIGN uint64_t values[BLOCK_SIZE*2];
+    std::iota(std::begin(values), std::end(values), 42);
+    const auto max = *std::max_element(std::begin(values), std::end(values));
+    ASSERT_EQ(irs::packed::maxbits64(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));
+  }
+}

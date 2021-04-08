@@ -199,7 +199,7 @@ void BM_maxbits64(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto bits = irs::packed::bits_required_64(std::begin(values), std::end(values));
+    auto bits = irs::packed::maxbits64(std::begin(values), std::end(values));
     benchmark::DoNotOptimize(bits);
   }
 }
@@ -237,7 +237,7 @@ void BM_maxbits32(benchmark::State& state) {
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto bits = irs::packed::bits_required_32(std::begin(values), std::end(values));
+    auto bits = irs::packed::maxbits32(std::begin(values), std::end(values));
     benchmark::DoNotOptimize(bits);
   }
 }
@@ -282,5 +282,61 @@ void BM_maxbits32_simd_unaligned(benchmark::State& state) {
 }
 
 BENCHMARK(BM_maxbits32_simd_unaligned);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       all_equal32
+// -----------------------------------------------------------------------------
+
+void BM_all_equal32(benchmark::State& state) {
+  uint32_t values[BLOCK_SIZE];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal32);
+
+void BM_all_equal32_simd_unaligned(benchmark::State& state) {
+  uint32_t values[BLOCK_SIZE];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::simd::all_equal<false>(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal32_simd_unaligned);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       all_equal64
+// -----------------------------------------------------------------------------
+
+void BM_all_equal64(benchmark::State& state) {
+  uint64_t values[BLOCK_SIZE];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal64);
+
+void BM_all_equal64_simd_unaligned(benchmark::State& state) {
+  uint64_t values[BLOCK_SIZE];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::simd::all_equal<false>(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal64_simd_unaligned);
 
 }

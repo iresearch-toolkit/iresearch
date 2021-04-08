@@ -37,11 +37,11 @@ namespace packed {
 const uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
 const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
 
-FORCE_INLINE uint32_t bits_required_64(uint64_t val) noexcept {
+FORCE_INLINE uint32_t maxbits64(uint64_t val) noexcept {
   return math::math_traits<uint64_t>::bits_required(val);
 }
 
-inline uint32_t bits_required_64(
+inline uint32_t maxbits64(
     const uint64_t* begin,
     const uint64_t* end) noexcept {
   uint64_t accum = 0;
@@ -50,14 +50,14 @@ inline uint32_t bits_required_64(
     accum |= *begin++;
   }
 
-  return bits_required_64(accum);
+  return maxbits64(accum);
 }
 
-FORCE_INLINE uint32_t bits_required_32(uint32_t val) noexcept {
+FORCE_INLINE uint32_t maxbits32(uint32_t val) noexcept {
   return math::math_traits<uint32_t>::bits_required(val);
 }
 
-inline uint32_t bits_required_32(
+inline uint32_t maxbits32(
     const uint32_t* begin,
     const uint32_t* end) noexcept {
   uint32_t accum = 0;
@@ -66,7 +66,7 @@ inline uint32_t bits_required_32(
     accum |= *begin++;
   }
 
-  return bits_required_32(accum);
+  return maxbits32(accum);
 }
 
 FORCE_INLINE constexpr uint32_t bytes_required_32(uint32_t count, uint32_t bits) noexcept {

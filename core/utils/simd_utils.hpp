@@ -110,33 +110,11 @@ FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
 }
 
 template<bool Aligned, typename T>
-void fill_n(T* begin, size_t size, const T value) noexcept {
-  using simd_helper = simd_helper<Aligned>;
-  constexpr HWY_FULL(T) simd_tag;
-  constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2*Step;
-  assert(0 == (size % Unroll*Step));
-
-  const auto vvalue = Set(simd_tag, value);
-  for (size_t i = 0; i < size; i += Unroll*Step) {
-    for (size_t j = 0; j < Unroll; ++j) {
-      simd_helper::store(vvalue, simd_tag, begin + i + j*Step);
-    }
-  }
-}
-
-template<size_t Length, bool Aligned, typename T>
-FORCE_INLINE void fill_n(T* begin, const T value) noexcept {
-  constexpr HWY_FULL(T) simd_tag;
-  static_assert(0 == (Length % MaxLanes(simd_tag)));
-  fill_n<Aligned>(begin, Length, value);
-}
-
-template<bool Aligned, typename T>
 bool all_equal(const T* RESTRICT begin, const T* RESTRICT end) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
+  constexpr size_t Unroll = 2*Step;
   assert(0 == (std::distance(begin, end) % Step));
 
   if (begin == end) {
@@ -144,9 +122,11 @@ bool all_equal(const T* RESTRICT begin, const T* RESTRICT end) noexcept {
   }
 
   const auto value = Set(simd_tag, *begin);
-  for (; begin != end; begin += Step) {
-    if (!AllTrue(value == simd_helper::load(simd_tag, begin))) {
-      return false;
+  for (; begin != end; begin += Unroll*Step) {
+    for (size_t j = 0; j < Unroll; ++j) {
+      if (!AllTrue(value == simd_helper::load(simd_tag, begin + j*Step))) {
+        return false;
+      }
     }
   }
 

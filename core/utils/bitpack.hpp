@@ -225,7 +225,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<Size, false>(decoded, in.read_vint());
+    std::fill_n(decoded, decoded + Size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(Size, bits);
 
@@ -269,7 +269,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<false>(decoded, size, in.read_vint());
+    std::fill_n(decoded, decoded + size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(size, bits);
 
@@ -311,7 +311,7 @@ void read_block64(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    simd::fill_n<Size, false>(decoded, in.read_vlong());
+    std::fill_n(decoded, decoded + Size, in.read_vlong());
   } else {
     const size_t required = packed::bytes_required_64(Size, bits);
 
