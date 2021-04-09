@@ -125,13 +125,16 @@ class column final : public irs::columnstore_writer::column_output {
   struct context {
     memory_allocator* alloc;
     index_output* data_out;
-    index_output* index_out;
     encryption::stream* cipher;
     union {
       byte_type* u8buf;
       uint64_t* u64buf;
     };
     bool consolidation;
+  };
+
+  struct properties {
+    bool fixed_length{false};
   };
 
   explicit column(
@@ -141,17 +144,17 @@ class column final : public irs::columnstore_writer::column_output {
     : ctx_(ctx),
       comp_type_(type),
       comp_(compressor) {
-    //data_offs_ = ctx_->index_out_->file_pointer();
   }
 
   void prepare(doc_id_t key) {
     if (IRS_LIKELY(key > pending_key_)) {
       if (block_.full()) {
-        flush();
+        flush_block();
       }
 
-      docs_writer_.push_back(pending_key_);
-      block_.push_back(data_.stream.file_pointer()); // start offset
+      docs_writer_.push_back(key);
+      block_.push_back(data_.stream.file_pointer());
+      pending_key_ = key;
     }
   }
 
@@ -159,71 +162,7 @@ class column final : public irs::columnstore_writer::column_output {
     return block_.empty();
   }
 
-  void flush();
-
-/*
-  void finish() {
-    docs_writer_.finish();
-
-    auto& out = *ctx_->data_out_;
-
-       // evaluate overall column properties
-      auto column_props = blocks_props_;
-      if (0 != (column_props_ & CP_DENSE)) { column_props |= CP_COLUMN_DENSE; }
-      if (cipher_) { column_props |= CP_COLUMN_ENCRYPT; }
-
-      write_enum(out, column_props);
-      if (ctx_->version_ > FORMAT_MIN) {
-        write_string(out, comp_type_.name());
-        comp_->flush(out); // flush compression dependent data
-      }
-      out.write_vint(block_index_.total()); // total number of items
-      out.write_vint(max_); // max column key
-      out.write_vint(avg_block_size_); // avg data block size
-      out.write_vint(avg_block_count_); // avg number of elements per block
-      out.write_vint(column_index_.total()); // total number of index blocks
-      blocks_index_.file >> out; // column blocks index
-  }
-  */
-
-/*
-  void flush() {
-    const auto minmax_length = simd::maxmin<IRESEARCH_COUNTOF(lengths_)>(lengths_, IRESEARCH_COUNTOF(lengths_));
-
-    auto& index_out = *ctx_->index_out_;
-    auto& data_out = *ctx_->data_out_;
-
-    blocks_.stream.write_int(minmax_length.first);
-    blocks_.stream.write_int(minmax_length.second);
-
-    if (minmax_length.second >= minmax_length.first) {
-      // write block address map
-      blocks_.stream.write_long(data_out.file_pointer()); // data offset
-      data_out << this->data_; // FIXME write directly???
-
-      if (minmax_length.second > minmax_length.first) {
-        blocks_.stream.write_long(data_out.file_pointer()); // lengths offset
-        const auto stats = simd::avg_encode32<IRESEARCH_COUNTOF(lengths_)>(lengths_);
-        data_out.write_int(stats.first);
-        data_out.write_int(stats.second);
-      }
-    }
-
-      // do not take into account last block
-      const auto blocks_count = std::max(1U, column_index_.total());
-      avg_block_count_ = block_index_.flushed() / blocks_count;
-      avg_block_size_ = length_ / blocks_count;
-
-      // commit and flush remain blocks
-      flush_block();
-
-      // finish column blocks index
-      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
-      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
-      column_index_.flush(blocks_index_.stream, buf);
-      blocks_index_.stream.flush();
-  }
-  */
+  void finish(index_output& index_out);
 
   virtual void close() override {
     // NOOP
@@ -249,6 +188,8 @@ class column final : public irs::columnstore_writer::column_output {
   }
 
  private:
+  void flush_block();
+
   context ctx_;
   irs::type_info comp_type_;
   compression::compressor::ptr comp_;
@@ -281,14 +222,12 @@ class writer final : columnstore_writer {
 
  private:
   directory* dir_;
-  std::string index_filename_;
   std::string data_filename_;
   memory_allocator* alloc_;
   std::deque<column> columns_; // pointers remain valid
-  index_output::ptr index_out_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
-  bstring buf_;
+  std::unique_ptr<byte_type[]> buf_;
   bool consolidation_;
 };
 
