@@ -37,6 +37,7 @@ set(IReSearch_tests_sources
   ./analysis/token_stopwords_stream_tests.cpp
   ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
+  ./formats/columnstore_test.cpp
   ./formats/sparse_bitmap_test.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp

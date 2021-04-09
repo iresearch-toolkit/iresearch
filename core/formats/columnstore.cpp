@@ -43,14 +43,14 @@ void column::flush() {
   auto& index_out = *ctx_.index_out;
   auto& data_out = *ctx_.data_out;
 
+  const uint64_t index_offs = data_out.file_pointer();
+  block_.flush(data_out, ctx_.u64buf); // FIXME flush block addr table, optimize cases with equal lengths
   const uint64_t data_offs = data_out.file_pointer();
   data_.file >> data_out; // FIXME write directly???
-  const uint64_t index_offs = data_out.file_pointer();
-  block_.flush(data_out, ctx); // FIXME flush block addr table, optimize cases with equal lengths
 
   // FIXME we don't need to track data_offs/index_offs per block after merge
-  index_out.write_long(data_offs);
-  index_out.write_long(index_offs);
+  blocks_.stream.write_long(index_offs);
+  blocks_.stream.write_long(data_offs);
 
   data_.stream.seek(0);
 }
@@ -60,9 +60,9 @@ void column::flush() {
 // -----------------------------------------------------------------------------
 
 writer::writer(bool consolidation)
-  : alloc_{&memory_allocator::global()},
-    buf_{BLOCK_SIZE*sizeof(uint64_t), 0},
-    consolidation_{consolidation} {
+  : alloc_(&memory_allocator::global()),
+    buf_(column::BLOCK_SIZE*sizeof(uint64_t), 0),
+    consolidation_(consolidation) {
 }
 
 void writer::prepare(directory& dir, const segment_meta& meta) {
@@ -121,11 +121,11 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
 
   const auto id = columns_.size();
   auto& column = columns_.emplace_back(
-    columnstore_context{
+    column::context{
       alloc_,
       data_out_.get(),
       index_out_.get(),
-      cipher, &buf_[0],
+      cipher, { &buf_[0] },
       consolidation_ },
     info.compression(),
     compressor);

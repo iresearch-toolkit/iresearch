@@ -38,7 +38,6 @@ extern "C" {
 #include "shared.hpp"
 #include "skip_list.hpp"
 
-#include "columnstore.hpp"
 #include "formats_10_attributes.hpp"
 #include "formats_burst_trie.hpp"
 #include "format_utils.hpp"

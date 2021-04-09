@@ -104,18 +104,6 @@ TEST(simd_utils_test, all_equal) {
   ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
 }
 
-TEST(simd_utils_test, fill_n) {
-  constexpr size_t BLOCK_SIZE = 128;
-  HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
-  std::fill(std::begin(values), std::end(values), 42);
-  irs::simd::fill_n<IRESEARCH_COUNTOF(values), true>(values, 84U);
-  ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
-              [](const auto v) { return v == 84; }));
-  irs::simd::fill_n<true>(values, IRESEARCH_COUNTOF(values), 128U);
-  ASSERT_TRUE(std::all_of(std::begin(values), std::begin(values) + BLOCK_SIZE,
-              [](const auto v) { return v == 128; }));
-}
-
 TEST(simd_utils_test, maxmin) {
   constexpr size_t BLOCK_SIZE = 128;
   HWY_ALIGN uint32_t values[BLOCK_SIZE*2];

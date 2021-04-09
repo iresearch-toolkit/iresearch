@@ -75,7 +75,7 @@ class offset_block {
     return *(offset_-1);
   }
 
-  bool flush(data_output& out, uint32_t* buf);
+  bool flush(data_output& out, uint64_t* buf);
 
  private:
   uint64_t offsets_[Size]{};
@@ -83,7 +83,7 @@ class offset_block {
 }; // offset_block
 
 template<size_t Size>
-bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
+bool offset_block<Size>::flush(data_output& out, uint64_t* buf) {
   if (empty()) {
     return true;
   }
@@ -118,21 +118,24 @@ bool offset_block<Size>::flush(data_output& out, uint32_t* buf) {
   return is_fixed_length;
 }
 
-struct columnstore_context {
-  memory_allocator* alloc;
-  index_output* data_out;
-  index_output* index_out;
-  encryption::stream* cipher;
-  byte_type* buf;
-  bool consolidation;
-};
-
 class column final : public irs::columnstore_writer::column_output {
  public:
   static constexpr size_t BLOCK_SIZE = 65536;
 
+  struct context {
+    memory_allocator* alloc;
+    index_output* data_out;
+    index_output* index_out;
+    encryption::stream* cipher;
+    union {
+      byte_type* u8buf;
+      uint64_t* u64buf;
+    };
+    bool consolidation;
+  };
+
   explicit column(
-      const columnstore_context& ctx,
+      const context& ctx,
       const irs::type_info& type,
       const compression::compressor::ptr& compressor)
     : ctx_(ctx),
@@ -246,7 +249,7 @@ class column final : public irs::columnstore_writer::column_output {
   }
 
  private:
-  columnstore_context ctx_;
+  context ctx_;
   irs::type_info comp_type_;
   compression::compressor::ptr comp_;
   memory_output blocks_{*ctx_.alloc};

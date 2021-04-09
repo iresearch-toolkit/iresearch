@@ -133,8 +133,30 @@ uint32_t write_block32(
     const uint32_t* RESTRICT decoded,
     uint32_t* RESTRICT encoded) {
   static_assert(Size);
-  return write_block32(std::forward<PackFunc>(pack), out,
-                       decoded, Size, encoded);
+  assert(encoded);
+  assert(decoded);
+
+  if (simd::all_equal<false>(decoded, decoded + Size)) {
+    out.write_byte(ALL_EQUAL);
+    out.write_vint(*decoded);
+    return ALL_EQUAL;
+  }
+
+  // prior AVX2 scalar version works faster for 32-bit values
+#ifdef HWY_CAP_GE256
+  const uint32_t bits = simd::maxbits<Size, false>(decoded);
+#else
+  const uint32_t bits = packed::maxbits32(decoded, decoded + Size);
+#endif
+
+  const size_t buf_size = packed::bytes_required_32(Size, bits);
+  std::memset(encoded, 0, buf_size);
+  pack(decoded, encoded, bits);
+
+  out.write_byte(static_cast<byte_type>(bits & 0xFF));
+  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
+
+  return bits;
 }
 
 // writes block of 'size' 64 bit integers to a stream
