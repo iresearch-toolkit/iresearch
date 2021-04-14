@@ -39,89 +39,70 @@
 namespace iresearch {
 namespace columns {
 
-template<size_t Size>
-class offset_block {
- public:
-  static constexpr size_t SIZE = Size;
+enum class ColumnProperty : uint16_t {
+  NORMAL = 0,
+  DENSE = 1,        // data blocks have no gaps
+  FIXED = 1 << 1,   // fixed length columns
+  ENCRYPT = 1 << 2  // column contains encrypted data
+};
 
-  void push_back(uint64_t offset) noexcept {
-    assert(offset_ >= offsets_);
-    assert(offset_ < offsets_ + Size);
-    *offset_++ = offset;
-    assert(offset >= offset_[-1]);
-  }
+ENABLE_BITMASK_ENUM(ColumnProperty);
 
-  void pop_back() noexcept {
-    assert(offset_ > offsets_);
-    offset_--;
-  }
-
-  // returns number of items to be flushed
-  uint32_t size() const noexcept {
-    assert(offset_ >= offsets_);
-    return uint32_t(offset_ - offsets_);
-  }
-
-  bool empty() const noexcept {
-    return offset_ == offsets_;
-  }
-
-  bool full() const noexcept {
-    return offset_ == std::end(offsets_);
-  }
-
-  uint64_t max_offset() const noexcept {
-    assert(offset_ > offsets_);
-    return *(offset_-1);
-  }
-
-  bool flush(data_output& out, uint64_t* buf);
-
- private:
-  uint64_t offsets_[Size]{};
-  uint64_t* offset_{ offsets_ };
-}; // offset_block
-
-template<size_t Size>
-bool offset_block<Size>::flush(data_output& out, uint64_t* buf) {
-  if (empty()) {
-    return true;
-  }
-
-  const auto size = this->size();
-
-  // adjust number of elements to pack to the nearest value
-  // that is multiple of the block size
-  const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-  assert(block_size >= size);
-
-  assert(std::is_sorted(offsets_, offset_));
-  const auto stats = encode::avg::encode(offsets_, offset_);
-  const auto bits = encode::avg::write_block(
-    [](const uint64_t* RESTRICT decoded,
-       uint64_t* RESTRICT encoded,
-       size_t size,
-       const uint32_t bits) noexcept {
-      assert(encoded);
-      assert(decoded);
-      assert(size);
-      packed::pack(decoded, decoded + size, encoded, bits);
-    },
-    out, stats.first, stats.second,
-    offsets_, block_size, buf);
-
-  // reset pointers and clear data
-  offset_ = offsets_;
-  std::memset(offsets_, 0, sizeof offsets_);
-
-  const bool is_fixed_length = (0 == offsets_[0] && bitpack::rl(bits));
-  return is_fixed_length;
-}
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class column
+////////////////////////////////////////////////////////////////////////////////
 class column final : public irs::columnstore_writer::column_output {
  public:
   static constexpr size_t BLOCK_SIZE = 65536;
 
+ private:
+  class offset_block {
+   public:
+    uint64_t back() const noexcept {
+      assert(offset_ > offsets_);
+      return *(offset_-1);
+    }
+
+    void push_back(uint64_t offset) noexcept {
+      assert(offset_ >= offsets_);
+      assert(offset_ < offsets_ + BLOCK_SIZE);
+      *offset_++ = offset;
+      assert(offset >= offset_[-1]);
+    }
+
+    void pop_back() noexcept {
+      assert(offset_ > offsets_);
+      offset_--;
+    }
+
+    // returns number of items to be flushed
+    uint32_t size() const noexcept {
+      assert(offset_ >= offsets_);
+      return uint32_t(offset_ - offsets_);
+    }
+
+    bool empty() const noexcept {
+      return offset_ == offsets_;
+    }
+
+    bool full() const noexcept {
+      return offset_ == std::end(offsets_);
+    }
+
+    void reset() noexcept {
+      std::memset(offset_, 0, sizeof offsets_);
+      offset_ = std::begin(offsets_);
+    }
+
+    uint64_t* begin() noexcept { return std::begin(offsets_); }
+    uint64_t* end() noexcept { return std::end(offsets_); }
+
+   private:
+    uint64_t offsets_[BLOCK_SIZE]{};
+    uint64_t* offset_{offsets_};
+  };
+
+ public:
   struct context {
     memory_allocator* alloc;
     index_output* data_out;
@@ -133,28 +114,23 @@ class column final : public irs::columnstore_writer::column_output {
     bool consolidation;
   };
 
-  struct properties {
-    bool fixed_length{false};
-  };
-
   explicit column(
       const context& ctx,
       const irs::type_info& type,
-      const compression::compressor::ptr& compressor)
+      const compression::compressor::ptr& deflater)
     : ctx_(ctx),
       comp_type_(type),
-      comp_(compressor) {
+      deflater_(deflater) {
   }
 
   void prepare(doc_id_t key) {
-    if (IRS_LIKELY(key > pending_key_)) {
+    if (IRS_LIKELY(key > docs_writer_.back())) {
       if (block_.full()) {
         flush_block();
       }
 
       docs_writer_.push_back(key);
       block_.push_back(data_.stream.file_pointer());
-      pending_key_ = key;
     }
   }
 
@@ -184,7 +160,7 @@ class column final : public irs::columnstore_writer::column_output {
     // reset to previous offset
     docs_writer_.pop_back();
     block_.pop_back();
-    data_.stream.seek(block_.max_offset());
+    data_.stream.seek(block_.back());
   }
 
  private:
@@ -192,27 +168,29 @@ class column final : public irs::columnstore_writer::column_output {
 
   context ctx_;
   irs::type_info comp_type_;
-  compression::compressor::ptr comp_;
+  compression::compressor::ptr deflater_;
   memory_output blocks_{*ctx_.alloc};
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
-  offset_block<BLOCK_SIZE> block_;
-  offset_block<BLOCK_SIZE> column_;
-  doc_id_t pending_key_{doc_limits::invalid()};
+  offset_block block_;
+  uint16_t num_blocks_{};
+  bool fixed_length_{true};
 }; // column
 
-class writer final : columnstore_writer {
- private:
+////////////////////////////////////////////////////////////////////////////////
+/// @class writer
+////////////////////////////////////////////////////////////////////////////////
+class writer final : public columnstore_writer {
+ public:
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 0;
 
   static constexpr string_ref DATA_FORMAT_NAME = "iresearch_11_columnstore_data";
   static constexpr string_ref INDEX_FORMAT_NAME = "iresearch_11_columnstore_index";
-  static constexpr string_ref INDEX_FORMAT_EXT = "csi";
   static constexpr string_ref DATA_FORMAT_EXT = "csd";
+  static constexpr string_ref INDEX_FORMAT_EXT = "csi";
 
- public:
   explicit writer(bool consolidation);
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
@@ -229,7 +207,73 @@ class writer final : columnstore_writer {
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
   bool consolidation_;
+}; // writer
+
+struct column_block {
+  uint64_t addr_offset;
+  uint64_t avg;
+  uint64_t base;
+  uint64_t data_offset;
+  uint64_t rl_value;
+  uint32_t bits;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class reader
+////////////////////////////////////////////////////////////////////////////////
+class reader final : public columnstore_reader {
+ public:
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta) override;
+
+  virtual const column_reader* column(
+    field_id field) const override;
+
+  virtual size_t size() const override {
+    return columns_.size();
+  }
+
+ private:
+  struct column_entry final : public column_reader {
+    explicit column_entry(
+        size_t num_blocks,
+        uint64_t doc_index_offset,
+        index_input* data_in,
+        compression::decompressor::ptr&& inflater,
+        ColumnProperty props)
+      : blocks(num_blocks),
+        inflater(std::move(inflater)),
+        doc_index_offset(doc_index_offset),
+        data_in(data_in),
+        props(props) {
+    }
+
+    virtual columnstore_reader::values_reader_f values() const override;
+
+    virtual doc_iterator::ptr iterator() const override;
+
+    virtual bool visit(
+      const columnstore_reader::values_visitor_f& reader) const override;
+
+    virtual size_t size() const noexcept override {
+      return blocks.size();
+    }
+
+    std::vector<column_block> blocks;
+    compression::decompressor::ptr inflater;
+    uint64_t doc_index_offset;
+    index_input* data_in;
+    ColumnProperty props;
+  };
+
+  void prepare_data(const directory& dir, const std::string& filename);
+  void prepare_index(const directory& dir, const std::string& filename);
+
+  std::vector<column_entry> columns_;
+  encryption::stream::ptr data_cipher_;
+  index_input::ptr data_in_;
+}; // reader
 
 } // columns
 } // iresearch

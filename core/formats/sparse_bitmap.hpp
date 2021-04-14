@@ -84,6 +84,10 @@ class sparse_bitmap_writer {
                  prev_ % bits_required<size_t>());
   }
 
+  doc_id_t back() const noexcept {
+    return prev_;
+  }
+
   void finish();
 
  private:
