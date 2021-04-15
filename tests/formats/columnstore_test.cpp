@@ -43,6 +43,11 @@ TEST_P(columnstore_test_case, test) {
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>("foo"), 3);
     }
 
+    {
+      auto& stream = column(3);
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>("foobar"), 3);
+    }
+
     ASSERT_TRUE(writer.commit());
   }
 
@@ -54,9 +59,7 @@ TEST_P(columnstore_test_case, test) {
     ASSERT_NE(nullptr, c);
 
     auto it = c->iterator();
-    ASSERT_NE(nullptr, it);
-
-    auto f = it->seek(1);
+    it->seek(1);
 
     int i = 5;
 

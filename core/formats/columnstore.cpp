@@ -290,6 +290,7 @@ class column_iterator final : public irs::doc_iterator {
     : in_(std::move(in)),
       blocks_(blocks),
       bitmap_(*in_) {
+    dup_ = in_->dup();
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -322,10 +323,18 @@ doc_id_t column_iterator::seek(doc_id_t doc) {
     const auto& block = blocks_[value_idx / column::BLOCK_SIZE];
     const size_t index = value_idx % column::BLOCK_SIZE;
 
-    dup_->seek(block.base);
-    auto* buf = dup_->read_buffer(packed::BLOCK_SIZE_64, BufferHint::NORMAL);
-    assert(buf);
-    auto offs = packed::at(reinterpret_cast<const uint64_t*>(buf), index, block.bits);
+    if (0 == block.bits) {
+      auto offs = block.base + block.avg*index;
+      int i = 5;
+
+    } else {
+      dup_->seek(block.addr_offset);
+      auto* buf = dup_->read_buffer(packed::BLOCK_SIZE_64, BufferHint::NORMAL);
+      assert(buf);
+      auto offs = packed::at(reinterpret_cast<const uint64_t*>(buf), index, block.bits);
+      int i = 5;
+    }
+
   }
 
   return doc;
@@ -344,6 +353,8 @@ doc_iterator::ptr reader::column_entry::iterator() const {
 
     throw io_error("failed to reopen payload input");
   }
+
+  stream->seek(doc_index_offset);
 
   return memory::make_managed<column_iterator>(std::move(stream), blocks.data());
 }
