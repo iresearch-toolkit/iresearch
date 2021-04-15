@@ -4991,6 +4991,12 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     }
   }
 
+  auto crc = format_utils::checksum(*stream);
+  auto fp = stream->file_pointer();
+  stream->seek(stream->length() - format_utils::FOOTER_LEN);
+  auto ccc = format_utils::check_footer(*stream, crc);
+  stream->seek(fp);
+
   // since columns data are too large
   // it is too costly to verify checksum of
   // the entire file. here we perform cheap
@@ -5029,7 +5035,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
         i, static_cast<uint32_t>(props)));
     }
 
-    auto column = factory(*this, props);
+    column::ptr column = factory(*this, props);
 
     if (!column) {
       throw index_error(string_utils::to_string(
@@ -5064,8 +5070,8 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       column->read(*stream, buf, decomp);
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-
-      throw;
+column = nullptr;
+      //throw;
     }
 
     // noexcept since space has been already reserved
