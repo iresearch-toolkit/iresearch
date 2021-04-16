@@ -113,7 +113,7 @@ bytes_ref lz4::lz4decompressor::decompress(
     return bytes_ref::NIL; // corrupted index
   }
 
-  return bytes_ref(dst, size_t(lz4_size));
+  return bytes_ref(src, size_t(src_size));
 }
 
 compressor::ptr lz4::compressor(const options& opts) {

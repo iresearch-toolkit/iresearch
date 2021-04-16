@@ -25,6 +25,9 @@
 #include "formats/format_utils.hpp"
 #include "utils/lz4compression.hpp"
 
+#include <string>
+#include <iostream>
+
 namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
@@ -2137,6 +2140,60 @@ TEST_P(format_test_case, columns_rw_typed) {
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
+  }
+}
+
+TEST_P(format_test_case, columns_rw_dense_offset_column1) {
+  std::ifstream fff("1");
+  ASSERT_TRUE(fff);
+
+  std::string buf;
+  std::vector<std::pair<irs::doc_id_t, size_t>> docs;
+  while (std::getline(fff, buf)) {
+    auto pos = buf.find(" ");
+    auto doc_str = buf.substr(0, pos);
+    auto length_str = buf.substr(pos + 1, buf.size() - pos);
+
+    auto doc = atoi(doc_str.c_str());
+    auto length = atoi(length_str.c_str());
+    docs.emplace_back(doc, 8);
+  }
+
+  irs::segment_meta meta("_fixed_offset_columns1", nullptr);
+  meta.version = 0;
+  meta.docs_count = docs.size();
+  meta.live_docs_count = docs.size();
+  meta.codec = codec();
+
+  {
+    auto writer = codec()->get_columnstore_writer();
+    ASSERT_NE(nullptr, writer);
+    writer->prepare(dir(), meta);
+
+    auto dense_fixed_offset_column = writer->push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    ASSERT_EQ(0, dense_fixed_offset_column.first);
+    ASSERT_TRUE(dense_fixed_offset_column.second);
+
+    for (auto& doc : docs) {
+      auto& stream = dense_fixed_offset_column.second(doc.first);
+      std::string str(doc.second, 0);
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
+    }
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  {
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_NE(nullptr, reader);
+    ASSERT_TRUE(reader->prepare(dir(), meta));
+    ASSERT_EQ(1, reader->size());
+    auto* column = reader->column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(docs.size(), column->size());
   }
 }
 

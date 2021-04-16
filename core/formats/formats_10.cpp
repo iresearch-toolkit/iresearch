@@ -27,6 +27,7 @@
 #include <deque>
 #include <list>
 #include <numeric>
+#include <fstream>
 
 #include "shared.hpp"
 
@@ -3062,7 +3063,8 @@ class writer final : public irs::columnstore_writer {
       // finish column blocks index
       assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE*sizeof(uint64_t));
       auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
-      column_index_.flush(blocks_index_.stream, buf);
+      ColumnProperty props = column_index_.flush(blocks_index_.stream, buf);
+      int i = 5;
       blocks_index_.stream.flush();
     }
 
@@ -3114,7 +3116,8 @@ class writer final : public irs::columnstore_writer {
       auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
 
       if (column_index_.full()) {
-        column_index_.flush(blocks_index_.stream, buf);
+        ColumnProperty props = column_index_.flush(blocks_index_.stream, buf);
+        int i = 5;
       }
 
       // flush current block
@@ -3828,10 +3831,10 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     // visit tail block
-    assert(data_.size() >= offset);
-    value = bytes_ref(
-      data_.c_str() + offset, // start
-      data_.size() - offset); // length
+    //assert(data_.size() >= offset);
+    //value = bytes_ref(
+    //  data_.c_str() + offset, // start
+    //  data_.size() - offset); // length
 
     return visitor(key, value);
   }
@@ -4413,11 +4416,17 @@ class sparse_column final : public column {
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
 
+    doc_id_t last_key = 0;
+    std::vector<doc_id_t> deltas;
+
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       encode::avg::visit_block_packed(
         in, INDEX_BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf),
-        [begin](uint32_t key) mutable {
+        [begin, &deltas, &last_key](uint32_t key) mutable {
+          deltas.push_back(key - last_key);
+          last_key = key;
+
           begin->key = key;
           ++begin;
       });
@@ -4437,7 +4446,10 @@ class sparse_column final : public column {
     if (blocks_count) {
       encode::avg::visit_block_packed_tail(
         in, blocks_count, reinterpret_cast<uint32_t*>(buf),
-        [begin](uint32_t key) mutable {
+        [begin, &deltas, &last_key](uint32_t key) mutable {
+          deltas.push_back(key - last_key);
+          last_key = key;
+
           begin->key = key;
           ++begin;
       });
@@ -4461,6 +4473,14 @@ class sparse_column final : public column {
     begin->offset = type_limits<type_t::address_t>::invalid();
 
     refs_ = std::move(refs);
+
+/*
+    std::ofstream fff("1");
+    visit([&](doc_id_t doc, const bytes_ref& value) {
+      fff << doc << " " << value.size() << "\n";
+      return true;
+    });
+    */
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
@@ -5008,13 +5028,20 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
   stream->seek(stream->read_long()); // seek to blocks index
 
+
+  context_provider::prepare(stream->reopen(), std::move(cipher));
+
   uint64_t buf[INDEX_BLOCK_SIZE]; // temporary buffer for bit packing
   std::vector<column::ptr> columns;
   columns.reserve(stream->read_vlong());
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
-    const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
+    auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
+
+    //if ((factory_id & CP_COLUMN_DENSE) != 0) {
+    //  factory_id = (factory_id & (~CP_COLUMN_DENSE));
+    //}
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
@@ -5070,8 +5097,8 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       column->read(*stream, buf, decomp);
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-column = nullptr;
-      //throw;
+//column = nullptr;
+      throw;
     }
 
     // noexcept since space has been already reserved
@@ -5079,7 +5106,6 @@ column = nullptr;
   }
 
   // noexcept
-  context_provider::prepare(std::move(stream), std::move(cipher));
   columns_ = std::move(columns);
 
   return true;
