@@ -90,11 +90,12 @@ class column final : public irs::columnstore_writer::column_output {
     }
 
     void reset() noexcept {
-      std::memset(offset_, 0, sizeof offsets_);
+      std::memset(offsets_, 0, sizeof offsets_);
       offset_ = std::begin(offsets_);
     }
 
     uint64_t* begin() noexcept { return std::begin(offsets_); }
+    uint64_t* current() noexcept { return offset_; }
     uint64_t* end() noexcept { return std::end(offsets_); }
 
    private:

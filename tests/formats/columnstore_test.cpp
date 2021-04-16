@@ -38,14 +38,11 @@ TEST_P(columnstore_test_case, test) {
       irs::type<irs::compression::none>::get(),
       {}, false });
 
-    {
-      auto& stream = column(1);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>("foo"), 3);
-    }
 
-    {
-      auto& stream = column(3);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>("foobar"), 3);
+    for (irs::doc_id_t doc = 1; doc < 1000000; ++doc) {
+      auto& stream = column(doc);
+      auto str = std::to_string(doc);
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
     }
 
     ASSERT_TRUE(writer.commit());
@@ -60,6 +57,8 @@ TEST_P(columnstore_test_case, test) {
 
     auto it = c->iterator();
     it->seek(1);
+    it->seek(2);
+    it->seek(500000);
 
     int i = 5;
 

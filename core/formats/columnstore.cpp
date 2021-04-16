@@ -71,7 +71,7 @@ void column::flush_block() {
     auto* end = begin + block_size;
 
     const uint64_t addr_table_offs = data_out.file_pointer();
-    const auto [base, avg] = encode::avg::encode(begin, end);
+    const auto [base, avg] = encode::avg::encode(begin, block_.current());
     blocks_.stream.write_long(addr_table_offs);
     blocks_.stream.write_long(base);
     blocks_.stream.write_long(avg);
@@ -328,7 +328,7 @@ doc_id_t column_iterator::seek(doc_id_t doc) {
       int i = 5;
 
     } else {
-      dup_->seek(block.addr_offset);
+      dup_->seek(block.data_offset);
       auto* buf = dup_->read_buffer(packed::BLOCK_SIZE_64, BufferHint::NORMAL);
       assert(buf);
       auto offs = packed::at(reinterpret_cast<const uint64_t*>(buf), index, block.bits);
