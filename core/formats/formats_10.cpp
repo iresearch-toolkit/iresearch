@@ -3835,10 +3835,10 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     // visit tail block
-    //assert(data_.size() >= offset);
-    //value = bytes_ref(
-    //  data_.c_str() + offset, // start
-    //  data_.size() - offset); // length
+    assert(data_.size() >= offset);
+    value = bytes_ref(
+      data_.c_str() + offset, // start
+      data_.size() - offset); // length
 
     return visitor(key, value);
   }
@@ -4420,17 +4420,11 @@ class sparse_column final : public column {
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
 
-    doc_id_t last_key = 0;
-    std::vector<doc_id_t> deltas;
-
     auto begin = refs.begin();
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       encode::avg::visit_block_packed(
         in, INDEX_BLOCK_SIZE, reinterpret_cast<uint32_t*>(buf),
-        [begin, &deltas, &last_key](uint32_t key) mutable {
-          deltas.push_back(key - last_key);
-          last_key = key;
-
+        [begin](uint32_t key) mutable {
           begin->key = key;
           ++begin;
       });
@@ -4450,10 +4444,7 @@ class sparse_column final : public column {
     if (blocks_count) {
       encode::avg::visit_block_packed_tail(
         in, blocks_count, reinterpret_cast<uint32_t*>(buf),
-        [begin, &deltas, &last_key](uint32_t key) mutable {
-          deltas.push_back(key - last_key);
-          last_key = key;
-
+        [begin](uint32_t key) mutable {
           begin->key = key;
           ++begin;
       });
@@ -5007,12 +4998,6 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     }
   }
 
-  auto crc = format_utils::checksum(*stream);
-  auto fp = stream->file_pointer();
-  stream->seek(stream->length() - format_utils::FOOTER_LEN);
-  auto ccc = format_utils::check_footer(*stream, crc);
-  stream->seek(fp);
-
   // since columns data are too large
   // it is too costly to verify checksum of
   // the entire file. here we perform cheap
@@ -5024,9 +5009,6 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
   stream->seek(stream->read_long()); // seek to blocks index
 
-
-  context_provider::prepare(stream->reopen(), std::move(cipher));
-
   uint64_t buf[INDEX_BLOCK_SIZE]; // temporary buffer for bit packing
   std::vector<column::ptr> columns;
   columns.reserve(stream->read_vlong());
@@ -5034,10 +5016,6 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
     auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
-
-    //if ((factory_id & CP_COLUMN_DENSE) != 0) {
-    //  factory_id = (factory_id & (~CP_COLUMN_DENSE));
-    //}
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
@@ -5093,7 +5071,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       column->read(*stream, buf, decomp);
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
-//column = nullptr;
+
       throw;
     }
 
@@ -5102,6 +5080,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   }
 
   // noexcept
+  context_provider::prepare(stream->reopen(), std::move(cipher));
   columns_ = std::move(columns);
 
   return true;
