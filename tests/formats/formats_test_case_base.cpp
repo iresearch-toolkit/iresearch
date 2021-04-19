@@ -25,9 +25,6 @@
 #include "formats/format_utils.hpp"
 #include "utils/lz4compression.hpp"
 
-#include <string>
-#include <iostream>
-
 namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
@@ -2143,23 +2140,17 @@ TEST_P(format_test_case, columns_rw_typed) {
   }
 }
 
-TEST_P(format_test_case, columns_rw_dense_offset_column1) {
-  std::ifstream fff("1");
-  ASSERT_TRUE(fff);
-
-  std::string buf;
+TEST_P(format_test_case, issue700) {
   std::vector<std::pair<irs::doc_id_t, size_t>> docs;
-  while (std::getline(fff, buf)) {
-    auto pos = buf.find(" ");
-    auto doc_str = buf.substr(0, pos);
-    auto length_str = buf.substr(pos + 1, buf.size() - pos);
-
-    auto doc = atoi(doc_str.c_str());
-    auto length = atoi(length_str.c_str());
-    docs.emplace_back(doc, length);
+  irs::doc_id_t doc = irs::doc_limits::min();
+  for (; doc < 1265; ++doc) {
+    docs.emplace_back(doc, 26);
+  }
+  for (; doc < 17761; ++doc) {
+    docs.emplace_back(doc, 25);
   }
 
-  irs::segment_meta meta("_fixed_offset_columns1", nullptr);
+  irs::segment_meta meta("issue-#700", nullptr);
   meta.version = 0;
   meta.docs_count = docs.size();
   meta.live_docs_count = docs.size();
@@ -2177,9 +2168,10 @@ TEST_P(format_test_case, columns_rw_dense_offset_column1) {
     ASSERT_EQ(0, dense_fixed_offset_column.first);
     ASSERT_TRUE(dense_fixed_offset_column.second);
 
+    std::string str;
     for (auto& doc : docs) {
       auto& stream = dense_fixed_offset_column.second(doc.first);
-      std::string str(doc.second, 0);
+      str.resize(doc.second, 'c');
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
     }
 
