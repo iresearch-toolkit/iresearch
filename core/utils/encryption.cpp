@@ -100,11 +100,10 @@ bool decrypt(
   }
 
   if (!enc) {
-//    throw index_error(string_utils::to_string(
-//      "failed to open encrypted file without cipher, path '%s'",
-//      filename.c_str()
-//    ));
-    return false;
+    throw index_error(string_utils::to_string(
+      "failed to open encrypted file without cipher, path '%s'",
+      filename.c_str()
+    ));
   }
 
   if (header.size() != enc->header_length()) {
