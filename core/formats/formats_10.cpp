@@ -5015,7 +5015,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
-    auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
+    const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
