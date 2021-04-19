@@ -2140,6 +2140,55 @@ TEST_P(format_test_case, columns_rw_typed) {
   }
 }
 
+TEST_P(format_test_case, columns_issue700) {
+  std::vector<std::pair<irs::doc_id_t, size_t>> docs;
+  irs::doc_id_t doc = irs::doc_limits::min();
+  for (; doc < 1265; ++doc) {
+    docs.emplace_back(doc, 26);
+  }
+  for (; doc < 17761; ++doc) {
+    docs.emplace_back(doc, 25);
+  }
+
+  irs::segment_meta meta("issue-#700", nullptr);
+  meta.version = 0;
+  meta.docs_count = docs.size();
+  meta.live_docs_count = docs.size();
+  meta.codec = codec();
+
+  {
+    auto writer = codec()->get_columnstore_writer();
+    ASSERT_NE(nullptr, writer);
+    writer->prepare(dir(), meta);
+
+    auto dense_fixed_offset_column = writer->push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    ASSERT_EQ(0, dense_fixed_offset_column.first);
+    ASSERT_TRUE(dense_fixed_offset_column.second);
+
+    std::string str;
+    for (auto& doc : docs) {
+      auto& stream = dense_fixed_offset_column.second(doc.first);
+      str.resize(doc.second, 'c');
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
+    }
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  {
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_NE(nullptr, reader);
+    ASSERT_TRUE(reader->prepare(dir(), meta));
+    ASSERT_EQ(1, reader->size());
+    auto* column = reader->column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(docs.size(), column->size());
+  }
+}
+
 TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
   // border case for dense/sparse fixed offset columns, e.g.
   // |-----|------------|  |-----|------------|
