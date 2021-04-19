@@ -2140,7 +2140,7 @@ TEST_P(format_test_case, columns_rw_typed) {
   }
 }
 
-TEST_P(format_test_case, issue700) {
+TEST_P(format_test_case, columns_issue700) {
   std::vector<std::pair<irs::doc_id_t, size_t>> docs;
   irs::doc_id_t doc = irs::doc_limits::min();
   for (; doc < 1265; ++doc) {
@@ -2186,53 +2186,6 @@ TEST_P(format_test_case, issue700) {
     auto* column = reader->column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(docs.size(), column->size());
-  }
-}
-
-TEST_P(format_test_case, columns_rw_dense_offset_column) {
-  constexpr irs::doc_id_t MAX_DOCS = 10000000;
-  constexpr irs::doc_id_t STEP = 1;
-  for (irs::doc_id_t docs = 2; docs < MAX_DOCS; docs += STEP) {
-    if (0 == (docs % 50000)) {
-      std::cerr << "Docs=" << docs << '\n';
-    }
-
-    SCOPED_TRACE("Count " + std::to_string(docs));
-    irs::segment_meta meta("_fixed_offset_columns", nullptr);
-    meta.version = 0;
-    meta.docs_count = MAX_DOCS;
-    meta.live_docs_count = MAX_DOCS;
-    meta.codec = codec();
-
-    {
-      auto writer = codec()->get_columnstore_writer();
-      ASSERT_NE(nullptr, writer);
-      writer->prepare(dir(), meta);
-
-      auto dense_fixed_offset_column = writer->push_column({
-        irs::type<irs::compression::lz4>::get(),
-        {}, false });
-
-      ASSERT_EQ(0, dense_fixed_offset_column.first);
-      ASSERT_TRUE(dense_fixed_offset_column.second);
-
-      for (irs::doc_id_t doc = irs::doc_limits::min(); doc < docs; ++doc) {
-        auto& stream = dense_fixed_offset_column.second(doc);
-        const uint64_t id = doc;
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&id), sizeof id);
-      }
-      ASSERT_TRUE(writer->commit());
-    }
-
-    {
-      auto reader = codec()->get_columnstore_reader();
-      ASSERT_NE(nullptr, reader);
-      ASSERT_TRUE(reader->prepare(dir(), meta));
-      ASSERT_EQ(1, reader->size());
-      auto* column = reader->column(0);
-      ASSERT_NE(nullptr, column);
-      ASSERT_EQ(docs - irs::doc_limits::min(), column->size());
-    }
   }
 }
 

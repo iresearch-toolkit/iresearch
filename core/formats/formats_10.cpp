@@ -3102,8 +3102,8 @@ class writer final : public irs::columnstore_writer {
       // - there are no gaps between blocks
       // - all data blocks have the same length
       column_props_ &= ColumnProperty{
-        column_index_.empty() ||
-        ((1 == (block_index_.min_key() - max_)) && prev_block_size_ == block_buf_.size())
+        1 == (block_index_.min_key() - max_) &&
+        (!doc_limits::valid(max_) || prev_block_size_ == block_buf_.size())
       };
 
       // update max element
