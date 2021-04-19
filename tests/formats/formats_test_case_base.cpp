@@ -2156,7 +2156,7 @@ TEST_P(format_test_case, columns_rw_dense_offset_column1) {
 
     auto doc = atoi(doc_str.c_str());
     auto length = atoi(length_str.c_str());
-    docs.emplace_back(doc, 8);
+    docs.emplace_back(doc, length);
   }
 
   irs::segment_meta meta("_fixed_offset_columns1", nullptr);
