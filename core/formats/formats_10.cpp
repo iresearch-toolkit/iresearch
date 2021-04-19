@@ -27,7 +27,6 @@
 #include <deque>
 #include <list>
 #include <numeric>
-#include <fstream>
 
 #include "shared.hpp"
 
@@ -3104,7 +3103,7 @@ class writer final : public irs::columnstore_writer {
       // - all data blocks have the same length
       column_props_ &= ColumnProperty{
         column_index_.empty() ||
-        ((1 == (block_index_.min_key() - max_)) && prev_block_size_ == block_buf_.size())
+        ((1 == (block_index_.min_key() - max_)) /*&& prev_block_size_ == block_buf_.size()*/)
       };
 
       // update max element
@@ -4478,14 +4477,6 @@ class sparse_column final : public column {
     begin->offset = type_limits<type_t::address_t>::invalid();
 
     refs_ = std::move(refs);
-
-/*
-    std::ofstream fff("1");
-    visit([&](doc_id_t doc, const bytes_ref& value) {
-      fff << doc << " " << value.size() << "\n";
-      return true;
-    });
-    */
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
