@@ -61,6 +61,8 @@ void column::flush_block() {
 
   auto& data_out = *ctx_.data_out;
 
+  uint64_t data_base;
+
   // write block index
   // FIXME optimize cases with equal lengths
   {
@@ -70,15 +72,14 @@ void column::flush_block() {
     auto* begin = block_.begin();
     auto* end = begin + block_size;
 
-    const uint64_t addr_table_offs = data_out.file_pointer();
-    const auto [base, avg] = encode::avg::encode(begin, block_.current());
-    blocks_.stream.write_long(addr_table_offs);
-    blocks_.stream.write_long(base);
+    const uint64_t addr_table_base = data_out.file_pointer();
+    uint64_t avg;
+    std::tie(data_base, avg) = encode::avg::encode(begin, block_.current());
+    blocks_.stream.write_long(addr_table_base);
     blocks_.stream.write_long(avg);
 
     if (simd::all_equal<false>(begin, end)) {
       blocks_.stream.write_byte(static_cast<byte_type>(bitpack::ALL_EQUAL));
-      blocks_.stream.write_long(*begin);
       fixed_length_ &= (0 == *begin);
     } else {
       const uint32_t bits = packed::maxbits64(begin, end);
@@ -100,7 +101,7 @@ void column::flush_block() {
     const uint64_t data_offs = data_out.file_pointer();
     data_.stream.flush();
     data_.file >> data_out; // FIXME write directly???
-    blocks_.stream.write_long(data_offs);
+    blocks_.stream.write_long(data_base + data_offs);
   }
 
   ++num_blocks_;
@@ -290,7 +291,7 @@ class column_iterator final : public irs::doc_iterator {
     : in_(std::move(in)),
       blocks_(blocks),
       bitmap_(*in_) {
-    dup_ = in_->dup();
+    dup_ = in_->dup(); // FIXME
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -323,29 +324,30 @@ doc_id_t column_iterator::seek(doc_id_t doc) {
     const auto& block = blocks_[value_idx / column::BLOCK_SIZE];
     const size_t index = value_idx % column::BLOCK_SIZE;
 
-    if (0 == block.bits) {
-      auto absoffs = block.base + block.avg*index;
-      dup_->seek(block.data_offset + absoffs);
-      auto* data_buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
-      int i = 5;
+    if (bitpack::ALL_EQUAL == block.bits) {
+      const size_t addr = block.data + block.avg*index;
+      dup_->seek(addr);
+      auto* buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
+      assert(buf);
 
+      std::get<payload>(attrs_).value = { buf, block.avg };
     } else {
-      dup_->seek(block.addr_offset);
+      dup_->seek(block.addr);
       auto* addr_buf = dup_->read_buffer(block.bits*(65536/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
       assert(addr_buf);
       auto zzoffs = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits);
       auto zzoffs1 = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits);
       auto offs = zig_zag_decode64(zzoffs);
       auto offs1 = zig_zag_decode64(zzoffs1);
-      auto absoffs = block.base + block.avg*index + offs;
-      auto l = offs1 + block.avg - offs;
+      auto addr = block.avg*index + offs;
+      const size_t len = offs1 + block.avg - offs;
 
-      dup_->seek(block.data_offset + absoffs);
-      auto* data_buf = dup_->read_buffer(l, BufferHint::NORMAL);
-      assert(data_buf);
-      int i = 5;
+      dup_->seek(block.data + addr);
+      auto* buf = dup_->read_buffer(len, BufferHint::NORMAL);
+      assert(buf);
+
+      std::get<payload>(attrs_).value = { buf, len };
     }
-
   }
 
   return doc;
@@ -459,14 +461,10 @@ void reader::prepare_index(const directory& dir, const std::string& filename) {
 
     // FIXME optimize
     for (auto& block : column.blocks) {
-      block.addr_offset = index_in->read_long();
-      block.base = index_in->read_long();
+      block.addr = index_in->read_long();
       block.avg = index_in->read_long();
       block.bits = index_in->read_byte();
-      if (!block.bits) {
-        block.rl_value = index_in->read_long();
-      }
-      block.data_offset = index_in->read_long();
+      block.data = index_in->read_long();
     }
   }
 

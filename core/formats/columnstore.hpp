@@ -211,11 +211,9 @@ class writer final : public columnstore_writer {
 }; // writer
 
 struct column_block {
-  uint64_t addr_offset;
+  uint64_t data;
+  uint64_t addr;
   uint64_t avg;
-  uint64_t base;
-  uint64_t data_offset;
-  uint64_t rl_value;
   uint32_t bits;
 };
 
