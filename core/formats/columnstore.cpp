@@ -324,14 +324,25 @@ doc_id_t column_iterator::seek(doc_id_t doc) {
     const size_t index = value_idx % column::BLOCK_SIZE;
 
     if (0 == block.bits) {
-      auto offs = block.base + block.avg*index;
+      auto absoffs = block.base + block.avg*index;
+      dup_->seek(block.data_offset + absoffs);
+      auto* data_buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
       int i = 5;
 
     } else {
-      dup_->seek(block.data_offset);
-      auto* buf = dup_->read_buffer(packed::BLOCK_SIZE_64, BufferHint::NORMAL);
-      assert(buf);
-      auto offs = packed::at(reinterpret_cast<const uint64_t*>(buf), index, block.bits);
+      dup_->seek(block.addr_offset);
+      auto* addr_buf = dup_->read_buffer(block.bits*(65536/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
+      assert(addr_buf);
+      auto zzoffs = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits);
+      auto zzoffs1 = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits);
+      auto offs = zig_zag_decode64(zzoffs);
+      auto offs1 = zig_zag_decode64(zzoffs1);
+      auto absoffs = block.base + block.avg*index + offs;
+      auto l = offs1 + block.avg - offs;
+
+      dup_->seek(block.data_offset + absoffs);
+      auto* data_buf = dup_->read_buffer(l, BufferHint::NORMAL);
+      assert(data_buf);
       int i = 5;
     }
 

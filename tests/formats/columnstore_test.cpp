@@ -58,6 +58,7 @@ TEST_P(columnstore_test_case, test) {
     auto it = c->iterator();
     it->seek(1);
     it->seek(2);
+    it->seek(72000);
     it->seek(500000);
 
     int i = 5;
