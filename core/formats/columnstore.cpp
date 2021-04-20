@@ -25,6 +25,7 @@
 #include "error/error.hpp"
 #include "formats/format_utils.hpp"
 #include "index/file_names.hpp"
+#include "search/all_iterator.hpp"
 #include "search/score.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
@@ -43,9 +44,185 @@ std::string index_file_name(string_ref prefix) {
   return file_name(prefix, writer::INDEX_FORMAT_EXT);
 }
 
-struct block_meta {
-
+struct column_header {
+  uint64_t docs_index;  // docs index offset, 0 if not present
+  doc_id_t docs_count;  // total number of docs in a column
+  ColumnProperty props; // column props
 };
+
+void write(index_output& out, const column_header& hdr) {
+  out.write_long(hdr.docs_index);
+  out.write_int(hdr.docs_count);
+  write_enum(out, hdr.props);
+}
+
+void read(index_input& in, column_header& hdr) {
+  hdr.docs_index = in.read_long();
+  hdr.docs_count = in.read_int();
+  hdr.props = read_enum<ColumnProperty>(in);
+}
+
+struct column_block {
+  uint64_t data;
+  uint64_t addr;
+  uint64_t avg;
+  uint64_t size;
+  uint32_t bits;
+};
+
+struct column_entry final : public columnstore_reader::column_reader {
+  explicit column_entry(
+      const column_header& hdr,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater)
+    : blocks(hdr.docs_count / column::BLOCK_SIZE + 1),
+      inflater(std::move(inflater)),
+      data_in(data_in),
+      hdr(hdr) {
+  }
+
+  virtual columnstore_reader::values_reader_f values() const override;
+
+  virtual doc_iterator::ptr iterator() const override;
+
+  virtual bool visit(
+    const columnstore_reader::values_visitor_f& reader) const override;
+
+  // FIXME doc_id_t
+  virtual size_t size() const noexcept override {
+    return hdr.docs_count;
+  }
+
+  std::vector<column_block> blocks;
+  compression::decompressor::ptr inflater;
+  index_input* data_in;
+  column_header hdr;
+};
+
+class column_iterator final : public irs::doc_iterator {
+ private:
+  using attributes = std::tuple<document, cost, score, payload>;
+
+ public:
+  explicit column_iterator(
+      index_input::ptr&& in,
+      const column_block* blocks,
+      cost::cost_t cost)
+    : dup_(in->dup()),
+      blocks_(blocks),
+      bitmap_(std::move(in)) {
+    std::get<irs::cost>(attrs_).reset(cost);
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  virtual doc_id_t value() const noexcept override {
+    return std::get<document>(attrs_).value;
+  }
+
+  virtual doc_id_t seek(irs::doc_id_t doc) override;
+
+  virtual bool next() override {
+    return !doc_limits::eof(seek(value() + 1));
+  }
+
+ private:
+  index_input::ptr in_;
+  index_input::ptr dup_; // FIXME
+  const column_block* blocks_;
+  sparse_bitmap_iterator bitmap_;
+  attributes attrs_;
+}; // column_iterator
+
+doc_id_t column_iterator::seek(doc_id_t doc) {
+  doc = bitmap_.seek(doc);
+
+  if (!doc_limits::eof(doc)) {
+    const size_t value_idx = bitmap_.index();
+    const auto& block = blocks_[value_idx / column::BLOCK_SIZE];
+    const size_t index = value_idx % column::BLOCK_SIZE;
+
+    if (bitpack::ALL_EQUAL == block.bits) {
+      const size_t addr = block.data + block.avg*index;
+      dup_->seek(addr);
+      auto* buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
+      assert(buf);
+
+      std::get<payload>(attrs_).value = { buf, block.avg };
+    } else {
+      dup_->seek(block.addr);
+      auto* addr_buf = dup_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
+      assert(addr_buf);
+
+      const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
+      const uint64_t start = block.avg*index + start_delta;
+
+      size_t length;
+      if (index != (column::BLOCK_SIZE - 1)) {
+        const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
+        length = end_delta - start_delta + block.avg;
+      } else {
+        length = block.size - start;
+      }
+
+      dup_->seek(block.data + start);
+      auto* buf = dup_->read_buffer(length, BufferHint::NORMAL);
+      assert(buf);
+
+      std::get<payload>(attrs_).value = { buf, length };
+    }
+  }
+
+  return doc;
+}
+
+columnstore_reader::values_reader_f column_entry::values() const {
+  return {};
+}
+
+doc_iterator::ptr column_entry::iterator() const {
+  if (!hdr.docs_count) {
+    assert(0 == hdr.docs_index);
+    return doc_iterator::empty();
+  }
+
+  if (!hdr.docs_index) {
+    if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
+      // FIXME all docs mask case
+    } else {
+      // FIXME all docs case
+    }
+  }
+
+  index_input::ptr stream = data_in->reopen();
+
+  if (!stream) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen payload input");
+  }
+
+  stream->seek(hdr.docs_index);
+
+  // FIXME add score
+  // FIXME special handling for fixed length columns
+  // FIXME special handling for dense fixed length columns
+
+  if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
+    // mask column
+    return memory::make_managed<sparse_bitmap_iterator>(std::move(stream), hdr.docs_count);
+  }
+
+  return memory::make_managed<column_iterator>(std::move(stream), blocks.data(), hdr.docs_count);
+}
+
+bool column_entry::visit(
+      const columnstore_reader::values_visitor_f& reader) const {
+  return false;
+}
 
 }
 
@@ -68,7 +245,9 @@ void column::flush_block() {
   {
     // adjust number of elements to pack to the nearest value
     // that is multiple of the block size
-    const uint64_t block_size = math::ceil64(block_.size(), packed::BLOCK_SIZE_64);
+    const uint32_t size = block_.size();
+    docs_count_ += size;
+    const uint64_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
     auto* begin = block_.begin();
     auto* end = begin + block_size;
 
@@ -102,9 +281,9 @@ void column::flush_block() {
     data_.stream.flush();
     data_.file >> data_out; // FIXME write directly???
     blocks_.stream.write_long(data_base + data_offs);
+    blocks_.stream.write_long(data_.file.length());
   }
 
-  ++num_blocks_;
   data_.stream.seek(0);
 }
 
@@ -115,22 +294,27 @@ void column::finish(index_output& index_out) {
     flush_block();
   }
 
-  const uint64_t doc_index_offset = ctx_.data_out->file_pointer();
-  docs_.stream.flush();
-  docs_.file >> *ctx_.data_out;
+  column_header header;
+  header.docs_index = 0;
+  header.docs_count = docs_count_;
+  header.props = ColumnProperty::NORMAL;
+
+  if (docs_count_ /*&& docs_count_ != docs*/) {
+    ctx_.data_out->file_pointer();
+    docs_.stream.flush();
+    docs_.file >> *ctx_.data_out;
+  }
+
+  if (ctx_.consolidation)       header.props |= ColumnProperty::DENSE;
+  if (ctx_.cipher)              header.props |= ColumnProperty::ENCRYPT;
+  if (fixed_length_)            header.props |= ColumnProperty::FIXED;
+  if (0 == data_.file.length()) header.props |= ColumnProperty::MASK;
+
+  irs::write_string(index_out, comp_type_.name());
+  write(index_out, header);
 
   // can have at most 65536 blocks
   blocks_.stream.flush();
-
-  ColumnProperty props{ColumnProperty::NORMAL};
-  if (ctx_.consolidation) props |= ColumnProperty::DENSE;
-  if (ctx_.cipher)        props |= ColumnProperty::ENCRYPT;
-  if (fixed_length_)      props |= ColumnProperty::FIXED;
-
-  irs::write_string(index_out, comp_type_.name());
-  index_out.write_short(static_cast<uint16_t>(props));
-  index_out.write_short(num_blocks_);
-  index_out.write_long(doc_index_offset);
   blocks_.file >> index_out;
 }
 
@@ -248,19 +432,6 @@ bool writer::commit() {
     column.finish(*index_out);
   }
 
-  // FIXME
-  /*
-  const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
-
-  data_out_->write_vlong(columns_.size()); // number of columns
-
-  for (auto& column : columns_) {
-    column.finish(); // column blocks index
-  }
-
-  data_out_->write_long(block_index_ptr);
-  */
-
   format_utils::write_footer(*index_out);
   format_utils::write_footer(*data_out_);
 
@@ -279,103 +450,6 @@ void writer::rollback() noexcept {
 // -----------------------------------------------------------------------------
 // --SECTION--                               reader::column_entry implementation
 // -----------------------------------------------------------------------------
-
-class column_iterator final : public irs::doc_iterator {
- private:
-  using attributes = std::tuple<document, cost, score, payload>;
-
- public:
-  explicit column_iterator(
-      index_input::ptr&& in,
-      const column_block* blocks)
-    : in_(std::move(in)),
-      blocks_(blocks),
-      bitmap_(*in_) {
-    dup_ = in_->dup(); // FIXME
-  }
-
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  virtual doc_id_t value() const noexcept override {
-    return std::get<document>(attrs_).value;
-  }
-
-  virtual doc_id_t seek(irs::doc_id_t doc) override;
-
-  virtual bool next() override {
-    return false;
-  }
-
- private:
-  index_input::ptr in_;
-  index_input::ptr dup_; // FIXME
-  const column_block* blocks_;
-  sparse_bitmap_iterator bitmap_;
-  attributes attrs_;
-}; // column_iterator
-
-doc_id_t column_iterator::seek(doc_id_t doc) {
-  doc = bitmap_.seek(doc);
-
-  if (!doc_limits::eof(doc)) {
-    const size_t value_idx = bitmap_.index();
-    const auto& block = blocks_[value_idx / column::BLOCK_SIZE];
-    const size_t index = value_idx % column::BLOCK_SIZE;
-
-    if (bitpack::ALL_EQUAL == block.bits) {
-      const size_t addr = block.data + block.avg*index;
-      dup_->seek(addr);
-      auto* buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
-      assert(buf);
-
-      std::get<payload>(attrs_).value = { buf, block.avg };
-    } else {
-      dup_->seek(block.addr);
-      auto* addr_buf = dup_->read_buffer(block.bits*(65536/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
-      assert(addr_buf);
-      auto zzoffs = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits);
-      auto zzoffs1 = packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits);
-      auto offs = zig_zag_decode64(zzoffs);
-      auto offs1 = zig_zag_decode64(zzoffs1);
-      auto addr = block.avg*index + offs;
-      const size_t len = offs1 + block.avg - offs;
-
-      dup_->seek(block.data + addr);
-      auto* buf = dup_->read_buffer(len, BufferHint::NORMAL);
-      assert(buf);
-
-      std::get<payload>(attrs_).value = { buf, len };
-    }
-  }
-
-  return doc;
-}
-
-columnstore_reader::values_reader_f reader::column_entry::values() const {
-  return {};
-}
-
-doc_iterator::ptr reader::column_entry::iterator() const {
-  index_input::ptr stream = data_in->reopen();
-
-  if (!stream) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
-
-    throw io_error("failed to reopen payload input");
-  }
-
-  stream->seek(doc_index_offset);
-
-  return memory::make_managed<column_iterator>(std::move(stream), blocks.data());
-}
-
-bool reader::column_entry::visit(
-      const columnstore_reader::values_visitor_f& reader) const {
-  return false;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             reader implementation
@@ -435,7 +509,7 @@ void reader::prepare_index(const directory& dir, const std::string& filename) {
       writer::FORMAT_MIN,
       writer::FORMAT_MAX);
 
-  std::vector<column_entry> columns;
+  std::vector<columnstore_reader::ptr> columns;
   columns.reserve(index_in->read_vlong());
 
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
@@ -454,17 +528,29 @@ void reader::prepare_index(const directory& dir, const std::string& filename) {
         compression_id.c_str(), i));
     }
 
-    const auto props = static_cast<ColumnProperty>(index_in->read_short());
-    const size_t num_blocks = index_in->read_short();
-    const uint64_t doc_index_offset = index_in->read_long();
-    auto& column = columns.emplace_back(num_blocks, doc_index_offset, data_in_.get(), std::move(inflater), props);
+    column_header hdr;
+    read(*index_in, hdr);
+
+
+   /*
+    if (docs_count == segment.docs_count) {
+      // all column
+      if ((ColumnProperty::FIXED & ColumnProperty::DENSE == (props & (ColumnProperty::FIXED & ColumnProperty::DENSE)) {
+
+      }
+
+    }
+    */
+
+    auto& column = columns.emplace_back(memory::make_unique<column_entry>(hdr, data_in_.get(), std::move(inflater)));
 
     // FIXME optimize
-    for (auto& block : column.blocks) {
+    for (auto& block : column->blocks) {
       block.addr = index_in->read_long();
       block.avg = index_in->read_long();
       block.bits = index_in->read_byte();
       block.data = index_in->read_long();
+      block.size = index_in->read_long();
     }
   }
 

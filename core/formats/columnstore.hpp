@@ -43,7 +43,8 @@ enum class ColumnProperty : uint16_t {
   NORMAL = 0,
   DENSE = 1,        // data blocks have no gaps
   FIXED = 1 << 1,   // fixed length columns
-  ENCRYPT = 1 << 2  // column contains encrypted data
+  ENCRYPT = 1 << 2, // column contains encrypted data
+  MASK = 1 << 3     // column contains no data
 };
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
@@ -175,6 +176,7 @@ class column final : public irs::columnstore_writer::column_output {
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
   offset_block block_;
+  doc_id_t docs_count_{};
   uint16_t num_blocks_{};
   bool fixed_length_{true};
 }; // column
@@ -210,13 +212,6 @@ class writer final : public columnstore_writer {
   bool consolidation_;
 }; // writer
 
-struct column_block {
-  uint64_t data;
-  uint64_t addr;
-  uint64_t avg;
-  uint32_t bits;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class reader
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,42 +229,10 @@ class reader final : public columnstore_reader {
   }
 
  private:
-  struct column_entry final : public column_reader {
-    explicit column_entry(
-        size_t num_blocks,
-        uint64_t doc_index_offset,
-        index_input* data_in,
-        compression::decompressor::ptr&& inflater,
-        ColumnProperty props)
-      : blocks(num_blocks),
-        inflater(std::move(inflater)),
-        doc_index_offset(doc_index_offset),
-        data_in(data_in),
-        props(props) {
-    }
-
-    virtual columnstore_reader::values_reader_f values() const override;
-
-    virtual doc_iterator::ptr iterator() const override;
-
-    virtual bool visit(
-      const columnstore_reader::values_visitor_f& reader) const override;
-
-    virtual size_t size() const noexcept override {
-      return blocks.size();
-    }
-
-    std::vector<column_block> blocks;
-    compression::decompressor::ptr inflater;
-    uint64_t doc_index_offset;
-    index_input* data_in;
-    ColumnProperty props;
-  };
-
   void prepare_data(const directory& dir, const std::string& filename);
   void prepare_index(const directory& dir, const std::string& filename);
 
-  std::vector<column_entry> columns_;
+  std::vector<std::unique_ptr<column_reader>> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
 }; // reader

@@ -218,8 +218,8 @@ struct container_iterator<BT_DENSE> {
 // --SECTION--                                            sparse_bitmap_iterator
 // -----------------------------------------------------------------------------
 
-sparse_bitmap_iterator::sparse_bitmap_iterator(index_input& in)
-  : in_(&in),
+sparse_bitmap_iterator::sparse_bitmap_iterator(index_input::ptr&& in)
+  : in_(std::move(in)),
     seek_func_([](sparse_bitmap_iterator* self, doc_id_t target) {
       assert(!doc_limits::valid(self->value()));
       assert(0 == (target & 0xFFFF0000));
@@ -230,7 +230,8 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(index_input& in)
       self->seek(target);
       return true;
     }),
-    cont_begin_(in.file_pointer()) {
+    cont_begin_(in_->file_pointer()) {
+  assert(in_);
 }
 
 void sparse_bitmap_iterator::read_block_header() {
