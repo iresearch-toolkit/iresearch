@@ -220,44 +220,54 @@ class bitmap_column_iterator final : public irs::doc_iterator {
   value_reader reader_;
   sparse_bitmap_iterator bitmap_;
   attributes attrs_;
-}; // sparse_column_iterator
+}; // bitmap_column_iterator
 
 class dense_fixed_length_value_reader {
  public:
   dense_fixed_length_value_reader(
-    index_input::ptr data_in,
-    uint64_t data_offs,
-    uint64_t avg);
+      index_input::ptr&& data_in,
+      uint64_t data,
+      uint64_t avg)
+    : data_in_{std::move(data_in)},
+      data_{data},
+      avg_{avg} {
+  }
 
   bytes_ref value(doc_id_t i) {
-    const auto offs = base_ + avg*i;
+    const auto offs = data_ + avg_*i;
 
     data_in_->seek(offs);
-    auto* buf = data_in_->read_buffer(avg, BufferHint::NORMAL);
+    auto* buf = data_in_->read_buffer(avg_, BufferHint::NORMAL);
     assert(buf);
 
-    return { buf, avg };
+    return { buf, avg_ };
   }
 
  private:
   index_input::ptr data_in_;
-  uint64_t base_;
-  uint64_t avg;
-};
+  uint64_t data_; // where data starts
+  uint64_t avg_;   // avg delta
+}; // dense_fixed_length_value_reader
 
+template<typename Block>
 class fixed_length_value_reader {
  public:
-  struct block {
-    uint64_t base;
-    uint64_t avg;
-  };
+  // Assume the following members:
+  // uint64_t data; // where data starts
+  // uint64_t avg;  // avg delta
+  using block_type = Block;
+
+  fixed_length_value_reader(index_input::ptr data_in, const block_type* blocks)
+    : data_in_{std::move(data_in)},
+      blocks_{blocks} {
+  }
 
   bytes_ref value(doc_id_t i) {
     const auto block_idx = i / column::BLOCK_SIZE;
     const auto value_idx = i % column::BLOCK_SIZE;
 
     auto& block = blocks_[block_idx];
-    const auto offs = block.base + block.avg*value_idx;
+    const auto offs = block.data + block.avg*value_idx;
 
     data_in_->seek(offs);
     auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
@@ -268,54 +278,63 @@ class fixed_length_value_reader {
 
  private:
   index_input::ptr data_in_;
-  const block* blocks_;
-};
+  const block_type* blocks_;
+}; // fixed_length_value_reader
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              all_docs_dense_column implementation
-// -----------------------------------------------------------------------------
+template<typename Block>
+class sparse_value_reader {
+ public:
+  // Assume the following members:
+  // uint64_t data; // where data starts
+  // uint64_t addr; // where address table starts
+  // uint64_t avg;  // avg delta
+  // uint64_t size; // block size // FIXME don't need it for dense block
+  // uint32_t bits; // bits used to encode the block
+  using block_type = Block;
 
-// no gaps between adjacent blocks
-struct all_dense_docs_column final : public column_base {
-  struct column_block {
-    uint64_t avg;
-    uint64_t size;
-    uint32_t bits;
-  };
-
-  all_dense_docs_column(
-      const column_header& hdr,
-      index_input* data_in)
-    : column_base(hdr) {
+  sparse_value_reader(index_input::ptr data_in, const block_type* blocks)
+    : data_in_{std::move(data_in)}, blocks_{blocks} {
   }
 
-  virtual doc_iterator::ptr iterator() const override {
-    return doc_iterator::empty();
+  bytes_ref value(doc_id_t i) {
+    const auto& block = blocks_[i / column::BLOCK_SIZE];
+    const size_t index = i % column::BLOCK_SIZE;
+
+    if (bitpack::ALL_EQUAL == block.bits) {
+      const size_t addr = block.data + block.avg*index;
+      data_in_->seek(addr);
+      auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
+      assert(buf);
+
+      return { buf, block.avg };
+    }
+
+    data_in_->seek(block.addr);
+    auto* addr_buf = data_in_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
+    assert(addr_buf);
+
+    const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
+    const uint64_t start = block.avg*index + start_delta;
+
+    size_t length;
+    if (index != (column::BLOCK_SIZE - 1)) {
+      const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
+      length = end_delta - start_delta + block.avg;
+    } else {
+      length = block.size - start;
+    }
+
+    data_in_->seek(block.data + start);
+    auto* buf = data_in_->read_buffer(length, BufferHint::NORMAL);
+    assert(buf);
+
+    return { buf, length };
   }
 
-  uint64_t data_offset;
-  index_input* data_in;
-  compression::decompressor::ptr inflater;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                    all_docs_column implementation
-// -----------------------------------------------------------------------------
-
-struct all_docs_column final : public column_base {
-  struct column_block {
-    uint64_t data;
-    uint64_t avg;
-    uint64_t size;
-    uint32_t bits;
-  };
-
-  all_docs_column(
-      const column_header& hdr,
-      index_input* data_in)
-    : column_base(hdr) {
-  }
-};
+ private:
+  index_input::ptr data_in_;
+  const block_type* blocks_;
+}; // sparse_value_reader
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      sparse column implementation
@@ -345,85 +364,6 @@ struct sparse_column final : public column_base {
   compression::decompressor::ptr inflater;
   index_input* data_in;
 };
-
-class column_iterator final : public irs::doc_iterator {
- private:
-  using attributes = std::tuple<document, cost, score, payload>;
-
- public:
-  explicit column_iterator(
-      index_input::ptr&& in,
-      const sparse_column::column_block* blocks,
-      cost::cost_t cost)
-    : dup_(in->dup()),
-      blocks_(blocks),
-      bitmap_(std::move(in)) {
-    std::get<irs::cost>(attrs_).reset(cost);
-  }
-
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  virtual doc_id_t value() const noexcept override {
-    return std::get<document>(attrs_).value;
-  }
-
-  virtual doc_id_t seek(irs::doc_id_t doc) override;
-
-  virtual bool next() override {
-    return !doc_limits::eof(seek(value() + 1));
-  }
-
- private:
-  index_input::ptr in_;
-  index_input::ptr dup_; // FIXME
-  const sparse_column::column_block* blocks_;
-  sparse_bitmap_iterator bitmap_;
-  attributes attrs_;
-}; // column_iterator
-
-doc_id_t column_iterator::seek(doc_id_t doc) {
-  doc = bitmap_.seek(doc);
-
-  if (!doc_limits::eof(doc)) {
-    const size_t value_idx = bitmap_.index();
-    const auto& block = blocks_[value_idx / column::BLOCK_SIZE];
-    const size_t index = value_idx % column::BLOCK_SIZE;
-
-    if (bitpack::ALL_EQUAL == block.bits) {
-      const size_t addr = block.data + block.avg*index;
-      dup_->seek(addr);
-      auto* buf = dup_->read_buffer(block.avg, BufferHint::NORMAL);
-      assert(buf);
-
-      std::get<payload>(attrs_).value = { buf, block.avg };
-    } else {
-      dup_->seek(block.addr);
-      auto* addr_buf = dup_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
-      assert(addr_buf);
-
-      const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
-      const uint64_t start = block.avg*index + start_delta;
-
-      size_t length;
-      if (index != (column::BLOCK_SIZE - 1)) {
-        const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
-        length = end_delta - start_delta + block.avg;
-      } else {
-        length = block.size - start;
-      }
-
-      dup_->seek(block.data + start);
-      auto* buf = dup_->read_buffer(length, BufferHint::NORMAL);
-      assert(buf);
-
-      std::get<payload>(attrs_).value = { buf, length };
-    }
-  }
-
-  return doc;
-}
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (!header().docs_count) {
@@ -456,10 +396,14 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   if (ColumnProperty::MASK == (header().props & ColumnProperty::MASK)) {
     // mask column
-    return memory::make_managed<sparse_bitmap_iterator>(std::move(stream), header().docs_count);
+    return memory::make_managed<sparse_bitmap_iterator>(
+      std::move(stream), header().docs_count);
   }
 
-  return memory::make_managed<column_iterator>(std::move(stream), blocks.data(), header().docs_count);
+  return memory::make_managed<bitmap_column_iterator<sparse_value_reader<column_block>>>(
+    sparse_value_reader<column_block>{stream->dup(), blocks.data()},
+    std::move(stream),
+    header().docs_count);
 }
 
 }
