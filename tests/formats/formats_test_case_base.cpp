@@ -1046,7 +1046,13 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
       stream.write_bytes(payload.c_str(), payload.size());
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = id - 1;
+    state.name = seg.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read documents
@@ -1100,7 +1106,13 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
       column_handler(id);
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = MAX_DOC;
+    state.name = seg.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read documents
@@ -1150,7 +1162,13 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     handle(9); ++segment.docs_count;
     // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key value
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = segment.docs_count;
+    state.name = segment.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // check previously written mask
@@ -1367,7 +1385,14 @@ TEST_P(format_test_case, columns_rw_empty) {
     ASSERT_EQ(0, column0_id);
     column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
     ASSERT_EQ(1, column1_id);
-    ASSERT_FALSE(writer->commit()); // flush empty columns
+
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_FALSE(writer->commit(state)); // flush empty columns
   }
 
   files.clear();
@@ -1451,7 +1476,13 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       ++seg.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = seg.docs_count;
+    state.name = seg.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
 
     gen.reset();
   }
@@ -1533,7 +1564,13 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ++segment.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = segment.docs_count;
+    state.name = segment.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read big document
@@ -1689,7 +1726,15 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_1.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_1.docs_count;
+      state.name = seg_1.name;
+      state.features = &irs::flags::empty_instance();
+
+      ASSERT_TRUE(writer->commit(state));
+    }
 
     gen.reset();
 
@@ -1718,7 +1763,15 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_2.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_2.docs_count;
+      state.name = seg_2.name;
+      state.features = &irs::flags::empty_instance();
+
+      ASSERT_TRUE(writer->commit(state));
+    }
 
     // write 3rd segment
     id = 0;
@@ -1745,7 +1798,15 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++seg_3.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    {
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = seg_3.docs_count;
+      state.name = seg_3.name;
+      state.features = &irs::flags::empty_instance();
+
+      ASSERT_TRUE(writer->commit(state));
+    }
   }
 
   // read documents
@@ -1934,7 +1995,13 @@ TEST_P(format_test_case, columns_rw_typed) {
       ++meta.docs_count;
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta.docs_count;
+    state.name = meta.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read stored documents
@@ -2175,7 +2242,13 @@ TEST_P(format_test_case, columns_issue700) {
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta.docs_count;
+    state.name = meta.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   {
@@ -2250,7 +2323,13 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       }
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // dense fixed offset column
@@ -2507,7 +2586,13 @@ TEST_P(format_test_case, columns_rw) {
       }
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta0.docs_count;
+    state.name = meta0.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // write _2 segment, reuse writer
@@ -2566,7 +2651,13 @@ TEST_P(format_test_case, columns_rw) {
       stream.reset(); // rollback
     }
 
-    ASSERT_TRUE(writer->commit());
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = meta1.docs_count;
+    state.name = meta1.name;
+    state.features = &irs::flags::empty_instance();
+
+    ASSERT_TRUE(writer->commit(state));
   }
 
   // read columns values from segment _1

@@ -37,6 +37,11 @@ TEST_P(columnstore_test_case, mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   irs::segment_meta meta("test", nullptr);
 
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
   {
     irs::columns::writer writer(false);
     writer.prepare(dir(), meta);
@@ -49,7 +54,7 @@ TEST_P(columnstore_test_case, mask_column) {
       column(doc);
     }
 
-    ASSERT_TRUE(writer.commit());
+    ASSERT_TRUE(writer.commit(state));
   }
 
   {
@@ -80,6 +85,11 @@ TEST_P(columnstore_test_case, dense_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   irs::segment_meta meta("test", nullptr);
 
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
   {
     irs::columns::writer writer(false);
     writer.prepare(dir(), meta);
@@ -94,7 +104,7 @@ TEST_P(columnstore_test_case, dense_column) {
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
     }
 
-    ASSERT_TRUE(writer.commit());
+    ASSERT_TRUE(writer.commit(state));
   }
 
   {

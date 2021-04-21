@@ -272,6 +272,11 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   auto& meta = segment.meta;
 
   doc_map docmap;
+  flush_state state;
+  state.dir = &dir_;
+  state.doc_count = docs_cached();
+  state.name = seg_name_;
+  state.docmap = nullptr;
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
@@ -290,10 +295,14 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     }
 
     meta.sort = sort_.id; // store sorted column id in segment meta
+
+    if (!docmap.empty()) {
+      state.docmap = &docmap;
+    }
   }
 
   // flush columnstore
-  if (col_writer_->commit()) {
+  if (col_writer_->commit(state)) {
     if (!columns_.empty()) {
       flush_column_meta(meta);
     }

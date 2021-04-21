@@ -3028,7 +3028,7 @@ class writer final : public irs::columnstore_writer {
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column(const column_info& info) override;
-  virtual bool commit() override;
+  virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 
  private:
@@ -3290,7 +3290,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   });
 }
 
-bool writer::commit() {
+bool writer::commit(const flush_state& /*state*/) {
   assert(dir_);
 
   // remove all empty columns from tail
@@ -4295,7 +4295,7 @@ class column
 
   bool encrypted() const noexcept { return encrypted_; }
   doc_id_t max() const noexcept { return max_; }
-  virtual size_t size() const noexcept override { return count_; }
+  virtual doc_id_t size() const noexcept override { return count_; }
   bool empty() const noexcept { return 0 == size(); }
   uint32_t avg_block_size() const noexcept { return avg_block_size_; }
   uint32_t avg_block_count() const noexcept { return avg_block_count_; }

@@ -870,16 +870,16 @@ class columnstore {
 
   columnstore(
       irs::columnstore_writer::ptr&& writer,
-      const irs::merge_writer::flush_progress_t& progress
-  ) : progress_(progress, PROGRESS_STEP_COLUMN),
+      const irs::merge_writer::flush_progress_t& progress)
+    : progress_(progress, PROGRESS_STEP_COLUMN),
       writer_(std::move(writer)) {
   }
 
   columnstore(
       irs::directory& dir,
       const irs::segment_meta& meta,
-      const irs::merge_writer::flush_progress_t& progress
-  ) : progress_(progress, PROGRESS_STEP_COLUMN) {
+      const irs::merge_writer::flush_progress_t& progress)
+    : progress_(progress, PROGRESS_STEP_COLUMN) {
     auto writer = meta.codec->get_columnstore_writer();
     writer->prepare(dir, meta);
 
@@ -967,7 +967,7 @@ class columnstore {
   bool empty() const noexcept { return empty_; }
 
   // @return was anything actually flushed
-  bool flush() { return writer_->commit(); }
+  bool flush(const flush_state& state) { return writer_->commit(state); }
 
   // returns current column identifier
   irs::field_id id() const noexcept { return column_.first; }
@@ -1173,20 +1173,12 @@ bool write_columns(
 //////////////////////////////////////////////////////////////////////////////
 bool write_fields(
     columnstore& cs,
-    irs::directory& dir,
+    const flush_state& flush_state,
     const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
-    const irs::flags& fields_features,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
-
-  irs::flush_state flush_state;
-  flush_state.dir = &dir;
-  flush_state.doc_count = meta.docs_count;
-  flush_state.features = &fields_features;
-  flush_state.name = meta.name;
 
   auto field_writer = meta.codec->get_field_writer(true);
   field_writer->prepare(flush_state);
@@ -1239,20 +1231,12 @@ template<typename CompoundIterator>
 bool write_fields(
     columnstore& cs,
     CompoundIterator& norms,
-    irs::directory& dir,
+    const flush_state& flush_state,
     const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
-    const irs::flags& fields_features,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
-
-  irs::flush_state flush_state;
-  flush_state.dir = &dir;
-  flush_state.doc_count = meta.docs_count;
-  flush_state.features = &fields_features;
-  flush_state.name = meta.name;
 
   auto field_writer = meta.codec->get_field_writer(true);
   field_writer->prepare(flush_state);
@@ -1452,8 +1436,14 @@ bool merge_writer::flush(
     return false; // progress callback requested termination
   }
 
+  flush_state state;
+  state.dir = &dir;
+  state.doc_count = segment.meta.docs_count;
+  state.features = &fields_features;
+  state.name = segment.meta.name;
+
   // write field meta and field term data
-  if (!write_fields(cs, dir, segment.meta, fields_itr, fields_features, progress)) {
+  if (!write_fields(cs, state, segment.meta, fields_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1461,7 +1451,7 @@ bool merge_writer::flush(
     return false; // progress callback requested termination
   }
 
-  segment.meta.column_store = cs.flush();
+  segment.meta.column_store = cs.flush(state);
 
   return true;
 }
@@ -1628,8 +1618,14 @@ bool merge_writer::flush_sorted(
     return false; // progress callback requested termination
   }
 
+  flush_state state;
+  state.dir = &dir;
+  state.doc_count = segment.meta.docs_count;
+  state.features = &fields_features;
+  state.name = segment.meta.name;
+
   // write field meta and field term data
-  if (!write_fields(cs, sorting_doc_it, dir, segment.meta, fields_itr, fields_features, progress)) {
+  if (!write_fields(cs, sorting_doc_it, state, segment.meta, fields_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1637,7 +1633,7 @@ bool merge_writer::flush_sorted(
     return false; // progress callback requested termination
   }
 
-  segment.meta.column_store = cs.flush(); // flush columnstore
+  segment.meta.column_store = cs.flush(state); // flush columnstore
   segment.meta.sort = column.first; // set sort column identifier
   segment.meta.live_docs_count = segment.meta.docs_count; // all merged documents are live
 

@@ -49,6 +49,28 @@ struct read_write_helper{
 };
 
 template<typename T>
+struct read_write_helper<T, sizeof(irs::byte_type)> {
+  inline static T read(data_input& in) {
+    return in.read_byte();
+  }
+
+  inline static void write(data_output& out, T in) {
+    out.write_byte(in);
+  }
+};
+
+template<typename T>
+struct read_write_helper<T, sizeof(uint16_t)> {
+  inline static T read(data_input& in) {
+    return in.read_short();
+  }
+
+  inline static void write(data_output& out, T in) {
+    out.write_short(in);
+  }
+};
+
+template<typename T>
 struct read_write_helper<T, sizeof(uint32_t)> {
   inline static T read(data_input& in) {
     return in.read_vint();

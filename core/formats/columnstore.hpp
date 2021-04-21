@@ -140,7 +140,7 @@ class column final : public irs::columnstore_writer::column_output {
     return block_.empty();
   }
 
-  void finish(index_output& index_out);
+  void finish(index_output& index_out, doc_id_t docs_count);
 
   virtual void close() override {
     // NOOP
@@ -198,7 +198,7 @@ class writer final : public columnstore_writer {
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column(const column_info& info) override;
-  virtual bool commit() override;
+  virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 
  private:
@@ -221,18 +221,31 @@ class reader final : public columnstore_reader {
     const directory& dir,
     const segment_meta& meta) override;
 
-  virtual const column_reader* column(
-    field_id field) const override;
+  virtual const column_reader* column(field_id field) const override {
+    return field >= columns_.size()
+      ? nullptr // can't find column with the specified identifier
+      : columns_[field].get();
+  }
 
   virtual size_t size() const override {
     return columns_.size();
   }
 
  private:
-  void prepare_data(const directory& dir, const std::string& filename);
-  void prepare_index(const directory& dir, const std::string& filename);
+  using column_ptr = std::unique_ptr<column_reader>;
 
-  std::vector<std::unique_ptr<column_reader>> columns_;
+  void prepare_data(
+    const directory& dir,
+    const std::string& filename);
+
+  void prepare_index(
+    const directory& dir,
+    const std::string& filename,
+    doc_id_t docs_count);
+
+  column_ptr read_column(index_input& in, doc_id_t docs_count);
+
+  std::vector<column_ptr> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
 }; // reader

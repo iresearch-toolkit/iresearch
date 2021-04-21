@@ -290,7 +290,7 @@ struct IRESEARCH_API columnstore_writer {
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column(const column_info& info) = 0;
   virtual void rollback() noexcept = 0;
-  virtual bool commit() = 0; // @return was anything actually flushed
+  virtual bool commit(const flush_state& state) = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 }
@@ -353,7 +353,7 @@ struct IRESEARCH_API columnstore_reader {
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
 
-    virtual size_t size() const = 0;
+    virtual doc_id_t size() const = 0;
   };
 
   static const values_reader_f& empty_reader();
