@@ -168,10 +168,18 @@ class column final : public irs::columnstore_writer::column_output {
  private:
   void flush_block();
 
+  struct block {
+    uint64_t addr;
+    uint64_t avg;
+    uint64_t data;
+    uint64_t size;
+    uint32_t bits;
+  };
+
   context ctx_;
   irs::type_info comp_type_;
   compression::compressor::ptr deflater_;
-  memory_output blocks_{*ctx_.alloc};
+  std::vector<block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
@@ -240,10 +248,11 @@ class reader final : public columnstore_reader {
 
   void prepare_index(
     const directory& dir,
-    const std::string& filename,
-    doc_id_t docs_count);
+    const std::string& filename);
 
-  column_ptr read_column(index_input& in, doc_id_t docs_count);
+  column_ptr read_column(
+    index_input& in,
+    compression::decompressor::ptr&& inflater);
 
   std::vector<column_ptr> columns_;
   encryption::stream::ptr data_cipher_;

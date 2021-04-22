@@ -33,7 +33,7 @@ TEST_P(columnstore_test_case, reader_ctor) {
   ASSERT_EQ(nullptr, reader.column(0));
 }
 
-TEST_P(columnstore_test_case, mask_column) {
+TEST_P(columnstore_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   irs::segment_meta meta("test", nullptr);
 
@@ -50,7 +50,7 @@ TEST_P(columnstore_test_case, mask_column) {
       irs::type<irs::compression::none>::get(),
       {}, false });
 
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc < MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       column(doc);
     }
 
@@ -64,7 +64,7 @@ TEST_P(columnstore_test_case, mask_column) {
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
-    ASSERT_EQ(MAX-1, column->size());
+    ASSERT_EQ(MAX/2, column->size());
 
     auto it = column->iterator();
     auto* document = irs::get<irs::document>(*it);
@@ -75,8 +75,110 @@ TEST_P(columnstore_test_case, mask_column) {
     ASSERT_NE(nullptr, cost);
     ASSERT_EQ(column->size(), cost->estimate());
 
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc < MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       ASSERT_EQ(doc, it->seek(doc));
+    }
+  }
+}
+
+TEST_P(columnstore_test_case, sparse_column) {
+  constexpr irs::doc_id_t MAX = 1000000;
+  irs::segment_meta meta("test", nullptr);
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
+  {
+    irs::columns::writer writer(false);
+    writer.prepare(dir(), meta);
+
+    auto [id, column] = writer.push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      auto& stream = column(doc);
+      const auto str = std::to_string(doc);
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
+    }
+
+    ASSERT_TRUE(writer.commit(state));
+  }
+
+  {
+    irs::columns::reader reader;
+    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_EQ(1, reader.size());
+
+    auto* column = reader.column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(MAX/2, column->size());
+
+    auto it = column->iterator();
+    auto* document = irs::get<irs::document>(*it);
+    ASSERT_NE(nullptr, document);
+    auto* payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+    auto* cost = irs::get<irs::cost>(*it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(column->size(), cost->estimate());
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      ASSERT_EQ(doc, it->seek(doc));
+      const auto str = std::to_string(doc);
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+    }
+  }
+}
+
+TEST_P(columnstore_test_case, dense_mask_column) {
+  constexpr irs::doc_id_t MAX = 1000000;
+  irs::segment_meta meta("test", nullptr);
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
+  {
+    irs::columns::writer writer(false);
+    writer.prepare(dir(), meta);
+
+    auto [id, column] = writer.push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      column(doc);
+    }
+
+    ASSERT_TRUE(writer.commit(state));
+  }
+
+  {
+    irs::columns::reader reader;
+    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_EQ(1, reader.size());
+
+    auto* column = reader.column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(MAX, column->size());
+
+    auto it = column->iterator();
+    auto* document = irs::get<irs::document>(*it);
+    ASSERT_NE(nullptr, document);
+    auto* payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+    ASSERT_TRUE(payload->value.null());
+    auto* cost = irs::get<irs::cost>(*it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(column->size(), cost->estimate());
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_TRUE(payload->value.null());
     }
   }
 }
@@ -98,7 +200,7 @@ TEST_P(columnstore_test_case, dense_column) {
       irs::type<irs::compression::none>::get(),
       {}, false });
 
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc < MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()), str.size());
@@ -114,7 +216,7 @@ TEST_P(columnstore_test_case, dense_column) {
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
-    ASSERT_EQ(MAX-1, column->size());
+    ASSERT_EQ(MAX, column->size());
 
     auto it = column->iterator();
     auto* document = irs::get<irs::document>(*it);
@@ -125,9 +227,15 @@ TEST_P(columnstore_test_case, dense_column) {
     ASSERT_NE(nullptr, cost);
     ASSERT_EQ(column->size(), cost->estimate());
 
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc < MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      if (doc == 1000000) {
+        int i = 5;
+      }
+
       ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
+
+
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
     }
   }

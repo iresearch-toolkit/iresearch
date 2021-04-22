@@ -45,9 +45,15 @@ std::string index_file_name(string_ref prefix) {
 }
 
 struct column_header {
-  uint64_t docs_index;  // docs index offset, 0 if not present
-  doc_id_t docs_count;  // total number of docs in a column
-  ColumnProperty props; // column props
+  /// @brief bitmap index offset, 0 if not present
+  /// @note 0 - not preset, meaning dense column
+  uint64_t docs_index{};
+
+  /// @brief total number of docs in a column
+  doc_id_t docs_count{};
+
+  /// @brief column properties
+  ColumnProperty props{ColumnProperty::NORMAL};
 };
 
 void write(index_output& out, const column_header& hdr) {
@@ -135,9 +141,9 @@ class all_docs_column_iterator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    if (doc < max_doc_) {
+    if (doc <= max_doc_) {
       std::get<document>(attrs_).value = doc;
-      std::get<payload>(attrs_).value = reader_(doc);
+      std::get<payload>(attrs_).value = reader_(doc - doc_limits::min());
       return doc;
     }
 
@@ -147,9 +153,9 @@ class all_docs_column_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() override {
-    if (value() < max_doc_) {
+    if (value() <= max_doc_) {
       ++std::get<document>(attrs_).value;
-      std::get<payload>(attrs_).value = reader_(value());
+      std::get<payload>(attrs_).value = reader_(value() - doc_limits::min());
       return true;
     }
 
@@ -191,7 +197,7 @@ class bitmap_column_iterator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const noexcept override {
-    return std::get<document>(attrs_).value;
+    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
@@ -222,31 +228,37 @@ class bitmap_column_iterator final : public irs::doc_iterator {
   attributes attrs_;
 }; // bitmap_column_iterator
 
+struct empty_value_reader {
+  bytes_ref operator()(doc_id_t) noexcept {
+    return bytes_ref::NIL;
+  }
+};
+
 class dense_fixed_length_value_reader {
  public:
   dense_fixed_length_value_reader(
       index_input::ptr&& data_in,
-      uint64_t data,
-      uint64_t avg)
+      uint64_t data_offset,
+      uint64_t length)
     : data_in_{std::move(data_in)},
-      data_{data},
-      avg_{avg} {
+      data_offset_{data_offset},
+      length_{length} {
   }
 
-  bytes_ref value(doc_id_t i) {
-    const auto offs = data_ + avg_*i;
+  bytes_ref operator()(doc_id_t i) {
+    const auto offs = data_offset_ + length_*i;
 
     data_in_->seek(offs);
-    auto* buf = data_in_->read_buffer(avg_, BufferHint::NORMAL);
+    auto* buf = data_in_->read_buffer(length_, BufferHint::NORMAL);
     assert(buf);
 
-    return { buf, avg_ };
+    return { buf, length_ };
   }
 
  private:
   index_input::ptr data_in_;
-  uint64_t data_; // where data starts
-  uint64_t avg_;   // avg delta
+  uint64_t data_offset_; // where data starts
+  uint64_t length_;      // data entry length
 }; // dense_fixed_length_value_reader
 
 template<typename Block>
@@ -262,7 +274,7 @@ class fixed_length_value_reader {
       blocks_{blocks} {
   }
 
-  bytes_ref value(doc_id_t i) {
+  bytes_ref operator()(doc_id_t i) {
     const auto block_idx = i / column::BLOCK_SIZE;
     const auto value_idx = i % column::BLOCK_SIZE;
 
@@ -296,7 +308,7 @@ class sparse_value_reader {
     : data_in_{std::move(data_in)}, blocks_{blocks} {
   }
 
-  bytes_ref value(doc_id_t i) {
+  bytes_ref operator()(doc_id_t i) {
     const auto& block = blocks_[i / column::BLOCK_SIZE];
     const size_t index = i % column::BLOCK_SIZE;
 
@@ -371,11 +383,16 @@ doc_iterator::ptr sparse_column::iterator() const {
     return doc_iterator::empty();
   }
 
-  if (!header().docs_index) {
+  if (0 == header().docs_index) {
     if (ColumnProperty::MASK == (header().props & ColumnProperty::MASK)) {
       // FIXME all docs mask case
+      return memory::make_managed<all_docs_column_iterator<empty_value_reader>>(
+        empty_value_reader{}, header().docs_count);
     } else {
       // FIXME all docs case
+      return memory::make_managed<all_docs_column_iterator<sparse_value_reader<column_block>>>(
+        sparse_value_reader<column_block>{data_in->reopen(), blocks.data()},
+        header().docs_count);
     }
   }
 
@@ -383,9 +400,9 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   if (!stream) {
     // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
-    throw io_error("failed to reopen payload input");
+    throw io_error("failed to reopen input");
   }
 
   stream->seek(header().docs_index);
@@ -419,54 +436,46 @@ void column::flush_block() {
   assert(ctx_.data_out);
 
   auto& data_out = *ctx_.data_out;
-
-  uint64_t data_base;
+  auto& block = blocks_.emplace_back();
 
   // write block index
   // FIXME optimize cases with equal lengths
-  {
-    // adjust number of elements to pack to the nearest value
-    // that is multiple of the block size
-    const uint32_t size = block_.size();
-    docs_count_ += size;
-    const uint64_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-    auto* begin = block_.begin();
-    auto* end = begin + block_size;
 
-    const uint64_t addr_table_base = data_out.file_pointer();
-    uint64_t avg;
-    std::tie(data_base, avg) = encode::avg::encode(begin, block_.current());
-    blocks_.stream.write_long(addr_table_base);
-    blocks_.stream.write_long(avg);
+  // adjust number of elements to pack to the nearest value
+  // that is multiple of the block size
+  const uint32_t size = block_.size();
+  docs_count_ += size;
+  const uint64_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
+  auto* begin = block_.begin();
+  auto* end = begin + block_size;
 
-    if (simd::all_equal<false>(begin, end)) {
-      blocks_.stream.write_byte(static_cast<byte_type>(bitpack::ALL_EQUAL));
-      fixed_length_ &= (0 == *begin);
-    } else {
-      const uint32_t bits = packed::maxbits64(begin, end);
-      const size_t buf_size = packed::bytes_required_64(block_size, bits);
-      std::memset(ctx_.u64buf, 0, buf_size);
-      packed::pack(begin, end, ctx_.u64buf, bits);
+  block.addr = data_out.file_pointer();
+  std::tie(block.data, block.avg) = encode::avg::encode(begin, block_.current());
 
-      blocks_.stream.write_byte(static_cast<byte_type>(bits));
-      data_out.write_bytes(ctx_.u8buf, buf_size);
-      fixed_length_ = false;
-    }
+  if (simd::all_equal<false>(begin, end)) {
+    block.bits = bitpack::ALL_EQUAL;
+    fixed_length_ &= (0 == *begin);
+  } else {
+    block.bits = packed::maxbits64(begin, end);
+    const size_t buf_size = packed::bytes_required_64(block_size, block.bits);
+    std::memset(ctx_.u64buf, 0, buf_size);
+    packed::pack(begin, end, ctx_.u64buf, block.bits);
 
-    block_.reset();
+    data_out.write_bytes(ctx_.u8buf, buf_size);
+    fixed_length_ = false;
   }
+
+  block_.reset();
+  data_.stream.flush();
 
   // write block data
   // FIXME we don't need to track data_offs/index_offs per block after merge
-  {
-    const uint64_t data_offs = data_out.file_pointer();
-    data_.stream.flush();
-    data_.file >> data_out; // FIXME write directly???
-    blocks_.stream.write_long(data_base + data_offs);
-    blocks_.stream.write_long(data_.file.length());
+  block.data += data_out.file_pointer();
+  block.size = data_.file.length();
+  data_.file >> data_out; // FIXME write directly???
+  if (data_.stream.file_pointer()) { // FIXME
+    data_.stream.seek(0);
   }
-
-  data_.stream.seek(0);
 }
 
 void column::finish(index_output& index_out, doc_id_t docs_count) {
@@ -474,13 +483,14 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   if (!block_.empty()) {
     flush_block();
   }
-  blocks_.stream.flush();
 
   column_header hdr;
   hdr.docs_count = docs_count_;
 
   hdr.docs_index = 0;
   if (docs_count_ && docs_count_ != docs_count) {
+    // we don't need to store bitmap index in case
+    // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();
     docs_.stream.flush();
     docs_.file >> *ctx_.data_out;
@@ -494,7 +504,20 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
 
   irs::write_string(index_out, comp_type_.name());
   write(index_out, hdr);
-  blocks_.file >> index_out; // can have at most 65536 blocks
+
+//  if (!fixed_length_) {
+    // we don't need to store block index in case
+    // if every value in a column has the same length
+
+    // FIXME optimize
+    for (auto& block : blocks_) {
+      index_out.write_long(block.addr);
+      index_out.write_long(block.avg);
+      index_out.write_byte(static_cast<byte_type>(block.bits));
+      index_out.write_long(block.data);
+      index_out.write_long(block.size);
+    }
+//  }
 }
 
 // -----------------------------------------------------------------------------
@@ -623,12 +646,8 @@ void writer::rollback() noexcept {
   data_filename_.clear();
   dir_ = nullptr;
   data_out_.reset(); // close output
-  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
+  columns_.clear();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                               reader::column_entry implementation
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             reader implementation
@@ -668,7 +687,9 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
   data_in_ = std::move(data_in);
 }
 
-reader::column_ptr reader::read_column(index_input& in, doc_id_t docs_count) {
+reader::column_ptr reader::read_column(
+    index_input& in,
+    compression::decompressor::ptr&& inflater) {
   column_header hdr;
   read(in, hdr);
 
@@ -676,68 +697,27 @@ reader::column_ptr reader::read_column(index_input& in, doc_id_t docs_count) {
     return memory::make_unique<empty_column>();
   }
 
-  if (hdr.docs_count == docs_count) {
-    if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
-      // mask
+  auto column = memory::make_unique<sparse_column>(hdr, data_in_.get(), std::move(inflater));
+
+  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+
+//  if (ColumnProperty::FIXED == (hdr.props & ColumnProperty::FIXED)) {
+    for (auto& block : column->blocks) {
+      block.addr = in.read_long();
+      block.avg = in.read_long();
+      block.bits = in.read_byte();
+      block.data = in.read_long();
+      block.size = in.read_long();
     }
+//  }
 
-    const auto props = hdr.props & (ColumnProperty::DENSE &
-                                    ColumnProperty::FIXED);
-
-    if ((ColumnProperty::DENSE & ColumnProperty::FIXED) == props) {
-      // dense fixed length column
-    }
-
-    if (ColumnProperty::FIXED == props) {
-      // fixed length column
-    }
-
-    // all docs variable length
-  }
-
-  if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
-    // mask
-  }
-
-  const auto props = hdr.props & (ColumnProperty::DENSE &
-                                  ColumnProperty::FIXED);
-
-  if ((ColumnProperty::DENSE & ColumnProperty::FIXED) == props) {
-    // dense fixed length column
-  }
-
-  if (ColumnProperty::FIXED == props) {
-    // fixed length column
-  }
-
-  // regular column
-
-  /*
-
-  auto column = memory::make_unique<column_entry>(hdr, data_in_.get(), std::move(inflater));
-
-  if (column->hdr.docs_count && column->hdr.docs_count != maxdocs) {
-
-  }
-
-  // FIXME optimize
-  for (auto& block : column->blocks) {
-    block.addr = index_in->read_long();
-    block.avg = index_in->read_long();
-    block.bits = index_in->read_byte();
-    block.data = index_in->read_long();
-    block.size = index_in->read_long();
-  }
-  */
-
-  return nullptr;
+  return column;
 }
 
 // FIXME return result???
 void reader::prepare_index(
     const directory& dir,
-    const std::string& filename,
-    doc_id_t docs_count) {
+    const std::string& filename) {
   // open columstore stream
   auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
 
@@ -775,7 +755,7 @@ void reader::prepare_index(
         compression_id.c_str(), i));
     }
 
-    auto column = read_column(*index_in, docs_count);
+    auto column = read_column(*index_in, std::move(inflater));
     assert(column);
 
     columns.emplace_back(std::move(column));
@@ -820,7 +800,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       index_filename.c_str()));
   }
 
-  prepare_index(dir, index_filename, meta.docs_count);
+  prepare_index(dir, index_filename);
 
   return true;
 }
