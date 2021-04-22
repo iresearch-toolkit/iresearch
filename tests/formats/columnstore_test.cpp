@@ -33,9 +33,81 @@ TEST_P(columnstore_test_case, reader_ctor) {
   ASSERT_EQ(nullptr, reader.column(0));
 }
 
+TEST_P(columnstore_test_case, empty_columnstore) {
+  constexpr irs::doc_id_t MAX = 1;
+  const irs::segment_meta meta("test", nullptr);
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
+  irs::columns::writer writer(false);
+  writer.prepare(dir(), meta);
+  writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  ASSERT_FALSE(writer.commit(state));
+
+  irs::columns::reader reader;
+  ASSERT_FALSE(reader.prepare(dir(), meta));
+}
+
+TEST_P(columnstore_test_case, empty_column) {
+  constexpr irs::doc_id_t MAX = 1;
+  const irs::segment_meta meta("test", nullptr);
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
+  irs::columns::writer writer(false);
+  writer.prepare(dir(), meta);
+  auto [id0, handle0] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  auto [id1, handle1] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  auto [id2, handle2] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  handle1(42).write_byte(42);
+  ASSERT_TRUE(writer.commit(state));
+
+  irs::columns::reader reader;
+  ASSERT_TRUE(reader.prepare(dir(), meta));
+  ASSERT_EQ(2, reader.size());
+
+  // column 0
+  {
+    auto column = reader.column(0);
+    ASSERT_NE(nullptr, column);
+    auto it = column->iterator();
+    ASSERT_NE(nullptr, it);
+    ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+  }
+
+  // column 1
+  {
+    auto column = reader.column(1);
+    ASSERT_NE(nullptr, column);
+    auto it = column->iterator();
+    auto* document = irs::get<irs::document>(*it);
+    ASSERT_NE(nullptr, document);
+    auto* payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+    auto* cost = irs::get<irs::cost>(*it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(column->size(), cost->estimate());
+    ASSERT_NE(nullptr, it);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(42, it->value());
+    ASSERT_EQ(1, payload->value.size());
+    ASSERT_EQ(42, payload->value[0]);
+    ASSERT_FALSE(it->next());
+    ASSERT_FALSE(it->next());
+  }
+}
+
 TEST_P(columnstore_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
-  irs::segment_meta meta("test", nullptr);
+  const irs::segment_meta meta("test", nullptr);
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -66,16 +138,31 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX/2, column->size());
 
-    auto it = column->iterator();
-    auto* document = irs::get<irs::document>(*it);
-    ASSERT_NE(nullptr, document);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_EQ(nullptr, payload);
-    auto* cost = irs::get<irs::cost>(*it);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(column->size(), cost->estimate());
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_EQ(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+        ASSERT_EQ(doc, it->seek(doc));
+      }
+    }
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_EQ(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
       ASSERT_EQ(doc, it->seek(doc));
     }
   }
@@ -83,7 +170,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
 
 TEST_P(columnstore_test_case, sparse_column) {
   constexpr irs::doc_id_t MAX = 1000000;
-  irs::segment_meta meta("test", nullptr);
+  const irs::segment_meta meta("test", nullptr);
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -116,16 +203,33 @@ TEST_P(columnstore_test_case, sparse_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX/2, column->size());
 
-    auto it = column->iterator();
-    auto* document = irs::get<irs::document>(*it);
-    ASSERT_NE(nullptr, document);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-    auto* cost = irs::get<irs::cost>(*it);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(column->size(), cost->estimate());
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+        ASSERT_EQ(doc, it->seek(doc));
+        const auto str = std::to_string(doc);
+        EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      }
+    }
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
       ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
@@ -135,7 +239,7 @@ TEST_P(columnstore_test_case, sparse_column) {
 
 TEST_P(columnstore_test_case, dense_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
-  irs::segment_meta meta("test", nullptr);
+  const irs::segment_meta meta("test", nullptr);
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -166,17 +270,34 @@ TEST_P(columnstore_test_case, dense_mask_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
 
-    auto it = column->iterator();
-    auto* document = irs::get<irs::document>(*it);
-    ASSERT_NE(nullptr, document);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-    ASSERT_TRUE(payload->value.null());
-    auto* cost = irs::get<irs::cost>(*it);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(column->size(), cost->estimate());
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      ASSERT_TRUE(payload->value.null());
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+        ASSERT_EQ(doc, it->seek(doc));
+        ASSERT_TRUE(payload->value.null());
+      }
+    }
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      ASSERT_TRUE(payload->value.null());
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_TRUE(payload->value.null());
     }
@@ -185,7 +306,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
 
 TEST_P(columnstore_test_case, dense_column) {
   constexpr irs::doc_id_t MAX = 1000000;
-  irs::segment_meta meta("test", nullptr);
+  const irs::segment_meta meta("test", nullptr);
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -218,23 +339,41 @@ TEST_P(columnstore_test_case, dense_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
 
-    auto it = column->iterator();
-    auto* document = irs::get<irs::document>(*it);
-    ASSERT_NE(nullptr, document);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-    auto* cost = irs::get<irs::cost>(*it);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(column->size(), cost->estimate());
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+        if (doc == 1000000) {
+          int i = 5;
+        }
+
+        ASSERT_EQ(doc, it->seek(doc));
+        const auto str = std::to_string(doc);
+
+
+        EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      }
+    }
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-      if (doc == 1000000) {
-        int i = 5;
-      }
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
 
       ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
-
 
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
     }
