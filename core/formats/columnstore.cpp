@@ -288,33 +288,89 @@ doc_iterator::ptr mask_column::iterator() const {
     std::move(stream), header().docs_count);
 }
 
-class dense_fixed_length_value_reader {
- public:
-  dense_fixed_length_value_reader(
-      index_input::ptr&& data_in,
-      uint64_t data_offset,
-      uint64_t length)
-    : data_in_{std::move(data_in)},
-      data_offset_{data_offset},
-      length_{length} {
+////////////////////////////////////////////////////////////////////////////////
+/// @struct dense_fixed_length_column
+////////////////////////////////////////////////////////////////////////////////
+struct dense_fixed_length_column final : public column_base {
+  class value_reader {
+   public:
+    value_reader(
+        index_input::ptr&& data_in,
+        uint64_t data,
+        uint64_t len)
+      : data_in_{std::move(data_in)},
+        data_{data},
+        len_{len} {
+    }
+
+    bytes_ref operator()(doc_id_t i) {
+      const auto offs = data_ + len_*i;
+
+      data_in_->seek(offs);
+      auto* buf = data_in_->read_buffer(len_, BufferHint::NORMAL);
+      assert(buf);
+
+      return { buf, len_ };
+    }
+
+   private:
+    index_input::ptr data_in_;
+    uint64_t data_; // where data starts
+    uint64_t len_;  // data entry length
+  }; // dense_fixed_length_value_reader
+
+  dense_fixed_length_column(
+      const column_header& hdr,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater,
+      uint64_t data,
+      uint64_t len)
+    : column_base{hdr},
+      inflater{std::move(inflater)},
+      data_in{data_in},
+      data_{data},
+      len_{len} {
+    constexpr ColumnProperty EXPECTED_PROPS = ColumnProperty::FIXED & ColumnProperty::DENSE;
+    assert(EXPECTED_PROPS == (header().props & EXPECTED_PROPS));
   }
 
-  bytes_ref operator()(doc_id_t i) {
-    const auto offs = data_offset_ + length_*i;
+  virtual doc_iterator::ptr iterator() const override;
 
-    data_in_->seek(offs);
-    auto* buf = data_in_->read_buffer(length_, BufferHint::NORMAL);
-    assert(buf);
+  compression::decompressor::ptr inflater;
+  index_input* data_in;
+  uint64_t data_;
+  uint64_t len_;
+};
 
-    return { buf, length_ };
+doc_iterator::ptr dense_fixed_length_column::iterator() const {
+  if (0 == header().docs_index) {
+    return memory::make_managed<all_docs_column_iterator<value_reader>>(
+      header().docs_count,
+      data_in->reopen(),
+      data_, len_);
   }
 
- private:
-  index_input::ptr data_in_;
-  uint64_t data_offset_; // where data starts
-  uint64_t length_;      // data entry length
-}; // dense_fixed_length_value_reader
+  auto stream = data_in->reopen();
 
+  if (!stream) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen input");
+  }
+
+  stream->seek(header().docs_index);
+
+  return memory::make_managed<bitmap_column_iterator<value_reader>>(
+    std::move(stream),
+    header().docs_count,
+    stream->dup(),
+    data_, len_);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct fixed_length_column
+////////////////////////////////////////////////////////////////////////////////
 struct fixed_length_column final : public column_base {
   struct column_block {
     uint64_t data;
@@ -490,9 +546,6 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  // FIXME add score
-  // FIXME special handling for fixed length columns
-  // FIXME special handling for dense fixed length columns
   return memory::make_managed<bitmap_column_iterator<value_reader>>(
     std::move(stream),
     header().docs_count,
@@ -596,8 +649,12 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     }
   } else if (!blocks_.empty()){
     index_out.write_long(blocks_.front().avg);
-    for (auto& block : blocks_) {
-      index_out.write_long(block.data);
+    if (ctx_.consolidation) {
+      index_out.write_long(blocks_.front().data);
+    } else {
+      for (auto& block : blocks_) {
+        index_out.write_long(block.data);
+      }
     }
   }
 }
@@ -780,6 +837,14 @@ reader::column_ptr reader::read_column(
 
   if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
     return memory::make_unique<mask_column>(hdr, data_in_.get());
+  }
+
+  // FIXME add score
+
+  if ((ColumnProperty::FIXED & ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED & ColumnProperty::DENSE))) {
+    const uint64_t len = in.read_long();
+    const uint64_t data = in.read_long();
+    return memory::make_unique<dense_fixed_length_column>(hdr, data_in_.get(), std::move(inflater), data, len);
   }
 
   if (ColumnProperty::FIXED == (hdr.props & ColumnProperty::FIXED)) {
