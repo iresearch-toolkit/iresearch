@@ -381,8 +381,19 @@ doc_iterator::ptr mask_column::iterator() const {
       empty_value_reader{}, header().docs_count);
   }
 
+  auto stream = data_in->reopen();
+
+  if (!stream) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen input");
+  }
+
+  stream->seek(header().docs_index);
+
   return memory::make_managed<sparse_bitmap_iterator>(
-    data_in->reopen(), header().docs_count);
+    std::move(stream), header().docs_count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
