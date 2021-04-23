@@ -44,6 +44,9 @@ std::string index_file_name(string_ref prefix) {
   return file_name(prefix, writer::INDEX_FORMAT_EXT);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_header
+////////////////////////////////////////////////////////////////////////////////
 struct column_header {
   /// @brief bitmap index offset, 0 if not present
   /// @note 0 - not preset, meaning dense column
@@ -118,6 +121,9 @@ struct empty_column final : public columnstore_reader::column_reader {
   }
 }; // empty_column
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class all_docs_column_iterator
+////////////////////////////////////////////////////////////////////////////////
 template<typename ValueReader>
 class all_docs_column_iterator final : public irs::doc_iterator {
  private:
@@ -170,6 +176,9 @@ class all_docs_column_iterator final : public irs::doc_iterator {
   attributes attrs_;
 }; // all_docs_column_iterator
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class bitmap_column_iterator
+////////////////////////////////////////////////////////////////////////////////
 template<typename ValueReader>
 class bitmap_column_iterator final : public irs::doc_iterator {
  private:
@@ -348,10 +357,37 @@ class sparse_value_reader {
   const block_type* blocks_;
 }; // sparse_value_reader
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      sparse column implementation
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @struct mask_column
+////////////////////////////////////////////////////////////////////////////////
+struct mask_column final : public column_base {
+  explicit mask_column(
+      const column_header& hdr,
+      index_input* data_in)
+    : column_base(hdr),
+      data_in(data_in) {
+    assert(header().docs_count);
+    assert(ColumnProperty::MASK == (header().props & ColumnProperty::MASK));
+  }
 
+  virtual doc_iterator::ptr iterator() const override;
+
+  index_input* data_in;
+};
+
+doc_iterator::ptr mask_column::iterator() const {
+  if (0 == header().docs_index) {
+    return memory::make_managed<all_docs_column_iterator<empty_value_reader>>(
+      empty_value_reader{}, header().docs_count);
+  }
+
+  return memory::make_managed<sparse_bitmap_iterator>(
+    data_in->reopen(), header().docs_count);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct sparse_column
+////////////////////////////////////////////////////////////////////////////////
 struct sparse_column final : public column_base {
   struct column_block {
     uint64_t data;
@@ -368,6 +404,7 @@ struct sparse_column final : public column_base {
     : column_base(hdr),
       inflater(std::move(inflater)),
       data_in(data_in) {
+    assert(ColumnProperty::MASK != (header().props & ColumnProperty::MASK));
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -378,22 +415,11 @@ struct sparse_column final : public column_base {
 };
 
 doc_iterator::ptr sparse_column::iterator() const {
-  if (!header().docs_count) {
-    assert(0 == header().docs_index);
-    return doc_iterator::empty();
-  }
-
   if (0 == header().docs_index) {
-    if (ColumnProperty::MASK == (header().props & ColumnProperty::MASK)) {
-      // FIXME all docs mask case
-      return memory::make_managed<all_docs_column_iterator<empty_value_reader>>(
-        empty_value_reader{}, header().docs_count);
-    } else {
-      // FIXME all docs case
-      return memory::make_managed<all_docs_column_iterator<sparse_value_reader<column_block>>>(
-        sparse_value_reader<column_block>{data_in->reopen(), blocks.data()},
-        header().docs_count);
-    }
+    // FIXME all docs case
+    return memory::make_managed<all_docs_column_iterator<sparse_value_reader<column_block>>>(
+      sparse_value_reader<column_block>{data_in->reopen(), blocks.data()},
+      header().docs_count);
   }
 
   index_input::ptr stream = data_in->reopen();
@@ -411,14 +437,10 @@ doc_iterator::ptr sparse_column::iterator() const {
   // FIXME special handling for fixed length columns
   // FIXME special handling for dense fixed length columns
 
-  if (ColumnProperty::MASK == (header().props & ColumnProperty::MASK)) {
-    // mask column
-    return memory::make_managed<sparse_bitmap_iterator>(
-      std::move(stream), header().docs_count);
-  }
+  using value_reader_t = sparse_value_reader<column_block>;
 
-  return memory::make_managed<bitmap_column_iterator<sparse_value_reader<column_block>>>(
-    sparse_value_reader<column_block>{stream->dup(), blocks.data()},
+  return memory::make_managed<bitmap_column_iterator<value_reader_t>>(
+    value_reader_t{stream->dup(), blocks.data()},
     std::move(stream),
     header().docs_count);
 }
@@ -506,6 +528,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   write(index_out, hdr);
 
 //  if (!fixed_length_) {
+  if (!data_.file.empty()) { // FIXME
     // we don't need to store block index in case
     // if every value in a column has the same length
 
@@ -517,7 +540,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
       index_out.write_long(block.data);
       index_out.write_long(block.size);
     }
-//  }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -695,6 +718,10 @@ reader::column_ptr reader::read_column(
 
   if (0 == hdr.docs_count) {
     return memory::make_unique<empty_column>();
+  }
+
+  if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
+    return memory::make_unique<mask_column>(hdr, data_in_.get());
   }
 
   auto column = memory::make_unique<sparse_column>(hdr, data_in_.get(), std::move(inflater));
