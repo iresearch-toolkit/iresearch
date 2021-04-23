@@ -380,6 +380,77 @@ TEST_P(columnstore_test_case, dense_column) {
   }
 }
 
+TEST_P(columnstore_test_case, dense_fixed_length_column) {
+  constexpr irs::doc_id_t MAX = 1000000;
+  const irs::segment_meta meta("test", nullptr);
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+  state.features = &irs::flags::empty_instance();
+
+  {
+    irs::columns::writer writer(false);
+    writer.prepare(dir(), meta);
+
+    auto [id, column] = writer.push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, false });
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto& stream = column(doc);
+      const auto str = std::to_string(doc);
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc), sizeof doc);
+    }
+
+    ASSERT_TRUE(writer.commit(state));
+  }
+
+  {
+    irs::columns::reader reader;
+    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_EQ(1, reader.size());
+
+    auto* column = reader.column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(MAX, column->size());
+
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+        ASSERT_EQ(doc, it->seek(doc));
+        ASSERT_EQ(sizeof doc, payload->value.size());
+        const irs::doc_id_t actual_doc = *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str());
+        EXPECT_EQ(doc, actual_doc);
+      }
+    }
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(sizeof doc, payload->value.size());
+      const irs::doc_id_t actual_doc = *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str());
+      EXPECT_EQ(doc, actual_doc);
+    }
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
   columnstore_test,
   columnstore_test_case,
