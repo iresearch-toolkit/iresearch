@@ -31,8 +31,7 @@ namespace {
 // --SECTION--                                          format 11 specific tests
 // -----------------------------------------------------------------------------
 
-class format_11_test_case : public tests::directory_test_case_base {
-};
+class format_11_test_case : public tests::directory_test_case_base<> { };
 
 TEST_P(format_11_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
@@ -487,7 +486,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
     &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------

@@ -79,7 +79,7 @@ column_header read_header(index_input& in) {
 class column_base : public columnstore_reader::column_reader {
  public:
   explicit column_base(const column_header& hdr)
-    : hdr_(hdr) {
+    : hdr_{hdr} {
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -256,8 +256,8 @@ struct mask_column final : public column_base {
   mask_column(
       const column_header& hdr,
       index_input* data_in)
-    : column_base(hdr),
-      data_in(data_in) {
+    : column_base{hdr},
+      data_in{data_in} {
     assert(header().docs_count);
     assert(ColumnProperty::MASK == (header().props & ColumnProperty::MASK));
   }
@@ -647,7 +647,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
       index_out.write_long(block.data);
       index_out.write_long(block.size);
     }
-  } else if (!blocks_.empty()){
+  } else if (!data_.file.empty() && !blocks_.empty()){
     index_out.write_long(blocks_.front().avg);
     if (ctx_.consolidation) {
       index_out.write_long(blocks_.front().data);
@@ -664,9 +664,9 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
 // -----------------------------------------------------------------------------
 
 writer::writer(bool consolidation)
-  : alloc_(&memory_allocator::global()),
-    buf_(memory::make_unique<byte_type[]>(column::BLOCK_SIZE*sizeof(uint64_t))),
-    consolidation_(consolidation) {
+  : alloc_{&memory_allocator::global()},
+    buf_{memory::make_unique<byte_type[]>(column::BLOCK_SIZE*sizeof(uint64_t))},
+    consolidation_{consolidation} {
 }
 
 void writer::prepare(directory& dir, const segment_meta& meta) {
@@ -841,7 +841,7 @@ reader::column_ptr reader::read_column(
 
   // FIXME add score
 
-  if ((ColumnProperty::FIXED & ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED & ColumnProperty::DENSE))) {
+  if ((ColumnProperty::FIXED | ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED | ColumnProperty::DENSE))) {
     const uint64_t len = in.read_long();
     const uint64_t data = in.read_long();
     return memory::make_unique<dense_fixed_length_column>(hdr, data_in_.get(), std::move(inflater), data, len);

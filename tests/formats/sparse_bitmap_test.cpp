@@ -25,7 +25,7 @@
 
 #include "formats/sparse_bitmap.hpp"
 
-class sparse_bitmap_test_case : public tests::directory_test_case_base {
+class sparse_bitmap_test_case : public tests::directory_test_case_base<> {
  protected:
   // min, max
   using range_type = std::pair<irs::doc_id_t, irs::doc_id_t>;

@@ -25,7 +25,26 @@
 
 #include "formats/columnstore.hpp"
 
-class columnstore_test_case : public tests::directory_test_case_base { };
+class columnstore_test_case : public virtual tests::directory_test_case_base<bool> {
+ public:
+  static std::string to_string(
+      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, bool>>& info) {
+    tests::dir_factory_f factory;
+    bool consolidation;
+    std::tie(factory, consolidation) = info.param;
+
+    if (consolidation) {
+      return (*factory)(nullptr).second + "___consolidation";
+    }
+
+    return (*factory)(nullptr).second;
+  }
+
+  bool consolidation() const noexcept {
+    auto& p = this->GetParam();
+    return std::get<bool>(p);
+  }
+};
 
 TEST_P(columnstore_test_case, reader_ctor) {
   irs::columns::reader reader;
@@ -42,7 +61,7 @@ TEST_P(columnstore_test_case, empty_columnstore) {
   state.name = meta.name;
   state.features = &irs::flags::empty_instance();
 
-  irs::columns::writer writer(false);
+  irs::columns::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
   writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
   writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
@@ -61,7 +80,7 @@ TEST_P(columnstore_test_case, empty_column) {
   state.name = meta.name;
   state.features = &irs::flags::empty_instance();
 
-  irs::columns::writer writer(false);
+  irs::columns::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
   auto [id0, handle0] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
   auto [id1, handle1] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
@@ -115,7 +134,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(false);
+    irs::columns::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -178,7 +197,7 @@ TEST_P(columnstore_test_case, sparse_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(false);
+    irs::columns::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -247,7 +266,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(false);
+    irs::columns::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -314,7 +333,7 @@ TEST_P(columnstore_test_case, dense_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(false);
+    irs::columns::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -390,7 +409,7 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(false);
+    irs::columns::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -454,9 +473,11 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
 INSTANTIATE_TEST_SUITE_P(
   columnstore_test,
   columnstore_test_case,
-  ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory),
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory),
+    ::testing::Values(false, true)),
   &columnstore_test_case::to_string
 );

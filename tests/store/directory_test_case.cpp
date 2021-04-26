@@ -50,7 +50,7 @@ using namespace iresearch;
 // --SECTION--                                               directory_test_case
 // -----------------------------------------------------------------------------
 
-class directory_test_case : public tests::directory_test_case_base {
+class directory_test_case : public tests::directory_test_case_base<> {
  public:
   static void smoke_store(directory& dir) {
     std::vector<std::string> names{
@@ -1238,7 +1238,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::fs_directory,
     &tests::mmap_directory
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
