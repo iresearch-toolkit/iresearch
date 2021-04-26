@@ -55,12 +55,16 @@ struct column_header {
   /// @brief total number of docs in a column
   doc_id_t docs_count{};
 
+  /// @brief min document identifier
+  doc_id_t min{doc_limits::invalid()};
+
   /// @brief column properties
   ColumnProperty props{ColumnProperty::NORMAL};
 };
 
 void write_header(index_output& out, const column_header& hdr) {
   out.write_long(hdr.docs_index);
+  out.write_int(hdr.min);
   out.write_int(hdr.docs_count);
   write_enum(out, hdr.props);
 }
@@ -68,6 +72,7 @@ void write_header(index_output& out, const column_header& hdr) {
 column_header read_header(index_input& in) {
   column_header hdr;
   hdr.docs_index = in.read_long();
+  hdr.min = in.read_int();
   hdr.docs_count = in.read_int();
   hdr.props = read_enum<ColumnProperty>(in);
   return hdr;
@@ -124,10 +129,11 @@ struct empty_column final : public columnstore_reader::column_reader {
 }; // empty_column
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class all_docs_column_iterator
+/// @class range_column_iterator
+/// @brief iterates over a specified contiguous range of documents
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ValueReader>
-class all_docs_column_iterator final
+class range_column_iterator final
     : public irs::doc_iterator,
       private ValueReader {
  private:
@@ -137,9 +143,11 @@ class all_docs_column_iterator final
 
  public:
   template<typename... Args>
-  all_docs_column_iterator(doc_id_t docs_count, Args&&... args)
+  range_column_iterator(doc_id_t min, doc_id_t docs_count, Args&&... args)
     : value_reader{std::forward<Args>(args)...},
-      max_doc_{doc_limits::min() + docs_count - 1} {
+      min_base_{min},
+      min_doc_{min},
+      max_doc_{min + docs_count - 1} {
     std::get<irs::cost>(attrs_).reset(docs_count);
   }
 
@@ -152,9 +160,9 @@ class all_docs_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    if (doc <= max_doc_) {
-      std::get<document>(attrs_).value = doc;
-      std::get<payload>(attrs_).value = value_reader::operator()(doc - doc_limits::min());
+    if (min_doc_ <= doc && doc <= max_doc_) {
+      std::get<document>(attrs_).value = min_doc_ = doc;
+      std::get<payload>(attrs_).value = value_reader::operator()(doc - min_base_);
       return doc;
     }
 
@@ -164,9 +172,9 @@ class all_docs_column_iterator final
   }
 
   virtual bool next() override {
-    if (value() <= max_doc_) {
-      ++std::get<document>(attrs_).value;
-      std::get<payload>(attrs_).value = value_reader::operator()(value() - doc_limits::min());
+    if (min_doc_ <= max_doc_) {
+      std::get<document>(attrs_).value = min_doc_++;
+      std::get<payload>(attrs_).value = value_reader::operator()(value() - min_base_);
       return true;
     }
 
@@ -176,12 +184,15 @@ class all_docs_column_iterator final
   }
 
  private:
+  doc_id_t min_base_;
+  doc_id_t min_doc_;
   doc_id_t max_doc_;
   attributes attrs_;
-}; // all_docs_column_iterator
+}; // range_column_iterator
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class bitmap_column_iterator
+/// @brief iterates over a specified bitmap of documents
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ValueReader>
 class bitmap_column_iterator final
@@ -269,7 +280,8 @@ struct mask_column final : public column_base {
 
 doc_iterator::ptr mask_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<all_docs_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<value_reader>>(
+      header().min,
       header().docs_count);
   }
 
@@ -285,7 +297,8 @@ doc_iterator::ptr mask_column::iterator() const {
   stream->seek(header().docs_index);
 
   return memory::make_managed<sparse_bitmap_iterator>(
-    std::move(stream), header().docs_count);
+    std::move(stream),
+    header().docs_count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +357,8 @@ struct dense_fixed_length_column final : public column_base {
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<all_docs_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<value_reader>>(
+      header().min,
       header().docs_count,
       data_in->reopen(),
       data_, len_);
@@ -426,7 +440,8 @@ struct fixed_length_column final : public column_base {
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<all_docs_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<value_reader>>(
+      header().min,
       header().docs_count,
       data_in->reopen(),
       blocks.data(),
@@ -529,7 +544,8 @@ struct sparse_column final : public column_base {
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<all_docs_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<value_reader>>(
+      header().min,
       header().docs_count,
       data_in->reopen(),
       blocks.data());
@@ -568,9 +584,6 @@ void column::flush_block() {
   auto& data_out = *ctx_.data_out;
   auto& block = blocks_.emplace_back();
 
-  // write block index
-  // FIXME optimize cases with equal lengths
-
   // adjust number of elements to pack to the nearest value
   // that is multiple of the block size
   const uint32_t size = block_.size();
@@ -602,7 +615,7 @@ void column::flush_block() {
   // FIXME we don't need to track data_offs/index_offs per block after merge
   block.data += data_out.file_pointer();
   block.size = data_.file.length();
-  data_.file >> data_out; // FIXME write directly???
+  data_.file >> data_out;
   if (data_.stream.file_pointer()) { // FIXME
     data_.stream.seek(0);
   }
@@ -613,16 +626,22 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   if (!block_.empty()) {
     flush_block();
   }
+  docs_.stream.flush();
 
   column_header hdr;
   hdr.docs_count = docs_count_;
+
+  memory_index_input in(docs_.file);
+  sparse_bitmap_iterator it(&in);
+  if (it.next()) {
+    hdr.min = it.value();
+  }
 
   hdr.docs_index = 0;
   if (docs_count_ && docs_count_ != docs_count) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();
-    docs_.stream.flush();
     docs_.file >> *ctx_.data_out;
   }
 

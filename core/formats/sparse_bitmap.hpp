@@ -130,7 +130,12 @@ struct value_index : document {
 //////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_iterator final : public doc_iterator {
  public:
-  explicit sparse_bitmap_iterator(index_input::ptr&& in);
+  explicit sparse_bitmap_iterator(index_input::ptr&& in)
+    : sparse_bitmap_iterator(memory::to_managed<index_input>(std::move(in))) {
+  }
+  explicit sparse_bitmap_iterator(index_input* in)
+    : sparse_bitmap_iterator(memory::to_managed<index_input, false>(in)) {
+  }
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input::ptr&& in, Cost&& est)
@@ -183,12 +188,14 @@ class sparse_bitmap_iterator final : public doc_iterator {
     };
   };
 
+  explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in);
+
   void seek_to_block(doc_id_t block);
   void read_block_header();
 
   container_iterator_context ctx_;
   std::tuple<document, cost, value_index> attrs_;
-  index_input::ptr in_;
+  memory::managed_ptr<index_input> in_;
   block_seek_f seek_func_;
   size_t cont_begin_;
   doc_id_t index_{};
