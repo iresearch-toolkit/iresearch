@@ -132,19 +132,19 @@ struct empty_column final : public columnstore_reader::column_reader {
 /// @class range_column_iterator
 /// @brief iterates over a specified contiguous range of documents
 ////////////////////////////////////////////////////////////////////////////////
-template<typename ValueReader>
+template<typename PayloadReader>
 class range_column_iterator final
     : public irs::doc_iterator,
-      private ValueReader {
+      private PayloadReader {
  private:
-  using value_reader = ValueReader;
+  using payload_reader = PayloadReader;
 
   using attributes = std::tuple<document, cost, score, payload>;
 
  public:
   template<typename... Args>
   range_column_iterator(doc_id_t min, doc_id_t docs_count, Args&&... args)
-    : value_reader{std::forward<Args>(args)...},
+    : payload_reader{std::forward<Args>(args)...},
       min_base_{min},
       min_doc_{min},
       max_doc_{min + docs_count - 1} {
@@ -162,7 +162,7 @@ class range_column_iterator final
   virtual doc_id_t seek(irs::doc_id_t doc) override {
     if (min_doc_ <= doc && doc <= max_doc_) {
       std::get<document>(attrs_).value = min_doc_ = doc;
-      std::get<payload>(attrs_).value = value_reader::operator()(doc - min_base_);
+      std::get<payload>(attrs_).value = this->payload(doc - min_base_);
       return doc;
     }
 
@@ -174,7 +174,7 @@ class range_column_iterator final
   virtual bool next() override {
     if (min_doc_ <= max_doc_) {
       std::get<document>(attrs_).value = min_doc_++;
-      std::get<payload>(attrs_).value = value_reader::operator()(value() - min_base_);
+      std::get<payload>(attrs_).value = this->payload(value() - min_base_);
       return true;
     }
 
@@ -194,12 +194,12 @@ class range_column_iterator final
 /// @class bitmap_column_iterator
 /// @brief iterates over a specified bitmap of documents
 ////////////////////////////////////////////////////////////////////////////////
-template<typename ValueReader>
+template<typename PayloadReader>
 class bitmap_column_iterator final
     : public irs::doc_iterator,
-      private ValueReader {
+      private PayloadReader {
  private:
-  using value_reader = ValueReader;
+  using payload_reader = PayloadReader;
 
   using attributes = std::tuple<
     attribute_ptr<document>,
@@ -213,7 +213,7 @@ class bitmap_column_iterator final
       index_input::ptr&& bitmap_in,
       cost::cost_t cost,
       Args&&... args)
-    : value_reader{std::forward<Args>(args)...},
+    : payload_reader{std::forward<Args>(args)...},
       bitmap_{std::move(bitmap_in)} {
     std::get<irs::cost>(attrs_).reset(cost);
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&bitmap_);
@@ -231,7 +231,7 @@ class bitmap_column_iterator final
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {
-       std::get<payload>(attrs_).value = value_reader::operator()(bitmap_.index());
+       std::get<payload>(attrs_).value = this->payload(bitmap_.index());
        return doc;
     }
 
@@ -241,7 +241,7 @@ class bitmap_column_iterator final
 
   virtual bool next() override {
     if (bitmap_.next()) {
-      std::get<payload>(attrs_).value = value_reader::operator()(bitmap_.index());
+      std::get<payload>(attrs_).value = this->payload(bitmap_.index());
       return true;
     }
 
@@ -258,11 +258,11 @@ class bitmap_column_iterator final
 /// @struct mask_column
 ////////////////////////////////////////////////////////////////////////////////
 struct mask_column final : public column_base {
-  struct value_reader {
-    bytes_ref operator()(doc_id_t) noexcept {
+  struct payload_reader {
+    bytes_ref payload(doc_id_t) noexcept {
       return bytes_ref::NIL;
     }
-  };
+  }; // payload_reader
 
   static std::unique_ptr<mask_column> read(
     const column_header& hdr,
@@ -294,7 +294,7 @@ struct mask_column final : public column_base {
 
 doc_iterator::ptr mask_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count);
   }
@@ -319,9 +319,9 @@ doc_iterator::ptr mask_column::iterator() const {
 /// @struct dense_fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
 struct dense_fixed_length_column final : public column_base {
-  class value_reader {
+  class payload_reader {
    public:
-    value_reader(
+    payload_reader(
         index_input::ptr&& data_in,
         uint64_t data,
         uint64_t len)
@@ -330,7 +330,7 @@ struct dense_fixed_length_column final : public column_base {
         len_{len} {
     }
 
-    bytes_ref operator()(doc_id_t i) {
+    bytes_ref payload(doc_id_t i) {
       const auto offs = data_ + len_*i;
 
       data_in_->seek(offs);
@@ -344,7 +344,7 @@ struct dense_fixed_length_column final : public column_base {
     index_input::ptr data_in_;
     uint64_t data_; // where data starts
     uint64_t len_;  // data entry length
-  }; // dense_fixed_length_value_reader
+  }; // payload_reader
 
   static std::unique_ptr<dense_fixed_length_column> read(
     const column_header& hdr,
@@ -390,7 +390,7 @@ dense_fixed_length_column::read(
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
       data_in->reopen(),
@@ -408,7 +408,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<value_reader>>(
+  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
     header().docs_count,
     stream->dup(),
@@ -423,15 +423,15 @@ struct fixed_length_column final : public column_base {
     uint64_t data;
   };
 
-  class value_reader {
+  class payload_reader {
    public:
-    value_reader(index_input::ptr data_in, const column_block* blocks, uint64_t len)
+    payload_reader(index_input::ptr data_in, const column_block* blocks, uint64_t len)
       : data_in_{std::move(data_in)},
         blocks_{blocks},
         len_{len} {
     }
 
-    bytes_ref operator()(doc_id_t i) {
+    bytes_ref payload(doc_id_t i) {
       const auto block_idx = i / column::BLOCK_SIZE;
       const auto value_idx = i % column::BLOCK_SIZE;
 
@@ -449,7 +449,7 @@ struct fixed_length_column final : public column_base {
     index_input::ptr data_in_;
     const column_block* blocks_;
     uint64_t len_;
-  }; // value_reader
+  }; // payload_reader
 
   static std::unique_ptr<fixed_length_column> read(
     const column_header& hdr,
@@ -493,7 +493,7 @@ struct fixed_length_column final : public column_base {
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
       data_in->reopen(),
@@ -512,7 +512,7 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<value_reader>>(
+  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
     header().docs_count,
     stream->dup(),
@@ -533,51 +533,18 @@ struct sparse_column final : public column_base {
     uint32_t bits;
   };
 
-  class value_reader {
+  class payload_reader {
    public:
-    value_reader(index_input::ptr data_in, const column_block* blocks)
+    payload_reader(index_input::ptr data_in, const column_block* blocks)
       : data_in_{std::move(data_in)}, blocks_{blocks} {
     }
 
-    bytes_ref operator()(doc_id_t i) {
-      const auto& block = blocks_[i / column::BLOCK_SIZE];
-      const size_t index = i % column::BLOCK_SIZE;
-
-      if (bitpack::ALL_EQUAL == block.bits) {
-        const size_t addr = block.data + block.avg*index;
-        data_in_->seek(addr);
-        auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
-        assert(buf);
-
-        return { buf, block.last != index ? block.avg : block.last_size };
-      }
-
-      data_in_->seek(block.addr);
-      auto* addr_buf = data_in_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
-      assert(addr_buf);
-
-      const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
-      const uint64_t start = block.avg*index + start_delta;
-
-      size_t length;
-      if (index != block.last) {
-        const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
-        length = end_delta - start_delta + block.avg;
-      } else {
-        length = block.last_size;
-      }
-
-      data_in_->seek(block.data + start);
-      auto* buf = data_in_->read_buffer(length, BufferHint::NORMAL);
-      assert(buf);
-
-      return { buf, length };
-    }
+    bytes_ref payload(doc_id_t i);
 
    private:
     index_input::ptr data_in_;
     const column_block* blocks_;
-  }; // value_reader
+  }; // payload_reader
 
   static std::unique_ptr<sparse_column> read(
     const column_header& hdr,
@@ -602,6 +569,44 @@ struct sparse_column final : public column_base {
   index_input* data_in;
 };
 
+bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
+  const auto& block = blocks_[i / column::BLOCK_SIZE];
+  const size_t index = i % column::BLOCK_SIZE;
+
+  if (bitpack::ALL_EQUAL == block.bits) {
+    const size_t addr = block.data + block.avg*index;
+    data_in_->seek(addr);
+    auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
+    assert(buf);
+
+    size_t length = block.last_size;
+    if (IRS_LIKELY(block.last != index)) {
+      length = block.avg;
+    }
+
+    return { buf, length };
+  }
+
+  data_in_->seek(block.addr);
+  auto* addr_buf = data_in_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
+  assert(addr_buf);
+
+  const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
+  const uint64_t start = block.avg*index + start_delta;
+
+  size_t length = block.last_size;
+  if (IRS_LIKELY(block.last != index)) {
+    const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
+    length = end_delta - start_delta + block.avg;
+  }
+
+  data_in_->seek(block.data + start);
+  auto* buf = data_in_->read_buffer(length, BufferHint::NORMAL);
+  assert(buf);
+
+  return { buf, length };
+}
+
 /*static*/ std::unique_ptr<sparse_column> sparse_column::read(
     const column_header& hdr,
     index_input& index_in,
@@ -623,7 +628,7 @@ struct sparse_column final : public column_base {
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<value_reader>>(
+    return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
       data_in->reopen(),
@@ -641,7 +646,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<value_reader>>(
+  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
     header().docs_count,
     stream->dup(),
