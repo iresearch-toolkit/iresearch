@@ -55,9 +55,10 @@ ENABLE_BITMASK_ENUM(ColumnProperty);
 class column final : public irs::columnstore_writer::column_output {
  public:
   static constexpr size_t BLOCK_SIZE = 65536;
+  static_assert(math::is_power2(BLOCK_SIZE));
 
  private:
-  class offset_block {
+  class address_table {
    public:
     uint64_t back() const noexcept {
       assert(offset_ > offsets_);
@@ -127,17 +128,17 @@ class column final : public irs::columnstore_writer::column_output {
 
   void prepare(doc_id_t key) {
     if (IRS_LIKELY(key > docs_writer_.back())) {
-      if (block_.full()) {
+      if (addr_table_.full()) {
         flush_block();
       }
 
       docs_writer_.push_back(key);
-      block_.push_back(data_.stream.file_pointer());
+      addr_table_.push_back(data_.stream.file_pointer());
     }
   }
 
   bool empty() const noexcept {
-    return block_.empty();
+    return addr_table_.empty();
   }
 
   void finish(index_output& index_out, doc_id_t docs_count);
@@ -161,8 +162,8 @@ class column final : public irs::columnstore_writer::column_output {
 
     // reset to previous offset
     docs_writer_.pop_back();
-    block_.pop_back();
-    data_.stream.seek(block_.back());
+    addr_table_.pop_back();
+    data_.stream.seek(addr_table_.back());
   }
 
  private:
@@ -172,7 +173,7 @@ class column final : public irs::columnstore_writer::column_output {
     uint64_t addr;
     uint64_t avg;
     uint64_t data;
-    uint64_t size;
+    uint64_t last_size;
     uint32_t bits;
   };
 
@@ -183,7 +184,8 @@ class column final : public irs::columnstore_writer::column_output {
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
-  offset_block block_;
+  address_table addr_table_;
+  uint64_t prev_block_size_{};
   doc_id_t docs_count_{};
   uint16_t num_blocks_{};
   bool fixed_length_{true};

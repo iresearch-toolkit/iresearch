@@ -264,6 +264,12 @@ struct mask_column final : public column_base {
     }
   };
 
+  static std::unique_ptr<mask_column> read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
   mask_column(
       const column_header& hdr,
       index_input* data_in)
@@ -277,6 +283,14 @@ struct mask_column final : public column_base {
 
   index_input* data_in;
 };
+
+/*static*/ std::unique_ptr<mask_column> mask_column::read(
+    const column_header& hdr,
+    index_input& /*index_in*/,
+    index_input& data_in,
+    compression::decompressor::ptr&& /*inflater*/) {
+  return memory::make_unique<mask_column>(hdr, &data_in);
+}
 
 doc_iterator::ptr mask_column::iterator() const {
   if (0 == header().docs_index) {
@@ -332,6 +346,12 @@ struct dense_fixed_length_column final : public column_base {
     uint64_t len_;  // data entry length
   }; // dense_fixed_length_value_reader
 
+  static std::unique_ptr<dense_fixed_length_column> read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
   dense_fixed_length_column(
       const column_header& hdr,
       index_input* data_in,
@@ -354,6 +374,19 @@ struct dense_fixed_length_column final : public column_base {
   uint64_t data_;
   uint64_t len_;
 };
+
+/*static*/ std::unique_ptr<dense_fixed_length_column>
+dense_fixed_length_column::read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater) {
+  const uint64_t len = index_in.read_long();
+  const uint64_t data = index_in.read_long();
+
+  return memory::make_unique<dense_fixed_length_column>(
+    hdr, &data_in, std::move(inflater), len, data);
+}
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
@@ -418,12 +451,18 @@ struct fixed_length_column final : public column_base {
     uint64_t len_;
   }; // value_reader
 
+  static std::unique_ptr<fixed_length_column> read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
   fixed_length_column(
       const column_header& hdr,
       index_input* data_in,
       compression::decompressor::ptr&& inflater,
       uint64_t len)
-    : column_base(hdr),
+    : column_base{hdr},
       inflater(std::move(inflater)),
       data_in(data_in),
       len_{len} {
@@ -437,6 +476,20 @@ struct fixed_length_column final : public column_base {
   index_input* data_in;
   uint64_t len_;
 };
+
+/*static*/ std::unique_ptr<fixed_length_column> fixed_length_column::read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater) {
+  const uint64_t len = index_in.read_long();
+  auto column = memory::make_unique<fixed_length_column>(hdr, &data_in, std::move(inflater), len);
+  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+  for (auto& block : column->blocks) {
+    block.data = index_in.read_long();
+  }
+  return column;
+}
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
@@ -475,7 +528,8 @@ struct sparse_column final : public column_base {
     uint64_t data;
     uint64_t addr;
     uint64_t avg;
-    uint64_t size;
+    uint64_t last_size;
+    doc_id_t last;
     uint32_t bits;
   };
 
@@ -495,7 +549,7 @@ struct sparse_column final : public column_base {
         auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
         assert(buf);
 
-        return { buf, block.avg };
+        return { buf, block.last != index ? block.avg : block.last_size };
       }
 
       data_in_->seek(block.addr);
@@ -506,11 +560,11 @@ struct sparse_column final : public column_base {
       const uint64_t start = block.avg*index + start_delta;
 
       size_t length;
-      if (index != (column::BLOCK_SIZE - 1)) {
+      if (index != block.last) {
         const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
         length = end_delta - start_delta + block.avg;
       } else {
-        length = block.size - start;
+        length = block.last_size;
       }
 
       data_in_->seek(block.data + start);
@@ -524,6 +578,12 @@ struct sparse_column final : public column_base {
     index_input::ptr data_in_;
     const column_block* blocks_;
   }; // value_reader
+
+  static std::unique_ptr<sparse_column> read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
 
   sparse_column(
       const column_header& hdr,
@@ -541,6 +601,25 @@ struct sparse_column final : public column_base {
   compression::decompressor::ptr inflater;
   index_input* data_in;
 };
+
+/*static*/ std::unique_ptr<sparse_column> sparse_column::read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater) {
+  auto column = memory::make_unique<sparse_column>(hdr, &data_in, std::move(inflater));
+  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+  for (auto& block : column->blocks) {
+    block.addr = index_in.read_long();
+    block.avg = index_in.read_long();
+    block.bits = index_in.read_byte();
+    block.data = index_in.read_long();
+    block.last_size = index_in.read_long();
+    block.last = column::BLOCK_SIZE - 1;
+  }
+  column->blocks.back().last = (hdr.docs_count % column::BLOCK_SIZE - 1);
+  return column;
+}
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (0 == header().docs_index) {
@@ -580,41 +659,45 @@ namespace columns {
 
 void column::flush_block() {
   assert(ctx_.data_out);
+  data_.stream.flush();
 
   auto& data_out = *ctx_.data_out;
   auto& block = blocks_.emplace_back();
 
-  // adjust number of elements to pack to the nearest value
-  // that is multiple of the block size
-  const uint32_t size = block_.size();
-  docs_count_ += size;
-  const uint64_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-  auto* begin = block_.begin();
-  auto* end = begin + block_size;
-
   block.addr = data_out.file_pointer();
-  std::tie(block.data, block.avg) = encode::avg::encode(begin, block_.current());
+  block.last_size = data_.file.length() - addr_table_.back();
+
+  const uint32_t docs_count = addr_table_.size();
+  docs_count_ += docs_count;
+  const uint64_t addr_table_size = math::ceil64(docs_count, packed::BLOCK_SIZE_64);
+  auto* begin = addr_table_.begin();
+  auto* end = begin + addr_table_size;
+
+  std::tie(block.data, block.avg) = encode::avg::encode(begin, addr_table_.current());
 
   if (simd::all_equal<false>(begin, end)) {
     block.bits = bitpack::ALL_EQUAL;
-    fixed_length_ &= (0 == *begin);
+
+    // column is fixed length IFF
+    // * values in every have the same length
+    // * blocks have the same length
+    fixed_length_ = (fixed_length_ &&
+                     (0 == *begin) &&
+                     (block.last_size == block.avg) &&
+                     (0 == prev_block_size_ || data_.file.length() == prev_block_size_));
+    prev_block_size_ = data_.file.length();
   } else {
     block.bits = packed::maxbits64(begin, end);
-    const size_t buf_size = packed::bytes_required_64(block_size, block.bits);
+    const size_t buf_size = packed::bytes_required_64(addr_table_size, block.bits);
     std::memset(ctx_.u64buf, 0, buf_size);
     packed::pack(begin, end, ctx_.u64buf, block.bits);
 
     data_out.write_bytes(ctx_.u8buf, buf_size);
     fixed_length_ = false;
   }
+  addr_table_.reset();
 
-  block_.reset();
-  data_.stream.flush();
-
-  // write block data
-  // FIXME we don't need to track data_offs/index_offs per block after merge
   block.data += data_out.file_pointer();
-  block.size = data_.file.length();
   data_.file >> data_out;
   if (data_.stream.file_pointer()) { // FIXME
     data_.stream.seek(0);
@@ -623,7 +706,7 @@ void column::flush_block() {
 
 void column::finish(index_output& index_out, doc_id_t docs_count) {
   docs_writer_.finish();
-  if (!block_.empty()) {
+  if (!addr_table_.empty()) {
     flush_block();
   }
   docs_.stream.flush();
@@ -655,16 +738,13 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   write_header(index_out, hdr);
 
   if (!fixed_length_) {
-    // we don't need to store block index in case
-    // if every value in a column has the same length
-
     // FIXME optimize
     for (auto& block : blocks_) {
       index_out.write_long(block.addr);
       index_out.write_long(block.avg);
       index_out.write_byte(static_cast<byte_type>(block.bits));
       index_out.write_long(block.data);
-      index_out.write_long(block.size);
+      index_out.write_long(block.last_size);
     }
   } else if (!data_.file.empty() && !blocks_.empty()){
     index_out.write_long(blocks_.front().avg);
@@ -855,38 +935,18 @@ reader::column_ptr reader::read_column(
   }
 
   if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
-    return memory::make_unique<mask_column>(hdr, data_in_.get());
+    return memory::make_unique<mask_column>(hdr, in, *data_in_, std::move(inflater));
   }
 
-  // FIXME add score
-
   if ((ColumnProperty::FIXED | ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED | ColumnProperty::DENSE))) {
-    const uint64_t len = in.read_long();
-    const uint64_t data = in.read_long();
-    return memory::make_unique<dense_fixed_length_column>(hdr, data_in_.get(), std::move(inflater), data, len);
+    return dense_fixed_length_column::read(hdr, in, *data_in_, std::move(inflater));
   }
 
   if (ColumnProperty::FIXED == (hdr.props & ColumnProperty::FIXED)) {
-    const uint64_t len = in.read_long();
-    auto column = memory::make_unique<fixed_length_column>(hdr, data_in_.get(), std::move(inflater), len);
-    column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-    for (auto& block : column->blocks) {
-      block.data = in.read_long();
-    }
-    return column;
+    return fixed_length_column::read(hdr, in, *data_in_, std::move(inflater));
   }
 
-  auto column = memory::make_unique<sparse_column>(hdr, data_in_.get(), std::move(inflater));
-  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-  for (auto& block : column->blocks) {
-    block.addr = in.read_long();
-    block.avg = in.read_long();
-    block.bits = in.read_byte();
-    block.data = in.read_long();
-    block.size = in.read_long();
-  }
-
-  return column;
+  return sparse_column::read(hdr, in, *data_in_, std::move(inflater));
 }
 
 // FIXME return result???
