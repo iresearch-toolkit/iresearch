@@ -369,10 +369,6 @@ TEST_P(columnstore_test_case, dense_column) {
       ASSERT_EQ(column->size(), cost->estimate());
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-        if (doc == 1000000) {
-          int i =5;
-        }
-
         ASSERT_EQ(doc, it->seek(doc));
         const auto str = std::to_string(doc);
         EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
