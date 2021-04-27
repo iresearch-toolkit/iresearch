@@ -925,30 +925,6 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
   data_in_ = std::move(data_in);
 }
 
-reader::column_ptr reader::read_column(
-    index_input& in,
-    compression::decompressor::ptr&& inflater) {
-  column_header hdr = read_header(in);
-
-  if (0 == hdr.docs_count) {
-    return memory::make_unique<empty_column>();
-  }
-
-  if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
-    return memory::make_unique<mask_column>(hdr, in, *data_in_, std::move(inflater));
-  }
-
-  if ((ColumnProperty::FIXED | ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED | ColumnProperty::DENSE))) {
-    return dense_fixed_length_column::read(hdr, in, *data_in_, std::move(inflater));
-  }
-
-  if (ColumnProperty::FIXED == (hdr.props & ColumnProperty::FIXED)) {
-    return fixed_length_column::read(hdr, in, *data_in_, std::move(inflater));
-  }
-
-  return sparse_column::read(hdr, in, *data_in_, std::move(inflater));
-}
-
 // FIXME return result???
 void reader::prepare_index(
     const directory& dir,
@@ -990,7 +966,23 @@ void reader::prepare_index(
         compression_id.c_str(), i));
     }
 
-    auto column = read_column(*index_in, std::move(inflater));
+
+    column_header hdr = read_header(*index_in);
+
+    column_ptr column;
+
+    if (0 == hdr.docs_count) {
+      column = memory::make_unique<empty_column>();
+    } else if (ColumnProperty::MASK == (hdr.props & ColumnProperty::MASK)) {
+      column = mask_column::read(hdr, *index_in, *data_in_, std::move(inflater));
+    } else if ((ColumnProperty::FIXED | ColumnProperty::DENSE) == (hdr.props & (ColumnProperty::FIXED | ColumnProperty::DENSE))) {
+      column = dense_fixed_length_column::read(hdr, *index_in, *data_in_, std::move(inflater));
+    } else if (ColumnProperty::FIXED == (hdr.props & ColumnProperty::FIXED)) {
+      column = fixed_length_column::read(hdr, *index_in, *data_in_, std::move(inflater));
+    } else {
+      column = sparse_column::read(hdr, *index_in, *data_in_, std::move(inflater));
+    }
+
     assert(column);
 
     columns.emplace_back(std::move(column));

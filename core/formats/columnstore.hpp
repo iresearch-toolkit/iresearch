@@ -252,10 +252,6 @@ class reader final : public columnstore_reader {
     const directory& dir,
     const std::string& filename);
 
-  column_ptr read_column(
-    index_input& in,
-    compression::decompressor::ptr&& inflater);
-
   std::vector<column_ptr> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
