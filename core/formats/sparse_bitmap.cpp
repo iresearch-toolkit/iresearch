@@ -49,13 +49,23 @@ namespace iresearch {
 // --SECTION--                                              sparse_bitmap_writer
 // -----------------------------------------------------------------------------
 
-void sparse_bitmap_writer::finish() {
+void sparse_bitmap_writer::finish(const std::function<void(const block&, size_t)>& callback) {
   flush();
 
   // create a sentinel block to issue doc_limits::eof() automatically
+  add_block(block_ ? block_ + 1 : 0);
   block_ = doc_limits::eof() / BLOCK_SIZE;
   set(doc_limits::eof() % BLOCK_SIZE);
   flush(1);
+
+  if (callback && !block_index_.empty()) {
+    uint32_t id = 0;
+    for (auto& block : block_index_) {
+      const size_t count = block.second - id;
+      callback(block.first, count);
+      id = block.second;
+    }
+  }
 }
 
 void sparse_bitmap_writer::flush(uint32_t popcnt) {
@@ -218,9 +228,11 @@ struct container_iterator<BT_DENSE> {
 // --SECTION--                                            sparse_bitmap_iterator
 // -----------------------------------------------------------------------------
 
-sparse_bitmap_iterator::sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in)
-  : in_(std::move(in)),
-    seek_func_([](sparse_bitmap_iterator* self, doc_id_t target) {
+sparse_bitmap_iterator::sparse_bitmap_iterator(
+    memory::managed_ptr<index_input>&& in,
+    const block_index_t& block_index)
+  : in_{std::move(in)},
+    seek_func_{[](sparse_bitmap_iterator* self, doc_id_t target) {
       assert(!doc_limits::valid(self->value()));
       assert(0 == (target & 0xFFFF0000));
 
@@ -229,8 +241,10 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(memory::managed_ptr<index_input>&
       self->read_block_header();
       self->seek(target);
       return true;
-    }),
-    cont_begin_(in_->file_pointer()) {
+    }},
+    block_index_{block_index},
+    cont_begin_{in_->file_pointer()},
+    origin_{cont_begin_} {
   assert(in_);
 }
 
@@ -277,9 +291,26 @@ void sparse_bitmap_iterator::read_block_header() {
 
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   // FIMXE jump directry to block address
+  if (block_index_.first) {
+    // FIXME
+    doc_id_t target_block = target / sparse_bitmap_writer::BLOCK_SIZE;
+//    if (target_block >= (block_ / sparse_bitmap_writer::BLOCK_SIZE + 2)) {
+    if (target_block > (block_ / sparse_bitmap_writer::BLOCK_SIZE)) {
+      if (target_block >= block_index_.second) {
+        target_block = block_index_.second - 1;
+      }
+
+      auto& block = block_index_.first[target_block];
+      const uint64_t offset = origin_ + block.offset;
+      index_max_ = block.index;
+      in_->seek(offset);
+      read_block_header();
+      return;
+    }
+  }
 
   do {
-    in_->seek(cont_begin_); // FIXME check if necessary
+    in_->seek(cont_begin_);
     read_block_header();
   } while (block_ < target);
 }

@@ -275,6 +275,7 @@ doc_iterator::ptr mask_column::iterator() const {
 
   return memory::make_managed<sparse_bitmap_iterator>(
     std::move(stream),
+    sparse_bitmap_iterator::block_index_t{},
     header().docs_count);
 }
 
