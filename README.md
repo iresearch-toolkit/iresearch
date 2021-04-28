@@ -439,6 +439,9 @@ matching of words from languages not supported by 'snowball' are done verbatim
 ### [Google Test](https://code.google.com/p/googletest)
 used for writing tests for the IResearch library
 
+### [VelocyPack](https://github.com/arangodb/velocypack)
+used for JSON serialization/deserialization
+
 ### Stopword list
 used by analysis::text_analyzer for filtering out noise words that should not impact text ranging
 e.g. for 'en' these are usualy 'a', 'the', etc...
@@ -462,6 +465,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
+|iresearch::by_terms|for filtering of exact values by a set of specified terms 
 |iresearch::by_wildcard|for filtering of values based on matching pattern
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
