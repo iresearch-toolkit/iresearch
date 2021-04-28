@@ -817,7 +817,8 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
     column::context{
       alloc_,
       data_out_.get(),
-      cipher, { buf_.get() },
+      cipher,
+      { buf_.get() },
       consolidation_ },
     info.compression(),
     compressor);
@@ -1000,7 +1001,7 @@ void reader::prepare_index(
       columns.emplace_back(std::move(column));
     } else {
       throw index_error{string_utils::to_string(
-        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid type=%d",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid type=%u",
         i, static_cast<uint32_t>(hdr.type))};
     }
   }
