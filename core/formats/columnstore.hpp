@@ -39,16 +39,6 @@
 namespace iresearch {
 namespace columns {
 
-enum class ColumnProperty : uint16_t {
-  NORMAL = 0,
-  DENSE = 1,        // data blocks have no gaps
-  FIXED = 1 << 1,   // fixed length columns
-  ENCRYPT = 1 << 2, // column contains encrypted data
-  MASK = 1 << 3     // column contains no data
-};
-
-ENABLE_BITMASK_ENUM(ColumnProperty);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column
 ////////////////////////////////////////////////////////////////////////////////
