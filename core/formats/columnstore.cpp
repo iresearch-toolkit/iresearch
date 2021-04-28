@@ -653,6 +653,7 @@ namespace columns {
 // -----------------------------------------------------------------------------
 
 void column::flush_block() {
+  assert(!addr_table_.empty());
   assert(ctx_.data_out);
   data_.stream.flush();
 
@@ -663,7 +664,6 @@ void column::flush_block() {
   block.last_size = data_.file.length() - addr_table_.back();
 
   const uint32_t docs_count = addr_table_.size();
-  docs_count_ += docs_count;
   const uint64_t addr_table_size = math::ceil64(docs_count, packed::BLOCK_SIZE_64);
   auto* begin = addr_table_.begin();
   auto* end = begin + addr_table_size;
@@ -679,7 +679,7 @@ void column::flush_block() {
     fixed_length_ = (fixed_length_ &&
                      (0 == *begin) &&
                      (block.last_size == block.avg) &&
-                     (0 == prev_block_size_ || data_.file.length() == prev_block_size_));
+                     (0 == docs_count_ || data_.file.length() == prev_block_size_));
     prev_block_size_ = data_.file.length();
   } else {
     block.bits = packed::maxbits64(begin, end);
@@ -697,12 +697,15 @@ void column::flush_block() {
   if (data_.stream.file_pointer()) { // FIXME
     data_.stream.seek(0);
   }
+
+  docs_count_ += docs_count;
 }
 
 void column::finish(index_output& index_out, doc_id_t docs_count) {
   docs_writer_.finish();
   if (!addr_table_.empty()) {
-    prev_block_size_ = 0; // we don't care of the tail block size
+    // we don't care of the tail block size
+    prev_block_size_ = data_.stream.file_pointer();
     flush_block();
   }
   docs_.stream.flush();
