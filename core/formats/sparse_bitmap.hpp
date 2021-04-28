@@ -58,6 +58,8 @@ class sparse_bitmap_writer {
   static constexpr uint32_t BLOCK_SIZE = 1 << 16;
   static constexpr uint32_t NUM_BLOCKS = BLOCK_SIZE / bits_required<size_t>();
 
+  static_assert(math::is_power2(BLOCK_SIZE));
+
   explicit sparse_bitmap_writer(index_output& out) noexcept
     : out_(&out) {
   }

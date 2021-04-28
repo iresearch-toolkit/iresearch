@@ -46,41 +46,6 @@ std::string index_file_name(string_ref prefix) {
   return file_name(prefix, writer::INDEX_FORMAT_EXT);
 }
 
-enum class ColumnProperty : uint16_t {
-  NORMAL = 0,
-  ENCRYPT = 1, // column is encrypted
-};
-
-ENABLE_BITMASK_ENUM(ColumnProperty);
-
-enum class ColumnType : uint16_t {
-  SPARSE = 0,
-  MASK,
-  FIXED,
-  DENSE_FIXED
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_header
-////////////////////////////////////////////////////////////////////////////////
-struct column_header {
-  /// @brief bitmap index offset, 0 if not present
-  /// @note 0 - not preset, meaning dense column
-  uint64_t docs_index{};
-
-  /// @brief total number of docs in a column
-  doc_id_t docs_count{};
-
-  /// @brief min document identifier
-  doc_id_t min{doc_limits::invalid()};
-
-  /// @brief column properties
-  ColumnProperty props{ColumnProperty::NORMAL};
-
-  /// @brief column type
-  ColumnType type{ColumnType::SPARSE};
-};
-
 void write_header(index_output& out, const column_header& hdr) {
   write_enum(out, hdr.type);
   write_enum(out, hdr.props);
@@ -283,7 +248,7 @@ struct mask_column final : public column_base {
   virtual doc_iterator::ptr iterator() const override;
 
   index_input* data_in;
-};
+}; // mask_column
 
 doc_iterator::ptr mask_column::iterator() const {
   if (0 == header().docs_count) {
@@ -314,15 +279,40 @@ doc_iterator::ptr mask_column::iterator() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @struct dense_fixed_length_column
+/// @class dense_fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
-struct dense_fixed_length_column final : public column_base {
+class dense_fixed_length_column final : public column_base {
+ public:
+  static column_ptr read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
+  dense_fixed_length_column(
+      const column_header& hdr,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater,
+      uint64_t data,
+      uint64_t len)
+    : column_base{hdr},
+      inflater_{std::move(inflater)},
+      data_in_{data_in},
+      data_{data},
+      len_{len} {
+    assert(header().docs_count);
+    assert(ColumnType::DENSE_FIXED == header().type);
+  }
+
+  virtual doc_iterator::ptr iterator() const override;
+
+ private:
   class payload_reader {
    public:
     payload_reader(
         index_input::ptr&& data_in,
-        uint64_t data,
-        uint64_t len)
+        uint64_t len,
+        uint64_t data)
       : data_in_{std::move(data_in)},
         data_{data},
         len_{len} {
@@ -344,34 +334,11 @@ struct dense_fixed_length_column final : public column_base {
     uint64_t len_;  // data entry length
   }; // payload_reader
 
-  static column_ptr read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater);
-
-  dense_fixed_length_column(
-      const column_header& hdr,
-      index_input* data_in,
-      compression::decompressor::ptr&& inflater,
-      uint64_t data,
-      uint64_t len)
-    : column_base{hdr},
-      inflater{std::move(inflater)},
-      data_in{data_in},
-      data_{data},
-      len_{len} {
-    assert(header().docs_count);
-    assert(ColumnType::DENSE_FIXED == header().type);
-  }
-
-  virtual doc_iterator::ptr iterator() const override;
-
-  compression::decompressor::ptr inflater;
-  index_input* data_in;
+  compression::decompressor::ptr inflater_;
+  index_input* data_in_;
   uint64_t data_;
   uint64_t len_;
-};
+}; // dense_fixed_length_column
 
 /*static*/ column_ptr dense_fixed_length_column::read(
     const column_header& hdr,
@@ -390,11 +357,11 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
     return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
-      data_in->reopen(),
+      data_in_->reopen(),
       data_, len_);
   }
 
-  auto stream = data_in->reopen();
+  auto stream = data_in_->reopen();
 
   if (!stream) {
     // implementation returned wrong pointer
@@ -415,10 +382,31 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
-struct fixed_length_column final : public column_base {
-  struct column_block {
-    uint64_t data;
-  };
+class fixed_length_column final : public column_base {
+ public:
+  static column_ptr read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
+  fixed_length_column(
+      const column_header& hdr,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater,
+      uint64_t len)
+    : column_base{hdr},
+      inflater_{std::move(inflater)},
+      data_in_{data_in},
+      len_{len} {
+    assert(header().docs_count);
+    assert(ColumnType::FIXED == header().type);
+  }
+
+  virtual doc_iterator::ptr iterator() const override;
+
+ private:
+  using column_block = uint64_t;
 
   class payload_reader {
    public:
@@ -432,8 +420,7 @@ struct fixed_length_column final : public column_base {
       const auto block_idx = i / column::BLOCK_SIZE;
       const auto value_idx = i % column::BLOCK_SIZE;
 
-      auto& block = blocks_[block_idx];
-      const auto offs = block.data + len_*value_idx;
+      const auto offs = blocks_[block_idx] + len_*value_idx;
 
       data_in_->seek(offs);
       auto* buf = data_in_->read_buffer(len_, BufferHint::NORMAL);
@@ -448,32 +435,11 @@ struct fixed_length_column final : public column_base {
     uint64_t len_;
   }; // payload_reader
 
-  static column_ptr read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater);
-
-  fixed_length_column(
-      const column_header& hdr,
-      index_input* data_in,
-      compression::decompressor::ptr&& inflater,
-      uint64_t len)
-    : column_base{hdr},
-      inflater(std::move(inflater)),
-      data_in(data_in),
-      len_{len} {
-    assert(header().docs_count);
-    assert(ColumnType::FIXED == header().type);
-  }
-
-  virtual doc_iterator::ptr iterator() const override;
-
-  std::vector<column_block> blocks;
-  compression::decompressor::ptr inflater;
-  index_input* data_in;
+  std::vector<uint64_t> blocks_;
+  compression::decompressor::ptr inflater_;
+  index_input* data_in_;
   uint64_t len_;
-};
+}; // fixed_length_column
 
 /*static*/ column_ptr fixed_length_column::read(
     const column_header& hdr,
@@ -482,10 +448,21 @@ struct fixed_length_column final : public column_base {
     compression::decompressor::ptr&& inflater) {
   const uint64_t len = index_in.read_long();
   auto column = memory::make_unique<fixed_length_column>(hdr, &data_in, std::move(inflater), len);
-  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-  for (auto& block : column->blocks) {
-    block.data = index_in.read_long();
+
+  auto& blocks = column->blocks_;
+  blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+
+  index_in.read_bytes(
+    reinterpret_cast<byte_type*>(blocks.data()),
+    sizeof(column_block)*blocks.size());
+
+  if constexpr (!is_big_endian()) {
+    // FIXME simd?
+    for (auto& block : blocks) {
+      block = numeric_utils::ntoh64(block);
+    }
   }
+
   return column;
 }
 
@@ -494,12 +471,12 @@ doc_iterator::ptr fixed_length_column::iterator() const {
     return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
-      data_in->reopen(),
-      blocks.data(),
+      data_in_->reopen(),
+      blocks_.data(),
       len_);
   }
 
-  auto stream = data_in->reopen();
+  auto stream = data_in_->reopen();
 
   if (!stream) {
     // implementation returned wrong pointer
@@ -514,7 +491,7 @@ doc_iterator::ptr fixed_length_column::iterator() const {
     std::move(stream),
     header().docs_count,
     stream->dup(),
-    blocks.data(),
+    blocks_.data(),
     len_);
 }
 
@@ -522,6 +499,26 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 /// @struct sparse_column
 ////////////////////////////////////////////////////////////////////////////////
 struct sparse_column final : public column_base {
+  static column_ptr read(
+    const column_header& hdr,
+    index_input& index_in,
+    index_input& data_in,
+    compression::decompressor::ptr&& inflater);
+
+  sparse_column(
+      const column_header& hdr,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater)
+    : column_base{hdr},
+      inflater_{std::move(inflater)},
+      data_in_{data_in} {
+    assert(header().docs_count);
+    assert(ColumnType::SPARSE == header().type);
+  }
+
+  virtual doc_iterator::ptr iterator() const override;
+
+ private:
   struct column_block {
     uint64_t data;
     uint64_t addr;
@@ -544,29 +541,10 @@ struct sparse_column final : public column_base {
     const column_block* blocks_;
   }; // payload_reader
 
-  static column_ptr read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater);
-
-  sparse_column(
-      const column_header& hdr,
-      index_input* data_in,
-      compression::decompressor::ptr&& inflater)
-    : column_base{hdr},
-      inflater{std::move(inflater)},
-      data_in{data_in} {
-    assert(header().docs_count);
-    assert(ColumnType::SPARSE == header().type);
-  }
-
-  virtual doc_iterator::ptr iterator() const override;
-
-  std::vector<column_block> blocks;
-  compression::decompressor::ptr inflater;
-  index_input* data_in;
-};
+  std::vector<column_block> blocks_;
+  compression::decompressor::ptr inflater_;
+  index_input* data_in_;
+}; // sparse_column
 
 bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   const auto& block = blocks_[i / column::BLOCK_SIZE];
@@ -612,8 +590,10 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
     index_input& data_in,
     compression::decompressor::ptr&& inflater) {
   auto column = memory::make_unique<sparse_column>(hdr, &data_in, std::move(inflater));
-  column->blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-  for (auto& block : column->blocks) {
+
+  auto& blocks = column->blocks_;
+  blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+  for (auto& block : blocks) {
     block.addr = index_in.read_long();
     block.avg = index_in.read_long();
     block.bits = index_in.read_byte();
@@ -621,7 +601,7 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
     block.last_size = index_in.read_long();
     block.last = column::BLOCK_SIZE - 1;
   }
-  column->blocks.back().last = (hdr.docs_count % column::BLOCK_SIZE - 1);
+  blocks.back().last = (hdr.docs_count % column::BLOCK_SIZE - 1);
   return column;
 }
 
@@ -630,11 +610,11 @@ doc_iterator::ptr sparse_column::iterator() const {
     return memory::make_managed<range_column_iterator<payload_reader>>(
       header().min,
       header().docs_count,
-      data_in->reopen(),
-      blocks.data());
+      data_in_->reopen(),
+      blocks_.data());
   }
 
-  index_input::ptr stream = data_in->reopen();
+  index_input::ptr stream = data_in_->reopen();
 
   if (!stream) {
     // implementation returned wrong pointer
@@ -649,7 +629,7 @@ doc_iterator::ptr sparse_column::iterator() const {
     std::move(stream),
     header().docs_count,
     stream->dup(),
-    blocks.data());
+    blocks_.data());
 }
 
 using column_factory_f = column_ptr(*)(
@@ -721,6 +701,7 @@ void column::flush_block() {
 void column::finish(index_output& index_out, doc_id_t docs_count) {
   docs_writer_.finish();
   if (!addr_table_.empty()) {
+    prev_block_size_ = 0; // we don't care of the tail block size
     flush_block();
   }
   docs_.stream.flush();
@@ -734,7 +715,6 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     hdr.min = it.value();
   }
 
-  hdr.docs_index = 0;
   if (docs_count_ && docs_count_ != docs_count) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
@@ -770,9 +750,9 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   } else if (ColumnType::MASK != hdr.type) {
     index_out.write_long(blocks_.front().avg);
     if (ColumnType::DENSE_FIXED == hdr.type) {
-      // FIXME optimize
       index_out.write_long(blocks_.front().data);
     } else {
+      // FIXME optimize
       for (auto& block : blocks_) {
         index_out.write_long(block.data);
       }
@@ -912,6 +892,24 @@ void writer::rollback() noexcept {
 // -----------------------------------------------------------------------------
 // --SECTION--                                             reader implementation
 // -----------------------------------------------------------------------------
+
+const column_header* reader::header(field_id field) const {
+  auto* column = field >= columns_.size()
+    ? nullptr // can't find column with the specified identifier
+    : columns_[field].get();
+
+  if (column) {
+#ifdef IRESEARCH_DEBUG
+    auto& impl = dynamic_cast<column_base&>(*column);
+#else
+    auto& impl = static_cast<column_base&>(*column);
+#endif
+
+    return &impl.header();
+  }
+
+  return nullptr;
+}
 
 void reader::prepare_data(const directory& dir, const std::string& filename) {
   auto data_in = dir.open(filename, irs::IOAdvice::RANDOM);

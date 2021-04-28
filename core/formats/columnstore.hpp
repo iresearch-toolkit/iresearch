@@ -44,10 +44,71 @@ namespace columns {
 ////////////////////////////////////////////////////////////////////////////////
 class column final : public irs::columnstore_writer::column_output {
  public:
-  static constexpr size_t BLOCK_SIZE = 65536;
+  static constexpr size_t BLOCK_SIZE = sparse_bitmap_writer::BLOCK_SIZE;
   static_assert(math::is_power2(BLOCK_SIZE));
 
+  struct context {
+    memory_allocator* alloc;
+    index_output* data_out;
+    encryption::stream* cipher;
+    union {
+      byte_type* u8buf;
+      uint64_t* u64buf;
+    };
+    bool consolidation;
+  };
+
+  explicit column(
+      const context& ctx,
+      const irs::type_info& type,
+      const compression::compressor::ptr& deflater)
+    : ctx_(ctx),
+      comp_type_(type),
+      deflater_(deflater) {
+  }
+
+  void prepare(doc_id_t key) {
+    if (IRS_LIKELY(key > docs_writer_.back())) {
+      if (addr_table_.full()) {
+        flush_block();
+      }
+
+      docs_writer_.push_back(key);
+      addr_table_.push_back(data_.stream.file_pointer());
+    }
+  }
+
+  bool empty() const noexcept {
+    return addr_table_.empty();
+  }
+
+  void finish(index_output& index_out, doc_id_t docs_count);
+
+  virtual void close() override { /* NOOP */ }
+
+  virtual void write_byte(byte_type b) override {
+    data_.stream.write_byte(b);
+  }
+
+  virtual void write_bytes(const byte_type* b, size_t size) override {
+    data_.stream.write_bytes(b, size);
+  }
+
+  virtual void reset() override {
+    if (empty()) {
+      return;
+    }
+
+    // reset to previous offset
+    docs_writer_.pop_back();
+    addr_table_.pop_back();
+    data_.stream.seek(addr_table_.back());
+  }
+
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class address_table
+  //////////////////////////////////////////////////////////////////////////////
   class address_table {
    public:
     uint64_t back() const noexcept {
@@ -93,71 +154,7 @@ class column final : public irs::columnstore_writer::column_output {
    private:
     uint64_t offsets_[BLOCK_SIZE]{};
     uint64_t* offset_{offsets_};
-  };
-
- public:
-  struct context {
-    memory_allocator* alloc;
-    index_output* data_out;
-    encryption::stream* cipher;
-    union {
-      byte_type* u8buf;
-      uint64_t* u64buf;
-    };
-    bool consolidation;
-  };
-
-  explicit column(
-      const context& ctx,
-      const irs::type_info& type,
-      const compression::compressor::ptr& deflater)
-    : ctx_(ctx),
-      comp_type_(type),
-      deflater_(deflater) {
-  }
-
-  void prepare(doc_id_t key) {
-    if (IRS_LIKELY(key > docs_writer_.back())) {
-      if (addr_table_.full()) {
-        flush_block();
-      }
-
-      docs_writer_.push_back(key);
-      addr_table_.push_back(data_.stream.file_pointer());
-    }
-  }
-
-  bool empty() const noexcept {
-    return addr_table_.empty();
-  }
-
-  void finish(index_output& index_out, doc_id_t docs_count);
-
-  virtual void close() override {
-    // NOOP
-  }
-
-  virtual void write_byte(byte_type b) override {
-    data_.stream.write_byte(b);
-  }
-
-  virtual void write_bytes(const byte_type* b, size_t size) override {
-    data_.stream.write_bytes(b, size);
-  }
-
-  virtual void reset() override {
-    if (empty()) {
-      return;
-    }
-
-    // reset to previous offset
-    docs_writer_.pop_back();
-    addr_table_.pop_back();
-    data_.stream.seek(addr_table_.back());
-  }
-
- private:
-  void flush_block();
+  }; // address_table
 
   struct block {
     uint64_t addr;
@@ -165,7 +162,9 @@ class column final : public irs::columnstore_writer::column_output {
     uint64_t data;
     uint64_t last_size;
     uint32_t bits;
-  };
+  }; // block
+
+  void flush_block();
 
   context ctx_;
   irs::type_info comp_type_;
@@ -213,6 +212,79 @@ class writer final : public columnstore_writer {
 }; // writer
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @enum ColumnType
+////////////////////////////////////////////////////////////////////////////////
+enum class ColumnType : uint16_t {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief variable length data
+  //////////////////////////////////////////////////////////////////////////////
+  SPARSE = 0,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief no data
+  //////////////////////////////////////////////////////////////////////////////
+  MASK,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fixed length data
+  //////////////////////////////////////////////////////////////////////////////
+  FIXED,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fixed length data in adjacent blocks
+  //////////////////////////////////////////////////////////////////////////////
+  DENSE_FIXED
+}; // ColumnType
+
+////////////////////////////////////////////////////////////////////////////////
+/// @enum ColumnProperty
+////////////////////////////////////////////////////////////////////////////////
+enum class ColumnProperty : uint16_t {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief regular column
+  //////////////////////////////////////////////////////////////////////////////
+  NORMAL = 0,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief encrytped data
+  //////////////////////////////////////////////////////////////////////////////
+  ENCRYPT = 1
+}; // ColumnProperty
+
+ENABLE_BITMASK_ENUM(ColumnProperty);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_header
+////////////////////////////////////////////////////////////////////////////////
+struct column_header {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief bitmap index offset, 0 if not present
+  /// @note 0 - not preset, meaning dense column
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t docs_index{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief total number of docs in a column
+  //////////////////////////////////////////////////////////////////////////////
+  doc_id_t docs_count{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief min document identifier
+  //////////////////////////////////////////////////////////////////////////////
+  doc_id_t min{doc_limits::invalid()};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief column properties
+  //////////////////////////////////////////////////////////////////////////////
+  ColumnProperty props{ColumnProperty::NORMAL};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief column type
+  //////////////////////////////////////////////////////////////////////////////
+  ColumnType type{ColumnType::SPARSE};
+}; // column_header
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class reader
 ////////////////////////////////////////////////////////////////////////////////
 class reader final : public columnstore_reader {
@@ -220,6 +292,8 @@ class reader final : public columnstore_reader {
   virtual bool prepare(
     const directory& dir,
     const segment_meta& meta) override;
+
+  const column_header* header(field_id field) const;
 
   virtual const column_reader* column(field_id field) const override {
     return field >= columns_.size()
