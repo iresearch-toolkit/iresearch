@@ -30,10 +30,11 @@
 #include "search/cost.hpp"
 #include "index/iterators.hpp"
 
-#include "utils/frozen_attributes.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {
@@ -77,7 +78,7 @@ class sparse_bitmap_writer {
     const uint32_t block = doc / BLOCK_SIZE;
 
     if (block != block_) {
-      flush();
+      flush(block_);
       block_ = block;
     }
 
@@ -94,17 +95,17 @@ class sparse_bitmap_writer {
     return prev_;
   }
 
-  void finish(const std::function<void(const block&, size_t)>& callback = {});
+  void finish();
+
+  void visit_index(const std::function<void(const block&, size_t)>& callback);
 
  private:
-  void flush() {
+  void flush(uint32_t next_block) {
     const uint32_t popcnt = static_cast<uint32_t>(
       math::math_traits<size_t>::pop(std::begin(bits_), std::end(bits_)));
     if (popcnt) {
-      if (0 != block_) {
-        add_block(block_);
-      }
-      flush(popcnt);
+      add_block(next_block);
+      do_flush(popcnt);
       popcnt_ += popcnt;
       std::memset(bits_, 0, sizeof bits_);
     }
@@ -121,15 +122,15 @@ class sparse_bitmap_writer {
     block_index_.emplace_back(block{popcnt_, static_cast<uint32_t>(offset)}, block_id);
   }
 
-  void flush(uint32_t popcnt);
+  void do_flush(uint32_t popcnt);
 
   index_output* out_;
   uint64_t origin_;
   size_t bits_[NUM_BLOCKS]{};
+  std::vector<std::pair<block, uint32_t>> block_index_;
   doc_id_t prev_{};
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block
-  std::vector<std::pair<block, uint32_t>> block_index_;
 }; // sparse_bitmap_writer
 
 //////////////////////////////////////////////////////////////////////////////
@@ -147,7 +148,7 @@ struct value_index : document {
 //////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_iterator final : public doc_iterator {
  public:
-  using block_index_t = std::pair<const sparse_bitmap_writer::block*, size_t>;
+  using block_index_t = range<const sparse_bitmap_writer::block>;
 
   explicit sparse_bitmap_iterator(index_input::ptr&& in, const block_index_t& block_index = {})
     : sparse_bitmap_iterator(memory::to_managed<index_input>(std::move(in)), block_index) {
