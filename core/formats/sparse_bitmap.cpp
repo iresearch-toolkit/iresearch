@@ -331,7 +331,9 @@ void sparse_bitmap_iterator::read_block_header() {
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   assert(target / sparse_bitmap_writer::BLOCK_SIZE);
 
-  if (!block_index_.empty()) {
+  if (block_index_.begin()) {
+    assert(!block_index_.empty() && block_index_.end());
+
     const doc_id_t target_block = target / sparse_bitmap_writer::BLOCK_SIZE;
     if (target_block >= (block_ / sparse_bitmap_writer::BLOCK_SIZE + BLOCK_SCAN_THRESHOLD)) {
       const auto* block = block_index_.begin() + target_block;
