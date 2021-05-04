@@ -198,7 +198,12 @@ class sparse_bitmap_iterator final : public doc_iterator {
         const size_t* u64data;
         doc_id_t popcnt;
         int32_t word_idx;
+        uint32_t index_base;
         size_t word;
+        union {
+          const uint16_t* u16data;
+          const byte_type* u8data;
+        } index;
       } dense;
       struct {
         const void* ignore;

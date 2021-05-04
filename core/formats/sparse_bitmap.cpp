@@ -28,6 +28,8 @@
 
 namespace {
 
+using namespace irs;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief we use dense container for blocks having
 ///        more than this number of documents
@@ -75,6 +77,35 @@ enum AccessType : uint32_t {
   AT_DIRECT_ALIGNED
 }; // AccessType
 
+constexpr size_t DENSE_BLOCK_INDEX_BLOCK_SIZE = 512;
+constexpr size_t DENSE_BLOCK_INDEX_NUM_BLOCKS
+  = sparse_bitmap_writer::BLOCK_SIZE / DENSE_BLOCK_INDEX_BLOCK_SIZE;
+constexpr size_t DENSE_INDEX_BLOCK_SIZE_IN_BYTES
+  = DENSE_BLOCK_INDEX_NUM_BLOCKS * sizeof(uint16_t);
+constexpr uint32_t DENSE_BLOCK_INDEX_WORDS_PER_BLOCK
+    = DENSE_BLOCK_INDEX_BLOCK_SIZE / bits_required<size_t>();
+
+template<size_t N>
+void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
+  uint16_t popcnt = 0;
+  uint16_t index[DENSE_BLOCK_INDEX_NUM_BLOCKS];
+  static_assert(DENSE_INDEX_BLOCK_SIZE_IN_BYTES == sizeof index);
+
+  auto* block = reinterpret_cast<byte_type*>(std::begin(index));
+  auto begin = std::begin(bits);
+  for (; begin != std::end(bits); begin += DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
+    irs::write<uint16_t>(block, popcnt);
+
+    for (uint32_t i = 0; i < DENSE_BLOCK_INDEX_WORDS_PER_BLOCK; ++i) {
+      popcnt += math::math_traits<size_t>::pop(begin[i]);
+    }
+  }
+
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(std::begin(index)),
+    sizeof index);
+}
+
 }
 
 namespace iresearch {
@@ -115,6 +146,8 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
 
   if (popcnt > BITSET_THRESHOLD) {
     if (popcnt != BLOCK_SIZE) {
+      write_block_index(*out_, bits_);
+
       if constexpr (!is_big_endian()) {
         std::for_each(
           std::begin(bits_), std::end(bits_),
@@ -186,9 +219,34 @@ struct container_iterator<BT_DENSE> {
     const int32_t target_word_idx
       = (target & 0x0000FFFF) / bits_required<size_t>();
     assert(target_word_idx >= ctx.word_idx);
-    auto word_delta = target_word_idx - ctx.word_idx;
 
     // FIXME block index?
+    if (uint32_t(target_word_idx - ctx.word_idx) >= DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
+      const size_t index_block = (target & 0x0000FFFF) / DENSE_BLOCK_INDEX_BLOCK_SIZE;
+
+      uint16_t popcnt;
+      std::memcpy(&popcnt, ctx.index.u16data + index_block, sizeof(uint16_t));
+      if constexpr (!is_big_endian()) {
+        popcnt = (popcnt >> 8) | ((popcnt & 0xFF) << 8);
+      }
+
+      const auto word_idx = index_block*DENSE_BLOCK_INDEX_WORDS_PER_BLOCK;
+      const auto delta = word_idx - ctx.word_idx;
+      assert(delta > 0);
+
+      if constexpr (AT_STREAM == Access) {
+        self->in_->seek(self->in_->file_pointer() + delta*sizeof(size_t));
+        ctx.word = self->in_->read_long();
+      } else {
+        ctx.u64data += delta;
+        ctx.word = ctx.u64data[-1];
+      }
+
+      ctx.popcnt = ctx.index_base + popcnt + math::math_traits<size_t>::pop(ctx.word);
+      ctx.word_idx = word_idx;
+    }
+
+    uint32_t word_delta = target_word_idx - ctx.word_idx;
 
     if constexpr (AT_STREAM == Access) {
       for (; word_delta; --word_delta) {
@@ -318,6 +376,10 @@ void sparse_bitmap_iterator::read_block_header() {
 
     ctx_.dense.word_idx = -1;
     ctx_.dense.popcnt = index_;
+    ctx_.dense.index_base = index_;
+    ctx_.dense.index.u8data = in_->read_buffer(DENSE_INDEX_BLOCK_SIZE_IN_BYTES, BufferHint::NORMAL);
+    assert(ctx_.dense.index.u8data); // FIXME
+
     cont_begin_ = in_->file_pointer() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
 
