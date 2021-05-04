@@ -220,7 +220,7 @@ struct container_iterator<BT_DENSE> {
       = (target & 0x0000FFFF) / bits_required<size_t>();
     assert(target_word_idx >= ctx.word_idx);
 
-    // FIXME block index?
+    assert(ctx.index.u16data);
     if (uint32_t(target_word_idx - ctx.word_idx) >= DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
       const size_t index_block = (target & 0x0000FFFF) / DENSE_BLOCK_INDEX_BLOCK_SIZE;
 
@@ -378,7 +378,7 @@ void sparse_bitmap_iterator::read_block_header() {
     ctx_.dense.popcnt = index_;
     ctx_.dense.index_base = index_;
     ctx_.dense.index.u8data = in_->read_buffer(DENSE_INDEX_BLOCK_SIZE_IN_BYTES, BufferHint::NORMAL);
-    assert(ctx_.dense.index.u8data); // FIXME
+    assert(ctx_.dense.index.u8data);
 
     cont_begin_ = in_->file_pointer() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
