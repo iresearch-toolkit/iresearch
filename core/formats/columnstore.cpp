@@ -269,7 +269,7 @@ doc_iterator::ptr mask_column::iterator() const {
     // implementation returned wrong pointer
     IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
-    throw io_error("failed to reopen input");
+    throw io_error{"failed to reopen input"};
   }
 
   stream->seek(header().docs_index);
@@ -369,7 +369,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
     // implementation returned wrong pointer
     IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
-    throw io_error("failed to reopen input");
+    throw io_error{"failed to reopen input"};
   }
 
   stream->seek(header().docs_index);
@@ -485,7 +485,7 @@ doc_iterator::ptr fixed_length_column::iterator() const {
     // implementation returned wrong pointer
     IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
-    throw io_error("failed to reopen input");
+    throw io_error{"failed to reopen input"};
   }
 
   stream->seek(header().docs_index);
@@ -624,7 +624,7 @@ doc_iterator::ptr sparse_column::iterator() const {
     // implementation returned wrong pointer
     IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
-    throw io_error("failed to reopen input");
+    throw io_error{"failed to reopen input"};
   }
 
   stream->seek(header().docs_index);
@@ -717,9 +717,8 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   column_header hdr;
   hdr.docs_count = docs_count_;
 
-  memory_index_input in(docs_.file);
-
-  sparse_bitmap_iterator it(&in, {{}, false});
+  memory_index_input in{docs_.file};
+  sparse_bitmap_iterator it{&in, {{}, false}};
   if (it.next()) {
     hdr.min = it.value();
   }
@@ -786,9 +785,9 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   auto data_out = dir.create(filename);
 
   if (!data_out) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()));
+      filename.c_str())};
   }
 
   format_utils::write_header(*data_out, DATA_FORMAT_NAME, FORMAT_MIN);
@@ -869,9 +868,9 @@ bool writer::commit(const flush_state& state) {
   auto index_out = dir_->create(index_filename);
 
   if (!index_out) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "Failed to create file, path: %s",
-      index_filename.c_str()));
+      index_filename.c_str())};
   }
 
   format_utils::write_header(*index_out, INDEX_FORMAT_NAME, FORMAT_MIN);
@@ -925,9 +924,9 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
   auto data_in = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!data_in) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str()));
+      filename.c_str())};
   }
 
   [[maybe_unused]] const auto version =
@@ -962,9 +961,9 @@ void reader::prepare_index(
   auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
 
   if (!index_in) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str()));
+      filename.c_str())};
   }
 
   const auto checksum = format_utils::checksum(*index_in);
@@ -984,15 +983,15 @@ void reader::prepare_index(
     auto inflater = compression::get_decompressor(compression_id);
 
     if (!inflater && !compression::exists(compression_id)) {
-      throw index_error(string_utils::to_string(
+      throw index_error{string_utils::to_string(
         "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-        compression_id.c_str(), i));
+        compression_id.c_str(), i)};
     }
 
     if (inflater && !inflater->prepare(*index_in)) { // FIXME or data_in???
-      throw index_error(string_utils::to_string(
+      throw index_error{string_utils::to_string(
         "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-        compression_id.c_str(), i));
+        compression_id.c_str(), i)};
     }
 
     const column_header hdr = read_header(*index_in);
@@ -1026,9 +1025,9 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   const auto data_filename = data_file_name(meta.name);
 
   if (!dir.exists(exists, data_filename)) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "failed to check existence of file, path: %s",
-      data_filename.c_str()));
+      data_filename.c_str())};
   }
 
   if (!exists) {
@@ -1043,16 +1042,16 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   const auto index_filename = index_file_name(meta.name);
 
   if (!dir.exists(exists, index_filename)) {
-    throw io_error(string_utils::to_string(
+    throw io_error{string_utils::to_string(
       "failed to check existence of file, path: %s",
-      index_filename.c_str()));
+      index_filename.c_str())};
   }
 
   if (!exists) {
     // more likely index is currupted
-    throw index_error(string_utils::to_string(
+    throw index_error{string_utils::to_string(
       "columnstore index file '%s' is missing",
-      index_filename.c_str()));
+      index_filename.c_str())};
   }
 
   prepare_index(dir, index_filename);
