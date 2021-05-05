@@ -97,7 +97,7 @@ class sparse_bitmap_writer {
 
   void finish();
 
-  void visit_index(const std::function<void(const block&, size_t)>& callback);
+  void visit_index(const std::function<void(const block&, uint32_t)>& callback);
 
  private:
   void flush(uint32_t next_block) {
@@ -160,7 +160,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
     /// @brief use per block index
     ////////////////////////////////////////////////////////////////////////////
     bool use_block_index{true};
-  };
+  }; // options
 
   explicit sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
     : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)), opts} {

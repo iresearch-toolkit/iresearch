@@ -94,7 +94,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
         [&doc] { return doc++; });
     }
 
-    auto build_index = [&bitmap_index](const auto& block, size_t count) mutable {
+    auto build_index = [&bitmap_index](const auto& block, uint32_t count) mutable {
       while (count) {
         bitmap_index.emplace_back(irs::sparse_bitmap_writer::block{block.index, block.offset});
         --count;
@@ -228,7 +228,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(
         [&doc] { return doc++; });
     }
 
-    auto build_index = [&bitmap_index](const auto& block, size_t count) mutable {
+    auto build_index = [&bitmap_index](const auto& block, uint32_t count) mutable {
       while (count) {
         bitmap_index.emplace_back(irs::sparse_bitmap_writer::block{block.index, block.offset});
         --count;
@@ -311,7 +311,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
         });
     }
 
-    auto build_index = [&bitmap_index](const auto& block, size_t count) mutable {
+    auto build_index = [&bitmap_index](const auto& block, uint32_t count) mutable {
       while (count) {
         bitmap_index.emplace_back(irs::sparse_bitmap_writer::block{block.index, block.offset});
         --count;
@@ -420,7 +420,7 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
         });
     }
 
-    auto build_index = [&bitmap_index](const auto& block, size_t count) mutable {
+    auto build_index = [&bitmap_index](const auto& block, uint32_t count) mutable {
       while (count) {
         bitmap_index.emplace_back(irs::sparse_bitmap_writer::block{block.index, block.offset});
         --count;
@@ -528,7 +528,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
         });
     }
 
-    auto build_index = [&bitmap_index](const auto& block, size_t count) mutable {
+    auto build_index = [&bitmap_index](const auto& block, uint32_t count) mutable {
       while (count) {
         bitmap_index.emplace_back(irs::sparse_bitmap_writer::block{block.index, block.offset});
         --count;
@@ -695,7 +695,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     writer.finish();
 
     size_t calls = 0;
-    writer.visit_index([&calls](auto& block , size_t count) {
+    writer.visit_index([&calls](auto& block , uint32_t count) {
       ASSERT_EQ(0, block.index);
       ASSERT_EQ(0, block.offset);
       ASSERT_EQ(2, count);

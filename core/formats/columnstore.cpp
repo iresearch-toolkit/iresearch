@@ -89,9 +89,39 @@ class column_base : public columnstore_reader::column_reader {
     return hdr_;
   }
 
+ protected:
+  void read_blocks_index(index_input& in);
+
+  sparse_bitmap_iterator::options bitmap_iterator_options() const noexcept {
+    return opts_;
+  }
+
  private:
   column_header hdr_;
+  std::vector<sparse_bitmap_writer::block> blocks_index_;
+  sparse_bitmap_iterator::options opts_;
 }; // column_base
+
+void column_base::read_blocks_index(index_input& in) {
+  uint32_t count = in.read_int();
+  while (count) {
+    const uint32_t index = in.read_int();
+    const uint32_t offset = in.read_int();
+    const sparse_bitmap_writer::block block{index, offset};
+    while (count) {
+      blocks_index_.emplace_back(block);
+      --count;
+    }
+
+    count = in.read_int();
+  }
+
+  if (!blocks_index_.empty()) {
+    opts_ = { { blocks_index_.data(), blocks_index_.size() }, true };
+  } else {
+    opts_ = {};
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class range_column_iterator
@@ -232,10 +262,12 @@ struct mask_column final : public column_base {
 
   static column_ptr read(
       const column_header& hdr,
-      index_input& /*index_in*/,
+      index_input& index_in,
       index_input& data_in,
       compression::decompressor::ptr&& /*inflater*/) {
-    return memory::make_unique<mask_column>(hdr, &data_in);
+    auto column = memory::make_unique<mask_column>(hdr, &data_in);
+    column->read_blocks_index(index_in);
+    return column;
   }
 
   mask_column(
@@ -276,7 +308,7 @@ doc_iterator::ptr mask_column::iterator() const {
 
   return memory::make_managed<sparse_bitmap_iterator>(
     std::move(stream),
-    sparse_bitmap_iterator::options{{}, true},
+    bitmap_iterator_options(),
     header().docs_count);
 }
 
@@ -294,14 +326,10 @@ class dense_fixed_length_column final : public column_base {
   dense_fixed_length_column(
       const column_header& hdr,
       index_input* data_in,
-      compression::decompressor::ptr&& inflater,
-      uint64_t data,
-      uint64_t len)
+      compression::decompressor::ptr&& inflater)
     : column_base{hdr},
       inflater_{std::move(inflater)},
-      data_in_{data_in},
-      data_{data},
-      len_{len} {
+      data_in_{data_in} {
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
@@ -347,11 +375,13 @@ class dense_fixed_length_column final : public column_base {
     index_input& index_in,
     index_input& data_in,
     compression::decompressor::ptr&& inflater) {
-  const uint64_t len = index_in.read_long();
-  const uint64_t data = index_in.read_long();
+  auto column =  memory::make_unique<dense_fixed_length_column>(
+      hdr, &data_in, std::move(inflater));
 
-  return memory::make_unique<dense_fixed_length_column>(
-    hdr, &data_in, std::move(inflater), len, data);
+  column->read_blocks_index(index_in);
+  column->data_ = index_in.read_long();
+  column->len_ = index_in.read_long();
+  return column;
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
@@ -376,7 +406,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
-    sparse_bitmap_iterator::options{{}, true},
+    bitmap_iterator_options(),
     header().docs_count,
     stream->dup(),
     data_, len_);
@@ -449,8 +479,9 @@ class fixed_length_column final : public column_base {
     index_input& index_in,
     index_input& data_in,
     compression::decompressor::ptr&& inflater) {
-  const uint64_t len = index_in.read_long();
-  auto column = memory::make_unique<fixed_length_column>(hdr, &data_in, std::move(inflater), len);
+  auto column = memory::make_unique<fixed_length_column>(hdr, &data_in, std::move(inflater), 0); // FIXME
+  column->read_blocks_index(index_in);
+  column->len_ = index_in.read_long();
 
   auto& blocks = column->blocks_;
   blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
@@ -492,7 +523,7 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
-    sparse_bitmap_iterator::options{{}, true},
+    bitmap_iterator_options(),
     header().docs_count,
     stream->dup(),
     blocks_.data(),
@@ -546,6 +577,7 @@ struct sparse_column final : public column_base {
   }; // payload_reader
 
   std::vector<column_block> blocks_;
+  std::vector<sparse_bitmap_writer::block> index_;
   compression::decompressor::ptr inflater_;
   index_input* data_in_;
 }; // sparse_column
@@ -595,6 +627,8 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
     compression::decompressor::ptr&& inflater) {
   auto column = memory::make_unique<sparse_column>(hdr, &data_in, std::move(inflater));
 
+  column->read_blocks_index(index_in);
+
   auto& blocks = column->blocks_;
   blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
   for (auto& block : blocks) {
@@ -631,7 +665,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
-    sparse_bitmap_iterator::options{{}, true},
+    bitmap_iterator_options(),
     header().docs_count,
     stream->dup(),
     blocks_.data());
@@ -723,7 +757,9 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     hdr.min = it.value();
   }
 
-  if (docs_count_ && docs_count_ != docs_count) {
+  const bool use_bitmap_index = docs_count_ && docs_count_ != docs_count;
+
+  if (use_bitmap_index) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();
@@ -745,6 +781,14 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
 
   irs::write_string(index_out, comp_type_.name());
   write_header(index_out, hdr);
+  if (use_bitmap_index && docs_count_ > 1) {
+    docs_writer_.visit_index([&index_out](auto& block, uint32_t count) {
+      index_out.write_int(count);
+      index_out.write_int(block.index);
+      index_out.write_int(block.offset);
+    });
+  }
+  index_out.write_int(0);
 
   if (ColumnType::SPARSE == hdr.type) {
     // FIXME optimize

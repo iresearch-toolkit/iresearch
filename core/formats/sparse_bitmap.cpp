@@ -115,11 +115,11 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 void sparse_bitmap_writer::visit_index(
-    const std::function<void(const block&, size_t)> &callback) {
+    const std::function<void(const block&, uint32_t)>& callback) {
   if (callback && !block_index_.empty()) {
     uint32_t id = std::numeric_limits<uint32_t>::max();
     for (auto& block : block_index_) {
-      const size_t count = block.second - id;
+      const uint32_t count = block.second - id;
       callback(block.first, count);
       id = block.second;
     }
