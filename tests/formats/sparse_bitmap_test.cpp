@@ -116,7 +116,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
 
         irs::sparse_bitmap_iterator it{
           stream.get(),
-          {bitmap_index.data(), bitmap_index.size()} };
+          { {bitmap_index.data(), bitmap_index.size()}, true } };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
@@ -139,7 +139,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
       stream->seek(0);
       irs::sparse_bitmap_iterator it{
         stream.get(),
-        {bitmap_index.data(), bitmap_index.size()} };
+        { {bitmap_index.data(), bitmap_index.size()}, true } };
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
@@ -167,7 +167,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
       for (auto [min, max] = range; min < max; ++min) {
         stream->seek(0);
 
-        irs::sparse_bitmap_iterator it{ stream.get() };
+        irs::sparse_bitmap_iterator it{ stream.get(), {{}, true} };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
@@ -188,9 +188,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
 
     for (auto& seek : seeks) {
       stream->seek(0);
-      irs::sparse_bitmap_iterator it{
-        stream.get(),
-        {bitmap_index.data(), bitmap_index.size()} };
+      irs::sparse_bitmap_iterator it{stream.get(), {{}, false}};
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
@@ -247,7 +245,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(
 
     irs::sparse_bitmap_iterator it{
       std::move(stream),
-      {bitmap_index.data(), bitmap_index.size()} };
+      { {bitmap_index.data(), bitmap_index.size()}, true } };
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -272,7 +270,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{std::move(stream)};
+    irs::sparse_bitmap_iterator it{std::move(stream), {{}, true}};
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -330,7 +328,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
 
     irs::sparse_bitmap_iterator it{
       std::move(stream),
-      {bitmap_index.data(), bitmap_index.size()}};
+      { {bitmap_index.data(), bitmap_index.size()}, true }};
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -368,7 +366,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{std::move(stream)};
+    irs::sparse_bitmap_iterator it{std::move(stream), {{}, false}};
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -439,7 +437,7 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
 
     irs::sparse_bitmap_iterator it{
       std::move(stream),
-      {bitmap_index.data(), bitmap_index.size()} };
+      { {bitmap_index.data(), bitmap_index.size()}, true } };
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -477,7 +475,7 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{ std::move(stream) };
+    irs::sparse_bitmap_iterator it{ std::move(stream), {{}, false} };
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -565,7 +563,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
 
         irs::sparse_bitmap_iterator it{
           stream->dup(),
-          {bitmap_index.data(), bitmap_index.size()} };
+          { {bitmap_index.data(), bitmap_index.size()}, true } };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
@@ -636,7 +634,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
         stream->seek(0);
         ASSERT_EQ(0, stream->file_pointer());
 
-        irs::sparse_bitmap_iterator it{ stream->dup() };
+        irs::sparse_bitmap_iterator it{ stream->dup(), {{}, false} };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
@@ -710,7 +708,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it(std::move(stream));
+    irs::sparse_bitmap_iterator it(std::move(stream), {{}, true});
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     ASSERT_FALSE(it.next());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));

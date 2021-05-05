@@ -176,10 +176,11 @@ class bitmap_column_iterator final
   template<typename... Args>
   bitmap_column_iterator(
       index_input::ptr&& bitmap_in,
+      const sparse_bitmap_iterator::options& opts,
       cost::cost_t cost,
       Args&&... args)
     : payload_reader{std::forward<Args>(args)...},
-      bitmap_{std::move(bitmap_in)} {
+      bitmap_{std::move(bitmap_in), opts} {
     std::get<irs::cost>(attrs_).reset(cost);
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&bitmap_);
   }
@@ -275,7 +276,7 @@ doc_iterator::ptr mask_column::iterator() const {
 
   return memory::make_managed<sparse_bitmap_iterator>(
     std::move(stream),
-    sparse_bitmap_iterator::block_index_t{},
+    sparse_bitmap_iterator::options{{}, true},
     header().docs_count);
 }
 
@@ -375,6 +376,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
+    sparse_bitmap_iterator::options{{}, true},
     header().docs_count,
     stream->dup(),
     data_, len_);
@@ -490,6 +492,7 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
+    sparse_bitmap_iterator::options{{}, true},
     header().docs_count,
     stream->dup(),
     blocks_.data(),
@@ -628,6 +631,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   return memory::make_managed<bitmap_column_iterator<payload_reader>>(
     std::move(stream),
+    sparse_bitmap_iterator::options{{}, true},
     header().docs_count,
     stream->dup(),
     blocks_.data());
@@ -714,7 +718,8 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
   hdr.docs_count = docs_count_;
 
   memory_index_input in(docs_.file);
-  sparse_bitmap_iterator it(&in);
+
+  sparse_bitmap_iterator it(&in, {{}, false});
   if (it.next()) {
     hdr.min = it.value();
   }

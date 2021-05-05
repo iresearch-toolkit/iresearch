@@ -150,16 +150,21 @@ class sparse_bitmap_iterator final : public doc_iterator {
  public:
   using block_index_t = range<const sparse_bitmap_writer::block>;
 
-  explicit sparse_bitmap_iterator(index_input::ptr&& in, const block_index_t& block_index = {})
-    : sparse_bitmap_iterator(memory::to_managed<index_input>(std::move(in)), block_index) {
+  struct options {
+    block_index_t blocks;
+    bool use_block_index{true};
+  };
+
+  explicit sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
+    : sparse_bitmap_iterator(memory::to_managed<index_input>(std::move(in)), opts) {
   }
-  explicit sparse_bitmap_iterator(index_input* in, const block_index_t& block_index = {})
-    : sparse_bitmap_iterator(memory::to_managed<index_input, false>(in), block_index) {
+  explicit sparse_bitmap_iterator(index_input* in, const options& opts)
+    : sparse_bitmap_iterator(memory::to_managed<index_input, false>(in), opts) {
   }
 
   template<typename Cost>
-  sparse_bitmap_iterator(index_input::ptr&& in, const block_index_t& block_index, Cost&& est)
-    : sparse_bitmap_iterator(std::move(in), block_index) {
+  sparse_bitmap_iterator(index_input::ptr&& in, const options& opts, Cost&& est)
+    : sparse_bitmap_iterator(std::move(in), opts) {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
@@ -215,7 +220,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
 
   explicit sparse_bitmap_iterator(
     memory::managed_ptr<index_input>&& in,
-    const block_index_t& block_index);
+    const options& opts);
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
@@ -223,6 +228,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   container_iterator_context ctx_;
   std::tuple<document, cost, value_index> attrs_;
   memory::managed_ptr<index_input> in_;
+  std::unique_ptr<byte_type[]> block_index_data_;
   block_seek_f seek_func_;
   block_index_t block_index_;
   uint64_t cont_begin_;
@@ -230,6 +236,7 @@ class sparse_bitmap_iterator final : public doc_iterator {
   doc_id_t index_{};
   doc_id_t index_max_{};
   doc_id_t block_{};
+  bool use_block_index_;
 }; // sparse_bitmap_iterator
 
 } // iresearch

@@ -220,12 +220,12 @@ struct container_iterator<BT_DENSE> {
       = (target & 0x0000FFFF) / bits_required<size_t>();
     assert(target_word_idx >= ctx.word_idx);
 
-    assert(ctx.index.u16data);
-    if (uint32_t(target_word_idx - ctx.word_idx) >= DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
+    if (ctx.index.u16data &&
+        uint32_t(target_word_idx - ctx.word_idx) >= DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
       const size_t index_block = (target & 0x0000FFFF) / DENSE_BLOCK_INDEX_BLOCK_SIZE;
 
       uint16_t popcnt;
-      std::memcpy(&popcnt, ctx.index.u16data + index_block, sizeof(uint16_t));
+      std::memcpy(&popcnt, &ctx.index.u16data[index_block], sizeof(uint16_t));
       if constexpr (!is_big_endian()) {
         popcnt = (popcnt >> 8) | ((popcnt & 0xFF) << 8);
       }
@@ -327,7 +327,7 @@ struct container_iterator<BT_DENSE> {
 
 sparse_bitmap_iterator::sparse_bitmap_iterator(
     memory::managed_ptr<index_input>&& in,
-    const block_index_t& block_index)
+    const options& opts)
   : in_{std::move(in)},
     seek_func_{[](sparse_bitmap_iterator* self, doc_id_t target) {
       assert(!doc_limits::valid(self->value()));
@@ -339,9 +339,10 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       self->seek(target);
       return true;
     }},
-    block_index_{block_index},
+    block_index_{opts.blocks},
     cont_begin_{in_->file_pointer()},
-    origin_{cont_begin_} {
+    origin_{cont_begin_},
+    use_block_index_{opts.use_block_index} {
   assert(in_);
 }
 
@@ -377,8 +378,24 @@ void sparse_bitmap_iterator::read_block_header() {
     ctx_.dense.word_idx = -1;
     ctx_.dense.popcnt = index_;
     ctx_.dense.index_base = index_;
-    ctx_.dense.index.u8data = in_->read_buffer(DENSE_INDEX_BLOCK_SIZE_IN_BYTES, BufferHint::NORMAL);
-    assert(ctx_.dense.index.u8data);
+    if (use_block_index_) {
+      ctx_.dense.index.u8data = in_->read_buffer(
+        DENSE_INDEX_BLOCK_SIZE_IN_BYTES,
+        BufferHint::NORMAL);
+
+      if (!ctx_.dense.index.u8data) {
+        if (!block_index_data_) {
+          block_index_data_ = memory::make_unique<byte_type[]>(
+            DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
+        }
+
+        in_->read_bytes(block_index_data_.get(),
+                        DENSE_BLOCK_INDEX_BLOCK_SIZE);
+      }
+    } else {
+      ctx_.dense.index.u8data = nullptr;
+      in_->seek(in_->file_pointer() + DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
+    }
 
     cont_begin_ = in_->file_pointer() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
