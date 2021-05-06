@@ -97,7 +97,9 @@ class sparse_bitmap_writer {
 
   void finish();
 
-  void visit_index(const std::function<void(const block&, uint32_t)>& callback);
+  const std::vector<block>& index() const noexcept {
+    return block_index_;
+  }
 
  private:
   void flush(uint32_t next_block) {
@@ -119,7 +121,13 @@ class sparse_bitmap_writer {
   FORCE_INLINE void add_block(uint32_t block_id) {
     const uint64_t offset = out_->file_pointer() - origin_;
     assert(offset <= std::numeric_limits<uint32_t>::max());
-    block_index_.emplace_back(block{popcnt_, static_cast<uint32_t>(offset)}, block_id);
+
+    uint32_t count = 1 + block_id - static_cast<uint32_t>(block_index_.size());
+
+    while (count) {
+      block_index_.emplace_back(block{popcnt_, static_cast<uint32_t>(offset)});
+      --count;
+    }
   }
 
   void do_flush(uint32_t popcnt);
@@ -127,7 +135,7 @@ class sparse_bitmap_writer {
   index_output* out_;
   uint64_t origin_;
   size_t bits_[NUM_BLOCKS]{};
-  std::vector<std::pair<block, uint32_t>> block_index_;
+  std::vector<block> block_index_;
   doc_id_t prev_{};
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block

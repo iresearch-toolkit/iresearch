@@ -37,6 +37,7 @@ using namespace irs;
 using namespace irs::columns;
 
 using column_ptr = std::unique_ptr<columnstore_reader::column_reader>;
+using column_index = std::vector<sparse_bitmap_writer::block>;
 
 std::string data_file_name(string_ref prefix) {
   return file_name(prefix, writer::DATA_FORMAT_EXT);
@@ -64,13 +65,57 @@ column_header read_header(index_input& in) {
   return hdr;
 }
 
+void write_index(
+    index_output& out,
+    const column_index& blocks) {
+  const uint32_t count = static_cast<uint32_t>(blocks.size());
+  if (count > 2) {
+    out.write_int(count);
+    for (auto& block : blocks) {
+      out.write_int(block.index);
+      out.write_int(block.offset);
+    }
+  } else {
+    out.write_int(0);
+  }
+}
+
+column_index read_index(index_input& in) {
+  const uint32_t count = in.read_int();
+
+  if (count > std::numeric_limits<uint16_t>::max()) {
+    throw index_error("Invalid number of blocks in column index");
+  }
+
+  column_index blocks(count);
+
+  in.read_bytes(
+    reinterpret_cast<byte_type*>(blocks.data()),
+    count*sizeof(sparse_bitmap_writer::block));
+
+  if constexpr (!is_big_endian()) {
+    for (auto& block : blocks) {
+      block.index = numeric_utils::ntoh32(block.index);
+      block.offset = numeric_utils::ntoh32(block.offset);
+    }
+  }
+
+  return blocks;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_base
 ////////////////////////////////////////////////////////////////////////////////
-class column_base : public columnstore_reader::column_reader {
+class column_base : public columnstore_reader::column_reader,
+                    private util::noncopyable {
  public:
-  explicit column_base(const column_header& hdr)
-    : hdr_{hdr} {
+  column_base(const column_header& hdr, column_index&& index)
+    : hdr_{hdr},
+      index_{std::move(index)},
+      opts_{
+        index_.empty()
+          ? sparse_bitmap_iterator::block_index_t{}
+          : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -89,39 +134,15 @@ class column_base : public columnstore_reader::column_reader {
     return hdr_;
   }
 
- protected:
-  void read_blocks_index(index_input& in);
-
   sparse_bitmap_iterator::options bitmap_iterator_options() const noexcept {
     return opts_;
   }
 
  private:
   column_header hdr_;
-  std::vector<sparse_bitmap_writer::block> blocks_index_;
+  column_index index_;
   sparse_bitmap_iterator::options opts_;
 }; // column_base
-
-void column_base::read_blocks_index(index_input& in) {
-  uint32_t count = in.read_int();
-  while (count) {
-    const uint32_t index = in.read_int();
-    const uint32_t offset = in.read_int();
-    const sparse_bitmap_writer::block block{index, offset};
-    while (count) {
-      blocks_index_.emplace_back(block);
-      --count;
-    }
-
-    count = in.read_int();
-  }
-
-  if (!blocks_index_.empty()) {
-    opts_ = { { blocks_index_.data(), blocks_index_.size() }, true };
-  } else {
-    opts_ = {};
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class range_column_iterator
@@ -262,18 +283,18 @@ struct mask_column final : public column_base {
 
   static column_ptr read(
       const column_header& hdr,
-      index_input& index_in,
+      column_index&& index,
+      index_input& /*index_in*/,
       index_input& data_in,
       compression::decompressor::ptr&& /*inflater*/) {
-    auto column = memory::make_unique<mask_column>(hdr, &data_in);
-    column->read_blocks_index(index_in);
-    return column;
+    return memory::make_unique<mask_column>(hdr, std::move(index), &data_in);
   }
 
   mask_column(
       const column_header& hdr,
+      column_index&& index,
       index_input* data_in)
-    : column_base{hdr},
+    : column_base{hdr, std::move(index)},
       data_in{data_in} {
     assert(ColumnType::MASK == header().type);
   }
@@ -319,17 +340,23 @@ class dense_fixed_length_column final : public column_base {
  public:
   static column_ptr read(
     const column_header& hdr,
+    column_index&& index,
     index_input& index_in,
     index_input& data_in,
     compression::decompressor::ptr&& inflater);
 
   dense_fixed_length_column(
       const column_header& hdr,
+      column_index&& index,
       index_input* data_in,
-      compression::decompressor::ptr&& inflater)
-    : column_base{hdr},
+      compression::decompressor::ptr&& inflater,
+      uint64_t data,
+      uint64_t len)
+    : column_base{hdr, std::move(index)},
       inflater_{std::move(inflater)},
-      data_in_{data_in} {
+      data_in_{data_in},
+      data_{data},
+      len_{len} {
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
@@ -372,16 +399,15 @@ class dense_fixed_length_column final : public column_base {
 
 /*static*/ column_ptr dense_fixed_length_column::read(
     const column_header& hdr,
+    column_index&& index,
     index_input& index_in,
     index_input& data_in,
     compression::decompressor::ptr&& inflater) {
-  auto column =  memory::make_unique<dense_fixed_length_column>(
-      hdr, &data_in, std::move(inflater));
+  const uint64_t data = index_in.read_long();
+  const uint64_t len = index_in.read_long();
 
-  column->read_blocks_index(index_in);
-  column->data_ = index_in.read_long();
-  column->len_ = index_in.read_long();
-  return column;
+  return memory::make_unique<dense_fixed_length_column>(
+      hdr, std::move(index), &data_in, std::move(inflater), data, len);
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
@@ -418,17 +444,28 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 class fixed_length_column final : public column_base {
  public:
   static column_ptr read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater);
+      const column_header& hdr,
+      column_index&& index,
+      index_input& index_in,
+      index_input& data_in,
+      compression::decompressor::ptr&& inflater) {
+    const uint64_t len = index_in.read_long();
+    auto blocks = read_blocks(hdr, index_in);
+
+    return memory::make_unique<fixed_length_column>(
+      hdr, std::move(index), &data_in,
+      std::move(inflater), std::move(blocks), len);
+  }
 
   fixed_length_column(
       const column_header& hdr,
+      column_index&& index,
       index_input* data_in,
       compression::decompressor::ptr&& inflater,
+      std::vector<uint64_t>&& blocks,
       uint64_t len)
-    : column_base{hdr},
+    : column_base{hdr, std::move(index)},
+      blocks_{blocks},
       inflater_{std::move(inflater)},
       data_in_{data_in},
       len_{len} {
@@ -468,25 +505,22 @@ class fixed_length_column final : public column_base {
     uint64_t len_;
   }; // payload_reader
 
+  static std::vector<uint64_t> read_blocks(
+    const column_header& hdr,
+    index_input& in);
+
   std::vector<uint64_t> blocks_;
   compression::decompressor::ptr inflater_;
   index_input* data_in_;
   uint64_t len_;
 }; // fixed_length_column
 
-/*static*/ column_ptr fixed_length_column::read(
+/*static*/ std::vector<uint64_t> fixed_length_column::read_blocks(
     const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater) {
-  auto column = memory::make_unique<fixed_length_column>(hdr, &data_in, std::move(inflater), 0); // FIXME
-  column->read_blocks_index(index_in);
-  column->len_ = index_in.read_long();
+    index_input& in) {
+  std::vector<uint64_t> blocks(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
 
-  auto& blocks = column->blocks_;
-  blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-
-  index_in.read_bytes(
+  in.read_bytes(
     reinterpret_cast<byte_type*>(blocks.data()),
     sizeof(column_block)*blocks.size());
 
@@ -497,7 +531,7 @@ class fixed_length_column final : public column_base {
     }
   }
 
-  return column;
+  return blocks;
 }
 
 doc_iterator::ptr fixed_length_column::iterator() const {
@@ -533,27 +567,8 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct sparse_column
 ////////////////////////////////////////////////////////////////////////////////
-struct sparse_column final : public column_base {
-  static column_ptr read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater);
-
-  sparse_column(
-      const column_header& hdr,
-      index_input* data_in,
-      compression::decompressor::ptr&& inflater)
-    : column_base{hdr},
-      inflater_{std::move(inflater)},
-      data_in_{data_in} {
-    assert(header().docs_count);
-    assert(ColumnType::SPARSE == header().type);
-  }
-
-  virtual doc_iterator::ptr iterator() const override;
-
- private:
+class sparse_column final : public column_base {
+ public:
   struct column_block {
     uint64_t data;
     uint64_t addr;
@@ -563,6 +578,36 @@ struct sparse_column final : public column_base {
     uint32_t bits;
   };
 
+  static column_ptr read(
+      const column_header& hdr,
+      column_index&& index,
+      index_input& index_in,
+      index_input& data_in,
+      compression::decompressor::ptr&& inflater) {
+    auto blocks = read_blocks(hdr, index_in);
+
+    return memory::make_unique<sparse_column>(
+      hdr, std::move(index), &data_in,
+      std::move(inflater), std::move(blocks));
+  }
+
+  sparse_column(
+      const column_header& hdr,
+      column_index&& index,
+      index_input* data_in,
+      compression::decompressor::ptr&& inflater,
+      std::vector<column_block>&& blocks)
+    : column_base{hdr, std::move(index)},
+      blocks_{std::move(blocks)},
+      inflater_{std::move(inflater)},
+      data_in_{data_in} {
+    assert(header().docs_count);
+    assert(ColumnType::SPARSE == header().type);
+  }
+
+  virtual doc_iterator::ptr iterator() const override;
+
+ private:
   class payload_reader {
    public:
     payload_reader(index_input::ptr data_in, const column_block* blocks)
@@ -576,8 +621,10 @@ struct sparse_column final : public column_base {
     const column_block* blocks_;
   }; // payload_reader
 
+  static std::vector<column_block> read_blocks(
+    const column_header& hder, index_input& in);
+
   std::vector<column_block> blocks_;
-  std::vector<sparse_bitmap_writer::block> index_;
   compression::decompressor::ptr inflater_;
   index_input* data_in_;
 }; // sparse_column
@@ -620,27 +667,22 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   return { buf, length };
 }
 
-/*static*/ column_ptr sparse_column::read(
-    const column_header& hdr,
-    index_input& index_in,
-    index_input& data_in,
-    compression::decompressor::ptr&& inflater) {
-  auto column = memory::make_unique<sparse_column>(hdr, &data_in, std::move(inflater));
+/*static*/ std::vector<sparse_column::column_block> sparse_column::read_blocks(
+    const column_header& hdr, index_input& in) {
+  std::vector<sparse_column::column_block> blocks{
+    math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE)};
 
-  column->read_blocks_index(index_in);
-
-  auto& blocks = column->blocks_;
-  blocks.resize(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
   for (auto& block : blocks) {
-    block.addr = index_in.read_long();
-    block.avg = index_in.read_long();
-    block.bits = index_in.read_byte();
-    block.data = index_in.read_long();
-    block.last_size = index_in.read_long();
+    block.addr = in.read_long();
+    block.avg = in.read_long();
+    block.bits = in.read_byte();
+    block.data = in.read_long();
+    block.last_size = in.read_long();
     block.last = column::BLOCK_SIZE - 1;
   }
   blocks.back().last = (hdr.docs_count % column::BLOCK_SIZE - 1);
-  return column;
+
+  return blocks;
 }
 
 doc_iterator::ptr sparse_column::iterator() const {
@@ -672,7 +714,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 }
 
 using column_factory_f = column_ptr(*)(
-  const column_header&, index_input&,
+  const column_header&, column_index&&, index_input&,
   index_input&, compression::decompressor::ptr&&);
 
 constexpr column_factory_f FACTORIES[] {
@@ -757,9 +799,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     hdr.min = it.value();
   }
 
-  const bool use_bitmap_index = docs_count_ && docs_count_ != docs_count;
-
-  if (use_bitmap_index) {
+  if (docs_count_ && docs_count_ != docs_count) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();
@@ -781,14 +821,9 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
 
   irs::write_string(index_out, comp_type_.name());
   write_header(index_out, hdr);
-  if (use_bitmap_index && docs_count_ > 1) {
-    docs_writer_.visit_index([&index_out](auto& block, uint32_t count) {
-      index_out.write_int(count);
-      index_out.write_int(block.index);
-      index_out.write_int(block.offset);
-    });
+  if (hdr.docs_index) {
+    write_index(index_out, docs_writer_.index());
   }
-  index_out.write_int(0);
 
   if (ColumnType::SPARSE == hdr.type) {
     // FIXME optimize
@@ -1046,9 +1081,13 @@ void reader::prepare_index(
         i)};
     }
 
+    auto index = hdr.docs_index
+      ? read_index(*index_in)
+      : column_index{};
+
     const size_t idx = static_cast<size_t>(hdr.type);
     if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
-      auto column = FACTORIES[idx](hdr, *index_in, *data_in_, std::move(inflater));
+      auto column = FACTORIES[idx](hdr, std::move(index), *index_in, *data_in_, std::move(inflater));
       assert(column);
       columns.emplace_back(std::move(column));
     } else {
