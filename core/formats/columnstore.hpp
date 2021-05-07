@@ -56,7 +56,15 @@ class column final : public irs::columnstore_writer::column_output {
       uint64_t* u64buf;
     };
     bool consolidation;
-  };
+  }; // context
+
+  struct column_block {
+    uint64_t addr;
+    uint64_t avg;
+    uint64_t data;
+    uint64_t last_size;
+    uint32_t bits;
+  }; // column_block
 
   explicit column(
       const context& ctx,
@@ -156,20 +164,12 @@ class column final : public irs::columnstore_writer::column_output {
     uint64_t* offset_{offsets_};
   }; // address_table
 
-  struct block {
-    uint64_t addr;
-    uint64_t avg;
-    uint64_t data;
-    uint64_t last_size;
-    uint32_t bits;
-  }; // block
-
   void flush_block();
 
   context ctx_;
   irs::type_info comp_type_;
   compression::compressor::ptr deflater_;
-  std::vector<block> blocks_; // at most 65536 blocks
+  std::vector<column_block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};

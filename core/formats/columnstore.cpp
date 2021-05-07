@@ -65,10 +65,9 @@ column_header read_header(index_input& in) {
   return hdr;
 }
 
-void write_index(
-    index_output& out,
-    const column_index& blocks) {
+void write_index(index_output& out, const column_index& blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
+
   if (count > 2) {
     out.write_int(count);
     for (auto& block : blocks) {
@@ -87,16 +86,62 @@ column_index read_index(index_input& in) {
     throw index_error("Invalid number of blocks in column index");
   }
 
-  column_index blocks(count);
+  if (count > 2) {
+    column_index blocks(count);
+
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(blocks.data()),
+      count*sizeof(sparse_bitmap_writer::block));
+
+    if constexpr (!is_big_endian()) {
+      for (auto& block : blocks) {
+        block.index = numeric_utils::ntoh32(block.index);
+        block.offset = numeric_utils::ntoh32(block.offset);
+      }
+    }
+
+    return blocks;
+  }
+
+  return {};
+}
+
+void write_blocks_sparse(
+    index_output& out,
+    const std::vector<column::column_block>& blocks) {
+  // FIXME optimize
+  for (auto& block : blocks) {
+    out.write_long(block.addr);
+    out.write_long(block.avg);
+    out.write_byte(static_cast<byte_type>(block.bits));
+    out.write_long(block.data);
+    out.write_long(block.last_size);
+  }
+}
+
+void write_blocks_dense(
+    index_output& out,
+    const std::vector<column::column_block>& blocks) {
+  // FIXME optimize
+  for (auto& block : blocks) {
+    out.write_long(block.data);
+  }
+}
+
+std::vector<uint64_t> read_blocks_dense(
+    const column_header& hdr,
+    index_input& in) {
+  std::vector<uint64_t> blocks(
+    math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
 
   in.read_bytes(
     reinterpret_cast<byte_type*>(blocks.data()),
-    count*sizeof(sparse_bitmap_writer::block));
+    sizeof(uint64_t)*blocks.size());
 
   if constexpr (!is_big_endian()) {
+    // FIXME simd?
     for (auto& block : blocks) {
-      block.index = numeric_utils::ntoh32(block.index);
-      block.offset = numeric_utils::ntoh32(block.offset);
+      block = numeric_utils::ntoh64(block);
     }
   }
 
@@ -450,7 +495,7 @@ class fixed_length_column final : public column_base {
       index_input& data_in,
       compression::decompressor::ptr&& inflater) {
     const uint64_t len = index_in.read_long();
-    auto blocks = read_blocks(hdr, index_in);
+    auto blocks = read_blocks_dense(hdr, index_in);
 
     return memory::make_unique<fixed_length_column>(
       hdr, std::move(index), &data_in,
@@ -505,34 +550,11 @@ class fixed_length_column final : public column_base {
     uint64_t len_;
   }; // payload_reader
 
-  static std::vector<uint64_t> read_blocks(
-    const column_header& hdr,
-    index_input& in);
-
   std::vector<uint64_t> blocks_;
   compression::decompressor::ptr inflater_;
   index_input* data_in_;
   uint64_t len_;
 }; // fixed_length_column
-
-/*static*/ std::vector<uint64_t> fixed_length_column::read_blocks(
-    const column_header& hdr,
-    index_input& in) {
-  std::vector<uint64_t> blocks(math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
-
-  in.read_bytes(
-    reinterpret_cast<byte_type*>(blocks.data()),
-    sizeof(column_block)*blocks.size());
-
-  if constexpr (!is_big_endian()) {
-    // FIXME simd?
-    for (auto& block : blocks) {
-      block = numeric_utils::ntoh64(block);
-    }
-  }
-
-  return blocks;
-}
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
@@ -569,13 +591,8 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 ////////////////////////////////////////////////////////////////////////////////
 class sparse_column final : public column_base {
  public:
-  struct column_block {
-    uint64_t data;
-    uint64_t addr;
-    uint64_t avg;
-    uint64_t last_size;
+  struct column_block : column::column_block {
     doc_id_t last;
-    uint32_t bits;
   };
 
   static column_ptr read(
@@ -584,7 +601,7 @@ class sparse_column final : public column_base {
       index_input& index_in,
       index_input& data_in,
       compression::decompressor::ptr&& inflater) {
-    auto blocks = read_blocks(hdr, index_in);
+    auto blocks = read_blocks_sparse(hdr, index_in);
 
     return memory::make_unique<sparse_column>(
       hdr, std::move(index), &data_in,
@@ -621,7 +638,7 @@ class sparse_column final : public column_base {
     const column_block* blocks_;
   }; // payload_reader
 
-  static std::vector<column_block> read_blocks(
+  static std::vector<column_block> read_blocks_sparse(
     const column_header& hder, index_input& in);
 
   std::vector<column_block> blocks_;
@@ -667,11 +684,12 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   return { buf, length };
 }
 
-/*static*/ std::vector<sparse_column::column_block> sparse_column::read_blocks(
+/*static*/ std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
     const column_header& hdr, index_input& in) {
   std::vector<sparse_column::column_block> blocks{
     math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE)};
 
+  // FIXME optimize
   for (auto& block : blocks) {
     block.addr = in.read_long();
     block.avg = in.read_long();
@@ -821,28 +839,16 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
 
   irs::write_string(index_out, comp_type_.name());
   write_header(index_out, hdr);
-  if (hdr.docs_index) {
-    write_index(index_out, docs_writer_.index());
-  }
+  write_index(index_out, docs_writer_.index());
 
   if (ColumnType::SPARSE == hdr.type) {
-    // FIXME optimize
-    for (auto& block : blocks_) {
-      index_out.write_long(block.addr);
-      index_out.write_long(block.avg);
-      index_out.write_byte(static_cast<byte_type>(block.bits));
-      index_out.write_long(block.data);
-      index_out.write_long(block.last_size);
-    }
+    write_blocks_sparse(index_out, blocks_);
   } else if (ColumnType::MASK != hdr.type) {
     index_out.write_long(blocks_.front().avg);
     if (ColumnType::DENSE_FIXED == hdr.type) {
       index_out.write_long(blocks_.front().data);
     } else {
-      // FIXME optimize
-      for (auto& block : blocks_) {
-        index_out.write_long(block.data);
-      }
+      write_blocks_dense(index_out, blocks_);
     }
   }
 }
@@ -1081,9 +1087,7 @@ void reader::prepare_index(
         i)};
     }
 
-    auto index = hdr.docs_index
-      ? read_index(*index_in)
-      : column_index{};
+    auto index = read_index(*index_in);
 
     const size_t idx = static_cast<size_t>(hdr.type);
     if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
