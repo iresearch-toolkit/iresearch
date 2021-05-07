@@ -118,7 +118,7 @@ void sparse_bitmap_writer::finish() {
   flush(block_);
 
   // create a sentinel block to issue doc_limits::eof() automatically
-  add_block(block_ + 1);
+  add_block(block_ ? block_ + 1 : 0);
   block_ = doc_limits::eof() / BLOCK_SIZE;
   set(doc_limits::eof() % BLOCK_SIZE);
   do_flush(1);
@@ -369,7 +369,7 @@ void sparse_bitmap_iterator::read_block_header() {
     if (use_block_index_) {
       ctx_.dense.index.u8data = in_->read_buffer(
         DENSE_INDEX_BLOCK_SIZE_IN_BYTES,
-        BufferHint::NORMAL);
+        BufferHint::PERSISTENT);
 
       if (!ctx_.dense.index.u8data) {
         if (!block_index_data_) {
@@ -377,8 +377,10 @@ void sparse_bitmap_iterator::read_block_header() {
             DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
         }
 
+        ctx_.dense.index.u8data = block_index_data_.get();
+
         in_->read_bytes(block_index_data_.get(),
-                        DENSE_BLOCK_INDEX_BLOCK_SIZE);
+                        DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
       }
     } else {
       ctx_.dense.index.u8data = nullptr;
