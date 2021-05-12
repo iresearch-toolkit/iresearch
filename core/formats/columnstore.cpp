@@ -418,19 +418,27 @@ class dense_fixed_length_column final : public column_base {
       : data_in_{std::move(data_in)},
         data_{data},
         len_{len} {
+      buf_.resize(len_);
     }
 
     bytes_ref payload(doc_id_t i) {
       const auto offs = data_ + len_*i;
 
       data_in_->seek(offs);
-      auto* buf = data_in_->read_buffer(len_, BufferHint::NORMAL);
-      assert(buf);
+
+      // FIXME separate cases
+      auto* buf = data_in_->read_buffer(len_, BufferHint::PERSISTENT);
+
+      if (!buf) {
+        data_in_->read_bytes(buf_.data(), len_);
+        buf = buf_.c_str();
+      }
 
       return { buf, len_ };
     }
 
    private:
+    bstring buf_;
     index_input::ptr data_in_;
     uint64_t data_; // where data starts
     uint64_t len_;  // data entry length
@@ -538,13 +546,19 @@ class fixed_length_column final : public column_base {
       const auto offs = blocks_[block_idx] + len_*value_idx;
 
       data_in_->seek(offs);
-      auto* buf = data_in_->read_buffer(len_, BufferHint::NORMAL);
-      assert(buf);
+      // FIXME separate cases
+      auto* buf = data_in_->read_buffer(len_, BufferHint::PERSISTENT);
+
+      if (!buf) {
+        data_in_->read_bytes(buf_.data(), len_);
+        buf = buf_.c_str();
+      }
 
       return { buf, len_ };
     }
 
    private:
+    bstring buf_;
     index_input::ptr data_in_;
     const column_block* blocks_;
     uint64_t len_;
@@ -634,6 +648,7 @@ class sparse_column final : public column_base {
     bytes_ref payload(doc_id_t i);
 
    private:
+    bstring buf_;
     index_input::ptr data_in_;
     const column_block* blocks_;
   }; // payload_reader
@@ -653,8 +668,13 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
     data_in_->seek(addr);
-    auto* buf = data_in_->read_buffer(block.avg, BufferHint::NORMAL);
-    assert(buf);
+    auto* buf = data_in_->read_buffer(block.avg, BufferHint::PERSISTENT);
+
+    if (!buf) {
+      buf_.resize(block.avg);
+      data_in_->read_bytes(buf_.data(), block.avg);
+      buf = buf_.c_str();
+    }
 
     size_t length = block.last_size;
     if (IRS_LIKELY(block.last != index)) {
@@ -665,8 +685,15 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   }
 
   data_in_->seek(block.addr);
-  auto* addr_buf = data_in_->read_buffer(block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64), BufferHint::NORMAL);
-  assert(addr_buf);
+  const size_t block_size = block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64);
+  auto* addr_buf = data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
+
+  // FIXME separate cases
+  if (!addr_buf) {
+    buf_.resize(block_size);
+    data_in_->read_bytes(buf_.data(), block.avg);
+    addr_buf = buf_.c_str();
+  }
 
   const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
   const uint64_t start = block.avg*index + start_delta;
@@ -678,8 +705,12 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   }
 
   data_in_->seek(block.data + start);
-  auto* buf = data_in_->read_buffer(length, BufferHint::NORMAL);
-  assert(buf);
+  auto* buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
+  if (!buf) {
+    buf_.resize(length);
+    data_in_->read_bytes(buf_.data(), length);
+    buf = buf_.c_str();
+  }
 
   return { buf, length };
 }

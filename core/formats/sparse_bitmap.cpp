@@ -117,8 +117,11 @@ namespace iresearch {
 void sparse_bitmap_writer::finish() {
   flush(block_);
 
+  if (block_index_.size() < BLOCK_SIZE) {
+    add_block(block_ ? block_ + 1 : 0);
+  }
+
   // create a sentinel block to issue doc_limits::eof() automatically
-  add_block(block_ ? block_ + 1 : 0);
   block_ = doc_limits::eof() / BLOCK_SIZE;
   set(doc_limits::eof() % BLOCK_SIZE);
   do_flush(1);
@@ -223,7 +226,7 @@ struct container_iterator<BT_DENSE> {
       assert(delta > 0);
 
       if constexpr (AT_STREAM == Access) {
-        self->in_->seek(self->in_->file_pointer() + delta*sizeof(size_t));
+        self->in_->seek(self->in_->file_pointer() + (delta-1)*sizeof(size_t));
         ctx.word = self->in_->read_long();
       } else {
         ctx.u64data += delta;
