@@ -34,8 +34,8 @@
 namespace iresearch {
 namespace packed {
 
-const uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
-const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
+constexpr uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
+constexpr uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
 
 FORCE_INLINE uint32_t maxbits64(uint64_t val) noexcept {
   return math::math_traits<uint64_t>::bits_required(val);
@@ -105,31 +105,9 @@ inline T max_value(uint32_t bits) noexcept {
     : ~(~T(0) << bits);
 }
 
-IRESEARCH_API uint32_t at(
-  const uint32_t* encoded, 
-  const size_t i, 
-  const uint32_t bit) noexcept;
-
-IRESEARCH_API uint64_t at(
-  const uint64_t* encoded, 
-  const size_t i, 
-  const uint32_t bit) noexcept;
-
-IRESEARCH_API void pack(
-  const uint32_t* first, 
-  const uint32_t* last, 
-  uint32_t* out, 
-  const uint32_t bit) noexcept;
-
 IRESEARCH_API void pack_block(
   const uint32_t* RESTRICT first,
   uint32_t* RESTRICT out,
-  const uint32_t bit) noexcept;
-
-IRESEARCH_API void pack(
-  const uint64_t* first, 
-  const uint64_t* last, 
-  uint64_t* out, 
   const uint32_t bit) noexcept;
 
 IRESEARCH_API void pack_block(
@@ -137,27 +115,89 @@ IRESEARCH_API void pack_block(
   uint64_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API void unpack(
-  uint32_t* first, 
-  uint32_t* last, 
-  const uint32_t* in, 
-  const uint32_t bit) noexcept;
-
 IRESEARCH_API void unpack_block(
   const uint32_t* RESTRICT in,
   uint32_t* RESTRICT out,
-  const uint32_t bit) noexcept;
-
-IRESEARCH_API void unpack(
-  uint64_t* first, 
-  uint64_t* last, 
-  const uint64_t* in, 
   const uint32_t bit) noexcept;
 
 IRESEARCH_API void unpack_block(
   const uint64_t* RESTRICT in,
   uint64_t* RESTRICT out,
   const uint32_t bit) noexcept;
+
+IRESEARCH_API uint32_t fastpack_at(
+  const uint32_t* encoded,
+  const size_t i,
+  const uint32_t bit) noexcept;
+
+IRESEARCH_API uint64_t fastpack_at(
+  const uint64_t* encoded,
+  const size_t i,
+  const uint32_t bit) noexcept;
+
+inline uint32_t at(
+    const uint32_t* encoded,
+    const size_t i,
+    const uint32_t bit) noexcept {
+  return fastpack_at(
+    encoded + bit * (i / BLOCK_SIZE_32),
+    i % BLOCK_SIZE_32,
+    bit);
+}
+
+inline uint64_t at(
+    const uint64_t* encoded,
+    const size_t i,
+    const uint32_t bit) noexcept {
+  return fastpack_at(
+    encoded + bit * (i / BLOCK_SIZE_64),
+    i % BLOCK_SIZE_64,
+    bit);
+}
+
+inline void pack(
+    const uint32_t* first,
+    const uint32_t* last,
+    uint32_t* out,
+    const uint32_t bit) noexcept {
+  assert(0 == (last - first) % BLOCK_SIZE_32);
+
+  for (; first < last; first += BLOCK_SIZE_32, out += bit) {
+    pack_block(first, out, bit);
+  }
+}
+
+inline void pack(
+    const uint64_t* first,
+    const uint64_t* last,
+    uint64_t* out,
+    const uint32_t bit) noexcept {
+  assert(0 == (last - first) % BLOCK_SIZE_64);
+
+  for (; first < last; first += BLOCK_SIZE_64, out += bit) {
+    pack_block(first, out, bit);
+  }
+}
+
+inline void unpack(
+    uint32_t* first,
+    uint32_t* last,
+    const uint32_t* in,
+    const uint32_t bit) noexcept {
+  for (; first < last; first += BLOCK_SIZE_32, in += bit) {
+    unpack_block(in, first, bit);
+  }
+}
+
+inline void unpack(
+    uint64_t* first,
+    uint64_t* last,
+    const uint64_t* in,
+    const uint32_t bit) noexcept {
+  for (; first < last; first += BLOCK_SIZE_64, in += bit) {
+    unpack_block(in, first, bit);
+  }
+}
 
 template<typename T>
 class iterator {
