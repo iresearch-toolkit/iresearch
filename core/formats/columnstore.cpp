@@ -668,39 +668,54 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
     data_in_->seek(addr);
-    auto* buf = data_in_->read_buffer(block.avg, BufferHint::PERSISTENT);
-
-    if (!buf) {
-      buf_.resize(block.avg);
-      data_in_->read_bytes(buf_.data(), block.avg);
-      buf = buf_.c_str();
-    }
 
     size_t length = block.last_size;
     if (IRS_LIKELY(block.last != index)) {
       length = block.avg;
     }
 
+    auto* buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
+
+    if (!buf) {
+      buf_.resize(length);
+      data_in_->read_bytes(buf_.data(), length);
+      buf = buf_.c_str();
+    }
+
     return { buf, length };
   }
 
-  data_in_->seek(block.addr);
-  const size_t block_size = block.bits*(column::BLOCK_SIZE/packed::BLOCK_SIZE_64);
+  const size_t block_size = block.bits*sizeof(uint64_t);
+  size_t block_index = index / packed::BLOCK_SIZE_64;
+  size_t value_index = index % packed::BLOCK_SIZE_64;
+
+  data_in_->seek(block.addr + block_index*block_size);
   auto* addr_buf = data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
 
   // FIXME separate cases
   if (!addr_buf) {
     buf_.resize(block_size);
-    data_in_->read_bytes(buf_.data(), block.avg);
+    data_in_->read_bytes(buf_.data(), block_size);
     addr_buf = buf_.c_str();
   }
 
-  const uint64_t start_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index, block.bits));
+  const uint64_t start_delta = zig_zag_decode64(packed::fastpack_at(reinterpret_cast<const uint64_t*>(addr_buf), value_index, block.bits));
   const uint64_t start = block.avg*index + start_delta;
 
   size_t length = block.last_size;
   if (IRS_LIKELY(block.last != index)) {
-    const uint64_t end_delta = zig_zag_decode64(packed::at(reinterpret_cast<const uint64_t*>(addr_buf), index + 1, block.bits));
+    if (IRS_UNLIKELY(++value_index == 64)) {
+      value_index = 0;
+      addr_buf = data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
+
+      if (!addr_buf) {
+        buf_.resize(block_size);
+        data_in_->read_bytes(buf_.data(), block_size);
+        addr_buf = buf_.c_str();
+      }
+    }
+
+    const uint64_t end_delta = zig_zag_decode64(packed::fastpack_at(reinterpret_cast<const uint64_t*>(addr_buf), value_index, block.bits));
     length = end_delta - start_delta + block.avg;
   }
 

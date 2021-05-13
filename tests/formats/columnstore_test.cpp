@@ -266,9 +266,10 @@ TEST_P(columnstore_test_case, sparse_column) {
       ASSERT_EQ(column->size(), cost->estimate());
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+        SCOPED_TRACE(doc);
         ASSERT_EQ(doc, it->seek(doc));
         const auto str = std::to_string(doc);
-        EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        ASSERT_EQ(str, irs::ref_cast<char>(payload->value));
       }
     }
 
