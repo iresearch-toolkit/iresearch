@@ -388,6 +388,127 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(make_filter("title", "", 5, 0, true), docs_t{}, costs_t{0}, rdr);
 }
 
+TEST_P(by_edit_distance_test_case, bm25) {
+  using tests::json_doc_generator;
+  using tests::field_base;
+
+  auto analyzer = irs::analysis::analyzers::get(
+    "text", irs::type<irs::text_format::json>::get(),
+    R"({"locale":"en.UTF-8", "stem":false, "accent":false, "case":"lower", "stopwords":[]})");
+  ASSERT_NE(nullptr, analyzer);
+
+  struct text_field : field_base {
+   public:
+    text_field(irs::analysis::analyzer& analyzer, std::string value)
+      : value_(std::move(value)), analyzer_(&analyzer) {
+      this->name("id");
+      this->features().add<irs::frequency>();
+      this->features().add<irs::norm>();
+    }
+
+    bool write(data_output&) const noexcept {
+      return true;
+    }
+
+    irs::token_stream& get_tokens() const {
+      const bool res = analyzer_->reset(value_);
+      EXPECT_TRUE(res);
+      return *analyzer_;
+    }
+
+   private:
+    std::string value_;
+    irs::analysis::analyzer* analyzer_;
+  };
+
+  {
+    json_doc_generator gen(
+      resource("v_DSS_Entity_id.json"),
+      [&analyzer](tests::document& doc,
+         const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (json_doc_generator::ValueType::STRING == data.vt && name == "id") {
+          auto field = std::make_shared<text_field>(
+            *analyzer, std::string{data.str.data, data.str.size});
+          doc.insert(field);
+        }
+      });
+
+    add_segment(gen);
+  }
+
+  irs::order ord;
+  auto scorer = irs::scorers::get(
+    "bm25",
+    irs::type<irs::text_format::json>::get(),
+    irs::string_ref::NIL);
+  ASSERT_NE(nullptr, scorer);
+  ord.add(false, std::move(scorer));
+  auto prepared_order = ord.prepare();
+
+  auto index = open_reader();
+  ASSERT_NE(nullptr, index);
+  ASSERT_EQ(1, index->size());
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    {
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(261, docs->value());
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(6.21361256f, *value);
+    }
+
+    {
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(272, docs->value());
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(9.32042027f, *value);
+    }
+
+    {
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(273, docs->value());
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(7.76701689f, *value);
+    }
+
+    {
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(289, docs->value());
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(6.21361256f, *value);
+    }
+
+    ASSERT_FALSE(docs->next());
+  }
+}
+
 TEST_P(by_edit_distance_test_case, visit) {
   // add segment
   {
