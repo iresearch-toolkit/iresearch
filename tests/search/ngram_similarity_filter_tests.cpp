@@ -1075,7 +1075,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   check_query(filter, order, expected, rdr);
 }
 
-TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
+TEST_P(ngram_similarity_filter_test_case, missed_first_bm11_test) {
   {
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1089,7 +1089,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   docs_t expected{ 11, 12, 13, 8, 5, 1, 2};
   irs::order order;
-  order.add<irs::bm25_sort>(false).b(1); // set to BM15 mode
+  order.add<irs::bm25_sort>(false).b(1); // set to BM11 mode
 
   check_query(filter, order, expected, rdr);
 }
