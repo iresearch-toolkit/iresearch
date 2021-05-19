@@ -218,7 +218,7 @@ via the distributions' package manager: libstemmer
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+git reset --hard adc028f3ae646623bda2f99191fe9dc3287a909b
 mkdir build && cd build
 set PATH=%PATH%;<path-to>/build/Debug
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Visual studio 12" -Ax64 ..
