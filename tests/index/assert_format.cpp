@@ -692,7 +692,7 @@ irs::column_meta_reader::ptr format::get_column_meta_reader() const {
   return nullptr;
 }
 
-irs::columnstore_writer::ptr format::get_columnstore_writer() const {
+irs::columnstore_writer::ptr format::get_columnstore_writer(bool /*consolidation*/) const {
   return nullptr;
 }
 

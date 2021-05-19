@@ -46,14 +46,14 @@ enum class Version : int32_t {
   /// * term dictionary stored on disk as fst::fstext::ImmutableFst<...>
   ////////////////////////////////////////////////////////////////////////////
   MAX = 2
-};
+}; // Version
 
-irs::field_writer::ptr make_writer(
+IRESEARCH_API irs::field_writer::ptr make_writer(
   Version version,
   irs::postings_writer::ptr&& writer,
   bool consolidation);
 
-irs::field_reader::ptr make_reader(
+IRESEARCH_API irs::field_reader::ptr make_reader(
   irs::postings_reader::ptr&& reader);
 
 } // burst_trie

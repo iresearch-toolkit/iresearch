@@ -88,6 +88,7 @@ set(IResearch_core_sources
   ./analysis/token_streams.cpp
   ./error/error.cpp
   ./formats/columnstore.cpp
+  ./formats/columnstore2.cpp
   ./formats/formats.cpp
   ./formats/format_utils.cpp
   ./formats/skip_list.cpp

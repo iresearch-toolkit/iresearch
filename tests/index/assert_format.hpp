@@ -386,7 +386,7 @@ class format : public irs::format {
   virtual irs::column_meta_writer::ptr get_column_meta_writer() const override;
   virtual irs::column_meta_reader::ptr get_column_meta_reader() const override;
 
-  virtual irs::columnstore_writer::ptr get_columnstore_writer() const override;
+  virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
   virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
 
  private:

@@ -23,7 +23,7 @@
 #include "tests_shared.hpp"
 #include "tests_param.hpp"
 
-#include "formats/columnstore.hpp"
+#include "formats/columnstore2.hpp"
 
 class columnstore_test_case : public virtual tests::directory_test_case_base<bool> {
  public:
@@ -47,7 +47,7 @@ class columnstore_test_case : public virtual tests::directory_test_case_base<boo
 };
 
 TEST_P(columnstore_test_case, reader_ctor) {
-  irs::columns::reader reader;
+  irs::columns2::reader reader;
   ASSERT_EQ(0, reader.size());
   ASSERT_EQ(nullptr, reader.column(0));
   ASSERT_EQ(nullptr, reader.header(0));
@@ -62,13 +62,13 @@ TEST_P(columnstore_test_case, empty_columnstore) {
   state.name = meta.name;
   state.features = &irs::flags::empty_instance();
 
-  irs::columns::writer writer(this->consolidation());
+  irs::columns2::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
   writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
   writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
   ASSERT_FALSE(writer.commit(state));
 
-  irs::columns::reader reader;
+  irs::columns2::reader reader;
   ASSERT_FALSE(reader.prepare(dir(), meta));
 }
 
@@ -81,7 +81,7 @@ TEST_P(columnstore_test_case, empty_column) {
   state.name = meta.name;
   state.features = &irs::flags::empty_instance();
 
-  irs::columns::writer writer(this->consolidation());
+  irs::columns2::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
   auto [id0, handle0] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
   auto [id1, handle1] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
@@ -89,7 +89,7 @@ TEST_P(columnstore_test_case, empty_column) {
   handle1(42).write_byte(42);
   ASSERT_TRUE(writer.commit(state));
 
-  irs::columns::reader reader;
+  irs::columns2::reader reader;
   ASSERT_TRUE(reader.prepare(dir(), meta));
   ASSERT_EQ(2, reader.size());
 
@@ -100,8 +100,8 @@ TEST_P(columnstore_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::invalid(), header->min);
-    ASSERT_EQ(irs::columns::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -117,8 +117,8 @@ TEST_P(columnstore_test_case, empty_column) {
     ASSERT_EQ(1, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(42, header->min);
-    ASSERT_EQ(irs::columns::ColumnType::SPARSE, header->type); // FIXME why sparse?
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type); // FIXME why sparse?
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto column = reader.column(1);
     ASSERT_NE(nullptr, column);
@@ -151,7 +151,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(this->consolidation());
+    irs::columns2::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -166,7 +166,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
   }
 
   {
-    irs::columns::reader reader;
+    irs::columns2::reader reader;
     ASSERT_TRUE(reader.prepare(dir(), meta));
     ASSERT_EQ(1, reader.size());
 
@@ -175,8 +175,8 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
     ASSERT_EQ(MAX/2, header->docs_count);
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columns::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -222,7 +222,7 @@ TEST_P(columnstore_test_case, sparse_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(this->consolidation());
+    irs::columns2::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -239,7 +239,7 @@ TEST_P(columnstore_test_case, sparse_column) {
   }
 
   {
-    irs::columns::reader reader;
+    irs::columns2::reader reader;
     ASSERT_TRUE(reader.prepare(dir(), meta));
     ASSERT_EQ(1, reader.size());
 
@@ -248,8 +248,8 @@ TEST_P(columnstore_test_case, sparse_column) {
     ASSERT_EQ(MAX/2, header->docs_count);
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columns::ColumnType::SPARSE, header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -300,7 +300,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(this->consolidation());
+    irs::columns2::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -315,7 +315,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
   }
 
   {
-    irs::columns::reader reader;
+    irs::columns2::reader reader;
     ASSERT_TRUE(reader.prepare(dir(), meta));
     ASSERT_EQ(1, reader.size());
 
@@ -324,8 +324,8 @@ TEST_P(columnstore_test_case, dense_mask_column) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columns::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -375,7 +375,7 @@ TEST_P(columnstore_test_case, dense_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(this->consolidation());
+    irs::columns2::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -392,7 +392,7 @@ TEST_P(columnstore_test_case, dense_column) {
   }
 
   {
-    irs::columns::reader reader;
+    irs::columns2::reader reader;
     ASSERT_TRUE(reader.prepare(dir(), meta));
     ASSERT_EQ(1, reader.size());
 
@@ -401,8 +401,8 @@ TEST_P(columnstore_test_case, dense_column) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columns::ColumnType::SPARSE, header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -452,7 +452,7 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
   state.features = &irs::flags::empty_instance();
 
   {
-    irs::columns::writer writer(this->consolidation());
+    irs::columns2::writer writer(this->consolidation());
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column({
@@ -469,7 +469,7 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
   }
 
   {
-    irs::columns::reader reader;
+    irs::columns2::reader reader;
     ASSERT_TRUE(reader.prepare(dir(), meta));
     ASSERT_EQ(1, reader.size());
 
@@ -480,10 +480,10 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(
       this->consolidation()
-        ? irs::columns::ColumnType::DENSE_FIXED
-        : irs::columns::ColumnType::FIXED,
+        ? irs::columns2::ColumnType::DENSE_FIXED
+        : irs::columns2::ColumnType::FIXED,
       header->type);
-    ASSERT_EQ(irs::columns::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);

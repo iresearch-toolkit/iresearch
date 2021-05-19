@@ -61,7 +61,7 @@ std::pair<T, T> maxmin(const T* begin, size_t size) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
-  assert(0 == (size % Unroll*Step));
+  assert(0 == (size % (Unroll*Step)));
 
   auto minacc = Set(simd_tag, std::numeric_limits<T>::max());
   auto maxacc = Set(simd_tag, std::numeric_limits<T>::min());
@@ -91,7 +91,7 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
-  assert(0 == (size % Unroll*Step));
+  assert(0 == (size % (Unroll*Step)));
 
   auto oracc = Zero(simd_tag);
   for (size_t i = 0; i < size; i += Unroll*Step) {
@@ -115,7 +115,7 @@ bool all_equal(const T* RESTRICT begin, const T* RESTRICT end) noexcept {
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
-  assert(0 == (std::distance(begin, end) % Step));
+  assert(0 == (std::distance(begin, end) % (Unroll*Step)));
 
   if (begin == end) {
     return true;
@@ -218,7 +218,7 @@ void subtract(T* begin, size_t size, T value) noexcept {
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
-  assert(0 == (size % Unroll*Step));
+  assert(0 == (size % (Unroll*Step)));
 
   size_t i = 0;
 
@@ -257,7 +257,7 @@ template<
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % Unroll*Step));
+  static_assert(0 == (Length % (Unroll*Step)));
   assert(begin[Length-1] >= begin[0]);
 
   const unsigned_type base = *begin;
@@ -297,7 +297,7 @@ template<
   constexpr size_t Step = MaxLanes(simd_tag);
   constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % Unroll*Step));
+  static_assert(0 == (Length % (Unroll*Step)));
   assert(begin[Length-1] >= begin[0]);
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);

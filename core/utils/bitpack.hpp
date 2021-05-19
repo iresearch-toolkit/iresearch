@@ -99,6 +99,7 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
+//  if (irstd::all_equal(decoded, decoded + size)) {
   if (simd::all_equal<false>(decoded, decoded + size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
@@ -111,6 +112,7 @@ uint32_t write_block32(
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + size);
 #endif
+  assert(bits);
 
   const size_t buf_size = packed::bytes_required_32(size, bits);
   std::memset(encoded, 0, buf_size);
@@ -148,6 +150,7 @@ uint32_t write_block32(
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + Size);
 #endif
+  assert(bits);
 
   const size_t buf_size = packed::bytes_required_32(Size, bits);
   std::memset(encoded, 0, buf_size);

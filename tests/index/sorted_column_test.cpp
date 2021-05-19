@@ -84,7 +84,7 @@ TEST(sorted_column_test, flush_empty) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -161,7 +161,7 @@ TEST(sorted_column_test, insert_duplicates) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -278,7 +278,7 @@ TEST(sorted_column_test, sort) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer();
+    auto writer = codec->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);

@@ -880,7 +880,7 @@ class columnstore {
       const irs::segment_meta& meta,
       const irs::merge_writer::flush_progress_t& progress)
     : progress_(progress, PROGRESS_STEP_COLUMN) {
-    auto writer = meta.codec->get_columnstore_writer();
+    auto writer = meta.codec->get_columnstore_writer(true);
     writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
@@ -1548,7 +1548,7 @@ bool merge_writer::flush_sorted(
   sorting_compound_column_iterator columns_it(*comparator_);
   columns_it.reset(std::move(itrs));
 
-  auto writer = segment.meta.codec->get_columnstore_writer();
+  auto writer = segment.meta.codec->get_columnstore_writer(true);
   writer->prepare(dir, segment.meta);
 
   // get column info for sorted column

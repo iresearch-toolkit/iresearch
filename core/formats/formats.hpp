@@ -510,7 +510,7 @@ class IRESEARCH_API format {
   virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
   virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const = 0;
+  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   const type_info& type() const { return type_; }

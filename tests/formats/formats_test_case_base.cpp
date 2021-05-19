@@ -1022,7 +1022,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
@@ -1092,7 +1092,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::type<irs::compression::lz4>::get(),
@@ -1144,7 +1144,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
   // write bit mask into the column without actual data
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
@@ -1378,7 +1378,7 @@ TEST_P(format_test_case, columns_rw_empty) {
 
   // add columns
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
     column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
@@ -1440,7 +1440,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     irs::doc_id_t id = 0;
     writer->prepare(dir(), seg);
 
@@ -1538,7 +1538,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   // write big document
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
@@ -1699,7 +1699,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
 
     // write 1st segment
     irs::doc_id_t id = 0;
@@ -1968,7 +1968,7 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   // write stored documents
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta);
 
     irs::doc_id_t id = 0;
@@ -2224,7 +2224,7 @@ TEST_P(format_test_case, columns_issue700) {
   meta.codec = codec();
 
   {
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     ASSERT_NE(nullptr, writer);
     writer->prepare(dir(), meta);
 
@@ -2288,7 +2288,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   {
     // write columns values
-    auto writer = codec()->get_columnstore_writer();
+    auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
     dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
@@ -2488,7 +2488,7 @@ TEST_P(format_test_case, columns_rw) {
   }
 
   // write columns values
-  auto writer = codec()->get_columnstore_writer();
+  auto writer = codec()->get_columnstore_writer(false);
 
   // write _1 segment
   {

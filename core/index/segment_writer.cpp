@@ -363,7 +363,7 @@ void segment_writer::reset(const segment_meta& meta) {
   }
 
   if (!col_writer_) {
-    col_writer_ = meta.codec->get_columnstore_writer();
+    col_writer_ = meta.codec->get_columnstore_writer(false);
     assert(col_writer_);
   }
 
