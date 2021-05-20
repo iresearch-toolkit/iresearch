@@ -709,6 +709,7 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
       addr_buf = data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
 
       if (!addr_buf) {
+        buf_.resize(block_size);
         data_in_->read_bytes(buf_.data(), block_size);
         addr_buf = buf_.c_str();
       }

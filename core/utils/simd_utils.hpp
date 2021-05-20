@@ -141,7 +141,7 @@ FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
 }
 
 FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
-   Vec<HWY_FULL(uint32_t)> uv) noexcept {
+    Vec<HWY_FULL(uint32_t)> uv) noexcept {
   constexpr HWY_FULL(int32_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
   return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag)-(v & Set(simd_tag, 1))));
