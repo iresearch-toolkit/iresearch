@@ -99,7 +99,7 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(decoded, decoded + size)) {
+  if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
@@ -137,7 +137,7 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(decoded, decoded + Size)) {
+  if (simd::all_equal<false>(decoded, Size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;
@@ -176,7 +176,7 @@ uint32_t write_block64(
   assert(encoded);
   assert(decoded);
 
-  if (simd::all_equal<false>(decoded, decoded + size)) {
+  if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
     return ALL_EQUAL;

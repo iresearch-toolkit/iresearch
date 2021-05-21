@@ -86,10 +86,16 @@ TEST(simd_utils_test, all_equal) {
   constexpr size_t BLOCK_SIZE = 128;
   HWY_ALIGN uint32_t values[BLOCK_SIZE*2];
   std::fill(std::begin(values), std::end(values), 42);
-  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
+  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)));
+  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)-1));
+  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), 31));
+  ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), 33));
 
   values[0] = 0;
-  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)-1));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 31));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 33));
 
   {
     auto* begin = values;
@@ -101,7 +107,10 @@ TEST(simd_utils_test, all_equal) {
       begin += 4;
     }
   }
-  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), std::end(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), IRESEARCH_COUNTOF(values)-1));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 31));
+  ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 33));
 }
 
 TEST(simd_utils_test, maxmin) {
@@ -111,6 +120,9 @@ TEST(simd_utils_test, maxmin) {
   ASSERT_EQ(
     (std::pair<uint32_t, uint32_t>(42, 42 + IRESEARCH_COUNTOF(values) - 1)),
     (irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(values)));
+  ASSERT_EQ(
+    (std::pair<uint32_t, uint32_t>(42, 42 + IRESEARCH_COUNTOF(values) - 2)),
+    (irs::simd::maxmin<IRESEARCH_COUNTOF(values)-1, true>(values)));
 }
 
 TEST(simd_utils_test, maxbits) {
@@ -124,9 +136,25 @@ TEST(simd_utils_test, maxbits) {
     ASSERT_EQ(irs::packed::maxbits32(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));
   }
 
+  // 32-bit
+  {
+    HWY_ALIGN uint32_t values[BLOCK_SIZE-1];
+    std::iota(std::begin(values), std::end(values), 42);
+    const auto max = *std::max_element(std::begin(values), std::end(values));
+    ASSERT_EQ(irs::packed::maxbits32(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));
+  }
+
   // 64-bit
   {
     HWY_ALIGN uint64_t values[BLOCK_SIZE*2];
+    std::iota(std::begin(values), std::end(values), 42);
+    const auto max = *std::max_element(std::begin(values), std::end(values));
+    ASSERT_EQ(irs::packed::maxbits64(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));
+  }
+
+  // 64-bit
+  {
+    HWY_ALIGN uint64_t values[BLOCK_SIZE-1];
     std::iota(std::begin(values), std::end(values), 42);
     const auto max = *std::max_element(std::begin(values), std::end(values));
     ASSERT_EQ(irs::packed::maxbits64(max), irs::simd::maxbits<true>(values, IRESEARCH_COUNTOF(values)));

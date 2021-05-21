@@ -814,7 +814,7 @@ void column::flush_block() {
 
   std::tie(block.data, block.avg) = encode::avg::encode(begin, addr_table_.current());
 
-  if (simd::all_equal<false>(begin, end)) {
+  if (simd::all_equal<false>(begin, addr_table_size)) {
     block.bits = bitpack::ALL_EQUAL;
 
     // column is fixed length IFF

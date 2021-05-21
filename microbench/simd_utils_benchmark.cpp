@@ -11,51 +11,21 @@ namespace {
 
 constexpr size_t BLOCK_SIZE = 65536;
 
-template<typename T>
-std::unique_ptr<T[]> allocate(size_t size) {
-  return std::make_unique<T[]>(size);
-}
-
-template<typename T>
-std::unique_ptr<T, void(*)(T*)> allocate_aligned(size_t size, size_t align) {
-  return {
-    reinterpret_cast<T*>(aligned_alloc(align, size)),
-    [](T* ptr) { free(ptr); }
-  };
-}
-
 struct HWY_ALIGN aligned_type { };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             delta
 // -----------------------------------------------------------------------------
 
-/*
 void BM_delta_encode(benchmark::State& state) {
-  const size_t size = state.range(0);
-  auto values = allocate<uint32_t>(size);
-  auto begin = values.get();
-  auto end = begin + state.range(0);
+  uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
-    std::iota(begin, end, ::rand());
-    irs::encode::delta::encode(begin, end);
+    std::iota(std::begin(values), std::end(values), 0);
+    irs::encode::delta::encode(std::begin(values), std::end(values));
   }
 }
 
-BENCHMARK(BM_delta_encode)->RangeMultiplier(2)->Range(128, 65536);
-
-void BM_delta_encode_simd_aligned(benchmark::State& state) {
-  const size_t size = state.range(0);
-  auto values = allocate_aligned<uint32_t>(size, alignof(aligned_type));
-  auto begin = values.get();
-  auto end = begin + state.range(0);
-  for (auto _ : state) {
-    std::iota(begin, end, ::rand());
-    irs::simd::delta_encode<true>(begin, size, 0U);
-  }
-}
-
-BENCHMARK(BM_delta_encode_simd_aligned)->RangeMultiplier(2)->Range(128, 65536);
+BENCHMARK(BM_delta_encode);
 
 void BM_delta_encode_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
@@ -65,8 +35,7 @@ void BM_delta_encode_simd_unaligned(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_delta_encode_simd_unaligned)->RangeMultiplier(2)->Range(128, 65536);
-*/
+BENCHMARK(BM_delta_encode_simd_unaligned);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      avg_encode32
@@ -319,12 +288,36 @@ void BM_all_equal32_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::end(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
 
 BENCHMARK(BM_all_equal32_simd_unaligned);
+
+void BM_all_equal32_small(benchmark::State& state) {
+  uint32_t values[32];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal32_small);
+
+void BM_all_equal32_small_simd_unaligned(benchmark::State& state) {
+  uint32_t values[32];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal32_small_simd_unaligned);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       all_equal64
@@ -347,11 +340,35 @@ void BM_all_equal64_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::end(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
 
 BENCHMARK(BM_all_equal64_simd_unaligned);
+
+void BM_all_equal64_small(benchmark::State& state) {
+  uint64_t values[64];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal64_small);
+
+void BM_all_equal64_small_simd_unaligned(benchmark::State& state) {
+  uint64_t values[64];
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
+
+  for (auto _ : state) {
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
+    benchmark::DoNotOptimize(res);
+  }
+}
+
+BENCHMARK(BM_all_equal64_small_simd_unaligned);
 
 }
