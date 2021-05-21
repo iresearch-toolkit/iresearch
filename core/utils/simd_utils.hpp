@@ -28,7 +28,6 @@
 
 #include "shared.hpp"
 #include "utils/bit_packing.hpp"
-#include "utils/std.hpp"
 
 namespace iresearch {
 namespace simd {
