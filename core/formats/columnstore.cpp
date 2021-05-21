@@ -49,6 +49,9 @@
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                               columnstore format
+// ----------------------------------------------------------------------------
 // |Header|
 // |Compressed block #0|
 // |Compressed block #1|
@@ -59,10 +62,11 @@
 // |Compressed block #2|
 // ...
 // |Last block #0 key|Block #0 offset|
-// |Last block #1 key|Block #1 offset| <-- Columnstore blocks index
+// |Last block #1 key|Block #1 offset| <-- Columnstore block index
 // |Last block #2 key|Block #2 offset|
 // ...
 // |Footer|
+// ----------------------------------------------------------------------------
 
 namespace {
 
@@ -93,6 +97,10 @@ struct format_traits {
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
 }; // format_traits
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 Format constants
+// ----------------------------------------------------------------------------
 
 constexpr uint32_t INDEX_BLOCK_SIZE = 1024;
 constexpr size_t MAX_DATA_BLOCK_SIZE = 8192;

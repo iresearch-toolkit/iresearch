@@ -22,14 +22,6 @@
 
 #include "formats_10.hpp"
 
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <deque>
-#include <list>
-#include <numeric>
-
 extern "C" {
 #include <simdbitpacking.h>
 #include <avxbitpacking.h>
@@ -57,22 +49,16 @@ extern "C" {
 #include "store/store_utils.hpp"
 
 #include "utils/bitpack.hpp"
-#include "utils/bit_utils.hpp"
-#include "utils/bitset.hpp"
-#include "utils/lz4compression.hpp"
 #include "utils/encryption.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/std.hpp"
-#include "utils/simd_utils.hpp"
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4351)
@@ -2726,10 +2712,6 @@ bool meta_reader::read(column_meta& column) {
 
   return true;
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 Format constants
-// ----------------------------------------------------------------------------
 
 } // columns
 
