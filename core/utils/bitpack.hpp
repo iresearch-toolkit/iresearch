@@ -99,7 +99,6 @@ uint32_t write_block32(
   assert(encoded);
   assert(decoded);
 
-//  if (irstd::all_equal(decoded, decoded + size)) {
   if (simd::all_equal<false>(decoded, decoded + size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
@@ -226,7 +225,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, decoded + Size, in.read_vint());
+    std::fill_n(decoded, Size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(Size, bits);
 
@@ -269,7 +268,7 @@ void read_block32(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, decoded + size, in.read_vint());
+    std::fill_n(decoded, size, in.read_vint());
   } else {
     const size_t required = packed::bytes_required_32(size, bits);
 
@@ -311,7 +310,7 @@ void read_block64(
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, decoded + Size, in.read_vlong());
+    std::fill_n(decoded, Size, in.read_vlong());
   } else {
     const size_t required = packed::bytes_required_64(Size, bits);
 
