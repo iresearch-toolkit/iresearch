@@ -553,7 +553,9 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::memory_directory,
       &tests::fs_directory,
       &tests::mmap_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>),
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>),
     ::testing::Values(false, true)),
   &columnstore_test_case::to_string
 );
