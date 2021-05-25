@@ -75,6 +75,7 @@ TEST_P(columnstore_test_case, empty_columnstore) {
 TEST_P(columnstore_test_case, empty_column) {
   constexpr irs::doc_id_t MAX = 1;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -83,9 +84,9 @@ TEST_P(columnstore_test_case, empty_column) {
 
   irs::columns2::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
-  auto [id0, handle0] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
-  auto [id1, handle1] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
-  auto [id2, handle2] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, false });
+  auto [id0, handle0] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, has_encryption });
+  auto [id1, handle1] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, has_encryption });
+  auto [id2, handle2] = writer.push_column({ irs::type<irs::compression::none>::get(), {}, has_encryption });
   handle1(42).write_byte(42);
   ASSERT_TRUE(writer.commit(state));
 
@@ -101,7 +102,9 @@ TEST_P(columnstore_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::invalid(), header->min);
     ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -118,7 +121,9 @@ TEST_P(columnstore_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(42, header->min);
     ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type); // FIXME why sparse?
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto column = reader.column(1);
     ASSERT_NE(nullptr, column);
@@ -144,6 +149,7 @@ TEST_P(columnstore_test_case, empty_column) {
 TEST_P(columnstore_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -156,7 +162,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
 
     auto [id, column] = writer.push_column({
       irs::type<irs::compression::none>::get(),
-      {}, false });
+      {}, has_encryption});
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       column(doc);
@@ -176,7 +182,9 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -215,6 +223,7 @@ TEST_P(columnstore_test_case, sparse_mask_column) {
 TEST_P(columnstore_test_case, sparse_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -227,7 +236,7 @@ TEST_P(columnstore_test_case, sparse_column) {
 
     auto [id, column] = writer.push_column({
       irs::type<irs::compression::none>::get(),
-      {}, false });
+      {}, has_encryption });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto& stream = column(doc);
@@ -249,7 +258,9 @@ TEST_P(columnstore_test_case, sparse_column) {
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -293,6 +304,7 @@ TEST_P(columnstore_test_case, sparse_column) {
 TEST_P(columnstore_test_case, dense_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -305,7 +317,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
 
     auto [id, column] = writer.push_column({
       irs::type<irs::compression::none>::get(),
-      {}, false });
+      {}, has_encryption });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
       column(doc);
@@ -325,7 +337,9 @@ TEST_P(columnstore_test_case, dense_mask_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(irs::columns2::ColumnType::MASK, header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -368,6 +382,7 @@ TEST_P(columnstore_test_case, dense_mask_column) {
 TEST_P(columnstore_test_case, dense_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -380,7 +395,7 @@ TEST_P(columnstore_test_case, dense_column) {
 
     auto [id, column] = writer.push_column({
       irs::type<irs::compression::none>::get(),
-      {}, false });
+      {}, has_encryption});
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
       auto& stream = column(doc);
@@ -402,7 +417,9 @@ TEST_P(columnstore_test_case, dense_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(irs::columns2::ColumnType::SPARSE, header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -445,6 +462,7 @@ TEST_P(columnstore_test_case, dense_column) {
 TEST_P(columnstore_test_case, dense_fixed_length_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -457,7 +475,7 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
 
     auto [id, column] = writer.push_column({
       irs::type<irs::compression::none>::get(),
-      {}, false });
+      {}, has_encryption });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
       auto& stream = column(doc);
@@ -483,7 +501,9 @@ TEST_P(columnstore_test_case, dense_fixed_length_column) {
         ? irs::columns2::ColumnType::DENSE_FIXED
         : irs::columns2::ColumnType::FIXED,
       header->type);
-    ASSERT_EQ(irs::columns2::ColumnProperty::NORMAL, header->props);
+    ASSERT_EQ(has_encryption ? irs::columns2::ColumnProperty::ENCRYPT
+                             : irs::columns2::ColumnProperty::NORMAL,
+              header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -532,7 +552,8 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
       &tests::memory_directory,
       &tests::fs_directory,
-      &tests::mmap_directory),
+      &tests::mmap_directory,
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>),
     ::testing::Values(false, true)),
   &columnstore_test_case::to_string
 );
