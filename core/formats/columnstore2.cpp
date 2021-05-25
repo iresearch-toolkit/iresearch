@@ -164,10 +164,42 @@ class column_base : public columnstore_reader::column_reader,
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
-    return [](auto, auto) { return false; };
+    auto moved_it = make_move_on_copy(this->iterator());
+    const bytes_ref* payload_value = &bytes_ref::NIL;
+    auto* payload = irs::get<irs::payload>(*moved_it.value());
+    if (payload) {
+      payload_value = &payload->value;
+    }
+
+    return [it = moved_it, payload_value](doc_id_t doc, bytes_ref& value) {
+      if (doc == it.value()->seek(doc)) {
+        value = *payload_value;
+        return true;
+      }
+
+      return false;
+    };
   }
 
-  virtual bool visit(const columnstore_reader::values_visitor_f&) const override {
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override {
+    auto it = this->iterator();
+
+    payload dummy;
+    auto* doc = irs::get<document>(*it);
+    if (!doc) {
+      return false;
+    }
+    auto* payload = irs::get<irs::payload>(*it);
+    if (!payload) {
+      payload = &dummy;
+    }
+
+    while (it->next()) {
+      if (!visitor(doc->value, payload->value)) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -290,11 +322,12 @@ class bitmap_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
+    assert(doc_limits::valid(doc));
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {
-       std::get<payload>(attrs_).value = this->payload(bitmap_.index());
-       return doc;
+      std::get<payload>(attrs_).value = this->payload(bitmap_.index());
+      return doc;
     }
 
     std::get<payload>(attrs_).value = bytes_ref::NIL;
