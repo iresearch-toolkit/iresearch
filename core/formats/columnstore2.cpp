@@ -379,6 +379,72 @@ doc_iterator::ptr mask_column::iterator() const {
     header().docs_count);
 }
 
+struct mmap_value_reader {
+  bytes_ref value(index_input& in, uint64_t offset, size_t length) {
+    in.seek(offset);
+
+    auto buf = in.read_buffer(length, BufferHint::PERSISTENT);
+    assert(buf);
+    return { buf, length };
+  }
+};
+
+template<bool Resize>
+class value_reader {
+ public:
+  value_reader() = default;
+  explicit value_reader(size_t size)
+    : buf_(size, 0) {
+  }
+
+  bytes_ref value(index_input& in, uint64_t offset, size_t length) {
+    in.seek(offset);
+
+    if constexpr (Resize) {
+      buf_.resize(length);
+    }
+
+    auto* buf = buf_.data();
+    [[maybe_unused]] const size_t read = in.read_bytes(buf, length);
+    assert(read == length);
+
+    return { buf, length };
+  }
+
+ private:
+  bstring buf_;
+};
+
+template<bool Resize>
+class encrypted_value_reader {
+ public:
+  encrypted_value_reader(encryption::stream* cipher, size_t size)
+    : buf_(size, 0),
+      cipher_{cipher} {
+  }
+
+  bytes_ref value(index_input& in, uint64_t offset, size_t length) {
+    in.seek(offset);
+
+    if constexpr (Resize) {
+      buf_.resize(length);
+    }
+
+    auto* buf = buf_.data();
+    [[maybe_unused]] const size_t read = in.read_bytes(buf, length);
+    assert(read == length);
+
+    [[maybe_unused]] const bool ok = cipher_->decrypt(offset, buf, length);
+    assert(ok);
+
+    return { buf, length };
+  }
+
+ private:
+  bstring buf_;
+  encryption::stream* cipher_;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class dense_fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,16 +479,16 @@ class dense_fixed_length_column final : public column_base {
   virtual doc_iterator::ptr iterator() const override;
 
  private:
-  class payload_reader {
+  template<typename ValueReader>
+  class payload_reader : ValueReader {
    public:
+    template<typename... Args>
     payload_reader(
         index_input::ptr&& data_in,
-        encryption::stream* cipher,
-        uint64_t len,
-        uint64_t data)
-      : buf_(len, 0),
+        uint64_t len, uint64_t data,
+        Args&&... args)
+      : ValueReader{std::forward<Args>(args)...},
         data_in_{std::move(data_in)},
-        cipher_{cipher},
         data_{data},
         len_{len} {
     }
@@ -430,31 +496,11 @@ class dense_fixed_length_column final : public column_base {
     bytes_ref payload(doc_id_t i) {
       const auto offs = data_ + len_*i;
 
-      data_in_->seek(offs);
-
-      if (cipher_) {
-        const auto buf = buf_.data();
-        data_in_->read_bytes(buf, len_);
-        cipher_->decrypt(offs, buf, len_);
-
-        return { buf, len_ };
-      } else {
-        // FIXME separate cases
-        auto* buf = data_in_->read_buffer(len_, BufferHint::PERSISTENT);
-
-        if (!buf) {
-          data_in_->read_bytes(buf_.data(), len_);
-          buf = buf_.c_str();
-        }
-
-        return { buf, len_ };
-      }
+      return ValueReader::value(*data_in_, offs, len_);
     }
 
    private:
-    bstring buf_;
     index_input::ptr data_in_;
-    encryption::stream* cipher_;
     uint64_t data_; // where data starts
     uint64_t len_;  // data entry length
   }; // payload_reader
@@ -483,13 +529,25 @@ class dense_fixed_length_column final : public column_base {
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
+
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<payload_reader>>(
-      header().min,
-      header().docs_count,
-      data_in_->reopen(),
-      cipher_,
-      data_, len_);
+    if (cipher_) {
+      using iterator_type = range_column_iterator<
+        payload_reader<encrypted_value_reader<false>>>;
+
+      return memory::make_managed<iterator_type>(
+        header().min, header().docs_count,
+        data_in_->reopen(), data_, len_,
+        cipher_, data_);
+    }
+
+    using iterator_type = range_column_iterator<
+      payload_reader<value_reader<false>>>;
+
+    return memory::make_managed<iterator_type>(
+      header().min, header().docs_count,
+      data_in_->reopen(), data_, len_,
+      data_);
   }
 
   auto stream = data_in_->reopen();
@@ -503,13 +561,24 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
-    std::move(stream),
-    bitmap_iterator_options(),
-    header().docs_count,
-    stream->dup(),
-    cipher_,
-    data_, len_);
+  if (cipher_) {
+    using iterator_type = bitmap_column_iterator<
+      payload_reader<encrypted_value_reader<false>>>;
+
+    return memory::make_managed<iterator_type>(
+      std::move(stream), bitmap_iterator_options(),
+      header().docs_count, stream->dup(), data_, len_,
+      cipher_, data_);
+
+  }
+
+  using iterator_type = bitmap_column_iterator<
+    payload_reader<value_reader<false>>>;
+
+  return memory::make_managed<iterator_type>(
+    std::move(stream), bitmap_iterator_options(),
+    header().docs_count, stream->dup(), data_, len_,
+    data_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,16 +625,17 @@ class fixed_length_column final : public column_base {
  private:
   using column_block = uint64_t;
 
-  class payload_reader {
+  template<typename ValueReader>
+  class payload_reader : ValueReader {
    public:
+    template<typename... Args>
     payload_reader(
         index_input::ptr data_in,
-        encryption::stream* cipher,
         const column_block* blocks,
-        uint64_t len)
-      : buf_(len, 0),
+        uint64_t len,
+        Args&&... args)
+      : ValueReader{ std::forward<Args>(args)... },
         data_in_{std::move(data_in)},
-        cipher_{cipher},
         blocks_{blocks},
         len_{len} {
     }
@@ -576,24 +646,7 @@ class fixed_length_column final : public column_base {
 
       const auto offs = blocks_[block_idx] + len_*value_idx;
 
-      data_in_->seek(offs);
-
-      // FIXME separate cases
-      if (cipher_) {
-        auto buf = buf_.data();
-        data_in_->read_bytes(buf_.data(), len_);
-        cipher_->decrypt(offs, buf, len_);
-        return { buf, len_ };
-      } else {
-        auto* buf = data_in_->read_buffer(len_, BufferHint::PERSISTENT);
-
-        if (!buf) {
-          data_in_->read_bytes(buf_.data(), len_);
-          buf = buf_.c_str();
-        }
-
-        return { buf, len_ };
-      }
+      return ValueReader::value(*data_in_, offs, len_);
     }
 
    private:
@@ -613,12 +666,22 @@ class fixed_length_column final : public column_base {
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<payload_reader>>(
-      header().min,
-      header().docs_count,
-      data_in_->reopen(),
-      cipher_,
-      blocks_.data(),
+    if (cipher_) {
+      using iterator_type = range_column_iterator<
+        payload_reader<encrypted_value_reader<false>>>;
+
+      return memory::make_managed<iterator_type>(
+        header().min, header().docs_count,
+        data_in_->reopen(), blocks_.data(), len_,
+        cipher_, len_);
+    }
+
+    using iterator_type = range_column_iterator<
+      payload_reader<value_reader<false>>>;
+
+    return memory::make_managed<iterator_type>(
+      header().min, header().docs_count,
+      data_in_->reopen(), blocks_.data(), len_,
       len_);
   }
 
@@ -633,13 +696,22 @@ doc_iterator::ptr fixed_length_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
-    std::move(stream),
-    bitmap_iterator_options(),
-    header().docs_count,
-    stream->dup(),
-    cipher_,
-    blocks_.data(),
+  if (cipher_) {
+    using iterator_type = bitmap_column_iterator<
+      payload_reader<encrypted_value_reader<false>>>;
+
+    return memory::make_managed<iterator_type>(
+      std::move(stream), bitmap_iterator_options(), header().docs_count,
+      stream->dup(), blocks_.data(), len_,
+      cipher_, len_);
+  }
+
+  using iterator_type = bitmap_column_iterator<
+    payload_reader<value_reader<false>>>;
+
+  return memory::make_managed<iterator_type>(
+    std::move(stream), bitmap_iterator_options(), header().docs_count,
+    stream->dup(), blocks_.data(), len_,
     len_);
 }
 
@@ -685,14 +757,16 @@ class sparse_column final : public column_base {
   virtual doc_iterator::ptr iterator() const override;
 
  private:
-  class payload_reader {
+  template<typename ValueReader>
+  class payload_reader : ValueReader {
    public:
+    template<typename... Args>
     payload_reader(
         index_input::ptr data_in,
-        encryption::stream* cipher,
-        const column_block* blocks)
-      : data_in_{std::move(data_in)},
-        cipher_{cipher},
+        const column_block* blocks,
+        Args&&... args)
+      : ValueReader{ std::forward<Args>(args)... },
+        data_in_{std::move(data_in)},
         blocks_{blocks} {
     }
 
@@ -701,7 +775,6 @@ class sparse_column final : public column_base {
    private:
     bstring buf_;
     index_input::ptr data_in_;
-    encryption::stream* cipher_;
     const column_block* blocks_;
   }; // payload_reader
 
@@ -714,37 +787,20 @@ class sparse_column final : public column_base {
   index_input* data_in_;
 }; // sparse_column
 
-bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
+template<typename ValueReader>
+bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   const auto& block = blocks_[i / column::BLOCK_SIZE];
   const size_t index = i % column::BLOCK_SIZE;
 
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
-    data_in_->seek(addr);
 
     size_t length = block.last_size;
     if (IRS_LIKELY(block.last != index)) {
       length = block.avg;
     }
 
-    if (cipher_) {
-      buf_.resize(length);
-      auto buf = buf_.data();
-      data_in_->read_bytes(buf, length);
-      cipher_->decrypt(addr, buf, length);
-      return {buf, length};
-    } else {
-      auto* buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
-
-      if (!buf) {
-        buf_.resize(length);
-        data_in_->read_bytes(buf_.data(), length);
-        buf = buf_.c_str();
-      }
-
-      return { buf, length };
-    }
-
+    return ValueReader::value(*data_in_, addr, length);
   }
 
   const size_t block_size = block.bits*sizeof(uint64_t);
@@ -782,23 +838,8 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
   }
 
   const auto offset = block.data + start;
-  data_in_->seek(offset);
 
-  if (cipher_) {
-     buf_.resize(length);
-     auto buf = buf_.data();
-     data_in_->read_bytes(buf, length);
-     cipher_->decrypt(offset, buf, length);
-     return {buf, length};
-  } else {
-    auto* buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
-    if (!buf) {
-      buf_.resize(length);
-      data_in_->read_bytes(buf_.data(), length);
-      buf = buf_.c_str();
-    }
-    return { buf, length };
-  }
+  return ValueReader::value(*data_in_, offset, length);
 }
 
 /*static*/ std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
@@ -822,12 +863,22 @@ bytes_ref sparse_column::payload_reader::payload(doc_id_t i) {
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<payload_reader>>(
-      header().min,
-      header().docs_count,
-      data_in_->reopen(),
-      cipher_,
-      blocks_.data());
+    if (cipher_) {
+      using iterator_type = range_column_iterator<
+        payload_reader<encrypted_value_reader<true>>>;
+
+      return memory::make_managed<iterator_type>(
+        header().min, header().docs_count,
+        data_in_->reopen(), blocks_.data(),
+        cipher_, size_t{0});
+    }
+
+    using iterator_type = range_column_iterator<
+      payload_reader<value_reader<true>>>;
+
+    return memory::make_managed<iterator_type>(
+      header().min, header().docs_count,
+      data_in_->reopen(), blocks_.data());
   }
 
   index_input::ptr stream = data_in_->reopen();
@@ -841,13 +892,22 @@ doc_iterator::ptr sparse_column::iterator() const {
 
   stream->seek(header().docs_index);
 
-  return memory::make_managed<bitmap_column_iterator<payload_reader>>(
-    std::move(stream),
-    bitmap_iterator_options(),
-    header().docs_count,
-    stream->dup(),
-    cipher_,
-    blocks_.data());
+  if (cipher_) {
+    using iterator_type = bitmap_column_iterator<
+      payload_reader<encrypted_value_reader<true>>>;
+
+    return memory::make_managed<iterator_type>(
+      std::move(stream), bitmap_iterator_options(), header().docs_count,
+      stream->dup(), blocks_.data(),
+      cipher_, size_t{0});
+  }
+
+  using iterator_type = bitmap_column_iterator<
+    payload_reader<value_reader<true>>>;
+
+  return memory::make_managed<iterator_type>(
+    std::move(stream), bitmap_iterator_options(), header().docs_count,
+    stream->dup(), blocks_.data());
 }
 
 using column_factory_f = column_ptr(*)(
