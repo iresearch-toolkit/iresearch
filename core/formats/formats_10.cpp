@@ -33,6 +33,7 @@ extern "C" {
 #include "formats_10_attributes.hpp"
 #include "formats_burst_trie.hpp"
 #include "columnstore.hpp"
+#include "columnstore2.hpp"
 #include "format_utils.hpp"
 
 #include "analysis/token_attributes.hpp"
@@ -3062,7 +3063,7 @@ class format10 : public irs::version10::format {
   virtual column_meta_reader::ptr get_column_meta_reader() const override final;
 
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
-  virtual columnstore_reader::ptr get_columnstore_reader() const override final;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override;
 
   virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
@@ -3240,7 +3241,7 @@ class format12 : public format11 {
   format12() noexcept : format11(irs::type<format12>::get()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const override final;
+    bool /*consolidation*/) const override;
 
  protected:
   explicit format12(const irs::type_info& type) noexcept
@@ -3326,6 +3327,9 @@ class format14 : public format13 {
 
   virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
+  virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
+  virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
+
  protected:
   explicit format14(const irs::type_info& type) noexcept
     : format13(type) {
@@ -3339,6 +3343,15 @@ irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
     burst_trie::Version::MAX,
     get_postings_writer(consolidation),
     consolidation);
+}
+
+columnstore_writer::ptr format14::get_columnstore_writer(
+    bool consolidation) const {
+  return columns2::make_writer(columns2::Version::MIN, consolidation);
+}
+
+columnstore_reader::ptr format14::get_columnstore_reader() const {
+  return columns2::make_reader();
 }
 
 /*static*/ irs::format::ptr format14::make() {

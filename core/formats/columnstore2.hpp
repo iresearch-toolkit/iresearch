@@ -259,7 +259,7 @@ ENABLE_BITMASK_ENUM(ColumnProperty);
 struct column_header {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bitmap index offset, 0 if not present
-  /// @note 0 - not preset, meaning dense column
+  /// @note 0 - not present, meaning dense column
   //////////////////////////////////////////////////////////////////////////////
   uint64_t docs_index{};
 
