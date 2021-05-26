@@ -28,7 +28,7 @@
 #include "formats/formats.hpp"
 
 namespace iresearch {
-namespace columns {
+namespace columnstore {
 
 enum class Version : int32_t {
   ////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ enum class Version : int32_t {
 IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version);
 IRESEARCH_API irs::columnstore_reader::ptr make_reader();
 
-} // columns
+} // columnstore
 } // iresearch
 
 #endif // IRESEARCH_COLUMNSTORE_H

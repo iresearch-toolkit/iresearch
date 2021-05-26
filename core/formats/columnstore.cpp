@@ -234,7 +234,7 @@ void read_compact(
 }
 
 namespace iresearch {
-namespace columns {
+namespace columnstore {
 
 template<size_t Size>
 class index_block {
@@ -582,7 +582,7 @@ class writer final : public irs::columnstore_writer {
 void writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
 
-  auto filename = file_name(meta.name, columns::writer::FORMAT_EXT);
+  auto filename = file_name(meta.name, writer::FORMAT_EXT);
   auto data_out = dir.create(filename);
 
   if (!data_out) {
@@ -2355,7 +2355,7 @@ class reader final: public columnstore_reader, public context_provider {
 }; // reader
 
 bool reader::prepare(const directory& dir, const segment_meta& meta) {
-  const auto filename = file_name(meta.name, columns::writer::FORMAT_EXT);
+  const auto filename = file_name(meta.name, writer::FORMAT_EXT);
   bool exists;
 
   if (!dir.exists(exists, filename)) {
@@ -2490,12 +2490,12 @@ const reader::column_reader* reader::column(field_id field) const {
 }
 
 irs::columnstore_writer::ptr make_writer(Version version) {
-  return memory::make_unique<columns::writer>(version);
+  return memory::make_unique<columnstore::writer>(version);
 }
 
 irs::columnstore_reader::ptr make_reader() {
-  return memory::make_unique<columns::reader>();
+  return memory::make_unique<columnstore::reader>();
 }
 
-}
-}
+} // columnstore
+} // iresearch

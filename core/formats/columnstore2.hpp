@@ -37,7 +37,7 @@
 #include "utils/simd_utils.hpp"
 
 namespace iresearch {
-namespace columns2 {
+namespace columnstore2 {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column
@@ -328,7 +328,7 @@ enum class Version : int32_t {
 IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
 IRESEARCH_API irs::columnstore_reader::ptr make_reader();
 
-} // columns2
+} // columnstore2
 } // iresearch
 
 #endif // IRESEARCH_COLUMNSTORE2_H

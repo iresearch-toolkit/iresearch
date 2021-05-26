@@ -34,7 +34,7 @@
 namespace {
 
 using namespace irs;
-using namespace irs::columns2;
+using namespace irs::columnstore2;
 
 using column_ptr = std::unique_ptr<columnstore_reader::column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
@@ -960,7 +960,7 @@ constexpr column_factory_f FACTORIES[] {
 }
 
 namespace iresearch {
-namespace columns2 {
+namespace columnstore2 {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             column implementation

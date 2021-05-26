@@ -3137,11 +3137,11 @@ column_meta_reader::ptr format10::get_column_meta_reader() const {
 }
 
 columnstore_writer::ptr format10::get_columnstore_writer(bool /*consolidation*/) const {
-  return irs::columns::make_writer(irs::columns::Version::MIN);
+  return columnstore::make_writer(columnstore::Version::MIN);
 }
 
 columnstore_reader::ptr format10::get_columnstore_reader() const {
-  return irs::columns::make_reader();
+  return columnstore::make_reader();
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(bool consolidation) const {
@@ -3251,7 +3251,7 @@ const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer(
     bool /*consolidation*/) const {
-  return irs::columns::make_writer(irs::columns::Version::MAX);
+  return columnstore::make_writer(columnstore::Version::MAX);
 }
 
 /*static*/ irs::format::ptr format12::make() {
@@ -3343,11 +3343,11 @@ irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
 
 columnstore_writer::ptr format14::get_columnstore_writer(
     bool consolidation) const {
-  return columns2::make_writer(columns2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
 }
 
 columnstore_reader::ptr format14::get_columnstore_reader() const {
-  return columns2::make_reader();
+  return columnstore2::make_reader();
 }
 
 /*static*/ irs::format::ptr format14::make() {
@@ -3512,11 +3512,11 @@ irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const 
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
     bool consolidation) const {
-  return columns2::make_writer(columns2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
 }
 
 columnstore_reader::ptr format14simd::get_columnstore_reader() const {
-  return columns2::make_reader();
+  return columnstore2::make_reader();
 }
 
 /*static*/ irs::format::ptr format14simd::make() {
