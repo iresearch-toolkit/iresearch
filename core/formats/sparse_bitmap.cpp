@@ -22,8 +22,6 @@
 
 #include "sparse_bitmap.hpp"
 
-#include <cstring>
-
 #include "search/bitset_doc_iterator.hpp"
 
 namespace {

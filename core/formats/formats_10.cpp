@@ -3159,7 +3159,6 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format10::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT10_INSTANCE);
 }
 
@@ -3220,7 +3219,6 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
 }
 
 /*static*/ irs::format::ptr format11::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT11_INSTANCE);
 }
 
@@ -3257,7 +3255,6 @@ columnstore_writer::ptr format12::get_columnstore_writer(
 }
 
 /*static*/ irs::format::ptr format12::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT12_INSTANCE);
 }
 
@@ -3305,7 +3302,6 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
 /*static*/ irs::format::ptr format13::make() {
   static const ::format13 INSTANCE;
 
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT13_INSTANCE);
 }
 
@@ -3355,7 +3351,6 @@ columnstore_reader::ptr format14::get_columnstore_reader() const {
 }
 
 /*static*/ irs::format::ptr format14::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT14_INSTANCE);
 }
 
@@ -3430,7 +3425,6 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT12SIMD_INSTANCE);
 }
 
@@ -3477,7 +3471,6 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format13simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT13SIMD_INSTANCE);
 }
 
@@ -3497,6 +3490,9 @@ class format14simd : public format13simd {
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
+  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
+  virtual columnstore_reader::ptr get_columnstore_reader() const override;
+
   virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
  protected:
@@ -3505,7 +3501,7 @@ class format14simd : public format13simd {
   }
 };
 
-const ::format14 FORMAT14SIMD_INSTANCE;
+const ::format14simd FORMAT14SIMD_INSTANCE;
 
 irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -3514,8 +3510,16 @@ irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const 
     consolidation);
 }
 
+columnstore_writer::ptr format14simd::get_columnstore_writer(
+    bool consolidation) const {
+  return columns2::make_writer(columns2::Version::MIN, consolidation);
+}
+
+columnstore_reader::ptr format14simd::get_columnstore_reader() const {
+  return columns2::make_reader();
+}
+
 /*static*/ irs::format::ptr format14simd::make() {
-  // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
 }
 
