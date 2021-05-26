@@ -92,8 +92,6 @@ class column final : public irs::columnstore_writer::column_output {
 
   void finish(index_output& index_out);
 
-  virtual void close() override { /* NOOP */ }
-
   virtual void write_byte(byte_type b) override {
     data_.stream.write_byte(b);
   }

@@ -40,7 +40,6 @@ namespace {
 
 struct bstring_data_output: public data_output {
   irs::bstring out_;
-  virtual void close() override {}
   virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
   virtual void write_bytes(const irs::byte_type* b, size_t size) override {
     out_.append(b, size);

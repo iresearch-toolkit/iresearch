@@ -468,10 +468,6 @@ class writer final : public irs::columnstore_writer {
       blocks_index_.stream.flush();
     }
 
-    virtual void close() override {
-      // NOOP
-    }
-
     virtual void write_byte(byte_type b) override {
       block_buf_ += b;
     }

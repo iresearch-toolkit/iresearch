@@ -378,8 +378,6 @@ class IRESEARCH_API bytes_output final : public data_output {
     buf_->append(b, size);
   }
 
-  virtual void close() override { }
-
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring* buf_;

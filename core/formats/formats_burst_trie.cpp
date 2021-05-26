@@ -180,8 +180,6 @@ struct block_t : private util::noncopyable {
      : prefix(std::move(prefix)) {
     }
 
-    virtual void close() override {}
-
     virtual void write_byte(byte_type b) override final {
       weight.PushBack(b);
     }
