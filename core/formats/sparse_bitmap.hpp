@@ -87,8 +87,8 @@ class sparse_bitmap_writer {
   }
 
   void pop_back() noexcept {
-    irs::set_bit(bits_[prev_ / bits_required<size_t>()],
-                 prev_ % bits_required<size_t>());
+    irs::unset_bit(bits_[prev_ / bits_required<size_t>()],
+                   prev_ % bits_required<size_t>());
   }
 
   doc_id_t back() const noexcept {

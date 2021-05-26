@@ -172,7 +172,9 @@ class column_base : public columnstore_reader::column_reader,
     }
 
     return [it = moved_it, payload_value](doc_id_t doc, bytes_ref& value) {
-      if (doc == it.value()->seek(doc)) {
+      if (doc_limits::valid(doc) &&
+          !doc_limits::eof(doc) &&
+          doc == it.value()->seek(doc)) {
         value = *payload_value;
         return true;
       }
@@ -254,7 +256,8 @@ class range_column_iterator final
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
     if (min_doc_ <= doc && doc <= max_doc_) {
-      std::get<document>(attrs_).value = min_doc_ = doc;
+      std::get<document>(attrs_).value = doc;
+      min_doc_ = doc + 1;
       std::get<payload>(attrs_).value = this->payload(doc - min_base_);
       return doc;
     }
@@ -846,7 +849,7 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 
   const uint64_t start_delta = zig_zag_decode64(
     packed::fastpack_at(reinterpret_cast<const uint64_t*>(addr_buf),
-    value_index, block.bits));
+                        value_index, block.bits));
   const uint64_t start = block.avg*index + start_delta;
 
   size_t length = block.last_size;
@@ -864,7 +867,7 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 
     const uint64_t end_delta = zig_zag_decode64(
       packed::fastpack_at(reinterpret_cast<const uint64_t*>(addr_buf),
-      value_index, block.bits));
+                          value_index, block.bits));
     length = end_delta - start_delta + block.avg;
   }
 
@@ -1034,7 +1037,7 @@ void column::flush_block() {
   docs_count_ += docs_count;
 }
 
-void column::finish(index_output& index_out, doc_id_t docs_count) {
+void column::finish(index_output& index_out) {
   docs_writer_.finish();
   if (!addr_table_.empty()) {
     // we don't care of the tail block size
@@ -1052,7 +1055,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     hdr.min = it.value();
   }
 
-  if (docs_count_ && docs_count_ != docs_count) {
+  if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != docs_writer_.back())) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();
@@ -1064,7 +1067,7 @@ void column::finish(index_output& index_out, doc_id_t docs_count) {
     hdr.props |= ColumnProperty::ENCRYPT;
   }
 
-  if (data_.file.empty()) {
+  if (0 == data_.file.length()) {
     hdr.type = ColumnType::MASK;
   } else if (fixed_length_) {
     hdr.type = ctx_.consolidation
@@ -1162,7 +1165,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   });
 }
 
-bool writer::commit(const flush_state& state) {
+bool writer::commit(const flush_state& /*state*/) {
   assert(dir_);
 
   // remove all empty columns from tail
@@ -1200,7 +1203,7 @@ bool writer::commit(const flush_state& state) {
   index_out->write_vlong(columns_.size()); // number of columns
   for (auto& column : columns_) {
     // commit and flush remain blocks
-    column.finish(*index_out, state.doc_count);
+    column.finish(*index_out);
   }
 
   format_utils::write_footer(*index_out);

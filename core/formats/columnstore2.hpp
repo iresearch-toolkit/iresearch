@@ -90,7 +90,7 @@ class column final : public irs::columnstore_writer::column_output {
     return addr_table_.empty();
   }
 
-  void finish(index_output& index_out, doc_id_t docs_count);
+  void finish(index_output& index_out);
 
   virtual void close() override { /* NOOP */ }
 
@@ -109,8 +109,8 @@ class column final : public irs::columnstore_writer::column_output {
 
     // reset to previous offset
     docs_writer_.pop_back();
-    addr_table_.pop_back();
     data_.stream.seek(addr_table_.back());
+    addr_table_.pop_back();
   }
 
  private:
