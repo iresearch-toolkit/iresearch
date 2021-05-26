@@ -1212,12 +1212,15 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
-        { 0, 2 }, { 2, 2 },
+        { 1, 2 }, { 2, 2 },
         { 3, 4 }, { 4, 4 },
         { 5, 8 },
         { 9, 9 },
@@ -1231,12 +1234,20 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         const auto expected_value = pair.second;
 
         ASSERT_EQ(expected_value, it->seek(value_to_find));
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
 
     // iterate over field values (cached)
@@ -1247,9 +1258,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1258,13 +1272,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
   }
 
@@ -1285,9 +1307,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1296,13 +1321,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
 
     // read field values (cached)
@@ -1322,9 +1355,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(8, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(9, actual_value));
+      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      ASSERT_TRUE(mask(2, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
     }
 
@@ -1336,9 +1369,12 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
 
       std::vector<irs::doc_id_t> expected_values = {
         2, 4, 8, 9
@@ -1347,13 +1383,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       size_t i = 0;
       for (; it->next(); ++i) {
         ASSERT_EQ(expected_values[i], it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        if (payload) {
+          // if attribute is present, payload value has
+          // to be always empty for mask column
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        }
       }
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      if (payload) {
+        // if attribute is present, payload value has
+        // to be always empty for mask column
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      }
     }
   }
 }
@@ -1649,7 +1693,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
-      ASSERT_EQ(1, it->seek(0));
+      ASSERT_EQ(1, it->seek(1));
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
@@ -2766,7 +2810,6 @@ TEST_P(format_test_case, columns_rw) {
         ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
         ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
@@ -2776,7 +2819,6 @@ TEST_P(format_test_case, columns_rw) {
         ASSERT_TRUE(column(1, actual_value)); // check doc==0, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
         ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
