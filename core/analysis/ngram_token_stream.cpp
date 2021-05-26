@@ -24,6 +24,10 @@
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+
 #include <frozen/unordered_map.h>
 #include <frozen/string.h>
 
@@ -45,115 +49,134 @@ constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stre
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
   { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
 
-bool parse_json_config(const irs::string_ref& args,
+bool parse_vpack_options(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream_base::Options& options) {
-  rapidjson::Document json;
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing ngram_token_stream, "
-        "arguments: %s",
-        args.c_str());
+  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
 
+  if (!slice.isObject()) {
+    IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
+                  slice.toString().c_str());
     return false;
   }
 
-  if (rapidjson::kObjectType != json.GetType()) {
-    IR_FRMT_ERROR(
-        "Not a jSON object passed while constructing ngram_token_stream, "
-        "arguments: %s",
-        args.c_str());
-
-    return false;
-  }
-
-  uint64_t min, max;
+  uint64_t min = 0, max = 0;
   bool preserve_original;
   auto stream_bytes_type = irs::analysis::ngram_token_stream_base::InputType::Binary;
   std::string start_marker, end_marker;
 
-  if (!get_uint64(json, MIN_PARAM_NAME, min)) {
+  //min
+  auto min_type_slice = slice.get(MIN_PARAM_NAME.c_str());
+  if (min_type_slice.isNone()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
-        "ngram_token_stream from jSON arguments: %s",
+        "ngram_token_stream from Vpack arguments: %s",
         MIN_PARAM_NAME.c_str(), args.c_str());
     return false;
   }
+  if (!min_type_slice.isUInt()) {
+    IR_FRMT_WARN(
+        "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
+        "Vpack arguments: %s",
+        MIN_PARAM_NAME.c_str(), slice.toString().c_str());
+    return false;
+  }
+  min = min_type_slice.getUInt();
 
-  if (!get_uint64(json, MAX_PARAM_NAME, max)) {
+  // max
+  auto max_type_slice = slice.get(MAX_PARAM_NAME.c_str());
+  if (max_type_slice.isNone()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
-        "ngram_token_stream from jSON arguments: %s",
+        "ngram_token_stream from Vpack arguments: %s",
         MAX_PARAM_NAME.c_str(), args.c_str());
     return false;
   }
-
-  if (!get_bool(json, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
-    IR_FRMT_ERROR(
-        "Failed to read '%s' attribute as boolean while constructing "
-        "ngram_token_stream from jSON arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
+  if (!max_type_slice.isUInt()) {
+    IR_FRMT_WARN(
+        "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
+        "Vpack arguments: %s",
+        MAX_PARAM_NAME.c_str(), slice.toString().c_str());
     return false;
   }
-
-  if (json.HasMember(START_MARKER_PARAM_NAME.c_str())) {
-    auto& start_marker_json = json[START_MARKER_PARAM_NAME.c_str()];
-    if (start_marker_json.IsString()) {
-      start_marker = start_marker_json.GetString();
-    } else {
-      IR_FRMT_ERROR(
-          "Failed to read '%s' attribute as string while constructing "
-          "ngram_token_stream from jSON arguments: %s",
-          START_MARKER_PARAM_NAME.c_str(), args.c_str());
-      return false;
-    }
-  }
-
-  if (json.HasMember(END_MARKER_PARAM_NAME.c_str())) {
-    auto& end_marker_json = json[END_MARKER_PARAM_NAME.c_str()];
-    if (end_marker_json.IsString()) {
-      end_marker = end_marker_json.GetString();
-    } else {
-      IR_FRMT_ERROR(
-          "Failed to read '%s' attribute as string while constructing "
-          "ngram_token_stream from jSON arguments: %s",
-          END_MARKER_PARAM_NAME.c_str(), args.c_str());
-      return false;
-    }
-  }
-
-  if (json.HasMember(STREAM_TYPE_PARAM_NAME.c_str())) {
-      auto& stream_type_json =
-          json[STREAM_TYPE_PARAM_NAME.c_str()];
-
-      if (!stream_type_json.IsString()) {
-        IR_FRMT_WARN(
-            "Non-string value in '%s' while constructing ngram_token_stream "
-            "from jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
-        return false;
-      }
-      auto itr = STREAM_TYPE_CONVERT_MAP.find(stream_type_json.GetString());
-      if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
-        IR_FRMT_WARN(
-            "Invalid value in '%s' while constructing ngram_token_stream from "
-            "jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
-        return false;
-      }
-      stream_bytes_type = itr->second;
-  }
+  max = max_type_slice.getUInt();
 
   min = std::max(min, decltype(min)(1));
   max = std::max(max, min);
 
   options.min_gram = min;
   options.max_gram = max;
-  options.preserve_original = preserve_original;
+
+  //preserve original
+  auto preserve_type_slice = slice.get(PRESERVE_ORIGINAL_PARAM_NAME.c_str());
+  if (preserve_type_slice.isNone()) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute as boolean while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
+    return false;
+  }
+  if (!preserve_type_slice.isBool()) {
+    IR_FRMT_WARN(
+        "Invalid type '%b' (bool expected) for ngram_token_stream from "
+        "Vpack arguments: %s",
+        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), slice.toString().c_str());
+    return false;
+  }
+  preserve_original = preserve_type_slice.getBool();
+
+  //start marker
+  if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
+    auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME.c_str());
+    if (!start_marker_type_slice.isString()) {
+      IR_FRMT_WARN(
+          "Invalid type '%s' (string expected) for segmentation_token_stream from "
+          "Vpack arguments: %s",
+          START_MARKER_PARAM_NAME.c_str(), slice.toString().c_str());
+      return false;
+    }
+    start_marker = start_marker_type_slice.toString();
+  }
   options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
+
+  // end marker
+  if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
+    auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME.c_str());
+    if (!end_marker_type_slice.isString()) {
+      IR_FRMT_WARN(
+          "Invalid type '%s' (string expected) for segmentation_token_stream from "
+          "Vpack arguments: %s",
+          END_MARKER_PARAM_NAME.c_str(), slice.toString().c_str());
+      return false;
+    }
+    end_marker = end_marker_type_slice.toString();
+  }
   options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
+
+  //stream bytes
+  if(slice.hasKey(STREAM_TYPE_PARAM_NAME.c_str())) {
+    auto stream_type_slice = slice.get(STREAM_TYPE_PARAM_NAME.c_str());
+    if (!stream_type_slice.isString()) {
+      IR_FRMT_WARN(
+          "Non-string value in '%s' while constructing ngram_token_stream "
+          "from Vpack arguments: %s",
+          STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+      return false;
+    }
+    auto stream_type = stream_type_slice.stringRef();
+    auto itr = STREAM_TYPE_CONVERT_MAP.find(irs::string_ref(stream_type.data(),
+                                                            stream_type.size()));
+    if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
+      IR_FRMT_WARN(
+          "Invalid value in '%s' while constructing ngram_token_stream from "
+          "Vpack arguments: %s",
+          STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+      return false;
+    }
+    stream_bytes_type = itr->second;
+  }
   options.stream_bytes_type = stream_bytes_type;
 
-  return true;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +187,7 @@ bool parse_json_config(const irs::string_ref& args,
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   irs::analysis::ngram_token_stream_base::Options options;
-  if (parse_json_config(args, options)) {
+  if (parse_vpack_options(args, options)) {
     switch (options.stream_bytes_type) {
       case irs::analysis::ngram_token_stream_base::InputType::Binary:
         return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(options);
@@ -252,7 +275,7 @@ bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& opt
 
 bool normalize_json_config(const irs::string_ref& args, std::string& config) {
   irs::analysis::ngram_token_stream_base::Options options;
-  if (parse_json_config(args, options)) {
+  if (parse_vpack_options(args, options)) {
     return make_json_config(options, config);
   } else {
     return false;

@@ -650,8 +650,8 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   // store as separate arrays to make asan happy
   iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
   iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
-  pipeline_test_analyzer payload_offset(true, p1);
-  pipeline_test_analyzer only_payload(false, p2);
+  pipeline_test_analyzer payload_offset(true, {p1, IRESEARCH_COUNTOF(p1)});
+  pipeline_test_analyzer only_payload(false, {p2, IRESEARCH_COUNTOF(p2)});
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
   pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 
