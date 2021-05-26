@@ -20,10 +20,6 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -185,7 +181,7 @@ bool parse_vpack_options(const irs::string_ref& args,
 ///        "max" (number): maximum ngram size
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   irs::analysis::ngram_token_stream_base::Options options;
   if (parse_vpack_options(args, options)) {
     switch (options.stream_bytes_type) {
@@ -202,31 +198,22 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& options,
+bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& options,
                       std::string& definition) {
-  rapidjson::Document json;
-  json.SetObject();
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+
+  arangodb::velocypack::Builder builder;
 
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
+
   //min_gram
-  json.AddMember(
-    rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
-    rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
-    allocator);
+  builder.add(MIN_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.min_gram));
 
   //max_gram
-  json.AddMember(
-    rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
-    rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
-    allocator);
+  builder.add(MAX_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.max_gram));
 
   //preserve_original
-  json.AddMember(
-    rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
-    rapidjson::Value(options.preserve_original),
-    allocator);
+  builder.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.preserve_original));
 
   // stream type
   {
@@ -236,10 +223,7 @@ bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& opt
       });
 
     if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-      json.AddMember(
-        rapidjson::StringRef(STREAM_TYPE_PARAM_NAME.c_str(), STREAM_TYPE_PARAM_NAME.size()),
-        rapidjson::StringRef(stream_type_value->first.c_str(), stream_type_value->first.size()),
-        allocator);
+        builder.add(STREAM_TYPE_PARAM_NAME.c_str(), arangodb::velocypack::Value(stream_type_value->first.c_str()));
     } else {
       IR_FRMT_ERROR(
         "Invalid %s value in ngram analyzer options: %d",
@@ -251,39 +235,29 @@ bool make_json_config(const irs::analysis::ngram_token_stream_base::Options& opt
 
   // start_marker
   if (!options.start_marker.empty()) {
-    json.AddMember(
-      rapidjson::StringRef(START_MARKER_PARAM_NAME.c_str(), START_MARKER_PARAM_NAME.size()),
-      rapidjson::StringRef(reinterpret_cast<const char*>(options.start_marker.c_str()), options.start_marker.length()),
-      allocator);
+    builder.add(START_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.start_marker.c_str()));
   }
 
   // end_marker
   if (!options.end_marker.empty()) {
-    json.AddMember(
-      rapidjson::StringRef(END_MARKER_PARAM_NAME.c_str(), END_MARKER_PARAM_NAME.size()),
-      rapidjson::StringRef(reinterpret_cast<const char*>(options.end_marker.c_str()), options.end_marker.length()),
-      allocator);
+    builder.add(END_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.end_marker.c_str()));
   }
 
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
+  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   irs::analysis::ngram_token_stream_base::Options options;
   if (parse_vpack_options(args, options)) {
-    return make_json_config(options, config);
+    return make_vpack_config(options, config);
   } else {
     return false;
   }
 }
 
 
-REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_json, normalize_json_config);
+REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_vpack, normalize_vpack_config);
 
 }
 
@@ -298,8 +272,8 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 }
 
 /*static*/ void ngram_token_stream_base::init() {
-  REGISTER_ANALYZER_JSON(ngram_token_stream_base, make_json,
-                         normalize_json_config); // match registration above
+  REGISTER_ANALYZER_JSON(ngram_token_stream_base, make_vpack,
+                         normalize_vpack_config); // match registration above
 }
 
 
