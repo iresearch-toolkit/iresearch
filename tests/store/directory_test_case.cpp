@@ -1536,4 +1536,30 @@ TEST(memory_directory_test, file_reset_allocator) {
   ASSERT_NE(buf0.data, buf1.data);
 }
 
+TEST(memory_directory_test, rewrite) {
+  using namespace irs;
+
+  const string_ref str0{"quick brown fowx jumps over the lazy dog"};
+  const string_ref str1{"hund"};
+  const string_ref expected{"quick brown fowx jumps over the lazy hund"};
+  const bytes_ref payload0{ref_cast<byte_type>(str0)};
+  const bytes_ref payload1{ref_cast<byte_type>(str1)};
+
+  memory_output out{irs::memory_allocator::global()};
+  out.stream.write_bytes(payload0.c_str(), payload0.size());
+  ASSERT_EQ(payload0.size(), out.stream.file_pointer());
+  out.stream.seek(out.stream.file_pointer() - 3);
+  ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
+  out.stream.write_bytes(payload1.c_str(), payload1.size());
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
+  out.stream.flush();
+
+  memory_index_input in{out.file};
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), in.length());
+
+  std::string value(expected.size(), 0);
+  in.read_bytes(reinterpret_cast<irs::byte_type*>(value.data()), value.size());
+  ASSERT_EQ(expected, value);
+}
+
 }

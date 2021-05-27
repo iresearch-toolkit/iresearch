@@ -313,7 +313,7 @@ void memory_index_output::seek(size_t pos) {
   auto idx = file_.buffer_offset(pos);
 
   buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
-  pos_ = buf_.data;
+  pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
 }
 

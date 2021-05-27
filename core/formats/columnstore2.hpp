@@ -76,11 +76,13 @@ class column final : public irs::columnstore_writer::column_output {
   }
 
   void prepare(doc_id_t key) {
-    if (IRS_LIKELY(key > docs_writer_.back())) {
+    if (IRS_LIKELY(key > pend_)) {
       if (addr_table_.full()) {
         flush_block();
       }
 
+      prev_ = pend_;
+      pend_ = key;
       docs_writer_.push_back(key);
       addr_table_.push_back(data_.stream.file_pointer());
     }
@@ -105,10 +107,11 @@ class column final : public irs::columnstore_writer::column_output {
       return;
     }
 
-    // reset to previous offset
-    docs_writer_.pop_back();
+    [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
+    assert(res);
     data_.stream.seek(addr_table_.back());
     addr_table_.pop_back();
+    pend_ = prev_;
   }
 
  private:
@@ -174,6 +177,8 @@ class column final : public irs::columnstore_writer::column_output {
   address_table addr_table_;
   uint64_t prev_block_size_{};
   doc_id_t docs_count_{};
+  doc_id_t prev_{}; // last committed doc_id_t
+  doc_id_t pend_{}; // last pushed doc_id_t
   uint16_t num_blocks_{};
   bool fixed_length_{true};
 }; // column

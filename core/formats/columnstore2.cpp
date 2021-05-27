@@ -1057,7 +1057,7 @@ void column::finish(index_output& index_out) {
   }
 
   // FIXME how to deal with rollback() and docs_writer_.back()?
-  if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != docs_writer_.back())) {
+  if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != pend_)) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value
     hdr.docs_index = ctx_.data_out->file_pointer();

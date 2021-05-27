@@ -1068,6 +1068,31 @@ TEST_P(sparse_bitmap_test_case, rw_all_seek_random) {
   }
 }
 
+TEST_P(sparse_bitmap_test_case, insert_erase) {
+  {
+    auto stream = dir().create("tmp");
+    ASSERT_NE(nullptr, stream);
+
+    irs::sparse_bitmap_writer writer(*stream);
+    ASSERT_TRUE(writer.erase(42));
+    writer.push_back(42);
+    ASSERT_TRUE(writer.erase(42));
+    writer.push_back(70000); // trigger block flush
+    ASSERT_FALSE(writer.erase(42)); // can't erase an element in already flushed block
+    writer.finish();
+  }
+
+  {
+    auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    irs::sparse_bitmap_iterator it{ stream.get(), {}};
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(70000, it.value());
+    ASSERT_FALSE(it.next());
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
   sparse_bitmap_test,
   sparse_bitmap_test_case,

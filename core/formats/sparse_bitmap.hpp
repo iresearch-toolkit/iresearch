@@ -69,30 +69,29 @@ class sparse_bitmap_writer {
       origin_{out.file_pointer()} {
   }
 
-  void push_back(doc_id_t doc) {
+  void push_back(doc_id_t value) {
     static_assert(math::is_power2(BLOCK_SIZE));
-    assert(doc_limits::valid(doc));
-    assert(!doc_limits::eof(doc));
-    assert(doc > prev_);
+    assert(doc_limits::valid(value));
+    assert(!doc_limits::eof(value));
 
-    const uint32_t block = doc / BLOCK_SIZE;
+    const uint32_t block = value / BLOCK_SIZE;
 
     if (block != block_) {
       flush(block_);
       block_ = block;
     }
 
-    set(doc % BLOCK_SIZE);
-    prev_ = doc;
+    set(value % BLOCK_SIZE);
   }
 
-  void pop_back() noexcept {
-    irs::unset_bit(bits_[prev_ / bits_required<size_t>()],
-                   prev_ % bits_required<size_t>());
-  }
+  bool erase(doc_id_t value) noexcept {
+    if ((value / BLOCK_SIZE) < block_) {
+      // value is already flushed
+      return false;
+    }
 
-  doc_id_t back() const noexcept {
-    return prev_;
+    reset(value % BLOCK_SIZE);
+    return true;
   }
 
   void finish();
@@ -114,8 +113,17 @@ class sparse_bitmap_writer {
   }
 
   FORCE_INLINE void set(doc_id_t value) noexcept {
+    assert(value < BLOCK_SIZE);
+
     irs::set_bit(bits_[value / bits_required<size_t>()],
                  value % bits_required<size_t>());
+  }
+
+  FORCE_INLINE void reset(doc_id_t value) noexcept {
+    assert(value < BLOCK_SIZE);
+
+    irs::unset_bit(bits_[value / bits_required<size_t>()],
+                   value % bits_required<size_t>());
   }
 
   FORCE_INLINE void add_block(uint32_t block_id) {
@@ -136,7 +144,6 @@ class sparse_bitmap_writer {
   uint64_t origin_;
   size_t bits_[NUM_BLOCKS]{};
   std::vector<block> block_index_;
-  doc_id_t prev_{};
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block
 }; // sparse_bitmap_writer
