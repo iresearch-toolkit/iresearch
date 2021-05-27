@@ -1169,7 +1169,7 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}", actual);
+    ASSERT_EQ("{\n  \"max\" : 5,\n  \"min\" : 1,\n  \"preserveOriginal\" : false,\n  \"streamType\" : \"binary\"\n}", actual);
   }
 
   //with changed values
@@ -1177,7 +1177,7 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$\",\"endMarker\":\"#\",\"streamType\":\"utf8\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"utf8\",\"startMarker\":\"$\",\"endMarker\":\"#\"}", actual);
+    ASSERT_EQ("{\n  \"endMarker\" : \"#\",\n  \"max\" : 22,\n  \"min\" : 11,\n  \"preserveOriginal\" : true,\n  \"startMarker\" : \"$\",\n  \"streamType\" : \"utf8\"\n}", actual);
   }
 
   //with only start marker
@@ -1185,14 +1185,14 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$123\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"startMarker\":\"$123\"}", actual);
+    ASSERT_EQ("{\n  \"max\" : 22,\n  \"min\" : 11,\n  \"preserveOriginal\" : true,\n  \"startMarker\" : \"$123\",\n  \"streamType\" : \"binary\"\n}", actual);
   }
   //with only end marker
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"endMarker\":\"#456\"}", actual);
+    ASSERT_EQ("{\n  \"endMarker\" : \"#456\",\n  \"max\" : 22,\n  \"min\" : 11,\n  \"preserveOriginal\" : true,\n  \"streamType\" : \"binary\"\n}", actual);
   }
 }
 
