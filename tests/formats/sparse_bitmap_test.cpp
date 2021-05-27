@@ -79,6 +79,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
     const range_type (&ranges)[N],
     const seek_type (&seeks)[K]) {
   std::vector<irs::sparse_bitmap_writer::block> bitmap_index;
+  irs::cost::cost_t count = 0;
 
   {
     auto stream = dir().create("tmp");
@@ -91,7 +92,10 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
       std::generate_n(
         std::back_inserter(writer),
         range.second - range.first,
-        [&doc] { return doc++; });
+        [&doc, &count] {
+          ++count;
+          return doc++;
+        });
     }
 
     writer.finish();
@@ -109,15 +113,16 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
 
         irs::sparse_bitmap_iterator it{
           stream.get(),
-          { {bitmap_index.data(), bitmap_index.size()}, true } };
+          { {bitmap_index.data(), bitmap_index.size()}, true },
+          count };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
         ASSERT_NE(nullptr, doc);
         ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-        auto* cost = irs::get<irs::document>(it);
+        auto* cost = irs::get<irs::cost>(it);
         ASSERT_NE(nullptr, cost);
-        // FIXME check cost value
+        ASSERT_EQ(count, cost->estimate());
 
         ASSERT_EQ(min, it.seek(min));
         ASSERT_EQ(value_index, it.index());
@@ -132,15 +137,16 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
       stream->seek(0);
       irs::sparse_bitmap_iterator it{
         stream.get(),
-        { {bitmap_index.data(), bitmap_index.size()}, true } };
+        { {bitmap_index.data(), bitmap_index.size()}, true },
+        count };
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
       ASSERT_NE(nullptr, doc);
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
+      auto* cost = irs::get<irs::cost>(it);
       ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
+      ASSERT_EQ(count, cost->estimate());
 
       ASSERT_EQ(std::get<1>(seek), it.seek(std::get<0>(seek)));
       ASSERT_EQ(std::get<1>(seek), doc->value);
@@ -160,15 +166,15 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
       for (auto [min, max] = range; min < max; ++min) {
         stream->seek(0);
 
-        irs::sparse_bitmap_iterator it{ stream.get(), {{}, true} };
+        irs::sparse_bitmap_iterator it{ stream.get(), {{}, true}, count };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
         ASSERT_NE(nullptr, doc);
         ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-        auto* cost = irs::get<irs::document>(it);
+        auto* cost = irs::get<irs::cost>(it);
         ASSERT_NE(nullptr, cost);
-        // FIXME check cost value
+        ASSERT_EQ(count, cost->estimate());
 
         ASSERT_EQ(min, it.seek(min));
         ASSERT_EQ(value_index, it.index());
@@ -181,15 +187,15 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
 
     for (auto& seek : seeks) {
       stream->seek(0);
-      irs::sparse_bitmap_iterator it{stream.get(), {{}, false}};
+      irs::sparse_bitmap_iterator it{stream.get(), {{}, false}, count};
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
       ASSERT_NE(nullptr, doc);
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
+      auto* cost = irs::get<irs::cost>(it);
       ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
+      ASSERT_EQ(count, cost->estimate());
 
       ASSERT_EQ(std::get<1>(seek), it.seek(std::get<0>(seek)));
       ASSERT_EQ(std::get<1>(seek), doc->value);
@@ -237,9 +243,9 @@ void sparse_bitmap_test_case::test_rw_seek_random(
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(0, cost->estimate());
 
     for (auto& seek : seeks) {
       ASSERT_EQ(std::get<1>(seek), it.seek(std::get<0>(seek)));
@@ -262,9 +268,9 @@ void sparse_bitmap_test_case::test_rw_seek_random(
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(0, cost->estimate());
 
     for (auto& seek : seeks) {
       ASSERT_EQ(std::get<1>(seek), it.seek(std::get<0>(seek)));
@@ -280,6 +286,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(
 template<size_t N>
 void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
   std::vector<irs::sparse_bitmap_writer::block> bitmap_index;
+  irs::cost::cost_t count = 0;
 
   {
     auto stream = dir().create("tmp");
@@ -292,7 +299,8 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
       std::generate_n(
         std::back_inserter(writer),
         range.second - range.first,
-        [&doc] {
+        [&doc, &count] {
+          ++count;
           return doc++;
         });
     }
@@ -307,15 +315,15 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
 
     irs::sparse_bitmap_iterator it{
       std::move(stream),
-      { {bitmap_index.data(), bitmap_index.size()}, true }};
+      { {bitmap_index.data(), bitmap_index.size()}, true }, count};
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(count, cost->estimate());
 
     irs::doc_id_t expected_index = 0;
 
@@ -345,15 +353,15 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{std::move(stream), {{}, false}};
+    irs::sparse_bitmap_iterator it{std::move(stream), {{}, false}, count};
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(count, cost->estimate());
 
     irs::doc_id_t expected_index = 0;
 
@@ -382,6 +390,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
 template<size_t N>
 void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
   std::vector<irs::sparse_bitmap_writer::block> bitmap_index;
+  irs::cost::cost_t count = 0;
 
   {
     auto stream = dir().create("tmp");
@@ -394,7 +403,8 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
       std::generate_n(
         std::back_inserter(writer),
         range.second - range.first,
-        [&doc] {
+        [&doc, &count] {
+          ++count;
           return doc++;
         });
     }
@@ -409,15 +419,16 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
 
     irs::sparse_bitmap_iterator it{
       std::move(stream),
-      { {bitmap_index.data(), bitmap_index.size()}, true } };
+      { {bitmap_index.data(), bitmap_index.size()}, true },
+      count };
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(count, cost->estimate());
 
     irs::doc_id_t expected_index = 0;
     irs::doc_id_t expected_doc = 0;
@@ -453,9 +464,9 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(0, cost->estimate());
 
     irs::doc_id_t expected_index = 0;
     irs::doc_id_t expected_doc = 0;
@@ -484,6 +495,8 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
 template<size_t N>
 void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
   std::vector<irs::sparse_bitmap_writer::block> bitmap_index;
+  irs::cost::cost_t count = 0;
+
   {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
@@ -495,7 +508,8 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
       std::generate_n(
         std::back_inserter(writer),
         range.second - range.first,
-        [&doc] {
+        [&doc, &count] {
+          ++count;
           return doc++;
         });
     }
@@ -528,15 +542,16 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
 
         irs::sparse_bitmap_iterator it{
           stream->dup(),
-          { {bitmap_index.data(), bitmap_index.size()}, true } };
+          { {bitmap_index.data(), bitmap_index.size()}, true },
+          [count](){return count;} };
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
         auto* doc = irs::get<irs::document>(it);
         ASSERT_NE(nullptr, doc);
         ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-        auto* cost = irs::get<irs::document>(it);
+        auto* cost = irs::get<irs::cost>(it);
         ASSERT_NE(nullptr, cost);
-        // FIXME check cost value
+        ASSERT_EQ(count, cost->estimate());
 
         ASSERT_EQ(expected_doc, it.seek(expected_doc));
         ASSERT_EQ(expected_doc, it.value());
@@ -605,9 +620,9 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
         auto* doc = irs::get<irs::document>(it);
         ASSERT_NE(nullptr, doc);
         ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-        auto* cost = irs::get<irs::document>(it);
+        auto* cost = irs::get<irs::cost>(it);
         ASSERT_NE(nullptr, cost);
-        // FIXME check cost value
+        ASSERT_EQ(0, cost->estimate());
 
         ASSERT_EQ(expected_doc, it.seek(expected_doc));
         ASSERT_EQ(expected_doc, it.value());
@@ -673,6 +688,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_FALSE(it.next());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(0, irs::cost::extract(it));
   }
 }
 
@@ -724,15 +740,16 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1;;) {
       irs::sparse_bitmap_iterator it{
         stream->dup(),
-        { {bitmap_index.data(), bitmap_index.size()}, true }};
+        { {bitmap_index.data(), bitmap_index.size()}, true },
+        65536};
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
       ASSERT_NE(nullptr, doc);
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
+      auto* cost = irs::get<irs::cost>(it);
       ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
+      ASSERT_EQ(65536, cost->estimate());
 
       ASSERT_EQ(expected_doc, it.seek(expected_doc));
       ASSERT_EQ(expected_doc, it.seek(expected_doc));
@@ -755,15 +772,16 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1;;) {
       irs::sparse_bitmap_iterator it{
         stream->dup(),
-        { {bitmap_index.data(), bitmap_index.size()}, true }};
+        { {bitmap_index.data(), bitmap_index.size()}, true },
+        []()->irs::cost::cost_t{ return 65536; }};
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
       ASSERT_NE(nullptr, doc);
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
+      auto* cost = irs::get<irs::cost>(it);
       ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
+      ASSERT_EQ(65536, cost->estimate());
 
       ASSERT_EQ(expected_doc, it.seek(expected_doc-1));
       ASSERT_EQ(expected_doc, it.seek(expected_doc));
@@ -787,15 +805,15 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1 + STEP;;) {
       irs::sparse_bitmap_iterator it{
         stream->dup(),
-        { {bitmap_index.data(), bitmap_index.size()}, true }};
+        { {bitmap_index.data(), bitmap_index.size()}, true } };
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index); // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);
       ASSERT_NE(nullptr, doc);
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-      auto* cost = irs::get<irs::document>(it);
+      auto* cost = irs::get<irs::cost>(it);
       ASSERT_NE(nullptr, cost);
-      // FIXME check cost value
+      ASSERT_EQ(0, cost->estimate());
 
       ASSERT_EQ(expected_doc, it.seek(expected_doc-STEP+1));
 
@@ -823,9 +841,9 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
-    auto* cost = irs::get<irs::document>(it);
+    auto* cost = irs::get<irs::cost>(it);
     ASSERT_NE(nullptr, cost);
-    // FIXME check cost value
+    ASSERT_EQ(0, cost->estimate());
 
     ASSERT_TRUE(irs::doc_limits::eof(it.seek(irs::doc_limits::eof())));
     ASSERT_TRUE(irs::doc_limits::eof(it_no_index.seek(irs::doc_limits::eof())));

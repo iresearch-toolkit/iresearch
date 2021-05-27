@@ -311,7 +311,7 @@ class bitmap_column_iterator final
       cost::cost_t cost,
       Args&&... args)
     : payload_reader{std::forward<Args>(args)...},
-      bitmap_{std::move(bitmap_in), opts} {
+      bitmap_{std::move(bitmap_in), opts, cost} {
     std::get<irs::cost>(attrs_).reset(cost);
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&bitmap_);
   }
@@ -1011,7 +1011,8 @@ void column::flush_block() {
   if (ctx_.cipher) {
     auto offset = data_out.file_pointer();
 
-    auto encrypt_and_copy = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
+    auto encrypt_and_copy
+        = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
       assert(cipher);
 
       if (!cipher->encrypt(offset, b, len)) {
@@ -1055,6 +1056,7 @@ void column::finish(index_output& index_out) {
     hdr.min = it.value();
   }
 
+  // FIXME how to deal with rollback() and docs_writer_.back()?
   if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != docs_writer_.back())) {
     // we don't need to store bitmap index in case
     // if every document in a column has a value

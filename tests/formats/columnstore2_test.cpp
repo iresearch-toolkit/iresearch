@@ -110,6 +110,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_NE(nullptr, column);
     auto it = column->iterator();
     ASSERT_NE(nullptr, it);
+    ASSERT_EQ(0, irs::cost::extract(*it));
     ASSERT_TRUE(irs::doc_limits::eof(it->value()));
   }
 

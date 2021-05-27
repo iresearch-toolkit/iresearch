@@ -183,6 +183,12 @@ class sparse_bitmap_iterator final : public doc_iterator {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
+  template<typename Cost>
+  sparse_bitmap_iterator(index_input* in, const options& opts, Cost&& est)
+    : sparse_bitmap_iterator{in, opts} {
+    std::get<cost>(attrs_).reset(std::forward<Cost>(est));
+  }
+
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
