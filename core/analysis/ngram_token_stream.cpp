@@ -23,13 +23,14 @@
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #include <frozen/unordered_map.h>
 #include <frozen/string.h>
 
 #include "ngram_token_stream.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/json_utils.hpp"
+#include "utils/vpack_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
 namespace {
@@ -47,11 +48,12 @@ constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stre
 
 bool parse_vpack_options(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream_base::Options& options) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
 
   if (!slice.isObject()) {
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
-                  slice.toString().c_str());
+                  slice_as_str.c_str());
     return false;
   }
 
@@ -71,10 +73,11 @@ bool parse_vpack_options(const irs::string_ref& args,
   }
 
   if (!min_type_slice.isNumber<decltype (min)>()) {
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-        "Vpack arguments: %s",
-        MIN_PARAM_NAME, slice.toString().c_str());
+        "VPack arguments: %s",
+        MIN_PARAM_NAME, slice_as_str.c_str());
     return false;
   }
   min = min_type_slice.getNumber<decltype (min)>();
@@ -89,10 +92,11 @@ bool parse_vpack_options(const irs::string_ref& args,
     return false;
   }
   if (!max_type_slice.isNumber<decltype (max)>()) {
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-        "Vpack arguments: %s",
-        MAX_PARAM_NAME, slice.toString().c_str());
+        "VPack arguments: %s",
+        MAX_PARAM_NAME, slice_as_str.c_str());
     return false;
   }
   max = max_type_slice.getNumber<decltype (max)>();
@@ -113,10 +117,11 @@ bool parse_vpack_options(const irs::string_ref& args,
     return false;
   }
   if (!preserve_type_slice.isBool()) {
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%b' (bool expected) for ngram_token_stream from "
-        "Vpack arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME, slice.toString().c_str());
+        "VPack arguments: %s",
+        PRESERVE_ORIGINAL_PARAM_NAME, slice_as_str.c_str());
     return false;
   }
   preserve_original = preserve_type_slice.getBool();
@@ -126,10 +131,11 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
     auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME);
     if (!start_marker_type_slice.isString()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from "
-          "Vpack arguments: %s",
-          START_MARKER_PARAM_NAME, slice.toString().c_str());
+          "VPack arguments: %s",
+          START_MARKER_PARAM_NAME, slice_as_str.c_str());
       return false;
     }
     start_marker = start_marker_type_slice.toString();
@@ -140,10 +146,11 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
     auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME);
     if (!end_marker_type_slice.isString()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from "
-          "Vpack arguments: %s",
-          END_MARKER_PARAM_NAME, slice.toString().c_str());
+          "VPack arguments: %s",
+          END_MARKER_PARAM_NAME, slice_as_str.c_str());
       return false;
     }
     end_marker = end_marker_type_slice.toString();
@@ -166,7 +173,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
           "Invalid value in '%s' while constructing ngram_token_stream from "
-          "Vpack arguments: %s",
+          "VPack arguments: %s",
           STREAM_TYPE_PARAM_NAME, args.c_str());
       return false;
     }
@@ -183,18 +190,18 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
 
-  arangodb::velocypack::Builder builder;
+  VPackBuilder builder;
   {
-    arangodb::velocypack::ObjectBuilder object(&builder);
+    VPackObjectBuilder object(&builder);
     {
       //min_gram
-      builder.add(MIN_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.min_gram));
+      builder.add(MIN_PARAM_NAME.c_str(), VPackValue(options.min_gram));
 
       //max_gram
-      builder.add(MAX_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.max_gram));
+      builder.add(MAX_PARAM_NAME.c_str(), VPackValue(options.max_gram));
 
       //preserve_original
-      builder.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.preserve_original));
+      builder.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), VPackValue(options.preserve_original));
 
       // stream type
       {
@@ -204,7 +211,7 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
           });
 
         if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-            builder.add(STREAM_TYPE_PARAM_NAME.c_str(), arangodb::velocypack::Value(stream_type_value->first.c_str()));
+            builder.add(STREAM_TYPE_PARAM_NAME.c_str(), VPackValue(stream_type_value->first.c_str()));
         } else {
           IR_FRMT_ERROR(
             "Invalid %s value in ngram analyzer options: %d",
@@ -218,16 +225,16 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
       if (!options.start_marker.empty()) {
         std::string tmp(reinterpret_cast<const char*>(options.start_marker.c_str()), options.start_marker.size());
         // segfault if use this
-        //builder.add(START_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.start_marker.c_str()));
-        builder.add(START_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(tmp));
+        //builder.add(START_MARKER_PARAM_NAME.c_str(), VPackValue(options.start_marker.c_str()));
+        builder.add(START_MARKER_PARAM_NAME.c_str(), VPackValue(tmp));
       }
 
       // end_marker
       if (!options.end_marker.empty()) {
         std::string tmp(reinterpret_cast<const char*>(options.end_marker.c_str()), options.end_marker.size());
         // segfault if use this
-        //builder.add(END_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(options.end_marker.c_str()));
-        builder.add(END_MARKER_PARAM_NAME.c_str(), arangodb::velocypack::Value(tmp));
+        //builder.add(END_MARKER_PARAM_NAME.c_str(), VPackValue(options.end_marker.c_str()));
+        builder.add(END_MARKER_PARAM_NAME.c_str(), VPackValue(tmp));
       }
     }
   }
@@ -275,10 +282,10 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
@@ -294,17 +301,20 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
         vpack_container)) {
-      arangodb::velocypack::Slice slice(
+      VPackSlice slice(
           reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+      definition = iresearch::get_string(slice);
+      if (definition.empty()) {
+          return false;
+      }
       return true;
     }
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
