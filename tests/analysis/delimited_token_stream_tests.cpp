@@ -480,7 +480,7 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"delimiter\":\",\"}", actual);
+    ASSERT_EQ("{\n  \"delimiter\" : \",\"\n}", actual);
   }
 }
 

@@ -21,10 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
+#include "utils/vpack_utils.hpp"
 #include "delimited_token_stream.hpp"
 
 namespace {
@@ -97,26 +99,32 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
 
 constexpr irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
 
-bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
-  rapidjson::Document json;
+bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing "
-        "delimited_token_stream, arguments: %s",
-        args.c_str());
-
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  if (!slice.isObject() && !slice.isString()) {
+    std::string slice_as_str = iresearch::get_string(slice);
+    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
+                  slice_as_str.c_str());
     return false;
   }
 
-  switch (json.GetType()) {
-    case rapidjson::kStringType:
-      delimiter = json.GetString();
+  switch (slice.type()) {
+    case VPackValueType::String:
+      delimiter = slice.toString();
       return true;
-    case rapidjson::kObjectType:
-      if (json.HasMember(DELIMITER_PARAM_NAME.c_str()) &&
-          json[DELIMITER_PARAM_NAME.c_str()].IsString()) {
-        delimiter = json[DELIMITER_PARAM_NAME.c_str()].GetString();
+    case VPackValueType::Object:
+      if (slice.hasKey(DELIMITER_PARAM_NAME.c_str())) {
+        auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
+        if (!delim_type_slice.isString()) {
+          std::string slice_as_str = iresearch::get_string(slice);
+          IR_FRMT_WARN(
+              "Invalid type '%s' (string expected) for segmentation_token_stream from "
+              "VPack arguments: %s",
+              DELIMITER_PARAM_NAME, slice_as_str.c_str());
+          return false;
+        }
+        delimiter = delim_type_slice.toString();
         return true;
       }
     default: {}  // fall through
@@ -134,9 +142,9 @@ bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "delimiter"(string): the delimiter to use for tokenization <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   std::string delimiter;
-  if (parse_json_config(args, delimiter)) {
+  if (parse_vpack_options(args, delimiter)) {
     return irs::analysis::delimited_token_stream::make(delimiter);
   } else {
     return nullptr;
@@ -148,36 +156,78 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @param delimiter reference to analyzer options storage
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(const std::string& delimiter, std::string& definition) {
-  rapidjson::Document json;
-  json.SetObject();
+bool make_vpack_config(const std::string& delimiter, std::string& definition) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder object(&builder);
+    {
+      // delimiter
+      std::string tmp(reinterpret_cast<const char*>(delimiter.c_str()), delimiter.size());
+      builder.add(DELIMITER_PARAM_NAME.c_str(), VPackValue(tmp));
+    }
+  }
 
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-  // delimiter
-  json.AddMember(
-    rapidjson::StringRef(DELIMITER_PARAM_NAME.c_str(), DELIMITER_PARAM_NAME.size()),
-    rapidjson::Value(rapidjson::StringRef(delimiter.c_str(), delimiter.length())),
-    allocator
-  );
-
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
+  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_json_config(const irs::string_ref& args,
+bool normalize_vpack_config(const irs::string_ref& args,
                            std::string& definition){
   std::string delimiter;
-  if (parse_json_config(args, delimiter)) {
-    return make_json_config(delimiter, definition);
+  if (parse_vpack_options(args, delimiter)) {
+    return make_vpack_config(delimiter, definition);
   } else {
     return false;
   }
 }
 
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing segmentation_token_stream");
+      return nullptr;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    return make_vpack(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing segmentation_token_stream from json: %s",
+                  args.c_str());
+  }
+  return nullptr;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing segmentation_token_stream");
+      return false;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    std::string vpack_container;
+    if (normalize_vpack_config(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
+        vpack_container)) {
+      VPackSlice slice(
+          reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
+      definition = iresearch::get_string(slice);
+      if (definition.empty()) {
+          return false;
+      }
+      return true;
+    }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from json: %s",
+                  args.c_str());
+  }
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a delimiter to use for tokenization
@@ -193,6 +243,7 @@ bool normalize_text_config(const irs::string_ref& delimiter, std::string& defini
   return true;
 }
 
+REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream, make_vpack, normalize_vpack_config);
 REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json, normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text, normalize_text_config);
 
@@ -215,6 +266,7 @@ delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
 }
 
 /*static*/ void delimited_token_stream::init() {
+  REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack, normalize_vpack_config); // match registration above
   REGISTER_ANALYZER_JSON(delimited_token_stream, make_json, normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text, normalize_text_config); // match registration above
 }

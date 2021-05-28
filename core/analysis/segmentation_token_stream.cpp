@@ -26,7 +26,9 @@
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
+#include "utils/vpack_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "segmentation_token_stream.hpp"
 
@@ -53,19 +55,21 @@ const frozen::unordered_map<
 
 bool parse_vpack_options(const irs::string_ref& args,
                          irs::analysis::segmentation_token_stream::options_t& options) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
   if (!slice.isObject()) {
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Slice for segmentation_token_stream is not an object: %s",
-                  slice.toString().c_str());
+                  slice_as_str.c_str());
     return false;
   }
   if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
-    auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME.c_str());
+    auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);
     if (!case_convert_slice.isString()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from"
           " Vpack arguments: %s",
-          CASE_CONVERT_PARAM_NAME.c_str(), slice.toString().c_str());
+          CASE_CONVERT_PARAM_NAME.c_str(), slice_as_str.c_str());
       return false;
     }
     auto case_convert = case_convert_slice.stringRef();
@@ -73,21 +77,23 @@ bool parse_vpack_options(const irs::string_ref& args,
                                      case_convert.size()));
 
     if (itr == CASE_CONVERT_MAP.end()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid value in '%s' for segmentation_token_stream from"
           " Vpack arguments: %s",
-          CASE_CONVERT_PARAM_NAME.c_str(), slice.toString().c_str());
+          CASE_CONVERT_PARAM_NAME.c_str(), slice_as_str.c_str());
       return false;
     }
     options.case_convert = itr->second;
   }
   if (slice.hasKey(BREAK_PARAM_NAME.c_str())) {
-    auto break_type_slice = slice.get(BREAK_PARAM_NAME.c_str());
+    auto break_type_slice = slice.get(BREAK_PARAM_NAME);
     if (!break_type_slice.isString()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from "
           "Vpack arguments: %s",
-          BREAK_PARAM_NAME.c_str(), slice.toString().c_str());
+          BREAK_PARAM_NAME.c_str(), slice_as_str.c_str());
       return false;
     }
     auto break_type = break_type_slice.stringRef();
@@ -95,10 +101,11 @@ bool parse_vpack_options(const irs::string_ref& args,
                                                       break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
+      std::string slice_as_str = iresearch::get_string(slice);
       IR_FRMT_WARN(
           "Invalid value in '%s' for segmentation_token_stream from "
           "Vpack arguments: %s",
-          BREAK_PARAM_NAME.c_str(), slice.toString().c_str());
+          BREAK_PARAM_NAME.c_str(), slice_as_str.c_str());
       return false;
     }
     options.word_break = itr->second;
@@ -108,9 +115,9 @@ bool parse_vpack_options(const irs::string_ref& args,
 
 bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t& options,
   std::string& definition) {
-  arangodb::velocypack::Builder builder;
+  VPackBuilder builder;
   {
-    arangodb::velocypack::ObjectBuilder object(&builder);
+    VPackObjectBuilder object(&builder);
     {
       auto it = std::find_if(
           CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
@@ -119,7 +126,7 @@ bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t
           });
       if (it != CASE_CONVERT_MAP.end()) {
         builder.add(CASE_CONVERT_PARAM_NAME.c_str(),
-                    arangodb::velocypack::Value(it->first.c_str()));
+                    VPackValue(it->first.c_str()));
       } else {
          IR_FRMT_WARN(
               "Invalid value in '%s' for normalizing segmentation_token_stream from "
@@ -135,7 +142,7 @@ bool make_vpack_config(const irs::analysis::segmentation_token_stream::options_t
             return m.second == v;
           });
       if (it != BREAK_CONVERT_MAP.end()) {
-        builder.add(BREAK_PARAM_NAME.c_str(), arangodb::velocypack::Value(it->first.c_str()));
+        builder.add(BREAK_PARAM_NAME.c_str(), VPackValue(it->first.c_str()));
       } else {
          IR_FRMT_WARN(
               "Invalid value in '%s' for normalizing segmentation_token_stream from "
@@ -162,14 +169,16 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     }
     return irs::memory::make_unique<irs::analysis::segmentation_token_stream>(
         std::move(options));
-  } catch(const arangodb::velocypack::Exception& ex) {
-    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  } catch(const VPackException& ex) {
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from Vpack arguments: %s",
-                  ex.what(), slice.toString().c_str());
+                  ex.what(), slice_as_str.c_str());
   } catch (...) {
-    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Caught error while constructing segmentation_token_stream from Vpack arguments: %s",
-                  slice.toString().c_str());
+                  slice_as_str.c_str());
   }
   return nullptr;
 }
@@ -182,14 +191,16 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     } else {
       return false;
     }
-  } catch(const arangodb::velocypack::Exception& ex) {
-    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  } catch(const VPackException& ex) {
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from Vpack arguments: %s",
-                  ex.what(), slice.toString().c_str());
+                  ex.what(), slice_as_str.c_str());
   } catch (...) {
-    arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+    std::string slice_as_str = iresearch::get_string(slice);
     IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from Vpack arguments: %s",
-                  slice.toString().c_str());
+                  slice_as_str.c_str());
   }
   return false;
 }
@@ -200,10 +211,10 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing segmentation_token_stream");
       return nullptr;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR("Caught error '%s' while constructing segmentation_token_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
@@ -219,17 +230,20 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing segmentation_token_stream");
       return false;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
         vpack_container)) {
-      arangodb::velocypack::Slice slice(
+      VPackSlice slice(
           reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
-      definition = slice.toString();
+      definition = iresearch::get_string(slice);
+      if (definition.empty()) {
+          return false;
+      }
       return true;
     }
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
