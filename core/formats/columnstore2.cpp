@@ -149,112 +149,6 @@ std::vector<uint64_t> read_blocks_dense(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @struct column_base
-////////////////////////////////////////////////////////////////////////////////
-class column_base : public columnstore_reader::column_reader,
-                    private util::noncopyable {
- public:
-  column_base(
-      const column_header& hdr,
-      column_index&& index,
-      const index_input& stream)
-    : stream_{&stream},
-      hdr_{hdr},
-      index_{std::move(index)},
-      opts_{
-        index_.empty()
-          ? sparse_bitmap_iterator::block_index_t{}
-          : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
-  }
-
-  virtual columnstore_reader::values_reader_f values() const override;
-
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override;
-
-  virtual doc_id_t size() const noexcept final {
-    return hdr_.docs_count;
-  }
-
-  const column_header& header() const noexcept {
-    return hdr_;
-  }
-
-  sparse_bitmap_iterator::options bitmap_iterator_options() const noexcept {
-    return opts_;
-  }
-
-  const index_input& stream() const noexcept {
-    assert(stream_);
-    return *stream_;
-  }
-
- protected:
-  template<typename Func>
-  doc_iterator::ptr make_iterator(Func&& f) const;
-
- private:
-  const index_input* stream_;
-  column_header hdr_;
-  column_index index_;
-  sparse_bitmap_iterator::options opts_;
-}; // column_base
-
-columnstore_reader::values_reader_f column_base::values() const {
-  auto moved_it = make_move_on_copy(this->iterator());
-  auto* document = irs::get<irs::document>(*moved_it.value());
-  if (!document || doc_limits::eof(document->value)) {
-    return columnstore_reader::empty_reader();
-  }
-  const bytes_ref* payload_value = &bytes_ref::NIL;
-  auto* payload = irs::get<irs::payload>(*moved_it.value());
-  if (payload) {
-    payload_value = &payload->value;
-  }
-
-  return [it = moved_it, payload_value, document](doc_id_t doc, bytes_ref& value) {
-    if (doc > doc_limits::invalid() && doc < doc_limits::eof()) {
-      if (doc < document->value) {
-#ifdef IRESEARCH_DEBUG
-        auto& impl = dynamic_cast<resettable_doc_iterator&>(*it.value());
-#else
-        auto& impl = static_cast<resettable_doc_iterator&>(*it.value());
-#endif
-        impl.reset();
-      }
-
-      if (doc == it.value()->seek(doc)) {
-        value = *payload_value;
-        return true;
-      }
-    }
-
-    return false;
-  };
-}
-
-bool column_base::visit(const columnstore_reader::values_visitor_f& visitor) const {
-  auto it = this->iterator();
-
-  payload dummy;
-  auto* doc = irs::get<document>(*it);
-  if (!doc) {
-    return false;
-  }
-  auto* payload = irs::get<irs::payload>(*it);
-  if (!payload) {
-    payload = &dummy;
-  }
-
-  while (it->next()) {
-    if (!visitor(doc->value, payload->value)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @class range_column_iterator
 /// @brief iterates over a specified contiguous range of documents
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +286,112 @@ class bitmap_column_iterator final
   sparse_bitmap_iterator bitmap_;
   attributes attrs_;
 }; // bitmap_column_iterator
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_base
+////////////////////////////////////////////////////////////////////////////////
+class column_base : public columnstore_reader::column_reader,
+                    private util::noncopyable {
+ public:
+  column_base(
+      const column_header& hdr,
+      column_index&& index,
+      const index_input& stream)
+    : stream_{&stream},
+      hdr_{hdr},
+      index_{std::move(index)},
+      opts_{
+        index_.empty()
+          ? sparse_bitmap_iterator::block_index_t{}
+          : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
+  }
+
+  virtual columnstore_reader::values_reader_f values() const override;
+
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override;
+
+  virtual doc_id_t size() const noexcept final {
+    return hdr_.docs_count;
+  }
+
+  const column_header& header() const noexcept {
+    return hdr_;
+  }
+
+  sparse_bitmap_iterator::options bitmap_iterator_options() const noexcept {
+    return opts_;
+  }
+
+  const index_input& stream() const noexcept {
+    assert(stream_);
+    return *stream_;
+  }
+
+ protected:
+  template<typename Func>
+  doc_iterator::ptr make_iterator(Func&& f) const;
+
+ private:
+  const index_input* stream_;
+  column_header hdr_;
+  column_index index_;
+  sparse_bitmap_iterator::options opts_;
+}; // column_base
+
+columnstore_reader::values_reader_f column_base::values() const {
+  auto moved_it = make_move_on_copy(this->iterator());
+  auto* document = irs::get<irs::document>(*moved_it.value());
+  if (!document || doc_limits::eof(document->value)) {
+    return columnstore_reader::empty_reader();
+  }
+  const bytes_ref* payload_value = &bytes_ref::NIL;
+  auto* payload = irs::get<irs::payload>(*moved_it.value());
+  if (payload) {
+    payload_value = &payload->value;
+  }
+
+  return [it = moved_it, payload_value, document](doc_id_t doc, bytes_ref& value) {
+    if (doc > doc_limits::invalid() && doc < doc_limits::eof()) {
+      if (doc < document->value) {
+#ifdef IRESEARCH_DEBUG
+        auto& impl = dynamic_cast<resettable_doc_iterator&>(*it.value());
+#else
+        auto& impl = static_cast<resettable_doc_iterator&>(*it.value());
+#endif
+        impl.reset();
+      }
+
+      if (doc == it.value()->seek(doc)) {
+        value = *payload_value;
+        return true;
+      }
+    }
+
+    return false;
+  };
+}
+
+bool column_base::visit(const columnstore_reader::values_visitor_f& visitor) const {
+  auto it = this->iterator();
+
+  payload dummy;
+  auto* doc = irs::get<document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 template<typename Func>
 doc_iterator::ptr column_base::make_iterator(Func&& f) const {
@@ -635,15 +635,15 @@ class dense_fixed_length_column final : public column_base {
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
   if (cipher_) {
-    using reader_type = payload_reader<encrypted_value_reader<false>>;
-
     return make_iterator([this](auto& stream) {
+      using reader_type = payload_reader<encrypted_value_reader<false>>;
+
       return reader_type{data_, len_, stream.reopen(), cipher_, data_};
     });
   } else {
-    using reader_type = payload_reader<value_reader<false>>;
-
     return make_iterator([this](auto& stream) {
+      using reader_type = payload_reader<value_reader<false>>;
+
       return reader_type{data_, len_, stream.dup(), data_};
     });
   }
@@ -727,15 +727,15 @@ class fixed_length_column final : public column_base {
 
 doc_iterator::ptr fixed_length_column::iterator() const {
   if (cipher_) {
-    using reader_type = payload_reader<encrypted_value_reader<false>>;
-
     return make_iterator([this](auto& stream) {
+      using reader_type = payload_reader<encrypted_value_reader<false>>;
+
       return reader_type{blocks_.data(), len_, stream.reopen(), cipher_, len_};
     });
   } else {
-    using reader_type = payload_reader<value_reader<false>>;
-
     return make_iterator([this](auto& stream) {
+      using reader_type = payload_reader<value_reader<false>>;
+
       return reader_type{blocks_.data(), len_, stream.dup(), len_};
     });
   }
@@ -887,16 +887,16 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 
 doc_iterator::ptr sparse_column::iterator() const {
   if (cipher_) {
-    using reader_type = payload_reader<encrypted_value_reader<true>>;
-
     return make_iterator([this](auto& stream) {
+      using reader_type = payload_reader<encrypted_value_reader<true>>;
+
       return reader_type{blocks_.data(), stream.reopen(), cipher_, size_t{0}};
     });
   } else {
-    using reader_type = payload_reader<value_reader<true>>;
-
     return make_iterator([this](auto& stream) {
-      return reader_type{blocks_.data(), stream.reopen(), size_t{0}};
+      using reader_type = payload_reader<value_reader<true>>;
+
+      return reader_type{blocks_.data(), stream.dup(), size_t{0}};
     });
   }
 }
