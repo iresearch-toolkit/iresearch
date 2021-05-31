@@ -32,7 +32,9 @@ namespace iresearch {
     std::string str;
     try {
       str = slice.toString();
-    } catch(...) { }
+    } catch(...) {
+      str = "<non-representable type>";
+    }
 
     return str;
   }
