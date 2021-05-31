@@ -165,18 +165,31 @@ class column_base : public columnstore_reader::column_reader,
 
   virtual columnstore_reader::values_reader_f values() const override {
     auto moved_it = make_move_on_copy(this->iterator());
+    auto* document = irs::get<irs::document>(*moved_it.value());
+    if (!document || doc_limits::eof(document->value)) {
+      return columnstore_reader::empty_reader();
+    }
     const bytes_ref* payload_value = &bytes_ref::NIL;
     auto* payload = irs::get<irs::payload>(*moved_it.value());
     if (payload) {
       payload_value = &payload->value;
     }
 
-    return [it = moved_it, payload_value](doc_id_t doc, bytes_ref& value) {
-      if (doc_limits::valid(doc) &&
-          !doc_limits::eof(doc) &&
-          doc == it.value()->seek(doc)) {
-        value = *payload_value;
-        return true;
+    return [it = moved_it, payload_value, document](doc_id_t doc, bytes_ref& value) {
+      if (doc > doc_limits::invalid() && doc < doc_limits::eof()) {
+        if (doc < document->value) {
+#ifdef IRESEARCH_DEBUG
+          auto& impl = dynamic_cast<resettable_doc_iterator&>(*it.value());
+#else
+          auto& impl = static_cast<resettable_doc_iterator&>(*it.value());
+#endif
+          impl.reset();
+        }
+
+        if (doc == it.value()->seek(doc)) {
+          value = *payload_value;
+          return true;
+        }
       }
 
       return false;
@@ -229,7 +242,7 @@ class column_base : public columnstore_reader::column_reader,
 ////////////////////////////////////////////////////////////////////////////////
 template<typename PayloadReader>
 class range_column_iterator final
-    : public irs::doc_iterator,
+    : public irs::resettable_doc_iterator,
       private PayloadReader {
  private:
   using payload_reader = PayloadReader;
@@ -279,6 +292,12 @@ class range_column_iterator final
     return false;
   }
 
+  virtual void reset() noexcept override {
+    min_doc_ = min_base_;
+    max_doc_ = min_doc_ + std::get<irs::cost>(attrs_).estimate() - 1;
+    std::get<document>(attrs_).value = irs::doc_limits::invalid();
+  }
+
  private:
   doc_id_t min_base_;
   doc_id_t min_doc_;
@@ -292,7 +311,7 @@ class range_column_iterator final
 ////////////////////////////////////////////////////////////////////////////////
 template<typename PayloadReader>
 class bitmap_column_iterator final
-    : public irs::doc_iterator,
+    : public irs::resettable_doc_iterator,
       private PayloadReader {
  private:
   using payload_reader = PayloadReader;
@@ -345,6 +364,10 @@ class bitmap_column_iterator final
 
     std::get<payload>(attrs_).value = bytes_ref::NIL;
     return false;
+  }
+
+  virtual void reset() override {
+    bitmap_.reset();
   }
 
  private:

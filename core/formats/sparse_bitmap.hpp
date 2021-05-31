@@ -161,7 +161,7 @@ struct value_index : document {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sparse_bitmap_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sparse_bitmap_iterator final : public doc_iterator {
+class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
   using block_index_t = range<const sparse_bitmap_writer::block>;
 
@@ -210,6 +210,8 @@ class sparse_bitmap_iterator final : public doc_iterator {
     return std::get<document>(attrs_).value;
   }
 
+  virtual void reset() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @note the value is undefined for
   ///       doc_limits::invalid() and doc_limits::eof()
@@ -223,6 +225,8 @@ class sparse_bitmap_iterator final : public doc_iterator {
 
   template<uint32_t>
   friend struct container_iterator;
+
+  static bool initial_seek(sparse_bitmap_iterator* self, doc_id_t target);
 
   struct container_iterator_context {
     union {

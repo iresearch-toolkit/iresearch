@@ -314,25 +314,36 @@ struct container_iterator<BT_DENSE> {
 // --SECTION--                                            sparse_bitmap_iterator
 // -----------------------------------------------------------------------------
 
+/*static*/ bool sparse_bitmap_iterator::initial_seek(
+    sparse_bitmap_iterator* self, doc_id_t target) {
+  assert(!doc_limits::valid(self->value()));
+  assert(0 == (target & 0xFFFF0000));
+
+  // we can get there iff the very
+  // first block is not yet read
+  self->read_block_header();
+  self->seek(target);
+  return true;
+}
+
 sparse_bitmap_iterator::sparse_bitmap_iterator(
     memory::managed_ptr<index_input>&& in,
     const options& opts)
   : in_{std::move(in)},
-    seek_func_{[](sparse_bitmap_iterator* self, doc_id_t target) {
-      assert(!doc_limits::valid(self->value()));
-      assert(0 == (target & 0xFFFF0000));
-
-      // we can get there iff the very
-      // first block is not yet read
-      self->read_block_header();
-      self->seek(target);
-      return true;
-    }},
+    seek_func_{&sparse_bitmap_iterator::initial_seek},
     block_index_{opts.blocks},
     cont_begin_{in_->file_pointer()},
     origin_{cont_begin_},
     use_block_index_{opts.use_block_index} {
   assert(in_);
+}
+
+void sparse_bitmap_iterator::reset() {
+  std::get<document>(attrs_).value = irs::doc_limits::invalid();
+  seek_func_ = &sparse_bitmap_iterator::initial_seek;
+  cont_begin_ = origin_;
+  index_max_ = 0;
+  in_->seek(cont_begin_);
 }
 
 void sparse_bitmap_iterator::read_block_header() {

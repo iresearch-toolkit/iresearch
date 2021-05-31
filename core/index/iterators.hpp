@@ -67,6 +67,10 @@ struct IRESEARCH_API doc_iterator
   virtual doc_id_t seek(doc_id_t target) = 0;
 }; // doc_iterator
 
+struct IRESEARCH_API resettable_doc_iterator : doc_iterator {
+  virtual void reset() = 0;
+};
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  field iterators 
 // ----------------------------------------------------------------------------
