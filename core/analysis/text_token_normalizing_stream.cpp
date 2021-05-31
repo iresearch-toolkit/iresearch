@@ -20,10 +20,10 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #include <frozen/unordered_map.h>
 
@@ -53,6 +53,7 @@
 
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 #include "text_token_normalizing_stream.hpp"
 
@@ -117,34 +118,32 @@ constexpr frozen::unordered_map<
 };
 
 
-bool parse_json_config(
+bool parse_vpack_options(
     const irs::string_ref& args,
     irs::analysis::text_token_normalizing_stream::options_t& options) {
-  rapidjson::Document json;
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing "
-        "text_token_normalizing_stream, arguments: %s",
-        args.c_str());
 
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  if (!slice.isObject() && !slice.isString()) {
+    std::string slice_as_str = iresearch::get_string(slice);
+    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
+                  slice_as_str.c_str());
     return false;
   }
 
   try {
-    switch (json.GetType()) {
-      case rapidjson::kStringType:
-        return make_locale_from_name(json.GetString(), options.locale);  // required
-      case rapidjson::kObjectType:
-        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
-            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
-          if (!make_locale_from_name(json[LOCALE_PARAM_NAME.c_str()].GetString(), options.locale)) {
+    switch (slice.type()) {
+      case VPackValueType::String:
+        return make_locale_from_name(slice.toString(), options.locale);  // required
+      case VPackValueType::Object:
+        if (slice.hasKey(LOCALE_PARAM_NAME.c_str()) &&
+            slice.get(LOCALE_PARAM_NAME.c_str()).isString()) {
+          if (!make_locale_from_name(slice.get(LOCALE_PARAM_NAME).toString(), options.locale)) {
             return false;
           }
-          if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
-            auto& case_convert =
-                json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
+          if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
+            auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME.c_str());  // optional string enum
 
-            if (!case_convert.IsString()) {
+            if (!case_convert_slice.isString()) {
               IR_FRMT_WARN(
                   "Non-string value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
@@ -153,7 +152,7 @@ bool parse_json_config(
               return false;
             }
 
-            auto itr = CASE_CONVERT_MAP.find(case_convert.GetString());
+            auto itr = CASE_CONVERT_MAP.find(case_convert_slice.toString());
 
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
@@ -167,10 +166,10 @@ bool parse_json_config(
             options.case_convert = itr->second;
           }
 
-          if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
-            auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
+          if (slice.hasKey(ACCENT_PARAM_NAME.c_str())) {
+            auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
 
-            if (!accent.IsBool()) {
+            if (!accent_slice.isBool()) {
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
@@ -179,7 +178,7 @@ bool parse_json_config(
               return false;
             }
 
-            options.accent = accent.GetBool();
+            options.accent = accent_slice.getBool();
           }
 
           return true;
@@ -205,9 +204,9 @@ bool parse_json_config(
 ///        "case"(string enum): modify token case using "locale"
 ///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   irs::analysis::text_token_normalizing_stream::options_t options;
-  if (parse_json_config(args, options)) {
+  if (parse_vpack_options(args, options)) {
     return irs::memory::make_shared<
         irs::analysis::text_token_normalizing_stream>(std::move(options));
   } else {
@@ -220,69 +219,57 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @param options reference to analyzer options storage
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(
+bool make_vpack_config(
     const irs::analysis::text_token_normalizing_stream::options_t& options,
     std::string& definition) {
-  rapidjson::Document json;
-  json.SetObject();
 
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
-  // locale
+  VPackBuilder builder;
   {
-    const auto& locale_name = irs::locale_utils::name(options.locale);
-    json.AddMember(
-        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), locale_name.length())),
-        allocator);
+    VPackObjectBuilder object(&builder);
+    {
+      // locale
+      const auto& locale_name = irs::locale_utils::name(options.locale);
+      VPackStringRef locale_param_name(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size());
+      VPackValue value_local(irs::string_ref(locale_name.c_str(), locale_name.length()));
+      builder.add(locale_param_name, value_local);
+
+      // case convert
+      auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+        [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
+            return v.second == options.case_convert;
+        });
+      if (case_value != CASE_CONVERT_MAP.end()) {
+        VPackStringRef case_convert_param_name(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size());
+        VPackValue value(irs::string_ref(case_value->first.c_str(), case_value->first.size()));
+        builder.add(case_convert_param_name, value);
+      }
+      else {
+        IR_FRMT_ERROR(
+          "Invalid case_convert value in text analyzer options: %d",
+          static_cast<int>(options.case_convert));
+        return false;
+      }
+
+      // Accent
+      VPackStringRef accent_param_name(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size());
+      VPackValue value_accent(options.accent);
+      builder.add(accent_param_name, value_accent);
+    }
   }
 
-  // case convert
-  {
-    auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
-      [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
-          return v.second == options.case_convert; 
-      });
-    if (case_value != CASE_CONVERT_MAP.end()) {
-      json.AddMember(
-        rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
-        rapidjson::Value(case_value->first.c_str(),
-                         static_cast<rapidjson::SizeType>(case_value->first.size())),
-        allocator);
-    }
-    else {
-      IR_FRMT_ERROR(
-        "Invalid case_convert value in text analyzer options: %d", 
-        static_cast<int>(options.case_convert));
-      return false;
-    }
-  }
-
-  // Accent
-  json.AddMember(
-    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
-    rapidjson::Value(options.accent),
-    allocator);
-
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
+  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_json_config(const irs::string_ref& args,
+bool normalize_vpack_config(const irs::string_ref& args,
                            std::string& definition) {
   irs::analysis::text_token_normalizing_stream::options_t options;
-  if (parse_json_config(args, options)) {
-    return make_json_config(options, definition);
+  if (parse_vpack_options(args, options)) {
+    return make_vpack_config(options, definition);
   } else {
     return false;
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for normalizing
@@ -315,10 +302,60 @@ bool normalize_text_config(const irs::string_ref& args,
   return false;
 }
 
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      return nullptr;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    return make_vpack(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing ngram_token_stream from json: %s",
+                  args.c_str());
+  }
+  return nullptr;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      return false;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    std::string vpack_container;
+    if (normalize_vpack_config(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
+        vpack_container)) {
+      VPackSlice slice(
+          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
+      definition = iresearch::get_string(slice);
+      if (definition.empty()) {
+          return false;
+      }
+      return true;
+    }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while normalizing ngram_token_stream from json: %s",
+                  args.c_str());
+  }
+  return false;
+}
+
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json, 
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
                        normalize_text_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_vpack,
+                       normalize_vpack_config);
 
 }
 
@@ -333,10 +370,12 @@ text_token_normalizing_stream::text_token_normalizing_stream(
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_normalizing_stream, make_json, 
+  REGISTER_ANALYZER_JSON(text_token_normalizing_stream, make_json,
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text, 
                          normalize_text_config); // match registration above
+  REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_vpack,
+                         normalize_vpack_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_normalizing_stream::make(

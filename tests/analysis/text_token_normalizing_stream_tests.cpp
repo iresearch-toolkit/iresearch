@@ -322,7 +322,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
+    ASSERT_EQ("{\n  \"accent\" : true,\n  \"case\" : \"lower\",\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
   }
 
   // no case convert in creation. Default value shown
@@ -330,7 +330,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}", actual);
+    ASSERT_EQ("{\n  \"accent\" : true,\n  \"case\" : \"none\",\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
   }
 
   // no accent in creation. Default value shown
@@ -338,7 +338,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
+    ASSERT_EQ("{\n  \"accent\" : true,\n  \"case\" : \"lower\",\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
   }
 
   
@@ -347,7 +347,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(config, actual);
+    ASSERT_EQ("{\n  \"accent\" : true,\n  \"case\" : \"upper\",\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
   }
 }
 
