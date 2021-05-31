@@ -242,7 +242,7 @@ class column_base : public columnstore_reader::column_reader,
 ////////////////////////////////////////////////////////////////////////////////
 template<typename PayloadReader>
 class range_column_iterator final
-    : public irs::resettable_doc_iterator,
+    : public resettable_doc_iterator,
       private PayloadReader {
  private:
   using payload_reader = PayloadReader;
@@ -311,7 +311,7 @@ class range_column_iterator final
 ////////////////////////////////////////////////////////////////////////////////
 template<typename PayloadReader>
 class bitmap_column_iterator final
-    : public irs::resettable_doc_iterator,
+    : public resettable_doc_iterator,
       private PayloadReader {
  private:
   using payload_reader = PayloadReader;
