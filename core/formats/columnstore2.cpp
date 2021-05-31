@@ -154,8 +154,12 @@ std::vector<uint64_t> read_blocks_dense(
 class column_base : public columnstore_reader::column_reader,
                     private util::noncopyable {
  public:
-  column_base(const column_header& hdr, column_index&& index)
-    : hdr_{hdr},
+  column_base(
+      const column_header& hdr,
+      column_index&& index,
+      const index_input& stream)
+    : stream_{&stream},
+      hdr_{hdr},
       index_{std::move(index)},
       opts_{
         index_.empty()
@@ -230,7 +234,17 @@ class column_base : public columnstore_reader::column_reader,
     return opts_;
   }
 
+  const index_input& stream() const noexcept {
+    assert(stream_);
+    return *stream_;
+  }
+
+ protected:
+  template<typename Func>
+  doc_iterator::ptr make_iterator(Func&& f) const;
+
  private:
+  const index_input* stream_;
   column_header hdr_;
   column_index index_;
   sparse_bitmap_iterator::options opts_;
@@ -251,12 +265,12 @@ class range_column_iterator final
 
  public:
   template<typename... Args>
-  range_column_iterator(doc_id_t min, doc_id_t docs_count, Args&&... args)
+  range_column_iterator(const column_header& header, Args&&... args)
     : payload_reader{std::forward<Args>(args)...},
-      min_base_{min},
-      min_doc_{min},
-      max_doc_{min + docs_count - 1} {
-    std::get<irs::cost>(attrs_).reset(docs_count);
+      min_base_{header.min},
+      min_doc_{min_base_},
+      max_doc_{min_base_ + header.docs_count - 1} {
+    std::get<irs::cost>(attrs_).reset(header.docs_count);
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -375,6 +389,36 @@ class bitmap_column_iterator final
   attributes attrs_;
 }; // bitmap_column_iterator
 
+template<typename Func>
+doc_iterator::ptr column_base::make_iterator(Func&& f) const {
+  assert(header().docs_count);
+
+  using reader_type = std::invoke_result_t<Func, const index_input&>;
+
+  if (0 == header().docs_index) {
+    using iterator_type = range_column_iterator<reader_type>;
+
+    return memory::make_managed<iterator_type>(header(), f(stream()));
+  } else {
+    auto dup = stream().reopen();
+
+    if (!dup) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+
+      throw io_error{"failed to reopen input"};
+    }
+
+    dup->seek(header().docs_index);
+
+    using iterator_type = bitmap_column_iterator<reader_type>;
+
+    return memory::make_managed<iterator_type>(
+      std::move(dup), bitmap_iterator_options(),
+      header().docs_count, f(*dup));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct mask_column
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,51 +433,46 @@ struct mask_column final : public column_base {
       const column_header& hdr,
       column_index&& index,
       index_input& /*index_in*/,
-      index_input& data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& /*inflater*/,
       encryption::stream* /*cipher*/) {
-    return memory::make_unique<mask_column>(hdr, std::move(index), &data_in);
+    return memory::make_unique<mask_column>(hdr, std::move(index), data_in);
   }
 
   mask_column(
       const column_header& hdr,
       column_index&& index,
-      index_input* data_in)
-    : column_base{hdr, std::move(index)},
-      data_in{data_in} {
+      const index_input& data_in)
+    : column_base{hdr, std::move(index), data_in} {
     assert(ColumnType::MASK == header().type);
   }
 
   virtual doc_iterator::ptr iterator() const override;
-
-  index_input* data_in;
 }; // mask_column
 
 doc_iterator::ptr mask_column::iterator() const {
   if (0 == header().docs_count) {
-    // only mask column might be empty
+    // only mask column can be empty
     return doc_iterator::empty();
   }
 
   if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<payload_reader>>(
-      header().min,
-      header().docs_count);
+    return memory::make_managed<range_column_iterator<payload_reader>>(header());
   }
 
-  auto stream = data_in->reopen();
+  auto dup = stream().reopen();
 
-  if (!stream) {
+  if (!dup) {
     // implementation returned wrong pointer
     IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
 
     throw io_error{"failed to reopen input"};
   }
 
-  stream->seek(header().docs_index);
+  dup->seek(header().docs_index);
 
   return memory::make_managed<sparse_bitmap_iterator>(
-    std::move(stream),
+    std::move(dup),
     bitmap_iterator_options(),
     header().docs_count);
 }
@@ -521,22 +560,21 @@ class dense_fixed_length_column final : public column_base {
     const column_header& hdr,
     column_index&& index,
     index_input& index_in,
-    index_input& data_in,
+    const index_input& data_in,
     compression::decompressor::ptr&& inflater,
     encryption::stream* cipher);
 
   dense_fixed_length_column(
       const column_header& hdr,
       column_index&& index,
-      index_input* data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       uint64_t data,
       uint64_t len)
-    : column_base{hdr, std::move(index)},
+    : column_base{hdr, std::move(index), data_in},
       inflater_{std::move(inflater)},
       cipher_{cipher},
-      data_in_{data_in},
       data_{data},
       len_{len} {
     assert(header().docs_count);
@@ -571,7 +609,6 @@ class dense_fixed_length_column final : public column_base {
 
   compression::decompressor::ptr inflater_;
   encryption::stream* cipher_;
-  index_input* data_in_;
   uint64_t data_;
   uint64_t len_;
 }; // dense_fixed_length_column
@@ -580,67 +617,32 @@ class dense_fixed_length_column final : public column_base {
     const column_header& hdr,
     column_index&& index,
     index_input& index_in,
-    index_input& data_in,
+    const index_input& data_in,
     compression::decompressor::ptr&& inflater,
     encryption::stream* cipher) {
   const uint64_t data = index_in.read_long();
   const uint64_t len = index_in.read_long();
 
   return memory::make_unique<dense_fixed_length_column>(
-      hdr, std::move(index), &data_in,
-      std::move(inflater), cipher,
-      data, len);
+    hdr, std::move(index), data_in,
+    std::move(inflater), cipher,
+    data, len);
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
-  if (0 == header().docs_index) {
-    if (cipher_) {
-      using iterator_type = range_column_iterator<
-        payload_reader<encrypted_value_reader<false>>>;
-
-      return memory::make_managed<iterator_type>(
-        header().min, header().docs_count,
-        data_, len_,
-        data_in_->reopen(), cipher_, data_);
-    }
-
-    using iterator_type = range_column_iterator<
-      payload_reader<value_reader<false>>>;
-
-    return memory::make_managed<iterator_type>(
-      header().min, header().docs_count,
-      data_, len_,
-      data_in_->reopen(), data_);
-  }
-
-  auto stream = data_in_->reopen();
-
-  if (!stream) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
-
-    throw io_error{"failed to reopen input"};
-  }
-
-  stream->seek(header().docs_index);
-
   if (cipher_) {
-    using iterator_type = bitmap_column_iterator<
-      payload_reader<encrypted_value_reader<false>>>;
+    using reader_type = payload_reader<encrypted_value_reader<false>>;
 
-    return memory::make_managed<iterator_type>(
-      std::move(stream), bitmap_iterator_options(), header().docs_count,
-      data_, len_,
-      stream->dup(), cipher_, data_);
+    return make_iterator([this](auto& stream) {
+      return reader_type{data_, len_, stream.reopen(), cipher_, data_};
+    });
+  } else {
+    using reader_type = payload_reader<value_reader<false>>;
+
+    return make_iterator([this](auto& stream) {
+      return reader_type{data_, len_, stream.dup(), data_};
+    });
   }
-
-  using iterator_type = bitmap_column_iterator<
-    payload_reader<value_reader<false>>>;
-
-  return memory::make_managed<iterator_type>(
-    std::move(stream), bitmap_iterator_options(), header().docs_count,
-    data_, len_,
-    stream->dup(), data_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -652,14 +654,14 @@ class fixed_length_column final : public column_base {
       const column_header& hdr,
       column_index&& index,
       index_input& index_in,
-      index_input& data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher) {
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in);
 
     return memory::make_unique<fixed_length_column>(
-      hdr, std::move(index), &data_in,
+      hdr, std::move(index), data_in,
       std::move(inflater), cipher,
       std::move(blocks), len);
   }
@@ -667,16 +669,15 @@ class fixed_length_column final : public column_base {
   fixed_length_column(
       const column_header& hdr,
       column_index&& index,
-      index_input* data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<uint64_t>&& blocks,
       uint64_t len)
-    : column_base{hdr, std::move(index)},
+    : column_base{hdr, std::move(index), data_in},
       blocks_{blocks},
       inflater_{std::move(inflater)},
       cipher_{cipher},
-      data_in_{data_in},
       len_{len} {
     assert(header().docs_count);
     assert(ColumnType::FIXED == header().type);
@@ -714,62 +715,29 @@ class fixed_length_column final : public column_base {
     uint64_t len_;
   }; // payload_reader
 
+template<typename Reader>
+doc_iterator::ptr iterator(Reader&& reader) const;
+
   std::vector<uint64_t> blocks_;
   compression::decompressor::ptr inflater_;
   encryption::stream* cipher_;
-  index_input* data_in_;
   uint64_t len_;
 }; // fixed_length_column
 
 doc_iterator::ptr fixed_length_column::iterator() const {
-  if (0 == header().docs_index) {
-    if (cipher_) {
-      using iterator_type = range_column_iterator<
-        payload_reader<encrypted_value_reader<false>>>;
-
-      return memory::make_managed<iterator_type>(
-        header().min, header().docs_count,
-        blocks_.data(), len_,
-        data_in_->reopen(), cipher_, len_);
-    }
-
-    using iterator_type = range_column_iterator<
-      payload_reader<value_reader<false>>>;
-
-    return memory::make_managed<iterator_type>(
-      header().min, header().docs_count,
-      blocks_.data(), len_,
-      data_in_->reopen(), len_);
-  }
-
-  auto stream = data_in_->reopen();
-
-  if (!stream) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
-
-    throw io_error{"failed to reopen input"};
-  }
-
-  stream->seek(header().docs_index);
-
   if (cipher_) {
-    using iterator_type = bitmap_column_iterator<
-      payload_reader<encrypted_value_reader<false>>>;
+    using reader_type = payload_reader<encrypted_value_reader<false>>;
 
-    return memory::make_managed<iterator_type>(
-      std::move(stream), bitmap_iterator_options(), header().docs_count,
-      blocks_.data(), len_,
-      stream->dup(), cipher_, len_);
+    return make_iterator([this](auto& stream) {
+      return reader_type{blocks_.data(), len_, stream.reopen(), cipher_, len_};
+    });
+  } else {
+    using reader_type = payload_reader<value_reader<false>>;
+
+    return make_iterator([this](auto& stream) {
+      return reader_type{blocks_.data(), len_, stream.dup(), len_};
+    });
   }
-
-  using iterator_type = bitmap_column_iterator<
-    payload_reader<value_reader<false>>>;
-
-  return memory::make_managed<iterator_type>(
-    std::move(stream), bitmap_iterator_options(), header().docs_count,
-    blocks_.data(), len_,
-    stream->dup(), len_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -785,28 +753,27 @@ class sparse_column final : public column_base {
       const column_header& hdr,
       column_index&& index,
       index_input& index_in,
-      index_input& data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in);
 
     return memory::make_unique<sparse_column>(
-      hdr, std::move(index), &data_in,
+      hdr, std::move(index), data_in,
       std::move(inflater), cipher, std::move(blocks));
   }
 
   sparse_column(
       const column_header& hdr,
       column_index&& index,
-      index_input* data_in,
+      const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<column_block>&& blocks)
-    : column_base{hdr, std::move(index)},
+    : column_base{hdr, std::move(index), data_in},
       blocks_{std::move(blocks)},
       inflater_{std::move(inflater)},
-      cipher_{cipher},
-      data_in_{data_in} {
+      cipher_{cipher} {
     assert(header().docs_count);
     assert(ColumnType::SPARSE == header().type);
   }
@@ -837,7 +804,6 @@ class sparse_column final : public column_base {
   std::vector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
   encryption::stream* cipher_;
-  index_input* data_in_;
 }; // sparse_column
 
 template<typename ValueReader>
@@ -919,59 +885,24 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 }
 
 doc_iterator::ptr sparse_column::iterator() const {
-  if (0 == header().docs_index) {
-    if (cipher_) {
-      using iterator_type = range_column_iterator<
-        payload_reader<encrypted_value_reader<true>>>;
-
-      return memory::make_managed<iterator_type>(
-        header().min, header().docs_count,
-        blocks_.data(),
-        data_in_->reopen(), cipher_, size_t{0});
-    }
-
-    using iterator_type = range_column_iterator<
-      payload_reader<value_reader<true>>>;
-
-    return memory::make_managed<iterator_type>(
-      header().min, header().docs_count,
-      blocks_.data(),
-      data_in_->reopen(), size_t{0});
-  }
-
-  index_input::ptr stream = data_in_->reopen();
-
-  if (!stream) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
-
-    throw io_error{"failed to reopen input"};
-  }
-
-  stream->seek(header().docs_index);
-
   if (cipher_) {
-    using iterator_type = bitmap_column_iterator<
-      payload_reader<encrypted_value_reader<true>>>;
+    using reader_type = payload_reader<encrypted_value_reader<true>>;
 
-    return memory::make_managed<iterator_type>(
-      std::move(stream), bitmap_iterator_options(), header().docs_count,
-      blocks_.data(),
-      stream->dup(), cipher_, size_t{0});
+    return make_iterator([this](auto& stream) {
+      return reader_type{blocks_.data(), stream.reopen(), cipher_, size_t{0}};
+    });
+  } else {
+    using reader_type = payload_reader<value_reader<true>>;
+
+    return make_iterator([this](auto& stream) {
+      return reader_type{blocks_.data(), stream.reopen(), size_t{0}};
+    });
   }
-
-  using iterator_type = bitmap_column_iterator<
-    payload_reader<value_reader<true>>>;
-
-  return memory::make_managed<iterator_type>(
-    std::move(stream), bitmap_iterator_options(), header().docs_count,
-    blocks_.data(),
-    stream->dup(), size_t{0});
 }
 
 using column_factory_f = column_ptr(*)(
   const column_header&, column_index&&, index_input&,
-  index_input&, compression::decompressor::ptr&&,
+  const index_input&, compression::decompressor::ptr&&,
   encryption::stream*);
 
 constexpr column_factory_f FACTORIES[] {
