@@ -124,7 +124,7 @@ bool parse_vpack_options(
 
   VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
                   slice_as_str.c_str());
     return false;
@@ -257,6 +257,7 @@ bool make_vpack_config(
     }
   }
 
+  // output vpack to string
   definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
@@ -334,7 +335,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         vpack_container)) {
       VPackSlice slice(
           reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = iresearch::get_string(slice);
+      definition = slice.toString();
       if (definition.empty()) {
           return false;
       }
@@ -354,7 +355,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
                        normalize_text_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
                        normalize_vpack_config);
 
 }

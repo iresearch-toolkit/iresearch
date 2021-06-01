@@ -66,7 +66,7 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
 
   if (!slice.isObject()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
                   slice_as_str.c_str());
     return false;
@@ -280,7 +280,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         vpack_container)) {
       VPackSlice slice(
           reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = iresearch::get_string(slice);
+      definition = slice.toString();
       if (definition.empty()) {
           return false;
       }

@@ -22,11 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libstemmer.h"
-#include "rapidjson/rapidjson/document.h" // for rapidjson::Document
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 #include "unicode/locid.h"
 #include "utils/locale_utils.hpp"
+#include "utils/vpack_utils.hpp"
+
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #include "text_token_stemming_stream.hpp"
 
@@ -55,38 +58,36 @@ bool make_locale_from_name(const irs::string_ref& name,
 
 const irs::string_ref LOCALE_PARAM_NAME = "locale";
 
-bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
-  rapidjson::Document json;
+bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing "
-        "text_token_stemming_stream, arguments: %s",
-        args.c_str());
-
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  if (!slice.isObject() && !slice.isString()) {
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
+    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
+                  slice_as_str.c_str());
     return false;
   }
 
   try {
-    switch (json.GetType()) {
-      case rapidjson::kStringType:
-        return make_locale_from_name(json.GetString(), locale);
-      case rapidjson::kObjectType:
-        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
-            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
-          return make_locale_from_name(
-              json[LOCALE_PARAM_NAME.c_str()].GetString(), locale);
+    switch (slice.type()) {
+      case VPackValueType::String:
+        return make_locale_from_name(irs::get_string(slice), locale);
+      case VPackValueType::Object:
+        if (slice.hasKey(LOCALE_PARAM_NAME.c_str()) &&
+            slice.get(LOCALE_PARAM_NAME).isString()) {
+          irs::string_ref param_name = irs::get_string(slice.get(LOCALE_PARAM_NAME));
+          return make_locale_from_name(param_name, locale);
         }
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "
-            "jSON arguments: %s",
+            "VPack arguments: %s",
             LOCALE_PARAM_NAME.c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stemming_stream from jSON "
+        "Caught error while constructing text_token_stemming_stream from VPack "
         "arguments: %s",
         args.c_str());
   }
@@ -97,9 +98,9 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   std::locale locale;
-  if (parse_json_config(args, locale)) {
+  if (parse_vpack_options(args, locale)) {
     return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
   } else {
     return nullptr;
@@ -111,37 +112,81 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config( const std::locale& locale,  std::string& definition) {
-  rapidjson::Document json;
-  json.SetObject();
+bool make_vpack_config( const std::locale& locale,  std::string& definition) {
 
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
-  // locale
+  VPackBuilder builder;
   {
-    const auto& locale_name = irs::locale_utils::name(locale);
-    json.AddMember(
-        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), locale_name.length())),
-        allocator);
+    VPackObjectBuilder object(&builder);
+    {
+       // locale
+      const auto& locale_name = irs::locale_utils::name(locale);
+      VPackStringRef locale_param_name(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size());
+      VPackValue value_locale(VPackStringRef(locale_name.c_str(), locale_name.length()));
+      builder.add(locale_param_name, value_locale);
+    }
   }
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
+
+  // output vpack to string
+  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
   std::locale options;
-  if (parse_json_config(args, options)) {
-    return make_json_config(options, definition);
+  if (parse_vpack_options(args, options)) {
+    return make_vpack_config(options, definition);
   } else {
     return false;
   }
 }
 
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      return nullptr;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    return make_vpack(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing ngram_token_stream from json: %s",
+                  args.c_str());
+  }
+  return nullptr;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      return false;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str());
+    std::string vpack_container;
+    if (normalize_vpack_config(
+        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
+        vpack_container)) {
+      VPackSlice slice(
+          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
+      definition = slice.toString();
+      if (definition.empty()) {
+          return false;
+      }
+      return true;
+    }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while normalizing ngram_token_stream from json: %s",
+                  args.c_str());
+  }
+  return false;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for stemming
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +219,8 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json,
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
                        normalize_text_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+                       normalize_vpack_config);
 
 }
 
@@ -191,6 +238,8 @@ text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text,
                          normalize_text_config); // match registration above
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+                         normalize_vpack_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_stemming_stream::make(const string_ref& locale) {

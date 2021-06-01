@@ -51,7 +51,7 @@ bool parse_vpack_options(const irs::string_ref& args,
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
 
   if (!slice.isObject()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
                   slice_as_str.c_str());
     return false;
@@ -73,7 +73,7 @@ bool parse_vpack_options(const irs::string_ref& args,
   }
 
   if (!min_type_slice.isNumber<decltype (min)>()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments: %s",
@@ -92,7 +92,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     return false;
   }
   if (!max_type_slice.isNumber<decltype (max)>()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments: %s",
@@ -117,7 +117,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     return false;
   }
   if (!preserve_type_slice.isBool()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_WARN(
         "Invalid type '%b' (bool expected) for ngram_token_stream from "
         "VPack arguments: %s",
@@ -131,7 +131,7 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
     auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME);
     if (!start_marker_type_slice.isString()) {
-      std::string slice_as_str = iresearch::get_string(slice);
+      irs::string_ref slice_as_str = irs::slice_to_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from "
           "VPack arguments: %s",
@@ -146,7 +146,7 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
     auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME);
     if (!end_marker_type_slice.isString()) {
-      std::string slice_as_str = iresearch::get_string(slice);
+      irs::string_ref slice_as_str = irs::slice_to_string(slice);
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for segmentation_token_stream from "
           "VPack arguments: %s",
@@ -308,7 +308,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         vpack_container)) {
       VPackSlice slice(
           reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = iresearch::get_string(slice);
+      definition = slice.toString();
       if (definition.empty()) {
           return false;
       }

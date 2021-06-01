@@ -186,7 +186,7 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\"}", actual);
+    ASSERT_EQ("{\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
   }
 }
 

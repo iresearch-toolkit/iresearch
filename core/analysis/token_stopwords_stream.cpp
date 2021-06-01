@@ -194,7 +194,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     std::string vpack_container;
     if (normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), vpack_container)) {
       arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
-      definition = slice.toString();
+      definition = slice.toString();;
       return true;
     }
   } catch(const arangodb::velocypack::Exception& ex) {

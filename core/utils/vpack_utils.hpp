@@ -25,11 +25,13 @@
 
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
+#include "string.hpp"
 
 namespace iresearch {
 
-  inline std::string get_string(const VPackSlice& slice) noexcept {
-    std::string str;
+  // return slice as string for err and warn messages
+  inline iresearch::string_ref slice_to_string(const VPackSlice& slice) noexcept {
+    iresearch::string_ref str;
     try {
       str = slice.toString();
     } catch(...) {
@@ -37,6 +39,14 @@ namespace iresearch {
     }
 
     return str;
+  }
+
+  // get string from slice without copying
+  inline iresearch::string_ref get_string(const VPackSlice& slice) {
+    VPackValueLength length;
+    const char* ptr = slice.getString(length);
+
+    return iresearch::string_ref(ptr, length);
   }
 
 } // iresearch

@@ -103,7 +103,7 @@ bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
 
   VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    std::string slice_as_str = iresearch::get_string(slice);
+    irs::string_ref slice_as_str = irs::slice_to_string(slice);
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
                   slice_as_str.c_str());
     return false;
@@ -117,7 +117,7 @@ bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
       if (slice.hasKey(DELIMITER_PARAM_NAME.c_str())) {
         auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
         if (!delim_type_slice.isString()) {
-          std::string slice_as_str = iresearch::get_string(slice);
+          irs::string_ref slice_as_str = irs::slice_to_string(slice);
           IR_FRMT_WARN(
               "Invalid type '%s' (string expected) for segmentation_token_stream from "
               "VPack arguments: %s",
@@ -213,7 +213,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         vpack_container)) {
       VPackSlice slice(
           reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
-      definition = iresearch::get_string(slice);
+      definition = slice.toString();
       if (definition.empty()) {
           return false;
       }
