@@ -118,7 +118,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     case arangodb::velocypack::ValueType::Array:
       return construct(arangodb::velocypack::ArrayIterator(slice), false); // arrays are always verbatim
     case arangodb::velocypack::ValueType::Object: {
-      auto hex_slice = slice.get(HEX_PARAM_NAME);
+      auto hex_slice = slice.get(HEX_PARAM_NAME.c_str());
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
@@ -126,7 +126,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
-      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME);
+      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME.c_str());
       if (mask_slice.isArray()) {
         return construct(arangodb::velocypack::ArrayIterator(mask_slice), hex);
       } else {
@@ -179,7 +179,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     }
     case arangodb::velocypack::ValueType::Object:
     {
-      auto hex_slice = slice.get(HEX_PARAM_NAME);
+      auto hex_slice = slice.get(HEX_PARAM_NAME.c_str());
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
