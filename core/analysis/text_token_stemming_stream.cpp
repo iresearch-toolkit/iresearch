@@ -62,9 +62,8 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
 
   VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
-                  args);
+                  args.c_str());
     return false;
   }
 
@@ -150,11 +149,13 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while constructing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while constructing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return nullptr;
 }
@@ -179,11 +180,13 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return true;
     }
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while normalizing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return false;
 }

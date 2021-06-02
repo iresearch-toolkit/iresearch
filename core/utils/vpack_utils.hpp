@@ -25,15 +25,17 @@
 
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
+#include "velocypack/Options.h"
 #include "string.hpp"
 
 namespace iresearch {
 
-  // return slice as string for err and warn messages
-  inline std::string slice_to_string(const VPackSlice& slice) noexcept {
+  // return slice as string
+  inline std::string slice_to_string(const VPackSlice& slice,
+                                     VPackOptions const* options = &VPackOptions::Defaults) noexcept {
     std::string str;
     try {
-      str = slice.toString();
+      str = slice.toString(options);
     } catch(...) {
       str = "<non-representable type>";
     }
@@ -41,7 +43,7 @@ namespace iresearch {
     return str;
   }
 
-  // get string from slice without copying
+  // get string from slice
   inline iresearch::string_ref get_string(const VPackSlice& slice) {
     VPackValueLength length;
     const char* ptr = slice.getString(length);

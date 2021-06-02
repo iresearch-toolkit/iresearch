@@ -110,7 +110,7 @@ constexpr irs::string_ref STOPWORDS_PARAM_NAME = "stopwords";
 ///        if HEX conversion fails for any token then it is matched verbatim
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  arangodb::velocypack::Slice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   switch (slice.type()) {
     case arangodb::velocypack::ValueType::Array:
       return construct(arangodb::velocypack::ArrayIterator(slice));
@@ -124,13 +124,12 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     [[fallthrough]];
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. Array or Object was expected. Got %s",
-        slice.toString().c_str(), slice.typeName());
+        "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. Array or Object was expected.",
+        args.c_str());
     }
   }
   return nullptr;
 }
-
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
@@ -141,17 +140,19 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
     return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const arangodb::velocypack::Exception& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while constructing token_stopwords_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while constructing token_stopwords_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing token_stopwords_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while constructing token_stopwords_stream from json: %s",
+        args.c_str());
   }
   return nullptr;
 }
 
 bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  arangodb::velocypack::Slice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   switch (slice.type()) {
     case arangodb::velocypack::ValueType::Array:
     { // always normalize to object for consistency reasons
@@ -177,8 +178,8 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     [[fallthrough]];
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. Array or Object was expected. Got %s",
-        slice.toString().c_str(), slice.typeName());
+        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. Array or Object was expected.",
+        args.c_str());
     }
   }
   return false;
@@ -194,15 +195,17 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     std::string vpack_container;
     if (normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), vpack_container)) {
       arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
-      definition = slice.toString();;
+      definition = slice.toString();
       return true;
     }
   } catch(const arangodb::velocypack::Exception& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing token_stopwords_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while normalizing token_stopwords_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing token_stopwords_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while normalizing token_stopwords_stream from json: %s",
+        args.c_str());
   }
   return false;
 }
@@ -225,7 +228,6 @@ token_stopwords_stream::token_stopwords_stream(token_stopwords_stream::stopwords
   REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack, normalize_vpack_config);
   REGISTER_ANALYZER_JSON(token_stopwords_stream, make_json, normalize_json_config);  // match registration above
 }
-
 
 bool token_stopwords_stream::next() {
   if (term_eof_) {

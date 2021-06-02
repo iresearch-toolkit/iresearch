@@ -122,26 +122,26 @@ bool parse_vpack_options(
     const irs::string_ref& args,
     irs::analysis::text_token_normalizing_stream::options_t& options) {
 
-  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    
-    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
-                  args);
+    IR_FRMT_ERROR(
+          "Slice for delimited_token_stream is not an object or string: %s",
+          args.c_str());
     return false;
   }
 
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(slice.toString(), options.locale);  // required
+        return make_locale_from_name(irs::get_string(slice), options.locale);  // required
       case VPackValueType::Object:
         if (slice.hasKey(LOCALE_PARAM_NAME.c_str()) &&
             slice.get(LOCALE_PARAM_NAME.c_str()).isString()) {
-          if (!make_locale_from_name(slice.get(LOCALE_PARAM_NAME).toString(), options.locale)) {
+          if (!make_locale_from_name(irs::get_string(slice.get(LOCALE_PARAM_NAME)), options.locale)) {
             return false;
           }
           if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
-            auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME.c_str());  // optional string enum
+            auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
             if (!case_convert_slice.isString()) {
               IR_FRMT_WARN(
@@ -152,7 +152,7 @@ bool parse_vpack_options(
               return false;
             }
 
-            auto itr = CASE_CONVERT_MAP.find(case_convert_slice.toString());
+            auto itr = CASE_CONVERT_MAP.find(irs::get_string(case_convert_slice));
 
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
@@ -313,11 +313,13 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while constructing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while constructing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return nullptr;
 }
@@ -342,11 +344,13 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return true;
     }
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while normalizing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return false;
 }

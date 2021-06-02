@@ -59,20 +59,17 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
     assert(options.empty());
   }
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
-
   if (VPackValueType::Object != slice.type()) {
     IR_FRMT_ERROR(
       "Not a jSON object passed while constructing pipeline_token_stream, "
       "arguments: %s",
       args.c_str());
-
     return false;
   }
 
   if (slice.hasKey(PIPELINE_PARAM_NAME.c_str())) {
     auto pipeline_slice = slice.get(PIPELINE_PARAM_NAME);
     if (pipeline_slice.isArray()) {
-      //for (auto pipe = pipeline.Begin(), end = pipeline.End(); pipe != end; ++pipe) {
       for (auto const& pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
           std::string type;
@@ -96,22 +93,11 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
           }
           if (pipe.hasKey(PROPERTIES_PARAM_NAME.c_str())) {
             auto properties_atr_slice = pipe.get(PROPERTIES_PARAM_NAME);
-            //auto tmp = properties_atr_slice.toJson();
             VPackOptions dump_options;
             dump_options.escapeForwardSlashes = true;
             dump_options.prettyPrint = false;
             dump_options.singleLinePrettyPrint = true;
-            std::string properties_buffer = properties_atr_slice.toString(&dump_options);
-            //std::string result;
-//            VPackOptions dump_options;
-//            dump_options.escapeForwardSlashes = true;
-//            dump_options.prettyPrint = false;
-//            VPackStringSink sink(&properties_buffer);
-//            VPackDumper dumper(&sink, &dump_options);
-//            dumper.dump(properties_atr_slice);
-//            properties_atr_slice.toJson();
-            //properties_buffer = properties_atr_slice.toJson();
-            //properties_buffer.assign(properties_atr_slice.startAs<char>(), properties_atr_slice.byteSize());
+            std::string properties_buffer = irs::slice_to_string(properties_atr_slice, &dump_options);
 
             if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
               auto analyzer = irs::analysis::analyzers::get(
@@ -198,7 +184,8 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
         }
       }
     }
-    definition.clear();
+
+    //output vpack to string
     definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
     return true;
   }
@@ -231,11 +218,13 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while constructing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while constructing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while constructing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return nullptr;
 }
@@ -260,11 +249,13 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return true;
     }
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing ngram_token_stream from json: %s",
-                  ex.what(), args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
+        ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing ngram_token_stream from json: %s",
-                  args.c_str());
+    IR_FRMT_ERROR(
+        "Caught error while normalizing ngram_token_stream from json: %s",
+        args.c_str());
   }
   return false;
 }
