@@ -30,10 +30,6 @@
 #include <absl/container/node_hash_map.h>
 #include <frozen/unordered_map.h>
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -505,12 +501,12 @@ bool parse_vpack_options(const irs::string_ref& args,
 
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
 
-  if (!slice.isObject()) {
-    irs::string_ref slice_as_str = irs::slice_to_string(slice);
-    IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
-                  slice_as_str.c_str());
-    return false;
-  }
+//  if (!slice.isObject()) {
+    
+//    IR_FRMT_ERROR("Slice for ngram_token_stream is not an object: %s",
+//                  args);
+//    return false;
+//  }
   if (slice.isString()) {
     return make_locale_from_name(args, options.locale);
   }

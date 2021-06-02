@@ -30,8 +30,8 @@
 namespace iresearch {
 
   // return slice as string for err and warn messages
-  inline iresearch::string_ref slice_to_string(const VPackSlice& slice) noexcept {
-    iresearch::string_ref str;
+  inline std::string slice_to_string(const VPackSlice& slice) noexcept {
+    std::string str;
     try {
       str = slice.toString();
     } catch(...) {

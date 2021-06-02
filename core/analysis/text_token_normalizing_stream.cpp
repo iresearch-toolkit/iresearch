@@ -124,9 +124,9 @@ bool parse_vpack_options(
 
   VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    irs::string_ref slice_as_str = irs::slice_to_string(slice);
+    
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
-                  slice_as_str.c_str());
+                  args);
     return false;
   }
 
