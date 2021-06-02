@@ -123,11 +123,23 @@ bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
   : data_(ref), pos_(data_.begin()) {
 }
 
-size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) {
+size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
   size = std::min(size, size_t(std::distance(pos_, data_.end())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
+}
+
+size_t bytes_ref_input::read_bytes(size_t offset, byte_type* b, size_t size) noexcept {
+  if (offset < data_.size()) {
+    size = std::min(size, size_t(data_.size() - offset));
+    std::memcpy(b, data_.begin() + offset, sizeof(byte_type) * size);
+    pos_ = data_.begin() + offset + size;
+    return size;
+  }
+
+  pos_ = data_.end();
+  return 0;
 }
 
 // append to buf

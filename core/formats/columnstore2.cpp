@@ -489,7 +489,6 @@ class mmap_value_reader {
 
   bytes_ref value(uint64_t offset, size_t length) {
     data_in_->seek(offset);
-
     auto buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
     assert(buf);
     return { buf, length };
@@ -507,14 +506,13 @@ class value_reader {
   }
 
   bytes_ref value(uint64_t offset, size_t length) {
-    data_in_->seek(offset);
-
     if constexpr (Resize) {
       buf_.resize(length);
     }
 
     auto* buf = buf_.data();
-    [[maybe_unused]] const size_t read = data_in_->read_bytes(buf, length);
+
+    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
     assert(read == length);
 
     return { buf, length };
@@ -534,14 +532,13 @@ class encrypted_value_reader {
   }
 
   bytes_ref value(uint64_t offset, size_t length) {
-    data_in_->seek(offset);
-
     if constexpr (Resize) {
       buf_.resize(length);
     }
 
     auto* buf = buf_.data();
-    [[maybe_unused]] const size_t read = data_in_->read_bytes(buf, length);
+
+    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
     assert(read == length);
 
     [[maybe_unused]] const bool ok = cipher_->decrypt(offset, buf, length);

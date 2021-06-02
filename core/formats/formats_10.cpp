@@ -1795,7 +1795,7 @@ class doc_iterator final : public irs::doc_iterator {
     return begin_ - docs_;
   }
 
-  doc_id_t read_skip(skip_state& state, index_input& in) {
+  doc_id_t read_skip(skip_state& state, data_input& in) {
     state.doc = in.read_vint();
     state.doc_ptr += in.read_vlong();
 
@@ -1908,7 +1908,7 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
 
       skip_.prepare(
         std::move(skip_in),
-        [this](size_t level, index_input& in) {
+        [this](size_t level, data_input& in) {
           skip_state& last = *skip_ctx_;
           auto& last_level = skip_ctx_->level;
           auto& next = skip_levels_[level];

@@ -228,6 +228,11 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
   return length - left;
 }
 
+size_t memory_index_input::read_bytes(size_t offset, byte_type* b, size_t left) {
+  seek(offset);
+  return read_bytes(b, left);
+}
+
 int16_t memory_index_input::read_short() {
   return remain() < sizeof(uint16_t)
     ? data_input::read_short()

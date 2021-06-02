@@ -120,6 +120,9 @@ struct IRESEARCH_API index_input : public data_input {
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
 
+  using data_input::read_bytes;
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) = 0;
+
   // returns checksum from the current position to a
   // specified offset without changing current position
   virtual int64_t checksum(size_t offset) const = 0;
@@ -162,6 +165,11 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
+
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) override final {
+    seek(offset);
+    return read_bytes(b, count);
+  }
 
   virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
 

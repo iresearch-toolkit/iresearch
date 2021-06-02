@@ -397,20 +397,20 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) noexcept override {
+  virtual void seek(size_t pos) noexcept override final {
     assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
-  virtual size_t file_pointer() const noexcept override {
+  virtual size_t file_pointer() const noexcept override final {
     return std::distance(data_.begin(), pos_);
   }
 
-  virtual size_t length() const noexcept override {
+  virtual size_t length() const noexcept override final {
     return data_.size();
   }
 
-  virtual bool eof() const noexcept override {
+  virtual bool eof() const noexcept override final {
     return pos_ >= data_.end();
   }
 
@@ -430,7 +430,9 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return pos;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+  virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
+
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
