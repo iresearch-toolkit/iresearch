@@ -184,7 +184,21 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   ASSERT_EQ(expected_token, expected_tokens.end());
 }
 
+void assert_pipeline_members(irs::analysis::pipeline_token_stream& pipe, std::vector<irs::type_info::type_id> const& expected) {
+  size_t i{0};
+  auto visitor = [&expected, &i](irs::analysis::analyzer const& a) {
+    EXPECT_LT(i, expected.size());
+    if (i >= expected.size()) {
+      return false; // save ourselves from crash
+    }
+    EXPECT_EQ(a.type(), expected[i++]);
+    return true;
+  };
+  ASSERT_TRUE(pipe.visit_members(visitor));
+  ASSERT_EQ(i, expected.size());
 }
+
+} // namespace
 
 TEST(pipeline_token_stream_test, consts) {
   static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());
@@ -740,6 +754,45 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pipe.next());
     ASSERT_EQ(p2, pay->value.c_str());
   }
+}
+
+TEST(pipeline_token_stream_test, members_visitor) {
+  auto delimiter = irs::analysis::analyzers::get("delimiter",
+    irs::type<irs::text_format::json>::get(),
+    "{\"delimiter\":\",\"}");
+
+  auto text = irs::analysis::analyzers::get("text",
+    irs::type<irs::text_format::json>::get(),
+    "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":false }");
+
+  auto ngram = irs::analysis::analyzers::get("ngram",
+    irs::type<irs::text_format::json>::get(),
+    "{\"min\":2, \"max\":2, \"preserveOriginal\":true }");
+
+  auto norm = irs::analysis::analyzers::get("norm",
+    irs::type<irs::text_format::json>::get(),
+    "{\"locale\":\"en\", \"case\":\"upper\"}");
+
+  std::vector<irs::type_info::type_id> expected{ delimiter->type(), norm->type() };
+  std::vector<irs::type_info::type_id> expected_nested{ delimiter->type(), norm->type(),
+                                                 text->type(), ngram->type() };
+  irs::analysis::pipeline_token_stream::options_t pipeline_options;
+  pipeline_options.push_back(delimiter);
+  pipeline_options.push_back(norm);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+  assert_pipeline_members(pipe, expected);
+
+  irs::analysis::pipeline_token_stream::options_t pipeline_options2;
+  pipeline_options2.push_back(text);
+
+  irs::analysis::pipeline_token_stream pipe2(std::move(pipeline_options2));
+
+  irs::analysis::pipeline_token_stream::options_t pipeline_options3;
+  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe));
+  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe2));
+  pipeline_options3.push_back(ngram);
+  irs::analysis::pipeline_token_stream pipe3(std::move(pipeline_options3));
+  assert_pipeline_members(pipe3, expected_nested);
 }
 
 #endif
