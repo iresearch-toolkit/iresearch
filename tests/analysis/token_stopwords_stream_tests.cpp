@@ -152,6 +152,7 @@ TEST(token_stopwords_stream_tests, test_load) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":1, \"hex\":\"text\"}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"aa\", \"bb\"], \"hex\":1}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"1aa\", \"bb\"], \"hex\":true}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"aaia\", \"bb\"], \"hex\":true}"));
   }
 }
 
