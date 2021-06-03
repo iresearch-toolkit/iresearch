@@ -506,7 +506,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     IR_FRMT_WARN(
         "Missing '%s' while constructing text_token_stream from VPack "
         "arguments: %s",
-        LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
+        LOCALE_PARAM_NAME.toString().c_str());
 
     return false;
   }
@@ -522,8 +522,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (!case_convert_slice.isString()) {
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing text_token_stream "
-            "from VPack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
+            "from VPack arguments",
+            CASE_CONVERT_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -533,8 +533,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
-            "VPack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
+            "VPack arguments",
+            CASE_CONVERT_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -547,8 +547,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (!stop_words_slice.isArray()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
-            "VPack arguments: %s",
-            STOPWORDS_PARAM_NAME.toString().c_str(), args.c_str());
+            "VPack arguments",
+            STOPWORDS_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -557,8 +557,8 @@ bool parse_vpack_options(const irs::string_ref& args,
         if (!itr.isString()) {
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
-              "from VPack arguments: %s",
-              STOPWORDS_PARAM_NAME.toString().c_str(), args.c_str());
+              "from VPack arguments",
+              STOPWORDS_PARAM_NAME.toString().c_str());
 
           return false;
         }
@@ -570,8 +570,8 @@ bool parse_vpack_options(const irs::string_ref& args,
         if (!ignored_words_path_slice.isString()) {
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
-              "from VPack arguments: %s",
-              STOPWORDS_PATH_PARAM_NAME.toString().c_str(), args.c_str());
+              "from VPack arguments",
+              STOPWORDS_PATH_PARAM_NAME.toString().c_str());
 
           return false;
         }
@@ -585,8 +585,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (!accent_slice.isBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
-            "from VPack arguments: %s",
-            ACCENT_PARAM_NAME.toString().c_str(), args.c_str());
+            "from VPack arguments",
+            ACCENT_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -600,8 +600,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (!stemming_slice.isBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
-            "from VPack arguments: %s",
-            STEMMING_PARAM_NAME.toString().c_str(), args.c_str());
+            "from VPack arguments",
+            STEMMING_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -615,8 +615,8 @@ bool parse_vpack_options(const irs::string_ref& args,
       if (!ngram_slice.isObject()) {
         IR_FRMT_WARN(
             "Non-object value in '%s' while constructing text_token_stream "
-            "from VPack arguments: %s",
-            EDGE_NGRAM_PARAM_NAME.toString().c_str(), args.c_str());
+            "from VPack arguments",
+            EDGE_NGRAM_PARAM_NAME.toString().c_str());
 
         return false;
       }
@@ -674,9 +674,7 @@ bool make_vpack_config(
     {
       // locale
       const auto& locale_name = irs::locale_utils::name(options.locale);
-      builder.add(
-          LOCALE_PARAM_NAME,
-          VPackValue(VPackStringRef(locale_name.c_str(),locale_name.length())));
+      builder.add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
       // case convert
       auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
@@ -685,9 +683,7 @@ bool make_vpack_config(
         });
 
       if (case_value != CASE_CONVERT_MAP.end()) {
-        builder.add(
-          CASE_CONVERT_PARAM_NAME,
-          VPackValue(VPackStringRef(case_value->first.c_str(), case_value->first.size())));
+        builder.add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
       } else {
         IR_FRMT_ERROR(
           "Invalid case_convert value in text analyzer options: %d",
@@ -706,7 +702,6 @@ bool make_vpack_config(
             sortedWords.emplace_back(stopword);
           }
           std::sort(sortedWords.begin(), sortedWords.end());
-
           {
             VPackArrayBuilder array(&builder, STOPWORDS_PARAM_NAME.toString());
 
@@ -726,9 +721,7 @@ bool make_vpack_config(
       //stopwords path
       if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) {
         // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
-        builder.add(
-          STOPWORDS_PATH_PARAM_NAME,
-          VPackValue(VPackStringRef(options.stopwordsPath.c_str(), options.stopwordsPath.length())));
+        builder.add(STOPWORDS_PATH_PARAM_NAME, VPackValue(options.stopwordsPath));
       }
     }
   }
@@ -793,7 +786,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
       if (!build_stopwords(options, stopwords)) {
         IR_FRMT_WARN(
             "Failed to retrieve 'stopwords' from path while constructing "
-            "text_token_stream from jSON arguments: %s",
+            "text_token_stream from jSON arguments",
             args.c_str());
 
         return nullptr;
@@ -802,7 +795,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     }
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stream from jSON arguments: %s",
+        "Caught error while constructing text_token_stream from jSON arguments",
         args.c_str());
   }
   return nullptr;
@@ -852,11 +845,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json: %s",
+        "Caught error while constructing ngram_token_stream from json",
         args.c_str());
   }
   return nullptr;
@@ -883,11 +876,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json: %s",
+        "Caught error while normalizing ngram_token_stream from json",
         args.c_str());
   }
   return false;

@@ -52,8 +52,7 @@ bool parse_vpack_options(const irs::string_ref& args,
 
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
-        "Slice for ngram_token_stream is not an object: %s",
-        args.c_str());
+        "Slice for ngram_token_stream is not an object");
     return false;
   }
 
@@ -67,16 +66,16 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (min_type_slice.isNone()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
-        "ngram_token_stream from VPack arguments: %s",
-        MIN_PARAM_NAME.toString().c_str(), args.c_str());
+        "ngram_token_stream from VPack arguments",
+        MIN_PARAM_NAME.toString().c_str());
     return false;
   }
 
   if (!min_type_slice.isNumber()) {
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-        "VPack arguments: %s",
-        MIN_PARAM_NAME.toString().c_str(), args.c_str());
+        "VPack arguments",
+        MIN_PARAM_NAME.toString().c_str());
     return false;
   }
   min = min_type_slice.getNumber<decltype (min)>();
@@ -86,15 +85,15 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (max_type_slice.isNone()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
-        "ngram_token_stream from VPack arguments: %s",
-        MAX_PARAM_NAME.toString().c_str(), args.c_str());
+        "ngram_token_stream from VPack arguments",
+        MAX_PARAM_NAME.toString().c_str());
     return false;
   }
   if (!max_type_slice.isNumber()) {
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-        "VPack arguments: %s",
-        MAX_PARAM_NAME.toString().c_str(), args.c_str());
+        "VPack arguments",
+        MAX_PARAM_NAME.toString().c_str());
     return false;
   }
   max = max_type_slice.getNumber<decltype (max)>();
@@ -110,15 +109,15 @@ bool parse_vpack_options(const irs::string_ref& args,
   if (preserve_type_slice.isNone()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as boolean while constructing "
-        "ngram_token_stream from VPack arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str(), args.c_str());
+        "ngram_token_stream from VPack arguments",
+        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str());
     return false;
   }
   if (!preserve_type_slice.isBool()) {
     IR_FRMT_WARN(
         "Invalid type '%b' (bool expected) for ngram_token_stream from "
-        "VPack arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str(), args.c_str());
+        "VPack arguments",
+        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str());
     return false;
   }
   preserve_original = preserve_type_slice.getBool();
@@ -130,8 +129,8 @@ bool parse_vpack_options(const irs::string_ref& args,
     if (!start_marker_type_slice.isString()) {
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for ngram_token_stream from "
-          "VPack arguments: %s",
-          START_MARKER_PARAM_NAME.toString().c_str(), args.c_str());
+          "VPack arguments",
+          START_MARKER_PARAM_NAME.toString().c_str());
       return false;
     }
     start_marker = irs::get_string<std::string>(start_marker_type_slice);
@@ -144,8 +143,8 @@ bool parse_vpack_options(const irs::string_ref& args,
     if (!end_marker_type_slice.isString()) {
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for ngram_token_stream from "
-          "VPack arguments: %s",
-          END_MARKER_PARAM_NAME.toString().c_str(), args.c_str());
+          "VPack arguments",
+          END_MARKER_PARAM_NAME.toString().c_str());
       return false;
     }
     end_marker = irs::get_string<std::string>(end_marker_type_slice);
@@ -158,8 +157,8 @@ bool parse_vpack_options(const irs::string_ref& args,
     if (!stream_type_slice.isString()) {
       IR_FRMT_WARN(
           "Non-string value in '%s' while constructing ngram_token_stream "
-          "from VPack arguments: %s",
-          STREAM_TYPE_PARAM_NAME.toString().c_str(), args.c_str());
+          "from VPack arguments",
+          STREAM_TYPE_PARAM_NAME.toString().c_str());
       return false;
     }
     auto stream_type = stream_type_slice.stringRef();
@@ -168,8 +167,8 @@ bool parse_vpack_options(const irs::string_ref& args,
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
           "Invalid value in '%s' while constructing ngram_token_stream from "
-          "VPack arguments: %s",
-          STREAM_TYPE_PARAM_NAME.toString().c_str(), args.c_str());
+          "VPack arguments",
+          STREAM_TYPE_PARAM_NAME.toString().c_str());
       return false;
     }
     stream_bytes_type = itr->second;
@@ -205,7 +204,7 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
         });
 
       if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-          builder.add(STREAM_TYPE_PARAM_NAME, VPackValue(stream_type_value->first.c_str()));
+          builder.add(STREAM_TYPE_PARAM_NAME, VPackValue(stream_type_value->first));
       } else {
         IR_FRMT_ERROR(
           "Invalid %s value in ngram analyzer options: %d",
@@ -276,12 +275,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json: %s",
-        args.c_str());
+        "Caught error while constructing ngram_token_stream from json");
   }
   return nullptr;
 }
@@ -307,12 +305,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json: %s",
-        args.c_str());
+        "Caught error while normalizing ngram_token_stream from json");
   }
   return false;
 }

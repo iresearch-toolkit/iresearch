@@ -119,8 +119,8 @@ bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
         if (!delim_type_slice.isString()) {
           IR_FRMT_WARN(
               "Invalid type '%s' (string expected) for delimited_token_stream from "
-              "VPack arguments: %s",
-              DELIMITER_PARAM_NAME.toString().c_str(), args.c_str());
+              "VPack arguments",
+              DELIMITER_PARAM_NAME.toString().c_str());
           return false;
         }
         delimiter = irs::get_string<std::string>(delim_type_slice);
@@ -131,8 +131,8 @@ bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
 
   IR_FRMT_ERROR(
       "Missing '%s' while constructing delimited_token_stream from jSON "
-      "arguments: %s",
-      DELIMITER_PARAM_NAME.toString().c_str(), args.c_str());
+      "arguments",
+      DELIMITER_PARAM_NAME.toString().c_str());
 
   return false;
 }
@@ -189,12 +189,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing delimited_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing delimited_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing delimited_token_stream from json: %s",
-        args.c_str());
+        "Caught error while constructing delimited_token_stream from json");
   }
   return nullptr;
 }
@@ -220,12 +219,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing delimited_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing delimited_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing delimited_token_stream from json: %s",
-        args.c_str());
+        "Caught error while normalizing delimited_token_stream from json");
   }
   return false;
 }

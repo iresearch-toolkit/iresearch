@@ -80,8 +80,8 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
       default:
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "
-            "VPack arguments: %s",
-            LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
+            "VPack arguments",
+            LOCALE_PARAM_NAME.toString().c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -118,8 +118,7 @@ bool make_vpack_config( const std::locale& locale,  std::string& definition) {
     {
        // locale
       const auto& locale_name = irs::locale_utils::name(locale);
-      VPackStringRef value(locale_name.c_str(), locale_name.size());
-      builder.add(LOCALE_PARAM_NAME, VPackValue(value));
+      builder.add(LOCALE_PARAM_NAME, VPackValue(locale_name));
     }
   }
 
@@ -148,11 +147,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json: %s",
+        "Caught error while constructing ngram_token_stream from json",
         args.c_str());
   }
   return nullptr;
@@ -179,11 +178,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json: %s",
+        "Caught error while normalizing ngram_token_stream from json",
         args.c_str());
   }
   return false;

@@ -146,8 +146,8 @@ bool parse_vpack_options(
             if (!case_convert_slice.isString()) {
               IR_FRMT_WARN(
                   "Non-string value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments: %s",
-                  CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
+                  "text_token_normalizing_stream from jSON arguments",
+                  CASE_CONVERT_PARAM_NAME.toString().c_str());
 
               return false;
             }
@@ -157,8 +157,8 @@ bool parse_vpack_options(
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
                   "Invalid value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments: %s",
-                  CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
+                  "text_token_normalizing_stream from jSON arguments",
+                  CASE_CONVERT_PARAM_NAME.toString().c_str());
 
               return false;
             }
@@ -172,8 +172,8 @@ bool parse_vpack_options(
             if (!accent_slice.isBool()) {
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments: %s",
-                  ACCENT_PARAM_NAME.toString().c_str(), args.c_str());
+                  "text_token_normalizing_stream from jSON arguments",
+                  ACCENT_PARAM_NAME.toString().c_str());
 
               return false;
             }
@@ -187,8 +187,8 @@ bool parse_vpack_options(
       default:
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "
-            "from jSON arguments: %s",
-            LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
+            "from jSON arguments",
+            LOCALE_PARAM_NAME.toString().c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -229,8 +229,7 @@ bool make_vpack_config(
     {
       // locale
       const auto& locale_name = irs::locale_utils::name(options.locale);
-      VPackStringRef value_local(locale_name.c_str(), locale_name.size());
-      builder.add(LOCALE_PARAM_NAME, VPackValue(value_local));
+      builder.add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
       // case convert
       auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
@@ -238,8 +237,7 @@ bool make_vpack_config(
             return v.second == options.case_convert;
         });
       if (case_value != CASE_CONVERT_MAP.end()) {
-        VPackStringRef value(case_value->first.c_str(), case_value->first.size());
-        builder.add(CASE_CONVERT_PARAM_NAME, VPackValue(value));
+        builder.add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
       }
       else {
         IR_FRMT_ERROR(
@@ -310,11 +308,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json: %s",
+        "Caught error while constructing ngram_token_stream from json",
         args.c_str());
   }
   return nullptr;
@@ -341,11 +339,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing ngram_token_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json: %s",
+        "Caught error while normalizing ngram_token_stream from json",
         args.c_str());
   }
   return false;

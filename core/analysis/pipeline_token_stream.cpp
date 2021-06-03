@@ -83,15 +83,15 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
             } else {
               IR_FRMT_ERROR(
                 "Failed to read '%s' attribute of  '%s' member as string while constructing "
-                "pipeline_token_stream from jSON arguments: %s",
-                TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
+                "pipeline_token_stream from jSON arguments",
+                TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
               return false;
             }
           } else {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
-              "pipeline_token_stream from jSON arguments: %s",
-              TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
+              "pipeline_token_stream from jSON arguments",
+              TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
             return false;
           }
           if (pipe.hasKey(PROPERTIES_PARAM_NAME.toString().c_str())) {
@@ -108,8 +108,8 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
               } else {
                 IR_FRMT_ERROR(
                   "Failed to create pipeline member of type '%s' with properties '%s' while constructing "
-                  "pipeline_token_stream from jSON arguments: %s",
-                  type.c_str(), properties_buffer.c_str(), args.c_str());
+                  "pipeline_token_stream from jSON arguments",
+                  type.c_str(), properties_buffer.c_str());
                 return false;
               }
             } else {
@@ -119,8 +119,8 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
                 properties_buffer)) {
                 IR_FRMT_ERROR(
                   "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
-                  "pipeline_token_stream from jSON arguments: %s",
-                  type.c_str(), properties_buffer.c_str(), args.c_str());
+                  "pipeline_token_stream from jSON arguments",
+                  type.c_str(), properties_buffer.c_str());
                 return false;
               }
               options.emplace_back(type, normalized);
@@ -128,37 +128,34 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
           } else {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
-              "pipeline_token_stream from jSON arguments: %s",
-              PROPERTIES_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
+              "pipeline_token_stream from jSON arguments",
+              PROPERTIES_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
             return false;
           }
         } else {
           IR_FRMT_ERROR(
             "Failed to read '%s' member as object while constructing "
-            "pipeline_token_stream from jSON arguments: %s",
-            PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
+            "pipeline_token_stream from jSON arguments",
+            PIPELINE_PARAM_NAME.toString().c_str());
           return false;
         }
       }
     } else {
       IR_FRMT_ERROR(
         "Failed to read '%s' attribute as array while constructing "
-        "pipeline_token_stream from jSON arguments: %s",
-        PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
+        "pipeline_token_stream from jSON arguments",
+        PIPELINE_PARAM_NAME.toString().c_str());
       return false;
     }
   } else {
     IR_FRMT_ERROR(
-      "Not found parameter '%s' while constructing pipeline_token_stream, "
-      "arguments: %s",
-      PIPELINE_PARAM_NAME.toString().c_str(),
-      args.c_str());
+      "Not found parameter '%s' while constructing pipeline_token_stream, arguments",
+      PIPELINE_PARAM_NAME.toString().c_str());
     return false;
   }
   if (options.empty()) {
     IR_FRMT_ERROR(
-      "Empty pipeline found while constructing pipeline_token_stream, "
-      "arguments: %s", args.c_str());
+      "Empty pipeline found while constructing pipeline_token_stream, arguments");
     return false;
   }
   return true;
@@ -218,12 +215,10 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing ngram_token_stream from json", ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json: %s",
-        args.c_str());
+        "Caught error while constructing ngram_token_stream from json");
   }
   return nullptr;
 }
@@ -249,12 +244,10 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing ngram_token_stream from json", ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json: %s",
-        args.c_str());
+        "Caught error while normalizing ngram_token_stream from json");
   }
   return false;
 }

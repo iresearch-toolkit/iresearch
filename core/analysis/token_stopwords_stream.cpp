@@ -123,7 +123,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
+          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be boolean.",
           irs::get_string<irs::string_ref>(slice).c_str(), HEX_PARAM_NAME.toString().c_str());
         return nullptr;
       }
@@ -133,14 +133,14 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
         return construct(VPackArrayIterator(mask_slice), hex);
       } else {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be array.",
+          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
           irs::get_string<irs::string_ref>(slice).c_str(), STOPWORDS_PARAM_NAME.toString().c_str());
         return nullptr;
       }
     }
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. Array or Object was expected.",
+        "Invalid vpack while constructing token_stopwords_stream from jSON arguments. Array or Object was expected.",
         args.c_str());
     }
   }
@@ -157,11 +157,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing token_stopwords_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while constructing token_stopwords_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing token_stopwords_stream from json: %s",
+        "Caught error while constructing token_stopwords_stream from json",
         args.c_str());
   }
   return nullptr;
@@ -185,7 +185,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
+          "Invalid vpack while normalizing token_stopwords_stream from jSON arguments. %s value should be boolean.",
           irs::get_string<irs::string_ref>(slice).c_str(), HEX_PARAM_NAME.toString().c_str());
         return false;
       }
@@ -201,14 +201,14 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
         return true;
       } else {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be array.",
+          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
           irs::get_string<irs::string_ref>(slice).c_str(), STOPWORDS_PARAM_NAME.toString().c_str());
         return false;
       }
     }
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. Array or Object was expected.",
+        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments. Array or Object was expected.",
         args.c_str());
     }
   }
@@ -230,11 +230,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing token_stopwords_stream from json: %s",
-        ex.what(), args.c_str());
+        "Caught error '%s' while normalizing token_stopwords_stream from json",
+        ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing token_stopwords_stream from json: %s",
+        "Caught error while normalizing token_stopwords_stream from json",
         args.c_str());
   }
   return false;
