@@ -65,6 +65,10 @@ column_header read_header(index_input& in) {
   return hdr;
 }
 
+bool is_encrypted(const column_header& hdr) noexcept {
+  return ColumnProperty::ENCRYPT == (hdr.props & ColumnProperty::ENCRYPT);
+}
+
 void write_index(index_output& out, const column_index& blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
 
@@ -580,6 +584,7 @@ class dense_fixed_length_column final : public column_base {
       len_{len} {
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
+    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -631,7 +636,7 @@ class dense_fixed_length_column final : public column_base {
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
-  if (cipher_) {
+  if (is_encrypted(header())) {
     return make_iterator([this](auto& stream) {
       using reader_type = payload_reader<encrypted_value_reader<false>>;
 
@@ -682,6 +687,7 @@ class fixed_length_column final : public column_base {
       len_{len} {
     assert(header().docs_count);
     assert(ColumnType::FIXED == header().type);
+    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -723,7 +729,9 @@ class fixed_length_column final : public column_base {
 }; // fixed_length_column
 
 doc_iterator::ptr fixed_length_column::iterator() const {
-  if (cipher_) {
+  if (is_encrypted(header())) {
+    assert(cipher_);
+
     return make_iterator([this](auto& stream) {
       using reader_type = payload_reader<encrypted_value_reader<false>>;
 
@@ -774,6 +782,7 @@ class sparse_column final : public column_base {
       cipher_{cipher} {
     assert(header().docs_count);
     assert(ColumnType::SPARSE == header().type);
+    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -883,7 +892,9 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 }
 
 doc_iterator::ptr sparse_column::iterator() const {
-  if (cipher_) {
+  if (is_encrypted(header())) {
+    assert(cipher_);
+
     return make_iterator([this](auto& stream) {
       using reader_type = payload_reader<encrypted_value_reader<true>>;
 
@@ -1272,6 +1283,12 @@ void reader::prepare_index(
     }
 
     const column_header hdr = read_header(*index_in);
+
+    if (is_encrypted(hdr) && !data_cipher_) {
+      throw index_error{string_utils::to_string(
+        "Failed to load encrypted column id=" IR_SIZE_T_SPECIFIER " without a cipher",
+        i)};
+    }
 
     if (ColumnType::MASK != hdr.type && 0 == hdr.docs_count) {
       throw index_error{string_utils::to_string(
