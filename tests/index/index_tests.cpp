@@ -1136,7 +1136,6 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
           auto values = column->values();
-          const auto docs = segment.docs_count();
           for (irs::doc_id_t doc = (irs::type_limits<irs::type_t::doc_id_t>::min)(), max = segment.docs_count(); doc <= max; ++doc) {
             if (!values(doc, actual_value)) {
               return false;
@@ -1286,7 +1285,6 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        irs::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
@@ -2205,7 +2203,7 @@ class index_test_case : public tests::index_test_base {
     // error while commiting index (during sync in index_meta_writer)
     {
       override_sync_directory override_dir(
-        dir(), [this] (const irs::string_ref& name) {
+        dir(), [] (const irs::string_ref&) {
           throw irs::io_error();
           return true;
       });
@@ -2243,7 +2241,7 @@ class index_test_case : public tests::index_test_base {
     // error while commiting index (during sync in index_writer)
     {
       override_sync_directory override_dir(
-        dir(), [this] (const irs::string_ref& name) {
+        dir(), [] (const irs::string_ref& name) {
         if (irs::starts_with(name, "_")) {
           throw irs::io_error();
         }
@@ -2895,7 +2893,7 @@ TEST_P(index_test_case, document_context) {
     std::mutex mutex;
     const irs::string_ref& name() { return irs::string_ref::EMPTY; }
     const irs::flags& features() const { return irs::flags::empty_instance(); }
-    bool write(irs::data_output& out) {
+    bool write(irs::data_output&) {
       {
         auto cond_lock = irs::make_lock_guard(cond_mutex);
         cond.notify_all();
@@ -7018,7 +7016,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
       size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
-        auto policy = [&consolidate_range, &i, &num_segments, &dir] (
+        auto policy = [&consolidate_range, &i, &num_segments] (
             irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
             const irs::index_writer::consolidating_segments_t&) mutable {
@@ -7083,8 +7081,8 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   ASSERT_NE(nullptr, writer);
 
   auto check_consolidating_segments = [](
-      irs::index_writer::consolidation_t& candidates,
-      const irs::index_meta& meta,
+      irs::index_writer::consolidation_t& /*candidates*/,
+      const irs::index_meta& /*meta*/,
       const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_TRUE(consolidating_segments.empty());
   };
@@ -7163,7 +7161,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      irs::index_writer::consolidation_t& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -7493,13 +7491,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       auto check_consolidating_segments = [](
-          irs::index_writer::consolidation_t& candidates,
-          const irs::index_meta& meta,
+          irs::index_writer::consolidation_t& /*candidates*/,
+          const irs::index_meta& /*meta*/,
           const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
@@ -7649,13 +7647,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          irs::index_writer::consolidation_t& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -7785,13 +7783,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          irs::index_writer::consolidation_t& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -7890,7 +7888,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 TEST_P(index_test_case, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      irs::index_writer::consolidation_t& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -7914,11 +7912,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
 
-  irs::bytes_ref actual_value;
   auto const all_features = irs::flags{
     irs::type<irs::document>::get(),
     irs::type<irs::frequency>::get(),
@@ -7926,8 +7920,6 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     irs::type<irs::payload>::get(),
     irs::type<irs::offset>::get()
   };
-
-  size_t count = 0;
 
   // 2-phase: clear + consolidate
   {
@@ -8070,7 +8062,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 TEST_P(index_test_case, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      irs::index_writer::consolidation_t& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -8096,7 +8088,6 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
   tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
   auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
@@ -8435,8 +8426,8 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        irs::index_writer::consolidation_t& candidates,
-        const irs::index_meta& meta,
+        irs::index_writer::consolidation_t& /*candidates*/,
+        const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
@@ -8458,7 +8449,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto merge_adjacent = [&j](
         irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+        const irs::index_writer::consolidating_segments_t& /*consolidating_segments*/) {
       ASSERT_TRUE(j < meta.size());
       candidates.emplace_back(&meta[j++].meta);
       ASSERT_TRUE(j < meta.size());
@@ -8471,7 +8462,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // check all segments registered
   {
     auto check_consolidating_segments = [](
-        irs::index_writer::consolidation_t& candidates,
+        irs::index_writer::consolidation_t& /*candidates*/,
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_EQ(meta.size(), consolidating_segments.size());
@@ -8487,8 +8478,8 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        irs::index_writer::consolidation_t& candidates,
-        const irs::index_meta& meta,
+        irs::index_writer::consolidation_t& /*candidates*/,
+        const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
@@ -8506,7 +8497,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   };
   gen.reset();
   tests::index_t expected;
-  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+  for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     expected.emplace_back();
     const auto* doc = gen.next();
     expected.back().add(doc->indexed.begin(), doc->indexed.end());
@@ -8520,7 +8511,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 
   std::string expected_name = "A";
 
-  for (auto i = 0; i < SEGMENTS_COUNT/2; ++i) {
+  for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto& segment = reader[i];
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
@@ -8546,7 +8537,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 TEST_P(index_test_case, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      irs::index_writer::consolidation_t& candidates,
+      irs::index_writer::consolidation_t& /*candidates*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -11772,7 +11763,7 @@ TEST_P(index_test_case, consolidate_progress) {
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc1->indexed.begin(), doc1->indexed.end(),
@@ -11781,7 +11772,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->commit(); // create segment0
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc2->indexed.begin(), doc2->indexed.end(),
@@ -11815,7 +11806,7 @@ TEST_P(index_test_case, consolidate_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc1->indexed.begin(), doc1->indexed.end(),
@@ -11824,7 +11815,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->commit(); // create segment0
 
-    for (auto size = 0; size < MAX_DOCS; ++size) {
+    for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(
         *writer,
         doc2->indexed.begin(), doc2->indexed.end(),
@@ -14110,7 +14101,6 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -14153,7 +14143,6 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -14274,7 +14263,6 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     });
 
   tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
 
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{ 0 };
