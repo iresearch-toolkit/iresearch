@@ -7259,14 +7259,32 @@ TEST_P(index_test_case, consolidate_single_segment) {
 }
 
 TEST_P(index_test_case, segment_consolidate_long_running) {
+  const auto blocker = [this](irs::string_ref segment) {
+    irs::memory_directory dir;
+    auto writer = codec()->get_columnstore_writer(false);
+
+    irs::segment_meta meta;
+    meta.name = segment;
+    writer->prepare(dir, meta);
+
+    std::string filename;
+    dir.visit([&filename](const std::string& name) {
+      filename = name;
+      return false;
+    });
+
+    writer->rollback();
+
+    return filename;
+  }("_3");
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [] (tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
   });
 
@@ -7276,7 +7294,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   tests::document const* doc4 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
+  auto all_features = irs::flags{
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -7286,7 +7309,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
   // long running transaction
   {
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7311,12 +7334,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          irs::index_writer::consolidation_t& candidates,
+          irs::index_writer::consolidation_t& /*candidates*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
@@ -7444,7 +7467,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7596,7 +7619,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
@@ -7728,7 +7751,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     SetUp(); // recreate directory
     auto query_doc1_doc4 = irs::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
-    tests::blocking_directory dir(this->dir(), "_3.cs");
+    tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
     ASSERT_NE(nullptr, writer);
 
