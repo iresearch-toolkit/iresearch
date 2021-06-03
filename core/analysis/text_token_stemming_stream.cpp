@@ -21,17 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "text_token_stemming_stream.hpp"
+
 #include "libstemmer.h"
 #include "unicode/locid.h"
-#include "utils/locale_utils.hpp"
-#include "utils/vpack_utils.hpp"
-
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-
-#include "text_token_stemming_stream.hpp"
+#include "utils/locale_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace {
 
@@ -56,11 +55,11 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-const irs::string_ref LOCALE_PARAM_NAME = "locale";
+const VPackStringRef LOCALE_PARAM_NAME = VPackStringRef("locale");
 
 bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
 
-  VPackSlice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
                   args.c_str());
@@ -70,11 +69,11 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(irs::get_string(slice), locale);
+        return make_locale_from_name(irs::get_string<irs::string_ref>(slice), locale);
       case VPackValueType::Object:
-        if (slice.hasKey(LOCALE_PARAM_NAME.c_str()) &&
+        if (slice.hasKey(LOCALE_PARAM_NAME) &&
             slice.get(LOCALE_PARAM_NAME).isString()) {
-          irs::string_ref param_name = irs::get_string(slice.get(LOCALE_PARAM_NAME));
+          irs::string_ref param_name = irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME));
           return make_locale_from_name(param_name, locale);
         }
       [[fallthrough]];
@@ -82,7 +81,7 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "
             "VPack arguments: %s",
-            LOCALE_PARAM_NAME.c_str(), args.c_str());
+            LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -119,9 +118,8 @@ bool make_vpack_config( const std::locale& locale,  std::string& definition) {
     {
        // locale
       const auto& locale_name = irs::locale_utils::name(locale);
-      VPackStringRef locale_param_name(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size());
-      VPackValue value_locale(VPackStringRef(locale_name.c_str(), locale_name.length()));
-      builder.add(locale_param_name, value_locale);
+      VPackStringRef value(locale_name.c_str(), locale_name.size());
+      builder.add(LOCALE_PARAM_NAME, VPackValue(value));
     }
   }
 
@@ -145,7 +143,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
@@ -166,7 +164,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),

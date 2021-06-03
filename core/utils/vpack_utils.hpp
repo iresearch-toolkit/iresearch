@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_VPACK_UTILS_H
@@ -30,26 +30,32 @@
 
 namespace iresearch {
 
-  // return slice as string
-  inline std::string slice_to_string(const VPackSlice& slice,
-                                     VPackOptions const* options = &VPackOptions::Defaults) noexcept {
-    std::string str;
+// return slice as string
+inline std::string slice_to_string(const VPackSlice slice,
+                                   VPackOptions const* options = &VPackOptions::Defaults) noexcept {
+  std::string str;
+  try {
+    str = slice.toString(options);
+  } catch(...) {
     try {
-      str = slice.toString(options);
-    } catch(...) {
       str = "<non-representable type>";
+    }  catch (...) {
+      str = "";
     }
-
-    return str;
   }
 
-  // get string from slice
-  inline iresearch::string_ref get_string(const VPackSlice& slice) {
-    VPackValueLength length;
-    const char* ptr = slice.getString(length);
+  return str;
+}
 
-    return iresearch::string_ref(ptr, length);
-  }
+// get string from slice
+template<typename T>
+T get_string(VPackSlice slice) {
+  assert(slice.isString());
+  VPackValueLength length;
+  const char* ptr = slice.getString(length);
+
+  return { ptr, length };
+}
 
 } // iresearch
 

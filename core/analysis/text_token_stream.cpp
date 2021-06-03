@@ -23,20 +23,32 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "text_token_stream.hpp"
+
+#include <unicode/brkiter.h> // for icu::BreakIterator
+#include <absl/container/node_hash_map.h>
+#include <frozen/unordered_map.h>
+
 #include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
-
-#include <absl/container/node_hash_map.h>
-#include <frozen/unordered_map.h>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-
-#include <unicode/brkiter.h> // for icu::BreakIterator
+#include "libstemmer.h"
+#include "utils/hash_utils.hpp"
+#include "utils/locale_utils.hpp"
+#include "utils/log.hpp"
+#include "utils/map_utils.hpp"
+#include "utils/misc.hpp"
+#include "utils/runtime_utils.hpp"
+#include "utils/thread_utils.hpp"
+#include "utils/utf8_path.hpp"
+#include "utils/utf8_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -59,22 +71,6 @@
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
 #endif
-
-#include "libstemmer.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/json_utils.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/map_utils.hpp"
-#include "utils/misc.hpp"
-#include "utils/runtime_utils.hpp"
-#include "utils/thread_utils.hpp"
-#include "utils/utf8_path.hpp"
-#include "utils/utf8_utils.hpp"
-#include "utils/vpack_utils.hpp"
-
-#include "text_token_stream.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -476,16 +472,16 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-constexpr irs::string_ref LOCALE_PARAM_NAME            = "locale";
-constexpr irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
-constexpr irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
-constexpr irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
-constexpr irs::string_ref ACCENT_PARAM_NAME            = "accent";
-constexpr irs::string_ref STEMMING_PARAM_NAME          = "stemming";
-constexpr irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
-constexpr irs::string_ref MIN_PARAM_NAME               = "min";
-constexpr irs::string_ref MAX_PARAM_NAME               = "max";
-constexpr irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+constexpr VPackStringRef LOCALE_PARAM_NAME            = VPackStringRef("locale");
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      = VPackStringRef("case");
+constexpr VPackStringRef STOPWORDS_PARAM_NAME         = VPackStringRef("stopwords");
+constexpr VPackStringRef STOPWORDS_PATH_PARAM_NAME    = VPackStringRef("stopwordsPath");
+constexpr VPackStringRef ACCENT_PARAM_NAME            = VPackStringRef("accent");
+constexpr VPackStringRef STEMMING_PARAM_NAME          = VPackStringRef("stemming");
+constexpr VPackStringRef EDGE_NGRAM_PARAM_NAME        = VPackStringRef("edgeNgram");
+constexpr VPackStringRef MIN_PARAM_NAME               = VPackStringRef("min");
+constexpr VPackStringRef MAX_PARAM_NAME               = VPackStringRef("max");
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME = VPackStringRef("preserveOriginal");
 
 const frozen::unordered_map<
     irs::string_ref,
@@ -505,40 +501,40 @@ bool parse_vpack_options(const irs::string_ref& args,
     return make_locale_from_name(args, options.locale);
   }
 
-  if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME.c_str()) ||
+  if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
       !slice.get(LOCALE_PARAM_NAME).isString()) {
     IR_FRMT_WARN(
         "Missing '%s' while constructing text_token_stream from VPack "
         "arguments: %s",
-        LOCALE_PARAM_NAME.c_str(), args.c_str());
+        LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
 
     return false;
   }
 
   try {
-    if (!make_locale_from_name(irs::get_string(slice.get(LOCALE_PARAM_NAME)),
+    if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)),
                               options.locale)) {
       return false;
     }
-    if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
+    if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
       auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
       if (!case_convert_slice.isString()) {
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing text_token_stream "
             "from VPack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+            CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
 
-      auto itr = CASE_CONVERT_MAP.find(irs::get_string(case_convert_slice));
+      auto itr = CASE_CONVERT_MAP.find(irs::get_string<irs::string_ref>(case_convert_slice));
 
       if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
             "VPack arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+            CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
@@ -546,13 +542,13 @@ bool parse_vpack_options(const irs::string_ref& args,
       options.case_convert = itr->second;
     }
 
-    if (slice.hasKey(STOPWORDS_PARAM_NAME.c_str())) {
+    if (slice.hasKey(STOPWORDS_PARAM_NAME)) {
       auto stop_words_slice = slice.get(STOPWORDS_PARAM_NAME);  // optional string array
       if (!stop_words_slice.isArray()) {
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing text_token_stream from "
             "VPack arguments: %s",
-            STOPWORDS_PARAM_NAME.c_str(), args.c_str());
+            STOPWORDS_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
@@ -562,35 +558,35 @@ bool parse_vpack_options(const irs::string_ref& args,
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
               "from VPack arguments: %s",
-              STOPWORDS_PARAM_NAME.c_str(), args.c_str());
+              STOPWORDS_PARAM_NAME.toString().c_str(), args.c_str());
 
           return false;
         }
-        options.explicit_stopwords.emplace(irs::get_string(itr));
+        options.explicit_stopwords.emplace(irs::get_string<irs::string_ref>(itr));
       }
-      if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME.c_str())) {
+      if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
         auto ignored_words_path_slice = slice.get(STOPWORDS_PATH_PARAM_NAME);  // optional string
 
         if (!ignored_words_path_slice.isString()) {
           IR_FRMT_WARN(
               "Non-string value in '%s' while constructing text_token_stream "
               "from VPack arguments: %s",
-              STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
+              STOPWORDS_PATH_PARAM_NAME.toString().c_str(), args.c_str());
 
           return false;
         }
-        options.stopwordsPath = irs::get_string(ignored_words_path_slice);
+        options.stopwordsPath = irs::get_string<std::string>(ignored_words_path_slice);
       }
     }
 
-    if (slice.hasKey(ACCENT_PARAM_NAME.c_str())) {
+    if (slice.hasKey(ACCENT_PARAM_NAME)) {
       auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
 
       if (!accent_slice.isBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from VPack arguments: %s",
-            ACCENT_PARAM_NAME.c_str(), args.c_str());
+            ACCENT_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
@@ -598,14 +594,14 @@ bool parse_vpack_options(const irs::string_ref& args,
       options.accent = accent_slice.getBool();
     }
 
-    if (slice.hasKey(STEMMING_PARAM_NAME.c_str())) {
+    if (slice.hasKey(STEMMING_PARAM_NAME)) {
       auto stemming_slice = slice.get(STEMMING_PARAM_NAME);  // optional bool
 
       if (!stemming_slice.isBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from VPack arguments: %s",
-            STEMMING_PARAM_NAME.c_str(), args.c_str());
+            STEMMING_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
@@ -613,33 +609,33 @@ bool parse_vpack_options(const irs::string_ref& args,
       options.stemming = stemming_slice.getBool();
     }
 
-    if (slice.hasKey(EDGE_NGRAM_PARAM_NAME.c_str())) {
+    if (slice.hasKey(EDGE_NGRAM_PARAM_NAME)) {
       auto ngram_slice = slice.get(EDGE_NGRAM_PARAM_NAME);
 
       if (!ngram_slice.isObject()) {
         IR_FRMT_WARN(
             "Non-object value in '%s' while constructing text_token_stream "
             "from VPack arguments: %s",
-            EDGE_NGRAM_PARAM_NAME.c_str(), args.c_str());
+            EDGE_NGRAM_PARAM_NAME.toString().c_str(), args.c_str());
 
         return false;
       }
 
-      if(ngram_slice.hasKey(MIN_PARAM_NAME.c_str()) &&
-         ngram_slice.get(MIN_PARAM_NAME).isNumber()) {
+      if(ngram_slice.hasKey(MIN_PARAM_NAME) &&
+         ngram_slice.get(MIN_PARAM_NAME).isNumber<decltype (options.min_gram)>()) {
 
-          options.min_gram = ngram_slice.get(MIN_PARAM_NAME).getUInt();
+        options.min_gram = ngram_slice.get(MIN_PARAM_NAME).getNumber<decltype (options.min_gram)>();
         options.min_gram_set = true;
       }
 
-      if(ngram_slice.hasKey(MAX_PARAM_NAME.c_str()) &&
-         ngram_slice.get(MAX_PARAM_NAME).isNumber()) {
+      if(ngram_slice.hasKey(MAX_PARAM_NAME) &&
+         ngram_slice.get(MAX_PARAM_NAME).isNumber<decltype (options.min_gram)>()) {
 
-        options.max_gram = ngram_slice.get(MAX_PARAM_NAME).getUInt();
+        options.max_gram = ngram_slice.get(MAX_PARAM_NAME).getNumber<decltype (options.min_gram)>();
         options.max_gram_set = true;
       }
 
-      if(ngram_slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME.c_str()) &&
+      if(ngram_slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) &&
          ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
 
         options.preserve_original = ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
@@ -679,7 +675,7 @@ bool make_vpack_config(
       // locale
       const auto& locale_name = irs::locale_utils::name(options.locale);
       builder.add(
-          VPackStringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+          LOCALE_PARAM_NAME,
           VPackValue(VPackStringRef(locale_name.c_str(),locale_name.length())));
 
       // case convert
@@ -690,7 +686,7 @@ bool make_vpack_config(
 
       if (case_value != CASE_CONVERT_MAP.end()) {
         builder.add(
-          VPackStringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
+          CASE_CONVERT_PARAM_NAME,
           VPackValue(VPackStringRef(case_value->first.c_str(), case_value->first.size())));
       } else {
         IR_FRMT_ERROR(
@@ -712,7 +708,7 @@ bool make_vpack_config(
           std::sort(sortedWords.begin(), sortedWords.end());
 
           {
-            VPackArrayBuilder array(&builder, STOPWORDS_PARAM_NAME.c_str());
+            VPackArrayBuilder array(&builder, STOPWORDS_PARAM_NAME.toString());
 
             for (const auto& stopword : sortedWords) {
                 builder.add(VPackValue(stopword));
@@ -722,20 +718,16 @@ bool make_vpack_config(
       }
 
       // Accent
-      builder.add(
-        VPackStringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
-        VPackValue(options.accent));
+      builder.add(ACCENT_PARAM_NAME, VPackValue(options.accent));
 
       //Stem
-      builder.add(
-        VPackStringRef(STEMMING_PARAM_NAME.c_str(), STEMMING_PARAM_NAME.size()),
-        VPackValue(options.stemming));
+      builder.add(STEMMING_PARAM_NAME, VPackValue(options.stemming));
 
       //stopwords path
       if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) {
         // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
         builder.add(
-          VPackStringRef(STOPWORDS_PATH_PARAM_NAME.c_str(), STOPWORDS_PATH_PARAM_NAME.size()),
+          STOPWORDS_PATH_PARAM_NAME,
           VPackValue(VPackStringRef(options.stopwordsPath.c_str(), options.stopwordsPath.length())));
       }
     }
@@ -746,27 +738,21 @@ bool make_vpack_config(
 
   if (options.min_gram_set || options.max_gram_set || options.preserve_original_set) {
 
-    VPackObjectBuilder sub_object(&builder, EDGE_NGRAM_PARAM_NAME.c_str());
+    VPackObjectBuilder sub_object(&builder, EDGE_NGRAM_PARAM_NAME.toString());
 
     // min_gram
     if (options.min_gram_set) {
-      builder.add(
-        VPackStringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
-        VPackValue(static_cast<uint64_t>(options.min_gram)));
+      builder.add(MIN_PARAM_NAME, VPackValue(static_cast<uint64_t>(options.min_gram)));
     }
 
     // max_gram
     if (options.max_gram_set) {
-      builder.add(
-        VPackStringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
-        VPackValue(static_cast<uint64_t>(options.max_gram)));
+      builder.add(MAX_PARAM_NAME, VPackValue(static_cast<uint64_t>(options.max_gram)));
     }
 
     // preserve_original
     if (options.preserve_original_set) {
-      builder.add(
-        VPackStringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
-        VPackValue(options.preserve_original));
+      builder.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(options.preserve_original));
     }
   }
 
@@ -861,7 +847,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
@@ -882,7 +868,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),

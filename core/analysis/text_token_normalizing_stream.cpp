@@ -20,12 +20,18 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "text_token_normalizing_stream.hpp"
+
+#include <frozen/unordered_map.h>
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-
-#include <frozen/unordered_map.h>
+#include "utils/hash_utils.hpp"
+#include "utils/locale_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 #include <unicode/locid.h> // for icu::Locale
 
@@ -50,12 +56,6 @@
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
 #endif
-
-#include "utils/hash_utils.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/vpack_utils.hpp"
-
-#include "text_token_normalizing_stream.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -105,9 +105,9 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-constexpr irs::string_ref LOCALE_PARAM_NAME       = "locale";
-constexpr irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
-constexpr irs::string_ref ACCENT_PARAM_NAME       = "accent";
+constexpr VPackStringRef LOCALE_PARAM_NAME       = VPackStringRef("locale");
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME = VPackStringRef("case");
+constexpr VPackStringRef ACCENT_PARAM_NAME       = VPackStringRef("accent");
 
 constexpr frozen::unordered_map<
     irs::string_ref,
@@ -125,40 +125,40 @@ bool parse_vpack_options(
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-          "Slice for delimited_token_stream is not an object or string: %s",
-          args.c_str());
+        "Slice for delimited_token_stream is not an object or string: %s",
+        args.c_str());
     return false;
   }
 
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(irs::get_string(slice), options.locale);  // required
+        return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
-        if (slice.hasKey(LOCALE_PARAM_NAME.c_str()) &&
-            slice.get(LOCALE_PARAM_NAME.c_str()).isString()) {
-          if (!make_locale_from_name(irs::get_string(slice.get(LOCALE_PARAM_NAME)), options.locale)) {
+        if (slice.hasKey(LOCALE_PARAM_NAME) &&
+            slice.get(LOCALE_PARAM_NAME).isString()) {
+          if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)), options.locale)) {
             return false;
           }
-          if (slice.hasKey(CASE_CONVERT_PARAM_NAME.c_str())) {
+          if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
             auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
             if (!case_convert_slice.isString()) {
               IR_FRMT_WARN(
                   "Non-string value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+                  CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
 
               return false;
             }
 
-            auto itr = CASE_CONVERT_MAP.find(irs::get_string(case_convert_slice));
+            auto itr = CASE_CONVERT_MAP.find(irs::get_string<irs::string_ref>(case_convert_slice));
 
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
                   "Invalid value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+                  CASE_CONVERT_PARAM_NAME.toString().c_str(), args.c_str());
 
               return false;
             }
@@ -166,14 +166,14 @@ bool parse_vpack_options(
             options.case_convert = itr->second;
           }
 
-          if (slice.hasKey(ACCENT_PARAM_NAME.c_str())) {
+          if (slice.hasKey(ACCENT_PARAM_NAME)) {
             auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
 
             if (!accent_slice.isBool()) {
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  ACCENT_PARAM_NAME.c_str(), args.c_str());
+                  ACCENT_PARAM_NAME.toString().c_str(), args.c_str());
 
               return false;
             }
@@ -188,7 +188,7 @@ bool parse_vpack_options(
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "
             "from jSON arguments: %s",
-            LOCALE_PARAM_NAME.c_str(), args.c_str());
+            LOCALE_PARAM_NAME.toString().c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -229,9 +229,8 @@ bool make_vpack_config(
     {
       // locale
       const auto& locale_name = irs::locale_utils::name(options.locale);
-      VPackStringRef locale_param_name(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size());
-      VPackValue value_local(irs::string_ref(locale_name.c_str(), locale_name.length()));
-      builder.add(locale_param_name, value_local);
+      VPackStringRef value_local(locale_name.c_str(), locale_name.size());
+      builder.add(LOCALE_PARAM_NAME, VPackValue(value_local));
 
       // case convert
       auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
@@ -239,9 +238,8 @@ bool make_vpack_config(
             return v.second == options.case_convert;
         });
       if (case_value != CASE_CONVERT_MAP.end()) {
-        VPackStringRef case_convert_param_name(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size());
-        VPackValue value(irs::string_ref(case_value->first.c_str(), case_value->first.size()));
-        builder.add(case_convert_param_name, value);
+        VPackStringRef value(case_value->first.c_str(), case_value->first.size());
+        builder.add(CASE_CONVERT_PARAM_NAME, VPackValue(value));
       }
       else {
         IR_FRMT_ERROR(
@@ -251,9 +249,7 @@ bool make_vpack_config(
       }
 
       // Accent
-      VPackStringRef accent_param_name(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size());
-      VPackValue value_accent(options.accent);
-      builder.add(accent_param_name, value_accent);
+      builder.add(ACCENT_PARAM_NAME, VPackValue(options.accent));
     }
   }
 
@@ -309,7 +305,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
@@ -330,7 +326,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),

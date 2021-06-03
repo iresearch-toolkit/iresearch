@@ -20,27 +20,27 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
+#include "ngram_token_stream.hpp"
 
 #include <frozen/unordered_map.h>
 #include <frozen/string.h>
 
-#include "ngram_token_stream.hpp"
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 #include "utils/hash_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
 namespace {
 
-constexpr irs::string_ref MIN_PARAM_NAME               = "min";
-constexpr irs::string_ref MAX_PARAM_NAME               = "max";
-constexpr irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
-constexpr irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
-constexpr irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
-constexpr irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
+constexpr VPackStringRef MIN_PARAM_NAME               = VPackStringRef("min");
+constexpr VPackStringRef MAX_PARAM_NAME               = VPackStringRef("max");
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME = VPackStringRef("preserveOriginal");
+constexpr VPackStringRef STREAM_TYPE_PARAM_NAME       = VPackStringRef("streamType");
+constexpr VPackStringRef START_MARKER_PARAM_NAME      = VPackStringRef("startMarker");
+constexpr VPackStringRef END_MARKER_PARAM_NAME        = VPackStringRef("endMarker");
 
 constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2> STREAM_TYPE_CONVERT_MAP = {
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
@@ -68,7 +68,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from VPack arguments: %s",
-        MIN_PARAM_NAME.c_str(), args.c_str());
+        MIN_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
 
@@ -76,7 +76,7 @@ bool parse_vpack_options(const irs::string_ref& args,
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments: %s",
-        MIN_PARAM_NAME.c_str(), args.c_str());
+        MIN_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
   min = min_type_slice.getNumber<decltype (min)>();
@@ -87,14 +87,14 @@ bool parse_vpack_options(const irs::string_ref& args,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from VPack arguments: %s",
-        MAX_PARAM_NAME.c_str(), args.c_str());
+        MAX_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
   if (!max_type_slice.isNumber()) {
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments: %s",
-        MAX_PARAM_NAME.c_str(), args.c_str());
+        MAX_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
   max = max_type_slice.getNumber<decltype (max)>();
@@ -111,55 +111,55 @@ bool parse_vpack_options(const irs::string_ref& args,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as boolean while constructing "
         "ngram_token_stream from VPack arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
+        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
   if (!preserve_type_slice.isBool()) {
     IR_FRMT_WARN(
         "Invalid type '%b' (bool expected) for ngram_token_stream from "
         "VPack arguments: %s",
-        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
+        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str(), args.c_str());
     return false;
   }
   preserve_original = preserve_type_slice.getBool();
   options.preserve_original = preserve_original;
 
   //start marker
-  if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
+  if (slice.hasKey(START_MARKER_PARAM_NAME)) {
     auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME);
     if (!start_marker_type_slice.isString()) {
       IR_FRMT_WARN(
-          "Invalid type '%s' (string expected) for segmentation_token_stream from "
+          "Invalid type '%s' (string expected) for ngram_token_stream from "
           "VPack arguments: %s",
-          START_MARKER_PARAM_NAME.c_str(), args.c_str());
+          START_MARKER_PARAM_NAME.toString().c_str(), args.c_str());
       return false;
     }
-    start_marker = start_marker_type_slice.toString();
+    start_marker = irs::get_string<std::string>(start_marker_type_slice);
   }
   options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
 
   // end marker
-  if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
+  if (slice.hasKey(END_MARKER_PARAM_NAME)) {
     auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME);
     if (!end_marker_type_slice.isString()) {
       IR_FRMT_WARN(
-          "Invalid type '%s' (string expected) for segmentation_token_stream from "
+          "Invalid type '%s' (string expected) for ngram_token_stream from "
           "VPack arguments: %s",
-          END_MARKER_PARAM_NAME.c_str(), args.c_str());
+          END_MARKER_PARAM_NAME.toString().c_str(), args.c_str());
       return false;
     }
-    end_marker = end_marker_type_slice.toString();
+    end_marker = irs::get_string<std::string>(end_marker_type_slice);
   }
   options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
 
   //stream bytes
-  if(slice.hasKey(STREAM_TYPE_PARAM_NAME.c_str())) {
+  if(slice.hasKey(STREAM_TYPE_PARAM_NAME)) {
     auto stream_type_slice = slice.get(STREAM_TYPE_PARAM_NAME);
     if (!stream_type_slice.isString()) {
       IR_FRMT_WARN(
           "Non-string value in '%s' while constructing ngram_token_stream "
           "from VPack arguments: %s",
-          STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+          STREAM_TYPE_PARAM_NAME.toString().c_str(), args.c_str());
       return false;
     }
     auto stream_type = stream_type_slice.stringRef();
@@ -169,7 +169,7 @@ bool parse_vpack_options(const irs::string_ref& args,
       IR_FRMT_WARN(
           "Invalid value in '%s' while constructing ngram_token_stream from "
           "VPack arguments: %s",
-          STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+          STREAM_TYPE_PARAM_NAME.toString().c_str(), args.c_str());
       return false;
     }
     stream_bytes_type = itr->second;
@@ -190,42 +190,38 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
     VPackObjectBuilder object(&builder);
     {
       //min_gram
-      builder.add(MIN_PARAM_NAME.c_str(), VPackValue(options.min_gram));
+      builder.add(MIN_PARAM_NAME, VPackValue(options.min_gram));
 
       //max_gram
-      builder.add(MAX_PARAM_NAME.c_str(), VPackValue(options.max_gram));
+      builder.add(MAX_PARAM_NAME, VPackValue(options.max_gram));
 
       //preserve_original
-      builder.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), VPackValue(options.preserve_original));
+      builder.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(options.preserve_original));
 
       // stream type
-      {
-        auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
-          [&options](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
-            return v.second == options.stream_bytes_type;
-          });
+      auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
+        [&options](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
+          return v.second == options.stream_bytes_type;
+        });
 
-        if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-            builder.add(STREAM_TYPE_PARAM_NAME.c_str(), VPackValue(stream_type_value->first.c_str()));
-        } else {
-          IR_FRMT_ERROR(
-            "Invalid %s value in ngram analyzer options: %d",
-            STREAM_TYPE_PARAM_NAME.c_str(),
-            static_cast<int>(options.stream_bytes_type));
-          return false;
-        }
+      if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
+          builder.add(STREAM_TYPE_PARAM_NAME, VPackValue(stream_type_value->first.c_str()));
+      } else {
+        IR_FRMT_ERROR(
+          "Invalid %s value in ngram analyzer options: %d",
+          STREAM_TYPE_PARAM_NAME.toString().c_str(),
+          static_cast<int>(options.stream_bytes_type));
+        return false;
       }
 
       // start_marker
       if (!options.start_marker.empty()) {
-        std::string tmp(reinterpret_cast<const char*>(options.start_marker.c_str()), options.start_marker.size());
-        builder.add(START_MARKER_PARAM_NAME.c_str(), VPackValue(tmp));
+        builder.add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
       }
 
       // end_marker
       if (!options.end_marker.empty()) {
-        std::string tmp(reinterpret_cast<const char*>(options.end_marker.c_str()), options.end_marker.size());
-        builder.add(END_MARKER_PARAM_NAME.c_str(), VPackValue(tmp));
+        builder.add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
       }
     }
   }
@@ -275,7 +271,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           "Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
@@ -296,7 +292,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),

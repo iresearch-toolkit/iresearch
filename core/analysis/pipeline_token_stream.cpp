@@ -28,14 +28,13 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-
 #include "utils/vpack_utils.hpp"
 
 namespace {
 
-constexpr irs::string_ref PIPELINE_PARAM_NAME = "pipeline";
-constexpr irs::string_ref TYPE_PARAM_NAME = "type";
-constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
+constexpr VPackStringRef PIPELINE_PARAM_NAME    = VPackStringRef("pipeline");
+constexpr VPackStringRef TYPE_PARAM_NAME        = VPackStringRef("type");
+constexpr VPackStringRef PROPERTIES_PARAM_NAME  = VPackStringRef("properties");
 
 const irs::offset NO_OFFSET;
 
@@ -67,37 +66,37 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
     return false;
   }
 
-  if (slice.hasKey(PIPELINE_PARAM_NAME.c_str())) {
+  if (slice.hasKey(PIPELINE_PARAM_NAME)) {
     auto pipeline_slice = slice.get(PIPELINE_PARAM_NAME);
     if (pipeline_slice.isArray()) {
+        VPackOptions dump_options;
+        dump_options.escapeForwardSlashes = true;
+        dump_options.prettyPrint = false;
+        dump_options.singleLinePrettyPrint = true;
       for (auto const& pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
-          std::string type;
-          if (pipe.hasKey(TYPE_PARAM_NAME.c_str())) {
-            auto type_atr_slice = pipe.get(TYPE_PARAM_NAME);
-            if (type_atr_slice.isString()) {
-              type = irs::get_string(type_atr_slice);
+          irs::string_ref type;
+          if (pipe.hasKey(TYPE_PARAM_NAME)) {
+            auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
+            if (type_attr_slice.isString()) {
+              type = irs::get_string<irs::string_ref>(type_attr_slice);
             } else {
               IR_FRMT_ERROR(
                 "Failed to read '%s' attribute of  '%s' member as string while constructing "
                 "pipeline_token_stream from jSON arguments: %s",
-                TYPE_PARAM_NAME.c_str(), PIPELINE_PARAM_NAME.c_str(), args.c_str());
+                TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
               return false;
             }
           } else {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
               "pipeline_token_stream from jSON arguments: %s",
-              TYPE_PARAM_NAME.c_str(), PIPELINE_PARAM_NAME.c_str(), args.c_str());
+              TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
             return false;
           }
-          if (pipe.hasKey(PROPERTIES_PARAM_NAME.c_str())) {
-            auto properties_atr_slice = pipe.get(PROPERTIES_PARAM_NAME);
-            VPackOptions dump_options;
-            dump_options.escapeForwardSlashes = true;
-            dump_options.prettyPrint = false;
-            dump_options.singleLinePrettyPrint = true;
-            std::string properties_buffer = irs::slice_to_string(properties_atr_slice, &dump_options);
+          if (pipe.hasKey(PROPERTIES_PARAM_NAME.toString().c_str())) {
+            auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
+            std::string properties_buffer = irs::slice_to_string(properties_attr_slice, &dump_options);
 
             if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
               auto analyzer = irs::analysis::analyzers::get(
@@ -130,14 +129,14 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
               "pipeline_token_stream from jSON arguments: %s",
-              PROPERTIES_PARAM_NAME.c_str(), PIPELINE_PARAM_NAME.c_str(), args.c_str());
+              PROPERTIES_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
             return false;
           }
         } else {
           IR_FRMT_ERROR(
             "Failed to read '%s' member as object while constructing "
             "pipeline_token_stream from jSON arguments: %s",
-            PIPELINE_PARAM_NAME.c_str(), args.c_str());
+            PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
           return false;
         }
       }
@@ -145,14 +144,14 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
       IR_FRMT_ERROR(
         "Failed to read '%s' attribute as array while constructing "
         "pipeline_token_stream from jSON arguments: %s",
-        PIPELINE_PARAM_NAME.c_str(), args.c_str());
+        PIPELINE_PARAM_NAME.toString().c_str(), args.c_str());
       return false;
     }
   } else {
     IR_FRMT_ERROR(
       "Not found parameter '%s' while constructing pipeline_token_stream, "
       "arguments: %s",
-      PIPELINE_PARAM_NAME.c_str(),
+      PIPELINE_PARAM_NAME.toString().c_str(),
       args.c_str());
     return false;
   }
@@ -172,13 +171,13 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     {
       VPackObjectBuilder object(&builder);
       {
-        VPackArrayBuilder array(&builder, PIPELINE_PARAM_NAME.c_str());
+        VPackArrayBuilder array(&builder, PIPELINE_PARAM_NAME.toString());
         {
           for (auto analyzer : options) {
             VPackObjectBuilder sub_object(&builder);
             {
-              builder.add(TYPE_PARAM_NAME.c_str(), VPackValue(analyzer.first));
-              builder.add(PROPERTIES_PARAM_NAME.c_str(), VPackValue(analyzer.second));
+              builder.add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
+              builder.add(PROPERTIES_PARAM_NAME, VPackValue(analyzer.second));
             }
           }
         }
@@ -214,7 +213,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const VPackException& ex) {
@@ -235,7 +234,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     std::string vpack_container;
     if (normalize_vpack_config(
         irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),

@@ -21,13 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "token_stopwords_stream.hpp"
+
 #include <cctype> // for std::isspace(...)
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/Iterator.h"
-
-#include "token_stopwords_stream.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace {
 
@@ -50,7 +52,7 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
+bool hex_decode(std::string& buf, VPackStringRef value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
@@ -78,7 +80,7 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
   return true;
 }
 
-irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator& mask, bool hex) {
+irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex) {
   size_t offset = 0;
   irs::analysis::token_stopwords_stream::stopwords_set tokens;
 
@@ -104,8 +106,8 @@ irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator
     std::move(tokens));
 }
 
-constexpr irs::string_ref STOPWORDS_PARAM_NAME = "stopwords";
-constexpr irs::string_ref HEX_PARAM_NAME = "hex";
+constexpr VPackStringRef STOPWORDS_PARAM_NAME = VPackStringRef("stopwords");
+constexpr VPackStringRef HEX_PARAM_NAME = VPackStringRef("hex");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -113,26 +115,26 @@ constexpr irs::string_ref HEX_PARAM_NAME = "hex";
 ///        if HEX conversion fails for any token then it is matched verbatim
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   switch (slice.type()) {
-    case arangodb::velocypack::ValueType::Array:
-      return construct(arangodb::velocypack::ArrayIterator(slice), false); // arrays are always verbatim
-    case arangodb::velocypack::ValueType::Object: {
-      auto hex_slice = slice.get(HEX_PARAM_NAME.c_str());
+    case VPackValueType::Array:
+      return construct(VPackArrayIterator(slice), false); // arrays are always verbatim
+    case VPackValueType::Object: {
+      auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
-          slice.toString().c_str(), HEX_PARAM_NAME.c_str());
+          irs::get_string<irs::string_ref>(slice).c_str(), HEX_PARAM_NAME.toString().c_str());
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
-      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME.c_str());
+      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME);
       if (mask_slice.isArray()) {
-        return construct(arangodb::velocypack::ArrayIterator(mask_slice), hex);
+        return construct(VPackArrayIterator(mask_slice), hex);
       } else {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be array.",
-          slice.toString().c_str(), STOPWORDS_PARAM_NAME.c_str());
+          irs::get_string<irs::string_ref>(slice).c_str(), STOPWORDS_PARAM_NAME.toString().c_str());
         return nullptr;
       }
     }
@@ -151,9 +153,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       IR_FRMT_ERROR("Null arguments while constructing token_stopwords_stream ");
       return nullptr;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing token_stopwords_stream from json: %s",
         ex.what(), args.c_str());
@@ -166,41 +168,41 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 }
 
 bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
-  arangodb::velocypack::Slice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   switch (slice.type()) {
-    case arangodb::velocypack::ValueType::Array:
+    case VPackValueType::Array:
     { // always normalize to object for consistency reasons
-      arangodb::velocypack::Builder builder;
+      VPackBuilder builder;
       builder.openObject();
-      builder.add(STOPWORDS_PARAM_NAME.c_str(), slice);
-      builder.add(HEX_PARAM_NAME.c_str(), arangodb::velocypack::Value(false));
+      builder.add(STOPWORDS_PARAM_NAME, slice);
+      builder.add(HEX_PARAM_NAME, VPackValue(false));
       builder.close();
       definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
       return true;
     }
-    case arangodb::velocypack::ValueType::Object:
+    case VPackValueType::Object:
     {
-      auto hex_slice = slice.get(HEX_PARAM_NAME.c_str());
+      auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. %s value should be boolean.",
-          slice.toString().c_str(), HEX_PARAM_NAME.c_str());
+          irs::get_string<irs::string_ref>(slice).c_str(), HEX_PARAM_NAME.toString().c_str());
         return false;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
-      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME.c_str());
+      auto mask_slice = slice.get(STOPWORDS_PARAM_NAME);
       if (mask_slice.isArray()) {
-        arangodb::velocypack::Builder builder;
+        VPackBuilder builder;
         builder.openObject();
-        builder.add(STOPWORDS_PARAM_NAME.c_str(), mask_slice);
-        builder.add(HEX_PARAM_NAME.c_str(), arangodb::velocypack::Value(hex));
+        builder.add(STOPWORDS_PARAM_NAME, mask_slice);
+        builder.add(HEX_PARAM_NAME, VPackValue(hex));
         builder.close();
         definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
         return true;
       } else {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. %s value should be array.",
-          slice.toString().c_str(), STOPWORDS_PARAM_NAME.c_str());
+          irs::get_string<irs::string_ref>(slice).c_str(), STOPWORDS_PARAM_NAME.toString().c_str());
         return false;
       }
     }
@@ -219,14 +221,14 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
       return false;
     }
-    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.c_str());
     std::string vpack_container;
     if (normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), vpack_container)) {
-      arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
+      VPackSlice slice(reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
       definition = slice.toString();
       return true;
     }
-  } catch(const arangodb::velocypack::Exception& ex) {
+  } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while normalizing token_stopwords_stream from json: %s",
         ex.what(), args.c_str());
