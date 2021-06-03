@@ -34,7 +34,9 @@ INSTANTIATE_TEST_SUITE_P(
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory,
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>,
       &tests::rot13_cipher_directory<&tests::memory_directory, 7>,

@@ -1230,7 +1230,7 @@ TEST_P(directory_test_case, directory_size) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(

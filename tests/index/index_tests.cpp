@@ -13871,7 +13871,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_10,
   index_test_case,
   ::testing::Combine(
@@ -13885,7 +13885,7 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_11,
   index_test_case,
   ::testing::Combine(
@@ -13909,7 +13909,7 @@ const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_12,
   index_test_case,
   ::testing::Combine(
@@ -13933,7 +13933,7 @@ const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_13,
   index_test_case,
   ::testing::Combine(
@@ -13953,15 +13953,16 @@ namespace {
 const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"},
                                                          tests::format_info{"1_4simd", "1_0"});
 #else
-const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_4", "1_0"});
+const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_14,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
+      tests::mmap_directory,
       tests::memory_directory,
       &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
@@ -14215,7 +14216,7 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_10,
   index_test_case_10,
   ::testing::Combine(
@@ -14762,7 +14763,7 @@ const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1
 #endif
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_test_11,
   index_test_case_11,
   ::testing::Combine(

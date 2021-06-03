@@ -1053,7 +1053,7 @@ TEST(by_column_existence, equal) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   column_existence_filter_test,
   column_existence_filter_test_case,
   ::testing::Combine(

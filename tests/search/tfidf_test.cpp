@@ -1293,7 +1293,7 @@ TEST_P(tfidf_test, test_order) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   tfidf_test,
   tfidf_test,
   ::testing::Combine(

@@ -478,7 +478,7 @@ TEST_P(format_11_test_case, formats_10_11) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_11_test,
   format_11_test_case,
   ::testing::Values(
@@ -495,7 +495,7 @@ INSTANTIATE_TEST_CASE_P(
 
 using tests::format_test_case;
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_11_test,
   format_test_case,
   ::testing::Combine(

@@ -1436,7 +1436,7 @@ TEST_P(bm25_test, test_order) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   bm25_test,
   bm25_test,
   ::testing::Combine(

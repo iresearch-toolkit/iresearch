@@ -110,7 +110,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   levenshtein_automaton_index_test,
   levenshtein_automaton_index_test_case,
   ::testing::Combine(

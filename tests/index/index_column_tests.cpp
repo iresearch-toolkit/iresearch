@@ -8795,7 +8795,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   ASSERT_EQ(nullptr, column);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_column_test,
   index_column_test_case,
   ::testing::Combine(

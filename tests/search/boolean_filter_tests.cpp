@@ -15130,7 +15130,7 @@ TEST(Or_test, boosted_not) {
 
 #endif // IRESEARCH_DLL
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   boolean_filter_test,
   boolean_filter_test_case,
   ::testing::Combine(

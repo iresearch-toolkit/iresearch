@@ -546,7 +546,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   encryption_test,
   encryption_test_case,
   ::testing::Values(

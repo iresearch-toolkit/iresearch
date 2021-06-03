@@ -610,7 +610,7 @@ TEST(by_same_position_test, equal) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   same_position_filter_test,
   same_position_filter_test_case,
   ::testing::Combine(
