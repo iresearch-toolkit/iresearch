@@ -99,13 +99,11 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
 
 constexpr VPackStringRef DELIMITER_PARAM_NAME = VPackStringRef("delimiter");
 
-bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
+bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
 
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-        "Slice for delimited_token_stream is not an object or string: %s",
-        args.c_str());
+        "Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
@@ -141,41 +139,49 @@ bool parse_vpack_options(const irs::string_ref& args, std::string& delimiter) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "delimiter"(string): the delimiter to use for tokenization <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   std::string delimiter;
-  if (parse_vpack_options(args, delimiter)) {
+  if (parse_vpack_options(slice, delimiter)) {
     return irs::analysis::delimited_token_stream::make(delimiter);
   } else {
     return nullptr;
   }
+}
+
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param delimiter reference to analyzer options storage
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const std::string& delimiter, std::string& definition) {
-  VPackBuilder builder;
+bool make_vpack_config(const std::string& delimiter, VPackBuilder& vpack_builder) {
+  VPackObjectBuilder object(&vpack_builder);
   {
-    VPackObjectBuilder object(&builder);
-    {
-      // delimiter
-      builder.add(DELIMITER_PARAM_NAME, VPackValue(delimiter));
-    }
+    // delimiter
+    vpack_builder.add(DELIMITER_PARAM_NAME, VPackValue(delimiter));
   }
 
-  //output vpack to string
-  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& definition){
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder& vpack_builder) {
   std::string delimiter;
-  if (parse_vpack_options(args, delimiter)) {
-    return make_vpack_config(delimiter, definition);
+  if (parse_vpack_options(slice, delimiter)) {
+    return make_vpack_config(delimiter, vpack_builder);
   } else {
     return false;
   }
+}
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& defenition) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder vpack_builder;
+  bool res = normalize_vpack_config(slice, vpack_builder);
+  defenition = vpack_builder.toString();
+  return res;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -185,8 +191,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+    return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing delimited_token_stream from json",
@@ -205,13 +210,9 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    std::string vpack_container;
-    if (normalize_vpack_config(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
-        vpack_container)) {
-      VPackSlice slice(
-          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+    VPackBuilder vpack_builder;
+    if (normalize_vpack_config(vpack->slice(), vpack_builder)) {
+      definition = vpack_builder.toString();
       if (definition.empty()) {
           return false;
       }
