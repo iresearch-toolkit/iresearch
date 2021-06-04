@@ -46,10 +46,8 @@ constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stre
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
   { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
 
-bool parse_vpack_options(const irs::string_ref& args,
+bool parse_vpack_options(const VPackSlice slice,
                         irs::analysis::ngram_token_stream_base::Options& options) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
-
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
         "Slice for ngram_token_stream is not an object");
@@ -179,54 +177,49 @@ bool parse_vpack_options(const irs::string_ref& args,
 }
 
 bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& options,
-                      std::string& definition) {
+                      VPackBuilder* builder) {
 
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
 
-  VPackBuilder builder;
+  VPackObjectBuilder object(builder);
   {
-    VPackObjectBuilder object(&builder);
-    {
-      //min_gram
-      builder.add(MIN_PARAM_NAME, VPackValue(options.min_gram));
+    //min_gram
+    builder->add(MIN_PARAM_NAME, VPackValue(options.min_gram));
 
-      //max_gram
-      builder.add(MAX_PARAM_NAME, VPackValue(options.max_gram));
+    //max_gram
+    builder->add(MAX_PARAM_NAME, VPackValue(options.max_gram));
 
-      //preserve_original
-      builder.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(options.preserve_original));
+    //preserve_original
+    builder->add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(options.preserve_original));
 
-      // stream type
-      auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
-        [&options](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
-          return v.second == options.stream_bytes_type;
-        });
+    // stream type
+    auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
+      [&options](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
+        return v.second == options.stream_bytes_type;
+      });
 
-      if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-          builder.add(STREAM_TYPE_PARAM_NAME, VPackValue(stream_type_value->first));
-      } else {
-        IR_FRMT_ERROR(
-          "Invalid %s value in ngram analyzer options: %d",
-          STREAM_TYPE_PARAM_NAME.toString().c_str(),
-          static_cast<int>(options.stream_bytes_type));
-        return false;
-      }
+    if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
+        builder->add(STREAM_TYPE_PARAM_NAME, VPackValue(stream_type_value->first));
+    } else {
+      IR_FRMT_ERROR(
+        "Invalid %s value in ngram analyzer options: %d",
+        STREAM_TYPE_PARAM_NAME.toString().c_str(),
+        static_cast<int>(options.stream_bytes_type));
+      return false;
+    }
 
-      // start_marker
-      if (!options.start_marker.empty()) {
-        builder.add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
-      }
+    // start_marker
+    if (!options.start_marker.empty()) {
+      builder->add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
+    }
 
-      // end_marker
-      if (!options.end_marker.empty()) {
-        builder.add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
-      }
+    // end_marker
+    if (!options.end_marker.empty()) {
+      builder->add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
     }
   }
 
-  //output vpack to string
-  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
@@ -236,9 +229,9 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
 ///        "max" (number): maximum ngram size
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::ngram_token_stream_base::Options options;
-  if (parse_vpack_options(args, options)) {
+  if (parse_vpack_options(slice, options)) {
     switch (options.stream_bytes_type) {
       case irs::analysis::ngram_token_stream_base::InputType::Binary:
         return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(options);
@@ -250,17 +243,30 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   return nullptr;
 }
 
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 ///////////////////////////////////////////////////////////////////////////////
-
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder) {
   irs::analysis::ngram_token_stream_base::Options options;
-  if (parse_vpack_options(args, options)) {
-    return make_vpack_config(options, config);
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, vpack_builder);
   } else {
     return false;
   }
+}
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
+  return res;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -271,8 +277,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+    return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing ngram_token_stream from json",
@@ -291,13 +296,9 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    std::string vpack_container;
-    if (normalize_vpack_config(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
-        vpack_container)) {
-      VPackSlice slice(
-          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
       if (definition.empty()) {
           return false;
       }

@@ -21,11 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <sstream>
-#include "tests_shared.hpp"
 #include "analysis/ngram_token_stream.hpp"
-#include "utils/locale_utils.hpp"
+
 #include <utf8.h>
+
+#include <sstream>
+
+#include "tests_shared.hpp"
+#include "utils/locale_utils.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifndef IRESEARCH_DLL
 
@@ -1193,6 +1198,18 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ("{\n  \"endMarker\" : \"#456\",\n  \"max\" : 22,\n  \"min\" : 11,\n  \"preserveOriginal\" : true,\n  \"streamType\" : \"binary\"\n}", actual);
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "ngram", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ("{\n  \"endMarker\" : \"#456\",\n  \"max\" : 22,\n  \"min\" : 11,\n  \"preserveOriginal\" : true,\n  \"streamType\" : \"binary\"\n}", out_slice.toString());
   }
 }
 

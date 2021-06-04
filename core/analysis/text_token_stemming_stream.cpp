@@ -57,12 +57,10 @@ bool make_locale_from_name(const irs::string_ref& name,
 
 const VPackStringRef LOCALE_PARAM_NAME = VPackStringRef("locale");
 
-bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
+bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
-    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string: %s",
-                  args.c_str());
+    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
@@ -86,8 +84,7 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
   } catch (...) {
     IR_FRMT_ERROR(
         "Caught error while constructing text_token_stemming_stream from VPack "
-        "arguments: %s",
-        args.c_str());
+        "arguments");
   }
 
   return false;
@@ -96,44 +93,52 @@ bool parse_vpack_options(const irs::string_ref& args, std::locale& locale) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   std::locale locale;
-  if (parse_vpack_options(args, locale)) {
+  if (parse_vpack_options(slice, locale)) {
     return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
   } else {
     return nullptr;
   }
 }
 
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config( const std::locale& locale,  std::string& definition) {
+bool make_vpack_config(const std::locale& locale, VPackBuilder* builder) {
 
-  VPackBuilder builder;
+  VPackObjectBuilder object(builder);
   {
-    VPackObjectBuilder object(&builder);
-    {
-       // locale
-      const auto& locale_name = irs::locale_utils::name(locale);
-      builder.add(LOCALE_PARAM_NAME, VPackValue(locale_name));
-    }
+     // locale
+    const auto& locale_name = irs::locale_utils::name(locale);
+    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   }
-
-  // output vpack to string
-  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   std::locale options;
-  if (parse_vpack_options(args, options)) {
-    return make_vpack_config(options, definition);
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, builder);
   } else {
     return false;
   }
+}
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
+  return res;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -143,16 +148,14 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+    return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing ngram_token_stream from json",
         ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json",
-        args.c_str());
+        "Caught error while constructing ngram_token_stream from json");
   }
   return nullptr;
 }
@@ -164,13 +167,9 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    std::string vpack_container;
-    if (normalize_vpack_config(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
-        vpack_container)) {
-      VPackSlice slice(
-          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
       if (definition.empty()) {
           return false;
       }
@@ -182,8 +181,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json",
-        args.c_str());
+        "Caught error while normalizing ngram_token_stream from json");
   }
   return false;
 }

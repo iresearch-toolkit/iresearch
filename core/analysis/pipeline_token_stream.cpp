@@ -53,16 +53,14 @@ empty_analyzer EMPTY_ANALYZER;
 using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
-bool parse_vpack_options(const irs::string_ref& args, T& options) {
+bool parse_vpack_options(const VPackSlice slice, T& options) {
   if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
     assert(options.empty());
   }
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (VPackValueType::Object != slice.type()) {
     IR_FRMT_ERROR(
       "Not a jSON object passed while constructing pipeline_token_stream, "
-      "arguments: %s",
-      args.c_str());
+      "arguments");
     return false;
   }
 
@@ -161,31 +159,34 @@ bool parse_vpack_options(const irs::string_ref& args, T& options) {
   return true;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   options_normalize_t options;
-  if (parse_vpack_options(args, options)) {
-    VPackBuilder builder;
+  if (parse_vpack_options(slice, options)) {
+    VPackObjectBuilder object(builder);
     {
-      VPackObjectBuilder object(&builder);
+      VPackArrayBuilder array(builder, PIPELINE_PARAM_NAME.toString());
       {
-        VPackArrayBuilder array(&builder, PIPELINE_PARAM_NAME.toString());
-        {
-          for (auto analyzer : options) {
-            VPackObjectBuilder sub_object(&builder);
-            {
-              builder.add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
-              builder.add(PROPERTIES_PARAM_NAME, VPackValue(analyzer.second));
-            }
+        for (auto analyzer : options) {
+          VPackObjectBuilder sub_object(builder);
+          {
+            builder->add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
+            builder->add(PROPERTIES_PARAM_NAME, VPackValue(analyzer.second));
           }
         }
       }
     }
-
-    //output vpack to string
-    definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
     return true;
   }
   return false;
+}
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,13 +196,18 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
 /// type: analyzer type name (one of registered analyzers type)
 /// properties: object with properties for corresponding analyzer
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::pipeline_token_stream::options_t options;
-  if (parse_vpack_options(args, options)) {
+  if (parse_vpack_options(slice, options)) {
     return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
   } else {
     return nullptr;
   }
+}
+
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -211,8 +217,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+    return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing ngram_token_stream from json", ex.what());
@@ -230,13 +235,9 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    std::string vpack_container;
-    if (normalize_vpack_config(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
-        vpack_container)) {
-      VPackSlice slice(
-          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
       if (definition.empty()) {
           return false;
       }

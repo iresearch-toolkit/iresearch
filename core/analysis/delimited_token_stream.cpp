@@ -157,17 +157,17 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 /// @param delimiter reference to analyzer options storage
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const std::string& delimiter, VPackBuilder& vpack_builder) {
-  VPackObjectBuilder object(&vpack_builder);
+bool make_vpack_config(const std::string& delimiter, VPackBuilder* vpack_builder) {
+  VPackObjectBuilder object(vpack_builder);
   {
     // delimiter
-    vpack_builder.add(DELIMITER_PARAM_NAME, VPackValue(delimiter));
+    vpack_builder->add(DELIMITER_PARAM_NAME, VPackValue(delimiter));
   }
 
   return true;
 }
 
-bool normalize_vpack_config(const VPackSlice slice, VPackBuilder& vpack_builder) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder) {
   std::string delimiter;
   if (parse_vpack_options(slice, delimiter)) {
     return make_vpack_config(delimiter, vpack_builder);
@@ -176,11 +176,13 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder& vpack_builder)
   }
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& defenition) {
+bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
-  VPackBuilder vpack_builder;
-  bool res = normalize_vpack_config(slice, vpack_builder);
-  defenition = vpack_builder.toString();
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
   return res;
 }
 
@@ -211,7 +213,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     VPackBuilder vpack_builder;
-    if (normalize_vpack_config(vpack->slice(), vpack_builder)) {
+    if (normalize_vpack_config(vpack->slice(), &vpack_builder)) {
       definition = vpack_builder.toString();
       if (definition.empty()) {
           return false;

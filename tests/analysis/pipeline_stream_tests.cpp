@@ -37,8 +37,6 @@
 #include "utils/runtime_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
-
 #ifndef IRESEARCH_DLL
 namespace {
 

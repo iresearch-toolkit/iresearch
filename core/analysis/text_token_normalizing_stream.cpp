@@ -119,14 +119,12 @@ constexpr frozen::unordered_map<
 
 
 bool parse_vpack_options(
-    const irs::string_ref& args,
+    const VPackSlice slice,
     irs::analysis::text_token_normalizing_stream::options_t& options) {
 
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-        "Slice for delimited_token_stream is not an object or string: %s",
-        args.c_str());
+        "Slice for delimited_token_stream is not an object or string: %s");
     return false;
   }
 
@@ -193,8 +191,7 @@ bool parse_vpack_options(
   } catch (...) {
     IR_FRMT_ERROR(
         "Caught error while constructing text_token_normalizing_stream from "
-        "jSON arguments: %s",
-        args.c_str());
+        "jSON arguments");
   }
   return false;
 }
@@ -204,9 +201,9 @@ bool parse_vpack_options(
 ///        "case"(string enum): modify token case using "locale"
 ///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::text_token_normalizing_stream::options_t options;
-  if (parse_vpack_options(args, options)) {
+  if (parse_vpack_options(slice, options)) {
     return irs::memory::make_shared<
         irs::analysis::text_token_normalizing_stream>(std::move(options));
   } else {
@@ -214,6 +211,10 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
   }
 }
 
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param options reference to analyzer options storage
@@ -221,49 +222,53 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
     const irs::analysis::text_token_normalizing_stream::options_t& options,
-    std::string& definition) {
+    VPackBuilder* builder) {
 
-  VPackBuilder builder;
+  VPackObjectBuilder object(builder);
   {
-    VPackObjectBuilder object(&builder);
-    {
-      // locale
-      const auto& locale_name = irs::locale_utils::name(options.locale);
-      builder.add(LOCALE_PARAM_NAME, VPackValue(locale_name));
+    // locale
+    const auto& locale_name = irs::locale_utils::name(options.locale);
+    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
-      // case convert
-      auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
-        [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
-            return v.second == options.case_convert;
-        });
-      if (case_value != CASE_CONVERT_MAP.end()) {
-        builder.add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
-      }
-      else {
-        IR_FRMT_ERROR(
-          "Invalid case_convert value in text analyzer options: %d",
-          static_cast<int>(options.case_convert));
-        return false;
-      }
-
-      // Accent
-      builder.add(ACCENT_PARAM_NAME, VPackValue(options.accent));
+    // case convert
+    auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+      [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
+          return v.second == options.case_convert;
+      });
+    if (case_value != CASE_CONVERT_MAP.end()) {
+      builder->add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
     }
+    else {
+      IR_FRMT_ERROR(
+        "Invalid case_convert value in text analyzer options: %d",
+        static_cast<int>(options.case_convert));
+      return false;
+    }
+
+    // Accent
+    builder->add(ACCENT_PARAM_NAME, VPackValue(options.accent));
   }
 
-  // output vpack to string
-  definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
   return true;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args,
-                           std::string& definition) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   irs::analysis::text_token_normalizing_stream::options_t options;
-  if (parse_vpack_options(args, options)) {
-    return make_vpack_config(options, definition);
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, builder);
   } else {
     return false;
   }
+}
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,16 +309,14 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+    return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
         "Caught error '%s' while constructing ngram_token_stream from json",
         ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json",
-        args.c_str());
+        "Caught error while constructing ngram_token_stream from json");
   }
   return nullptr;
 }
@@ -325,13 +328,9 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    std::string vpack_container;
-    if (normalize_vpack_config(
-        irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()),
-        vpack_container)) {
-      VPackSlice slice(
-          reinterpret_cast<const uint8_t*>(vpack_container.c_str()));
-      definition = slice.toString();
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
       if (definition.empty()) {
           return false;
       }
@@ -343,8 +342,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
         ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json",
-        args.c_str());
+        "Caught error while normalizing ngram_token_stream from json");
   }
   return false;
 }
