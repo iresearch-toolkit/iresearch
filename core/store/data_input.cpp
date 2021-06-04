@@ -125,6 +125,12 @@ const byte_type* buffered_index_input::read_buffer(size_t size, BufferHint hint)
   return begin;
 }
 
+const byte_type* buffered_index_input::read_buffer(size_t offset, size_t size, BufferHint hint) noexcept {
+  // FIXME make atomic
+  seek(offset);
+  return read_buffer(size, hint);
+}
+
 size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
   assert(begin_ <= end_);
 

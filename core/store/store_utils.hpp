@@ -419,15 +419,27 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return *pos_++;
   }
 
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override final {
+    const auto begin = data_.begin() + offset;
+    const auto end = begin + size;
+
+    if (end <= data_.end()) {
+      pos_ = end;
+      return begin;
+    }
+
+    return nullptr;
+  }
+
   virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
-    if (pos > data_.end()) {
-      return nullptr;
+    if (pos <= data_.end()) {
+      std::swap(pos, pos_);
+      return pos;
     }
 
-    std::swap(pos, pos_);
-    return pos;
+    return nullptr;
   }
 
   virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;

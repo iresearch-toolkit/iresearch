@@ -172,8 +172,12 @@ class IRESEARCH_API memory_index_input final : public index_input {
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override;
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual size_t read_bytes(size_t offset, byte_type* b, size_t len) override;
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
+    seek(offset);
+    return read_bytes(b, len);
+  }
   virtual index_input::ptr reopen() const override;
   virtual size_t length() const override;
 

@@ -185,6 +185,14 @@ void memory_index_input::seek(size_t pos) {
   switch_buffer(pos);
 }
 
+const byte_type* memory_index_input::read_buffer(
+    size_t offset,
+    size_t size,
+    BufferHint hint) noexcept {
+  // FIXME make atomic
+  seek(offset);
+  return read_buffer(size, hint);
+}
 
 const byte_type* memory_index_input::read_buffer(
     size_t size,
@@ -226,11 +234,6 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
     b += copied;
   }
   return length - left;
-}
-
-size_t memory_index_input::read_bytes(size_t offset, byte_type* b, size_t left) {
-  seek(offset);
-  return read_bytes(b, left);
 }
 
 int16_t memory_index_input::read_short() {

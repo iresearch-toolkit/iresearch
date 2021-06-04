@@ -123,6 +123,9 @@ struct IRESEARCH_API index_input : public data_input {
   using data_input::read_bytes;
   virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) = 0;
 
+  using data_input::read_buffer;
+  virtual const byte_type* read_buffer(size_t offset, size_t count, BufferHint hint) = 0;
+
   // returns checksum from the current position to a
   // specified offset without changing current position
   virtual int64_t checksum(size_t offset) const = 0;
@@ -172,6 +175,8 @@ class IRESEARCH_API buffered_index_input : public index_input {
   }
 
   virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
+
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override final;
 
   virtual size_t file_pointer() const noexcept override final {
     return start_ + offset();

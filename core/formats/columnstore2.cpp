@@ -485,20 +485,18 @@ doc_iterator::ptr mask_column::iterator() const {
     header().docs_count);
 }
 
-class mmap_value_reader {
+class value_direct_reader {
  protected:
-  explicit mmap_value_reader(index_input::ptr&& data_in)
-    : data_in_{std::move(data_in)} {
+  explicit value_direct_reader(const byte_type* data)
+    : data_{data} {
+    assert(data);
   }
 
   bytes_ref value(uint64_t offset, size_t length) {
-    data_in_->seek(offset);
-    auto buf = data_in_->read_buffer(length, BufferHint::PERSISTENT);
-    assert(buf);
-    return { buf, length };
+    return { data_ + offset, length };
   }
 
-  index_input::ptr data_in_;
+  const byte_type* data_;
 };
 
 template<bool Resize>
@@ -833,13 +831,16 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   const size_t block_index = index / packed::BLOCK_SIZE_64;
   size_t value_index = index % packed::BLOCK_SIZE_64;
 
-  this->data_in_->seek(block.addr + block_index*block_size);
-  auto* addr_buf = this->data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
+  const size_t addr_offset = block.addr + block_index*block_size;
+  auto* addr_buf = this->data_in_->read_buffer(
+    addr_offset,
+    block_size,
+    BufferHint::PERSISTENT);
 
   // FIXME separate cases
   if (!addr_buf) {
     this->buf_.resize(block_size);
-    this->data_in_->read_bytes(this->buf_.data(), block_size);
+    this->data_in_->read_bytes(addr_offset, this->buf_.data(), block_size);
     addr_buf = this->buf_.c_str();
   }
 
