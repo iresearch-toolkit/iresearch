@@ -124,7 +124,7 @@ bool parse_vpack_options(
 
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-        "Slice for delimited_token_stream is not an object or string: %s");
+        "Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
@@ -145,7 +145,7 @@ bool parse_vpack_options(
               IR_FRMT_WARN(
                   "Non-string value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments",
-                  CASE_CONVERT_PARAM_NAME.toString().c_str());
+                  CASE_CONVERT_PARAM_NAME.data());
 
               return false;
             }
@@ -156,7 +156,7 @@ bool parse_vpack_options(
               IR_FRMT_WARN(
                   "Invalid value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments",
-                  CASE_CONVERT_PARAM_NAME.toString().c_str());
+                  CASE_CONVERT_PARAM_NAME.data());
 
               return false;
             }
@@ -171,7 +171,7 @@ bool parse_vpack_options(
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments",
-                  ACCENT_PARAM_NAME.toString().c_str());
+                  ACCENT_PARAM_NAME.data());
 
               return false;
             }
@@ -186,7 +186,7 @@ bool parse_vpack_options(
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "
             "from jSON arguments",
-            LOCALE_PARAM_NAME.toString().c_str());
+            LOCALE_PARAM_NAME.data());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -264,11 +264,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
-  if (res) {
+  if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  return true;
   }
-  return res;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,9 +284,7 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
     }
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
-      args.c_str()
-    );
+      "Caught error while constructing text_token_normalizing_stream TEXT arguments");
   }
 
   return nullptr;
@@ -331,10 +329,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
-      if (definition.empty()) {
-          return false;
-      }
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(

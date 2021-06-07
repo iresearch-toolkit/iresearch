@@ -78,19 +78,18 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
               IR_FRMT_ERROR(
                 "Failed to read '%s' attribute of  '%s' member as string while constructing "
                 "pipeline_token_stream from jSON arguments",
-                TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
+                TYPE_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
               return false;
             }
           } else {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
               "pipeline_token_stream from jSON arguments",
-              TYPE_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
+              TYPE_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
             return false;
           }
-          if (pipe.hasKey(PROPERTIES_PARAM_NAME.toString().c_str())) {
+          if (pipe.hasKey(PROPERTIES_PARAM_NAME)) {
             auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
-            std::string properties_buffer = irs::slice_to_string(properties_attr_slice);
 
             if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
 
@@ -98,11 +97,11 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                                                             irs::type<irs::text_format::vpack>::get(),
                                                             properties_attr_slice.startAs<char>());
 
-               //fallback to json format if vpack isn't available
+               // fallback to json format if vpack isn't available
               if (!analyzer) {
                 analyzer = irs::analysis::analyzers::get(type,
                                                          irs::type<irs::text_format::json>::get(),
-                                                         properties_buffer);
+                                                         irs::slice_to_string(properties_attr_slice));
               }
 
               if (analyzer) {
@@ -111,7 +110,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                 IR_FRMT_ERROR(
                   "Failed to create pipeline member of type '%s' with properties '%s' while constructing "
                   "pipeline_token_stream from jSON arguments",
-                  type.c_str(), properties_buffer.c_str());
+                  type.c_str(), irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
             } else {
@@ -122,10 +121,13 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                                                        properties_attr_slice.startAs<char>())) {
 
                   options.emplace_back(type, normalized);
+
+                  // fallback to json format if vpack isn't available
               } else if (irs::analysis::analyzers::normalize(normalized,
                                                               type,
                                                               irs::type<irs::text_format::json>::get(),
-                                                              properties_buffer)) {
+                                                              irs::slice_to_string(properties_attr_slice))) {
+                // in options we'll store vpack as string
                 auto vpack = VPackParser::fromJson(normalized.c_str(), normalized.size());
                 std::string normalized_vpack_str;
                 normalized_vpack_str.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
@@ -134,7 +136,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                 IR_FRMT_ERROR(
                   "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
                   "pipeline_token_stream from jSON arguments",
-                  type.c_str(), properties_buffer.c_str());
+                  type.c_str(), irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
             }
@@ -142,14 +144,14 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
             IR_FRMT_ERROR(
               "Failed to get '%s' attribute of  '%s' member while constructing "
               "pipeline_token_stream from jSON arguments",
-              PROPERTIES_PARAM_NAME.toString().c_str(), PIPELINE_PARAM_NAME.toString().c_str());
+              PROPERTIES_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
             return false;
           }
         } else {
           IR_FRMT_ERROR(
             "Failed to read '%s' member as object while constructing "
             "pipeline_token_stream from jSON arguments",
-            PIPELINE_PARAM_NAME.toString().c_str());
+            PIPELINE_PARAM_NAME.data());
           return false;
         }
       }
@@ -157,18 +159,18 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
       IR_FRMT_ERROR(
         "Failed to read '%s' attribute as array while constructing "
         "pipeline_token_stream from jSON arguments",
-        PIPELINE_PARAM_NAME.toString().c_str());
+        PIPELINE_PARAM_NAME.data());
       return false;
     }
   } else {
     IR_FRMT_ERROR(
-      "Not found parameter '%s' while constructing pipeline_token_stream, arguments",
-      PIPELINE_PARAM_NAME.toString().c_str());
+      "Not found parameter '%s' while constructing pipeline_token_stream",
+      PIPELINE_PARAM_NAME.data());
     return false;
   }
   if (options.empty()) {
     IR_FRMT_ERROR(
-      "Empty pipeline found while constructing pipeline_token_stream, arguments");
+      "Empty pipeline found while constructing pipeline_token_stream");
     return false;
   }
   return true;
@@ -179,7 +181,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   if (parse_vpack_options(slice, options)) {
     VPackObjectBuilder object(builder);
     {
-      VPackArrayBuilder array(builder, PIPELINE_PARAM_NAME.toString());
+      VPackArrayBuilder array(builder, PIPELINE_PARAM_NAME.data());
       {
         for (auto analyzer : options) {
           VPackObjectBuilder analyzers_obj(builder);
@@ -189,7 +191,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
             {
               VPackSlice sub_slice(reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
               for (auto const& it : VPackObjectIterator(sub_slice)) {
-                builder->add(it.key.toString(), it.value);
+                builder->add(irs::get_string<std::string>(it.key), it.value);
               }
             }
           }
@@ -203,11 +205,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
-  if (res) {
+  if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  return true;
   }
-  return res;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,10 +261,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
-      if (definition.empty()) {
-          return false;
-      }
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(

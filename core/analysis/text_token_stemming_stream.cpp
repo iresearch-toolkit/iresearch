@@ -79,7 +79,7 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "
             "VPack arguments",
-            LOCALE_PARAM_NAME.toString().c_str());
+            LOCALE_PARAM_NAME.data());
     }
   } catch (...) {
     IR_FRMT_ERROR(
@@ -134,11 +134,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
-  if (res) {
+  if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  return true;
   }
-  return res;
+  return false;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -170,10 +170,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
-      if (definition.empty()) {
-          return false;
-      }
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -196,9 +193,7 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
     }
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
-      args.c_str()
-    );
+      "Caught error while constructing text_token_stemming_stream TEXT arguments");
   }
 
   return nullptr;
@@ -278,8 +273,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     // valid conversion since 'locale_' was created with internal unicode encoding
     if (!irs::locale_utils::append_internal(term_buf_, data, locale_)) {
       IR_FRMT_ERROR(
-        "Failed to parse UTF8 value from token: %s",
-        data.c_str());
+        "Failed to parse UTF8 value from token");
 
       return false;
     }

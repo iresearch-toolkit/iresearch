@@ -118,7 +118,7 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
           IR_FRMT_WARN(
               "Invalid type '%s' (string expected) for delimited_token_stream from "
               "VPack arguments",
-              DELIMITER_PARAM_NAME.toString().c_str());
+              DELIMITER_PARAM_NAME.data());
           return false;
         }
         delimiter = irs::get_string<std::string>(delim_type_slice);
@@ -130,7 +130,7 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
   IR_FRMT_ERROR(
       "Missing '%s' while constructing delimited_token_stream from jSON "
       "arguments",
-      DELIMITER_PARAM_NAME.toString().c_str());
+      DELIMITER_PARAM_NAME.data());
 
   return false;
 }
@@ -215,10 +215,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder vpack_builder;
     if (normalize_vpack_config(vpack->slice(), &vpack_builder)) {
       definition = vpack_builder.toString();
-      if (definition.empty()) {
-          return false;
-      }
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(

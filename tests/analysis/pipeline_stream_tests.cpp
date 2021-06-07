@@ -36,6 +36,8 @@
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/utf8_path.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifndef IRESEARCH_DLL
 namespace {
@@ -626,21 +628,21 @@ TEST(pipeline_token_stream_test, normalize_json) {
     std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\n  \"pipeline\" : [\n    {\n      \"properties\" : {\n        \"delimiter\" : \"A\"\n      },\n      \"type\" : \"delimiter\"\n    }\n  ]\n}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in pipeline member
   {
     std::string config = "{\"pipeline\":[{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\n  \"pipeline\" : [\n    {\n      \"properties\" : {\n        \"delimiter\" : \"A\"\n      },\n      \"type\" : \"delimiter\"\n    }\n  ]\n}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in analyzer properties
   {
     std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\n  \"pipeline\" : [\n    {\n      \"properties\" : {\n        \"delimiter\" : \"A\"\n      },\n      \"type\" : \"delimiter\"\n    }\n  ]\n}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
 
   //with unknown analyzer

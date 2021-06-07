@@ -189,7 +189,7 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\n  \"locale\" : \"ru_RU.utf-8\"\n}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->toString(), actual);
   }
 
   // test vpack
@@ -201,7 +201,7 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "stem", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ("{\n  \"locale\" : \"ru_RU.utf-8\"\n}", out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->toString(), out_slice.toString());
   }
 }
 

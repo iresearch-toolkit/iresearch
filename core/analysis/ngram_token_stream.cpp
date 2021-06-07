@@ -65,7 +65,7 @@ bool parse_vpack_options(const VPackSlice slice,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from VPack arguments",
-        MIN_PARAM_NAME.toString().c_str());
+        MIN_PARAM_NAME.data());
     return false;
   }
 
@@ -73,7 +73,7 @@ bool parse_vpack_options(const VPackSlice slice,
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments",
-        MIN_PARAM_NAME.toString().c_str());
+        MIN_PARAM_NAME.data());
     return false;
   }
   min = min_type_slice.getNumber<decltype (min)>();
@@ -84,14 +84,14 @@ bool parse_vpack_options(const VPackSlice slice,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while constructing "
         "ngram_token_stream from VPack arguments",
-        MAX_PARAM_NAME.toString().c_str());
+        MAX_PARAM_NAME.data());
     return false;
   }
   if (!max_type_slice.isNumber()) {
     IR_FRMT_WARN(
         "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
         "VPack arguments",
-        MAX_PARAM_NAME.toString().c_str());
+        MAX_PARAM_NAME.data());
     return false;
   }
   max = max_type_slice.getNumber<decltype (max)>();
@@ -108,14 +108,14 @@ bool parse_vpack_options(const VPackSlice slice,
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as boolean while constructing "
         "ngram_token_stream from VPack arguments",
-        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str());
+        PRESERVE_ORIGINAL_PARAM_NAME.data());
     return false;
   }
   if (!preserve_type_slice.isBool()) {
     IR_FRMT_WARN(
         "Invalid type '%b' (bool expected) for ngram_token_stream from "
         "VPack arguments",
-        PRESERVE_ORIGINAL_PARAM_NAME.toString().c_str());
+        PRESERVE_ORIGINAL_PARAM_NAME.data());
     return false;
   }
   preserve_original = preserve_type_slice.getBool();
@@ -128,7 +128,7 @@ bool parse_vpack_options(const VPackSlice slice,
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for ngram_token_stream from "
           "VPack arguments",
-          START_MARKER_PARAM_NAME.toString().c_str());
+          START_MARKER_PARAM_NAME.data());
       return false;
     }
     start_marker = irs::get_string<std::string>(start_marker_type_slice);
@@ -142,7 +142,7 @@ bool parse_vpack_options(const VPackSlice slice,
       IR_FRMT_WARN(
           "Invalid type '%s' (string expected) for ngram_token_stream from "
           "VPack arguments",
-          END_MARKER_PARAM_NAME.toString().c_str());
+          END_MARKER_PARAM_NAME.data());
       return false;
     }
     end_marker = irs::get_string<std::string>(end_marker_type_slice);
@@ -156,7 +156,7 @@ bool parse_vpack_options(const VPackSlice slice,
       IR_FRMT_WARN(
           "Non-string value in '%s' while constructing ngram_token_stream "
           "from VPack arguments",
-          STREAM_TYPE_PARAM_NAME.toString().c_str());
+          STREAM_TYPE_PARAM_NAME.data());
       return false;
     }
     auto stream_type = stream_type_slice.stringRef();
@@ -166,7 +166,7 @@ bool parse_vpack_options(const VPackSlice slice,
       IR_FRMT_WARN(
           "Invalid value in '%s' while constructing ngram_token_stream from "
           "VPack arguments",
-          STREAM_TYPE_PARAM_NAME.toString().c_str());
+          STREAM_TYPE_PARAM_NAME.data());
       return false;
     }
     stream_bytes_type = itr->second;
@@ -204,7 +204,7 @@ bool make_vpack_config(const irs::analysis::ngram_token_stream_base::Options& op
     } else {
       IR_FRMT_ERROR(
         "Invalid %s value in ngram analyzer options: %d",
-        STREAM_TYPE_PARAM_NAME.toString().c_str(),
+        STREAM_TYPE_PARAM_NAME.data(),
         static_cast<int>(options.stream_bytes_type));
       return false;
     }
@@ -262,11 +262,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
-  if (res) {
+  if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  return true;
   }
-  return res;
+  return false;
 }
 
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
@@ -299,10 +299,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
-      if (definition.empty()) {
-          return false;
-      }
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(

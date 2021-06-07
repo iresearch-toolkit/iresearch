@@ -123,7 +123,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be boolean.",
-            HEX_PARAM_NAME.toString().c_str());
+            HEX_PARAM_NAME.data());
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -133,7 +133,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       } else {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
-              STOPWORDS_PARAM_NAME.toString().c_str());
+              STOPWORDS_PARAM_NAME.data());
         return nullptr;
       }
     }
@@ -185,7 +185,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
           "Invalid vpack while normalizing token_stopwords_stream from jSON arguments. %s value should be boolean.",
-            HEX_PARAM_NAME.toString().c_str());
+            HEX_PARAM_NAME.data());
         return false;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -199,7 +199,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
       } else {
         IR_FRMT_ERROR(
           "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
-            STOPWORDS_PARAM_NAME.toString().c_str());
+            STOPWORDS_PARAM_NAME.data());
         return false;
       }
     }
@@ -214,11 +214,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
-  bool res = normalize_vpack_config(slice, &builder);
-  if (res) {
+  if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  return true;
   }
-  return res;
+  return false;
 }
 
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {

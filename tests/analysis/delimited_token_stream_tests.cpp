@@ -483,7 +483,7 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\n  \"delimiter\" : \",\"\n}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), actual);
   }
 
   // test vpack
@@ -495,7 +495,7 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "delimiter", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ("{\n  \"delimiter\" : \",\"\n}", out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), out_slice.toString());
   }
 }
 
