@@ -69,8 +69,8 @@ bool hex_decode(std::string& buf, VPackStringRef value) {
 
     if (hi >= 16 || lo >= 16) {
       IR_FRMT_WARN(
-      "Invalid character while HEX decoding masked token: %s",
-      value.data());
+        "Invalid character while HEX decoding masked token: %s",
+        value.data());
       return false;
     }
 
@@ -87,7 +87,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
   for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
     if (!(*itr).isString()) {
       IR_FRMT_WARN(
-        "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER "' while constructing token_stopwords_stream from jSON arguments",
+        "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER "' while constructing token_stopwords_stream from VPack arguments",
         offset);
 
       return nullptr;
@@ -122,8 +122,8 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be boolean.",
-            HEX_PARAM_NAME.data());
+          "Invalid vpack while constructing token_stopwords_stream from VPack arguments. %s value should be boolean.",
+          HEX_PARAM_NAME.data());
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -132,14 +132,14 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
         return construct(VPackArrayIterator(mask_slice), hex);
       } else {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
-              STOPWORDS_PARAM_NAME.data());
+          "Invalid vpack while constructing token_stopwords_stream from VPack arguments. %s value should be array.",
+          STOPWORDS_PARAM_NAME.data());
         return nullptr;
       }
     }
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while constructing token_stopwords_stream from jSON arguments. Array or Object was expected.");
+        "Invalid vpack while constructing token_stopwords_stream from VPack arguments. Array or Object was expected.");
     }
   }
   return nullptr;
@@ -160,11 +160,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing token_stopwords_stream from json",
-        ex.what());
+      "Caught error '%s' while constructing token_stopwords_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing token_stopwords_stream from json");
+      "Caught error while constructing token_stopwords_stream from VPack");
   }
   return nullptr;
 }
@@ -184,8 +184,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while normalizing token_stopwords_stream from jSON arguments. %s value should be boolean.",
-            HEX_PARAM_NAME.data());
+          "Invalid vpack while normalizing token_stopwords_stream from VPack arguments. %s value should be boolean.",
+          HEX_PARAM_NAME.data());
         return false;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -198,14 +198,14 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
         return true;
       } else {
         IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from jSON arguments. %s value should be array.",
-            STOPWORDS_PARAM_NAME.data());
+          "Invalid vpack while constructing token_stopwords_stream from VPack arguments. %s value should be array.",
+          STOPWORDS_PARAM_NAME.data());
         return false;
       }
     }
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments. Array or Object was expected.");
+        "Invalid vpack while normalizing token_stopwords_stream from VPack arguments. Array or Object was expected.");
     }
   }
   return false;
@@ -216,7 +216,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
-  return true;
+    return true;
   }
   return false;
 }
@@ -235,11 +235,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing token_stopwords_stream from json",
-        ex.what());
+      "Caught error '%s' while normalizing token_stopwords_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing token_stopwords_stream from json");
+      "Caught error while normalizing token_stopwords_stream from VPack");
   }
   return false;
 }

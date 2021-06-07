@@ -178,7 +178,7 @@ bool get_stopwords(
 
     if (!stopword_path.absolute(absolute)) {
       IR_FRMT_ERROR("Failed to determine absoluteness of path: %s",
-                    stopword_path.utf8().c_str());
+        stopword_path.utf8().c_str());
 
       return false;
     }
@@ -202,8 +202,8 @@ bool get_stopwords(
         return false;
       } else {
         IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
-                      "Analyzer will continue without stopwords",
-                      stopword_path.utf8().c_str());
+          "Analyzer will continue without stopwords",
+          stopword_path.utf8().c_str());
         return true;
       }
     }
@@ -360,7 +360,7 @@ irs::analysis::analyzer::ptr construct(
 
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
-                   cache_key.c_str());
+        cache_key.c_str());
 
       return nullptr;
     }
@@ -368,7 +368,7 @@ irs::analysis::analyzer::ptr construct(
     return construct(cache_key, std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s",
-                  cache_key.c_str());
+      cache_key.c_str());
   }
 
   return nullptr;
@@ -465,9 +465,9 @@ bool make_locale_from_name(const irs::string_ref& name,
     return !icu_locale.isBogus();
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing locale from "
-        "name: %s",
-        name.c_str());
+      "Caught error while constructing locale from "
+      "name: %s",
+      name.c_str());
   }
   return false;
 }
@@ -496,20 +496,20 @@ bool parse_vpack_options(const VPackSlice slice,
                         irs::analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    return make_locale_from_name(slice.startAs<char>(), options.locale);
+    return make_locale_from_name({ slice.startAs<char>(),slice.byteSize()} , options.locale);
   }
 
   if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
       !slice.get(LOCALE_PARAM_NAME).isString()) {
     IR_FRMT_WARN(
-        "Missing '%s' while constructing text_token_stream from VPack ",
-        LOCALE_PARAM_NAME.data());
+      "Missing '%s' while constructing text_token_stream from VPack ",
+      LOCALE_PARAM_NAME.data());
 
     return false;
   }
 
   try {
-    if (!make_locale_from_name(irs::get_string<std::string>(slice.get(LOCALE_PARAM_NAME)),
+    if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)),
                               options.locale)) {
       return false;
     }
@@ -518,20 +518,20 @@ bool parse_vpack_options(const VPackSlice slice,
 
       if (!case_convert_slice.isString()) {
         IR_FRMT_WARN(
-            "Non-string value in '%s' while constructing text_token_stream "
-            "from VPack arguments",
-            CASE_CONVERT_PARAM_NAME.data());
+          "Non-string value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          CASE_CONVERT_PARAM_NAME.data());
 
         return false;
       }
 
-      auto itr = CASE_CONVERT_MAP.find(irs::get_string<std::string>(case_convert_slice));
+      auto itr = CASE_CONVERT_MAP.find(irs::get_string<irs::string_ref>(case_convert_slice));
 
       if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
-            "Invalid value in '%s' while constructing text_token_stream from "
-            "VPack arguments",
-            CASE_CONVERT_PARAM_NAME.data());
+          "Invalid value in '%s' while constructing text_token_stream from "
+          "VPack arguments",
+          CASE_CONVERT_PARAM_NAME.data());
 
         return false;
       }
@@ -543,36 +543,36 @@ bool parse_vpack_options(const VPackSlice slice,
       auto stop_words_slice = slice.get(STOPWORDS_PARAM_NAME);  // optional string array
       if (!stop_words_slice.isArray()) {
         IR_FRMT_WARN(
-            "Invalid value in '%s' while constructing text_token_stream from "
-            "VPack arguments",
-            STOPWORDS_PARAM_NAME.data());
+          "Invalid value in '%s' while constructing text_token_stream from "
+          "VPack arguments",
+          STOPWORDS_PARAM_NAME.data());
 
         return false;
       }
       options.explicit_stopwords_set = true;  // mark  - we have explicit list (even if it is empty)
-      for (auto const& itr : VPackArrayIterator(stop_words_slice)) {
+      for (const auto& itr : VPackArrayIterator(stop_words_slice)) {
         if (!itr.isString()) {
           IR_FRMT_WARN(
-              "Non-string value in '%s' while constructing text_token_stream "
-              "from VPack arguments",
-              STOPWORDS_PARAM_NAME.data());
+            "Non-string value in '%s' while constructing text_token_stream "
+            "from VPack arguments",
+            STOPWORDS_PARAM_NAME.data());
 
           return false;
         }
-        options.explicit_stopwords.emplace(irs::get_string<std::string>(itr));
+        options.explicit_stopwords.emplace(irs::get_string<irs::string_ref>(itr));
       }
       if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
         auto ignored_words_path_slice = slice.get(STOPWORDS_PATH_PARAM_NAME);  // optional string
 
         if (!ignored_words_path_slice.isString()) {
           IR_FRMT_WARN(
-              "Non-string value in '%s' while constructing text_token_stream "
-              "from VPack arguments",
-              STOPWORDS_PATH_PARAM_NAME.data());
+            "Non-string value in '%s' while constructing text_token_stream "
+            "from VPack arguments",
+            STOPWORDS_PATH_PARAM_NAME.data());
 
           return false;
         }
-        options.stopwordsPath = irs::get_string<std::string>(ignored_words_path_slice);
+        options.stopwordsPath = irs::get_string<irs::string_ref>(ignored_words_path_slice);
       }
     }
 
@@ -581,9 +581,9 @@ bool parse_vpack_options(const VPackSlice slice,
 
       if (!accent_slice.isBool()) {
         IR_FRMT_WARN(
-            "Non-boolean value in '%s' while constructing text_token_stream "
-            "from VPack arguments",
-            ACCENT_PARAM_NAME.data());
+          "Non-boolean value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          ACCENT_PARAM_NAME.data());
 
         return false;
       }
@@ -596,9 +596,9 @@ bool parse_vpack_options(const VPackSlice slice,
 
       if (!stemming_slice.isBool()) {
         IR_FRMT_WARN(
-            "Non-boolean value in '%s' while constructing text_token_stream "
-            "from VPack arguments",
-            STEMMING_PARAM_NAME.data());
+          "Non-boolean value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          STEMMING_PARAM_NAME.data());
 
         return false;
       }
@@ -611,9 +611,9 @@ bool parse_vpack_options(const VPackSlice slice,
 
       if (!ngram_slice.isObject()) {
         IR_FRMT_WARN(
-            "Non-object value in '%s' while constructing text_token_stream "
-            "from VPack arguments",
-            EDGE_NGRAM_PARAM_NAME.data());
+          "Non-object value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          EDGE_NGRAM_PARAM_NAME.data());
 
         return false;
       }
@@ -648,8 +648,7 @@ bool parse_vpack_options(const VPackSlice slice,
     return true;
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stream from VPack "
-        "arguments");
+      "Caught error while constructing text_token_stream from VPack arguments");
   }
 
   return false;
@@ -661,8 +660,8 @@ bool parse_vpack_options(const VPackSlice slice,
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const irs::analysis::text_token_stream::options_t& options,
-      VPackBuilder* builder) {
+  const irs::analysis::text_token_stream::options_t& options,
+  VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
@@ -777,8 +776,8 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       irs::analysis::text_token_stream::stopwords_t stopwords;
       if (!build_stopwords(options, stopwords)) {
         IR_FRMT_WARN(
-            "Failed to retrieve 'stopwords' from path while constructing "
-            "text_token_stream from jSON arguments");
+          "Failed to retrieve 'stopwords' from path while constructing "
+          "text_token_stream from VPack arguments");
 
         return nullptr;
       }
@@ -786,7 +785,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     }
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stream from jSON arguments");
+      "Caught error while constructing text_token_stream from VPack arguments");
   }
   return nullptr;
 }
@@ -847,11 +846,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json",
-        ex.what());
+      "Caught error '%s' while constructing ngram_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json");
+      "Caught error while constructing ngram_token_stream from VPack");
   }
   return nullptr;
 }
@@ -870,11 +869,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json",
-        ex.what());
+      "Caught error '%s' while normalizing ngram_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json");
+      "Caught error while normalizing ngram_token_stream from VPack");
   }
   return false;
 }

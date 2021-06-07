@@ -98,9 +98,9 @@ bool make_locale_from_name(const irs::string_ref& name,
     return !icu_locale.isBogus();
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing locale from "
-        "name: %s",
-        name.c_str());
+      "Caught error while constructing locale from "
+      "name: %s",
+      name.c_str());
   }
   return false;
 }
@@ -124,7 +124,7 @@ bool parse_vpack_options(
 
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-        "Slice for delimited_token_stream is not an object or string");
+      "Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
@@ -143,9 +143,9 @@ bool parse_vpack_options(
 
             if (!case_convert_slice.isString()) {
               IR_FRMT_WARN(
-                  "Non-string value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments",
-                  CASE_CONVERT_PARAM_NAME.data());
+                "Non-string value in '%s' while constructing "
+                "text_token_normalizing_stream from VPack arguments",
+                CASE_CONVERT_PARAM_NAME.data());
 
               return false;
             }
@@ -154,9 +154,9 @@ bool parse_vpack_options(
 
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
-                  "Invalid value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments",
-                  CASE_CONVERT_PARAM_NAME.data());
+                "Invalid value in '%s' while constructing "
+                "text_token_normalizing_stream from VPack arguments",
+                CASE_CONVERT_PARAM_NAME.data());
 
               return false;
             }
@@ -169,9 +169,9 @@ bool parse_vpack_options(
 
             if (!accent_slice.isBool()) {
               IR_FRMT_WARN(
-                  "Non-boolean value in '%s' while constructing "
-                  "text_token_normalizing_stream from jSON arguments",
-                  ACCENT_PARAM_NAME.data());
+                "Non-boolean value in '%s' while constructing "
+                "text_token_normalizing_stream from VPack arguments",
+                ACCENT_PARAM_NAME.data());
 
               return false;
             }
@@ -184,14 +184,14 @@ bool parse_vpack_options(
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
-            "Missing '%s' while constructing text_token_normalizing_stream "
-            "from jSON arguments",
-            LOCALE_PARAM_NAME.data());
+          "Missing '%s' while constructing text_token_normalizing_stream "
+          "from VPack arguments",
+          LOCALE_PARAM_NAME.data());
     }
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_normalizing_stream from "
-        "jSON arguments");
+      "Caught error while constructing text_token_normalizing_stream from "
+      "VPack arguments");
   }
   return false;
 }
@@ -221,8 +221,8 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const irs::analysis::text_token_normalizing_stream::options_t& options,
-    VPackBuilder* builder) {
+  const irs::analysis::text_token_normalizing_stream::options_t& options,
+  VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
@@ -266,7 +266,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
-  return true;
+    return true;
   }
   return false;
 }
@@ -284,7 +284,7 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
     }
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_normalizing_stream TEXT arguments");
+      "Caught error while constructing text_token_normalizing_stream");
   }
 
   return nullptr;
@@ -310,11 +310,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing ngram_token_stream from json",
-        ex.what());
+      "Caught error '%s' while constructing ngram_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing ngram_token_stream from json");
+      "Caught error while constructing ngram_token_stream from VPack");
   }
   return nullptr;
 }
@@ -333,11 +333,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing ngram_token_stream from json",
-        ex.what());
+      "Caught error '%s' while normalizing ngram_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing ngram_token_stream from json");
+      "Caught error while normalizing ngram_token_stream from VPack");
   }
   return false;
 }

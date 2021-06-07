@@ -39,9 +39,7 @@ inline std::string slice_to_string(const VPackSlice slice,
   } catch(...) {
     try {
       str = "<non-representable type>";
-    }  catch (...) {
-      str = "";
-    }
+    }  catch (...) { }
   }
 
   return str;
