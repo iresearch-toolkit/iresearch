@@ -124,7 +124,7 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   return irs::memory::make_unique<irs::bm25_sort>(k, b);
 }
 
-irs::sort::ptr make_vpack(VPackSlice slice) {
+irs::sort::ptr make_vpack(const VPackSlice slice) {
 
   switch (slice.type()) {
     case VPackValueType::Object:
