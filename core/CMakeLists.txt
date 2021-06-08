@@ -1183,6 +1183,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-shared
 )
 
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-static
+)
 ################################################################################
 ### scorer plugin : BM25
 ################################################################################
@@ -1228,6 +1231,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared
   ${IResearch_TARGET_NAME}-shared
 )
 
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-static
+) 
 ################################################################################
 ### installation
 ################################################################################
