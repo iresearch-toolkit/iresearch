@@ -300,14 +300,17 @@ class column_base : public columnstore_reader::column_reader,
   column_base(
       const column_header& hdr,
       column_index&& index,
-      const index_input& stream)
+      const index_input& stream,
+      encryption::stream* cipher)
     : stream_{&stream},
+      cipher_{cipher},
       hdr_{hdr},
       index_{std::move(index)},
       opts_{
         index_.empty()
           ? sparse_bitmap_iterator::block_index_t{}
           : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
+    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual columnstore_reader::values_reader_f values() const override;
@@ -326,17 +329,21 @@ class column_base : public columnstore_reader::column_reader,
     return opts_;
   }
 
+ protected:
+  template<typename Factory>
+  doc_iterator::ptr make_iterator(Factory&& f) const;
+
   const index_input& stream() const noexcept {
     assert(stream_);
     return *stream_;
   }
 
- protected:
-  template<typename Func>
-  doc_iterator::ptr make_iterator(Func&& f) const;
-
  private:
+  template<typename ValueReader>
+  doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in) const;
+
   const index_input* stream_;
+  encryption::stream* cipher_;
   column_header hdr_;
   column_index index_;
   sparse_bitmap_iterator::options opts_;
@@ -397,35 +404,145 @@ bool column_base::visit(const columnstore_reader::values_visitor_f& visitor) con
   return true;
 }
 
-template<typename Func>
-doc_iterator::ptr column_base::make_iterator(Func&& f) const {
-  assert(header().docs_count);
+template<typename ValueReader>
+doc_iterator::ptr column_base::make_iterator(
+    ValueReader&& rdr,
+    index_input::ptr&& index_in) const {
+  if (!index_in) {
+    using iterator_type = range_column_iterator<ValueReader>;
 
-  using reader_type = std::invoke_result_t<Func, const index_input&>;
-
-  if (0 == header().docs_index) {
-    using iterator_type = range_column_iterator<reader_type>;
-
-    return memory::make_managed<iterator_type>(header(), f(stream()));
+    return memory::make_managed<iterator_type>(header(), std::move(rdr));
   } else {
-    auto dup = stream().reopen();
+    index_in->seek(header().docs_index);
 
-    if (!dup) {
-      // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
-
-      throw io_error{"failed to reopen input"};
-    }
-
-    dup->seek(header().docs_index);
-
-    using iterator_type = bitmap_column_iterator<reader_type>;
+    using iterator_type = bitmap_column_iterator<ValueReader>;
 
     return memory::make_managed<iterator_type>(
-      std::move(dup), bitmap_iterator_options(),
-      header().docs_count, f(*dup));
+      std::move(index_in), bitmap_iterator_options(),
+      header().docs_count, std::move(rdr));
   }
 }
+
+template<typename Factory>
+doc_iterator::ptr column_base::make_iterator(Factory&& f) const {
+  assert(header().docs_count);
+
+  index_input::ptr value_in = stream().reopen();
+
+  if (!value_in) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+
+    throw io_error{"failed to reopen input"};
+  }
+
+  index_input::ptr index_in = nullptr;
+
+  if (0 != header().docs_index) {
+    index_in = value_in->dup();
+
+    if (!index_in) {
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+      throw io_error{"failed to duplicate input"};
+    }
+  }
+
+  if (is_encrypted(header())) {
+    assert(cipher_);
+    return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in));
+  } else {
+    const byte_type* data = value_in->read_buffer(
+      0, value_in->length(),
+      BufferHint::PERSISTENT);
+
+    if (data) {
+      // direct buffer access
+      return make_iterator(f(data), std::move(index_in));
+    }
+
+    return make_iterator(f(std::move(value_in)), std::move(index_in));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class value_direct_reader
+////////////////////////////////////////////////////////////////////////////////
+class value_direct_reader {
+ protected:
+  explicit value_direct_reader(const byte_type* data) noexcept
+    : data_{data} {
+    assert(data);
+  }
+
+  bytes_ref value(uint64_t offset, size_t length) noexcept {
+    return { data_ + offset, length };
+  }
+
+  const byte_type* data_;
+}; // value_direct_reader
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class value_reader
+////////////////////////////////////////////////////////////////////////////////
+template<bool Resize>
+class value_reader {
+ protected:
+  value_reader(index_input::ptr data_in, size_t size)
+    : buf_(size, 0),
+      data_in_{std::move(data_in)} {
+  }
+
+  bytes_ref value(uint64_t offset, size_t length) {
+    if constexpr (Resize) {
+      buf_.resize(length);
+    }
+
+    auto* buf = buf_.data();
+
+    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
+    assert(read == length);
+
+    return { buf, length };
+  }
+
+  bstring buf_;
+  index_input::ptr data_in_;
+}; // value_reader
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class encrypted_value_reader
+////////////////////////////////////////////////////////////////////////////////
+template<bool Resize>
+class encrypted_value_reader {
+ protected:
+  encrypted_value_reader(index_input::ptr&& data_in, encryption::stream* cipher, size_t size)
+    : buf_(size, 0),
+      data_in_{std::move(data_in)},
+      cipher_{cipher} {
+  }
+
+  bytes_ref value(uint64_t offset, size_t length) {
+    if constexpr (Resize) {
+      buf_.resize(length);
+    }
+
+    auto* buf = buf_.data();
+
+    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
+    assert(read == length);
+
+    [[maybe_unused]] const bool ok = cipher_->decrypt(offset, buf, length);
+    assert(ok);
+
+    return { buf, length };
+  }
+
+  bstring buf_;
+  index_input::ptr data_in_;
+  encryption::stream* cipher_;
+}; // encrypted_value_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct mask_column
@@ -451,7 +568,7 @@ struct mask_column final : public column_base {
       const column_header& hdr,
       column_index&& index,
       const index_input& data_in)
-    : column_base{hdr, std::move(index), data_in} {
+    : column_base{hdr, std::move(index), data_in, nullptr} {
     assert(ColumnType::MASK == header().type);
   }
 
@@ -485,75 +602,6 @@ doc_iterator::ptr mask_column::iterator() const {
     header().docs_count);
 }
 
-class value_direct_reader {
- protected:
-  explicit value_direct_reader(const byte_type* data)
-    : data_{data} {
-    assert(data);
-  }
-
-  bytes_ref value(uint64_t offset, size_t length) {
-    return { data_ + offset, length };
-  }
-
-  const byte_type* data_;
-};
-
-template<bool Resize>
-class value_reader {
- protected:
-  value_reader(index_input::ptr data_in, size_t size)
-    : buf_(size, 0),
-      data_in_{std::move(data_in)} {
-  }
-
-  bytes_ref value(uint64_t offset, size_t length) {
-    if constexpr (Resize) {
-      buf_.resize(length);
-    }
-
-    auto* buf = buf_.data();
-
-    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
-    assert(read == length);
-
-    return { buf, length };
-  }
-
-  bstring buf_;
-  index_input::ptr data_in_;
-};
-
-template<bool Resize>
-class encrypted_value_reader {
- protected:
-  encrypted_value_reader(index_input::ptr&& data_in, encryption::stream* cipher, size_t size)
-    : buf_(size, 0),
-      data_in_{std::move(data_in)},
-      cipher_{cipher} {
-  }
-
-  bytes_ref value(uint64_t offset, size_t length) {
-    if constexpr (Resize) {
-      buf_.resize(length);
-    }
-
-    auto* buf = buf_.data();
-
-    [[maybe_unused]] const size_t read = data_in_->read_bytes(offset, buf, length);
-    assert(read == length);
-
-    [[maybe_unused]] const bool ok = cipher_->decrypt(offset, buf, length);
-    assert(ok);
-
-    return { buf, length };
-  }
-
-  bstring buf_;
-  index_input::ptr data_in_;
-  encryption::stream* cipher_;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class dense_fixed_length_column
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,14 +623,12 @@ class dense_fixed_length_column final : public column_base {
       encryption::stream* cipher,
       uint64_t data,
       uint64_t len)
-    : column_base{hdr, std::move(index), data_in},
+    : column_base{hdr, std::move(index), data_in, cipher},
       inflater_{std::move(inflater)},
-      cipher_{cipher},
       data_{data},
       len_{len} {
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
-    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -612,7 +658,6 @@ class dense_fixed_length_column final : public column_base {
   }; // payload_reader
 
   compression::decompressor::ptr inflater_;
-  encryption::stream* cipher_;
   uint64_t data_;
   uint64_t len_;
 }; // dense_fixed_length_column
@@ -634,19 +679,24 @@ class dense_fixed_length_column final : public column_base {
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator() const {
-  if (is_encrypted(header())) {
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<encrypted_value_reader<false>>;
+  struct factory {
+    payload_reader<encrypted_value_reader<false>> operator()(
+        index_input::ptr&& stream, encryption::stream& cipher) const {
+      return {ctx->data_, ctx->len_, std::move(stream), &cipher, ctx->data_};
+    };
 
-      return reader_type{data_, len_, stream.reopen(), cipher_, data_};
-    });
-  } else {
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<value_reader<false>>;
+    payload_reader<value_reader<false>> operator()(index_input::ptr&& stream) const {
+      return {ctx->data_, ctx->len_, std::move(stream), ctx->data_};
+    }
 
-      return reader_type{data_, len_, stream.dup(), data_};
-    });
-  }
+    payload_reader<value_direct_reader> operator()(const byte_type* data) const {
+      return {ctx->data_, ctx->len_, data};
+    }
+
+    const dense_fixed_length_column* ctx;
+  };
+
+  return make_iterator(factory{this});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -678,14 +728,12 @@ class fixed_length_column final : public column_base {
       encryption::stream* cipher,
       std::vector<uint64_t>&& blocks,
       uint64_t len)
-    : column_base{hdr, std::move(index), data_in},
+    : column_base{hdr, std::move(index), data_in, cipher},
       blocks_{blocks},
       inflater_{std::move(inflater)},
-      cipher_{cipher},
       len_{len} {
     assert(header().docs_count);
     assert(ColumnType::FIXED == header().type);
-    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -722,26 +770,29 @@ class fixed_length_column final : public column_base {
 
   std::vector<uint64_t> blocks_;
   compression::decompressor::ptr inflater_;
-  encryption::stream* cipher_;
   uint64_t len_;
 }; // fixed_length_column
 
 doc_iterator::ptr fixed_length_column::iterator() const {
-  if (is_encrypted(header())) {
-    assert(cipher_);
+  struct factory {
+    payload_reader<encrypted_value_reader<false>> operator()(
+        index_input::ptr&& stream,
+        encryption::stream& cipher) const {
+      return {ctx->blocks_.data(), ctx->len_, std::move(stream), &cipher, ctx->len_};
+    };
 
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<encrypted_value_reader<false>>;
+    payload_reader<value_reader<false>> operator()(index_input::ptr&& stream) const {
+      return {ctx->blocks_.data(), ctx->len_, std::move(stream), ctx->len_};
+    }
 
-      return reader_type{blocks_.data(), len_, stream.reopen(), cipher_, len_};
-    });
-  } else {
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<value_reader<false>>;
+    payload_reader<value_direct_reader> operator()(const byte_type* data) const {
+      return {ctx->blocks_.data(), ctx->len_, data};
+    }
 
-      return reader_type{blocks_.data(), len_, stream.dup(), len_};
-    });
-  }
+    const fixed_length_column* ctx;
+  };
+
+  return make_iterator(factory{this});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -774,13 +825,11 @@ class sparse_column final : public column_base {
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<column_block>&& blocks)
-    : column_base{hdr, std::move(index), data_in},
+    : column_base{hdr, std::move(index), data_in, cipher},
       blocks_{std::move(blocks)},
-      inflater_{std::move(inflater)},
-      cipher_{cipher} {
+      inflater_{std::move(inflater)} {
     assert(header().docs_count);
     assert(ColumnType::SPARSE == header().type);
-    assert(!is_encrypted(hdr) || cipher_);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -808,7 +857,6 @@ class sparse_column final : public column_base {
 
   std::vector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
-  encryption::stream* cipher_;
 }; // sparse_column
 
 template<typename ValueReader>
@@ -832,18 +880,15 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   size_t value_index = index % packed::BLOCK_SIZE_64;
 
   const size_t addr_offset = block.addr + block_index*block_size;
-  auto* addr_buf = this->data_in_->read_buffer(
-    addr_offset,
-    block_size,
-    BufferHint::PERSISTENT);
 
-  // FIXME separate cases
-  if (!addr_buf) {
+  const byte_type* addr_buf;
+  if constexpr (std::is_same_v<ValueReader, value_direct_reader>) {
+    addr_buf = this->data_ + addr_offset;
+  } else {
     this->buf_.resize(block_size);
     this->data_in_->read_bytes(addr_offset, this->buf_.data(), block_size);
     addr_buf = this->buf_.c_str();
   }
-
   const uint64_t start_delta = zig_zag_decode64(
     packed::fastpack_at(reinterpret_cast<const uint64_t*>(addr_buf),
                         value_index, block.bits));
@@ -853,9 +898,10 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   if (IRS_LIKELY(block.last != index)) {
     if (IRS_UNLIKELY(++value_index == 64)) {
       value_index = 0;
-      addr_buf = this->data_in_->read_buffer(block_size, BufferHint::PERSISTENT);
 
-      if (!addr_buf) {
+      if constexpr (std::is_same_v<ValueReader, value_direct_reader>) {
+        addr_buf += block_size;
+      } else {
         this->buf_.resize(block_size);
         this->data_in_->read_bytes(this->buf_.data(), block_size);
         addr_buf = this->buf_.c_str();
@@ -893,21 +939,25 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 }
 
 doc_iterator::ptr sparse_column::iterator() const {
-  if (is_encrypted(header())) {
-    assert(cipher_);
+  struct factory {
+    payload_reader<encrypted_value_reader<true>> operator()(
+        index_input::ptr&& stream,
+        encryption::stream& cipher) const {
+      return {ctx->blocks_.data(), std::move(stream), &cipher, size_t{0}};
+    };
 
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<encrypted_value_reader<true>>;
+    payload_reader<value_reader<true>> operator()(index_input::ptr&& stream) const {
+      return {ctx->blocks_.data(), std::move(stream), size_t{0}};
+    }
 
-      return reader_type{blocks_.data(), stream.reopen(), cipher_, size_t{0}};
-    });
-  } else {
-    return make_iterator([this](auto& stream) {
-      using reader_type = payload_reader<value_reader<true>>;
+    payload_reader<value_direct_reader> operator()(const byte_type* data) const {
+      return {ctx->blocks_.data(), data};
+    }
 
-      return reader_type{blocks_.data(), stream.dup(), size_t{0}};
-    });
-  }
+    const sparse_column* ctx;
+  };
+
+  return make_iterator(factory{this});
 }
 
 using column_factory_f = column_ptr(*)(
