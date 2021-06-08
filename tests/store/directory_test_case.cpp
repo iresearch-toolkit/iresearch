@@ -27,6 +27,7 @@
 #include "store/store_utils.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 #include "utils/async_utils.hpp"
@@ -107,7 +108,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
 
     // Read contents
     it = names.end();
-    bstring buf;
+    bstring buf, buf1;
 
     for (const auto& name : names) {
       --it;
@@ -136,11 +137,83 @@ class directory_test_case : public tests::directory_test_case_base<> {
       EXPECT_EQ(reopened_file->length(), it->size());
 
       const auto checksum = file->checksum(file->length());
+      ASSERT_EQ(0, file->file_pointer());
 
       buf.resize(it->size());
-      const auto read = file->read_bytes(&(buf[0]), it->size());
+      const auto read = file->read_bytes(buf.data(), it->size());
       ASSERT_EQ(read, it->size());
       ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      // random access
+      {
+        const auto fp = file->file_pointer();
+        buf1.resize(it->size());
+        const auto read = file->read_bytes(fp - it->size(), buf1.data(), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf1);
+        ASSERT_EQ(fp, file->file_pointer());
+      }
+
+      // failed direct buffer access doesn't move file pointer
+      {
+        const auto fp = file->file_pointer();
+        ASSERT_GT(file->length(), 1);
+        ASSERT_EQ(nullptr, file->read_buffer(file->length() - 1, file->length(), BufferHint::NORMAL));
+        ASSERT_EQ(fp, file->file_pointer());
+      }
+
+      // failed direct buffer access doesn't move file pointer
+      {
+        const auto fp = file->file_pointer();
+        auto cleanup = make_finally([fp, &file]() { file->seek(fp); });
+
+        ASSERT_GT(file->length(), 1);
+        file->seek(file->length()-1);
+        ASSERT_EQ(nullptr, file->read_buffer(file->length(), BufferHint::NORMAL));
+        ASSERT_EQ(file->length()-1, file->file_pointer());
+      }
+
+      // mmap direct buffer access
+      if (dynamic_cast<mmap_directory*>(&dir)) {
+        const auto fp = file->file_pointer();
+
+        // sequential direct access
+        {
+          file->seek(fp - it->size());
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::PERSISTENT);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        {
+          file->seek(fp - it->size());
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::PERSISTENT);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+      }
 
       {
         buf.clear();
