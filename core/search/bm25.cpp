@@ -159,6 +159,7 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
 }
 
 REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
+REGISTER_SCORER_VPACK(irs::bm25_sort, make_vpack);
 
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
@@ -531,6 +532,8 @@ bm25_sort::bm25_sort(
 
 /*static*/ void bm25_sort::init() {
   REGISTER_SCORER_JSON(bm25_sort, make_json); // match registration above
+  REGISTER_SCORER_VPACK(bm25_sort, make_vpack); // match registration above
+
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {

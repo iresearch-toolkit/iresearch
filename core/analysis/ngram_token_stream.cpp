@@ -177,8 +177,8 @@ bool parse_vpack_options(const VPackSlice slice,
 }
 
 bool make_vpack_config(
-  const irs::analysis::ngram_token_stream_base::Options& options,
-  VPackBuilder* builder) {
+    const irs::analysis::ngram_token_stream_base::Options& options,
+    VPackBuilder* builder) {
 
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");

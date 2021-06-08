@@ -221,8 +221,8 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-  const irs::analysis::text_token_normalizing_stream::options_t& options,
-  VPackBuilder* builder) {
+    const irs::analysis::text_token_normalizing_stream::options_t& options,
+    VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
@@ -366,7 +366,7 @@ text_token_normalizing_stream::text_token_normalizing_stream(
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text, 
                          normalize_text_config); // match registration above
-  REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 

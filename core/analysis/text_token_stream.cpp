@@ -496,7 +496,7 @@ bool parse_vpack_options(const VPackSlice slice,
                         irs::analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    return make_locale_from_name({ slice.startAs<char>(),slice.byteSize()} , options.locale);
+    return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);
   }
 
   if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
@@ -559,9 +559,11 @@ bool parse_vpack_options(const VPackSlice slice,
 
           return false;
         }
-        options.explicit_stopwords.emplace(irs::get_string<irs::string_ref>(itr));
+        options.explicit_stopwords.emplace(irs::get_string<std::string>(itr));
       }
-      if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
+    }
+
+    if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
         auto ignored_words_path_slice = slice.get(STOPWORDS_PATH_PARAM_NAME);  // optional string
 
         if (!ignored_words_path_slice.isString()) {
@@ -572,8 +574,7 @@ bool parse_vpack_options(const VPackSlice slice,
 
           return false;
         }
-        options.stopwordsPath = irs::get_string<irs::string_ref>(ignored_words_path_slice);
-      }
+        options.stopwordsPath = irs::get_string<std::string>(ignored_words_path_slice);
     }
 
     if (slice.hasKey(ACCENT_PARAM_NAME)) {
@@ -587,8 +588,8 @@ bool parse_vpack_options(const VPackSlice slice,
 
         return false;
       }
-
-      options.accent = accent_slice.getBool();
+      auto tmp = accent_slice.getBool();
+      options.accent = tmp;
     }
 
     if (slice.hasKey(STEMMING_PARAM_NAME)) {
@@ -660,8 +661,8 @@ bool parse_vpack_options(const VPackSlice slice,
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-  const irs::analysis::text_token_stream::options_t& options,
-  VPackBuilder* builder) {
+    const irs::analysis::text_token_stream::options_t& options,
+    VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
@@ -687,20 +688,20 @@ bool make_vpack_config(
     // stopwords
     if(!options.explicit_stopwords.empty() || options.explicit_stopwords_set) {
       // explicit_stopwords_set  marks that even empty stopwords list is valid
+      std::vector<irs::string_ref> sortedWords;
       if (!options.explicit_stopwords.empty()) {
         // for simplifying comparison between properties we need deterministic order of stopwords
-        std::vector<irs::string_ref> sortedWords;
         sortedWords.reserve(options.explicit_stopwords.size());
         for (const auto& stopword : options.explicit_stopwords) {
           sortedWords.emplace_back(stopword);
         }
         std::sort(sortedWords.begin(), sortedWords.end());
-        {
-          VPackArrayBuilder array(builder, STOPWORDS_PARAM_NAME.data());
+      }
+      {
+        VPackArrayBuilder array(builder, STOPWORDS_PARAM_NAME.data());
 
-          for (const auto& stopword : sortedWords) {
-              builder->add(VPackValue(stopword));
-          }
+        for (const auto& stopword : sortedWords) {
+            builder->add(VPackValue(stopword));
         }
       }
     }
@@ -717,7 +718,6 @@ bool make_vpack_config(
       builder->add(STOPWORDS_PATH_PARAM_NAME, VPackValue(options.stopwordsPath));
     }
   }
-
 
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");

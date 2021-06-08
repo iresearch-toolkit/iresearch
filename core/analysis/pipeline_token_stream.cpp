@@ -57,7 +57,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
   if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
     assert(options.empty());
   }
-  if (VPackValueType::Object != slice.type()) {
+  if (!slice.isObject()) {
     IR_FRMT_ERROR(
       "Not a VPack object passed while constructing pipeline_token_stream ");
     return false;
@@ -68,7 +68,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
     if (pipeline_slice.isArray()) {
       for (const auto pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
-          std::string type;
+          irs::string_ref type;
           if (pipe.hasKey(TYPE_PARAM_NAME)) {
             auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
             if (type_attr_slice.isString()) {
@@ -121,7 +121,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                                                       { properties_attr_slice.startAs<char>(),
                                                       properties_attr_slice.byteSize() })) {
 
-                  options.emplace_back(type, normalized);
+                  options.emplace_back(type, std::move(normalized));
 
                   // fallback to json format if vpack isn't available
               } else if (irs::analysis::analyzers::normalize(normalized,
@@ -188,13 +188,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
           VPackObjectBuilder analyzers_obj(builder);
           {
             builder->add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
-            VPackObjectBuilder properties_obj(builder, PROPERTIES_PARAM_NAME.data());
-            {
-              VPackSlice sub_slice(reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
-              for (const auto it : VPackObjectIterator(sub_slice)) {
-                builder->add(irs::get_string<VPackStringRef>(it.key), it.value);
-              }
-            }
+            VPackSlice sub_slice(reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
+            builder->add(PROPERTIES_PARAM_NAME, sub_slice);
           }
         }
       }
@@ -317,7 +312,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     } {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
-  for (const auto p : options) {
+  for (auto p : options) {
     assert(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }

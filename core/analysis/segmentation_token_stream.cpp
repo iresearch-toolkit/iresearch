@@ -114,8 +114,8 @@ bool parse_vpack_options(const VPackSlice slice,
 }
 
 bool make_vpack_config(
-  const irs::analysis::segmentation_token_stream::options_t& options,
-  VPackBuilder* builder) {
+    const irs::analysis::segmentation_token_stream::options_t& options,
+    VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
