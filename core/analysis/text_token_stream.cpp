@@ -588,8 +588,7 @@ bool parse_vpack_options(const VPackSlice slice,
 
         return false;
       }
-      auto tmp = accent_slice.getBool();
-      options.accent = tmp;
+      options.accent = accent_slice.getBool();
     }
 
     if (slice.hasKey(STEMMING_PARAM_NAME)) {
