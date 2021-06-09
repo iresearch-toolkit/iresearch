@@ -93,7 +93,7 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   for (auto arg_slice : array) {
     if (!arg_slice.isBool()) {
       IR_FRMT_ERROR(
-        "Non-float value on position `0` while constructing bm25 scorer from VPack arguments");
+        "Non-bool value on position `0` while constructing tfidf scorer from VPack arguments");
       return nullptr;
     }
 
@@ -133,8 +133,18 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-    return make_vpack(vpack->slice());
+    try {
+      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      return make_vpack(vpack->slice());
+    } catch(const VPackException& ex) {
+        IR_FRMT_ERROR(
+          "Caught error '%s' while constructing VPack from JSON for tfidf scorer",
+          ex.what());
+        return nullptr;
+    } catch(...) {
+        IR_FRMT_ERROR(
+          "Caught error while constructing VPack from JSON for tfidf scorer");
+    }
   }
 }
 

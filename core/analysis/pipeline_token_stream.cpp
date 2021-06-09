@@ -121,7 +121,9 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                                                       { properties_attr_slice.startAs<char>(),
                                                       properties_attr_slice.byteSize() })) {
 
-                  options.emplace_back(type, std::move(normalized));
+                  options.emplace_back(std::piecewise_construct,
+                                       std::forward_as_tuple(type),
+                                       std::forward_as_tuple(normalized));
 
                   // fallback to json format if vpack isn't available
               } else if (irs::analysis::analyzers::normalize(normalized,
@@ -132,7 +134,11 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                 auto vpack = VPackParser::fromJson(normalized.c_str(), normalized.size());
                 std::string normalized_vpack_str;
                 normalized_vpack_str.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
-                options.emplace_back(type, std::move(normalized_vpack_str));
+                options.emplace_back(
+                  std::piecewise_construct,
+                  std::forward_as_tuple(type),
+                  std::forward_as_tuple(vpack->slice().startAs<char>(),
+                                        vpack->slice().byteSize()));
               } else {
                 IR_FRMT_ERROR(
                   "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
@@ -232,17 +238,17 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while constructing pipeline_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing ngram_token_stream from VPack", ex.what());
+      "Caught error '%s' while constructing pipeline_token_stream from JSON", ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing ngram_token_stream from VPack");
+      "Caught error while constructing pipeline_token_stream from JSON");
   }
   return nullptr;
 }
@@ -250,7 +256,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while normalizing pipeline_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -261,10 +267,10 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing ngram_token_stream from VPack", ex.what());
+      "Caught error '%s' while normalizing pipeline_token_stream from JSON", ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing ngram_token_stream from VPack");
+      "Caught error while normalizing pipeline_token_stream from JSON");
   }
   return false;
 }

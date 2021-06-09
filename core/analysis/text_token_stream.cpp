@@ -646,6 +646,10 @@ bool parse_vpack_options(const VPackSlice slice,
     }
 
     return true;
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_stream from VPack arguments");
@@ -838,18 +842,18 @@ bool normalize_text_config(const irs::string_ref& args,
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing ngram_token_stream from VPack",
+      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing ngram_token_stream from VPack");
+      "Caught error while constructing text_token_normalizing_stream from JSON");
   }
   return nullptr;
 }
@@ -857,7 +861,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -868,11 +872,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing ngram_token_stream from VPack",
+      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing ngram_token_stream from VPack");
+      "Caught error while normalizing text_token_normalizing_stream from JSON");
   }
   return false;
 }

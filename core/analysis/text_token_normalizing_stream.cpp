@@ -133,9 +133,10 @@ bool parse_vpack_options(
       case VPackValueType::String:
         return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
-        if (slice.hasKey(LOCALE_PARAM_NAME) &&
-            slice.get(LOCALE_PARAM_NAME).isString()) {
-          if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)), options.locale)) {
+      {
+        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
+        if (!param_name_slice.isNone() && param_name_slice.isString()) {
+          if (!make_locale_from_name(irs::get_string<irs::string_ref>(param_name_slice), options.locale)) {
             return false;
           }
           if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
@@ -181,6 +182,7 @@ bool parse_vpack_options(
 
           return true;
         }
+      }
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
@@ -188,6 +190,10 @@ bool parse_vpack_options(
           "from VPack arguments",
           LOCALE_PARAM_NAME.data());
     }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_normalizing_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_normalizing_stream from "
@@ -218,7 +224,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param options reference to analyzer options storage
-/// @param definition string for storing json document with config 
+/// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
     const irs::analysis::text_token_normalizing_stream::options_t& options,
@@ -283,8 +289,10 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
           std::move(options) );
     }
   } catch (...) {
+    std::string err_msg = static_cast<std::string>(args);
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_normalizing_stream");
+      "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
+      err_msg.c_str());
   }
 
   return nullptr;
@@ -303,18 +311,18 @@ bool normalize_text_config(const irs::string_ref& args,
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing ngram_token_stream from VPack",
+      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing ngram_token_stream from VPack");
+      "Caught error while constructing text_token_normalizing_stream from JSON");
   }
   return nullptr;
 }
@@ -322,7 +330,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -333,18 +341,18 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing ngram_token_stream from VPack",
+      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing ngram_token_stream from VPack");
+      "Caught error while normalizing text_token_normalizing_stream from JSON");
   }
   return false;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json, 
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text,
                        normalize_text_config);
 REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
                        normalize_vpack_config);
@@ -364,7 +372,7 @@ text_token_normalizing_stream::text_token_normalizing_stream(
 /*static*/ void text_token_normalizing_stream::init() {
   REGISTER_ANALYZER_JSON(text_token_normalizing_stream, make_json,
                          normalize_json_config); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text, 
+  REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text,
                          normalize_text_config); // match registration above
   REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
                          normalize_vpack_config); // match registration above
@@ -415,7 +423,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     // do not allocate statically since it causes memory leaks in ICU
-    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); 
+    icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC");
 
     // reusable object owned by *this
     state_->transliterator.reset(icu::Transliterator::createInstance(

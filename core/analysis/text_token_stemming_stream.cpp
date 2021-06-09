@@ -69,11 +69,15 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
       case VPackValueType::String:
         return make_locale_from_name(irs::get_string<irs::string_ref>(slice), locale);
       case VPackValueType::Object:
-        if (slice.hasKey(LOCALE_PARAM_NAME) &&
-            slice.get(LOCALE_PARAM_NAME).isString()) {
-          irs::string_ref param_name = irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME));
+      {
+        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
+        if (!param_name_slice.isNone() &&
+            param_name_slice.isString()) {
+          irs::string_ref param_name = irs::get_string<irs::string_ref>(param_name_slice);
           return make_locale_from_name(param_name, locale);
         }
+      }
+
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
@@ -81,6 +85,10 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
           "VPack arguments",
           LOCALE_PARAM_NAME.data());
     }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_stemming_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_stemming_stream from VPack arguments");
@@ -143,18 +151,18 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing ngram_token_stream from VPack",
+      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing ngram_token_stream from VPack");
+      "Caught error while constructing text_token_normalizing_stream from JSON");
   }
   return nullptr;
 }
@@ -162,7 +170,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -173,11 +181,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing ngram_token_stream from VPack",
+      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing ngram_token_stream from VPack");
+      "Caught error while normalizing text_token_normalizing_stream from JSON");
   }
   return false;
 }
@@ -191,8 +199,10 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
     }
   } catch (...) {
+    std::string err_msg = static_cast<std::string>(args);
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stemming_stream");
+      "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
+      err_msg.c_str());
   }
 
   return nullptr;

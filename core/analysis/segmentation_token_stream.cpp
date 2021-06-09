@@ -221,11 +221,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return make_vpack(vpack->slice());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing segmentation_token_stream from VPack",
+      "Caught error '%s' while constructing segmentation_token_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing segmentation_token_stream from VPack");
+      "Caught error while constructing segmentation_token_stream from JSON");
   }
   return nullptr;
 }
@@ -243,10 +243,10 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return !definition.empty();
     }
   } catch(const VPackException& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from VPack",
+    IR_FRMT_ERROR("Caught error '%s' while normalizing segmentation_token_stream from JSON",
                   ex.what());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from VPack");
+    IR_FRMT_ERROR("Caught error while normalizing segmentation_token_stream from JSON");
   }
   return false;
 }
