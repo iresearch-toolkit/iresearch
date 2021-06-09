@@ -32,9 +32,9 @@
 
 namespace {
 
-constexpr VPackStringRef PIPELINE_PARAM_NAME    = VPackStringRef("pipeline");
-constexpr VPackStringRef TYPE_PARAM_NAME        = VPackStringRef("type");
-constexpr VPackStringRef PROPERTIES_PARAM_NAME  = VPackStringRef("properties");
+constexpr VPackStringRef PIPELINE_PARAM_NAME    {"pipeline"};
+constexpr VPackStringRef TYPE_PARAM_NAME        {"type"};
+constexpr VPackStringRef PROPERTIES_PARAM_NAME  {"properties"};
 
 const irs::offset NO_OFFSET;
 

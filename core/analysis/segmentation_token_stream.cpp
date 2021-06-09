@@ -36,8 +36,8 @@
 
 namespace {
 
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME  = VPackStringRef("case");
-constexpr VPackStringRef BREAK_PARAM_NAME         = VPackStringRef("break");
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME  {"case"};
+constexpr VPackStringRef BREAK_PARAM_NAME         {"break"};
 
 const frozen::unordered_map<
     irs::string_ref,

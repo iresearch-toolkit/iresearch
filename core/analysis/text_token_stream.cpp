@@ -472,16 +472,16 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-constexpr VPackStringRef LOCALE_PARAM_NAME            = VPackStringRef("locale");
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      = VPackStringRef("case");
-constexpr VPackStringRef STOPWORDS_PARAM_NAME         = VPackStringRef("stopwords");
-constexpr VPackStringRef STOPWORDS_PATH_PARAM_NAME    = VPackStringRef("stopwordsPath");
-constexpr VPackStringRef ACCENT_PARAM_NAME            = VPackStringRef("accent");
-constexpr VPackStringRef STEMMING_PARAM_NAME          = VPackStringRef("stemming");
-constexpr VPackStringRef EDGE_NGRAM_PARAM_NAME        = VPackStringRef("edgeNgram");
-constexpr VPackStringRef MIN_PARAM_NAME               = VPackStringRef("min");
-constexpr VPackStringRef MAX_PARAM_NAME               = VPackStringRef("max");
-constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME = VPackStringRef("preserveOriginal");
+constexpr VPackStringRef LOCALE_PARAM_NAME            {"locale"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      {"case"};
+constexpr VPackStringRef STOPWORDS_PARAM_NAME         {"stopwords"};
+constexpr VPackStringRef STOPWORDS_PATH_PARAM_NAME    {"stopwordsPath"};
+constexpr VPackStringRef ACCENT_PARAM_NAME            {"accent"};
+constexpr VPackStringRef STEMMING_PARAM_NAME          {"stemming"};
+constexpr VPackStringRef EDGE_NGRAM_PARAM_NAME        {"edgeNgram"};
+constexpr VPackStringRef MIN_PARAM_NAME               {"min"};
+constexpr VPackStringRef MAX_PARAM_NAME               {"max"};
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
 
 const frozen::unordered_map<
     irs::string_ref,

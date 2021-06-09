@@ -105,9 +105,9 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-constexpr VPackStringRef LOCALE_PARAM_NAME       = VPackStringRef("locale");
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME = VPackStringRef("case");
-constexpr VPackStringRef ACCENT_PARAM_NAME       = VPackStringRef("accent");
+constexpr VPackStringRef LOCALE_PARAM_NAME       {"locale"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME {"case"};
+constexpr VPackStringRef ACCENT_PARAM_NAME       {"accent"};
 
 constexpr frozen::unordered_map<
     irs::string_ref,

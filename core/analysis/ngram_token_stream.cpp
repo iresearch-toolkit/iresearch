@@ -35,12 +35,12 @@
 
 namespace {
 
-constexpr VPackStringRef MIN_PARAM_NAME               = VPackStringRef("min");
-constexpr VPackStringRef MAX_PARAM_NAME               = VPackStringRef("max");
-constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME = VPackStringRef("preserveOriginal");
-constexpr VPackStringRef STREAM_TYPE_PARAM_NAME       = VPackStringRef("streamType");
-constexpr VPackStringRef START_MARKER_PARAM_NAME      = VPackStringRef("startMarker");
-constexpr VPackStringRef END_MARKER_PARAM_NAME        = VPackStringRef("endMarker");
+constexpr VPackStringRef MIN_PARAM_NAME               {"min"};
+constexpr VPackStringRef MAX_PARAM_NAME               {"max"};
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
+constexpr VPackStringRef STREAM_TYPE_PARAM_NAME       {"streamType"};
+constexpr VPackStringRef START_MARKER_PARAM_NAME      {"startMarker"};
+constexpr VPackStringRef END_MARKER_PARAM_NAME        {"endMarker"};
 
 constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2> STREAM_TYPE_CONVERT_MAP = {
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },

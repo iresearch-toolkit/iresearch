@@ -55,7 +55,7 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-const VPackStringRef LOCALE_PARAM_NAME = VPackStringRef("locale");
+const VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
 bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 

@@ -97,7 +97,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-constexpr VPackStringRef DELIMITER_PARAM_NAME = VPackStringRef("delimiter");
+constexpr VPackStringRef DELIMITER_PARAM_NAME {"delimiter"};
 
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
 
