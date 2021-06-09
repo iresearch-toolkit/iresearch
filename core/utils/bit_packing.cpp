@@ -279,6 +279,9 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT
   std::memcpy(out, in, sizeof(uint64_t)*irs::packed::BLOCK_SIZE_64);
 }
 
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
+
 template<int N, int I>
 FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
   // 32 == sizeof(uint32_t) * 8
@@ -315,8 +318,6 @@ FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   #pragma GCC diagnostic pop
 #endif
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
 template<int N>
 uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
   assert(i < irs::packed::BLOCK_SIZE_32);

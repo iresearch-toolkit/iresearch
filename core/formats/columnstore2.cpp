@@ -163,7 +163,7 @@ class range_column_iterator final
  private:
   using payload_reader = PayloadReader;
 
-  using attributes = std::tuple<document, cost, score, payload>;
+  using attributes = std::tuple<document, cost, score, irs::payload>;
 
  public:
   template<typename... Args>
@@ -187,24 +187,24 @@ class range_column_iterator final
     if (min_doc_ <= doc && doc <= max_doc_) {
       std::get<document>(attrs_).value = doc;
       min_doc_ = doc + 1;
-      std::get<payload>(attrs_).value = this->payload(doc - min_base_);
+      std::get<irs::payload>(attrs_).value = this->payload(doc - min_base_);
       return doc;
     }
 
     std::get<document>(attrs_).value = doc_limits::eof();
-    std::get<payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
     return doc_limits::eof();
   }
 
   virtual bool next() override {
     if (min_doc_ <= max_doc_) {
       std::get<document>(attrs_).value = min_doc_++;
-      std::get<payload>(attrs_).value = this->payload(value() - min_base_);
+      std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
       return true;
     }
 
     std::get<document>(attrs_).value = doc_limits::eof();
-    std::get<payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
     return false;
   }
 
@@ -236,7 +236,7 @@ class bitmap_column_iterator final
     attribute_ptr<document>,
     cost,
     score,
-    payload>;
+    irs::payload>;
 
  public:
   template<typename... Args>
@@ -264,21 +264,21 @@ class bitmap_column_iterator final
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {
-      std::get<payload>(attrs_).value = this->payload(bitmap_.index());
+      std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
       return doc;
     }
 
-    std::get<payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
     return doc_limits::eof();
   }
 
   virtual bool next() override {
     if (bitmap_.next()) {
-      std::get<payload>(attrs_).value = this->payload(bitmap_.index());
+      std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
       return true;
     }
 
-    std::get<payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
     return false;
   }
 
