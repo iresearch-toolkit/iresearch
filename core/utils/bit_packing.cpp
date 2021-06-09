@@ -279,8 +279,7 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT
   std::memcpy(out, in, sizeof(uint64_t)*irs::packed::BLOCK_SIZE_64);
 }
 
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
+MSVC_ONLY(__pragma(warning(disable:4702))) // unreachable code
 
 template<int N, int I>
 FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
@@ -312,11 +311,7 @@ FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   return ((in[N*I / 64] >> (N*I % 64)) % (1ULL << N));
 }
 
-#if defined(_MSC_VER)
-  __pragma(warning(pop))
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
+MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
 
 template<int N>
 uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
@@ -446,7 +441,11 @@ uint64_t fastpack_at<64>(const uint64_t* in, const size_t i) noexcept {
   return in[i];
 }
 
-MSVC_ONLY(__pragma(warning(push)))
+#if defined(_MSC_VER)
+  __pragma(warning(pop))
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 } // namespace {
 

@@ -222,7 +222,7 @@ void delta_encode_decode_core(size_t step, size_t count) {
 }
 
 void packed_read_write_core(const std::vector<uint32_t> &src) {
-  const size_t BLOCK_SIZE = 128;
+  static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
   const auto blocks = src.size() / BLOCK_SIZE;
   assert(blocks);
@@ -265,7 +265,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
 }
 
 void packed_read_write_block_core(const std::vector<uint32_t> &src) {
-  const size_t BLOCK_SIZE = 128;
+  static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
 
   auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size, const uint32_t bits) {
