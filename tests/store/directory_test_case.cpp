@@ -165,12 +165,39 @@ class directory_test_case : public tests::directory_test_case_base<> {
       // failed direct buffer access doesn't move file pointer
       {
         const auto fp = file->file_pointer();
-        auto cleanup = make_finally([fp, &file]() { file->seek(fp); });
+        auto cleanup = make_finally([fp, &file]() {
+          file->seek(fp);
+        });
 
         ASSERT_GT(file->length(), 1);
         file->seek(file->length()-1);
         ASSERT_EQ(nullptr, file->read_buffer(file->length(), BufferHint::NORMAL));
         ASSERT_EQ(file->length()-1, file->file_pointer());
+      }
+
+      if (dynamic_cast<mmap_directory*>(&dir) ||
+          dynamic_cast<memory_directory*>(&dir) ||
+          dynamic_cast<fs_directory*>(&dir)) {
+        const auto fp = file->file_pointer();
+        auto cleanup = make_finally([fp, &file]() { file->seek(fp); });
+
+        // sequential direct access
+        {
+          file->seek(0);
+          ASSERT_EQ(0, file->file_pointer());
+          const byte_type* internal_buf = file->read_buffer(1, BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(it->at(0), *internal_buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(0, 1, BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(it->at(0), *internal_buf);
+        }
       }
 
       // mmap direct buffer access

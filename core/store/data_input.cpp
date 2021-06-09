@@ -115,14 +115,22 @@ const byte_type* buffered_index_input::read_buffer(size_t size, BufferHint hint)
     return nullptr;
   }
 
-  auto* begin = begin_ + size;
-
-  if (begin > end_) {
-    return nullptr;
+  if (size <= remain()) {
+    auto begin = begin_;
+    begin_ += size;
+    return begin;
   }
 
-  std::swap(begin, begin_);
-  return begin;
+  if (size <= std::min(buf_size_, length() - file_pointer())) {
+    seek_internal(file_pointer());
+    refill();
+
+    auto begin = begin_;
+    begin_ += size;
+    return begin;
+  }
+
+  return nullptr;
 }
 
 const byte_type* buffered_index_input::read_buffer(size_t offset, size_t size, BufferHint hint) noexcept {
