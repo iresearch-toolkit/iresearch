@@ -128,7 +128,7 @@ class directory_test_case_base
   virtual void SetUp() override {
     test_base::SetUp();
 
-    auto& p = this->template GetParam();
+    auto& p = test_param_base<std::tuple<tests::dir_factory_f, Args...>>::GetParam();
 
     auto* factory = std::get<0>(p);
     ASSERT_NE(nullptr, factory);
