@@ -103,6 +103,8 @@ if (MSVC)
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
 
