@@ -188,10 +188,23 @@ void memory_index_input::seek(size_t pos) {
 const byte_type* memory_index_input::read_buffer(
     size_t offset,
     size_t size,
-    BufferHint hint) noexcept {
-  // FIXME make atomic
-  seek(offset);
-  return read_buffer(size, hint);
+    BufferHint /*hint*/) noexcept {
+  const auto idx = file_->buffer_offset(offset);
+  assert(idx < file_->buffer_count());
+  const auto& buf = file_->get_buffer(idx);
+  const auto begin = buf.data + offset - buf.offset;
+  const auto end = begin + size;
+  const auto buf_end = buf.data + std::min(buf.size, file_->length() - buf.offset);
+
+  if (end < buf_end) {
+    buf_ = buf.data;
+    begin_ = end;
+    end_ = buf_end;
+    start_ = buf.offset;
+    return begin;
+  }
+
+  return nullptr;
 }
 
 const byte_type* memory_index_input::read_buffer(
