@@ -422,7 +422,6 @@ void read_write_block_optimized(const std::array<uint32_t, N>& source) {
       const uint32_t* RESTRICT decoded,
       uint32_t* RESTRICT encoded,
       const uint32_t bits) noexcept {
-    std::memset(encoded, 0, sizeof(uint32_t) * N); // FIXME do we need memset???
     ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
     return bits;
   };
