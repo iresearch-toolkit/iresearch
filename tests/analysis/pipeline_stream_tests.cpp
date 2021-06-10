@@ -36,8 +36,8 @@
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/utf8_path.hpp"
-
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifndef IRESEARCH_DLL
 namespace {
@@ -628,21 +628,21 @@ TEST(pipeline_token_stream_test, normalize_json) {
     std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in pipeline member
   {
     std::string config = "{\"pipeline\":[{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in analyzer properties
   {
     std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
 
   //with unknown analyzer
@@ -664,8 +664,8 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   // store as separate arrays to make asan happy
   iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
   iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
-  pipeline_test_analyzer payload_offset(true, p1);
-  pipeline_test_analyzer only_payload(false, p2);
+  pipeline_test_analyzer payload_offset(true, {p1, IRESEARCH_COUNTOF(p1)});
+  pipeline_test_analyzer only_payload(false, {p2, IRESEARCH_COUNTOF(p2)});
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
   pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 

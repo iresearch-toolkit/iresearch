@@ -21,8 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "analysis/token_stopwords_stream.hpp"
+
+#include "gtest/gtest.h"
+
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -178,10 +182,25 @@ TEST(token_stopwords_stream_tests, normalize_valid_array) {
 }
 
 TEST(token_stopwords_stream_tests, normalize_valid_object) {
-  std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stopwords",
-    irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"QWRT\", \"qwrt\"]}"));
-  ASSERT_EQ(actual, "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stopwords",
+      irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"QWRT\", \"qwrt\"]}"));
+    ASSERT_EQ(actual, "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
+  }
+
+
+  // test vpack
+  {
+    std::string config = "{\"stopwords\":[\"QWRT\", \"qwrt\"]}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "stopwords", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ("{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}", out_slice.toString());
+  }
 }
 
 TEST(token_stopwords_stream_tests, normalize_valid_object_unknown) {

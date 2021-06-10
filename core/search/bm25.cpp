@@ -20,10 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-
 #include "bm25.hpp"
 
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/vpack.h"
+#include "velocypack/velocypack-aliases.h"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
@@ -33,10 +36,8 @@ namespace {
 
 const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
-irs::sort::ptr make_from_object(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsObject());
+irs::sort::ptr make_from_object(const VPackSlice slice) {
+  assert(slice.isObject());
 
   auto ptr = irs::memory::make_unique<irs::bm25_sort>();
 
@@ -50,14 +51,14 @@ irs::sort::ptr make_from_object(
     // optional float
     const auto* key = "b";
 
-    if (json.HasMember(key)) {
-      if (!json[key].IsNumber()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+    if (slice.hasKey(key)) {
+      if (!slice.get(key).isNumber()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from VPack arguments", key);
 
         return nullptr;
       }
 
-      scorer.b(json[key].GetFloat());
+      scorer.b(slice.get(key).getNumber<float>());
     }
   }
 
@@ -65,68 +66,57 @@ irs::sort::ptr make_from_object(
     // optional float
     const auto* key = "k";
 
-    if (json.HasMember(key)) {
-      if (!json[key].IsNumber()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+    if (slice.hasKey(key)) {
+      if (!slice.get(key).isNumber()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from VPack arguments", key);
 
         return nullptr;
       }
 
-      scorer.k(json[key].GetFloat());
+      scorer.k(slice.get(key).getNumber<float>());
     }
   }
 
   return ptr;
 }
 
-irs::sort::ptr make_from_array(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsArray());
+irs::sort::ptr make_from_array(const VPackSlice slice) {
+  assert(slice.isArray());
 
-  const auto array = json.GetArray();
-  const auto size = array.Size();
-
+  VPackArrayIterator array(slice);
+  VPackValueLength size = array.size();
   if (size > 2) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-      "Wrong number of arguments while constructing bm25 scorer from jSON arguments (must be <= 2): %s",
-      args.c_str()
-    );
+      "Wrong number of arguments while constructing bm25 scorer from VPack arguments (must be <= 2)");
     return nullptr;
   }
 
   // default args
   auto k = irs::bm25_sort::K();
   auto b = irs::bm25_sort::B();
-
-  for (rapidjson::SizeType i = 0; i < size; ++i) {
-    auto& arg = array[i];
+  int i = 0;
+  for (auto arg_slice : array) {
 
     switch (i) {
-     case 0: // parse `b` coefficient
-      if (!arg.IsNumber()) {
+     case 0: // parse `k` coefficient
+      if (!arg_slice.isNumber<decltype (k)>()) {
         IR_FRMT_ERROR(
-          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
-          i, args.c_str()
-        );
-
+          "Non-float value at position '%u' while constructing bm25 scorer from VPack arguments", i);
         return nullptr;
       }
 
-      k = static_cast<float_t>(arg.GetDouble());
+      k = static_cast<float_t>(arg_slice.getNumber<decltype (k)>());
+      ++i;
       break;
      case 1: // parse `b` coefficient
-      if (!arg.IsNumber()) {
+      if (!arg_slice.isNumber<decltype (b)>()) {
         IR_FRMT_ERROR(
-          "Non-float value at position '%u' while constructing bm25 scorer from jSON arguments: %s",
-          i, args.c_str()
-        );
-
+          "Non-float value at position '%u' while constructing bm25 scorer from VPack arguments", i);
         return nullptr;
       }
 
-      b = static_cast<float_t>(arg.GetDouble());
+      b = static_cast<float_t>(arg_slice.getNumber<decltype (b)>());
       break;
     }
   }
@@ -134,39 +124,52 @@ irs::sort::ptr make_from_array(
   return irs::memory::make_unique<irs::bm25_sort>(k, b);
 }
 
-irs::sort::ptr make_json(const irs::string_ref& args) {
-  if (args.null()) {
-    // default args
-    return irs::memory::make_unique<irs::bm25_sort>();
-  }
+irs::sort::ptr make_vpack(const VPackSlice slice) {
 
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-    case rapidjson::kObjectType:
-      return make_from_object(json, args);
-    case rapidjson::kArrayType:
-      return make_from_array(json, args);
+  switch (slice.type()) {
+    case VPackValueType::Object:
+      return make_from_object(slice);
+    case VPackValueType::Array:
+      return make_from_array(slice);
     default: // wrong type
       IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-        args.c_str()
-      );
-
+        "Invalid VPack arguments passed while constructing bm25 scorer");
       return nullptr;
   }
 }
 
+irs::sort::ptr make_vpack(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::bm25_sort>();
+  } else {
+    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    return make_vpack(slice);
+  }
+}
+
+irs::sort::ptr make_json(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::bm25_sort>();
+  } else {
+    try {
+      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      return make_vpack(vpack->slice());
+    } catch(const VPackException& ex) {
+        IR_FRMT_ERROR(
+          "Caught error '%s' while constructing VPack from JSON for bm25 scorer",
+          ex.what());
+        return nullptr;
+    } catch(...) {
+        IR_FRMT_ERROR(
+          "Caught error while constructing VPack from JSON for bm25 scorer");
+    }
+  }
+}
+
 REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
+REGISTER_SCORER_VPACK(irs::bm25_sort, make_vpack);
 
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
@@ -539,6 +542,8 @@ bm25_sort::bm25_sort(
 
 /*static*/ void bm25_sort::init() {
   REGISTER_SCORER_JSON(bm25_sort, make_json); // match registration above
+  REGISTER_SCORER_VPACK(bm25_sort, make_vpack); // match registration above
+
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {

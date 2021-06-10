@@ -20,10 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
-
 #include "tfidf.hpp"
 
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/vpack.h"
+#include "velocypack/velocypack-aliases.h"
 #include "scorers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -34,22 +37,16 @@ namespace {
 
 const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
-irs::sort::ptr make_from_bool(
-    const rapidjson::Document& json,
-    const irs::string_ref& //args
-) {
-  assert(json.IsBool());
+irs::sort::ptr make_from_bool(const VPackSlice slice) {
+  assert(slice.isBool());
 
-  return irs::memory::make_unique<irs::tfidf_sort>(
-    json.GetBool());
+  return irs::memory::make_unique<irs::tfidf_sort>(slice.getBool());
 }
 
-static const irs::string_ref WITH_NORMS_PARAM_NAME = "withNorms";
+static const VPackStringRef WITH_NORMS_PARAM_NAME = VPackStringRef("withNorms");
 
-irs::sort::ptr make_from_object(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsObject());
+irs::sort::ptr make_from_object(const VPackSlice slice) {
+  assert(slice.isObject());
 
   auto ptr = irs::memory::make_unique<irs::tfidf_sort>();
 
@@ -61,37 +58,31 @@ irs::sort::ptr make_from_object(
 
   {
     // optional bool
-   
-    if (json.HasMember(WITH_NORMS_PARAM_NAME.c_str())) {
-      if (!json[WITH_NORMS_PARAM_NAME.c_str()].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s",
-                      WITH_NORMS_PARAM_NAME.c_str(),
-                      args.c_str());
+    if (slice.hasKey(WITH_NORMS_PARAM_NAME)) {
+      if (!slice.get(WITH_NORMS_PARAM_NAME).isBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from VPack arguments",
+          WITH_NORMS_PARAM_NAME.data());
 
         return nullptr;
       }
 
-      scorer.normalize(json[WITH_NORMS_PARAM_NAME.c_str()].GetBool());
+      scorer.normalize(slice.get(WITH_NORMS_PARAM_NAME).getBool());
     }
   }
 
   return ptr;
 }
 
-irs::sort::ptr make_from_array(
-    const rapidjson::Document& json,
-    const irs::string_ref& args) {
-  assert(json.IsArray());
+irs::sort::ptr make_from_array(const VPackSlice slice) {
+  assert(slice.isArray());
 
-  const auto array = json.GetArray();
-  const auto size = array.Size();
+  VPackArrayIterator array = VPackArrayIterator(slice);
+  VPackValueLength size = array.size();
 
   if (size > 1) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-      "Wrong number of arguments while constructing tfidf scorer from jSON arguments (must be <= 1): %s",
-      args.c_str()
-    );
+      "Wrong number of arguments while constructing tfidf scorer from VPack arguments (must be <= 1)");
     return nullptr;
   }
 
@@ -99,57 +90,66 @@ irs::sort::ptr make_from_array(
   auto norms = irs::tfidf_sort::WITH_NORMS();
 
   // parse `withNorms` optional argument
-  if (!array.Empty()) {
-    auto& arg = array[0];
-    if (!arg.IsBool()) {
+  for (auto arg_slice : array) {
+    if (!arg_slice.isBool()) {
       IR_FRMT_ERROR(
-        "Non-float value on position `0` while constructing bm25 scorer from jSON arguments: %s",
-        args.c_str()
-      );
+        "Non-bool value on position `0` while constructing tfidf scorer from VPack arguments");
       return nullptr;
     }
 
-    norms = arg.GetBool();
+    norms = arg_slice.getBool();
   }
 
   return irs::memory::make_unique<irs::tfidf_sort>(norms);
 }
 
-irs::sort::ptr make_json(const irs::string_ref& args) {
-  if (args.null()) {
-    return irs::memory::make_unique<irs::tfidf_sort>();
-  }
-
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-    case rapidjson::kFalseType:
-    case rapidjson::kTrueType:
-      return make_from_bool(json, args);
-    case rapidjson::kObjectType:
-      return make_from_object(json, args);
-    case rapidjson::kArrayType:
-      return make_from_array(json, args);
+irs::sort::ptr make_vpack(const VPackSlice slice) {
+  switch (slice.type()) {
+    case VPackValueType::Bool:
+      return make_from_bool(slice);
+    case VPackValueType::Object:
+      return make_from_object(slice);
+    case VPackValueType::Array:
+      return make_from_array(slice);
     default: // wrong type
       IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
-        args.c_str()
-      );
-
+        "Invalid VPack arguments passed while constructing tfidf scorer, arguments");
       return nullptr;
   }
 }
 
+irs::sort::ptr make_vpack(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::tfidf_sort>();
+  } else {
+    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    return make_vpack(slice);
+  }
+}
+
+irs::sort::ptr make_json(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    return irs::memory::make_unique<irs::tfidf_sort>();
+  } else {
+    try {
+      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      return make_vpack(vpack->slice());
+    } catch(const VPackException& ex) {
+        IR_FRMT_ERROR(
+          "Caught error '%s' while constructing VPack from JSON for tfidf scorer",
+          ex.what());
+        return nullptr;
+    } catch(...) {
+        IR_FRMT_ERROR(
+          "Caught error while constructing VPack from JSON for tfidf scorer");
+    }
+  }
+}
+
 REGISTER_SCORER_JSON(irs::tfidf_sort, make_json);
+REGISTER_SCORER_VPACK(irs::tfidf_sort, make_vpack);
 
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
@@ -450,6 +450,7 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
 
 /*static*/ void tfidf_sort::init() {
   REGISTER_SCORER_JSON(tfidf_sort, make_json); // match registration above
+  REGISTER_SCORER_VPACK(tfidf_sort, make_vpack); // match registration above
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {

@@ -20,13 +20,15 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "analysis/segmentation_token_stream.hpp"
 
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "utils/locale_utils.hpp"
-
-#include "analysis/segmentation_token_stream.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -423,13 +425,27 @@ TEST(segmentation_token_stream_test, normalize_all_none_values) {
 }
 
 TEST(segmentation_token_stream_test, normalize_graph_upper_values) {
-  std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual,
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "{\"break\":\"graphic\", \"case\":\"upper\"}"));
-  ASSERT_EQ(actual, "{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}");
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual,
+        "segmentation",
+        irs::type<irs::text_format::json>::get(),
+        "{\"break\":\"graphic\", \"case\":\"upper\"}"));
+    ASSERT_EQ(actual, "{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}");
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"break\":\"graphic\", \"case\":\"upper\"}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "segmentation", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ("{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}", out_slice.toString());
+  }
 }
 
 TEST(segmentation_token_stream_test, normalize_invalid) {
