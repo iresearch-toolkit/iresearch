@@ -26,31 +26,72 @@
 #include "utils/std.hpp"
 #include "utils/simd_utils.hpp"
 
-namespace {
-
-}
-
 TEST(simd_utils_test, delta32) {
-  HWY_ALIGN uint32_t values[1024];
-  std::iota(std::begin(values), std::end(values), 42);
-
-  // 128-bit
   {
-    HWY_ALIGN uint32_t encoded[1024];
-    std::memcpy(encoded, values, sizeof values);
-    irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 0>(encoded, encoded[0] - 1);
-    ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
-  }
+    HWY_ALIGN uint32_t values[1024];
+    std::iota(std::begin(values), std::end(values), 42);
+
+    // 128-bit
+    {
+      HWY_ALIGN uint32_t encoded[1024];
+      std::memcpy(encoded, values, sizeof values);
+      irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 0>(encoded, encoded[0] - 1);
+      ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
+    }
 
 #if HWY_CAP_GE256
-  // 256-bit and greater
-  {
-    HWY_ALIGN uint32_t encoded[1024];
-    std::memcpy(encoded, values, sizeof values);
-    irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 1>(encoded, encoded[0] - 1);
-    ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
-  }
+    // 256-bit and greater
+    {
+      HWY_ALIGN uint32_t encoded[1024];
+      std::memcpy(encoded, values, sizeof values);
+      irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 1>(encoded, encoded[0] - 1);
+      ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded), [](auto v) { return 1 == v; }));
+    }
 #endif
+  }
+
+  {
+    HWY_ALIGN uint32_t values[1024];
+    std::iota(std::begin(values), std::end(values), 42);
+    values[IRESEARCH_COUNTOF(values) / 2] = values[1 + (IRESEARCH_COUNTOF(values) / 2)];
+
+    // 128-bit
+    {
+      HWY_ALIGN uint32_t encoded[1024];
+      std::memcpy(encoded, values, sizeof values);
+      irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 0>(encoded, encoded[0] - 1);
+
+      ASSERT_TRUE(std::all_of(
+        std::begin(encoded),
+        std::begin(encoded) + IRESEARCH_COUNTOF(values) / 2,
+        [](auto v) { return 1 == v; }));
+      ASSERT_EQ(2, encoded[IRESEARCH_COUNTOF(values) / 2]);
+      ASSERT_EQ(0, encoded[1 + IRESEARCH_COUNTOF(values) / 2]);
+      ASSERT_TRUE(std::all_of(
+        2 + std::begin(encoded) + IRESEARCH_COUNTOF(values) / 2,
+        std::end(encoded),
+        [](auto v) { return 1 == v; }));
+    }
+
+#if HWY_CAP_GE256
+    // 256-bit and greater
+    {
+      HWY_ALIGN uint32_t encoded[1024];
+      std::memcpy(encoded, values, sizeof values);
+      irs::simd::delta_encode<IRESEARCH_COUNTOF(encoded), true, uint32_t, 1>(encoded, encoded[0] - 1);
+      ASSERT_TRUE(std::all_of(
+        std::begin(encoded),
+        std::begin(encoded) + IRESEARCH_COUNTOF(values) / 2,
+        [](auto v) { return 1 == v; }));
+      ASSERT_EQ(2, encoded[IRESEARCH_COUNTOF(values) / 2]);
+      ASSERT_EQ(0, encoded[1 + IRESEARCH_COUNTOF(values) / 2]);
+      ASSERT_TRUE(std::all_of(
+        2 + std::begin(encoded) + IRESEARCH_COUNTOF(values) / 2,
+        std::end(encoded),
+        [](auto v) { return 1 == v; }));
+    }
+#endif
+  }
 }
 
 TEST(simd_utils_test, avg) {

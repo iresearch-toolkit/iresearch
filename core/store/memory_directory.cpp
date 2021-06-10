@@ -196,7 +196,7 @@ const byte_type* memory_index_input::read_buffer(
   const auto end = begin + size;
   const auto buf_end = buf.data + std::min(buf.size, file_->length() - buf.offset);
 
-  if (end < buf_end) {
+  if (end <= buf_end) {
     buf_ = buf.data;
     begin_ = end;
     end_ = buf_end;
