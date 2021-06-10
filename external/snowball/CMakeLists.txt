@@ -229,11 +229,15 @@ INCLUDE_DIRECTORIES(
 # on MSVC Snowball does not export any symbols hence no proxy is ever created
 if (MSVC)
   ADD_LIBRARY(stemmer-shared STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+  TARGET_COMPILE_OPTIONS(stemmer-shared PRIVATE "/w")
 else()
   ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
 endif()
 
 ADD_LIBRARY(stemmer-static STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+if (MSVC)
+  TARGET_COMPILE_OPTIONS(stemmer-static PRIVATE "/w")
+endif()
 
 ADD_DEPENDENCIES(stemmer-shared stemmer_deps)
 ADD_DEPENDENCIES(stemmer-static stemmer_deps)

@@ -206,12 +206,6 @@ endif()
 find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(Snowball REQUIRED)
-
-if (MSVC)
-  include(EnableWarnings)
-  remove_all_warnings_from_targets(stemmer-static stemmer-shared)
-endif()
-
 find_package(Unwind) # optional
 
 if (Unwind_FOUND)
