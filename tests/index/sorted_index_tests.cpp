@@ -1357,7 +1357,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   sorted_index_test,
   sorted_index_test_case,
   ::testing::Combine(

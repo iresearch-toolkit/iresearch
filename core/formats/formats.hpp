@@ -290,7 +290,7 @@ struct IRESEARCH_API columnstore_writer {
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column(const column_info& info) = 0;
   virtual void rollback() noexcept = 0;
-  virtual bool commit() = 0; // @return was anything actually flushed
+  virtual bool commit(const flush_state& state) = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 }
@@ -353,7 +353,7 @@ struct IRESEARCH_API columnstore_reader {
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
 
-    virtual size_t size() const = 0;
+    virtual doc_id_t size() const = 0;
   };
 
   static const values_reader_f& empty_reader();
@@ -504,13 +504,13 @@ class IRESEARCH_API format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const = 0;
+  virtual field_writer::ptr get_field_writer(bool consolidation) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
   virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 
-  virtual columnstore_writer::ptr get_columnstore_writer() const = 0;
+  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   const type_info& type() const { return type_; }

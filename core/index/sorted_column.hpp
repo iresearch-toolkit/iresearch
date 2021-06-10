@@ -52,10 +52,6 @@ class sorted_column final : public columnstore_writer::column_output,
     }
   }
 
-  virtual void close() override {
-    // NOOP
-  }
-
   virtual void write_byte(byte_type b) override {
     data_buf_ += b;
   }

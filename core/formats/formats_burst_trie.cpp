@@ -180,8 +180,6 @@ struct block_t : private util::noncopyable {
      : prefix(std::move(prefix)) {
     }
 
-    virtual void close() override {}
-
     virtual void write_byte(byte_type b) override final {
       weight.PushBack(b);
     }
@@ -653,7 +651,7 @@ class field_writer final : public irs::field_writer {
 
   field_writer(
     irs::postings_writer::ptr&& pw,
-    bool volatile_state,
+    bool consolidation,
     burst_trie::Version version = burst_trie::Version::MAX,
     uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
     uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
@@ -726,7 +724,7 @@ class field_writer final : public irs::field_writer {
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
   const uint32_t max_block_size_;
-  const bool volatile_state_;
+  const bool consolidation_;
 }; // field_writer
 
 void field_writer::write_block(
@@ -834,7 +832,7 @@ void field_writer::write_block(
     block_start,
     meta,
     label,
-    volatile_state_);
+    consolidation_);
 
   if (!index.empty()) {
     blocks_.back().block().index = std::move(index);
@@ -932,12 +930,12 @@ void field_writer::push( const bytes_ref& term ) {
 
   prefixes_.resize(term.size());
   std::fill(prefixes_.begin() + pos, prefixes_.end(), stack_.size());
-  last_term_.assign(term, volatile_state_);
+  last_term_.assign(term, consolidation_);
 }
 
 field_writer::field_writer(
     irs::postings_writer::ptr&& pw,
-    bool volatile_state,
+    bool consolidation,
     burst_trie::Version version /* = Format::MAX */,
     uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
     uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
@@ -954,7 +952,7 @@ field_writer::field_writer(
     version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
-    volatile_state_(volatile_state) {
+    consolidation_(consolidation) {
   assert(this->pw_);
   assert(min_block_size > 1);
   assert(min_block_size <= max_block_size);
@@ -1061,14 +1059,14 @@ void field_writer::write(
       push(term);
 
       // push term to the top of the stack
-      stack_.emplace_back(term, std::move(meta), volatile_state_);
+      stack_.emplace_back(term, std::move(meta), consolidation_);
 
       if (!min_term_.first) {
         min_term_.first = true;
-        min_term_.second.assign(term, volatile_state_);
+        min_term_.second.assign(term, consolidation_);
       }
 
-      max_term_.assign(term, volatile_state_);
+      max_term_.assign(term, consolidation_);
 
       // increase processed term count
       ++term_count_;
@@ -3239,8 +3237,8 @@ namespace burst_trie {
 irs::field_writer::ptr make_writer(
     Version version,
     irs::postings_writer::ptr&& writer,
-    bool volatile_state) {
-  return memory::make_unique<::field_writer>(std::move(writer), volatile_state, version);
+    bool consolidation) {
+  return memory::make_unique<::field_writer>(std::move(writer), consolidation, version);
 }
 
 irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {

@@ -1178,7 +1178,7 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
 
 #endif
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   ngram_similarity_test,
   ngram_similarity_filter_test_case,
   ::testing::Combine(

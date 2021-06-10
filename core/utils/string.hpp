@@ -58,7 +58,10 @@ struct char_traits<::iresearch::byte_type> {
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs, size_t count) noexcept {
+  static int compare(
+      const char_type* lhs,
+      const char_type* rhs,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return 0;
     }
@@ -119,7 +122,9 @@ struct char_traits<::iresearch::byte_type> {
 
   static constexpr int_type to_int_type(char_type ch) noexcept { return ch; }
 
-  MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
+  MSVC_ONLY(static void _Copy_s(
+    char_type* /*dst*/, size_t /*dst_size*/,
+    const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
 #endif
 

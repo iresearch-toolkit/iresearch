@@ -7876,7 +7876,7 @@ TEST(by_phrase_test, copy_move) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   phrase_filter_test,
   phrase_filter_test_case,
   ::testing::Combine(

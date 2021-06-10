@@ -27,7 +27,7 @@ namespace {
 // --SECTION--                                          format 13 specific tests
 // -----------------------------------------------------------------------------
 
-class format_13_test_case : public tests::directory_test_case_base {
+class format_13_test_case : public tests::directory_test_case_base<> {
 };
 
 TEST_P(format_13_test_case, read_zero_block_encryption) {
@@ -473,7 +473,7 @@ TEST_P(format_13_test_case, formats_10_13) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_13_test,
   format_13_test_case,
   ::testing::Values(
@@ -481,7 +481,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
     &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -490,7 +490,7 @@ INSTANTIATE_TEST_CASE_P(
 
 using tests::format_test_case;
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_13_test,
   format_test_case,
   ::testing::Combine(

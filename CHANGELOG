@@ -3,6 +3,19 @@ master
 
 * Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
 
+* Add new `1_4` segment format utilizing new columnstore implementation.
+
+* Add new columnstore implementation based on sparse bitset format.
+
+* Add random access functionality to `data_input` for both regular reads and
+  direct buffer access.
+
+* Add `sparse_bitset_writer`/`sparse_bitset_iterator`, a fast and efficient on-disk
+  format for storing sparse bit sets.
+
+* Add a set of SIMD-based utils for encoding.
+
+
 v1.0 (2021-06-14)
 -------------------------
 

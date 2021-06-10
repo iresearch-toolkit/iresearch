@@ -37,6 +37,8 @@ set(IReSearch_tests_sources
   ./analysis/token_stopwords_stream_tests.cpp
   ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
+  ./formats/columnstore2_test.cpp
+  ./formats/sparse_bitmap_test.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp
   ./formats/skip_list_test.cpp
@@ -107,6 +109,7 @@ set(IReSearch_tests_sources
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
+  ./utils/simd_utils_test.cpp
   ./utils/bitset_tests.cpp
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
@@ -165,6 +168,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_11_tests.cpp
   ./formats/formats_12_tests.cpp
   ./formats/formats_13_tests.cpp
+  ./formats/formats_14_tests.cpp
   ./iql/parser_test.cpp
 )
 

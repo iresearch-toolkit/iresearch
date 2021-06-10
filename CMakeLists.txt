@@ -87,7 +87,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
-option(USE_MICRO_BENCHMARCH "Build micro-benchmark project" OFF)
+option(USE_MICROBENCH "Build micro-benchmark project" OFF)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -167,12 +167,10 @@ endif()
 ### setup platform dependent optimizations
 ################################################################################
 
-if (USE_SIMDCOMP)
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+include(OptimizeForArchitecture)
+OptimizeForArchitecture()
 
-  add_definitions(${Vc_ARCHITECTURE_FLAGS})
-endif()
+add_definitions(${Vc_ARCHITECTURE_FLAGS})
 
 ################################################################################
 ### find 3rd party libraries
@@ -194,10 +192,7 @@ endif()
 # set sanitizers
 find_package(Sanitizers)
 
-#find BFD
-find_package(BFD
-  #OPTIONAL
-)
+find_package(BFD) # optional
 
 if (BFD_FOUND)
   add_definitions(-DUSE_LIBBFD)
@@ -208,25 +203,10 @@ else()
   set(BFD_SHARED_LIB_RESOURCES "")
 endif()
 
-# find LZ4
-find_package(Lz4
-  REQUIRED
-)
-
-# find ICU
-find_package(ICU
-  REQUIRED
-)
-
-# find Snowball
-find_package(Snowball
-  REQUIRED
-)
-
-# find Unwind
-find_package(Unwind
-  #OPTIONAL
-)
+find_package(Lz4 REQUIRED)
+find_package(ICU REQUIRED)
+find_package(Snowball REQUIRED)
+find_package(Unwind) # optional
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
@@ -342,7 +322,7 @@ if (USE_PVS_STUDIO)
   )
 endif()
 
-if (USE_MICRO_BENCHMARCH)
+if (USE_MICROBENCH)
   add_subdirectory(microbench)
 endif()
 

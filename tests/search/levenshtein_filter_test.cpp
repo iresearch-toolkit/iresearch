@@ -629,7 +629,7 @@ TEST_P(by_edit_distance_test_case, visit) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   by_edit_distance_test,
   by_edit_distance_test_case,
   ::testing::Combine(

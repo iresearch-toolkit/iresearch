@@ -526,7 +526,7 @@ TEST_P(index_profile_test_case, profile_bulk_index_multithread_update_batched_mt
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_profile_test,
   index_profile_test_case,
   ::testing::Combine(

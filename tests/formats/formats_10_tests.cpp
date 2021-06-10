@@ -908,7 +908,7 @@ TEST_P(format_10_test_case, postings_seek) {
 // --SECTION--                                        format specific test cases
 // -----------------------------------------------------------------------------
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_10_test,
   format_10_test_case,
   ::testing::Combine(
@@ -926,7 +926,7 @@ INSTANTIATE_TEST_CASE_P(
 // --SECTION--                                                generic test cases
 // -----------------------------------------------------------------------------
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_10_test,
   format_test_case,
   ::testing::Combine(
