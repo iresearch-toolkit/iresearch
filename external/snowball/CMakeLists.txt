@@ -177,11 +177,6 @@ SET(COMPILER_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_rust.c
 )
 
-if (MSVC)
-  add_compile_options("/w") # suppress all warnings on MSVC
-endif()
-
-
 ADD_EXECUTABLE(snowball ${COMPILER_SOURCES})
 
 SET(SNOWBALL_RUNTIME
