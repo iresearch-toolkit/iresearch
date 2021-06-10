@@ -160,11 +160,11 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
         IR_FRMT_ERROR(
           "Caught error '%s' while constructing VPack from JSON for bm25 scorer",
           ex.what());
-        return nullptr;
     } catch(...) {
         IR_FRMT_ERROR(
           "Caught error while constructing VPack from JSON for bm25 scorer");
     }
+    return nullptr;
   }
 }
 
