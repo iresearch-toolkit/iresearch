@@ -157,6 +157,11 @@ else ()
   set(Snowball_FOUND FALSE)
 endif()
 
+#if (MSVC)
+  message("!!!")
+  remove_all_warnings_from_targets(stemmer-static stemmer-shared)
+#endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Snowball
   DEFAULT_MSG

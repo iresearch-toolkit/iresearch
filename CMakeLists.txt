@@ -192,10 +192,7 @@ endif()
 # set sanitizers
 find_package(Sanitizers)
 
-#find BFD
-find_package(BFD
-  #OPTIONAL
-)
+find_package(BFD) # optional
 
 if (BFD_FOUND)
   add_definitions(-DUSE_LIBBFD)
@@ -206,25 +203,16 @@ else()
   set(BFD_SHARED_LIB_RESOURCES "")
 endif()
 
-# find LZ4
-find_package(Lz4
-  REQUIRED
-)
+find_package(Lz4 REQUIRED)
+find_package(ICU REQUIRED)
+find_package(Snowball REQUIRED)
 
-# find ICU
-find_package(ICU
-  REQUIRED
-)
+if (MSVC)
+  include(EnableWarnings)
+  remove_all_warnings_from_targets(stemmer-static stemmer-shared)
+endif()
 
-# find Snowball
-find_package(Snowball
-  REQUIRED
-)
-
-# find Unwind
-find_package(Unwind
-  #OPTIONAL
-)
+find_package(Unwind) # optional
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
