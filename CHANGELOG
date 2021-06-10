@@ -1,6 +1,7 @@
 master
-* Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
 -------------------------
+
+* Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
 
 v1.0 (2021-06-14)
 -------------------------
