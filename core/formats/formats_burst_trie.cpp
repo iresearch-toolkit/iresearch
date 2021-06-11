@@ -1369,13 +1369,14 @@ class block_iterator : util::noncopyable {
                  irs::postings_reader& pr);
 
  private:
-  struct data_block {
+  struct data_block : util::noncopyable {
     data_block() = default;
     data_block(bstring&& block) noexcept
       : block(std::move(block)),
         begin(this->block.c_str()) {
   #ifdef IRESEARCH_DEBUG
       end = begin + this->block.size();
+      assert_block_boundaries();
   #endif
     }
     data_block(data_block&& rhs) noexcept {
@@ -1385,23 +1386,29 @@ class block_iterator : util::noncopyable {
       if (this != &rhs) {
         if (rhs.block.empty()) {
           begin = rhs.begin;
+#ifdef IRESEARCH_DEBUG
+          end = rhs.end;
+#endif
         } else {
           const size_t offset = std::distance(rhs.block.c_str(), rhs.begin);
           block = std::move(rhs.block);
           begin = block.c_str() + offset;
+#ifdef IRESEARCH_DEBUG
+          end = block.c_str() + block.size();
+#endif
         }
-  #ifdef IRESEARCH_DEBUG
-        end = block.empty()
-          ? rhs.end
-          : block.c_str() + block.size();
-  #endif
       }
+      assert_block_boundaries();
       return *this;
     }
 
     [[maybe_unused]] void assert_block_boundaries() {
 #ifdef IRESEARCH_DEBUG
       assert(begin <= end);
+      if (!block.empty()) {
+        assert(end <= (block.c_str() + block.size()));
+        assert(block.c_str() <= begin);
+      }
 #endif
     }
 
@@ -1436,6 +1443,7 @@ class block_iterator : util::noncopyable {
   SeekResult scan_nonleaf(Reader&& reader);
   template<typename Reader>
   SeekResult scan_leaf(Reader&& reader);
+
 
   data_block header_; // suffix block header
   data_block suffix_; // suffix data block
@@ -1492,6 +1500,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // for non-encrypted index try direct buffer access first
   suffix_.begin = cipher ? nullptr : in.read_buffer(block_size, BufferHint::PERSISTENT);
+//  suffix_.block.clear(); FIXME
 
   if (!suffix_.begin) {
     string_utils::oversize(suffix_.block, block_size);
@@ -1518,6 +1527,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // try direct buffer access first
   stats_.begin = in.read_buffer(block_size, BufferHint::PERSISTENT);
+//  stats_.block.clear(); FIXME
 
   if (!stats_.begin) {
     string_utils::oversize(stats_.block, block_size);
