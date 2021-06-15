@@ -1204,7 +1204,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   }
 
   static constexpr doc_id_t num_blocks() noexcept {
-    return std::max(size_t(1), traits_type::num_blocks());
+    return static_cast<doc_id_t>(std::max(size_t(1), traits_type::num_blocks()));
   }
 
   static constexpr doc_id_t window() noexcept {

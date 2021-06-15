@@ -104,9 +104,13 @@ if (MSVC)
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
+  
+  # we don't want obvious warning
+  add_compile_options(/wd4324)
 
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
