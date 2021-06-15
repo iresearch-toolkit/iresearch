@@ -1370,10 +1370,12 @@ class block_iterator : util::noncopyable {
 
  private:
   struct data_block : util::noncopyable {
+    using block_type = bstring;
+
     data_block() = default;
-    data_block(bstring&& block) noexcept
-      : block(std::move(block)),
-        begin(this->block.c_str()) {
+    data_block(block_type&& block) noexcept
+      : block{std::move(block)},
+        begin{this->block.c_str()} {
   #ifdef IRESEARCH_DEBUG
       end = begin + this->block.size();
       assert_block_boundaries();
@@ -1412,7 +1414,7 @@ class block_iterator : util::noncopyable {
 #endif
     }
 
-    bstring block;
+    block_type block;
     const byte_type* begin{block.c_str()};
   #ifdef IRESEARCH_DEBUG
     const byte_type* end{begin};
@@ -1443,7 +1445,6 @@ class block_iterator : util::noncopyable {
   SeekResult scan_nonleaf(Reader&& reader);
   template<typename Reader>
   SeekResult scan_leaf(Reader&& reader);
-
 
   data_block header_; // suffix block header
   data_block suffix_; // suffix data block
@@ -1500,21 +1501,21 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // for non-encrypted index try direct buffer access first
   suffix_.begin = cipher ? nullptr : in.read_buffer(block_size, BufferHint::PERSISTENT);
-//  suffix_.block.clear(); FIXME
+  suffix_.block.clear();
 
   if (!suffix_.begin) {
-    string_utils::oversize(suffix_.block, block_size);
+    suffix_.block.resize(block_size);
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(suffix_.block[0]), block_size);
+    const auto read = in.read_bytes(suffix_.block.data(), block_size);
     assert(read == block_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(suffix_.block[0]), block_size);
+    in.read_bytes(suffix_.block.data(), block_size);
 #endif // IRESEARCH_DEBUG
     suffix_.begin = suffix_.block.c_str();
 
     if (cipher) {
-      cipher->decrypt(cur_start_, &(suffix_.block[0]), block_size);
+      cipher->decrypt(cur_start_, suffix_.block.data(), block_size);
     }
   }
 #ifdef IRESEARCH_DEBUG
@@ -1527,16 +1528,16 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // try direct buffer access first
   stats_.begin = in.read_buffer(block_size, BufferHint::PERSISTENT);
-//  stats_.block.clear(); FIXME
+  stats_.block.clear();
 
   if (!stats_.begin) {
-    string_utils::oversize(stats_.block, block_size);
+    stats_.block.resize(block_size);
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(stats_.block[0]), block_size);
+    const auto read = in.read_bytes(stats_.block.data(), block_size);
     assert(read == block_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(stats_.block[0]), block_size);
+    in.read_bytes(stats_.block.data(), block_size);
 #endif // IRESEARCH_DEBUG
     stats_.begin = stats_.block.c_str();
   }
@@ -1901,7 +1902,7 @@ class term_iterator_base : public seek_term_iterator {
 #endif // IRESEARCH_DEBUG
 
     std::get<version10::term_meta>(attrs_) = state.meta;
-    term_ = term;
+    term_.assign(term.c_str(), term.size());
 
     return true;
   }
@@ -2254,7 +2255,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 
     const auto& arc = matcher_.Value();
 
-    term_ += byte_type(arc.ilabel); // aggregate arc label
+    term_.append(byte_type(arc.ilabel)); // aggregate arc label
     weight_.PushBack(arc.weight.begin(), arc.weight.end()); // aggregate arc weight
     ++prefix;
 

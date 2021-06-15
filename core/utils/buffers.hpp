@@ -27,89 +27,10 @@
 #include "string.hpp"
 #include "utils/math_utils.hpp"
 
-// -------------------------------------------------------------------
-// @brief data buffers used internally and not exported via public API
-// -------------------------------------------------------------------
-
 namespace iresearch {
 
-// -------------------------------------------------------------------
-// basic_allocator
-// -------------------------------------------------------------------
-
-template<
-  typename Elem,
-  typename Alloc = std::allocator <Elem>
-> class basic_allocator: compact<0, Alloc> {
- public:
-  typedef compact<0, Alloc> allocator_t;
-  typedef typename allocator_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  basic_allocator() = default;
-  basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) noexcept
-    : allocator_t(std::move(rhs)) { }
-
-  basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
-    if (this != &rhs) {
-      allocator_t::operator=(std::move(rhs));
-    }
-    return *this;
-  }
-
-  pointer allocate(size_t len) {
-    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
-    return allocator_t::get().allocate(len);
-  }
-  void deallocate(pointer ptr, size_t size) {
-    allocator_t::get().deallocate(ptr, size);
-  }
-  const typename allocator_t::type& get_allocator() const {
-    return allocator_t::get();
-  }
-};
-
-template<>
-class basic_allocator<char, std::allocator<char>>:
-  compact<0, std::allocator<char>> {
- public:
-  typedef compact<0, std::allocator<char>> allocator_t;
-  typedef allocator_t::type allocator_type;
-  typedef allocator_type::pointer pointer;
-
-  basic_allocator() = default;
-  basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) noexcept
-    : allocator_t(std::move(rhs)) { }
-
-  basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
-    if (this != &rhs) {
-      allocator_t::operator=(std::move(rhs));
-    }
-    return *this;
-  }
-
-  pointer allocate(size_t size) {
-    auto ptr = allocator_t::get().allocate(size + 1);
-    ptr[size] = 0;
-    return ptr;
-  }
-  void deallocate(pointer ptr, size_t size) {
-    allocator_t::get().deallocate(ptr, size + 1);
-  }
-  const allocator_t::type& get_allocator() const { return allocator_t::get(); }
-};
-
-// -------------------------------------------------------------------
-// basic_const_str
-// -------------------------------------------------------------------
-
 inline size_t oversize(
-    size_t chunk_size, size_t size, size_t min_size
-) noexcept {
+    size_t chunk_size, size_t size, size_t min_size) noexcept {
   assert(chunk_size);
   assert(min_size > size);
 
@@ -126,49 +47,55 @@ template<
   typename Elem,
   typename Traits = std::char_traits<Elem>,
   typename Alloc = std::allocator<Elem>
-> class basic_str_builder: public basic_string_ref<Elem, Traits> {
+> class basic_str_builder : public basic_string_ref<Elem, Traits>,
+                            private Alloc {
  public:
   typedef basic_string_ref<Elem, Traits> ref_type;
-  typedef basic_allocator <Elem, Alloc> allocator_type;
+  typedef Alloc allocator_type;
   typedef typename ref_type::traits_type traits_type;
   typedef typename traits_type::char_type char_type;
 
-  static const size_t DEF_CAPACITY = 32;
-  static const size_t DEF_ALIGN = 8;
+  static constexpr size_t DEF_ALIGN = 8;
 
   explicit basic_str_builder(
-    size_t capacity = DEF_CAPACITY, const allocator_type& alloc = allocator_type()
-  ): rep_(capacity, alloc) {
+      const allocator_type& alloc = allocator_type())
+    : Alloc{alloc},
+      capacity_{0} {
+  }
+
+  explicit basic_str_builder(
+      size_t capacity,
+      const allocator_type& alloc = allocator_type())
+    : Alloc{alloc},
+      capacity_{capacity} {
     if (capacity) {
       this->data_ = allocator().allocate(capacity);
     }
   }
 
-  explicit basic_str_builder(
-    const ref_type& ref, const allocator_type& alloc = allocator_type()
-  ): rep_(0, alloc) {
-    *this += ref;
-  }
-
   basic_str_builder(basic_str_builder&& rhs) noexcept
-    : ref_type(rhs.data_, rhs.size_), rep_(std::move(rhs.rep_)) {
+    : ref_type{rhs.data_, rhs.size_},
+      allocator_type{std::move(static_cast<allocator_type&&>(rhs))},
+      capacity_{rhs.capacity_} {
     rhs.data_ = nullptr;
     rhs.size_ = 0;
+    rhs.capacity_ = 0;
   }
 
-  basic_str_builder(const basic_str_builder& rhs):
-    ref_type(nullptr, rhs.size_), rep_(rhs.rep_) {
-    if (capacity()) {
-      this->data_ = allocator().allocate(capacity());
+  basic_str_builder(const basic_str_builder& rhs)
+    : ref_type{nullptr, rhs.size_},
+      allocator_type{static_cast<const allocator_type&>(rhs)} {
+    if (capacity_) {
+      this->data_ = allocator().allocate(capacity_);
       traits_type::copy(data(), rhs.data_, rhs.size_);
     }
   }
 
   basic_str_builder& operator=(const basic_str_builder& rhs) {
     if (this != &rhs) {
-      oversize(rhs.capacity());
+      reserve(rhs.capacity_);
 
-      if (capacity()) {
+      if (capacity_) {
         traits_type::copy(data(), rhs.data_, this->size_ = rhs.size_);
       }
     }
@@ -182,7 +109,9 @@ template<
       rhs.data_ = nullptr;
       this->size_ = rhs.size_;
       rhs.size_ = 0;
-      rep_ = std::move(rhs.rep_);
+      this->capacity_ = rhs.capacity_;
+      rhs.capacity_ = 0;
+      static_cast<allocator_type&&>(*this) = static_cast<allocator_type&&>(rhs);
     }
 
     return *this;
@@ -192,106 +121,64 @@ template<
     destroy();
   }
 
-  char_type& at(size_t i) {
-    assert(i < capacity());
-    return data()[i];
+  char_type* data() noexcept {
+    return const_cast<char_type*>(this->data_);
   }
 
-  char_type& operator[](size_t i) {
-    assert(i < capacity());
-    return data()[i];
-  }
-
-  const char_type& operator[](size_t i) const {
-    assert(i < capacity());
-    return this->data_[i];
-  }
-
-  char_type* data() { return const_cast<char_type*>(this->data_); }
-  size_t capacity() const { return rep_.first(); }
-  size_t remain() const { return capacity() - this->size(); }
-
-  void reset(size_t size = 0) {
-    assert(size <= capacity());
+  void reset(size_t size) noexcept {
+    assert(size <= capacity_);
     this->size_ = size;
   }
 
-  basic_str_builder& append(
-    const char_type* b, size_t size, size_t align = DEF_ALIGN
-  ) {
-    oversize(this->size() + size, align);
-    traits_type::copy(data() + this->size(), b, size);
-    this->size_ += size;
-    return *this;
+  void reset() noexcept {
+    this->size_ = 0;
   }
 
-  basic_str_builder& append(
-    const basic_string_ref<char_type>& ref, size_t align = DEF_ALIGN
-  ) {
-    return append(ref.c_str(), ref.size(), align);
+  void append(char_type b, size_t chunk = DEF_ALIGN) {
+    if (this->size() == capacity_) {
+      reserve<true>(irs::oversize(chunk, capacity_, this->size() + 1));
+    }
+    data()[this->size_++] = b;
   }
 
-  basic_str_builder& append(char_type b, size_t align = DEF_ALIGN) {
-    oversize(this->size() + 1, align);
-    data()[this->size()] = b;
-    ++this->size_;
-    return *this;
+  void assign(const char_type* b, size_t size, size_t chunk = DEF_ALIGN) {
+    oversize<false>(this->size() + size, chunk);
+    traits_type::copy(data(), b, size);
+    this->size_ = size;
   }
 
-  inline basic_str_builder& operator=(const basic_string_ref<char_type>& ref) {
-    reset();
-    return (*this += ref);
-  }
-
-  inline basic_str_builder& operator+=(char_type b) {
-    return append(b);
-  }
-
-  inline basic_str_builder& operator+=(
-    const basic_string_ref<char_type>& ref
-  ) {
-    return append(ref.c_str(), ref.size());
-  }
-
-  inline void oversize(size_t minsize, size_t chunksize = DEF_ALIGN) {
-    if (minsize > capacity()) {
-      reserve(irs::oversize(chunksize, capacity(), minsize));
+  template<bool PreserveContent = true>
+  void oversize(size_t minsize, size_t chunk = DEF_ALIGN) {
+    if (minsize > capacity_) {
+      reserve<PreserveContent>(irs::oversize(chunk, capacity_, minsize));
     }
   }
 
-  inline size_t max_size() const noexcept {
-    const size_t size = allocator().max_size();
-    return (size <= 1U ? 1U : size - 1);
-  }
-
+  template<bool PreserveContent = true>
   void reserve(size_t size) {
-    assert(this->capacity() >= this->size());
+    assert(this->capacity_ >= this->size());
 
-    if (size > capacity()) {
+    if (size > capacity_) {
       char_type* newdata = allocator().allocate(size);
-      traits_type::copy(newdata, this->data_, this->size());
+      if constexpr (PreserveContent) {
+        traits_type::copy(newdata, this->data_, this->size());
+      }
       destroy();
       this->data_ = newdata;
-      capacity(size);
+      this->capacity_ = size;
     }
   }
 
  private:
-  void capacity(size_t capacity) { rep_.first() = capacity; }
-
-  inline const allocator_type& allocator() const {
-    return rep_.second();
+  allocator_type& allocator() noexcept {
+    return static_cast<allocator_type&>(*this);
   }
 
-  inline allocator_type& allocator() {
-    return rep_.second();
+  void destroy() noexcept {
+    allocator().deallocate(data(), capacity_);
   }
 
-  inline void destroy() noexcept {
-    allocator().deallocate(data(), capacity());
-  }
-
-  compact_pair<size_t, allocator_type> rep_;
+  size_t capacity_;
 };
 
 typedef basic_str_builder<byte_type> bytes_builder;
