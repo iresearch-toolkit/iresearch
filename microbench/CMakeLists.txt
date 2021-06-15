@@ -9,8 +9,8 @@ if (NOT TARGET benchmark)
     set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "" FORCE)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "" FORCE)
     add_subdirectory(${MICROBENCH_ROOT}
-                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-microbench.dir
-                    EXCLUDE_FROM_ALL)
+                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-microbench.dir
+                     EXCLUDE_FROM_ALL)
   else()
    find_package(benchmark REQUIRED)
   endif()
