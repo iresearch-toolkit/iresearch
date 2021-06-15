@@ -1,6 +1,10 @@
 master
 -------------------------
 
+* Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
+
+* Reduce number of heap allocations in `numeric_token_stream`.
+
 * Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
 
 * Add new `1_4` segment format utilizing new columnstore implementation.
