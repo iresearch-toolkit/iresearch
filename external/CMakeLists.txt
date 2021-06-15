@@ -1,9 +1,11 @@
 ### Suppressing all warnings from external libs
-if (MSVC)
-  add_compile_options(/W0)
-else ()
-  add_compile_options(-Wno-all)
-endif ()
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  if (MSVC)
+    add_compile_options(/W0)
+  else ()
+    add_compile_options(-Wno-all)
+  endif ()
+endif()
 
 
 ################################################################################

@@ -281,15 +281,20 @@ include_directories(
   ${IResearch_INCLUDE_DIR}
 )
 
-include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
-  ${EXTERNAL_INCLUDE_DIRS}
-  $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
-  ${BFD_INCLUDE_DIR}
-  ${Lz4_INCLUDE_DIR}
-  ${Unwind_INCLUDE_DIR}
-  ${FROZEN_INCLUDE_DIR}
-)
+set(IRESEARCH_EXTERNAL_INCLUDES
+    ${EXTERNAL_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+    ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
+    ${BFD_INCLUDE_DIR}
+    ${Lz4_INCLUDE_DIR}
+    ${Unwind_INCLUDE_DIR}
+    ${FROZEN_INCLUDE_DIR})
+
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  include_directories(SYSTEM  ${IRESEARCH_EXTERNAL_INCLUDES})
+else ()
+  include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
+endif ()
 
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED

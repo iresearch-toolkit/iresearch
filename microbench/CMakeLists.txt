@@ -2,7 +2,7 @@ set (IResearchBenchmark_TARGET_NAME "iresearch-microbench" CACHE INTERNAL "")
 
 if (NOT TARGET benchmark)
   if ("${MICROBENCH_ROOT}" STREQUAL "")
-    set(VPACK_ROOT "$ENV{MICROBENCH_ROOT}")
+    set(MICROBENCH_ROOT "$ENV{MICROBENCH_ROOT}")
   endif()
 
   if (NOT ("${MICROBENCH_ROOT}" STREQUAL ""))
