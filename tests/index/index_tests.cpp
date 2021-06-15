@@ -13814,7 +13814,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   };
 
   struct empty_field {
-    std::string name() const { return "test"; };
+    irs::string_ref name() const { return "test"; };
     irs::flags features() const {
       return { irs::type<irs::position>::get(),
                irs::type<irs::frequency>::get(),
@@ -13840,7 +13840,8 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     // we don't write default norms
     {
       const tests::templates::string_field field(
-        empty.name(), "bar", empty.features());
+        static_cast<std::string>(empty.name()),
+        "bar", empty.features());
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13848,7 +13849,8 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
     {
       const tests::templates::string_field field(
-        empty.name(), "bar", empty.features());
+        static_cast<std::string>(empty.name()),
+        "bar", empty.features());
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
