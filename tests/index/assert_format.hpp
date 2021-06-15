@@ -237,7 +237,7 @@ class term_reader : public irs::term_reader {
     if (meta().features.check<irs::frequency>()) {
       for (auto& term : data.terms) {
         for (auto& p : term.postings) {
-          freq_.value += p.positions().size();
+          freq_.value += static_cast<uint32_t>(p.positions().size());
         }
       }
       pfreq_ = &freq_;

@@ -1,3 +1,13 @@
+### Suppressing all warnings from external libs
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  if (MSVC)
+    add_compile_options(/W0)
+  else ()
+    add_compile_options(-Wno-all)
+  endif ()
+endif()
+
+
 ################################################################################
 ### CmdLine library
 ################################################################################
@@ -53,31 +63,14 @@ target_compile_definitions(
 
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
-  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
   )
 else()
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-Wno-all"
     PRIVATE "-fPIC"
   )
 endif()
