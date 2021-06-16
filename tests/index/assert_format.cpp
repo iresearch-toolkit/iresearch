@@ -348,7 +348,7 @@ class doc_iterator : public irs::doc_iterator {
 
     prev_ = next_, ++next_;
     doc_.value = prev_->id();
-    freq_.value = prev_->positions().size();
+    freq_.value = static_cast<uint32_t>(prev_->positions().size());
     pos_.clear();
 
     return true;

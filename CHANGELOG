@@ -1,5 +1,6 @@
 master
 -------------------------
+* Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.
 
 * Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
 
