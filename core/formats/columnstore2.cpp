@@ -560,15 +560,16 @@ struct mask_column final : public column_base {
       index_input& /*index_in*/,
       const index_input& data_in,
       compression::decompressor::ptr&& /*inflater*/,
-      encryption::stream* /*cipher*/) {
-    return memory::make_unique<mask_column>(hdr, std::move(index), data_in);
+      encryption::stream* cipher) {
+    return memory::make_unique<mask_column>(hdr, std::move(index), data_in, cipher);
   }
 
   mask_column(
       const column_header& hdr,
       column_index&& index,
-      const index_input& data_in)
-    : column_base{hdr, std::move(index), data_in, nullptr} {
+      const index_input& data_in,
+      encryption::stream* cipher)
+    : column_base{hdr, std::move(index), data_in, cipher} {
     assert(ColumnType::MASK == header().type);
   }
 

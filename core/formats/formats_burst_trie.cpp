@@ -81,7 +81,6 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
-#include "utils/buffers.hpp"
 #include "utils/encryption.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
@@ -105,6 +104,94 @@
 namespace  {
 
 using namespace irs;
+
+template<
+  typename Elem,
+  typename Traits = std::char_traits<Elem>,
+  typename Alloc = std::allocator<Elem>
+> class basic_str_builder : public basic_string_ref<Elem, Traits>,
+                            private Alloc,
+                            private util::noncopyable {
+ public:
+  typedef basic_string_ref<Elem, Traits> ref_type;
+  typedef Alloc allocator_type;
+  typedef typename ref_type::traits_type traits_type;
+  typedef typename traits_type::char_type char_type;
+
+  static constexpr size_t DEF_ALIGN = 8;
+
+  explicit basic_str_builder(
+      const allocator_type& alloc = allocator_type())
+    : Alloc{alloc},
+      capacity_{0} {
+  }
+
+  virtual ~basic_str_builder() {
+    destroy();
+  }
+
+  char_type* data() noexcept {
+    return const_cast<char_type*>(this->data_);
+  }
+
+  void reset(size_t size) noexcept {
+    assert(size <= capacity_);
+    this->size_ = size;
+  }
+
+  void reset() noexcept {
+    this->size_ = 0;
+  }
+
+  void append(char_type b, size_t chunk = DEF_ALIGN) {
+    if (this->size_ == capacity_) {
+      reserve<true>(string_utils::oversize(chunk, capacity_, this->size_ + 1));
+    }
+    assert(this->size_ < capacity_);
+    data()[this->size_++] = b;
+  }
+
+  void assign(const char_type* b, size_t size, size_t chunk = DEF_ALIGN) {
+    oversize<false>(this->size() + size, chunk);
+    traits_type::copy(data(), b, size);
+    this->size_ = size;
+  }
+
+  template<bool PreserveContent = true>
+  void oversize(size_t minsize, size_t chunk = DEF_ALIGN) {
+    if (minsize > capacity_) {
+      reserve<PreserveContent>(string_utils::oversize(chunk, capacity_, minsize));
+    }
+  }
+
+  template<bool PreserveContent = true>
+  void reserve(size_t size) {
+    assert(this->capacity_ >= this->size());
+
+    if (size > capacity_) {
+      char_type* newdata = allocator().allocate(size);
+      if constexpr (PreserveContent) {
+        traits_type::copy(newdata, this->data_, this->size());
+      }
+      destroy();
+      this->data_ = newdata;
+      this->capacity_ = size;
+    }
+  }
+
+ private:
+  allocator_type& allocator() noexcept {
+    return static_cast<allocator_type&>(*this);
+  }
+
+  void destroy() noexcept {
+    allocator().deallocate(data(), capacity_);
+  }
+
+  size_t capacity_;
+}; // basic_str_builder
+
+using bytes_builder = basic_str_builder<byte_type>;
 
 template<typename Char>
 class volatile_ref : util::noncopyable {
@@ -1306,10 +1393,13 @@ class block_iterator : util::noncopyable {
       if constexpr (ReadHeader) {
         vskip<uint64_t>(header_.begin);
         cur_meta_ = *header_.begin++;
-        next_label_ = *header_.begin++;
+        if (sub_count_) {
+          next_label_ = *header_.begin++;
+        }
       }
     }
     dirty_ = true;
+    header_.assert_block_boundaries();
     return true;
   }
 
