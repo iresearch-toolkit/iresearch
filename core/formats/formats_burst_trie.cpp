@@ -1393,10 +1393,13 @@ class block_iterator : util::noncopyable {
       if constexpr (ReadHeader) {
         vskip<uint64_t>(header_.begin);
         cur_meta_ = *header_.begin++;
-        next_label_ = *header_.begin++;
+        if (sub_count_) {
+          next_label_ = *header_.begin++;
+        }
       }
     }
     dirty_ = true;
+    header_.assert_block_boundaries();
     return true;
   }
 
