@@ -134,18 +134,19 @@ bool all_equal(const T* begin, size_t size) noexcept {
 
   const auto end = begin + size;
 
-  const auto value = Set(simd_tag, *begin);
+  const auto value = *begin;
+  const auto vvalue = Set(simd_tag, value);
 
   for (size_t steps = size / (Unroll*Step); steps; --steps) {
     for (size_t j = 0; j < Unroll; ++j) {
-      if (!AllTrue(value == simd_helper::load(simd_tag, begin + j*Step))) {
+      if (!AllTrue(vvalue == simd_helper::load(simd_tag, begin + j*Step))) {
         return false;
       }
     }
     begin += Unroll*Step;
   }
 
-  for (const auto value = *begin; begin != end; ++begin) {
+  for (; begin != end; ++begin) {
     if (value != *begin) {
       return false;
     }
