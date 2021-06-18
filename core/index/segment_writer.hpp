@@ -69,16 +69,6 @@ enum class Action {
 
 ENABLE_BITMASK_ENUM(Action);
 
-template<Action action>
-struct action_helper {
-  template<typename Field>
-  static bool insert(segment_writer& /*writer*/, Field& /*field*/) {
-    // unsupported action
-    assert(false);
-    return false;
-  }
-}; // action_helper
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for an index writer over a directory
 ///        an object that represents a single ongoing transaction
@@ -86,6 +76,13 @@ struct action_helper {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API segment_writer: util::noncopyable {
  public:
+  struct update_context {
+    size_t generation;
+    size_t update_id;
+  };
+
+  using update_contexts = std::vector<update_context>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @class document
   /// @brief Facade for the insertion logic
@@ -96,11 +93,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @brief constructor
     ////////////////////////////////////////////////////////////////////////////
     explicit document(segment_writer& writer) noexcept: writer_(writer) {}
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief destructor
-    ////////////////////////////////////////////////////////////////////////////
-    ~document() = default;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @return current state of the object
@@ -117,8 +109,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
     template<Action action, typename Field>
-    bool insert(Field& field) const {
-      return writer_.insert<action>(field);
+    bool insert(Field&& field) const {
+      return writer_.insert<action>(std::forward<Field>(field));
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -162,13 +154,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     const column_info_provider_t& column_info,
     const comparer* comparator);
 
-  struct update_context {
-    size_t generation;
-    size_t update_id;
-  };
-
-  typedef std::vector<update_context> update_contexts;
-
   // begin document-write transaction
   // @return doc_id_t as per type_limits<type_t::doc_id_t>
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
@@ -182,8 +167,32 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   template<Action action, typename Field>
-  bool insert(Field& field) {
-    return valid_ = valid_ && action_helper<action>::insert(*this, field);
+  bool insert(Field&& field) {
+    if (IRS_LIKELY(valid_)) {
+      if constexpr (Action::INDEX == action) {
+        return index(std::forward<Field>(field));
+      }
+
+      if constexpr (Action::STORE == action) {
+        return store(std::forward<Field>(field));
+      }
+
+      if constexpr (Action::STORE_SORTED == action) {
+        return store_sorted(std::forward<Field>(field));
+      }
+
+      if constexpr ((Action::INDEX | Action::STORE) == action) {
+        return index_and_store<false>(std::forward<Field>(field));
+      }
+
+      if constexpr ((Action::INDEX | Action::STORE_SORTED) == action) {
+        return index_and_store<true>(std::forward<Field>(field));
+      }
+
+      assert(false); // unsupported action
+    }
+
+    return false;
   }
 
   // commit document-write transaction
@@ -227,9 +236,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   uint64_t tick() const noexcept { return tick_; }
 
  private:
-  template<Action action>
-  friend struct action_helper;
-
   struct stored_column : util::noncopyable {
     struct hash {
       using is_transparent = void;
@@ -339,7 +345,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   template<typename Field>
-  bool store_worker(Field& field) {
+  bool store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
     const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
@@ -351,7 +357,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   template<typename Field>
-  bool store_sorted_worker(Field& field) {
+  bool store_sorted(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
@@ -360,9 +366,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return store_sorted(doc_id, field);
   }
 
-  // adds document field
   template<typename Field>
-  bool index_worker(Field& field) {
+  bool index(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
     const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
@@ -377,7 +382,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }
 
   template<bool Sorted, typename Field>
-  bool index_and_store_worker(Field& field) {
+  bool index_and_store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
     const auto name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
@@ -404,8 +409,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // returns stream for storing attributes
   columnstore_writer::column_output& stream(
     const hashed_string_ref& name,
-    const doc_id_t doc
-  );
+    const doc_id_t doc);
 
   void finish(); // finishes document
 
@@ -432,46 +436,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool valid_{ true }; // current state
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // segment_writer
-
-template<>
-struct action_helper<Action::INDEX> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.index_worker(field);
-  }
-}; // action_helper
-
-template<>
-struct action_helper<Action::STORE> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.store_worker(field);
-  }
-}; // action_helper
-
-template<>
-struct action_helper<Action::STORE_SORTED> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.store_sorted_worker(field);
-  }
-}; // action_helper
-
-template<>
-struct action_helper<Action::INDEX | Action::STORE> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.index_and_store_worker<false>(field);
-  }
-}; // action_helper
-
-template<>
-struct action_helper<Action::INDEX | Action::STORE_SORTED> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.index_and_store_worker<true>(field);
-  }
-}; // action_helper
 
 }
 
