@@ -62,6 +62,7 @@ class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
+    const flags& features,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
     bool random_access);
@@ -80,7 +81,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     return !doc_limits::valid(last_doc_);
   }
 
-  bool invert(token_stream& tokens, const flags& features, doc_id_t id);
+  bool invert(token_stream& tokens, doc_id_t id);
 
   bool prox_random_access() const noexcept {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
@@ -146,7 +147,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return comparator_;
   }
 
-  field_data* emplace(const hashed_string_ref& name);
+  field_data* emplace(const hashed_string_ref& name, const flags& features);
 
   field_data* field(size_t idx) noexcept {
     assert(idx < fields_.size());

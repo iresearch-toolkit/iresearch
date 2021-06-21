@@ -732,10 +732,11 @@ class term_reader final : public irs::basic_term_reader,
 
 field_data::field_data(
     const string_ref& name,
+    const flags& features,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
     bool random_access)
-  : meta_(name, flags::empty_instance()),
+  : meta_(name, features),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
@@ -1031,14 +1032,9 @@ void field_data::add_term_random_access(
   }
 }
 
-bool field_data::invert(
-    token_stream& stream, 
-    const flags& features, 
-    doc_id_t id) {
-  assert(id < doc_limits::eof()); // 0-based document id
+bool field_data::invert(token_stream& stream,  doc_id_t id) {
   REGISTER_TIMER_DETAILED();
-
-  meta_.features |= features; // accumulate field features
+  assert(id < doc_limits::eof()); // 0-based document id
 
   const auto* term = get<term_attribute>(stream);
   const auto* inc = get<increment>(stream);
@@ -1048,16 +1044,14 @@ bool field_data::invert(
   if (!inc) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<increment>::name().c_str()
-    );
+      meta_.name.c_str(), type<increment>::name().c_str());
     return false;
   }
 
   if (!term) {
     IR_FRMT_ERROR(
       "field '%s' missing required token_stream attribute '%s'",
-      meta_.name.c_str(), type<term_attribute>::name().c_str()
-    );
+      meta_.name.c_str(), type<term_attribute>::name().c_str());
     return false;
   }
 
@@ -1075,12 +1069,14 @@ bool field_data::invert(
     pos_ += inc->value;
 
     if (pos_ < last_pos_) {
-      IR_FRMT_ERROR("invalid position %u < %u in field '%s'", pos_, last_pos_, meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u < %u in field '%s'",
+                    pos_, last_pos_, meta_.name.c_str());
       return false;
     }
 
     if (pos_ >= pos_limits::eof()) {
-      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'", pos_, pos_limits::eof(), meta_.name.c_str());
+      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'",
+                    pos_, pos_limits::eof(), meta_.name.c_str());
       return false;
     }
 
@@ -1093,7 +1089,8 @@ bool field_data::invert(
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'", start_offset, end_offset, meta_.name.c_str());
+        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'",
+                      start_offset, end_offset, meta_.name.c_str());
         return false;
       }
 
@@ -1115,8 +1112,7 @@ bool field_data::invert(
     if (0 == ++len_) {
       IR_FRMT_ERROR(
         "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
-         meta_.name.c_str(), id
-      );
+         meta_.name.c_str(), id);
       return false;
     }
 
@@ -1140,7 +1136,9 @@ fields_data::fields_data(const comparer* comparator /*= nullptr*/)
     int_writer_(int_pool_.begin()) {
 }
 
-field_data* fields_data::emplace(const hashed_string_ref& name) {
+field_data* fields_data::emplace(
+    const hashed_string_ref& name,
+    const flags& features) {
   assert(fields_map_.size() == fields_.size());
 
   auto it = fields_map_.lazy_emplace(
@@ -1151,7 +1149,7 @@ field_data* fields_data::emplace(const hashed_string_ref& name) {
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, byte_writer_, int_writer_, (nullptr != comparator_));
+      fields_.emplace_back(name, features, byte_writer_, int_writer_, (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
     }

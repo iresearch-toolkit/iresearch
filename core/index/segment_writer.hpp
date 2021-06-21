@@ -404,7 +404,10 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return store(name, doc_id, field);
   }
  // returns stream for storing attributes in sorted order
-  columnstore_writer::column_output& sorted_stream(const doc_id_t doc_id);
+  columnstore_writer::column_output& sorted_stream(const doc_id_t doc_id) {
+    sort_.stream.prepare(doc_id);
+    return sort_.stream;
+  }
 
   // returns stream for storing attributes
   columnstore_writer::column_output& stream(

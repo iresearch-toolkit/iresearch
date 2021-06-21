@@ -150,14 +150,11 @@ bool segment_writer::index(
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  auto* slot = fields_.emplace(name);
-  auto& slot_features = slot->meta().features;
-
-  const bool slot_empty = slot->empty();
+  auto* slot = fields_.emplace(name, features);
+  assert(features.is_subset_of(slot->meta().features));
 
   // invert only if new field features are a subset of slot features
-  if ((slot_empty || features.is_subset_of(slot_features)) &&
-      slot->invert(tokens, slot_empty ? features : slot_features, doc)) {
+  if (slot->invert(tokens, doc)) {
     if (slot->size() && features.check<norm>()) {
       norm_fields_.insert(slot);
     }
@@ -167,11 +164,6 @@ bool segment_writer::index(
   }
 
   return false;
-}
-
-columnstore_writer::column_output& segment_writer::sorted_stream(const doc_id_t doc_id) {
-  sort_.stream.prepare(doc_id);
-  return sort_.stream;
 }
 
 columnstore_writer::column_output& segment_writer::stream(
