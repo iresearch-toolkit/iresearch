@@ -288,11 +288,7 @@ uint64 ComputeProperties(
         fsa::RangeLabel lhsRange{lhs};
         fsa::RangeLabel rhsRange{rhs};
 
-        if (lhsRange.min == rhsRange.min) {
-          return lhsRange.max < rhsRange.max;
-        } else {
-          return lhsRange.min < rhsRange.min;
-        }
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min; 
       }
     };
 
