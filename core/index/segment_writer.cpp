@@ -159,10 +159,11 @@ bool segment_writer::index(
       norm_fields_.insert(slot);
     }
 
-    fields_ += features; // accumulate segment features
+    fields_ += slot->features(); // accumulate segment features
     return true;
   }
 
+  valid_ = false;
   return false;
 }
 

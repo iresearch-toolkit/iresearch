@@ -190,6 +190,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       }
 
       assert(false); // unsupported action
+      valid_ = false;
     }
 
     return false;
@@ -310,19 +311,21 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool store_sorted(const doc_id_t doc, Writer& writer) {
     assert(doc < doc_limits::eof());
 
-    if (!fields_.comparator()) {
+    if (IRS_UNLIKELY(!fields_.comparator())) {
       // can't store sorted field without a comparator
+      valid_ = false;
       return false;
     }
 
     auto& out = sorted_stream(doc);
 
-    if (writer.write(out)) {
+    if (IRS_LIKELY(writer.write(out))) {
       return true;
     }
 
     out.reset();
 
+    valid_ = false;
     return false;
   }
 
@@ -335,12 +338,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     auto& out = stream(name, doc);
 
-    if (writer.write(out)) {
+    if (IRS_LIKELY(writer.write(out))) {
       return true;
     }
 
     out.reset();
 
+    valid_ = false;
     return false;
   }
 
@@ -393,7 +397,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    if (!index(name, doc_id, features, tokens)) {
+    if (IRS_UNLIKELY(!index(name, doc_id, features, tokens))) {
       return false; // indexing failed
     }
 

@@ -88,8 +88,7 @@ void write_prox(
     Stream& out,
     uint32_t prox,
     const irs::payload* pay,
-    flags& features
-) {
+    flags& features) {
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -128,8 +127,7 @@ FORCE_INLINE uint64_t cookie(const byte_block_pool::sliced_greedy_inserter& stre
 
 FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
     const byte_block_pool& pool,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_reader(
     pool,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -139,8 +137,7 @@ FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
 
 FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
     byte_block_pool::inserter& writer,
-    uint64_t cookie
-) noexcept {
+    uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_inserter(
     writer,
     static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -166,16 +163,16 @@ class pos_iterator final : public irs::position {
   }
 
   // reset field
-  void reset(const flags& features, const frequency& freq) {
-    assert(features.check<frequency>());
+  void reset(const features& features, const frequency& freq) {
+    assert(features.freq);
 
     freq_ = &freq;
 
-    std::get<attribute_ptr<offset>>(attrs_) = features.check<offset>()
+    std::get<attribute_ptr<offset>>(attrs_) = features.offset
       ? &offs_
       : nullptr;
 
-    std::get<attribute_ptr<payload>>(attrs_) = features.check<payload>()
+    std::get<attribute_ptr<payload>>(attrs_) = features.payload
       ? &pay_
       : nullptr;
   }
@@ -260,11 +257,11 @@ class doc_iterator final : public irs::doc_iterator {
     pos = nullptr;
     has_cookie_ = false;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
+    auto& features = field.features_;
+    if (features.freq) {
       freq = &freq_;
 
-      if (features.check<position>()) {
+      if (features.position) {
         pos_.reset(features, freq_);
         pos = &pos_;
         has_cookie_ = field.prox_random_access();
@@ -386,11 +383,11 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     pfreq = nullptr;
     ppos = nullptr;
 
-    auto& features = field.meta().features;
-    if (features.check<frequency>()) {
+    auto& features = field.features_;
+    if (features.freq) {
       pfreq = &freq_;
 
-      if (features.check<position>()) {
+      if (features.position) {
         pos_.reset(features, freq_);
         ppos = &pos_;
       }
@@ -713,6 +710,24 @@ class term_reader final : public irs::basic_term_reader,
 } // detail
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           features implementation
+// -----------------------------------------------------------------------------
+
+features::features(const flags& in) noexcept
+  : freq{in.check<irs::frequency>()},
+    position{in.check<irs::position>()},
+    offset{in.check<irs::offset>()},
+    payload{in.check<irs::payload>()} {
+}
+
+void features::to_flags(flags& flags) {
+  if (freq) flags.add<irs::frequency>();
+  if (position) flags.add<irs::position>();
+  if (offset) flags.add<irs::offset>();
+  if (payload) flags.add<irs::payload>();
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                         field_data implementation
 // -----------------------------------------------------------------------------
 
@@ -741,7 +756,8 @@ field_data::field_data(
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
-    last_doc_(doc_limits::invalid()) {
+    last_doc_(doc_limits::invalid()),
+    features_(features) {
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -778,8 +794,7 @@ void field_data::new_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -790,22 +805,20 @@ void field_data::new_term(
   *int_writer_ = freq_start; // freq stream start
   *int_writer_ = prox_start; // prox stream start
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (!features_.freq) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (features_.position) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -823,10 +836,8 @@ void field_data::add_term(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (!features_.freq) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -859,13 +870,13 @@ void field_data::add_term(
     max_term_freq_ = std::max(1U, max_term_freq_);
     ++unq_term_cnt_;
 
-    if (features.check<position>()) {
+    if (features_.position) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -878,13 +889,13 @@ void field_data::add_term(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    if (features_.position) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -899,8 +910,7 @@ void field_data::new_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
+    const offset* offs) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
 
@@ -914,21 +924,19 @@ void field_data::new_term_random_access(
   *int_writer_ = cookie; // start cookie
   *int_writer_ = 0;      // last start cookie
 
-  auto& features = meta_.features;
-
   p.doc = did;
-  if (!features.check<frequency>()) {
+  if (!features_.freq) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (features.check<position>()) {
+    if (features_.position) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -948,10 +956,8 @@ void field_data::add_term_random_access(
     posting& p,
     doc_id_t did,
     const payload* pay,
-    const offset* offs
-) {
-  auto& features = meta_.features;
-  if (!features.check<frequency>()) {
+    const offset* offs) {
+  if (!features_.freq) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -986,7 +992,7 @@ void field_data::add_term_random_access(
     max_term_freq_ = std::max(1U, max_term_freq_);
     ++unq_term_cnt_;
 
-    if (features.check<position>()) {
+    if (features_.position) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
@@ -1001,7 +1007,7 @@ void field_data::add_term_random_access(
 
       write_prox(prox_out, pos_, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -1014,14 +1020,14 @@ void field_data::add_term_random_access(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     max_term_freq_ = std::max(++p.freq, max_term_freq_);
-    if (features.check<position>() ) {
+    if (features_.position) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
 
-      if (features.check<offset>()) {
+      if (features_.offset) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -1055,7 +1061,7 @@ bool field_data::invert(token_stream& stream,  doc_id_t id) {
     return false;
   }
 
-  if (meta_.features.check<offset>()) {
+  if (features_.offset) {
     offs = get<offset>(stream);
 
     if (offs) {
@@ -1163,6 +1169,7 @@ field_data* fields_data::emplace(
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
+  compiled_features_.to_flags(features_);
   state.features = &features_;
 
   // sort fields
@@ -1199,6 +1206,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   features_.clear();
+  compiled_features_ = {};
   fields_.clear();
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool

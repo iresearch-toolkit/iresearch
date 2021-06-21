@@ -58,6 +58,25 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
+struct IRESEARCH_API features {
+  features() = default;
+  explicit features(const flags& in) noexcept;
+
+  void operator+=(const features& rhs) noexcept {
+    freq |= rhs.freq;
+    position |= rhs.position;
+    offset |= rhs.offset;
+    payload |= rhs.payload;
+  }
+
+  void to_flags(flags& flags);
+
+  bool freq{};
+  bool position{};
+  bool offset{};
+  bool payload{};
+}; // features
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
@@ -87,6 +106,8 @@ class IRESEARCH_API field_data : util::noncopyable {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
+  irs::features features() const noexcept { return features_; }
+
  private:
   friend class detail::term_iterator;
   friend class detail::doc_iterator;
@@ -111,7 +132,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
-  doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
+  doc_id_t last_doc_{ doc_limits::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
   uint32_t len_; // total number of terms
@@ -120,7 +141,8 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_start_offs_;
   uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
   uint32_t unq_term_cnt_;
-};
+  irs::features features_;
+}; // field_data
 
 class IRESEARCH_API fields_data: util::noncopyable {
  private:
@@ -149,11 +171,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
   field_data* emplace(const hashed_string_ref& name, const flags& features);
 
-  field_data* field(size_t idx) noexcept {
-    assert(idx < fields_.size());
-    return &fields_[idx];
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
@@ -174,9 +191,8 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
 
   size_t size() const { return fields_.size(); }
-  fields_data& operator+=(const flags& features) {
-    features_ |= features;
-    return *this;
+  void operator+=(irs::features features) {
+    compiled_features_ += features;
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
@@ -194,9 +210,10 @@ class IRESEARCH_API fields_data: util::noncopyable {
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
   flags features_;
+  irs::features compiled_features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // fields_data
 
-}
+} // iresearch
 
 #endif
