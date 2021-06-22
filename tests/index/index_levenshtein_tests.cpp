@@ -33,8 +33,9 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
   void assert_index(const irs::index_reader& reader,
                     const irs::parametric_description& description,
-                    const irs::bytes_ref& target) {
-    auto acceptor = irs::make_levenshtein_automaton(description, target);
+                    const irs::bytes_ref& target,
+                    const irs::bytes_ref& prefix) {
+    auto acceptor = irs::make_levenshtein_automaton(description, target, prefix);
     irs::automaton_table_matcher matcher(acceptor, true);
 
     for (auto& segment : reader) {
@@ -101,11 +102,12 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);
 
+  irs::bstring prefix; // empty prefix
   for (auto& description : DESCRIPTIONS) {
     for (auto& target : TARGETS) {
       SCOPED_TRACE(testing::Message("Target: '") << target <<
                    testing::Message("', Edit distance: ") << size_t(description.max_distance()));
-      assert_index(reader, description, irs::ref_cast<irs::byte_type>(target));
+      assert_index(reader, description, irs::ref_cast<irs::byte_type>(target), irs::ref_cast<irs::byte_type>(prefix));
     }
   }
 }

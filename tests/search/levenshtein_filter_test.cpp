@@ -44,13 +44,15 @@ irs::by_edit_distance make_filter(
     const irs::string_ref term,
     irs::byte_type max_distance = 0,
     size_t max_terms = 0,
-    bool with_transpositions = false) {
+    bool with_transpositions = false,
+    size_t prefix_length = 0) {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
   q.mutable_options()->max_distance = max_distance;
   q.mutable_options()->max_terms = max_terms;
   q.mutable_options()->with_transpositions = with_transpositions;
+  q.mutable_options()->prefix_length = prefix_length;
   return q;
 }
 

@@ -61,6 +61,11 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   bool with_transpositions{false};
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief compute levenshtein without prefix
+  //////////////////////////////////////////////////////////////////////////////
+  size_t prefix_length{0};
+
   bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
     return term == rhs.term &&
       max_distance == rhs.max_distance &&
@@ -115,7 +120,8 @@ class IRESEARCH_API by_edit_distance final
     size_t terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
-    bool with_transpositions);
+    bool with_transpositions,
+    size_t prefix_length);
 
   static field_visitor visitor(
     const options_type::filter_options& options);
@@ -127,10 +133,11 @@ class IRESEARCH_API by_edit_distance final
       const order::prepared& order,
       boost_t boost,
       const attribute_provider* /*ctx*/) const override {
+    
     return prepare(index, order, this->boost()*boost,
                    field(), options().term, options().max_terms,
                    options().max_distance, options().provider,
-                   options().with_transpositions);
+                   options().with_transpositions, options().prefix_length);
   }
 }; // by_edit_distance
 

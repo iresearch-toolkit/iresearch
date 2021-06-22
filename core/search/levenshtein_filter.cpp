@@ -187,9 +187,10 @@ bool collect_terms(
     const index_reader& index,
     const string_ref& field,
     const bytes_ref& term,
+    const bytes_ref& prefix,
     const parametric_description& d,
     Collector& collector) {
-  const auto acceptor = make_levenshtein_automaton(d, term);
+  const auto acceptor = make_levenshtein_automaton(d, term, prefix);
 
   if (!validate(acceptor)) {
     return false;
@@ -218,6 +219,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     boost_t boost,
     const string_ref& field,
     const bytes_ref& term,
+    const bytes_ref& prefix,
     size_t terms_limit,
     const parametric_description& d) {
   field_collectors field_stats(order);
@@ -228,13 +230,13 @@ filter::prepared::ptr prepare_levenshtein_filter(
     all_terms_collector<decltype(states)> term_collector(states, field_stats, term_stats);
     term_collector.stat_index(0); // aggregate stats from different terms
 
-    if (!collect_terms(index, field, term, d, term_collector)) {
+    if (!collect_terms(index, field, term, prefix, d, term_collector)) {
       return filter::prepared::empty();
     }
   } else {
     top_terms_collector term_collector(terms_limit, field_stats);
 
-    if (!collect_terms(index, field, term, d, term_collector)) {
+    if (!collect_terms(index, field, term, prefix, d, term_collector)) {
       return filter::prepared::empty();
     }
 
@@ -282,8 +284,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     },
     [&opts](const parametric_description& d) -> field_visitor {
       struct automaton_context : util::noncopyable {
-        automaton_context(const parametric_description& d, const bytes_ref& term)
-          : acceptor(make_levenshtein_automaton(d, term)),
+        automaton_context(const parametric_description& d, const bytes_ref& term, const bytes_ref& prefix)
+          : acceptor(make_levenshtein_automaton(d, term, prefix)),
             matcher(make_automaton_matcher(acceptor)) {
         }
 
@@ -291,8 +293,9 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         automaton_table_matcher matcher;
       };
 
+      irs::bstring prefix(opts.term.data() + opts.prefix_length, opts.term.size() - opts.prefix_length);
       // FIXME
-      auto ctx = memory::make_shared<automaton_context>(d, opts.term);
+      auto ctx = memory::make_shared<automaton_context>(d, opts.term, prefix);
 
       if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&){};
@@ -321,7 +324,9 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     size_t scored_terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
-    bool with_transpositions) {
+    bool with_transpositions,
+    size_t prefix_length) {
+  irs::bstring prefix(term.c_str() + prefix_length, term.size() - prefix_length);
   return executeLevenshtein(
     max_distance, provider, with_transpositions,
     []() -> filter::prepared::ptr {
@@ -330,9 +335,9 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     [&index, &order, boost, &field, &term]() -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
-    [&field, &term, scored_terms_limit, &index, &order, boost](
+    [&field, &term, &prefix, scored_terms_limit, &index, &order, boost](
         const parametric_description& d) -> filter::prepared::ptr {
-      return prepare_levenshtein_filter(index, order, boost, field, term, scored_terms_limit, d);
+      return prepare_levenshtein_filter(index, order, boost, field, term, prefix, scored_terms_limit, d);
     }
   );
 }

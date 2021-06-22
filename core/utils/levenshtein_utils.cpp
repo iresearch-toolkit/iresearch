@@ -582,7 +582,8 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
-    const bytes_ref& target) {
+    const bytes_ref& target,
+    const bytes_ref& prefix) {
   assert(description);
 
   struct state {
@@ -596,7 +597,8 @@ automaton make_levenshtein_automaton(
   };
 
   size_t utf8_size;
-  const auto alphabet = make_alphabet(target, utf8_size);
+  irs::bytes_ref new_target(target.c_str() + prefix.size(), target.size() - prefix.size());
+  const auto alphabet = make_alphabet(new_target, utf8_size);
   const auto num_offsets = 1 + utf8_size;
   const uint64_t mask = (UINT64_C(1) << description.chi_size()) - 1;
 
@@ -613,18 +615,34 @@ automaton make_levenshtein_automaton(
   UNUSED(invalid_state);
 
   // initial state
-  a.SetStart(a.AddState());
+  auto start_state = a.AddState();
+  a.SetStart(start_state);
+
+  if (prefix.size() > 0) {
+    // add prefix to automaton
+
+    auto from = start_state;
+    decltype(from) to;
+    for(const auto& byte : prefix) {
+      std::string label;
+      label += byte;
+      to = a.AddState();
+      irs::utf8_emplace_arc(a, from, irs::ref_cast<irs::byte_type>(label), to);
+      from = to;
+    }
+    start_state = to;
+  }
 
   // check if start state is final
   const auto distance = description.distance(1, utf8_size);
 
   if (distance <= description.max_distance()) {
-    a.SetFinal(a.Start(), {true, distance});
+    a.SetFinal(start_state, {true, distance});
   }
 
   // state stack
   std::vector<state> stack;
-  stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
+  stack.emplace_back(0, 1, start_state);  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
   arcs.resize(utf8_size); // allocate space for max possible number of arcs

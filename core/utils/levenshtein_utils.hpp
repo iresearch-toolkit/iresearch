@@ -244,7 +244,8 @@ IRESEARCH_API parametric_description read(data_input& in);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton make_levenshtein_automaton(
   const parametric_description& description,
-  const bytes_ref& target);
+  const bytes_ref& target,
+  const bytes_ref& prefix);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to

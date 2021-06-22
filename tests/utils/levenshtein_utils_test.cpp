@@ -36,14 +36,16 @@ namespace {
 void assert_description(
     const irs::parametric_description& description,
     const irs::bytes_ref& target,
+    const irs::bytes_ref& prefix,
     const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>& candidates) {
-  auto a = irs::make_levenshtein_automaton(description, target);
+  auto a = irs::make_levenshtein_automaton(description, target, prefix);
 
   // ensure only invalid state has no outbound connections
   ASSERT_GE(a.NumStates(), 1);
   ASSERT_EQ(0, a.NumArcs(0));
   for (irs::automaton::StateId state = 1; state < a.NumStates(); ++state) {
-    ASSERT_GT(a.NumArcs(state), 0);
+    auto num = a.NumArcs(state);
+    ASSERT_GT(num, 0);
   }
 
   for (auto& entry : candidates) {
@@ -82,7 +84,8 @@ void assert_description(
     }
 
     const auto state = irs::accept(a, candidate);
-    ASSERT_EQ(expected_distance_automaton <= description.max_distance(), bool(state));
+    auto b_state = bool(state);
+    ASSERT_EQ(expected_distance_automaton <= description.max_distance(), b_state);
     if (state) {
       // every final state contains valid edit distance
       ASSERT_EQ(expected_distance_automaton, state.Payload());
@@ -197,6 +200,7 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -209,6 +213,36 @@ TEST(levenshtein_utils_test, test_description_0) {
         { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 1, 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"_sr), 1, 1, 2 },
         { irs::ref_cast<irs::byte_type>("\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"_sr), 1, 1, 2 },
+      }
+    );
+  }
+
+  // with prefix
+  {
+    auto description = irs::make_parametric_description(0, false);
+    ASSERT_TRUE(bool(description));
+    ASSERT_EQ(2, description.size());
+    ASSERT_EQ(1, description.chi_size());
+    ASSERT_EQ(2, description.chi_max());
+    ASSERT_EQ(0, description.max_distance());
+    ASSERT_EQ(description, irs::make_parametric_description(0, true));
+    ASSERT_EQ(description, irs::make_parametric_description(0, false));
+    assert_distance(description);
+    assert_transitions(description);
+    assert_read_write(description);
+
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>("alpha"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("alhpaebt"_sr),  1, 1, 4 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  1, 1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 1, 1, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  1, 1, 2 },
       }
     );
   }
@@ -230,6 +264,7 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -346,6 +381,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("a"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -379,6 +415,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x83"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -412,6 +449,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -447,6 +485,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -480,6 +519,21 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
+        { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("alphaebt"_sr),  2, 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphabezz"_sr), 2, 2, 2 },
+        { irs::ref_cast<irs::byte_type>("alphazez"_sr),  2, 2, 2 },
+      }
+    );
+
+    // with prefix
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>("alpha"_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphaet"_sr),   1, 1, 1 },
@@ -492,6 +546,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"_sr), 1, 1, 1 },
@@ -502,6 +557,22 @@ TEST(levenshtein_utils_test, test_description_1) {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"_sr), 1, 1, 1 },
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2, 2 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2, 3 },
+      }
+    );
+
+    // with prefix
+    assert_description(
+      description,
+      irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>("\xD1\x85"_sr),
+      {
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"_sr), 1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"_sr), 1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"_sr), 1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"_sr), 1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"_sr), 1, 1, 1 },
+        { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"_sr), 2, 2, 2 },
       }
     );
   }
@@ -521,6 +592,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -534,6 +606,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("a"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -567,6 +640,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x83"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -600,6 +674,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -635,6 +710,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -668,6 +744,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
@@ -693,6 +770,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -728,6 +806,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -752,6 +831,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
@@ -775,6 +855,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::bytes_ref::EMPTY, 1, 1, 1 },
         // 1-byte sequence
@@ -810,6 +891,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -825,6 +907,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
@@ -849,6 +932,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -866,6 +950,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
@@ -907,6 +992,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -925,6 +1011,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
@@ -950,6 +1037,7 @@ TEST(levenshtein_utils_test, test_description_4) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("alphabet"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("alphabet"_sr),  0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("alphabez"_sr),  1, 1, 1 },
@@ -970,6 +1058,7 @@ TEST(levenshtein_utils_test, test_description_4) {
     assert_description(
       description,
       irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr),
+      irs::ref_cast<irs::byte_type>(""_sr),
       {
         { irs::ref_cast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"_sr), 0, 0, 0 },
         { irs::ref_cast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"_sr), 1, 1, 1 },
