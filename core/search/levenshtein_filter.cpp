@@ -29,6 +29,7 @@
 #include "search/all_terms_collector.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
+#include "search/prefix_filter.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -54,17 +55,27 @@ FORCE_INLINE boost_t similarity(uint32_t distance, uint32_t size) noexcept {
   return 1.f - boost_t(distance) / size;
 }
 
-template<typename Invalid, typename Term, typename Levenshtein>
+template<typename Invalid, typename Term, typename Prefix, typename Levenshtein>
 inline auto executeLevenshtein(byte_type max_distance,
                                by_edit_distance_options::pdp_f provider,
                                bool with_transpositions,
-                               Invalid inv, Term t, Levenshtein lev) {
+                               const size_t prefix_length, const bytes_ref target,
+                               Invalid&& inv, Term&& t, Prefix&& p, Levenshtein&& lev) {
+
+  if (target.size() < prefix_length) {
+    return inv();
+  }
+
   if (!provider) {
     provider = &default_pdp;
   }
 
   if (0 == max_distance) {
     return t();
+  }
+
+  if (target.size() == prefix_length && prefix_length != 0) {
+    return p(target);
   }
 
   assert(provider);
@@ -74,7 +85,11 @@ inline auto executeLevenshtein(byte_type max_distance,
     return inv();
   }
 
-  return lev(d);
+
+  irs::bytes_ref prefix(target.c_str(), prefix_length);
+  irs::bytes_ref suffix(target.c_str() + prefix_length, target.size() - prefix_length);
+
+  return lev(d, prefix, suffix);
 }
 
 template<typename StatesType>
@@ -269,7 +284,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {
   return executeLevenshtein(
-    opts.max_distance, opts.provider, opts.with_transpositions,
+    opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix_length, opts.term, 
     []() -> field_visitor {
       return [](const sub_reader&, const term_reader&, filter_visitor&){};
     },
@@ -282,10 +297,23 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         return by_term::visit(segment, field, term, visitor);
       };
     },
-    [&opts](const parametric_description& d) -> field_visitor {
+    [&opts](const bytes_ref target) -> field_visitor {
+      // must copy term as it may point to temporary string
+      return [&target](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) {
+        by_prefix::visit(segment, field, target, visitor);
+      };
+    },
+    [&opts](const parametric_description& d,
+            const bytes_ref suffix,
+            const bytes_ref prefix) -> field_visitor {
       struct automaton_context : util::noncopyable {
-        automaton_context(const parametric_description& d, const bytes_ref& prefix, const bytes_ref& term)
-          : acceptor(make_levenshtein_automaton(d, prefix, term)),
+        automaton_context(const parametric_description& d,
+                          const bytes_ref& prefix,
+                          const bytes_ref& suffix)
+          : acceptor(make_levenshtein_automaton(d, prefix, suffix)),
             matcher(make_automaton_matcher(acceptor)) {
         }
 
@@ -293,11 +321,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         automaton_table_matcher matcher;
       };
 
-      irs::bytes_ref prefix(opts.term.data(), opts.prefix_length);
-      irs::bytes_ref term(opts.term.data() + opts.prefix_length, opts.term.size() - opts.prefix_length);
-
       // FIXME
-      auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
+      auto ctx = memory::make_shared<automaton_context>(d, prefix, suffix);
 
       if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&){};
@@ -328,20 +353,23 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     options_type::pdp_f provider,
     bool with_transpositions,
     size_t prefix_length) {
-  
-  irs::bytes_ref prefix(term.c_str(), prefix_length);
-  irs::bytes_ref suffix(term.c_str() + prefix_length, term.size() - prefix_length);
 
   return executeLevenshtein(
-    max_distance, provider, with_transpositions,
+    max_distance, provider, with_transpositions, prefix_length, term,
     []() -> filter::prepared::ptr {
       return prepared::empty();
     },
     [&index, &order, boost, &field, &term]() -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
-    [&field, &prefix, &suffix, scored_terms_limit, &index, &order, boost](
-        const parametric_description& d) -> filter::prepared::ptr {
+    [&index, &order, boost, &field, scored_terms_limit](
+        const bytes_ref term) -> filter::prepared::ptr {
+      return by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);
+    },
+    [&field, scored_terms_limit, &index, &order, boost](
+        const parametric_description& d,
+        const bytes_ref prefix,
+        const bytes_ref suffix) -> filter::prepared::ptr {
       return prepare_levenshtein_filter(index, order, boost, field, prefix, suffix, scored_terms_limit, d);
     }
   );
