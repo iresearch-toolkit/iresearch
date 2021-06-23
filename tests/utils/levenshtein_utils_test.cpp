@@ -47,8 +47,7 @@ void assert_description(
   ASSERT_GE(a.NumStates(), 1);
   ASSERT_EQ(0, a.NumArcs(0));
   for (irs::automaton::StateId state = 1; state < a.NumStates(); ++state) {
-    auto num = a.NumArcs(state);
-    ASSERT_GT(num, 0);
+    ASSERT_GT(a.NumArcs(state), 0);
   }
 
   for (auto& entry : candidates) {
@@ -87,8 +86,7 @@ void assert_description(
     }
 
     const auto state = irs::accept(a, candidate);
-    auto b_state = bool(state);
-    ASSERT_EQ(expected_distance_automaton <= description.max_distance(), b_state);
+    ASSERT_EQ(expected_distance_automaton <= description.max_distance(), bool(state));
     if (state) {
       // every final state contains valid edit distance
       ASSERT_EQ(expected_distance_automaton, state.Payload());

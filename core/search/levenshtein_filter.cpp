@@ -293,7 +293,6 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         automaton_table_matcher matcher;
       };
 
-
       irs::bytes_ref prefix(opts.term.data(), opts.prefix_length);
       irs::bytes_ref term(opts.term.data() + opts.prefix_length, opts.term.size() - opts.prefix_length);
 
@@ -341,7 +340,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     [&index, &order, boost, &field, &term]() -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
-    [&field, &suffix, &prefix, scored_terms_limit, &index, &order, boost](
+    [&field, &prefix, &suffix, scored_terms_limit, &index, &order, boost](
         const parametric_description& d) -> filter::prepared::ptr {
       return prepare_levenshtein_filter(index, order, boost, field, prefix, suffix, scored_terms_limit, d);
     }
