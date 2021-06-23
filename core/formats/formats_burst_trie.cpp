@@ -2784,12 +2784,12 @@ bool automaton_term_iterator<FST>::next() {
         assert(!weight.Empty() || fst_buffer::fst_byte_builder::final == fst_state);
         const auto weight_prefix = weight_.Size();
         weight_.PushBack(weight.begin(), weight.end());
-
         block_stack_.emplace_back(
           static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
           state, fst_state, data.arcs, data.narcs);
-        assert(cur_block_->block_start() == block_stack_.back().start());
         cur_block_ = &block_stack_.back();
+        
+        assert(block_stack_.size() < 2 ||  (++block_stack_.rbegin())->block_start() == cur_block_->start());
 
         if (!acceptor_->Final(state))  {
           cur_block_->scan_to_sub_block(data.arcs->min);

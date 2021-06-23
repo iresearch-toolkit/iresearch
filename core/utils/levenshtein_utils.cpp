@@ -728,7 +728,7 @@ size_t edit_distance(const parametric_description& description,
     const auto c = utf8_utils::next(rhs);
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
@@ -767,7 +767,7 @@ bool edit_distance(
     }
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
