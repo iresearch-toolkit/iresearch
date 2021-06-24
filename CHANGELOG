@@ -1,5 +1,8 @@
 master
 -------------------------
+
+* Add ability to specify target prefix for `by_edit_distance` query.
+
 * Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.
 
 * Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
