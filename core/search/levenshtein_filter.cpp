@@ -276,8 +276,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       return [](const sub_reader&, const term_reader&, filter_visitor&){};
     },
     [&opts]() -> field_visitor {
-      // must copy term as it may point to temporary string
       auto target = opts.prefix + opts.term;
+      // must copy term as it may point to temporary string
       return [target](
           const sub_reader& segment,
           const term_reader& field,

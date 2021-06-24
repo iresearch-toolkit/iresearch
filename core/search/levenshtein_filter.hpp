@@ -133,7 +133,6 @@ class IRESEARCH_API by_edit_distance final
       const order::prepared& order,
       boost_t boost,
       const attribute_provider* /*ctx*/) const override {
-    
     return prepare(index, order, this->boost()*boost,
                    field(), options().term, options().max_terms,
                    options().max_distance, options().provider,
