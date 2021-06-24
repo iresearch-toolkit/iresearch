@@ -276,9 +276,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       return [](const sub_reader&, const term_reader&, filter_visitor&){};
     },
     [&opts]() -> field_visitor {
-      auto target = opts.prefix + opts.term;
       // must copy term as it may point to temporary string
-      return [target](
+      return [target = opts.prefix + opts.term](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor){
@@ -339,9 +338,15 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       return prepared::empty();
     },
     [&index, &order, boost, &field, &prefix, &term]() -> filter::prepared::ptr {
-      bstring target(prefix.c_str(), prefix.size());
-      target += term;
-      return by_term::prepare(index, order, boost, field, target);
+      if (!prefix.empty() && !term.empty()) {
+        bstring target;
+        target.reserve(prefix.size() + term.size());
+        target += prefix;
+        target += term;
+        return by_term::prepare(index, order, boost, field, target);
+      }
+
+      return by_term::prepare(index, order, boost, field, prefix.empty() ? term : prefix);
     },
     [&field, scored_terms_limit, &index, &order, boost](
         const parametric_description& d,

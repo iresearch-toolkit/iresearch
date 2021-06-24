@@ -44,6 +44,12 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   bstring term;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief match this number of characters from the beginning of the
+  ///        target regardless of edit distance
+  //////////////////////////////////////////////////////////////////////////////
+  bstring prefix;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @returns current parametric description provider, nullptr - use default
   /// @note since creation of parametric description is expensive operation,
   ///       especially for distances > 4, expert users may want to set its own
@@ -60,11 +66,6 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   /// @brief consider transpositions as an atomic change
   //////////////////////////////////////////////////////////////////////////////
   bool with_transpositions{false};
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief match this number of characters from the beginning of the target regardless of edit distance
-  //////////////////////////////////////////////////////////////////////////////
-  bstring prefix;
 
   bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
     return term == rhs.term &&
