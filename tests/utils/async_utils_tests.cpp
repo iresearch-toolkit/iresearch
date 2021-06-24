@@ -634,10 +634,10 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
     }
-    lock.unlock();
     ASSERT_EQ(0, pool.tasks_pending());
     ASSERT_EQ(4, pool.tasks_active());
     ASSERT_EQ(4, count);
+    lock.unlock();
     {
       const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
       while (pool.tasks_active()) {
