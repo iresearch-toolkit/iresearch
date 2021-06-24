@@ -77,6 +77,17 @@ struct IRESEARCH_API features {
   bool payload{};
 }; // features
 
+struct field_stats {
+  /// @brief total number of terms
+  uint32_t len{};
+  /// @brief number of overlapped terms
+  uint32_t num_overlap{};
+  /// @brief maximum number of terms in a field across all indexed documents
+  uint32_t max_term_freq{};
+  /// @brief number of unique terms
+  uint32_t num_unique{};
+}; // field_stats
+
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
@@ -88,12 +99,9 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
-  // returns number of terms in a field within a document
-  size_t size() const noexcept { return len_; }
-
   const field_meta& meta() const noexcept { return meta_; }
 
-  data_output& norms(columnstore_writer& writer) const ;
+  data_output& norms(columnstore_writer& writer) const;
 
   // returns false if field contains indexed data
   bool empty() const noexcept {
@@ -106,7 +114,12 @@ class IRESEARCH_API field_data : util::noncopyable {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
+  const field_stats& stats() const noexcept { return stats_; }
+
   irs::features features() const noexcept { return features_; }
+
+  bool has_norms() const noexcept { return has_norms_; }
+  void set_has_norms() noexcept { has_norms_ = true; }
 
  private:
   friend class detail::term_iterator;
@@ -132,16 +145,14 @@ class IRESEARCH_API field_data : util::noncopyable {
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
+  field_stats stats_;
   doc_id_t last_doc_{ doc_limits::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
-  uint32_t len_; // total number of terms
-  uint32_t num_overlap_; // number of overlapped terms
   uint32_t offs_;
   uint32_t last_start_offs_;
-  uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
-  uint32_t unq_term_cnt_;
   irs::features features_;
+  bool has_norms_{false};
 }; // field_data
 
 class IRESEARCH_API fields_data: util::noncopyable {

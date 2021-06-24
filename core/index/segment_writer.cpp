@@ -151,12 +151,14 @@ bool segment_writer::index(
   REGISTER_TIMER_DETAILED();
 
   auto* slot = fields_.emplace(name, features);
-  assert(features.is_subset_of(slot->meta().features));
 
   // invert only if new field features are a subset of slot features
+  assert(features.is_subset_of(slot->meta().features));
+
   if (slot->invert(tokens, doc)) {
-    if (slot->size() && features.check<norm>()) {
-      norm_fields_.insert(slot);
+    if (!slot->has_norms() && slot->stats().len && features.check<norm>()) {
+      norm_fields_.emplace_back(slot);
+      slot->set_has_norms();
     }
 
     fields_ += slot->features(); // accumulate segment features
@@ -185,10 +187,9 @@ void segment_writer::finish() {
   REGISTER_TIMER_DETAILED();
 
   // write document normalization factors (for each field marked for normalization))
-  float_t value;
   for (const auto* field: norm_fields_) {
-    assert(field && field->size() > 0);
-    value = 1.f / float_t(std::sqrt(double_t(field->size())));
+    assert(field && field->stats().len > 0);
+    const float_t value = 1.f / float_t(std::sqrt(double_t(field->stats().len)));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
       write_zvfloat(stream, value);

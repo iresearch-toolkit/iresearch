@@ -431,7 +431,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   fields_data fields_;
   stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
-  absl::flat_hash_set<const field_data*> norm_fields_; // document fields for normalization
+  std::vector<const field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;

@@ -769,13 +769,11 @@ void field_data::reset(doc_id_t doc_id) {
 
   pos_ = pos_limits::invalid();
   last_pos_ = 0;
-  len_ = 0;
-  num_overlap_ = 0;
+  stats_ = {};
   offs_ = 0;
   last_start_offs_ = 0;
-  max_term_freq_ = 0;
-  unq_term_cnt_ = 0;
   last_doc_ = doc_id;
+  has_norms_ = false;
 }
 
 data_output& field_data::norms(columnstore_writer& writer) const {
@@ -828,8 +826,8 @@ void field_data::new_term(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term(
@@ -848,7 +846,7 @@ void field_data::add_term(
 
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -867,8 +865,8 @@ void field_data::add_term(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
     if (features_.position) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
@@ -888,7 +886,7 @@ void field_data::add_term(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
     if (features_.position) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
@@ -948,8 +946,8 @@ void field_data::new_term_random_access(
     }
   }
 
-  max_term_freq_ = std::max(1U, max_term_freq_);
-  ++unq_term_cnt_;
+  stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+  ++stats_.num_unique;
 }
 
 void field_data::add_term_random_access(
@@ -969,7 +967,7 @@ void field_data::add_term_random_access(
       ++p.size;
       p.doc_code = did - p.doc;
       p.doc = did;
-      ++unq_term_cnt_;
+      ++stats_.num_unique;
     }
   } else if (p.doc != did) {
     assert(did > p.doc);
@@ -989,8 +987,8 @@ void field_data::add_term_random_access(
     p.freq = 1;
 
     p.doc = did;
-    max_term_freq_ = std::max(1U, max_term_freq_);
-    ++unq_term_cnt_;
+    stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
+    ++stats_.num_unique;
 
     if (features_.position) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
@@ -1019,7 +1017,7 @@ void field_data::add_term_random_access(
 
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
-    max_term_freq_ = std::max(++p.freq, max_term_freq_);
+    stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
     if (features_.position) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
@@ -1087,7 +1085,7 @@ bool field_data::invert(token_stream& stream,  doc_id_t id) {
     }
 
     if (0 == inc->value) {
-      ++num_overlap_;
+      ++stats_.num_overlap;
     }
 
     if (offs) {
@@ -1115,7 +1113,7 @@ bool field_data::invert(token_stream& stream,  doc_id_t id) {
 
     (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
 
-    if (0 == ++len_) {
+    if (0 == ++stats_.len) {
       IR_FRMT_ERROR(
         "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
          meta_.name.c_str(), id);
