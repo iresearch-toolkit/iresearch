@@ -647,6 +647,42 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     visitor.reset();
   }
+
+  // with prefix
+  {
+    irs::by_edit_distance_filter_options opts;
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = false;
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
+
+    tests::empty_filter_visitor visitor;
+    auto field_visitor = irs::by_edit_distance::visitor(opts);
+    ASSERT_TRUE(field_visitor);
+    field_visitor(segment, *reader, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(5, visitor.visit_calls_counter());
+
+    const auto actual_terms = visitor.term_refs<char>();
+    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
+      {"abc",  irs::no_boost()},
+      {"abcd", 2.f/3},
+      {"abcde", 1.f/3},
+      {"abcy", 2.f/3},
+      {"abde", 1.f/3},
+    };
+    ASSERT_EQ(expected_terms.size(), actual_terms.size());
+
+    auto actual_term = actual_terms.begin();
+    for (auto& expected_term : expected_terms) {
+      ASSERT_EQ(expected_term.first, actual_term->first);
+      ASSERT_FLOAT_EQ(expected_term.second, actual_term->second);
+      ++actual_term;
+    }
+
+    visitor.reset();
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

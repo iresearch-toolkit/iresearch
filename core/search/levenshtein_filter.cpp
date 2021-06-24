@@ -306,7 +306,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         return [](const sub_reader&, const term_reader&, filter_visitor&){};
       }
 
-      const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(term)));
+      const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(prefix) +
+                                                            utf8_utils::utf8_length(term)));
       const byte_type max_distance = d.max_distance() + 1;
 
       return [ctx, utf8_term_size, max_distance](
