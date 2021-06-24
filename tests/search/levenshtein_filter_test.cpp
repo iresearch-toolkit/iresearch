@@ -45,14 +45,14 @@ irs::by_edit_distance make_filter(
     irs::byte_type max_distance = 0,
     size_t max_terms = 0,
     bool with_transpositions = false,
-    size_t prefix_length = 0) {
+    const irs::string_ref prefix = irs::string_ref::EMPTY) {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
   q.mutable_options()->max_distance = max_distance;
   q.mutable_options()->max_terms = max_terms;
   q.mutable_options()->with_transpositions = with_transpositions;
-  q.mutable_options()->prefix_length = prefix_length;
+  q.mutable_options()->prefix = irs::ref_cast<irs::byte_type>(prefix);
   return q;
 }
 
@@ -306,6 +306,24 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein
   //////////////////////////////////////////////////////////////////////////////
+
+  check_query(make_filter("title", "aa", 1, 1024, false, "aaabbba"), docs_t{9, 10}, costs_t{2}, rdr);
+
+  check_query(make_filter("title", "", 0, 1024, false, "aaaw"), docs_t{32}, costs_t{1}, rdr);
+
+  check_query(make_filter("title", "w", 0, 1024, false, "aaa"), docs_t{32}, costs_t{1}, rdr);
+  check_query(make_filter("title", "w", 0, 1024, true, "aaa"), docs_t{32}, costs_t{1}, rdr);
+
+  check_query(make_filter("title", "aa", 2, 1024, false, "aa"), docs_t{5,7,13,16,19,27,32}, costs_t{7}, rdr);
+
+  check_query(make_filter("title", "", 3, 1024, false, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
+  check_query(make_filter("title", "", 3, 1024, true, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
+
+  check_query(make_filter("title", "ca", 2, 1024, false, "b"), docs_t{29,30}, costs_t{2}, rdr);
+  check_query(make_filter("title", "", 0, 1024, false, ""), docs_t{}, costs_t{0}, rdr);
+  check_query(make_filter("title", "", 1, 1024, false, ""), docs_t{28,29}, costs_t{2}, rdr);
+
+  // ------------------
 
   // distance 0 (term query)
   check_query(make_filter("title", "aa", 0, 1024), docs_t{27}, costs_t{1}, rdr);

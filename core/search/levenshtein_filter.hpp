@@ -62,9 +62,9 @@ struct IRESEARCH_API by_edit_distance_filter_options {
   bool with_transpositions{false};
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief compute levenshtein without prefix
+  /// @brief match this number of characters from the beginning of the target regardless of edit distance
   //////////////////////////////////////////////////////////////////////////////
-  size_t prefix_length{0};
+  bstring prefix;
 
   bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
     return term == rhs.term &&
@@ -74,7 +74,7 @@ struct IRESEARCH_API by_edit_distance_filter_options {
 
   size_t hash() const noexcept {
     const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions), std::hash<bstring>()(term));
-    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance), std::hash<size_t>()(prefix_length));
+    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance), std::hash<bstring>()(prefix));
     return hash_combine(hash0, hash1); 
   }
 };
@@ -121,7 +121,7 @@ class IRESEARCH_API by_edit_distance final
     byte_type max_distance,
     options_type::pdp_f provider,
     bool with_transpositions,
-    size_t prefix_length);
+    const bytes_ref& prefix);
 
   static field_visitor visitor(
     const options_type::filter_options& options);
@@ -137,7 +137,7 @@ class IRESEARCH_API by_edit_distance final
     return prepare(index, order, this->boost()*boost,
                    field(), options().term, options().max_terms,
                    options().max_distance, options().provider,
-                   options().with_transpositions, options().prefix_length);
+                   options().with_transpositions, options().prefix);
   }
 }; // by_edit_distance
 

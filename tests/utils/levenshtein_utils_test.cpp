@@ -36,12 +36,12 @@ namespace {
 void assert_description(
     const irs::parametric_description& description,
     const irs::bytes_ref& prefix,
-    const irs::bytes_ref& suffix,
+    const irs::bytes_ref& term,
     const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>& candidates) {
-  auto a = irs::make_levenshtein_automaton(description, prefix, suffix);
+  auto a = irs::make_levenshtein_automaton(description, prefix, term);
 
   irs::bstring target(prefix.c_str(), prefix.size());
-  target += suffix;
+  target += term;
 
   // ensure only invalid state has no outbound connections
   ASSERT_GE(a.NumStates(), 1);
@@ -99,7 +99,7 @@ void assert_description(
     const irs::bytes_ref& target,
     const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>& candidates) {
 
-  return assert_description(description, irs::ref_cast<irs::byte_type>(""_sr), target, candidates);
+  return assert_description(description, irs::bytes_ref::EMPTY, target, candidates);
 }
 
 void assert_read_write(const irs::parametric_description& description) {

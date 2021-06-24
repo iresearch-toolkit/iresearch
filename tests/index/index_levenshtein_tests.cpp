@@ -102,12 +102,11 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);
 
-  irs::bstring prefix; // empty prefix
   for (auto& description : DESCRIPTIONS) {
     for (auto& target : TARGETS) {
       SCOPED_TRACE(testing::Message("Target: '") << target <<
                    testing::Message("', Edit distance: ") << size_t(description.max_distance()));
-      assert_index(reader, description,  irs::ref_cast<irs::byte_type>(prefix), irs::ref_cast<irs::byte_type>(target));
+      assert_index(reader, description, irs::bytes_ref::EMPTY, irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

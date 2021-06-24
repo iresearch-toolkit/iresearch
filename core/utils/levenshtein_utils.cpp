@@ -583,7 +583,7 @@ parametric_description read(data_input& in) {
 automaton make_levenshtein_automaton(
     const parametric_description& description,
     const bytes_ref& prefix,
-    const bytes_ref& suffix) {
+    const bytes_ref& target) {
   assert(description);
 
   struct state {
@@ -597,7 +597,7 @@ automaton make_levenshtein_automaton(
   };
 
   size_t utf8_size;
-  const auto alphabet = make_alphabet(suffix, utf8_size);
+  const auto alphabet = make_alphabet(target, utf8_size);
   const auto num_offsets = 1 + utf8_size;
   const uint64_t mask = (UINT64_C(1) << description.chi_size()) - 1;
 
@@ -620,11 +620,11 @@ automaton make_levenshtein_automaton(
   auto begin = prefix.begin();
   auto end = prefix.end();
   decltype(start_state) to;
-  for (; begin != prefix.end(); ) {
-    const byte_type* next = irs::utf8_utils::next(begin, end);
+  for (; begin != end; ) {
+    const byte_type* next = utf8_utils::next(begin, end);
     to = a.AddState();
     auto dist = std::distance(begin, next);
-    irs::utf8_emplace_arc(a, start_state, irs::bytes_ref(begin, dist), to);
+    irs::utf8_emplace_arc(a, start_state, bytes_ref(begin, dist), to);
     start_state = to;
     begin = next;
   }
