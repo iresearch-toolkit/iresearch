@@ -88,7 +88,7 @@ void write_prox(
     Stream& out,
     uint32_t prox,
     const irs::payload* pay,
-    flags& features) {
+    ::features& features) {
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -97,7 +97,7 @@ void write_prox(
     out.write(pay->value.c_str(), pay->value.size());
 
     // saw payloads
-    features.add<payload>();
+    features.payload = true;
   }
 }
 
@@ -814,7 +814,7 @@ void field_data::new_term(
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -872,7 +872,7 @@ void field_data::add_term(
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -891,7 +891,7 @@ void field_data::add_term(
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -932,7 +932,7 @@ void field_data::new_term_random_access(
     if (features_.position) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -1003,7 +1003,7 @@ void field_data::add_term_random_access(
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_, pay, meta_.features);
+      write_prox(prox_out, pos_, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -1023,7 +1023,7 @@ void field_data::add_term_random_access(
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_ - p.pos, pay, meta_.features);
+      write_prox(prox_out, pos_ - p.pos, pay, features_);
 
       if (features_.offset) {
         assert(offs);
@@ -1174,6 +1174,10 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   sorted_fields_.resize(fields_.size());
   auto begin = sorted_fields_.begin();
   for (auto& entry : fields_) {
+    // FIXME
+    if (entry.features().payload) {
+      const_cast<field_meta&>(entry.meta()).features.add<payload>();
+    }
     *begin = &entry;
     ++begin;
   }
