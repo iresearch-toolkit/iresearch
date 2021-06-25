@@ -199,7 +199,8 @@ bool collect_terms(
   }
 
   auto matcher = make_automaton_matcher(acceptor);
-  const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(term)));
+  const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(prefix)) +
+                                               uint32_t(utf8_utils::utf8_length(term)));
   const byte_type max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
