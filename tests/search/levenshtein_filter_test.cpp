@@ -514,6 +514,80 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.max_distance = 1;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 9.9112005f, 272 },
+      { 8.2593336f, 273 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+  }
+
+  // with prefix
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("end"));
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("202"));
+    opts.max_distance = 1;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 9.9112005f, 272 },
+      { 8.2593336f, 273 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+
+    ASSERT_FALSE(docs->next());
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
     opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("asm212"));
     opts.max_distance = 2;
     opts.provider = irs::default_pdp;
@@ -574,6 +648,124 @@ TEST_P(by_edit_distance_test_case, bm25) {
     for (auto& actual_doc : actual_docs) {
       ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
       ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ++expected_doc;
+    }
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("et038-pm"));
+    opts.max_distance = 3;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+        { 3.8292058f, 275 },
+        { 3.2778559f, 46376 },
+        { 3.2778559f, 46377 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
+      ++expected_doc;
+    }
+  }
+
+  // with prefix
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("et038"));
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("-pm"));
+    opts.max_distance = 3;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 3.8292058f, 275 },
+      { 3.2778559f, 46376 },
+      { 3.2778559f, 46377 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
       ++expected_doc;
     }
   }
