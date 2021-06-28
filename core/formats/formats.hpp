@@ -29,6 +29,7 @@
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
 
+#include "index/index_features.hpp"
 #include "index/index_meta.hpp"
 #include "index/column_info.hpp"
 #include "index/iterators.hpp"
@@ -96,7 +97,7 @@ struct IRESEARCH_API postings_writer : attribute_provider {
   virtual ~postings_writer() = default;
   /* out - corresponding terms utils/utstream */
   virtual void prepare( index_output& out, const flush_state& state ) = 0;  
-  virtual void begin_field(const flags& features) = 0;
+  virtual void begin_field(IndexFeatures features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
@@ -161,7 +162,7 @@ struct IRESEARCH_API postings_reader {
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const flags& features,
+    IndexFeatures required,
     const term_meta& meta) = 0;
 
   //////////////////////////////////////////////////////////////////////////////

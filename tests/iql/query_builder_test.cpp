@@ -68,8 +68,8 @@ namespace tests {
       virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
         return nullptr; // do not need to collect stats
       }
-      virtual const iresearch::flags& features() const override { 
-        return iresearch::flags::empty_instance();
+      virtual irs::IndexFeatures features() const override {
+        return irs::IndexFeatures::DOCS;
       }
       virtual bool less(const iresearch::byte_type*, const iresearch::byte_type*) const override {
         throw std::bad_function_call();
@@ -177,41 +177,6 @@ namespace tests {
           name,
           str
         ));
-      }
-    };
-
-    static auto generic_field_factory = [](
-        tests::document& doc,
-        const std::string& name,
-        const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<templates::string_field>(
-          name,
-          data.str
-        ));
-      } else if (data.is_null()) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
-      } else if (data.is_bool() && data.b) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-      } else if (data.is_bool() && !data.b) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-      } else if (data.is_number()) {
-        const double dValue = data.as_number<double_t>();
-
-        // 'value' can be interpreted as a double
-        doc.insert(std::make_shared<tests::double_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-        field.name(name);
-        field.value(dValue);
       }
     };
 
@@ -613,12 +578,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // unsupported functionality by iResearch queries (e.g. like, ranges)
   {
     query_builder::branch_builder_function_t fnFail = [](
-      boolean_function::contextual_buffer_t&,
-      const std::locale&,
-      const iresearch::string_ref&,
-      void* cookie,
-      const boolean_function::contextual_function_args_t&
-    )->bool {
+        boolean_function::contextual_buffer_t&,
+        const std::locale&,
+        const iresearch::string_ref&,
+        void* /*cookie*/,
+        const boolean_function::contextual_function_args_t&)->bool {
       return false;
     };
     query_builder::branch_builders builders(&fnFail, nullptr, nullptr, nullptr, nullptr);
@@ -760,7 +724,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
       boolean_function::contextual_buffer_t&,
       const std::locale&,
       const iresearch::string_ref&,
-      void* cookie,
+      void* /*cookie*/,
       const boolean_function::contextual_function_args_t&)->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
@@ -1030,12 +994,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   irs::bytes_ref actual_value;
 
   sequence_function::contextual_function_t fnValue = [](
-    sequence_function::contextual_buffer_t& buf,
-    const std::locale&,
-    void*,
-    const sequence_function::contextual_function_args_t& args
-  )->bool {
-    iresearch::bytes_ref value(reinterpret_cast<const iresearch::byte_type*>("A"), 1);
+      sequence_function::contextual_buffer_t& buf,
+      const std::locale&,
+      void*,
+      const sequence_function::contextual_function_args_t& /*args*/)->bool {
+    irs::bytes_ref value(reinterpret_cast<const iresearch::byte_type*>("A"), 1);
     buf.append(value);
     return true;
   };

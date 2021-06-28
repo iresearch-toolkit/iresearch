@@ -31,68 +31,61 @@
 #include "index/comparer.hpp"
 
 namespace tests {
-  class merge_writer_tests: public ::testing::Test {
 
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
+class merge_writer_tests: public ::testing::Test { };
 
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
+template<typename T>
+void validate_terms(
+    const irs::sub_reader& segment,
+    const irs::term_reader& terms,
+    uint64_t doc_count,
+    const irs::bytes_ref& min,
+    const irs::bytes_ref& max,
+    size_t term_size,
+    const irs::flags& term_features,
+    std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
+    size_t* frequency = nullptr,
+    std::vector<uint32_t>* position = nullptr) {
+  ASSERT_EQ(doc_count, terms.docs_count());
+  ASSERT_EQ((max), (terms.max)());
+  ASSERT_EQ((min), (terms.min)());
+  ASSERT_EQ(term_size, terms.size());
+  ASSERT_EQ(term_features, terms.meta().features);
 
-  template<typename T>
-  void validate_terms(
-      const irs::sub_reader& segment,
-      const irs::term_reader& terms,
-      uint64_t doc_count,
-      const irs::bytes_ref& min,
-      const irs::bytes_ref& max,
-      size_t term_size,
-      const irs::flags& term_features,
-      std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
-      size_t* frequency = nullptr,
-      std::vector<uint32_t>* position = nullptr) {
-    ASSERT_EQ(doc_count, terms.docs_count());
-    ASSERT_EQ((max), (terms.max)());
-    ASSERT_EQ((min), (terms.min)());
-    ASSERT_EQ(term_size, terms.size());
-    ASSERT_EQ(term_features, terms.meta().features);
+  for (auto term_itr = terms.iterator(); term_itr->next();) {
+    auto itr = expected_terms.find(static_cast<T>(term_itr->value()));
 
-    for (auto term_itr = terms.iterator(); term_itr->next();) {
-      auto itr = expected_terms.find(static_cast<T>(term_itr->value()));
+    ASSERT_NE(expected_terms.end(), itr);
 
-      ASSERT_NE(expected_terms.end(), itr);
+    for (auto docs_itr = segment.mask(term_itr->postings(irs::from_flags(term_features))); docs_itr->next();) { // FIXME
+      ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
+      ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
 
-      for (auto docs_itr = segment.mask(term_itr->postings(term_features)); docs_itr->next();) {
-        ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
-
-        if (frequency) {
-          ASSERT_TRUE(docs_itr->get(irs::type<irs::frequency>::id()));
-          ASSERT_EQ(*frequency, irs::get<irs::frequency>(*docs_itr)->value);
-        }
-
-        if (position) {
-          auto* docs_itr_pos = irs::get_mutable<irs::position>(docs_itr.get());
-          ASSERT_TRUE(docs_itr_pos);
-
-          for (auto pos: *position) {
-            ASSERT_TRUE(docs_itr_pos->next());
-            ASSERT_EQ(pos, docs_itr_pos->value());
-          }
-
-          ASSERT_FALSE(docs_itr_pos->next());
-        }
+      if (frequency) {
+        ASSERT_TRUE(docs_itr->get(irs::type<irs::frequency>::id()));
+        ASSERT_EQ(*frequency, irs::get<irs::frequency>(*docs_itr)->value);
       }
 
-      ASSERT_TRUE(itr->second.empty());
-      expected_terms.erase(itr);
+      if (position) {
+        auto* docs_itr_pos = irs::get_mutable<irs::position>(docs_itr.get());
+        ASSERT_TRUE(docs_itr_pos);
+
+        for (auto pos: *position) {
+          ASSERT_TRUE(docs_itr_pos->next());
+          ASSERT_EQ(pos, docs_itr_pos->value());
+        }
+
+        ASSERT_FALSE(docs_itr_pos->next());
+      }
     }
 
-    ASSERT_TRUE(expected_terms.empty());
+    ASSERT_TRUE(itr->second.empty());
+    expected_terms.erase(itr);
   }
+
+  ASSERT_TRUE(expected_terms.empty());
+}
+
 }
 
 using namespace tests;

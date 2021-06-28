@@ -161,7 +161,7 @@ bool segment_writer::index(
       slot->set_has_norms();
     }
 
-    fields_ += slot->features(); // accumulate segment features
+    fields_ += slot->index_features(); // accumulate segment features
     return true;
   }
 

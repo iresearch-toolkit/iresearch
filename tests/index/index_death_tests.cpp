@@ -291,13 +291,9 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -350,7 +346,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -419,13 +415,9 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -499,7 +491,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -553,13 +545,9 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -611,7 +599,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -658,13 +646,9 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -713,7 +697,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -721,13 +705,9 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -779,7 +759,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -787,13 +767,9 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -854,7 +830,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -874,7 +850,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -940,13 +916,9 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1012,7 +984,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1078,13 +1050,9 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1152,7 +1120,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1215,13 +1183,9 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
   }
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1282,7 +1246,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1308,13 +1272,9 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
   ASSERT_NE(nullptr, codec);
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1380,7 +1340,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1400,7 +1360,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1429,13 +1389,9 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
   ASSERT_NE(nullptr, codec);
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1516,7 +1472,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1536,7 +1492,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1556,7 +1512,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1576,7 +1532,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1605,13 +1561,9 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
   // segment meta creation failure
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory failing_dir(impl);
@@ -1687,7 +1639,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1707,7 +1659,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1727,7 +1679,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1737,13 +1689,9 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
   // segment meta synchonization failure
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory failing_dir(impl);
@@ -1822,7 +1770,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1842,7 +1790,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1862,7 +1810,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1883,13 +1831,9 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
   ASSERT_NE(nullptr, codec);
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1955,7 +1899,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1975,7 +1919,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -1996,13 +1940,9 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
   ASSERT_NE(nullptr, codec);
 
   {
-    const auto all_features = irs::flags{
-      irs::type<irs::document>::get(),
-      irs::type<irs::frequency>::get(),
-      irs::type<irs::position>::get(),
-      irs::type<irs::payload>::get(),
-      irs::type<irs::offset>::get()
-    };
+    constexpr irs::IndexFeatures all_features =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -2069,7 +2009,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2089,7 +2029,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2099,13 +2039,9 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 }
 
 TEST(index_death_test_formats_10, segment_components_fail_import) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2232,7 +2168,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2337,7 +2273,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator();
       ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(iresearch::flags());
+      auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2347,13 +2283,9 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 }
 
 TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segment_flush) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2487,7 +2419,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2496,13 +2428,9 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 }
 
 TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flush) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2570,7 +2498,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator();
     ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(iresearch::flags());
+    auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values(docsItr->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2638,13 +2566,9 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
 }
 
 TEST(index_death_test_formats_10, open_reader) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2724,7 +2648,7 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_NE(nullptr, terms);
   auto termItr = terms->iterator();
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
   ASSERT_TRUE(docsItr->next());
   ASSERT_TRUE(values(docsItr->value(), actual_value));
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
@@ -2742,13 +2666,9 @@ TEST(index_death_test_formats_10, open_reader) {
 }
 
 TEST(index_death_test_formats_10, columnstore_reopen_fail) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2814,7 +2734,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   ASSERT_NE(nullptr, terms);
   auto termItr = terms->iterator();
   ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(iresearch::flags());
+  auto docsItr = termItr->postings(irs::IndexFeatures::DOCS);
   ASSERT_TRUE(docsItr->next());
   ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen
   ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen (nullptr)
@@ -2835,33 +2755,20 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 }
 
 TEST(index_death_test_formats_10, postings_reopen_fail) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures all_features =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
-  const auto positions = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get()
-  };
+  constexpr irs::IndexFeatures positions =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
-  const auto positions_offsets = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::offset>::get()
-  };
+  constexpr irs::IndexFeatures positions_offsets =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS;
 
-  const auto positions_payload = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get()
-  };
+  constexpr irs::IndexFeatures positions_payload =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
@@ -2944,9 +2851,9 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_TRUE(termItr->next());
 
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.doc"); // regiseter reopen failure in postings
-  ASSERT_THROW(termItr->postings(iresearch::flags()), irs::io_error); // can't reopen document input
+  ASSERT_THROW(termItr->postings(irs::IndexFeatures::DOCS), irs::io_error); // can't reopen document input
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.doc"); // regiseter reopen failure in postings (nullptr)
-  ASSERT_THROW(termItr->postings(iresearch::flags()), irs::io_error); // can't reopen document input (nullptr)
+  ASSERT_THROW(termItr->postings(irs::IndexFeatures::DOCS), irs::io_error); // can't reopen document input (nullptr)
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.pos"); // regiseter reopen failure in positions
   ASSERT_THROW(termItr->postings(positions), irs::io_error); // can't reopen position input
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pos"); // regiseter reopen failure in positions (nullptr)
@@ -2975,7 +2882,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   ASSERT_TRUE(dir.no_failures());
 
-  auto docsItr = termItr->postings(iresearch::flags()); // successful attempt
+  auto docsItr = termItr->postings(irs::IndexFeatures::DOCS); // successful attempt
   ASSERT_TRUE(docsItr->next());
   ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3

@@ -399,7 +399,7 @@ typedef std::vector<index_segment> index_t;
 void assert_term(
   const irs::term_iterator& expected_term,
   const irs::term_iterator& actual_term,
-  const irs::flags& features);
+  irs::IndexFeatures features);
 
 void assert_terms_next(
   const irs::term_reader& expected_term_reader,
@@ -410,14 +410,14 @@ void assert_terms_next(
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   irs::automaton_table_matcher* acceptor,
   size_t lookahead = 10); // number of steps to iterate after the seek
 
 void assert_index(
   const index_t& expected_index,
   const irs::index_reader& actual_index,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   size_t skip = 0, // do not validate the first 'skip' segments
   irs::automaton_table_matcher* matcher = nullptr
 );
@@ -426,7 +426,7 @@ void assert_index(
   const irs::directory& dir,
   irs::format::ptr codec,
   const index_t& index,
-  const irs::flags& features,
+  irs::IndexFeatures features,
   size_t skip = 0, // no not validate the first 'skip' segments
   irs::automaton_table_matcher* matcher = nullptr
 );

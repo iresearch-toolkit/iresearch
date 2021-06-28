@@ -164,7 +164,7 @@ TEST_P(bm25_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // without norms (bm15)
@@ -173,7 +173,7 @@ TEST_P(bm25_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 
   // without norms (bm15), integer argument
@@ -182,7 +182,7 @@ TEST_P(bm25_test, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
   }
 }
 

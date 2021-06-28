@@ -656,7 +656,7 @@ TEST_P(format_test_case, fields_read_write) {
      {
        auto expected_sorted_term = sorted_terms.begin();
        auto term = term_reader->iterator();
-       for (auto end = sorted_terms.end(); term->next(); ++expected_sorted_term) {
+       for (; term->next(); ++expected_sorted_term) {
          ASSERT_EQ(*expected_sorted_term, term->value());
 
          // get cookie

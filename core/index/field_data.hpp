@@ -31,6 +31,7 @@
 #include "postings.hpp"
 #include "formats/formats.hpp"
 
+#include "index/index_features.hpp"
 #include "index/iterators.hpp"
 
 #include "utils/block_pool.hpp"
@@ -57,25 +58,6 @@ class term_iterator;
 class doc_iterator;
 class sorting_doc_iterator;
 }
-
-struct IRESEARCH_API features {
-  features() = default;
-  explicit features(const flags& in) noexcept;
-
-  void operator+=(const features& rhs) noexcept {
-    freq |= rhs.freq;
-    position |= rhs.position;
-    offset |= rhs.offset;
-    payload |= rhs.payload;
-  }
-
-  void to_flags(flags& flags);
-
-  bool freq{};
-  bool position{};
-  bool offset{};
-  bool payload{};
-}; // features
 
 struct field_stats {
   /// @brief total number of terms
@@ -116,7 +98,7 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_stats& stats() const noexcept { return stats_; }
 
-  irs::features features() const noexcept { return features_; }
+  irs::index_features index_features() const noexcept { return index_features_; }
 
   bool has_norms() const noexcept { return has_norms_; }
   void set_has_norms() noexcept { has_norms_ = true; }
@@ -151,7 +133,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
-  irs::features features_;
+  irs::index_features index_features_;
   bool has_norms_{false};
 }; // field_data
 
@@ -202,8 +184,8 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
 
   size_t size() const { return fields_.size(); }
-  void operator+=(irs::features features) {
-    compiled_features_ += features;
+  void operator+=(irs::index_features features) {
+    index_features_ = index_features_ & features;
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
@@ -221,7 +203,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
   flags features_;
-  irs::features compiled_features_;
+  irs::index_features index_features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fields_data
 

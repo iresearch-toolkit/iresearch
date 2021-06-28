@@ -228,6 +228,28 @@ class attribute_provider_change final : public attribute {
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
 
+// FIXME remove
+inline IndexFeatures from_flags(const flags& in) noexcept {
+  std::underlying_type_t<IndexFeatures> mask;
+  set_bit<0>(in.check<frequency>(), mask);
+  set_bit<1>(in.check<position>(), mask);
+  set_bit<2>(in.check<offset>(), mask);
+  set_bit<3>(in.check<payload>(), mask);
+  return static_cast<IndexFeatures>(mask);
+}
+
+// FIXME remove
+inline void to_flags(index_features in, flags& out) {
+  if (in.freq()) out.add<frequency>();
+  if (in.position()) out.add<position>();
+  if (in.offset()) out.add<offset>();
+  if (in.payload()) out.add<irs::payload>();
+}
+
+inline bool contains(const flags& lhs, IndexFeatures rhs) noexcept {
+  return IndexFeatures::DOCS != (from_flags(lhs) & rhs);
+}
+
 } // ROOT
 
 #endif

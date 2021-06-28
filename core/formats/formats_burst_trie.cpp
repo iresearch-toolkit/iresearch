@@ -762,7 +762,7 @@ class field_writer final : public irs::field_writer {
 
   void write_field_features(data_output& out, const flags& features) const;
 
-  void begin_field(const irs::flags& field);
+  void begin_field(IndexFeatures field);
 
   void end_field(
     const std::string& name,
@@ -1122,7 +1122,9 @@ void field_writer::write(
     const irs::flags& features,
     irs::term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
-  begin_field(features);
+  const auto index_features = from_flags(features);
+
+  begin_field(index_features);
 
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
@@ -1132,7 +1134,7 @@ void field_writer::write(
   assert(docs);
 
   for (; terms.next();) {
-    auto postings = terms.postings(features);
+    auto postings = terms.postings(static_cast<IndexFeatures>(index_features));
     auto meta = pw_->write(*postings);
 
     if (freq_exists) {
@@ -1163,7 +1165,7 @@ void field_writer::write(
   end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value.count());
 }
 
-void field_writer::begin_field(const irs::flags& field) {
+void field_writer::begin_field(IndexFeatures features) {
   assert(terms_out_);
   assert(index_out_);
 
@@ -1177,7 +1179,7 @@ void field_writer::begin_field(const irs::flags& field) {
   min_term_.second.clear();
   term_count_ = 0;
 
-  pw_->begin_field(field);
+  pw_->begin_field(features);
 }
 
 void field_writer::write_segment_features(data_output& out, const flags& features) {
@@ -2012,7 +2014,7 @@ class term_iterator_base : public seek_term_iterator {
     it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
   }
 
-  doc_iterator::ptr postings_impl(block_iterator* it, const flags& features) const {
+  doc_iterator::ptr postings_impl(block_iterator* it, IndexFeatures features) const {
     auto& meta = std::get<version10::term_meta>(attrs_);
 
     if (it) {
@@ -2088,7 +2090,7 @@ class term_iterator final : public term_iterator_base {
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2587,7 +2589,7 @@ class automaton_term_iterator final : public term_iterator_base {
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 

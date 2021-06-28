@@ -524,7 +524,7 @@ class compound_term_iterator : public irs::term_iterator {
     return nullptr;
   }
   virtual bool next() override;
-  virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
+  virtual irs::doc_iterator::ptr postings(IndexFeatures features) const override;
   virtual void read() override {
     for (auto& itr_id: term_iterator_mask_) {
       if (term_iterators_[itr_id].first) {
@@ -620,7 +620,7 @@ bool compound_term_iterator::next() {
   return false;
 }
 
-irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*features*/) const {
+irs::doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features*/) const {
   auto add_iterators = [this](compound_doc_iterator::iterators_t& itrs) {
     itrs.clear();
     itrs.reserve(term_iterator_mask_.size());
@@ -628,7 +628,9 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
     for (auto& itr_id : term_iterator_mask_) {
       auto& term_itr = term_iterators_[itr_id];
 
-      itrs.emplace_back(term_itr.first->postings(meta().features), term_itr.second);
+      const auto features = static_cast<IndexFeatures>(from_flags(meta().features)); // FIXME
+
+      itrs.emplace_back(term_itr.first->postings(features), term_itr.second);
     }
 
     return true;

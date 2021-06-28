@@ -304,7 +304,7 @@ void field_writer::write(
        actual_term.next(); ++actual_size) {
     ASSERT_TRUE(expected_term->next());
 
-    assert_term(*expected_term, actual_term, features);
+    assert_term(*expected_term, actual_term, irs::from_flags(features));
 
     if (actual_min.null()) {
       actual_min_buf = actual_term.value();
@@ -329,7 +329,7 @@ void field_writer::end() { }
 
 class doc_iterator : public irs::doc_iterator {
  public:
-  doc_iterator(const irs::flags& features, const tests::term& data);
+  doc_iterator(irs::IndexFeatures features, const tests::term& data);
 
   irs::doc_id_t value() const override {
     return doc_.value;
@@ -373,13 +373,13 @@ class doc_iterator : public irs::doc_iterator {
  private:
   class pos_iterator final : public irs::position {
    public:
-    pos_iterator(const doc_iterator& owner, const irs::flags& features)
+    pos_iterator(const doc_iterator& owner, irs::IndexFeatures features)
       : owner_(owner) {
-      if (features.check<irs::offset>()) {
+      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::OFFS)) {
         poffs_ = &offs_;
       }
 
-      if (features.check<irs::payload>()) {
+      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::PAY)) {
         ppay_ = &pay_;
       }
     }
@@ -442,7 +442,7 @@ class doc_iterator : public irs::doc_iterator {
   std::set<posting>::const_iterator next_;
 };
 
-doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
+doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
   : data_(data),
     pos_(*this, features) {
   next_ = data_.postings.begin();
@@ -453,11 +453,11 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   attrs_[irs::type<irs::document>::id()] = &doc_;
   attrs_[irs::type<irs::score>::id()] = &score_;
 
-  if (features.check<irs::frequency>()) {
+  if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::FREQ)) {
     attrs_[irs::type<irs::frequency>::id()] = &freq_;
   }
 
-  if (features.check<irs::position>()) {
+  if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::POS)) {
     attrs_[irs::type<irs::position>::id()] = &pos_;
   }
 }
@@ -534,8 +534,8 @@ class term_iterator final : public irs::seek_term_iterator {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual doc_iterator::ptr postings(const irs::flags& features) const override {
-    return irs::memory::make_managed<doc_iterator>(data_.features & features, *prev_);
+  virtual doc_iterator::ptr postings(irs::IndexFeatures features) const override {
+    return irs::memory::make_managed<doc_iterator>(irs::from_flags(data_.features) & features, *prev_);
   }
 
   virtual bool seek(
@@ -570,13 +570,12 @@ size_t term_reader::bit_union(
   constexpr auto BITS{irs::bits_required<uint64_t>()};
 
   auto term = this->iterator();
-  const auto& no_features = irs::flags::empty_instance();
 
   size_t count{0};
   while (auto* cookie = provider()) {
     term->seek(irs::bytes_ref::NIL, *cookie);
 
-    auto docs = term->postings(no_features);
+    auto docs = term->postings(irs::IndexFeatures::DOCS);
 
     if (docs) {
       auto* doc = irs::get<irs::document>(*docs);
@@ -710,7 +709,7 @@ REGISTER_FORMAT(tests::format);
 void assert_term(
     const irs::term_iterator& expected_term,
     const irs::term_iterator& actual_term,
-    const irs::flags& requested_features) {
+    irs::IndexFeatures requested_features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
   const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
@@ -775,7 +774,7 @@ void assert_term(
 void assert_terms_next(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
-    const irs::flags& features,
+    irs::IndexFeatures features,
     irs::automaton_table_matcher* matcher) {
   irs::bytes_ref actual_min{ irs::bytes_ref::NIL };
   irs::bytes_ref actual_max{ irs::bytes_ref::NIL };
@@ -812,7 +811,7 @@ void assert_terms_next(
 void assert_terms_seek(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
-    const irs::flags& features,
+    irs::IndexFeatures features,
     irs::automaton_table_matcher* matcher,
     size_t lookahead /* = 10 */) {
   auto expected_term = matcher ? expected_term_reader.iterator(*matcher) : expected_term_reader.iterator();
@@ -922,7 +921,7 @@ void assert_terms_seek(
 void assert_index(
     const index_t& expected_index,
     const irs::index_reader& actual_index_reader,
-    const irs::flags& features,
+    irs::IndexFeatures features,
     size_t skip /*= 0*/,
     irs::automaton_table_matcher* matcher /*=nullptr*/) {
   // check number of segments
@@ -989,7 +988,7 @@ void assert_index(
     const irs::directory& dir,
     irs::format::ptr codec,
     const index_t& expected_index,
-    const irs::flags& features,
+    irs::IndexFeatures features,
     size_t skip /*= 0*/,
     irs::automaton_table_matcher* matcher /*= nullptr*/) {
   auto actual_index_reader = irs::directory_reader::open(dir, codec);

@@ -25,6 +25,7 @@
 
 #include "shared.hpp"
 #include "utils/attributes.hpp"
+#include "index/index_features.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
@@ -112,7 +113,7 @@ struct IRESEARCH_API term_iterator
 
   /* read attributes */
   virtual void read() = 0;
-  virtual doc_iterator::ptr postings(const flags& features) const = 0;
+  virtual doc_iterator::ptr postings(IndexFeatures features) const = 0;
 };
 
 enum class SeekResult {

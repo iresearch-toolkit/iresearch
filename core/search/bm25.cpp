@@ -399,16 +399,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     }
   }
 
-  virtual const flags& features() const override {
-
-
-    static const irs::flags FEATURES[] = {
-
-      irs::flags({ type<frequency>::get() }), // without normalization
-      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
-    };
-
-    return FEATURES[b_ != 0.f];
+  virtual IndexFeatures features() const noexcept override {
+    return IndexFeatures::FREQ;
   }
 
   virtual irs::sort::field_collector::ptr prepare_field_collector() const override {

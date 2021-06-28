@@ -91,11 +91,11 @@ struct basic_sort : irs::sort {
     explicit prepared_sort(size_t idx) : idx(idx) {
     }
 
-    const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::DOCS;
     }
 
-    irs::score_function prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,

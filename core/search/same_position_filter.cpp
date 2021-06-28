@@ -134,7 +134,7 @@ class same_position_query final : public filter::prepared {
     }
 
     // get features required for query & order
-    auto features = ord.features() | by_same_position::required();
+    const IndexFeatures features = ord.features() | by_same_position::required();
 
     same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
@@ -201,11 +201,6 @@ namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_same_position)
 
-/* static */ const flags& by_same_position::required() {
-  static const flags features{ irs::type<frequency>::get(), irs::type<position>::get() };
-  return features;
-}
-
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
     const order::prepared& ord,
@@ -249,7 +244,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (!required().is_subset_of(field->meta().features)) {
+      if (!contains(field->meta().features, required())) {
         continue;
       }
 

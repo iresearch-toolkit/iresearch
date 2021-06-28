@@ -198,7 +198,7 @@ class format_test_case : public index_test_base {
       return val_;
     }
 
-    irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const {
+    irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
       return irs::memory::make_managed<format_test_case::postings>(
         docs_.begin(), docs_.end());
     }

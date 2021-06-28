@@ -65,11 +65,9 @@ TEST(ngram_similarity_base_test, ctor) {
   ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ("", q.field());
 
-
-  auto& features = irs::by_ngram_similarity::features();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_ngram_similarity::required());
 }
 
 TEST(ngram_similarity_base_test, boost) {
