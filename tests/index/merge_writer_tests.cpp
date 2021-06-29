@@ -1410,7 +1410,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
+      const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
       ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
       ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 

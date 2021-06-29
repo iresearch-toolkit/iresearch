@@ -835,7 +835,7 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
 //////////////////////////////////////////////////////////////////////////////
 bool compute_field_meta(
     field_meta_map_t& field_meta_map,
-    IndexFeatures index_features,
+    IndexFeatures& index_features,
     flags& fields_features,
     const irs::sub_reader& reader) {
   REGISTER_TIMER_DETAILED();
