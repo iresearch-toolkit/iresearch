@@ -423,9 +423,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   // prepare document stream
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
-  auto& features = *state.features;
-
-  if (features.check<position>()) {
+  if (IndexFeatures::DOCS != (state.features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique<pos_buffer>();
@@ -434,7 +432,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     pos_->reset();
     prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::DOCS != (state.features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_buffer>();
@@ -2670,11 +2668,11 @@ class postings_reader_base : public irs::postings_reader {
   virtual void prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) final;
+    IndexFeatures features) final;
 
   virtual size_t decode(
     const byte_type* in,
-    const flags& field,
+    IndexFeatures field_features,
     irs::term_meta& state) final;
 
  protected:
@@ -2686,7 +2684,7 @@ class postings_reader_base : public irs::postings_reader {
 void postings_reader_base::prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) {
+    IndexFeatures features) {
   std::string buf;
 
   // prepare document input
@@ -2704,7 +2702,7 @@ void postings_reader_base::prepare(
   //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
-  if (features.check<irs::position>()) {
+  if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
@@ -2720,7 +2718,7 @@ void postings_reader_base::prepare(
     // some forms of corruption.
     format_utils::read_checksum(*pos_in_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::DOCS != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
@@ -2755,11 +2753,11 @@ void postings_reader_base::prepare(
 
 size_t postings_reader_base::decode(
     const byte_type* in,
-    const flags& meta,
+    IndexFeatures features,
     irs::term_meta& state) {
   auto& term_meta = static_cast<version10::term_meta&>(state);
 
-  const bool has_freq = meta.check<frequency>();
+  const bool has_freq = IndexFeatures::DOCS != (features & IndexFeatures::FREQ);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
@@ -2768,14 +2766,14 @@ size_t postings_reader_base::decode(
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (has_freq && term_meta.freq && meta.check<irs::position>()) {
+  if (has_freq && term_meta.freq && IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
     term_meta.pos_start += vread<uint64_t>(p);
 
     term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
-    if (meta.check<payload>() || meta.check<offset>()) {
+    if (IndexFeatures::DOCS != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       term_meta.pay_start += vread<uint64_t>(p);
     }
   }
@@ -2801,12 +2799,12 @@ class postings_reader final: public postings_reader_base {
   };
 
   virtual irs::doc_iterator::ptr iterator(
-    const flags& field,
-    IndexFeatures features,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     const term_meta& meta) override;
 
   virtual size_t bit_union(
-    const flags& field,
+    IndexFeatures field,
     const term_provider_f& provider,
     size_t* set) override;
 
@@ -2831,8 +2829,8 @@ class postings_reader final: public postings_reader_base {
 
   template<typename Maker, typename... Args>
   irs::doc_iterator::ptr iterator_impl(
-    const flags& field,
-    IndexFeatures features,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     Args&&... args);
 }; // postings_reader
 
@@ -2845,32 +2843,37 @@ class postings_reader final: public postings_reader_base {
 template<typename FormatTraits, bool OneBasedPositionStorage>
 template<typename Maker, typename... Args>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
-    const flags& field,
-    IndexFeatures required,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     Args&&... args) {
-  const auto features = from_flags(field);
   // get enabled features as the intersection
   // between requested and available features
-  const auto enabled = features & required;
+  const auto enabled = field_features & required_features;
 
   switch (enabled) {
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS | IndexFeatures::PAY: {
-      return Maker::template make<iterator_traits<true, true, true, true>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<true, true, true, true>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
-      return Maker::template make<iterator_traits<true, true, true, false>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<true, true, true, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
-      return Maker::template make<iterator_traits<true, true, false, true>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<true, true, false, true>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
-      return Maker::template make<iterator_traits<true, true, false, false>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<true, true, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ: {
-      return Maker::template make<iterator_traits<true, false, false, false>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<true, false, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     default: {
-      return Maker::template make<iterator_traits<false, false, false, false>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<false, false, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
   }
 
@@ -2885,10 +2888,10 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
-    const flags& field,
-    IndexFeatures required,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     const term_meta& meta) {
-  return iterator_impl<doc_iterator_maker>(field, required, meta);
+  return iterator_impl<doc_iterator_maker>(field_features, required_features, meta);
 }
 
 template<typename IteratorTraits, size_t N>
@@ -2932,13 +2935,13 @@ void bit_union(
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
 size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
-    const flags& field,
+    const IndexFeatures field_features,
     const term_provider_f& provider,
     size_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
   uint32_t docs[postings_writer_base::BLOCK_SIZE];
-  const bool has_freq = field.check<frequency>();
+  const bool has_freq = IndexFeatures::DOCS != (field_features & IndexFeatures::FREQ);
 
   assert(doc_in_);
   auto doc_in = doc_in_->reopen(); // reopen thread-safe stream

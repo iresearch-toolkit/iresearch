@@ -126,7 +126,12 @@ struct IRESEARCH_API field_writer {
 
   virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
-  virtual void write(const std::string& name, field_id norm, const flags& features, term_iterator& data) = 0;
+  virtual void write(
+    const std::string& name,
+    field_id norm,
+    IndexFeatures index_features,
+    const flags& features,
+    term_iterator& data) = 0;
   virtual void end() = 0;
 }; // field_writer
 
@@ -146,7 +151,7 @@ struct IRESEARCH_API postings_reader {
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
-    const flags& features) = 0;
+    IndexFeatures features) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses input block "in" and populate "attrs" collection with attributes
@@ -154,15 +159,15 @@ struct IRESEARCH_API postings_reader {
   //////////////////////////////////////////////////////////////////////////////
   virtual size_t decode(
     const byte_type* in,
-    const flags& features,
+    IndexFeatures features,
     term_meta& state) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a document iterator for a specified 'cookie' and 'features'
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_iterator::ptr iterator(
-    const flags& field,
-    IndexFeatures required,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     const term_meta& meta) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -174,7 +179,7 @@ struct IRESEARCH_API postings_reader {
   /// @note this API is experimental
   //////////////////////////////////////////////////////////////////////////////
   virtual size_t bit_union(
-    const flags& field,
+    IndexFeatures field_features,
     const term_provider_f& provider,
     size_t* set) = 0;
 }; // postings_reader
@@ -526,15 +531,16 @@ MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<irs::format>;) // format:
 
 namespace iresearch {
 
-struct IRESEARCH_API flush_state {
-  directory* dir;
+struct flush_state {
+  directory* dir{};
+  const doc_map* docmap{};
+  const flags* custom_features{&flags::empty_instance()};
   string_ref name; // segment name
-  const flags* features; // segment features
   size_t doc_count;
-  const doc_map* docmap;
+  IndexFeatures features{IndexFeatures::DOCS}; // segment features
 };
 
-struct IRESEARCH_API reader_state {
+struct reader_state {
   const directory* dir;
   const segment_meta* meta;
 };

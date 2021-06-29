@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_FIELD_META_H
 #define IRESEARCH_FIELD_META_H
 
+#include "index/index_features.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
@@ -40,11 +41,7 @@ struct IRESEARCH_API field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(
-    const string_ref& field, 
-    const flags& features, 
-    field_id norm = field_limits::invalid()
-  );
+  field_meta(const string_ref& field, const flags& features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
@@ -57,6 +54,7 @@ struct IRESEARCH_API field_meta {
   flags features;
   std::string name;
   field_id norm{ field_limits::invalid() };
+  IndexFeatures index_features{IndexFeatures::DOCS};
 }; // field_meta
 
 static_assert(std::is_move_constructible<field_meta>::value,

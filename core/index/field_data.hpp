@@ -98,8 +98,6 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_stats& stats() const noexcept { return stats_; }
 
-  irs::index_features index_features() const noexcept { return index_features_; }
-
   bool has_norms() const noexcept { return has_norms_; }
   void set_has_norms() noexcept { has_norms_ = true; }
 
@@ -133,7 +131,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
-  irs::index_features index_features_;
   bool has_norms_{false};
 }; // field_data
 
@@ -184,10 +181,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
 
   size_t size() const { return fields_.size(); }
-  void operator+=(irs::index_features features) {
-    index_features_ = index_features_ & features;
-  }
-  const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
   void reset() noexcept;
 
@@ -202,8 +195,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-  flags features_;
-  irs::index_features index_features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fields_data
 

@@ -89,7 +89,7 @@ class format_10_test_case : public tests::format_test_case {
 
   void postings_seek(const std::vector<irs::doc_id_t>& docs, irs::IndexFeatures features) {
     irs::field_meta field;
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
     auto dir = get_directory(*this);
 
     // attributes for term
@@ -106,7 +106,7 @@ class format_10_test_case : public tests::format_test_case {
       state.dir = dir.get();
       state.doc_count = docs.back()+1;
       state.name = "segment_name";
-      state.features = &field.features;
+      state.features = field.index_features;
 
       auto out = dir->create("attributes");
       ASSERT_FALSE(!out);
@@ -119,7 +119,7 @@ class format_10_test_case : public tests::format_test_case {
       writer->begin_field(features);
       // write postings for term
       {
-        postings it(docs.begin(), docs.end(), field.features);
+        postings it(docs.begin(), docs.end(), field.index_features);
         term_meta = writer->write(it);
 
         /* write attributes to out */
@@ -132,7 +132,7 @@ class format_10_test_case : public tests::format_test_case {
       writer->begin_field(features);
       // write postings for term
       {
-        postings it(docs.begin(), docs.end(), field.features);
+        postings it(docs.begin(), docs.end(), field.index_features);
         term_meta = writer->write(it);
 
         // write attributes to out
@@ -159,7 +159,7 @@ class format_10_test_case : public tests::format_test_case {
       // prepare reader
       auto reader = codec->get_postings_reader();
       ASSERT_NE(nullptr, reader);
-      reader->prepare(*in, state, field.features);
+      reader->prepare(*in, state, field.index_features);
 
       irs::bstring in_data(in->length() - in->file_pointer(), 0);
       in->read_bytes(&in_data[0], in_data.size());
@@ -172,7 +172,7 @@ class format_10_test_case : public tests::format_test_case {
       // read term attributes
       {
         irs::version10::term_meta read_meta;
-        begin += reader->decode(begin, field.features, read_meta);
+        begin += reader->decode(begin, field.index_features, read_meta);
 
         // check term_meta
         {
@@ -190,10 +190,10 @@ class format_10_test_case : public tests::format_test_case {
         {
           const size_t inc = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
           const size_t seed = VERSION10_POSTINGS_WRITER_BLOCK_SIZE-1;
-          auto it = reader->iterator(field.features, features, read_meta);
+          auto it = reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
-          postings expected(docs.begin(), docs.end(), field.features);
+          postings expected(docs.begin(), docs.end(), field.index_features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
@@ -209,10 +209,10 @@ class format_10_test_case : public tests::format_test_case {
         {
           const size_t inc = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
           const size_t seed = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
-          auto it = reader->iterator(field.features, features, read_meta);
+          auto it = reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
-          postings expected(docs.begin(), docs.end(), field.features);
+          postings expected(docs.begin(), docs.end(), field.index_features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
@@ -226,10 +226,10 @@ class format_10_test_case : public tests::format_test_case {
 
         // seek for every document
         {
-          auto it = reader->iterator(field.features, features, read_meta);
+          auto it = reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
-          postings expected(docs.begin(), docs.end(), field.features);
+          postings expected(docs.begin(), docs.end(), field.index_features);
           for (auto doc : docs) {
             ASSERT_EQ(doc, it->seek(doc));
             ASSERT_EQ(doc, it->seek(doc)); // seek to the same doc
@@ -248,8 +248,8 @@ class format_10_test_case : public tests::format_test_case {
         // seek for backwards && next
         {
           for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-            postings expected(docs.begin(), docs.end(), field.features);
-            auto it = reader->iterator(field.features, features, read_meta);
+            postings expected(docs.begin(), docs.end(), field.index_features);
+            auto it = reader->iterator(field.index_features, features, read_meta);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
             ASSERT_EQ(*doc, it->seek(*doc));
 
@@ -270,10 +270,10 @@ class format_10_test_case : public tests::format_test_case {
         {
           const size_t inc = 5;
           const size_t seed = 0;
-          auto it = reader->iterator(field.features, features, read_meta);
+          auto it = reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
-          postings expected(docs.begin(), docs.end(), field.features);
+          postings expected(docs.begin(), docs.end(), field.index_features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
@@ -287,7 +287,7 @@ class format_10_test_case : public tests::format_test_case {
 
         // seek for INVALID_DOC
         {
-          auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+          auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
           ASSERT_TRUE(it->next());
@@ -296,7 +296,7 @@ class format_10_test_case : public tests::format_test_case {
 
         // seek for NO_MORE_DOCS
         {
-          auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+          auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
           ASSERT_FALSE(it->next());
@@ -329,7 +329,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.features = &field.features;
+    state.features = field.index_features;
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -402,7 +402,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // prepare reader
     auto reader = codec->get_postings_reader();
     ASSERT_NE(nullptr, reader);
-    reader->prepare(*in, state, field.features);
+    reader->prepare(*in, state, field.index_features);
 
     irs::bstring in_data(in->length() - in->file_pointer(), 0);
     in->read_bytes(&in_data[0], in_data.size());
@@ -412,7 +412,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     {
       irs::version10::term_meta read_meta;
 
-      begin += reader->decode(begin, field.features, read_meta);
+      begin += reader->decode(begin, field.index_features, read_meta);
 
       // check term_meta for term0
       {
@@ -427,7 +427,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       }
 
       // read documents
-      auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++], it->value());
       }
@@ -436,7 +436,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // check term_meta for term1
     {
       irs::version10::term_meta read_meta;
-      begin += reader->decode(begin, field.features, read_meta);
+      begin += reader->decode(begin, field.index_features, read_meta);
 
       {
         auto& typed_meta1 = static_cast<const irs::version10::term_meta&>(*meta1);
@@ -450,7 +450,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       }
 
       // read documents
-      auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++], it->value());
       }
@@ -464,7 +464,7 @@ TEST_P(format_10_test_case, postings_read_write) {
   constexpr irs::IndexFeatures features = irs::IndexFeatures::DOCS;
 
   irs::field_meta field;
-  irs::to_flags(irs::index_features{features}, field.features);
+  field.index_features = features;
 
   // docs & attributes for term0
   std::vector<irs::doc_id_t> docs0{ 1, 3, 5, 7, 79, 101, 124 };
@@ -484,7 +484,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     state.dir = &dir();
     state.doc_count = 150;
     state.name = "segment_name";
-    state.features = &field.features;
+    state.features = field.index_features;
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -538,7 +538,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     // prepare reader
     auto reader = codec->get_postings_reader();
     ASSERT_NE(nullptr, reader);
-    reader->prepare(*in, state, field.features);
+    reader->prepare(*in, state, field.index_features);
 
     irs::bstring in_data(in->length() - in->file_pointer(), 0);
     in->read_bytes(&in_data[0], in_data.size());
@@ -549,7 +549,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // read term0 attributes
     {
-      begin += reader->decode(begin, field.features, read_meta);
+      begin += reader->decode(begin, field.index_features, read_meta);
 
       // check term_meta
       {
@@ -564,7 +564,7 @@ TEST_P(format_10_test_case, postings_read_write) {
       }
 
       // read documents
-      auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++], it->value());
       }
@@ -572,7 +572,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // read term1 attributes
     {
-      begin += reader->decode(begin, field.features, read_meta);
+      begin += reader->decode(begin, field.index_features, read_meta);
 
       // check term_meta
       {
@@ -587,7 +587,7 @@ TEST_P(format_10_test_case, postings_read_write) {
       }
 
       /* read documents */
-      auto it = reader->iterator(field.features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++], it->value());
       }
@@ -623,13 +623,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "0";
-    state.features = &field.features; // all possible features in segment
+    state.features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -650,13 +650,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "1";
-    state.features = &field.features; // all possible features in segment
+    state.features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -677,13 +677,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "2";
-    state.features = &field.features; // all possible features in segment
+    state.features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -702,13 +702,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "3";
-    state.features = &field.features; // all possible features in segment
+    state.features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -727,13 +727,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "4";
-    state.features = &field.features; // all possible features in segment
+    state.features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -753,13 +753,12 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     irs::field_meta field;
     field.name = "field";
-    irs::to_flags(irs::index_features{features}, field.features);
+    field.index_features = features;
 
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "5";
-    state.features = &irs::flags::empty_instance(); // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -796,7 +795,6 @@ TEST_P(format_10_test_case, postings_seek) {
     iresearch::flush_state flush_state;
     flush_state.dir = dir.get();
     flush_state.doc_count = 10000;
-    flush_state.features = &irs::flags::empty_instance();
     flush_state.name = segment_name;
 
     irs::field_meta field_meta;
@@ -804,7 +802,8 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       auto fw = get_codec()->get_field_writer(true);
       fw->prepare(flush_state);
-      fw->write(field_meta.name, field_meta.norm, field_meta.features, trms);
+      fw->write(field_meta.name, field_meta.norm, field_meta.index_features,
+                field_meta.features, trms);
       fw->end();
     }
 

@@ -837,7 +837,8 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
 //////////////////////////////////////////////////////////////////////////////
 bool compute_field_meta(
     field_meta_map_t& field_meta_map,
-    irs::flags& fields_features,
+    IndexFeatures index_features,
+    flags& fields_features,
     const irs::sub_reader& reader) {
   REGISTER_TIMER_DETAILED();
   for (auto it = reader.fields(); it->next();) {
@@ -853,6 +854,8 @@ bool compute_field_meta(
 
     fields_features |= field_meta.features;
   }
+
+  index_features |= from_flags(fields_features);
 
   return true;
 }
@@ -1203,6 +1206,7 @@ bool write_fields(
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
+    IndexFeatures index_features = from_flags(field_features); // FIXME
 
     // remap merge norms
     if (!progress() || !field_itr.visit(merge_norms)) {
@@ -1215,9 +1219,9 @@ bool write_fields(
     field_writer->write(
       field_meta.name,
       cs.empty() ? irs::field_limits::invalid() : cs.id(),
+      index_features,
       field_features,
-      *terms
-    );
+      *terms);
   }
 
   field_writer->end();
@@ -1273,6 +1277,8 @@ bool write_fields(
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
 
+    IndexFeatures index_features = from_flags(field_features);
+
     // remap merge norms
     if (!progress() || !norms.reset(add_iterators)) {
       return false;
@@ -1288,9 +1294,9 @@ bool write_fields(
     field_writer->write(
       field_meta.name,
       cs.empty() ? irs::field_limits::invalid() : cs.id(),
+      index_features,
       field_features,
-      *terms
-    );
+      *terms);
   }
 
   field_writer->end();
@@ -1368,7 +1374,8 @@ bool merge_writer::flush(
   field_meta_map_t field_meta_map;
   compound_field_iterator fields_itr(progress);
   compound_column_meta_iterator_t columns_meta_itr;
-  irs::flags fields_features;
+  flags fields_features;
+  IndexFeatures index_features{IndexFeatures::DOCS};
 
   doc_id_t base_id = irs::doc_limits::min(); // next valid doc_id
 
@@ -1400,7 +1407,7 @@ bool merge_writer::flush(
       return false; // failed to compute next doc_id
     }
 
-    if (!compute_field_meta(field_meta_map, fields_features, reader)) {
+    if (!compute_field_meta(field_meta_map, index_features, fields_features, reader)) {
       return false;
     }
 
@@ -1441,7 +1448,8 @@ bool merge_writer::flush(
   flush_state state;
   state.dir = &dir;
   state.doc_count = segment.meta.docs_count;
-  state.features = &fields_features;
+  state.custom_features = &fields_features;
+  state.features = index_features;
   state.name = segment.meta.name;
 
   // write field meta and field term data
@@ -1470,7 +1478,8 @@ bool merge_writer::flush_sorted(
   field_meta_map_t field_meta_map;
   compound_column_meta_iterator_t columns_meta_itr;
   compound_field_iterator fields_itr(progress, comparator_);
-  irs::flags fields_features;
+  flags fields_features;
+  IndexFeatures index_features{IndexFeatures::DOCS};
 
   sorting_compound_column_iterator::iterators_t itrs;
   itrs.reserve(readers_.size());
@@ -1495,7 +1504,7 @@ bool merge_writer::flush_sorted(
       return false;
     }
 
-    if (!compute_field_meta(field_meta_map, fields_features, reader)) {
+    if (!compute_field_meta(field_meta_map, index_features, fields_features, reader)) {
       return false;
     }
 
@@ -1516,8 +1525,7 @@ bool merge_writer::flush_sorted(
       // assume not a lot of space wasted if irs::doc_limits::min() > 0
       doc_id_map.resize(
         reader.docs_count() + irs::doc_limits::min(),
-        irs::doc_limits::eof()
-      );
+        irs::doc_limits::eof());
     } catch (...) {
       IR_FRMT_ERROR(
         "Failed to resize merge_writer::doc_id_map to accommodate element: " IR_UINT64_T_SPECIFIER,
@@ -1623,7 +1631,8 @@ bool merge_writer::flush_sorted(
   flush_state state;
   state.dir = &dir;
   state.doc_count = segment.meta.docs_count;
-  state.features = &fields_features;
+  state.features = index_features;
+  state.custom_features = &fields_features;
   state.name = segment.meta.name;
 
   // write field meta and field term data

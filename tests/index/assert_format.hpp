@@ -234,7 +234,7 @@ class term_reader : public irs::term_reader {
     : data_(data),
       min_(data_.terms.begin()->value),
       max_(data_.terms.rbegin()->value) {
-    if (meta().features.check<irs::frequency>()) {
+    if (irs::IndexFeatures::DOCS != (meta().index_features & irs::IndexFeatures::FREQ)) {
       for (auto& term : data.terms) {
         for (auto& p : term.postings) {
           freq_.value += static_cast<uint32_t>(p.positions().size());
@@ -350,19 +350,23 @@ class field_writer : public irs::field_writer {
 
   /* returns features which should be checked
    * in "write" method */
-  irs::flags features() const { return features_; }
+//  irs::flags features() const { return features_; }
 
   /* sets features which should be checked
    * in "write" method */
-  void features(const irs::flags& features) { features_ = features; }
+//  void features(const irs::flags& features) { features_ = features; }
 
   virtual void prepare(const irs::flush_state& state) override;
-  virtual void write(const std::string& name, irs::field_id norm, const irs::flags& expected_field, irs::term_iterator& actual_term) override;
+  virtual void write(const std::string& name, irs::field_id norm,
+                     irs::IndexFeatures index_features,
+                     const irs::flags& custom_features,
+                     irs::term_iterator& actual_term) override;
   virtual void end() override;
 
  private:
   field_reader readers_;
   irs::flags features_;
+  irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
 };
 
 class format : public irs::format {

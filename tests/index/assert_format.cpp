@@ -92,29 +92,41 @@ field::field(
     const irs::flags& features)
   : pos(0), offs(0) {
   this->name = name;
-  this->features = features;
+  this->index_features = irs::from_flags(features);
+
+  // FIXME
+  for (auto feature : features) {
+    if (feature == irs::type<irs::frequency>::id() ||
+        feature == irs::type<irs::position>::id() ||
+        feature == irs::type<irs::offset>::id() ||
+        feature == irs::type<irs::payload>::id()) {
+      continue;
+    }
+
+    this->features.add(feature);
+  }
 }
 
 field::field(field&& rhs) noexcept
   : field_meta(std::move(rhs)),
-    terms( std::move(rhs.terms)),
+    terms(std::move(rhs.terms)),
     docs(std::move(rhs.docs)),
-    pos( rhs.pos ),
-    offs( rhs.offs ) {
+    pos(rhs.pos),
+    offs(rhs.offs) {
 }
 
 term& field::add(const irs::bytes_ref& t) {
-  auto res = terms.emplace( t );
-  return const_cast< term& >( *res.first );
+  auto res = terms.emplace(t);
+  return const_cast<term&>(*res.first);
 }
 
 term* field::find(const irs::bytes_ref& t) {
-  auto it = terms.find( term( t ) );
-  return terms.end() == it ? nullptr : const_cast< term* >(&*it);
+  auto it = terms.find(term(t));
+  return terms.end() == it ? nullptr : const_cast<term*>(&*it);
 }
 
 size_t field::remove(const irs::bytes_ref& t) {
-  return terms.erase( term( t ) );
+  return terms.erase(term(t));
 }
 
 /* -------------------------------------------------------------------
@@ -187,13 +199,14 @@ void index_segment::add(const ifield& f) {
   }
 }
 
-std::string index_meta_writer::filename(const irs::index_meta& meta) const {
-  return std::string();
+std::string index_meta_writer::filename(
+    const irs::index_meta& /*meta*/) const {
+  return {};
 }
 
 bool index_meta_writer::prepare(
-    irs::directory& dir,
-    irs::index_meta& meta) {
+    irs::directory& /*dir*/,
+    irs::index_meta& /*meta*/) {
   return true;
 }
 
@@ -212,21 +225,19 @@ bool index_meta_reader::last_segments_file(
 }
 
 void index_meta_reader::read(
-  const irs::directory& dir,
-  irs::index_meta& meta,
-  const irs::string_ref& filename /*= string_ref::NIL*/
-) {
+    const irs::directory& /*dir*/,
+    irs::index_meta& /*meta*/,
+    const irs::string_ref& /*filename*/ /*= string_ref::NIL*/) {
 }
 
 /* -------------------------------------------------------------------
  * segment_meta_writer 
  * ------------------------------------------------------------------*/
 
-
 void segment_meta_writer::write(
-  irs::directory& dir,
-  std::string& filename,
-  const irs::segment_meta& meta ) {
+    irs::directory& /*dir*/,
+    std::string& /*filename*/,
+    const irs::segment_meta& /*meta*/) {
 }
 
 /* -------------------------------------------------------------------
@@ -234,10 +245,9 @@ void segment_meta_writer::write(
  * ------------------------------------------------------------------*/
 
 void segment_meta_reader::read( 
-  const irs::directory& dir,
-  irs::segment_meta& meta,
-  const irs::string_ref& filename /*= string_ref::NIL*/
-) {
+    const irs::directory& /*dir*/,
+    irs::segment_meta& /*meta*/,
+    const irs::string_ref& /*filename*/ /*= string_ref::NIL*/) {
 }
 
 /* -------------------------------------------------------------------
@@ -249,16 +259,14 @@ document_mask_writer::document_mask_writer(const index_segment& data):
 }
 
 std::string document_mask_writer::filename(
-    const irs::segment_meta& meta
-) const {
-  return std::string();
+    const irs::segment_meta& /*meta*/) const {
+  return { };
 }
 
 void document_mask_writer::write(
-    irs::directory& dir,
-    const irs::segment_meta& meta,
-    const irs::document_mask& docs_mask
-) {
+    irs::directory& /*dir*/,
+    const irs::segment_meta& /*meta*/,
+    const irs::document_mask& docs_mask) {
   EXPECT_EQ(data_.doc_mask().size(), docs_mask.size());
   for (auto doc_id : docs_mask) {
     EXPECT_EQ(true, data_.doc_mask().find(doc_id) != data_.doc_mask().end());
@@ -269,17 +277,21 @@ void document_mask_writer::write(
  * field_writer
  * ------------------------------------------------------------------*/
 
-field_writer::field_writer(const index_segment& data, const irs::flags& features)
-  : readers_( data ), features_( features) {
+field_writer::field_writer(
+    const index_segment& data,
+    const irs::flags& features)
+  : readers_(data),
+    features_(features) {
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
-  EXPECT_EQ( state.doc_count, readers_.data().doc_count() );
+  EXPECT_EQ(state.doc_count, readers_.data().doc_count());
 }
 
 void field_writer::write(
     const std::string& name,
     irs::field_id norm,
+    irs::IndexFeatures expected_index_features,
     const irs::flags& expected_field,
     irs::term_iterator& actual_term) {
   // features to check
@@ -288,8 +300,9 @@ void field_writer::write(
   ASSERT_EQ(fld->name, name);
   ASSERT_EQ(fld->norm, norm);
   ASSERT_EQ(fld->features, expected_field);
+  ASSERT_EQ(fld->index_features, expected_index_features);
   
-  auto features = features_ & fld->features;
+  auto index_features = index_features_ & fld->index_features;
 
   const irs::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);
@@ -304,7 +317,7 @@ void field_writer::write(
        actual_term.next(); ++actual_size) {
     ASSERT_TRUE(expected_term->next());
 
-    assert_term(*expected_term, actual_term, irs::from_flags(features));
+    assert_term(*expected_term, actual_term, index_features);
 
     if (actual_min.null()) {
       actual_min_buf = actual_term.value();

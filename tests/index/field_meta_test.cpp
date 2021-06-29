@@ -42,10 +42,10 @@ TEST(field_meta_test, ctor) {
     features.add<offset>();
 
     const std::string name("name");
-    const field_meta fm(name, features, 5);
+    const field_meta fm(name, features);
     ASSERT_EQ(name, fm.name);
-    ASSERT_EQ(features, fm.features);
-    ASSERT_EQ(5, fm.norm);
+    ASSERT_EQ(irs::flags{irs::type<increment>::get()}, fm.features);
+    ASSERT_EQ(irs::IndexFeatures::OFFS, fm.index_features);
   }
 }
 
@@ -105,7 +105,6 @@ TEST(field_meta_test, compare) {
   features.add<offset>();
   features.add<document>();
 
-  const field_id id = 5;
   const std::string name("name");
 
   field_meta lhs;

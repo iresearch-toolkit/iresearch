@@ -88,7 +88,7 @@ void write_prox(
     Stream& out,
     uint32_t prox,
     const irs::payload* pay,
-    index_features& features) {
+    IndexFeatures& features) {
   if (!pay || pay->value.empty()) {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
@@ -97,7 +97,7 @@ void write_prox(
     out.write(pay->value.c_str(), pay->value.size());
 
     // saw payloads
-    features = features | index_features{IndexFeatures::PAY};
+    features |= IndexFeatures::PAY;
   }
 }
 
@@ -163,18 +163,16 @@ class pos_iterator final : public irs::position {
   }
 
   // reset field
-  void reset(index_features features, const frequency& freq) {
-    assert(features.freq());
+  void reset(IndexFeatures features, const frequency& freq) {
+    assert(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
 
-    std::get<attribute_ptr<offset>>(attrs_) = features.offset()
-      ? &offs_
-      : nullptr;
+    std::get<attribute_ptr<offset>>(attrs_) =
+      IndexFeatures::DOCS != (features & IndexFeatures::OFFS) ? &offs_ : nullptr;
 
-    std::get<attribute_ptr<payload>>(attrs_) = features.payload()
-      ? &pay_
-      : nullptr;
+    std::get<attribute_ptr<payload>>(attrs_) =
+      IndexFeatures::DOCS != (features & IndexFeatures::PAY) ? &pay_ : nullptr;
   }
 
   // reset value
@@ -257,11 +255,11 @@ class doc_iterator final : public irs::doc_iterator {
     pos = nullptr;
     has_cookie_ = false;
 
-    const auto features = field.index_features();
-    if (features.freq()) {
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::DOCS != (features & IndexFeatures::FREQ)) {
       freq = &freq_;
 
-      if (features.position()) {
+      if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         pos = &pos_;
         has_cookie_ = field.prox_random_access();
@@ -383,11 +381,11 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     pfreq = nullptr;
     ppos = nullptr;
 
-    const auto features = field.index_features();
-    if (features.freq()) {
+    const auto features = field.meta().index_features;
+    if (IndexFeatures::DOCS != (features & IndexFeatures::FREQ)) {
       pfreq = &freq_;
 
-      if (features.position()) {
+      if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         ppos = &pos_;
       }
@@ -738,8 +736,7 @@ field_data::field_data(
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
-    last_doc_(doc_limits::invalid()),
-    index_features_(from_flags(features)) {
+    last_doc_(doc_limits::invalid()) {
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -786,19 +783,19 @@ void field_data::new_term(
   *int_writer_ = prox_start; // prox stream start
 
   p.doc = did;
-  if (!index_features_.freq()) {
+  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, index_features_);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -817,7 +814,7 @@ void field_data::add_term(
     doc_id_t did,
     const payload* pay,
     const offset* offs) {
-  if (!index_features_.freq()) {
+  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -850,13 +847,13 @@ void field_data::add_term(
     stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
     ++stats_.num_unique;
 
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_, pay, index_features_);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -869,13 +866,13 @@ void field_data::add_term(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
-      write_prox(prox_out, pos_ - p.pos, pay, index_features_);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -905,18 +902,18 @@ void field_data::new_term_random_access(
   *int_writer_ = 0;      // last start cookie
 
   p.doc = did;
-  if (!index_features_.freq()) {
+  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
-      write_prox(prox_out, pos_, pay, index_features_);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -937,7 +934,7 @@ void field_data::add_term_random_access(
     doc_id_t did,
     const payload* pay,
     const offset* offs) {
-  if (!index_features_.freq()) {
+  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -972,7 +969,7 @@ void field_data::add_term_random_access(
     stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
     ++stats_.num_unique;
 
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
@@ -985,9 +982,9 @@ void field_data::add_term_random_access(
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_, pay, index_features_);
+      write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -1000,14 +997,14 @@ void field_data::add_term_random_access(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
-    if (index_features_.position()) {
+    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
-      write_prox(prox_out, pos_ - p.pos, pay, index_features_);
+      write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (index_features_.offset()) {
+      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -1018,7 +1015,7 @@ void field_data::add_term_random_access(
   }
 }
 
-bool field_data::invert(token_stream& stream,  doc_id_t id) {
+bool field_data::invert(token_stream& stream, doc_id_t id) {
   REGISTER_TIMER_DETAILED();
   assert(id < doc_limits::eof()); // 0-based document id
 
@@ -1041,7 +1038,7 @@ bool field_data::invert(token_stream& stream,  doc_id_t id) {
     return false;
   }
 
-  if (index_features_.offset()) {
+  if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
     offs = get<offset>(stream);
 
     if (offs) {
@@ -1149,20 +1146,23 @@ field_data* fields_data::emplace(
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
-  to_flags(index_features_, features_);
-  state.features = &features_;
+  IndexFeatures index_features{IndexFeatures::DOCS};
+  flags custom_features;
 
   // sort fields
   sorted_fields_.resize(fields_.size());
   auto begin = sorted_fields_.begin();
   for (auto& entry : fields_) {
-    // FIXME
-    if (entry.index_features().payload()) {
-      const_cast<field_meta&>(entry.meta()).features.add<payload>();
-    }
     *begin = &entry;
     ++begin;
+
+    const auto& meta = entry.meta();
+    index_features |= static_cast<IndexFeatures>(meta.index_features);
+    custom_features |= meta.features;
   }
+
+  state.features = static_cast<IndexFeatures>(index_features);
+  state.custom_features = &custom_features;
 
   std::sort(
     sorted_fields_.begin(), sorted_fields_.end(),
@@ -1181,7 +1181,9 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     // write inverted data
     auto it = terms.iterator();
-    fw.write(meta.name, meta.norm, meta.features, *it);
+    fw.write(meta.name, meta.norm,
+             meta.index_features,
+             meta.features, *it);
   }
 
   fw.end();
@@ -1189,8 +1191,6 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
-  features_.clear();
-  index_features_ = index_features{};
   fields_.clear();
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
