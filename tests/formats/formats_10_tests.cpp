@@ -338,7 +338,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     writer->prepare(*out, state);
 
     // begin field
-    writer->begin_field(irs::from_flags(field.features));
+    writer->begin_field(field.index_features);
 
     // write postings for term0
     {

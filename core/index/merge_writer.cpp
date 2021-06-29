@@ -628,9 +628,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features
     for (auto& itr_id : term_iterator_mask_) {
       auto& term_itr = term_iterators_[itr_id];
 
-      const auto features = static_cast<IndexFeatures>(from_flags(meta().features)); // FIXME
-
-      itrs.emplace_back(term_itr.first->postings(features), term_itr.second);
+      itrs.emplace_back(term_itr.first->postings(meta().index_features), term_itr.second);
     }
 
     return true;
@@ -853,9 +851,8 @@ bool compute_field_meta(
     }
 
     fields_features |= field_meta.features;
+    index_features |= field_meta.index_features;
   }
-
-  index_features |= from_flags(fields_features);
 
   return true;
 }
@@ -1205,8 +1202,6 @@ bool write_fields(
     cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
-    auto& field_features = field_meta.features;
-    IndexFeatures index_features = from_flags(field_features); // FIXME
 
     // remap merge norms
     if (!progress() || !field_itr.visit(merge_norms)) {
@@ -1219,8 +1214,8 @@ bool write_fields(
     field_writer->write(
       field_meta.name,
       cs.empty() ? irs::field_limits::invalid() : cs.id(),
-      index_features,
-      field_features,
+      field_meta.index_features,
+      field_meta.features,
       *terms);
   }
 
@@ -1275,9 +1270,6 @@ bool write_fields(
     cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
-    auto& field_features = field_meta.features;
-
-    IndexFeatures index_features = from_flags(field_features);
 
     // remap merge norms
     if (!progress() || !norms.reset(add_iterators)) {
@@ -1294,8 +1286,8 @@ bool write_fields(
     field_writer->write(
       field_meta.name,
       cs.empty() ? irs::field_limits::invalid() : cs.id(),
-      index_features,
-      field_features,
+      field_meta.index_features,
+      field_meta.features,
       *terms);
   }
 

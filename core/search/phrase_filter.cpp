@@ -546,7 +546,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (!contains(reader->meta().features, required())) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 
@@ -645,7 +645,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (!contains(reader->meta().features, required())) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 

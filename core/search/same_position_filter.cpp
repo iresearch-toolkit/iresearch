@@ -244,7 +244,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (!contains(field->meta().features, required())) {
+      if (required() != (field->meta().index_features & required())) {
         continue;
       }
 
