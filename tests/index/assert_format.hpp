@@ -346,15 +346,7 @@ class field_reader : public irs::field_reader {
 
 class field_writer : public irs::field_writer {
  public:
-  field_writer(const index_segment& data, const irs::flags& features = irs::flags());
-
-  /* returns features which should be checked
-   * in "write" method */
-//  irs::flags features() const { return features_; }
-
-  /* sets features which should be checked
-   * in "write" method */
-//  void features(const irs::flags& features) { features_ = features; }
+  explicit field_writer(const index_segment& data);
 
   virtual void prepare(const irs::flush_state& state) override;
   virtual void write(const std::string& name, irs::field_id norm,
@@ -365,7 +357,6 @@ class field_writer : public irs::field_writer {
 
  private:
   field_reader readers_;
-  irs::flags features_;
   irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
 };
 
@@ -423,8 +414,7 @@ void assert_index(
   const irs::index_reader& actual_index,
   irs::IndexFeatures features,
   size_t skip = 0, // do not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr
-);
+  irs::automaton_table_matcher* matcher = nullptr);
 
 void assert_index(
   const irs::directory& dir,
@@ -432,8 +422,7 @@ void assert_index(
   const index_t& index,
   irs::IndexFeatures features,
   size_t skip = 0, // no not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr
-);
+  irs::automaton_table_matcher* matcher = nullptr);
 
 } // tests
 

@@ -559,8 +559,7 @@ class index_test_case : public tests::index_test_base {
     {
       tests::json_doc_generator gen(
         resource("simple_single_column_multi_term.json"),
-        &tests::payloaded_json_field_factory
-      );
+        &tests::payloaded_json_field_factory);
       add_segment(gen);
     }
 
@@ -644,7 +643,9 @@ class index_test_case : public tests::index_test_base {
             auto& exp_term_itr = expected_term_itrs[i];
 
             pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
-              constexpr irs::IndexFeatures features = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+              constexpr irs::IndexFeatures features =
+                irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+                irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
               irs::doc_iterator::ptr act_docs_itr;
               irs::doc_iterator::ptr exp_docs_itr;
 
@@ -2326,7 +2327,8 @@ void index_test_case::docs_bit_union(const irs::flags& features) {
   ASSERT_EQ("A", irs::ref_cast<char>(term_reader->min()));
   ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
   ASSERT_EQ(field.name(), term_reader->meta().name);
-  ASSERT_EQ(field.features(), term_reader->meta().features);
+  ASSERT_TRUE(term_reader->meta().features.empty());
+  ASSERT_EQ(irs::from_flags(field.features()), term_reader->meta().index_features);
   ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
 
   constexpr size_t expected_docs_B[] {
@@ -5432,25 +5434,20 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    )); // field features subset
+      doc2->stored.begin(), doc2->stored.end())); // field features subset
     ASSERT_FALSE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    )); // serializer returs false
+      doc3->stored.begin(), doc3->stored.end())); // serializer returs false
     ASSERT_FALSE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    )); // field features differ
+      doc4->stored.begin(), doc4->stored.end())); // field features differ
     ASSERT_FALSE(update(*writer,
       *(query_doc1.filter.get()), 
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());

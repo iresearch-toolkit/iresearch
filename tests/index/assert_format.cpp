@@ -277,11 +277,8 @@ void document_mask_writer::write(
  * field_writer
  * ------------------------------------------------------------------*/
 
-field_writer::field_writer(
-    const index_segment& data,
-    const irs::flags& features)
-  : readers_(data),
-    features_(features) {
+field_writer::field_writer(const index_segment& data)
+  : readers_(data) {
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
@@ -548,7 +545,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual doc_iterator::ptr postings(irs::IndexFeatures features) const override {
-    return irs::memory::make_managed<doc_iterator>(irs::from_flags(data_.features) & features, *prev_);
+    return irs::memory::make_managed<doc_iterator>(data_.index_features & features, *prev_);
   }
 
   virtual bool seek(

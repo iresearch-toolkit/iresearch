@@ -232,8 +232,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   void write_segment(
       irs::index_writer& writer,
       tests::index_segment& segment,
-      tests::doc_generator_base& gen
-  ) {
+      tests::doc_generator_base& gen) {
     // add segment
     const document* src;
 
@@ -241,15 +240,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
       segment.add(
         src->indexed.begin(),
         src->indexed.end(),
-        src->sorted
-      );
+        src->sorted);
 
       ASSERT_TRUE(insert(
         writer,
         src->indexed.begin(), src->indexed.end(),
         src->stored.begin(), src->stored.end(),
-        src->sorted
-      ));
+        src->sorted));
     }
 
     if (writer.comparator()) {
@@ -264,8 +261,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   void add_segments(
-      irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens
-  ) {
+      irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
     for (auto& gen : gens) {
       index_.emplace_back();
       write_segment(writer, index_.back(), *gen);
@@ -276,8 +272,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   void add_segment(
       tests::doc_generator_base& gen,
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& opts = {}
-  ) {
+      const irs::index_writer::init_options& opts = {}) {
     auto writer = open_writer(mode, opts);
     add_segment(*writer, gen);
   }
