@@ -57,21 +57,9 @@ class index_features {
     return IndexFeatures::DOCS != (IndexFeatures{mask_} & mask);
   }
 
-  bool all(IndexFeatures mask) const noexcept {
-    return mask != (IndexFeatures{mask_} & mask);
-  }
-
  private:
   std::underlying_type_t<IndexFeatures> mask_{};
 }; // index_features
-
-inline index_features operator&(index_features lhs, index_features rhs) noexcept {
-  return index_features{ static_cast<IndexFeatures>(lhs) & static_cast<IndexFeatures>(rhs) };
-}
-
-inline index_features operator|(index_features lhs, index_features rhs) noexcept {
-  return index_features{ static_cast<IndexFeatures>(lhs) | static_cast<IndexFeatures>(rhs) };
-}
 
 }
 
