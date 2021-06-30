@@ -154,8 +154,8 @@ bool segment_writer::index(
   auto* slot = fields_.emplace(name, index_features, features);
 
   // invert only if new field features are a subset of slot features
-  // FIXME uncomment
-  // assert(features.is_subset_of(slot->meta().features));
+  assert(index_features <= slot->meta().index_features);
+  assert(features.is_subset_of(slot->meta().features));
 
   if (slot->invert(tokens, doc)) {
     if (!slot->has_norms() && slot->stats().len && features.check<norm>()) {

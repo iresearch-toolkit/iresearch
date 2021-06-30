@@ -82,22 +82,11 @@ const std::string DEFAULT_ANALYZER_OPTIONS
 
 typedef std::unique_ptr<std::string> ustringp;
 
-const std::string n_id = "id";
-const std::string n_title = "title";
-const std::string n_date = "date";
-const std::string n_timesecnum = "timesecnum";
-const std::string n_body = "body";
+constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
+  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
 
-const irs::flags text_features{
-  irs::type<irs::frequency>::get(),
-  irs::type<irs::position>::get(),
-  irs::type<irs::offset>::get(),
-  irs::type<irs::norm>::get()
-};
-
-const irs::flags numeric_features{
-  irs::type<irs::granularity_prefix>::get()
-};
+const irs::flags TEXT_FEATURES{ irs::type<irs::norm>::get() };
+const irs::flags NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::get() };
 
 }
 
@@ -139,26 +128,31 @@ struct Doc {
   }
 
   struct Field {
-    const std::string& _name;
-    const irs::flags feats;
+    irs::string_ref _name;
+    const irs::flags _features;
+    const irs::IndexFeatures _index_features;
 
-    Field(const std::string& n, const irs::flags& flags) 
-      : _name(n), feats(flags) {
+    Field(const irs::string_ref& n,
+          irs::IndexFeatures index_features,
+          const irs::flags& flags)
+      : _name(n),
+        _features(flags),
+        _index_features(index_features) {
     }
 
-    const std::string& name() const {
+    irs::string_ref name() const noexcept {
       return _name;
     }
 
-    float_t boost() const {
-      return 1.0;
+    const irs::flags& features() const noexcept {
+      return _features;
+    }
+
+    irs::IndexFeatures index_features() const noexcept {
+      return _index_features;
     }
 
     virtual irs::token_stream& get_tokens() const = 0;
-
-    const irs::flags& features() const {
-      return feats;
-    }
 
     virtual bool write(irs::data_output& out) const = 0;
 
@@ -169,12 +163,19 @@ struct Doc {
     std::string f;
     mutable irs::string_token_stream _stream;
 
-    StringField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
+    StringField(
+        const std::string& n,
+        irs::IndexFeatures index_features,
+        const irs::flags& flags)
+      : Field(n, index_features, flags) {
     }
 
-    StringField(const std::string& n, const irs::flags& flags, const std::string& a)
-      : Field(n, flags), f(a) {
+    StringField(
+        const std::string& n,
+        irs::IndexFeatures index_features,
+        const irs::flags& flags,
+        const std::string& a)
+      : Field(n, index_features, flags), f(a) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -192,9 +193,13 @@ struct Doc {
     std::string f;
     mutable irs::analysis::analyzer::ptr stream;
 
-    TextField(const std::string& n, const irs::flags& flags,
-              irs::analysis::analyzer::ptr stream)
-      : Field(n, flags), stream(std::move(stream)) {
+    TextField(
+        const std::string& n,
+        irs::IndexFeatures index_features,
+        const irs::flags& flags,
+        irs::analysis::analyzer::ptr stream)
+      : Field(n, index_features, flags),
+        stream(std::move(stream)) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -212,12 +217,19 @@ struct Doc {
     mutable irs::numeric_token_stream stream;
     int64_t value;
 
-    NumericField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
+    NumericField(
+        const std::string& n,
+        irs::IndexFeatures index_features,
+        const irs::flags& flags)
+      : Field(n, index_features, flags) {
     }
 
-    NumericField(const std::string& n, const irs::flags& flags, uint64_t v)
-      : Field(n, flags), value(v) {
+    NumericField(
+        const std::string& n,
+        irs::IndexFeatures index_features,
+        const irs::flags& flags,
+        uint64_t v)
+      : Field(n, index_features, flags), value(v) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -249,21 +261,26 @@ using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 struct WikiDoc : Doc {
   explicit WikiDoc(const analyzer_factory_f& analyzer_factory) {
     // id
-    elements.emplace_back(id = std::make_shared<StringField>(n_id, irs::flags::empty_instance()));
-    store.emplace_back(elements.back());
+    id = std::make_shared<StringField>("id", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    elements.emplace_back(id);
+    store.emplace_back(id);
 
     // title: string
-    elements.push_back(title = std::make_shared<StringField>(n_title, irs::flags::empty_instance()));
+    title = std::make_shared<StringField>("title", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    elements.push_back(title);
 
     // date: string
-    elements.push_back(date = std::make_shared<StringField>(n_date, irs::flags::empty_instance()));
-    store.push_back(elements.back());
+    date = std::make_shared<StringField>("date", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    elements.push_back(date);
+    store.push_back(date);
 
     // date: uint64_t
-    elements.push_back(ndate = std::make_shared<NumericField>(n_timesecnum, numeric_features));
+    ndate = std::make_shared<NumericField>("timesecnum", irs::IndexFeatures::DOCS, NUMERIC_FEATURES);
+    elements.push_back(ndate);
 
     // body: text
-    elements.push_back(body = std::make_shared<TextField>(n_body, text_features, analyzer_factory()));
+    body = std::make_shared<TextField>("body", TEXT_INDEX_FEATURES, TEXT_FEATURES, analyzer_factory());
+    elements.push_back(body);
   }
 
   virtual void fill(std::string* line) {
