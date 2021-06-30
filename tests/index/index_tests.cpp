@@ -2190,20 +2190,16 @@ class index_test_case : public tests::index_test_base {
 
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
-        doc4->stored.begin(), doc4->stored.end()
-      ));
+        doc4->stored.begin(), doc4->stored.end()));
       ASSERT_THROW(writer->commit(), irs::io_error);
     }
 
@@ -2229,20 +2225,16 @@ class index_test_case : public tests::index_test_base {
 
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc4->indexed.begin(), doc4->indexed.end(),
-        doc4->stored.begin(), doc4->stored.end()
-      ));
+        doc4->stored.begin(), doc4->stored.end()));
       ASSERT_THROW(writer->commit(), irs::io_error);
     }
 
