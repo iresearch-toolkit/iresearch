@@ -304,6 +304,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index(
     const hashed_string_ref& name,
     const doc_id_t doc,
+    IndexFeatures index_features,
     const flags& features,
     token_stream& tokens);
 
@@ -378,11 +379,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
+    const IndexFeatures index_features = field.index_features();
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return index(name, doc_id, features, tokens);
+    return index(name, doc_id, index_features, features, tokens);
   }
 
   template<bool Sorted, typename Field>
@@ -393,11 +395,12 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
+    const IndexFeatures index_features = field.index_features();
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    if (IRS_UNLIKELY(!index(name, doc_id, features, tokens))) {
+    if (IRS_UNLIKELY(!index(name, doc_id, index_features, features, tokens))) {
       return false; // indexing failed
     }
 

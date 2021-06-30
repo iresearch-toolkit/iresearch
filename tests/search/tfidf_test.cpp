@@ -208,26 +208,17 @@ TEST_P(tfidf_test, test_phrase) {
      public:
       string_field(const std::string& name, const irs::string_ref& value)
         : templates::string_field(name, value) {
-      }
-
-      const irs::flags& features() const {
-        static irs::flags features{ irs::type<irs::frequency>::get() };
-        return features;
+        this->index_features_ = irs::IndexFeatures::FREQ;
       }
     }; // string_field
 
     if (data.is_string()) {
       // analyzed field
       doc.indexed.push_back(std::make_shared<text_field>(
-        std::string(name.c_str()) + "_anl",
-        data.str
-      ));
+        std::string(name.c_str()) + "_anl", data.str));
 
       // not analyzed field
-      doc.insert(std::make_shared<string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<string_field>(name, data.str));
     }
   };
 

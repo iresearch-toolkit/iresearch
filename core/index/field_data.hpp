@@ -77,6 +77,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     const flags& features,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    IndexFeatures index_features,
     bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
@@ -159,7 +160,9 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return comparator_;
   }
 
-  field_data* emplace(const hashed_string_ref& name, const flags& features);
+  field_data* emplace(const hashed_string_ref& name,
+                      IndexFeatures index_features,
+                      const flags& features);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance

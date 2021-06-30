@@ -197,26 +197,17 @@ TEST_P(bm25_test, test_phrase) {
      public:
       string_field(const std::string& name, const irs::string_ref& value)
         : templates::string_field(name, value) {
-      }
-
-      const irs::flags& features() const {
-        static irs::flags features{ irs::type<irs::frequency>::get() };
-        return features;
+        this->index_features_ = irs::IndexFeatures::FREQ;
       }
     }; // string_field
 
     if (data.is_string()) {
       // analyzed field
       doc.indexed.push_back(std::make_shared<text_field>(
-        std::string(name.c_str()) + "_anl",
-        data.str
-      ));
+        std::string(name.c_str()) + "_anl", data.str));
 
       // not analyzed field
-      doc.insert(std::make_shared<string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<string_field>(name, data.str));
     }
   };
 
@@ -1021,10 +1012,10 @@ TEST_P(bm25_test, test_query_norms) {
         static irs::flags extra_features = { irs::type<irs::norm>::get() };
 
         if (data.is_string()) { // field
-          doc.insert(std::make_shared<templates::string_field>(name, data.str, extra_features), true, false);
+          doc.insert(std::make_shared<templates::string_field>(name, data.str, irs::IndexFeatures::DOCS, extra_features), true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(std::make_shared<templates::string_field>(name, value, extra_features), false, true);
+          doc.insert(std::make_shared<templates::string_field>(name, value, irs::IndexFeatures::DOCS, extra_features), false, true);
         }
     });
     add_segment(gen);

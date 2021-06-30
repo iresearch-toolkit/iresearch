@@ -372,8 +372,8 @@ TEST_F(segment_writer_tests, memory_index_field) {
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
-    float_t boost() const { return 1.f; }
     const irs::flags& features() const { return irs::flags::empty_instance(); }
+    irs::IndexFeatures index_features() const { return irs::IndexFeatures::DOCS; }
     irs::token_stream& get_tokens() { return token_stream; }
     irs::string_ref& name() const { static irs::string_ref value("test_field"); return value; }
   };
@@ -411,6 +411,7 @@ TEST_F(segment_writer_tests, index_field) {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
     float_t boost() const { return 1.f; }
+    irs::IndexFeatures index_features() const { return irs::IndexFeatures::DOCS; }
     const irs::flags& features() const { return irs::flags::empty_instance(); }
     irs::token_stream& get_tokens() { return token_stream; }
     irs::string_ref& name() const { static irs::string_ref value("test_field"); return value; }

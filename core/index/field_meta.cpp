@@ -45,20 +45,11 @@ field_meta::field_meta(field_meta&& rhs) noexcept
 
 field_meta::field_meta(
     const string_ref& name,
+    IndexFeatures index_features,
     const flags& features)
-  : name(name.c_str(), name.size()),
-    index_features(from_flags(features)) {
-  // FIXME
-  for (type_info::type_id feature : features) {
-    if (feature == type<frequency>::id() ||
-        feature == type<position>::id() ||
-        feature == type<offset>::id() ||
-        feature == type<payload>::id()) {
-      continue;
-    }
-
-    this->features.add(feature);
-  }
+  : features(features),
+    name(name.c_str(), name.size()),
+    index_features(index_features) {
 }
 
 field_meta& field_meta::operator=(field_meta&& rhs) noexcept {

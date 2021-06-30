@@ -423,8 +423,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     text_field(irs::analysis::analyzer& analyzer, std::string value)
       : value_(std::move(value)), analyzer_(&analyzer) {
       this->name("id");
-      this->features().add<irs::frequency>();
-      this->features().add<irs::norm>();
+      this->index_features_ = irs::IndexFeatures::FREQ;
+      this->features_.add<irs::norm>();
     }
 
     bool write(data_output&) const noexcept {

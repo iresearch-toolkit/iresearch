@@ -81,24 +81,22 @@ bool token_stream_payload::next() {
 
 string_field::string_field(
     const std::string& name,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
-  features_ |= extra_features;
-  this->name(name);
+    irs::IndexFeatures index_features,
+    const irs::flags& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 string_field::string_field(
     const std::string& name,
     const irs::string_ref& value,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
-     value_(value) {
-  features_ |= extra_features;
-  this->name(name);
-}
-
-const irs::flags& string_field::features() const {
-  return features_;
+    irs::IndexFeatures index_features,
+    const irs::flags& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 // reject too long terms
@@ -128,24 +126,22 @@ irs::token_stream& string_field::get_tokens() const {
 
 string_ref_field::string_ref_field(
     const std::string& name,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
-  features_ |= extra_features;
-  this->name(name);
+    irs::IndexFeatures extra_index_features,
+    const irs::flags& extra_features) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 string_ref_field::string_ref_field(
     const std::string& name,
     const irs::string_ref& value,
-    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
-     value_(value) {
-  features_ |= extra_features;
-  this->name(name);
-}
-
-const irs::flags& string_ref_field::features() const {
-  return features_;
+    irs::IndexFeatures extra_index_features,
+    const irs::flags& extra_features)
+  : value_(value) {
+  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  features_ = extra_features;
+  name_ = name;
 }
 
 // truncate very long terms
@@ -240,10 +236,7 @@ void generic_json_field_factory(
     const std::string& name,
     const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(
-      name,
-      data.str
-    ));
+    doc.insert(std::make_shared<templates::string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
@@ -278,21 +271,15 @@ void payloaded_json_field_factory(
     // analyzed && pyaloaded
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay",
-      data.str,
-      true
-    ));
+      data.str, true));
 
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl",
-      data.str
-    ));
+      data.str));
 
     // not analyzed field
-    doc.insert(std::make_shared<templates::string_field>(
-      name,
-      data.str
-    ));
+    doc.insert(std::make_shared<templates::string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
@@ -323,11 +310,7 @@ void normalized_string_json_field_factory(
   const json_doc_generator::json_value& data) {
   static irs::flags norm{ irs::type<irs::norm>::get() };
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(
-      name,
-      data.str,
-      norm
-      ));
+    doc.insert(std::make_shared<templates::string_field>(name, data.str, irs::IndexFeatures::DOCS, norm));
   } else {
     generic_json_field_factory(doc, name, data);
   }
@@ -379,10 +362,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
     });
 
@@ -405,16 +385,13 @@ class index_test_case : public tests::index_test_base {
         auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
         ASSERT_TRUE(insert(*data_writer,
           doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        ));
+          doc1->stored.begin(), doc1->stored.end()));
         ASSERT_TRUE(insert(*data_writer,
           doc2->indexed.begin(), doc2->indexed.end(),
-          doc2->stored.begin(), doc2->stored.end()
-        ));
+          doc2->stored.begin(), doc2->stored.end()));
         ASSERT_TRUE(insert(*data_writer,
           doc3->indexed.begin(), doc3->indexed.end(),
-          doc3->stored.begin(), doc3->stored.end()
-        ));
+          doc3->stored.begin(), doc3->stored.end()));
         data_writer->commit();
 
         auto reader = irs::directory_reader::open(data_dir);
@@ -869,8 +846,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(
         resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
@@ -898,8 +874,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND | irs::OM_CREATE);
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        &tests::generic_json_field_factory
-      );
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
       ASSERT_TRUE(
@@ -928,10 +903,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
-            name,
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
         }
       });
       tests::document const* doc1 = gen.next();
@@ -939,21 +911,15 @@ class index_test_case : public tests::index_test_base {
 
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
-      ASSERT_TRUE(
-        insert(*writer,
-          doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        )
-      );
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()));
       ASSERT_EQ(1, writer->buffered_docs());
       writer->begin(); // start transaction #1 
       ASSERT_EQ(0, writer->buffered_docs());
-      ASSERT_TRUE(
-        insert(*writer,
-          doc2->indexed.begin(), doc2->indexed.end(),
-          doc2->stored.begin(), doc2->stored.end()
-        )
-      ); // add another document while transaction in opened
+      ASSERT_TRUE(insert(*writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end())); // add another document while transaction in opened
       ASSERT_EQ(1, writer->buffered_docs());
       writer->commit(); // finish transaction #1
       ASSERT_EQ(1, writer->buffered_docs()); // still have 1 buffered document not included into transaction #1
@@ -1022,8 +988,7 @@ class index_test_case : public tests::index_test_base {
   void writer_begin_rollback() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"), 
-      &tests::generic_json_field_factory
-    );
+      &tests::generic_json_field_factory);
 
     irs::bytes_ref actual_value;
 
@@ -1034,12 +999,9 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
-      ASSERT_TRUE(
-        insert(*writer,
-          doc1->indexed.begin(), doc1->indexed.end(),
-          doc1->stored.begin(), doc1->stored.end()
-        )
-      );
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()));
       writer->rollback(); // does nothing
       ASSERT_EQ(1, writer->buffered_docs());
       ASSERT_TRUE(writer->begin());
@@ -1069,8 +1031,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #1
       writer->commit(); // commit tx #1
       auto file_count = 0;
@@ -1108,7 +1069,8 @@ class index_test_case : public tests::index_test_base {
   }
 
   void concurrent_read_single_column_smoke() {
-    tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                  &tests::generic_json_field_factory);
     std::vector<const tests::document*> expected_docs;
 
     // write some data into columnstore
@@ -1475,8 +1437,8 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      float_t boost() const {
-        return 1.f;
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::DOCS;
       }
 
       const irs::flags& features() const {
@@ -1885,10 +1847,12 @@ class index_test_case : public tests::index_test_base {
           value_(std::move(other.value_)) {
       }
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
+      }
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::DOCS;
       }
       const irs::flags& features() const {
         return irs::flags::empty_instance();
@@ -1963,7 +1927,9 @@ class index_test_case : public tests::index_test_base {
   void writer_bulk_insert() {
     class indexed_and_stored_field {
      public:
-      indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
+      indexed_and_stored_field(
+          std::string&& name, const irs::string_ref& value,
+          bool stored_valid = true, bool indexed_valid = true)
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)),
           value_(value),
@@ -1980,10 +1946,12 @@ class index_test_case : public tests::index_test_base {
           stored_valid_(other.stored_valid_) {
       }
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
+      }
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::DOCS;
       }
       const irs::flags& features() const {
         return features_;
@@ -2017,10 +1985,12 @@ class index_test_case : public tests::index_test_base {
           value_(std::move(other.value_)) {
       }
       irs::string_ref name() const { return name_; }
-      float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
+      }
+      irs::IndexFeatures index_features() const {
+        return irs::IndexFeatures::DOCS;
       }
       const irs::flags& features() const {
         return features_;
@@ -2210,8 +2180,7 @@ class index_test_case : public tests::index_test_base {
 
       tests::json_doc_generator gen(
         resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
       tests::document const* doc3 = gen.next();
@@ -2250,8 +2219,7 @@ class index_test_case : public tests::index_test_base {
 
       tests::json_doc_generator gen(
         resource("simple_sequential.json"), 
-        &tests::generic_json_field_factory
-      );
+        &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
       tests::document const* doc3 = gen.next();
@@ -2288,10 +2256,10 @@ class index_test_case : public tests::index_test_base {
     }
   }
 
-  void docs_bit_union(const irs::flags& features);
+  void docs_bit_union(irs::IndexFeatures features);
 }; // index_test_case
 
-void index_test_case::docs_bit_union(const irs::flags& features) {
+void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   tests::templates::string_ref_field field("0", features);
   const size_t N = irs::bits_required<uint64_t>(2) + 7;
 
@@ -2567,8 +2535,8 @@ TEST_P(index_test_case, europarl_docs) {
 }
 
 TEST_P(index_test_case, docs_bit_union) {
-  docs_bit_union({});
-  docs_bit_union({irs::type<irs::frequency>::get()});
+  docs_bit_union(irs::IndexFeatures::DOCS);
+  docs_bit_union(irs::IndexFeatures::FREQ);
 }
 
 TEST_P(index_test_case, europarl_docs_automaton) {
@@ -2662,10 +2630,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
   std::vector<const tests::document*> docs;
@@ -5386,15 +5351,15 @@ TEST_P(index_test_case, doc_update) {
   {
     class test_field: public tests::field_base {
      public:
-      irs::flags features_;
       irs::string_token_stream tokens_;
       bool write_result_;
       virtual bool write(irs::data_output& out) const override {
         out.write_byte(1);
         return write_result_;
       }
-      virtual irs::token_stream& get_tokens() const override { return const_cast<test_field*>(this)->tokens_; }
-      virtual const irs::flags& features() const override { return features_; }
+      virtual irs::token_stream& get_tokens() const override {
+        return const_cast<test_field*>(this)->tokens_;
+      }
     };
 
     tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
@@ -5592,10 +5557,7 @@ TEST_P(index_test_case, import_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
 
@@ -5637,8 +5599,7 @@ TEST_P(index_test_case, import_reader) {
     {
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       writer->commit();
 
       irs::index_meta meta;
@@ -5673,8 +5634,7 @@ TEST_P(index_test_case, import_reader) {
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     data_writer->commit();
     data_writer->documents().remove(std::move(query_doc1.filter));
     data_writer->commit();
@@ -5690,8 +5650,7 @@ TEST_P(index_test_case, import_reader) {
     {
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      ));
+        doc1->stored.begin(), doc1->stored.end()));
       writer->commit();
 
       irs::index_meta meta;
@@ -5712,12 +5671,10 @@ TEST_P(index_test_case, import_reader) {
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     data_writer->commit();
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -5789,21 +5746,17 @@ TEST_P(index_test_case, import_reader) {
 
     ASSERT_TRUE(insert(*data_writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     data_writer->commit();
     ASSERT_TRUE(insert(*data_writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     data_writer->commit();
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -6341,10 +6294,7 @@ TEST_P(index_test_case, segment_column_user_system) {
     [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
   });
 
@@ -6356,7 +6306,8 @@ TEST_P(index_test_case, segment_column_user_system) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
       "test-field",
       "test-value",
-      irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
+      irs::IndexFeatures::DOCS,
+      irs::flags{ irs::type<irs::norm>::get() } // trigger addition of a system column
     ), true, false);
   }
 
@@ -6367,16 +6318,13 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   ASSERT_TRUE(insert(*writer,
     doc0.indexed.begin(), doc0.indexed.end(),
-    doc0.stored.begin(), doc0.stored.end()
-  ));
+    doc0.stored.begin(), doc0.stored.end()));
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
   writer->commit();
 
   std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
@@ -6444,10 +6392,7 @@ TEST_P(index_test_case, import_concurrent) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -13803,10 +13748,11 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
   struct empty_field {
     irs::string_ref name() const { return "test"; };
+    irs::IndexFeatures index_features() const {
+      return irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+    }
     irs::flags features() const {
-      return { irs::type<irs::position>::get(),
-               irs::type<irs::frequency>::get(),
-               irs::type<irs::norm>::get() };
+      return { irs::type<irs::norm>::get() };
     }
     irs::token_stream& get_tokens() const noexcept {
       return stream;
@@ -13829,7 +13775,8 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     {
       const tests::templates::string_field field(
         static_cast<std::string>(empty.name()),
-        "bar", empty.features());
+        "bar", empty.index_features(),
+        empty.features());
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13838,7 +13785,8 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     {
       const tests::templates::string_field field(
         static_cast<std::string>(empty.name()),
-        "bar", empty.features());
+        "bar", empty.index_features(),
+        empty.features());
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -14245,10 +14193,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-          ));
+        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
       }
     });
 

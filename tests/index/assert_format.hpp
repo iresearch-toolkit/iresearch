@@ -110,9 +110,11 @@ struct term {
 
 class field : public irs::field_meta {
  public:
-  field(const irs::string_ref& name, const irs::flags& features);
-  field(field&& rhs) noexcept;
-  field& operator=(field&& rhs) noexcept;
+  field(const irs::string_ref& name,
+        irs::IndexFeatures index_features,
+        const irs::flags& features);
+  field(field&& rhs) = default;
+  field& operator=(field&& rhs) = default;
 
   term& add(const irs::bytes_ref& term);
   term* find(const irs::bytes_ref& term);

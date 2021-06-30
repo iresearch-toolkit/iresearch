@@ -29,33 +29,29 @@ namespace {
 
 class granular_float_field: public tests::float_field {
  public:
-  const irs::flags& features() const {
-    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-    return features;
+  granular_float_field() {
+    this->features_.add<irs::granularity_prefix>();
   }
 };
 
 class granular_double_field: public tests::double_field {
  public:
-  const irs::flags& features() const {
-    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-    return features;
+  granular_double_field() {
+    this->features_.add<irs::granularity_prefix>();
   }
 };
 
 class granular_int_field: public tests::int_field {
  public:
-  const irs::flags& features() const {
-    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-    return features;
+  granular_int_field() {
+    this->features_.add<irs::granularity_prefix>();
   }
 };
 
 class granular_long_field: public tests::long_field {
  public:
-  const irs::flags& features() const {
-    static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-    return features;
+  granular_long_field() {
+    this->features_.add<irs::granularity_prefix>();
   }
 };
 
@@ -64,13 +60,9 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   static void by_range_json_field_factory(
     tests::document& doc,
     const std::string& name,
-    const tests::json_doc_generator::json_value& data
-  ) {
+    const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();

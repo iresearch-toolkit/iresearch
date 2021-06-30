@@ -730,8 +730,9 @@ field_data::field_data(
     const flags& features,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
+    IndexFeatures index_features,
     bool random_access)
-  : meta_(name, features),
+  : meta_(name, index_features, features),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
@@ -1121,6 +1122,7 @@ fields_data::fields_data(const comparer* comparator /*= nullptr*/)
 
 field_data* fields_data::emplace(
     const hashed_string_ref& name,
+    IndexFeatures index_features,
     const flags& features) {
   assert(fields_map_.size() == fields_.size());
 
@@ -1132,7 +1134,10 @@ field_data* fields_data::emplace(
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, features, byte_writer_, int_writer_, (nullptr != comparator_));
+      fields_.emplace_back(
+        name, features, byte_writer_,
+        int_writer_, index_features,
+        (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
     }

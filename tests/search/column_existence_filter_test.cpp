@@ -49,6 +49,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
         bool write(data_output&) const { return true; }
         irs::string_ref name() const { return name_; }
+        irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::DOCS; }
         const irs::flags& features() const { return irs::flags::empty_instance(); }
         irs::token_stream& get_tokens() const {
           // nothing to index
@@ -63,7 +64,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        [](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& /*data*/) {
           doc.insert(std::make_shared<mask_field>(name));
       });
       add_segment(gen);

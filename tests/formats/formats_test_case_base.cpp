@@ -294,9 +294,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 TEST_P(format_test_case, fields_seek_ge) {
   class granular_double_field: public tests::double_field {
    public:
-    const irs::flags& features() const {
-      static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
-      return features;
+    granular_double_field() {
+      features_.add<irs::granularity_prefix>();
     }
   };
 

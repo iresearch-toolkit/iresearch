@@ -41,7 +41,9 @@ struct IRESEARCH_API field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(const string_ref& field, const flags& features);
+  field_meta(const string_ref& field,
+             IndexFeatures index_features,
+             const flags& features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;

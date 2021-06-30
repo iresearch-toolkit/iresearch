@@ -54,6 +54,7 @@ struct ifield {
   virtual ~ifield() = default;
 
   virtual const irs::flags& features() const = 0;
+  virtual irs::IndexFeatures index_features() const = 0;
   virtual irs::token_stream& get_tokens() const = 0;
   virtual irs::string_ref name() const = 0;
   virtual bool write(irs::data_output& out) const = 0;
@@ -73,16 +74,23 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  irs::flags& features() { return features_; }
-  const irs::flags& features() const { return features_; }
+  virtual const irs::flags& features() const noexcept override {
+    return features_;
+  }
 
-  irs::string_ref name() const { return name_; }
-  void name(std::string&& name) { name_ = std::move(name); }
-  void name(const std::string& name) { name_ = name; }
+  virtual irs::IndexFeatures index_features() const noexcept override {
+    return index_features_;
+  }
 
- private:
-  iresearch::flags features_;
+  virtual irs::string_ref name() const noexcept override {
+    return name_;
+  }
+
+  void name(std::string name) noexcept { name_ = std::move(name); }
+
+  irs::flags features_;
   std::string name_;
+  irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
 }; // field_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -109,18 +117,14 @@ class long_field: public field_base {
 /// @class long_field 
 /// @brief provides capabilities for storing & indexing int32_t values 
 //////////////////////////////////////////////////////////////////////////////
-class int_field: public field_base {
+class int_field : public field_base {
  public:
   typedef int32_t value_t;
 
   int_field()
     : stream_(std::make_shared<irs::numeric_token_stream>()) {
   }
-  int_field(int_field&& other) noexcept
-    : field_base(std::move(other)),
-      stream_(std::move(other.stream_)),
-      value_(std::move(other.value_)) {
-  }
+  int_field(int_field&& other) = default;
 
   irs::token_stream& get_tokens() const override;
   void value(value_t value) { value_ = value; }

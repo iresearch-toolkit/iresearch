@@ -89,30 +89,10 @@ bool term::operator<( const term& rhs ) const {
 
 field::field(
     const irs::string_ref& name,
+    irs::IndexFeatures index_features,
     const irs::flags& features)
-  : pos(0), offs(0) {
-  this->name = name;
-  this->index_features = irs::from_flags(features);
-
-  // FIXME
-  for (auto feature : features) {
-    if (feature == irs::type<irs::frequency>::id() ||
-        feature == irs::type<irs::position>::id() ||
-        feature == irs::type<irs::offset>::id() ||
-        feature == irs::type<irs::payload>::id()) {
-      continue;
-    }
-
-    this->features.add(feature);
-  }
-}
-
-field::field(field&& rhs) noexcept
-  : field_meta(std::move(rhs)),
-    terms(std::move(rhs.terms)),
-    docs(std::move(rhs.docs)),
-    pos(rhs.pos),
-    offs(rhs.offs) {
+  : field_meta(name, index_features, features),
+    pos(0), offs(0) {
 }
 
 term& field::add(const irs::bytes_ref& t) {
@@ -163,7 +143,7 @@ void index_segment::add_sorted(const ifield& f) {
 
 void index_segment::add(const ifield& f) {
   const irs::string_ref& field_name = f.name();
-  field field(field_name, f.features());
+  field field(field_name, f.index_features(), f.features());
   auto res = fields_.emplace(field_name, std::move(field));
   if (res.second) {
     id_to_field_.emplace_back(&res.first->second);

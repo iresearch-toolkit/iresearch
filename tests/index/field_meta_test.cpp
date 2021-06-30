@@ -31,18 +31,18 @@ TEST(field_meta_test, ctor) {
   {
     const field_meta fm;
     ASSERT_EQ("", fm.name);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(fm.norm));
-    ASSERT_EQ(iresearch::flags::empty_instance(), fm.features);
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(fm.norm));
+    ASSERT_EQ(irs::flags::empty_instance(), fm.features);
   }
 
   {
-    iresearch::flags features;
-    features.add<iresearch::offset>();
+    irs::flags features;
+    features.add<irs::offset>();
     features.add<increment>();
     features.add<offset>();
 
     const std::string name("name");
-    const field_meta fm(name, features);
+    const field_meta fm(name, irs::IndexFeatures::OFFS, features);
     ASSERT_EQ(name, fm.name);
     ASSERT_EQ(irs::flags{irs::type<increment>::get()}, fm.features);
     ASSERT_EQ(irs::IndexFeatures::OFFS, fm.index_features);
@@ -50,8 +50,8 @@ TEST(field_meta_test, ctor) {
 }
 
 TEST(field_meta_test, move) {
-  iresearch::flags features;
-  features.add<iresearch::offset>();
+  irs::flags features;
+  features.add<irs::offset>();
   features.add<increment>();
   features.add<offset>();
 
@@ -71,8 +71,8 @@ TEST(field_meta_test, move) {
     ASSERT_EQ(norm, fm.norm);
 
     ASSERT_EQ("", moved.name);
-    ASSERT_EQ(iresearch::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_EQ(irs::flags::empty_instance(), moved.features);
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(moved.norm));
   }
 
   // assign operator
@@ -84,8 +84,8 @@ TEST(field_meta_test, move) {
 
     field_meta fm;
     ASSERT_EQ("", fm.name);
-    ASSERT_EQ(iresearch::flags::empty_instance(), fm.features);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(fm.norm));
+    ASSERT_EQ(irs::flags::empty_instance(), fm.features);
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(fm.norm));
 
     fm = std::move(moved);
     ASSERT_EQ(name, fm.name);
@@ -93,13 +93,13 @@ TEST(field_meta_test, move) {
     ASSERT_EQ(norm, fm.norm);
 
     ASSERT_EQ("", moved.name);
-    ASSERT_EQ(iresearch::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_EQ(irs::flags::empty_instance(), moved.features);
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(moved.norm));
   }
 }
 
 TEST(field_meta_test, compare) {
-  iresearch::flags features;
+  irs::flags features;
   features.add<offset>();
   features.add<increment>();
   features.add<offset>();

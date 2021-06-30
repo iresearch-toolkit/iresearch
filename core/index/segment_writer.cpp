@@ -146,11 +146,12 @@ segment_writer::segment_writer(
 bool segment_writer::index(
     const hashed_string_ref& name,
     const doc_id_t doc,
+    IndexFeatures index_features,
     const flags& features,
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  auto* slot = fields_.emplace(name, features);
+  auto* slot = fields_.emplace(name, index_features, features);
 
   // invert only if new field features are a subset of slot features
   // FIXME uncomment

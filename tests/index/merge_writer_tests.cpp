@@ -915,25 +915,25 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
 
   // do not track norms for 'doc_bytes' in 'doc2'
@@ -953,13 +953,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features().add<irs::norm>();
+    field.features_.add<irs::norm>();
   }
 
   doc1.insert(std::make_shared<tests::double_field>()); {
@@ -1037,17 +1037,14 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
-      doc1.stored.begin(), doc1.stored.end()
-    ));
+      doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2.indexed.begin(), doc2.indexed.end(),
-      doc2.stored.begin(), doc2.stored.end()
-    ));
+      doc2.stored.begin(), doc2.stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3.indexed.begin(), doc3.indexed.end(),
-      doc3.stored.begin(), doc3.stored.end()
-    ));
+      doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4.indexed.begin(), doc4.indexed.end(),
       doc4.stored.begin(), doc4.stored.end()
