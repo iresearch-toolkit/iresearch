@@ -2296,7 +2296,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
   ASSERT_EQ(field.name(), term_reader->meta().name);
   ASSERT_TRUE(term_reader->meta().features.empty());
-  ASSERT_EQ(features, term_reader->meta().index_features);
+  ASSERT_EQ(field.index_features(), term_reader->meta().index_features);
   ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
 
   constexpr size_t expected_docs_B[] {
