@@ -93,10 +93,6 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   bool invert(token_stream& tokens, doc_id_t id);
 
-  bool prox_random_access() const noexcept {
-    return TERM_PROCESSING_TABLES[1] == proc_table_;
-  }
-
   const field_stats& stats() const noexcept { return stats_; }
 
   bool has_norms() const noexcept { return has_norms_; }
@@ -119,6 +115,10 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+
+  bool prox_random_access() const noexcept {
+    return TERM_PROCESSING_TABLES[1] == proc_table_;
+  }
 
   mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
