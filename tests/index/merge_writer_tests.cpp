@@ -42,7 +42,8 @@ void validate_terms(
     const irs::bytes_ref& min,
     const irs::bytes_ref& max,
     size_t term_size,
-    const irs::flags& term_features,
+    irs::IndexFeatures index_features,
+    const irs::flags& features,
     std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
     size_t* frequency = nullptr,
     std::vector<uint32_t>* position = nullptr) {
@@ -50,14 +51,15 @@ void validate_terms(
   ASSERT_EQ((max), (terms.max)());
   ASSERT_EQ((min), (terms.min)());
   ASSERT_EQ(term_size, terms.size());
-  ASSERT_EQ(term_features, terms.meta().features);
+  ASSERT_EQ(index_features, terms.meta().index_features);
+  ASSERT_EQ(features, terms.meta().features);
 
   for (auto term_itr = terms.iterator(); term_itr->next();) {
     auto itr = expected_terms.find(static_cast<T>(term_itr->value()));
 
     ASSERT_NE(expected_terms.end(), itr);
 
-    for (auto docs_itr = segment.mask(term_itr->postings(irs::from_flags(term_features))); docs_itr->next();) { // FIXME
+    for (auto docs_itr = segment.mask(term_itr->postings(index_features)); docs_itr->next();) { // FIXME
       ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
       ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
 
@@ -884,8 +886,11 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   bytes2.append(irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data")));
   bytes3.append(irs::ref_cast<irs::byte_type>(irs::string_ref("bytes3_data")));
 
-  irs::flags STRING_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() };
-  irs::flags TEXT_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() };
+  constexpr irs::IndexFeatures STRING_FIELD_FEATURES =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+  constexpr irs::IndexFeatures TEXT_FIELD_FEATURES =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   std::string string1;
   std::string string2;
@@ -1089,8 +1094,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_bytes");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::binary_field().features();
-      features.add<irs::norm>();
+      auto features = tests::binary_field().index_features();
+      const irs::flags extra_features{irs::type<irs::norm>::get()};
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes1_data"))].emplace(1);
@@ -1098,7 +1103,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_bytes"));
       ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       validate_terms(
         segment,
         *terms,
@@ -1107,8 +1112,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         bytes2,
         2,
         features,
-        expected_terms
-      );
+        extra_features,
+        expected_terms);
 
       std::unordered_map<float_t, irs::doc_id_t> expected_values{
         { 0.5f, 1 },
@@ -1144,7 +1149,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_double");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::double_field().features();
+      auto features = tests::double_field().index_features();
       irs::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 2));
       irs::numeric_token_stream min;
@@ -1165,7 +1170,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_double"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1177,8 +1182,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         8,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate float field
@@ -1186,7 +1191,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_float");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::float_field().features();
+      auto features = tests::float_field().index_features();
       irs::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 2));
       irs::numeric_token_stream min;
@@ -1207,7 +1212,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_float"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1219,8 +1224,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         4,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate int field
@@ -1228,7 +1233,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_int");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::int_field().features();
+      auto features = tests::int_field().index_features();
       irs::numeric_token_stream max;
       max.reset(42 * 2);
       irs::numeric_token_stream min;
@@ -1249,7 +1254,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_int"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1261,8 +1266,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         3,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate long field
@@ -1270,7 +1275,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_long");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::long_field().features();
+      auto features = tests::long_field().index_features();
       irs::numeric_token_stream max;
       max.reset((int64_t) 12345 * 2);
       irs::numeric_token_stream min;
@@ -1290,7 +1295,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_long"));
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1302,8 +1307,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         5,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate string field
@@ -1311,7 +1316,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_string");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto& features = STRING_FIELD_FEATURES;
+      auto features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -1321,7 +1326,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
@@ -1331,10 +1336,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::ref_cast<irs::byte_type>(irs::string_ref(string2)),
         2,
         features,
+        irs::flags::empty_instance(),
         expected_terms,
         &frequency,
-        &position
-      );
+        &position);
     }
 
     // validate text field
@@ -1342,7 +1347,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto& features = TEXT_FIELD_FEATURES;
+      auto features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -1352,7 +1357,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_text"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
@@ -1362,10 +1367,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::ref_cast<irs::byte_type>(irs::string_ref(text2)),
         2,
         features,
+        irs::flags::empty_instance(),
         expected_terms,
         &frequency,
-        &position
-      );
+        &position);
     }
 
     // ...........................................................................
@@ -1454,14 +1459,14 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_bytes");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::binary_field().features();
+      auto features = tests::binary_field().index_features();
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
-      features.add<irs::norm>();
+      const irs::flags extra_features{irs::type<irs::norm>::get()};
       expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes3_data"))].emplace(1);
 
       ASSERT_EQ(1, docs_count(segment, "doc_bytes"));
       ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
@@ -1471,8 +1476,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         bytes3,
         1,
         features,
-        expected_terms
-      );
+        extra_features,
+        expected_terms);
 
       std::unordered_map<float_t, irs::doc_id_t> expected_values{
         { float(1./std::sqrt(2)), 1 },
@@ -1508,7 +1513,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_double");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::double_field().features();
+      auto features = tests::double_field().index_features();
       irs::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 3));
       irs::numeric_token_stream min;
@@ -1523,7 +1528,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_double"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1535,8 +1540,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         4,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate float field
@@ -1544,7 +1549,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_float");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::float_field().features();
+      auto features = tests::float_field().index_features();
       irs::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 3));
       irs::numeric_token_stream min;
@@ -1559,7 +1564,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_float"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1571,8 +1576,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         2,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate int field
@@ -1580,7 +1585,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_int");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::int_field().features();
+      auto features = tests::int_field().index_features();
       irs::numeric_token_stream max;
       max.reset(42 * 3);
       irs::numeric_token_stream min;
@@ -1595,7 +1600,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_int"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1607,8 +1612,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         2,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate long field
@@ -1616,7 +1621,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_long");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = tests::long_field().features();
+      auto features = tests::long_field().index_features();
       irs::numeric_token_stream max;
       max.reset((int64_t) 12345 * 3);
       irs::numeric_token_stream min;
@@ -1631,7 +1636,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_long"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
       ASSERT_TRUE(min.next()); // skip to first value
@@ -1643,8 +1648,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::get<irs::term_attribute>(max)->value,
         4,
         features,
-        expected_terms
-      );
+        irs::flags::empty_instance(),
+        expected_terms);
     }
 
     // validate string field
@@ -1652,7 +1657,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_string");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto& features = STRING_FIELD_FEATURES;
+      auto features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -1662,7 +1667,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
@@ -1672,10 +1677,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::ref_cast<irs::byte_type>(irs::string_ref(string4)),
         2,
         features,
+        irs::flags::empty_instance(),
         expected_terms,
         &frequency,
-        &position
-      );
+        &position);
     }
 
     // validate text field
@@ -1683,7 +1688,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto& features = TEXT_FIELD_FEATURES;
+      auto features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
       std::vector<uint32_t> position = { irs::pos_limits::min() };
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -1692,7 +1697,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_text"));
       ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-      ASSERT_EQ(features, field.features);
+      ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
@@ -1702,10 +1707,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         irs::ref_cast<irs::byte_type>(irs::string_ref(text3)),
         1,
         features,
+        irs::flags::empty_instance(),
         expected_terms,
         &frequency,
-        &position
-      );
+        &position);
     }
 
     // ...........................................................................
@@ -1801,8 +1806,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_bytes");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = tests::binary_field().features();
-    features.add<irs::norm>();
+    auto features = tests::binary_field().index_features();
+    const irs::flags extra_features{irs::type<irs::norm>::get()};
     std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
     expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes1_data"))].emplace(1);
@@ -1811,7 +1816,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_bytes"));
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       segment,
@@ -1821,8 +1826,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       bytes3,
       3,
       features,
-      expected_terms
-    );
+      extra_features,
+      expected_terms);
 
     std::unordered_map<float_t, irs::doc_id_t> expected_values{
       { 0.5f, 1 },                    // norm value for 'doc_bytes' in 'doc1'
@@ -1859,7 +1864,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_double");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = tests::double_field().features();
+    auto features = tests::double_field().index_features();
     irs::numeric_token_stream max;
     max.reset((double_t) (2.718281828 * 3));
     irs::numeric_token_stream min;
@@ -1886,7 +1891,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_double"));
     ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1898,8 +1903,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::get<irs::term_attribute>(max)->value,
       12,
       features,
-      expected_terms
-    );
+      irs::flags::empty_instance(),
+      expected_terms);
   }
 
   // validate float field
@@ -1907,7 +1912,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_float");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = tests::float_field().features();
+    auto features = tests::float_field().index_features();
     irs::numeric_token_stream max;
     max.reset((float_t) (3.1415926535 * 3));
     irs::numeric_token_stream min;
@@ -1934,7 +1939,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_float"));
     ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1946,8 +1951,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::get<irs::term_attribute>(max)->value,
       6,
       features,
-      expected_terms
-    );
+      irs::flags::empty_instance(),
+      expected_terms);
   }
 
   // validate int field
@@ -1955,7 +1960,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_int");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = tests::int_field().features();
+    auto features = tests::int_field().index_features();
     irs::numeric_token_stream max;
     max.reset(42 * 3);
     irs::numeric_token_stream min;
@@ -1982,7 +1987,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_int"));
     ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -1994,8 +1999,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::get<irs::term_attribute>(max)->value,
       4,
       features,
-      expected_terms
-    );
+      irs::flags::empty_instance(),
+      expected_terms);
   }
 
   // validate long field
@@ -2003,7 +2008,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_long");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = tests::long_field().features();
+    auto features = tests::long_field().index_features();
     irs::numeric_token_stream max;
     max.reset((int64_t) 12345 * 3);
     irs::numeric_token_stream min;
@@ -2030,7 +2035,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_long"));
     ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
     ASSERT_TRUE(min.next()); // skip to first value
@@ -2042,8 +2047,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::get<irs::term_attribute>(max)->value,
       6,
       features,
-      expected_terms
-    );
+      irs::flags::empty_instance(),
+      expected_terms);
   }
 
   // validate string field
@@ -2051,7 +2056,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_string");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto& features = STRING_FIELD_FEATURES;
+    auto features = STRING_FIELD_FEATURES;
     size_t frequency = 1;
     std::vector<uint32_t> position = { irs::pos_limits::min() };
     std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -2062,7 +2067,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_string"));
     ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       segment,
@@ -2072,10 +2077,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::ref_cast<irs::byte_type>(irs::string_ref(string3)),
       3,
       features,
+      irs::flags::empty_instance(),
       expected_terms,
       &frequency,
-      &position
-    );
+      &position);
   }
 
   // validate text field
@@ -2083,7 +2088,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto terms = segment.field("doc_text");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto& features = TEXT_FIELD_FEATURES;
+    auto features = TEXT_FIELD_FEATURES;
     size_t frequency = 1;
     std::vector<uint32_t> position = { irs::pos_limits::min() };
     std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
@@ -2093,7 +2098,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text3_data"))].emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));
-    ASSERT_EQ(features, field.features);
+    ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       segment,
@@ -2103,10 +2108,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       irs::ref_cast<irs::byte_type>(irs::string_ref(text3)),
       3,
       features,
+      irs::flags::empty_instance(),
       expected_terms,
       &frequency,
-      &position
-    );
+      &position );
   }
 
   // ...........................................................................

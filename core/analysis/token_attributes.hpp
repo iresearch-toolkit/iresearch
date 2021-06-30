@@ -228,16 +228,6 @@ class attribute_provider_change final : public attribute {
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
 
-// FIXME remove
-inline IndexFeatures from_flags(const flags& in) noexcept {
-  std::underlying_type_t<IndexFeatures> mask{};
-  set_bit<0>(in.check<frequency>(), mask);
-  set_bit<1>(in.check<position>(), mask);
-  set_bit<2>(in.check<offset>(), mask);
-  set_bit<3>(in.check<payload>(), mask);
-  return static_cast<IndexFeatures>(mask);
-}
-
 } // ROOT
 
 #endif
