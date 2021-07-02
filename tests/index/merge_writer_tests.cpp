@@ -1056,8 +1056,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4.indexed.begin(), doc4.indexed.end(),
-      doc4.stored.begin(), doc4.stored.end()
-    ));
+      doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc4.filter));
     writer->commit();

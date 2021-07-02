@@ -335,7 +335,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   // add segment
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
     numeric_field_generator gen(75, 7000, 2);
     add_segment(gen, irs::OM_CREATE, opts);
