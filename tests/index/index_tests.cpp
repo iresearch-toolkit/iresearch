@@ -6282,7 +6282,9 @@ TEST_P(index_test_case, reuse_segment_writer) {
 TEST_P(index_test_case, segment_column_user_system) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [](tests::document& doc,
+       const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -6305,7 +6307,12 @@ TEST_P(index_test_case, segment_column_user_system) {
   irs::bytes_ref actual_value;
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto writer = open_writer();
+
+
+  irs::index_writer::init_options opts;
+  opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
+  auto writer = open_writer(irs::OM_CREATE, opts);
 
   ASSERT_TRUE(insert(*writer,
     doc0.indexed.begin(), doc0.indexed.end(),
@@ -13753,7 +13760,10 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   } empty;
 
   {
-    auto writer = open_writer();
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
 
     // no norms is written as there is nothing to index
     {

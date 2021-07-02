@@ -23,6 +23,7 @@
 
 #include "formats_test_case_base.hpp"
 #include "formats/format_utils.hpp"
+#include "index/norm.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace tests {
@@ -333,8 +334,11 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // add segment
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
     numeric_field_generator gen(75, 7000, 2);
-    add_segment(gen);
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto reader = open_reader();

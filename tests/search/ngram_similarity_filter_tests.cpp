@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "search/ngram_similarity_filter.hpp"
 #include "search/tfidf.hpp"
 #include "search/bm25.hpp"
@@ -1019,10 +1020,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1037,10 +1042,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1056,10 +1065,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1075,10 +1088,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
