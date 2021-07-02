@@ -44,7 +44,7 @@ TEST(field_meta_test, ctor) {
     const std::string name("name");
     const field_meta fm(name, irs::IndexFeatures::OFFS, features);
     ASSERT_EQ(name, fm.name);
-    ASSERT_EQ(irs::flags{irs::type<increment>::get()}, fm.features);
+    ASSERT_EQ(features, fm.features);
     ASSERT_EQ(irs::IndexFeatures::OFFS, fm.index_features);
   }
 }

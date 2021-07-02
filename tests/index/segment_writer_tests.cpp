@@ -83,8 +83,13 @@ TEST_F(segment_writer_tests, invalid_actions) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::field_features_t features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   // store + store sorted

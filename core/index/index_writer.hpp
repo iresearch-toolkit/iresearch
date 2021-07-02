@@ -445,7 +445,7 @@ class IRESEARCH_API index_writer
     /// @brief a set of all allowed custom field features the index writer
     ///        supports
     ////////////////////////////////////////////////////////////////////////////
-    field_features_t field_features;
+    field_features_t features;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info for a feature the writer should use for

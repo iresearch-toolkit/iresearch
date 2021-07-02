@@ -1374,7 +1374,7 @@ index_writer::ptr index_writer::make(
     opts.feature_column_info
       ? opts.feature_column_info : DEFAULT_FEATURE_COLUMN_INFO,
     opts.meta_payload_provider,
-    opts.field_features,
+    opts.features,
     std::move(meta),
     std::move(comitted_state));
 

@@ -2028,7 +2028,11 @@ class index_test_case : public tests::index_test_base {
     }; // stored_field
 
     // insert documents
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<tests::incompatible_attribute>::id(), nullptr);
+
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, opts);
 
     size_t i = 0;
     const size_t max = 8;
@@ -5216,20 +5220,17 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    )); // update no longer existent
+      doc3->stored.begin(), doc3->stored.end())); // update no longer existent
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5257,23 +5258,19 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->documents().remove(*(query_doc2.filter));
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5301,26 +5298,22 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(*(query_doc2.filter));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc2.filter),
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     ASSERT_TRUE(update(*writer,
       *(query_doc3.filter),
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5361,7 +5354,13 @@ TEST_P(index_test_case, doc_update) {
     auto doc3 = gen.next();
     auto doc4 = gen.next();
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto writer = open_writer();
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::offset>::id(), nullptr);
+    opts.features.emplace(irs::type<irs::frequency>::id(), nullptr);
+    opts.features.emplace(irs::type<irs::increment>::id(), nullptr);
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
     auto test_field0 = std::make_shared<test_field>();
     auto test_field1 = std::make_shared<test_field>();
     auto test_field2 = std::make_shared<test_field>();
@@ -5435,8 +5434,7 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
       *query_doc1.filter,
       [&doc2](irs::segment_writer::document& doc)->bool {
