@@ -1036,10 +1036,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text2));
   doc3.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text3));
 
+  irs::index_writer::init_options opts;
+  opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
   // populate directory
   {
     auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
@@ -2397,9 +2400,6 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 }
 
 TEST_F(merge_writer_tests, test_merge_writer_field_features) {
-  //irs::flags STRING_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() };
-  //irs::flags TEXT_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() };
-
   std::string field("doc_string");
   std::string data("string_data");
   tests::document doc1; // string
@@ -2420,13 +2420,11 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
-      doc1.stored.begin(), doc1.stored.end()
-    ));
+      doc1.stored.begin(), doc1.stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2.indexed.begin(), doc2.indexed.end(),
-      doc2.stored.begin(), doc2.stored.end()
-    ));
+      doc2.stored.begin(), doc2.stored.end()));
     writer->commit();
   }
 
