@@ -41,7 +41,6 @@ namespace iresearch {
 
 class comparer;
 struct segment_meta;
-class segment_writer;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @enum Action
@@ -74,7 +73,7 @@ ENABLE_BITMASK_ENUM(Action);
 ///        an object that represents a single ongoing transaction
 ///        non-thread safe
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_writer: util::noncopyable {
+class IRESEARCH_API segment_writer : util::noncopyable {
  public:
   struct update_context {
     size_t generation;
@@ -151,7 +150,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   static ptr make(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator);
 
   // begin document-write transaction
@@ -298,7 +299,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   segment_writer(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) noexcept;
 
   bool index(
@@ -411,13 +414,13 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     return store(name, doc_id, field);
   }
  // returns stream for storing attributes in sorted order
-  columnstore_writer::column_output& sorted_stream(const doc_id_t doc_id) {
+  column_output& sorted_stream(const doc_id_t doc_id) {
     sort_.stream.prepare(doc_id);
     return sort_.stream;
   }
 
   // returns stream for storing attributes
-  columnstore_writer::column_output& stream(
+  column_output& stream(
     const hashed_string_ref& name,
     const doc_id_t doc);
 
@@ -434,10 +437,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   fields_data fields_;
   stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
-  std::vector<const field_data*> norm_fields_; // document fields for normalization
+  std::vector<const field_data*> doc_; // document fields
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
+  const field_features_t* field_features_;
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;

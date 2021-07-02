@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
+#include "index/norm.hpp"
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"

@@ -22,9 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_data.hpp"
-#include "field_meta.hpp"
-#include "comparer.hpp"
+
+#include <set>
+#include <algorithm>
+#include <cassert>
+
+#include "index/comparer.hpp"
+#include "index/field_data.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
 
 #include "formats/formats.hpp"
 
@@ -46,21 +52,11 @@
 #include "utils/type_limits.hpp"
 #include "utils/bytes_utils.hpp"
 
-#include <set>
-#include <algorithm>
-#include <cassert>
-
 namespace {
 
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
-
-const column_info NORM_COLUMN{
-  type<compression::lz4>::get(),
-  compression::options(),
-  false
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -728,6 +724,9 @@ class term_reader final : public irs::basic_term_reader,
 field_data::field_data(
     const string_ref& name,
     const flags& features,
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
     IndexFeatures index_features,
@@ -738,6 +737,25 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
+  features_.reserve(field_features.size());
+  for (type_info::type_id feature : features) {
+    auto it = field_features.find(feature);
+    assert(it != field_features.end());
+
+    if (it->second) {
+      assert(feature_columns);
+      auto [id, handler] = columns.push_column(feature_columns(feature));
+      features_.emplace_back(feature, it->second, std::move(handler));
+
+      // FIXME
+      if (feature == type<norm>::id()) {
+        meta_.norm = id;
+      }
+    }
+
+    // FIXME
+    meta_.features.add(feature);
+  }
 }
 
 void field_data::reset(doc_id_t doc_id) {
@@ -753,19 +771,7 @@ void field_data::reset(doc_id_t doc_id) {
   offs_ = 0;
   last_start_offs_ = 0;
   last_doc_ = doc_id;
-  has_norms_ = false;
-}
-
-data_output& field_data::norms(columnstore_writer& writer) const {
-  if (!norms_) {
-    // FIXME encoder for norms???
-    // do not encrypt norms
-    auto handle = writer.push_column(NORM_COLUMN);
-    norms_ = std::move(handle.second);
-    meta_.norm = handle.first;
-  }
-
-  return norms_(doc());
+  seen_ = false;
 }
 
 void field_data::new_term(
@@ -1114,8 +1120,13 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 // --SECTION--                                        fields_data implementation
 // -----------------------------------------------------------------------------
 
-fields_data::fields_data(const comparer* comparator /*= nullptr*/)
+fields_data::fields_data(
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
+    field_features_(&field_features),
+    feature_columns_(&feature_columns),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
@@ -1123,7 +1134,8 @@ fields_data::fields_data(const comparer* comparator /*= nullptr*/)
 field_data* fields_data::emplace(
     const hashed_string_ref& name,
     IndexFeatures index_features,
-    const flags& features) {
+    const flags& features,
+    columnstore_writer& columns) {
   assert(fields_map_.size() == fields_.size());
 
   auto it = fields_map_.lazy_emplace(
@@ -1135,9 +1147,10 @@ field_data* fields_data::emplace(
   if (!it->second) {
     try {
       fields_.emplace_back(
-        name, features, byte_writer_,
-        int_writer_, index_features,
-        (nullptr != comparator_));
+        name, features, *field_features_,
+        *feature_columns_, columns,
+        byte_writer_, int_writer_,
+        index_features, (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
     }

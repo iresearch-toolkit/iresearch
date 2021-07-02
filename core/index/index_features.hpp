@@ -23,9 +23,16 @@
 #ifndef IRESEARCH_INDEX_FEATURES_H
 #define IRESEARCH_INDEX_FEATURES_H
 
+#include <functional>
+#include <map>
+
 #include "utils/bit_utils.hpp"
+#include "utils/type_info.hpp"
 
 namespace iresearch {
+
+struct field_stats;
+struct column_output;
 
 enum class IndexFeatures : byte_type {
   DOCS = 0,
@@ -60,6 +67,14 @@ class index_features {
  private:
   std::underlying_type_t<IndexFeatures> mask_{};
 }; // index_features
+
+using feature_handler_f = void(*)(
+  type_info::type_id,
+  const field_stats&,
+  doc_id_t,
+  std::function<column_output&(doc_id_t)>);
+
+using field_features_t = std::map<type_info::type_id, feature_handler_f>;
 
 }
 

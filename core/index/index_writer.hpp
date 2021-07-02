@@ -28,14 +28,16 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include "field_meta.hpp"
-#include "column_info.hpp"
-#include "index_meta.hpp"
-#include "merge_writer.hpp"
-#include "segment_reader.hpp"
-#include "segment_writer.hpp"
-
 #include "formats/formats.hpp"
+
+#include "index/column_info.hpp"
+#include "index/field_meta.hpp"
+#include "index/index_features.hpp"
+#include "index/index_meta.hpp"
+#include "index/merge_writer.hpp"
+#include "index/segment_reader.hpp"
+#include "index/segment_writer.hpp"
+
 #include "search/filter.hpp"
 
 #include "utils/async_utils.hpp"
@@ -215,8 +217,7 @@ class IRESEARCH_API index_writer
       return document(
         std::move(ctx),
         segment_.ctx(),
-        segment_.ctx()->make_update_context()
-      );
+        segment_.ctx()->make_update_context());
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -441,6 +442,18 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief a set of all allowed custom field features the index writer
+    ///        supports
+    ////////////////////////////////////////////////////////////////////////////
+    field_features_t field_features;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief returns column info for a feature the writer should use for
+    ///        columnstore
+    ////////////////////////////////////////////////////////////////////////////
+    feature_column_info_provider_t feature_column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
@@ -623,8 +636,7 @@ class IRESEARCH_API index_writer
   bool import(
     const index_reader& reader,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
-  );
+    const merge_writer::flush_progress_t& progress = {});
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -637,8 +649,7 @@ class IRESEARCH_API index_writer
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const init_options& opts = init_options()
-  );
+    const init_options& opts = init_options());
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief modify the runtime segment options as per the specified values
@@ -701,6 +712,8 @@ class IRESEARCH_API index_writer
 
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
+
+  static constexpr size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
 
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
@@ -858,8 +871,21 @@ class IRESEARCH_API index_writer
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
+    static segment_context::ptr make(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
+
+    segment_context(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -868,7 +894,9 @@ class IRESEARCH_API index_writer
     uint64_t flush();
 
     // returns context for "insert" operation
-    segment_writer::update_context make_update_context();
+    segment_writer::update_context make_update_context() const noexcept {
+      return { uncomitted_generation_offset_, NON_UPDATE_RECORD };
+    }
 
     // returns context for "update" operation
     segment_writer::update_context make_update_context(const filter& filter);
@@ -935,13 +963,12 @@ class IRESEARCH_API index_writer
       const segment_context::ptr segment_;
 
       pending_segment_context(
-        const segment_context::ptr& segment,
-        size_t pending_segment_context_offset
-      ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
-         doc_id_end_(std::numeric_limits<size_t>::max()),
-         modification_offset_begin_(segment->uncomitted_modification_queries_),
-         modification_offset_end_(std::numeric_limits<size_t>::max()),
-         segment_(segment) {
+          const segment_context::ptr& segment, size_t pending_segment_context_offset)
+        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
+          doc_id_end_(std::numeric_limits<size_t>::max()),
+          modification_offset_begin_(segment->uncomitted_modification_queries_),
+          modification_offset_end_(std::numeric_limits<size_t>::max()),
+          segment_(segment) {
         assert(segment);
         value = pending_segment_context_offset;
       }
@@ -1073,10 +1100,11 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const payload_provider_t& meta_payload_provider,
+    const field_features_t& field_features,
     index_meta&& meta,
-    committed_state_t&& committed_state
-  );
+    committed_state_t&& committed_state);
 
   pending_context_t flush_all();
 
@@ -1088,6 +1116,8 @@ class IRESEARCH_API index_writer
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  field_features_t field_features_;
+  feature_column_info_provider_t feature_column_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;

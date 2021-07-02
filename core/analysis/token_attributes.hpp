@@ -125,40 +125,6 @@ struct IRESEARCH_API granularity_prefix final : attribute {
 }; // granularity_prefix
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class norm
-/// @brief this marker attribute is only used in field::features in order to
-///        allow evaluation of the field normalization factor 
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API norm final : attribute {
-  // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept {
-    return "norm";
-  }
-
-  FORCE_INLINE static constexpr float_t DEFAULT() noexcept {
-    return 1.f;
-  }
-
-  norm() noexcept;
-  norm(norm&&) = default;
-  norm& operator=(norm&&) = default;
-
-  bool reset(const sub_reader& segment, field_id column, const document& doc);
-  float_t read() const;
-  bool empty() const noexcept;
-
-  void clear() noexcept;
-
- private:
-  doc_iterator::ptr column_it_;
-  const payload* payload_;
-  const document* doc_;
-}; // norm
-
-static_assert(std::is_nothrow_move_constructible_v<norm>);
-static_assert(std::is_nothrow_move_assignable_v<norm>);
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class position 
 /// @brief iterator represents term positions in a document
 //////////////////////////////////////////////////////////////////////////////

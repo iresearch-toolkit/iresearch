@@ -53,7 +53,8 @@ class column_info {
   bool encryption_;
 }; // column_info
 
-typedef std::function<column_info(const string_ref)> column_info_provider_t;
+using column_info_provider_t = std::function<column_info(const string_ref)>;
+using feature_column_info_provider_t = std::function<column_info(type_info::type_id)>;
 
 }
 

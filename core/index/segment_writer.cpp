@@ -35,6 +35,8 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+#include "index/norm.hpp"
+
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(
@@ -49,7 +51,7 @@ segment_writer::stored_column::stored_column(
     auto& info = stream.info();
     std::tie(id, writer) = columnstore.push_column(info);
   } else {
-    writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
+    writer = [this](irs::doc_id_t doc)-> column_output& {
       this->stream.prepare(doc);
       return this->stream;
     };
@@ -61,7 +63,7 @@ doc_id_t segment_writer::begin(
     size_t reserve_rollback_extra /*= 0*/) {
   assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
-  norm_fields_.clear(); // clear norm fields
+  doc_.clear(); // clear norm fields
 
   if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
     docs_mask_.reserve(
@@ -80,9 +82,13 @@ doc_id_t segment_writer::begin(
 
 segment_writer::ptr segment_writer::make(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, column_info, comparator);
+  return memory::maker<segment_writer>::make(
+    dir, field_features, column_info,
+    feature_column_info, comparator);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -134,11 +140,14 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(
     directory& dir,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) noexcept
   : sort_(column_info),
-    fields_(comparator),
+    fields_(field_features, feature_column_info, comparator),
     column_info_(&column_info),
+    field_features_(&field_features),
     dir_(dir),
     initialized_(false) {
 }
@@ -150,17 +159,18 @@ bool segment_writer::index(
     const flags& features,
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
+  assert(col_writer_);
 
-  auto* slot = fields_.emplace(name, index_features, features);
+  auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field features are a subset of slot features
   assert(index_features <= slot->meta().index_features);
   assert(features.is_subset_of(slot->meta().features));
 
   if (slot->invert(tokens, doc)) {
-    if (!slot->has_norms() && slot->stats().len && features.check<norm>()) {
-      norm_fields_.emplace_back(slot);
-      slot->set_has_norms();
+    if (!slot->seen() && slot->has_features()) {
+      doc_.emplace_back(slot);
+      slot->seen(true);
     }
 
     return true;
@@ -170,7 +180,7 @@ bool segment_writer::index(
   return false;
 }
 
-columnstore_writer::column_output& segment_writer::stream(
+column_output& segment_writer::stream(
     const hashed_string_ref& name,
     const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
@@ -187,15 +197,20 @@ columnstore_writer::column_output& segment_writer::stream(
 void segment_writer::finish() {
   REGISTER_TIMER_DETAILED();
 
-  // write document normalization factors (for each field marked for normalization))
-  for (const auto* field: norm_fields_) {
-    assert(field && field->stats().len > 0);
-    const float_t value = 1.f / float_t(std::sqrt(double_t(field->stats().len)));
-    if (value != norm::DEFAULT()) {
-      auto& stream = field->norms(*col_writer_);
-      write_zvfloat(stream, value);
-    }
+  for (const auto* field : doc_) {
+    field->compute_features();
   }
+
+
+  //// write document normalization factors (for each field marked for normalization))
+  //for (const auto* field: doc_) {
+  //  assert(field && field->stats().len > 0);
+  //  const float_t value = 1.f / float_t(std::sqrt(double_t(field->stats().len)));
+  //  if (value != norm::DEFAULT()) {
+  //    auto& stream = field->norms(*col_writer_);
+  //    write_zvfloat(stream, value);
+  //  }
+  //}
 }
 
 void segment_writer::flush_column_meta(const segment_meta& meta) {

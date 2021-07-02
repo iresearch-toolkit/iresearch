@@ -59,22 +59,14 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
-struct field_stats {
-  /// @brief total number of terms
-  uint32_t len{};
-  /// @brief number of overlapped terms
-  uint32_t num_overlap{};
-  /// @brief maximum number of terms in a field across all indexed documents
-  uint32_t max_term_freq{};
-  /// @brief number of unique terms
-  uint32_t num_unique{};
-}; // field_stats
-
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
     const flags& features,
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
     IndexFeatures index_features,
@@ -83,8 +75,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   doc_id_t doc() const noexcept { return last_doc_; }
 
   const field_meta& meta() const noexcept { return meta_; }
-
-  data_output& norms(columnstore_writer& writer) const;
 
   // returns false if field contains indexed data
   bool empty() const noexcept {
@@ -95,8 +85,19 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_stats& stats() const noexcept { return stats_; }
 
-  bool has_norms() const noexcept { return has_norms_; }
-  void set_has_norms() noexcept { has_norms_ = true; }
+  bool seen() const noexcept { return seen_; }
+  void seen(bool value) noexcept { seen_ = value; }
+
+  void compute_features() const {
+    for (auto& entry : features_) {
+      auto& [type, handler, writer] = entry;
+      handler(type, stats_, doc(), writer);
+    }
+  }
+
+  bool has_features() const noexcept {
+    return !features_.empty();
+  }
 
  private:
   friend class detail::term_iterator;
@@ -104,7 +105,14 @@ class IRESEARCH_API field_data : util::noncopyable {
   friend class detail::sorting_doc_iterator;
   friend class fields_data;
 
-  typedef void(field_data::*process_term_f)(posting&, doc_id_t, const payload*, const offset*);
+  using feature_info = std::tuple<
+    type_info::type_id,
+    feature_handler_f,
+    columnstore_writer::values_writer_f>;
+
+  using process_term_f = void(field_data::*)(
+    posting&, doc_id_t,
+    const payload*, const offset*);
 
   static const process_term_f TERM_PROCESSING_TABLES[2][2];
 
@@ -120,6 +128,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
+  std::vector<feature_info> features_;
   mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
   postings terms_;
@@ -132,7 +141,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
-  bool has_norms_{false};
+  bool seen_{false};
 }; // field_data
 
 class IRESEARCH_API fields_data: util::noncopyable {
@@ -154,7 +163,10 @@ class IRESEARCH_API fields_data: util::noncopyable {
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(const comparer* comparator);
+  explicit fields_data(
+    const field_features_t& field_features,
+    const feature_column_info_provider_t& feature_columns,
+    const comparer* comparator);
 
   const comparer* comparator() const noexcept {
     return comparator_;
@@ -162,7 +174,8 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
   field_data* emplace(const hashed_string_ref& name,
                       IndexFeatures index_features,
-                      const flags& features);
+                      const flags& features,
+                      columnstore_writer& columns);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
@@ -190,6 +203,8 @@ class IRESEARCH_API fields_data: util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
+  const field_features_t* field_features_;
+  const feature_column_info_provider_t* feature_columns_;
   std::deque<field_data> fields_; // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;

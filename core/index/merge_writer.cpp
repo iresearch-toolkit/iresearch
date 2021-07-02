@@ -27,11 +27,12 @@
 
 #include "merge_writer.hpp"
 #include "analysis/token_attributes.hpp"
-#include "index/field_meta.hpp"
-#include "index/index_meta.hpp"
-#include "index/segment_reader.hpp"
-#include "index/heap_iterator.hpp"
 #include "index/comparer.hpp"
+#include "index/field_meta.hpp"
+#include "index/heap_iterator.hpp"
+#include "index/index_meta.hpp"
+#include "index/norm.hpp"
+#include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -46,12 +47,6 @@
 
 namespace {
 using namespace irs;
-
-const irs::column_info NORM_COLUMN{
-  irs::type<irs::compression::lz4>::get(),
-  irs::compression::options(),
-  false
-};
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
@@ -1198,8 +1193,10 @@ bool write_fields(
     return true;
   };
 
+  const column_info norm_column = norm_column_info();
+
   while (field_itr.next()) {
-    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
+    cs.reset(norm_column); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
 
@@ -1266,8 +1263,10 @@ bool write_fields(
     return field_itr.visit(add_iterators);
   };
 
+  const column_info norm_column = norm_column_info();
+
   while (field_itr.next()) {
-    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
+    cs.reset(norm_column); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
 

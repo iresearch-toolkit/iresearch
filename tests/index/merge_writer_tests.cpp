@@ -24,15 +24,16 @@
 #include "index_tests.hpp"
 #include "formats/formats_10.hpp"
 #include "iql/query_builder.hpp"
+#include "index/norm.hpp"
+#include "index/merge_writer.hpp"
+#include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/lz4compression.hpp"
-#include "index/merge_writer.hpp"
-#include "index/comparer.hpp"
 
 namespace tests {
 
-class merge_writer_tests: public ::testing::Test { };
+class merge_writer_tests : public ::testing::Test { };
 
 template<typename T>
 void validate_terms(

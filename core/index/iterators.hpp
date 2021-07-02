@@ -25,10 +25,10 @@
 
 #include "shared.hpp"
 #include "utils/attributes.hpp"
-#include "index/index_features.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
+#include "index/index_features.hpp"
 
 namespace iresearch {
 

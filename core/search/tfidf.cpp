@@ -27,9 +27,11 @@
 #include "velocypack/Parser.h"
 #include "velocypack/vpack.h"
 #include "velocypack/velocypack-aliases.h"
+
 #include "scorers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
+#include "index/norm.hpp"
 #include "index/field_meta.hpp"
 #include "utils/math_utils.hpp"
 

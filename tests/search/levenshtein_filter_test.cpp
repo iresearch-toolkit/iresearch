@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"

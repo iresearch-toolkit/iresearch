@@ -102,6 +102,7 @@ set(IResearch_core_sources
   ./index/index_reader.cpp
   ./index/iterators.cpp
   ./index/merge_writer.cpp
+  ./index/norm.cpp
   ./index/postings.cpp
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp

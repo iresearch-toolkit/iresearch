@@ -277,15 +277,18 @@ struct IRESEARCH_API field_reader {
 }; // field_reader
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @struct column_output
+////////////////////////////////////////////////////////////////////////////////
+struct column_output : data_output {
+  // resets stream to previous persisted state
+  virtual void reset() = 0;
+}; // column_output
+
+////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
-
-  struct column_output : data_output {
-    // resets stream to previous persisted state 
-    virtual void reset() = 0; 
-  }; // column_output
 
   // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
   typedef std::function<column_output&(doc_id_t doc)> values_writer_f;
@@ -302,7 +305,7 @@ struct IRESEARCH_API columnstore_writer {
 }
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<irs::columnstore_writer::column_output&(irs::doc_id_t)>;) // columnstore_writer::values_writer_f
+MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) // columnstore_writer::values_writer_f
 
 namespace iresearch {
 

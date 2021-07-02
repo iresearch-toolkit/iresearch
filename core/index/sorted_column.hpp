@@ -35,7 +35,7 @@ typedef std::vector<doc_id_t> doc_map;
 
 class comparer;
 
-class sorted_column final : public columnstore_writer::column_output,
+class sorted_column final : public column_output,
                             private util::noncopyable {
  public:
   typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;

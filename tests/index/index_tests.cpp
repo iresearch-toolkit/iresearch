@@ -27,6 +27,7 @@
 
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
+#include "index/norm.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/lz4compression.hpp"
