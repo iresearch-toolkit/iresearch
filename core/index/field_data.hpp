@@ -128,7 +128,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
-  std::vector<feature_info> features_;
+  mutable std::vector<feature_info> features_;
   mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
   postings terms_;

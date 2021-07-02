@@ -456,7 +456,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
         }
       });
 
-    add_segment(gen);
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   irs::order ord;

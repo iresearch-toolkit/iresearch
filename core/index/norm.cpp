@@ -84,7 +84,7 @@ float_t norm::read() const {
 }
 
 void compute_norm(
-    type_info::type_id type,
+    type_info::type_id /*type*/,
     const field_stats& stats,
     doc_id_t doc,
     columnstore_writer::values_writer_f& writer) {
