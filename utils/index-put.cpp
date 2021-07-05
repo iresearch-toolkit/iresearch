@@ -22,28 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-  #pragma warning(disable: 4101)
-  #pragma warning(disable: 4267)
+#pragma warning(disable: 4101)
+#pragma warning(disable: 4267)
 #endif
 
-  #include <cmdline.h>
+#include <cmdline.h>
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4267)
-  #pragma warning(default: 4101)
+#pragma warning(default: 4267)
+#pragma warning(default: 4101)
 #endif
 
 #include <fstream>
 #include <memory>
 
 #if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
+#pragma warning(disable: 4229)
 #endif
 
   #include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4229)
+#pragma warning(default: 4229)
 #endif
 
 #include "common.hpp"
@@ -51,6 +51,7 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "index/index_writer.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
@@ -364,7 +365,16 @@ int put(
     return 1;
   }
 
-  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
+  irs::index_writer::init_options opts;
+  opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  opts.features[irs::type<irs::norm>::id()] = &irs::compute_norm;
+  opts.segment_pool_size = 8;
+  opts.segment_memory_max = UINT64_C(1) << 27; // 128M
+  opts.feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+  };
+
+  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE, opts);
 
   indexer_threads = (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - consolidation_threads); // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);

@@ -163,9 +163,12 @@ bool segment_writer::index(
 
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
-  // invert only if new field features are a subset of slot features
-  assert(index_features <= slot->meta().index_features);
   assert(features.is_subset_of(slot->meta().features));
+  if (index_features > slot->meta().index_features) {
+    // invert only if new field index features are a subset of slot index features
+    return false;
+  }
+
 
   if (slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
