@@ -73,11 +73,12 @@
 #include "format_utils.hpp"
 #include "analysis/token_attributes.hpp"
 #include "formats/formats_10_attributes.hpp"
-#include "index/iterators.hpp"
 #include "index/index_meta.hpp"
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
+#include "index/iterators.hpp"
 #include "index/index_meta.hpp"
+#include "index/norm.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
@@ -493,7 +494,47 @@ struct block_meta {
 // --SECTION--                                                           Helpers
 // -----------------------------------------------------------------------------
 
-void read_segment_features(
+template<typename FeatureMap>
+void write_segment_features_legacy(
+    FeatureMap& feature_map,
+    data_output& out,
+    const flush_state& state) {
+  const auto* features = state.custom_features;
+  const auto index_features = state.features;
+
+  const size_t count = (features ? features->size() : 0) +
+                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+
+  feature_map.clear();
+  feature_map.reserve(count);
+
+  out.write_vlong(count);
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
+    write_string(out, irs::type<frequency>::name());
+    feature_map.emplace(irs::type<frequency>::id(), feature_map.size());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
+    write_string(out, irs::type<position>::name());
+    feature_map.emplace(irs::type<position>::id(), feature_map.size());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
+    write_string(out, irs::type<offset>::name());
+    feature_map.emplace(irs::type<offset>::id(), feature_map.size());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
+    write_string(out, irs::type<payload>::name());
+    feature_map.emplace(irs::type<payload>::id(), feature_map.size());
+  }
+
+  if (features) {
+    for (const irs::type_info::type_id feature : *features) {
+      write_string(out, feature().name());
+      feature_map.emplace(feature, feature_map.size());
+    }
+  }
+}
+
+void read_segment_features_legacy(
     data_input& in,
     IndexFeatures& features,
     feature_map_t& feature_map) {
@@ -507,13 +548,11 @@ void read_segment_features(
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
         "unknown feature name '%s'",
-        name.c_str()
-      ));
+        name.c_str()));
     }
 
     feature_map.emplace_back(feature.id());
 
-    // FIXME
     if (feature.id() == type<frequency>::id()) {
       features |= IndexFeatures::FREQ;
     } else if (feature.id() == type<position>::id()) {
@@ -526,17 +565,64 @@ void read_segment_features(
   }
 }
 
-void read_field_features(
+template<typename FeatureMap>
+void write_field_features_legacy(
+    FeatureMap& feature_map,
+    data_output& out,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features) {
+  auto write_feature = [&out, &feature_map](type_info::type_id feature){
+    const auto it = feature_map.find(feature);
+    assert(it != feature_map.end());
+
+    if (feature_map.end() == it) {
+      // should not happen in reality
+      throw irs::index_error(string_utils::to_string(
+        "feature '%s' is not listed in segment features",
+        feature().name().c_str()));
+    }
+
+    out.write_vlong(it->second);
+  };
+
+  const size_t count = features.size() +
+                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+
+  out.write_vlong(count);
+
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
+    write_feature(type<frequency>::id());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
+    write_feature(type<position>::id());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
+    write_feature(type<offset>::id());
+  }
+  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
+    write_feature(type<payload>::id());
+  }
+  for (const auto& feature : features) {
+    write_feature(feature.first);
+  }
+
+  const auto norm = features.find(irs::type<irs::norm>::id());
+  write_zvlong(out, norm == features.end() ? field_limits::invalid() : norm->second);
+}
+
+void read_field_features_legacy(
     data_input& in,
     const feature_map_t& feature_map,
-    IndexFeatures& index_features,
-    flags& features) {
+    field_meta& field) {
+  auto& index_features = field.index_features;
+  auto& features = field.features;
+
   for (size_t count = in.read_vlong(); count; --count) {
     const size_t id = in.read_vlong(); // feature id
 
     if (id < feature_map.size()) {
       const auto feature = feature_map[id];
-      // FIXME
+
       if (feature == type<frequency>::id()) {
         index_features |= IndexFeatures::FREQ;
       } else if (feature == type<position>::id()) {
@@ -546,12 +632,145 @@ void read_field_features(
       } else if (feature == type<payload>::id()) {
         index_features |= IndexFeatures::PAY;
       } else {
-        features.add(feature);
+        features[feature] = field_limits::invalid();
       }
     } else {
       throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
-      ));
+        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
+    }
+  }
+
+  const field_id norm = static_cast<field_id>(read_zvlong(in));
+  if (field_limits::valid(norm)) {
+    const auto it = features.find(irs::type<irs::norm>::id());
+    if (IRS_UNLIKELY(it != features.end())) {
+      it->second = norm;
+    } else {
+      throw irs::index_error(irs::string_utils::to_string(
+        "'norm' feature is not registered with the field '%s'", field.name.c_str()));
+    }
+  } else {
+      throw irs::index_error(irs::string_utils::to_string(
+        "'norm' feature is registered with the field '%s' but not set", field.name.c_str()));
+  }
+}
+
+template<typename FeatureMap>
+void write_segment_features(
+    FeatureMap& feature_map,
+    data_output& out,
+    const flush_state& state) {
+  auto* features = state.custom_features;
+
+  const size_t count = (features ? features->size() : 0);
+
+  feature_map.clear();
+  feature_map.reserve(count);
+
+  out.write_int(static_cast<uint32_t>(state.features));
+  out.write_vlong(count);
+
+  if (features) {
+    for (const irs::type_info::type_id feature : *features) {
+      write_string(out, feature().name());
+      feature_map.emplace(feature, feature_map.size());
+    }
+  }
+}
+
+template<typename FeatureMap>
+void write_field_features(
+    FeatureMap& feature_map,
+    data_output& out,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features) {
+  auto write_feature = [&out, feature_map](type_info::type_id feature){
+    const auto it = feature_map.find(feature);
+    assert(it != feature_map.end());
+
+    if (feature_map.end() == it) {
+      // should not happen in reality
+      throw irs::index_error(string_utils::to_string(
+        "feature '%s' is not listed in segment features",
+        feature().name().c_str()));
+    }
+
+    out.write_vlong(it->second);
+  };
+
+  const size_t count = features.size();
+
+  out.write_int(static_cast<uint32_t>(index_features));
+  out.write_vlong(count);
+  for (const auto& feature : features) {
+    write_feature(feature.first);
+    out.write_vlong(feature.second + 1);
+  }
+}
+
+IndexFeatures read_index_features(data_input& in) {
+  constexpr IndexFeatures ALL_FEATURES =
+    IndexFeatures::FREQ | IndexFeatures::POS |
+    IndexFeatures::OFFS | IndexFeatures::PAY;
+
+  const uint32_t index_features = in.read_int();
+
+  if (index_features > static_cast<uint32_t>(ALL_FEATURES)) {
+    throw irs::index_error{irs::string_utils::to_string(
+      "invalid segment index features %u",
+      index_features )};
+  }
+
+  return static_cast<IndexFeatures>(index_features);
+}
+
+void read_segment_features(
+    data_input& in,
+    IndexFeatures& features,
+    feature_map_t& feature_map) {
+  features = read_index_features(in);
+
+  feature_map.clear();
+  feature_map.reserve(in.read_vlong());
+
+  for (size_t count = feature_map.capacity(); count; --count) {
+    const auto name = read_string<std::string>(in); // read feature name
+    const irs::type_info feature = attributes::get(name);
+
+    if (!feature) {
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature name '%s'",
+        name.c_str()));
+    }
+
+    feature_map.emplace_back(feature.id());
+  }
+}
+
+void read_field_features(
+    data_input& in,
+    const feature_map_t& feature_map,
+    field_meta& field) {
+  field.index_features = read_index_features(in);
+
+  auto& features = field.features;
+  for (size_t count = in.read_vlong(); count; --count) {
+    const size_t id = in.read_vlong(); // feature id
+
+    if (id < feature_map.size()) {
+      const auto feature = feature_map[id];
+      const field_id id = in.read_vlong() - 1;
+
+      const auto [it, is_new] = features.emplace(feature, id);
+      UNUSED(it);
+
+      if (!is_new) {
+        throw irs::index_error(irs::string_utils::to_string(
+          "duplicate feature '%s'", feature().name().c_str()));
+      }
+    } else {
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
     }
   }
 }
@@ -772,31 +991,19 @@ class field_writer final : public irs::field_writer {
 
   virtual void write(
     const std::string& name,
-    field_id norm,
     IndexFeatures index_features,
-    const irs::flags& features,
+    const irs::feature_map_t& features,
     term_iterator& terms) override;
 
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
 
-  void write_segment_features(
-    data_output& out,
-    IndexFeatures index_features,
-    const flags& features);
-
-  void write_field_features(
-    data_output& out,
-    IndexFeatures index_features,
-    const flags& features) const;
-
   void begin_field(IndexFeatures field);
 
   void end_field(
     const std::string& name,
-    field_id norm,
     IndexFeatures index_features,
-    const flags& features,
+    const irs::feature_map_t& features,
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count);
@@ -1134,7 +1341,11 @@ void field_writer::prepare(const irs::flush_state& state) {
     }
   }
 
-  write_segment_features(*index_out_, state.features, *state.custom_features);
+  if (IRS_LIKELY(version_ >= burst_trie::Version::IMMUTABLE_FST)) {
+    write_segment_features(feature_map_, *index_out_, state);
+  } else {
+    write_segment_features_legacy(feature_map_, *index_out_, state);
+  }
 
   // prepare postings writer
   pw_->prepare(*terms_out_, state);
@@ -1147,9 +1358,8 @@ void field_writer::prepare(const irs::flush_state& state) {
 
 void field_writer::write(
     const std::string& name,
-    field_id norm,
     IndexFeatures index_features,
-    const flags& features,
+    const irs::feature_map_t& features,
     term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
   begin_field(index_features);
@@ -1192,7 +1402,7 @@ void field_writer::write(
     }
   }
 
-  end_field(name, norm, index_features, features, sum_dfreq, sum_tfreq, docs->value.count());
+  end_field(name, index_features, features, sum_dfreq, sum_tfreq, docs->value.count());
 }
 
 void field_writer::begin_field(IndexFeatures features) {
@@ -1212,84 +1422,10 @@ void field_writer::begin_field(IndexFeatures features) {
   pw_->begin_field(features);
 }
 
-void field_writer::write_segment_features(
-    data_output& out,
-    IndexFeatures index_features,
-    const flags& features) {
-  const size_t count = features.size() +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
-
-  feature_map_.clear();
-  feature_map_.reserve(count);
-
-  out.write_vlong(count);
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
-    write_string(out, irs::type<frequency>::name());
-    feature_map_.emplace(irs::type<frequency>::id(), feature_map_.size());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
-    write_string(out, irs::type<position>::name());
-    feature_map_.emplace(irs::type<position>::id(), feature_map_.size());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
-    write_string(out, irs::type<offset>::name());
-    feature_map_.emplace(irs::type<offset>::id(), feature_map_.size());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
-    write_string(out, irs::type<payload>::name());
-    feature_map_.emplace(irs::type<payload>::id(), feature_map_.size());
-  }
-  for (const irs::type_info::type_id feature : features) {
-    write_string(out, feature().name());
-    feature_map_.emplace(feature, feature_map_.size());
-  }
-}
-
-void field_writer::write_field_features(
-    data_output& out,
-    IndexFeatures index_features,
-    const flags& features) const {
-  auto write_feature = [&out, this](type_info::type_id feature){
-    const auto it = feature_map_.find(feature);
-    assert(it != feature_map_.end());
-
-    if (feature_map_.end() == it) {
-      // should not happen in reality
-      throw irs::index_error(string_utils::to_string(
-        "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
-    }
-
-    out.write_vlong(it->second);
-  };
-
-  const size_t count = features.size() +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
-
-  out.write_vlong(count);
-  // FIXME
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
-    write_feature(type<frequency>::id());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
-    write_feature(type<position>::id());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
-    write_feature(type<offset>::id());
-  }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
-    write_feature(type<payload>::id());
-  }
-  for (auto feature : features) {
-    write_feature(feature);
-  }
-}
-
 void field_writer::end_field(
     const std::string& name,
-    field_id norm,
     IndexFeatures index_features,
-    const irs::flags& features,
+    const irs::feature_map_t& features,
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count) {
@@ -1309,8 +1445,11 @@ void field_writer::end_field(
 
   // write field meta
   write_string(*index_out_, name);
-  write_field_features(*index_out_, index_features, features);
-  write_zvlong(*index_out_, norm);
+  if (IRS_LIKELY(version_ >= burst_trie::Version::IMMUTABLE_FST)) {
+    write_field_features(feature_map_, *index_out_, index_features, features);
+  } else {
+    write_field_features_legacy(feature_map_, *index_out_, index_features, features);
+  }
   index_out_->write_vlong(term_count_);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
@@ -1393,7 +1532,7 @@ class term_reader_base : public irs::term_reader,
   virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override;
 
-  virtual void prepare(index_input& in, const feature_map_t& features);
+  virtual void prepare(burst_trie::Version version, index_input& in, const feature_map_t& features);
 
  private:
   bstring min_term_;
@@ -1409,14 +1548,18 @@ class term_reader_base : public irs::term_reader,
 }; // term_reader_base
 
 void term_reader_base::prepare(
+    burst_trie::Version version,
     index_input& in,
     const feature_map_t& feature_map) {
   // read field metadata
   field_.name = read_string<std::string>(in);
 
-  read_field_features(in, feature_map, field_.index_features, field_.features);
+  if (IRS_LIKELY(version >= burst_trie::Version::IMMUTABLE_FST)) {
+    read_field_features(in, feature_map, field_);
+  } else {
+    read_field_features_legacy(in, feature_map, field_);
+  }
 
-  field_.norm = static_cast<field_id>(read_zvlong(in));
   terms_count_ = in.read_vlong();
   doc_count_ = in.read_vlong();
   doc_freq_ = in.read_vlong();
@@ -3000,8 +3143,11 @@ class field_reader final : public irs::field_reader {
     term_reader(term_reader&& rhs) = default;
     term_reader& operator=(term_reader&& rhs) = delete;
 
-    virtual void prepare(index_input& in, const feature_map_t& features) override {
-      term_reader_base::prepare(in, features);
+    virtual void prepare(
+        burst_trie::Version version,
+        index_input& in,
+        const feature_map_t& features) override {
+      term_reader_base::prepare(version, in, features);
 
       // read FST
       input_buf isb(&in);
@@ -3169,7 +3315,11 @@ void field_reader::prepare(
     }
   }
 
-  read_segment_features(*index_in, features, feature_map);
+  if (IRS_LIKELY(term_index_version >= burst_trie::Version::IMMUTABLE_FST)) {
+    read_segment_features(*index_in, features, feature_map);
+  } else {
+    read_segment_features_legacy(*index_in, features, feature_map);
+  }
 
   // read terms for each indexed field
   if (term_index_version <= burst_trie::Version::ENCRYPTION_MIN) {
@@ -3182,7 +3332,7 @@ void field_reader::prepare(
 
     for (string_ref previous_field_name = string_ref::EMPTY; fields_count; --fields_count) {
       auto& field = fields.emplace_back(*this);
-      field.prepare(*index_in, feature_map);
+      field.prepare(term_index_version, *index_in, feature_map);
 
       const auto& name = field.meta().name;
 

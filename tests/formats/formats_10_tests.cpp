@@ -790,9 +790,10 @@ TEST_P(format_10_test_case, postings_seek) {
       }
     }
     std::vector<irs::bytes_ref> terms{ term };
-    tests::format_test_case::terms<decltype(terms.begin())> trms(terms.begin(), terms.end(), docs.begin(), docs.end());
+    tests::format_test_case::terms<decltype(terms.begin())> trms(
+      terms.begin(), terms.end(), docs.begin(), docs.end());
 
-    iresearch::flush_state flush_state;
+    irs::flush_state flush_state;
     flush_state.dir = dir.get();
     flush_state.doc_count = 10000;
     flush_state.name = segment_name;
@@ -802,8 +803,10 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       auto fw = get_codec()->get_field_writer(true);
       fw->prepare(flush_state);
-      fw->write(field_meta.name, field_meta.norm, field_meta.index_features,
-                field_meta.features, trms);
+      fw->write(field_meta.name,
+                field_meta.index_features,
+                field_meta.features,
+                trms);
       fw->end();
     }
 

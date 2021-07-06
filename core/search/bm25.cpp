@@ -447,7 +447,10 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         return { nullptr, nullptr };
       }
 
-      if (norm.reset(segment, field.meta().norm, *doc)) {
+      const auto it = field.meta().features.find(irs::type<irs::norm>::id());
+
+      if (it != field.meta().features.end() &&
+          norm.reset(segment, it->second, *doc)) {
         if (filter_boost) {
           return {
             memory::make_unique<bm25::norm_score_ctx>(score_buf, k_, boost, stats, freq, std::move(norm), filter_boost),

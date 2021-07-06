@@ -81,13 +81,11 @@ const std::string DEFAULT_ANALYZER_TYPE = "text";
 const std::string DEFAULT_ANALYZER_OPTIONS
   = R"({"locale":"en", "stopwords":["abc", "def", "ghi"] })";
 
-typedef std::unique_ptr<std::string> ustringp;
-
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
 
-const irs::flags TEXT_FEATURES{ irs::type<irs::norm>::get() };
-const irs::flags NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::get() };
+constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm>::id()  };
+constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::id() };
 
 }
 
@@ -130,12 +128,12 @@ struct Doc {
 
   struct Field {
     irs::string_ref _name;
-    const irs::flags _features;
+    const irs::features_t _features;
     const irs::IndexFeatures _index_features;
 
     Field(const irs::string_ref& n,
           irs::IndexFeatures index_features,
-          const irs::flags& flags)
+          const irs::features_t& flags)
       : _name(n),
         _features(flags),
         _index_features(index_features) {
@@ -145,7 +143,7 @@ struct Doc {
       return _name;
     }
 
-    const irs::flags& features() const noexcept {
+    const irs::features_t& features() const noexcept {
       return _features;
     }
 
@@ -167,14 +165,14 @@ struct Doc {
     StringField(
         const std::string& n,
         irs::IndexFeatures index_features,
-        const irs::flags& flags)
+        const irs::features_t& flags)
       : Field(n, index_features, flags) {
     }
 
     StringField(
         const std::string& n,
         irs::IndexFeatures index_features,
-        const irs::flags& flags,
+        const irs::features_t& flags,
         const std::string& a)
       : Field(n, index_features, flags), f(a) {
     }
@@ -197,7 +195,7 @@ struct Doc {
     TextField(
         const std::string& n,
         irs::IndexFeatures index_features,
-        const irs::flags& flags,
+        const irs::features_t& flags,
         irs::analysis::analyzer::ptr stream)
       : Field(n, index_features, flags),
         stream(std::move(stream)) {
@@ -221,14 +219,14 @@ struct Doc {
     NumericField(
         const std::string& n,
         irs::IndexFeatures index_features,
-        const irs::flags& flags)
+        const irs::features_t& flags)
       : Field(n, index_features, flags) {
     }
 
     NumericField(
         const std::string& n,
         irs::IndexFeatures index_features,
-        const irs::flags& flags,
+        const irs::features_t& flags,
         uint64_t v)
       : Field(n, index_features, flags), value(v) {
     }
@@ -262,25 +260,30 @@ using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 struct WikiDoc : Doc {
   explicit WikiDoc(const analyzer_factory_f& analyzer_factory) {
     // id
-    id = std::make_shared<StringField>("id", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    id = std::make_shared<StringField>("id", irs::IndexFeatures::DOCS, irs::features_t{});
     elements.emplace_back(id);
     store.emplace_back(id);
 
     // title: string
-    title = std::make_shared<StringField>("title", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    title = std::make_shared<StringField>("title", irs::IndexFeatures::DOCS, irs::features_t{});
     elements.push_back(title);
 
     // date: string
-    date = std::make_shared<StringField>("date", irs::IndexFeatures::DOCS, irs::flags::empty_instance());
+    date = std::make_shared<StringField>("date", irs::IndexFeatures::DOCS, irs::features_t{});
     elements.push_back(date);
     store.push_back(date);
 
     // date: uint64_t
-    ndate = std::make_shared<NumericField>("timesecnum", irs::IndexFeatures::DOCS, NUMERIC_FEATURES);
+    ndate = std::make_shared<NumericField>(
+      "timesecnum", irs::IndexFeatures::DOCS,
+      irs::features_t{ NUMERIC_FEATURES.data(), NUMERIC_FEATURES.size() });
     elements.push_back(ndate);
 
     // body: text
-    body = std::make_shared<TextField>("body", TEXT_INDEX_FEATURES, TEXT_FEATURES, analyzer_factory());
+    body = std::make_shared<TextField>(
+      "body", TEXT_INDEX_FEATURES,
+      irs::features_t{ TEXT_FEATURES.data(), TEXT_FEATURES.size() },
+      analyzer_factory());
     elements.push_back(body);
   }
 

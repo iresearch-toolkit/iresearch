@@ -70,8 +70,15 @@ struct IRESEARCH_API term_meta : attribute {
     freq = 0;
   }
 
-  uint32_t docs_count = 0; // how many documents a particular term contains
-  uint32_t freq = 0; // FIXME check whether we can move freq to another place
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief how many documents a particular term contains
+  //////////////////////////////////////////////////////////////////////////////
+  uint32_t docs_count = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief how many times a particular term occur in documents
+  //////////////////////////////////////////////////////////////////////////////
+  uint32_t freq = 0;
 }; // term_meta
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +135,8 @@ struct IRESEARCH_API field_writer {
   virtual void prepare(const flush_state& state) = 0;
   virtual void write(
     const std::string& name,
-    field_id norm,
     IndexFeatures index_features,
-    const flags& features,
+    const std::map<type_info::type_id, field_id>& features,
     term_iterator& data) = 0;
   virtual void end() = 0;
 }; // field_writer
@@ -537,7 +543,7 @@ namespace iresearch {
 struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
-  const flags* custom_features{&flags::empty_instance()};
+  const std::set<type_info::type_id>* custom_features{};
   string_ref name; // segment name
   size_t doc_count;
   IndexFeatures features{IndexFeatures::DOCS}; // segment features

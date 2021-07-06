@@ -371,7 +371,10 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         return { nullptr, nullptr };
       }
 
-      if (norm.reset(segment, field.meta().norm, *doc)) {
+      const auto it = field.meta().features.find(irs::type<irs::norm>::id());
+
+      if (it != field.meta().features.end() &&
+          norm.reset(segment, it->second, *doc)) {
         
         if (filter_boost) {
           return {

@@ -723,7 +723,7 @@ class term_reader final : public irs::basic_term_reader,
 
 field_data::field_data(
     const string_ref& name,
-    const flags& features,
+    const features_t& features,
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
     columnstore_writer& columns,
@@ -731,7 +731,7 @@ field_data::field_data(
     int_block_pool::inserter& int_writer,
     IndexFeatures index_features,
     bool random_access)
-  : meta_(name, index_features, features),
+  : meta_(name, index_features),
     terms_(*byte_writer),
     byte_writer_(&byte_writer),
     int_writer_(&int_writer),
@@ -747,14 +747,10 @@ field_data::field_data(
       auto [id, handler] = columns.push_column(feature_columns(feature));
       features_.emplace_back(feature, it->second, std::move(handler));
 
-      // FIXME
-      if (feature == type<norm>::id()) {
-        meta_.norm = id;
-      }
+      meta_.features[feature] = id;
+    } else {
+      meta_.features[feature] = field_limits::invalid();
     }
-
-    // FIXME
-    meta_.features.add(feature);
   }
 }
 
@@ -1134,7 +1130,7 @@ fields_data::fields_data(
 field_data* fields_data::emplace(
     const hashed_string_ref& name,
     IndexFeatures index_features,
-    const flags& features,
+    const features_t& features,
     columnstore_writer& columns) {
   assert(fields_map_.size() == fields_.size());
 
@@ -1165,7 +1161,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
   IndexFeatures index_features{IndexFeatures::DOCS};
-  flags custom_features;
+  feature_set_t features;
 
   // sort fields
   sorted_fields_.resize(fields_.size());
@@ -1176,11 +1172,11 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     const auto& meta = entry.meta();
     index_features |= static_cast<IndexFeatures>(meta.index_features);
-    custom_features |= meta.features;
+    accumulate_features(features, meta.features);
   }
 
   state.features = static_cast<IndexFeatures>(index_features);
-  state.custom_features = &custom_features;
+  state.custom_features = &features;
 
   std::sort(
     sorted_fields_.begin(), sorted_fields_.end(),
@@ -1199,9 +1195,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     // write inverted data
     auto it = terms.iterator();
-    fw.write(meta.name, meta.norm,
-             meta.index_features,
-             meta.features, *it);
+    fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 
   fw.end();

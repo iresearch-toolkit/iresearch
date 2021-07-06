@@ -112,7 +112,7 @@ class field : public irs::field_meta {
  public:
   field(const irs::string_ref& name,
         irs::IndexFeatures index_features,
-        const irs::flags& features);
+        const irs::features_t& features);
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
 
@@ -351,9 +351,9 @@ class field_writer : public irs::field_writer {
   explicit field_writer(const index_segment& data);
 
   virtual void prepare(const irs::flush_state& state) override;
-  virtual void write(const std::string& name, irs::field_id norm,
+  virtual void write(const std::string& name,
                      irs::IndexFeatures index_features,
-                     const irs::flags& custom_features,
+                     const irs::feature_map_t& custom_features,
                      irs::term_iterator& actual_term) override;
   virtual void end() override;
 
@@ -397,12 +397,6 @@ void assert_term(
   const irs::term_iterator& expected_term,
   const irs::term_iterator& actual_term,
   irs::IndexFeatures features);
-
-void assert_terms_next(
-  const irs::term_reader& expected_term_reader,
-  const irs::term_reader& actual_term_reader,
-  irs::automaton_table_matcher* acceptor,
-  const irs::flags& features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,

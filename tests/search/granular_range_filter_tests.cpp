@@ -30,28 +30,28 @@ namespace {
 class granular_float_field: public tests::float_field {
  public:
   granular_float_field() {
-    this->features_.add<irs::granularity_prefix>();
+    this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
 class granular_double_field: public tests::double_field {
  public:
   granular_double_field() {
-    this->features_.add<irs::granularity_prefix>();
+    this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
 class granular_int_field: public tests::int_field {
  public:
   granular_int_field() {
-    this->features_.add<irs::granularity_prefix>();
+    this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
 class granular_long_field: public tests::long_field {
  public:
   granular_long_field() {
-    this->features_.add<irs::granularity_prefix>();
+    this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 

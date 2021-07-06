@@ -27,7 +27,9 @@
 
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
+#include "index/field_meta.hpp"
 #include "index/norm.hpp"
+#include "index/field_meta.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/lz4compression.hpp"
@@ -83,7 +85,7 @@ bool token_stream_payload::next() {
 string_field::string_field(
     const std::string& name,
     irs::IndexFeatures index_features,
-    const irs::flags& extra_features) {
+    const std::vector<irs::type_info::type_id>& extra_features) {
   index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
   features_ = extra_features;
   name_ = name;
@@ -93,7 +95,7 @@ string_field::string_field(
     const std::string& name,
     const irs::string_ref& value,
     irs::IndexFeatures index_features,
-    const irs::flags& extra_features)
+    const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
   index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
   features_ = extra_features;
@@ -128,7 +130,7 @@ irs::token_stream& string_field::get_tokens() const {
 string_ref_field::string_ref_field(
     const std::string& name,
     irs::IndexFeatures extra_index_features,
-    const irs::flags& extra_features) {
+    const std::vector<irs::type_info::type_id>& extra_features) {
   index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
   features_ = extra_features;
   name_ = name;
@@ -138,7 +140,7 @@ string_ref_field::string_ref_field(
     const std::string& name,
     const irs::string_ref& value,
     irs::IndexFeatures extra_index_features,
-    const irs::flags& extra_features)
+    const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
   index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
   features_ = extra_features;
@@ -306,12 +308,16 @@ void payloaded_json_field_factory(
 }
 
 void normalized_string_json_field_factory(
-  tests::document& doc,
-  const std::string& name,
-  const json_doc_generator::json_value& data) {
-  static irs::flags norm{ irs::type<irs::norm>::get() };
+    tests::document& doc,
+    const std::string& name,
+    const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(name, data.str, irs::IndexFeatures::DOCS, norm));
+    doc.insert(
+      std::make_shared<templates::string_field>(
+        name,
+        data.str,
+        irs::IndexFeatures::DOCS,
+        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
   } else {
     generic_json_field_factory(doc, name, data);
   }
@@ -1442,9 +1448,7 @@ class index_test_case : public tests::index_test_base {
         return irs::IndexFeatures::DOCS;
       }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       irs::token_stream& get_tokens() const {
         stream_.reset(name_);
@@ -1647,9 +1651,7 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output&) const noexcept {
         return true;
@@ -1855,9 +1857,7 @@ class index_test_case : public tests::index_test_base {
       irs::IndexFeatures index_features() const {
         return irs::IndexFeatures::DOCS;
       }
-      const irs::flags& features() const {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       private:
       mutable std::unique_ptr<irs::string_token_stream> stream_;
@@ -1936,7 +1936,7 @@ class index_test_case : public tests::index_test_base {
           value_(value),
           stored_valid_(stored_valid) {
         if (!indexed_valid) {
-          features_.add<tests::incompatible_attribute>();
+          features_.emplace_back(irs::type<tests::incompatible_attribute>::id());
         }
       }
       indexed_and_stored_field(indexed_and_stored_field&& other) noexcept
@@ -1954,8 +1954,8 @@ class index_test_case : public tests::index_test_base {
       irs::IndexFeatures index_features() const {
         return irs::IndexFeatures::DOCS;
       }
-      const irs::flags& features() const {
-        return features_;
+      irs::features_t features() const {
+        return { features_.data(), features_.size() };
       }
       bool write(irs::data_output& out) const noexcept {
         irs::write_string(out, value_);
@@ -1963,7 +1963,7 @@ class index_test_case : public tests::index_test_base {
       }
 
      private:
-      irs::flags features_;
+      std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
@@ -1976,7 +1976,7 @@ class index_test_case : public tests::index_test_base {
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)), value_(value) {
         if (!valid) {
-          features_.add<tests::incompatible_attribute>();
+          features_.emplace_back(irs::type<tests::incompatible_attribute>::id());
         }
       }
       indexed_field(indexed_field&& other) noexcept
@@ -1993,12 +1993,12 @@ class index_test_case : public tests::index_test_base {
       irs::IndexFeatures index_features() const {
         return irs::IndexFeatures::DOCS;
       }
-      const irs::flags& features() const {
-        return features_;
+      irs::features_t features() const {
+        return { features_.data(), features_.size() };
       }
 
      private:
-      irs::flags features_;
+      std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
@@ -2013,9 +2013,7 @@ class index_test_case : public tests::index_test_base {
         return name_;
       }
 
-      const irs::flags& features() const noexcept {
-        return irs::flags::empty_instance();
-      }
+      irs::features_t features() const { return {}; }
 
       bool write(irs::data_output& out) const {
         write_string(out, value_);
@@ -2294,7 +2292,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_EQ(field.name(), term_reader->meta().name);
   ASSERT_TRUE(term_reader->meta().features.empty());
   ASSERT_EQ(field.index_features(), term_reader->meta().index_features);
-  ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
+  ASSERT_TRUE(term_reader->meta().features.empty());
 
   constexpr size_t expected_docs_B[] {
     0b0101010101010101010101010101010101010101010101010101010101010100,
@@ -2855,7 +2853,7 @@ TEST_P(index_test_case, document_context) {
     std::mutex cond_mutex;
     std::mutex mutex;
     const irs::string_ref& name() { return irs::string_ref::EMPTY; }
-    const irs::flags& features() const { return irs::flags::empty_instance(); }
+    irs::features_t features() const { return {}; }
     bool write(irs::data_output&) {
       {
         auto cond_lock = irs::make_lock_guard(cond_mutex);
@@ -5367,10 +5365,11 @@ TEST_P(index_test_case, doc_update) {
     auto test_field3 = std::make_shared<test_field>();
     std::string test_field_name("test_field");
 
-    test_field0->features_.add<irs::offset>().add<irs::frequency>(); // feature superset
-    test_field1->features_.add<irs::offset>(); // feature subset of 'test_field0'
-    test_field2->features_.add<irs::offset>();
-    test_field3->features_.add<irs::increment>();
+    test_field0->features_.emplace_back(irs::type<irs::offset>::id());
+    test_field0->features_.emplace_back(irs::type<irs::frequency>::id()); // feature superset
+    test_field1->features_.emplace_back(irs::type<irs::offset>::id()); // feature subset of 'test_field0'
+    test_field2->features_.emplace_back(irs::type<irs::offset>::id());
+    test_field3->features_.emplace_back(irs::type<irs::increment>::id());
     test_field0->name(test_field_name);
     test_field1->name(test_field_name);
     test_field2->name(test_field_name);
@@ -6294,14 +6293,16 @@ TEST_P(index_test_case, segment_column_user_system) {
   // document to add a system column not present in subsequent documents
   tests::document doc0;
 
+  const std::vector<irs::type_info::type_id> features{ irs::type<irs::norm>::id() };
+
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
-      "test-field",
-      "test-value",
-      irs::IndexFeatures::DOCS,
-      irs::flags{ irs::type<irs::norm>::get() } // trigger addition of a system column
-    ), true, false);
+        "test-field",
+        "test-value",
+        irs::IndexFeatures::DOCS,
+        features), // trigger addition of a system column
+      true, false);
   }
 
   irs::bytes_ref actual_value;
@@ -6335,7 +6336,12 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   auto* field = segment.field("test-field"); // 'norm' column added by doc0 above
   ASSERT_NE(nullptr, field);
-  auto* column = segment.column_reader(field->meta().norm); // system column
+
+  const auto norm = field->meta().features.find(irs::type<irs::norm>::id());
+  ASSERT_NE(field->meta().features.end(), norm);
+  ASSERT_TRUE(irs::field_limits::valid(norm->second));
+
+  auto* column = segment.column_reader(norm->second); // system column
   ASSERT_NE(nullptr, column);
 
   column = segment.column_reader("name");
@@ -13206,10 +13212,7 @@ TEST_P(index_test_case, segment_options) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
     }
   });
 
@@ -13223,10 +13226,8 @@ TEST_P(index_test_case, segment_options) {
 
     {
       auto doc = ctx.insert();
-      ASSERT_TRUE(
-        doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end())
-        && doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end())
-      );
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc1->indexed.begin(), doc1->indexed.end()));
+      ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()));
     }
 
     irs::index_writer::segment_options options;
@@ -13749,13 +13750,14 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     irs::IndexFeatures index_features() const {
       return irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
     }
-    irs::flags features() const {
-      return { irs::type<irs::norm>::get() };
+    irs::features_t features() const {
+      return { &features_, 1 };
     }
     irs::token_stream& get_tokens() const noexcept {
       return stream;
     }
 
+    irs::type_info::type_id features_{irs::type<irs::norm>::id()};
     mutable empty_token_stream stream;
   } empty;
 
@@ -13776,8 +13778,9 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     {
       const tests::templates::string_field field(
         static_cast<std::string>(empty.name()),
-        "bar", empty.index_features(),
-        empty.features());
+        "bar",
+        empty.index_features(),
+        { empty.features().begin(), empty.features().end() });
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13786,8 +13789,9 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     {
       const tests::templates::string_field field(
         static_cast<std::string>(empty.name()),
-        "bar", empty.index_features(),
-        empty.features());
+        "bar",
+        empty.index_features(),
+        { empty.features().begin(), empty.features().end() });
       auto docs = writer->documents();
       auto doc = docs.insert();
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
@@ -13809,11 +13813,14 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_TRUE(field->next());
     auto& field_reader = field->value();
     ASSERT_EQ(empty.name(), field_reader.meta().name);
-    ASSERT_TRUE(irs::field_limits::valid(field_reader.meta().norm));
+    ASSERT_EQ(1, field_reader.meta().features.count(irs::type<irs::norm>::id()));
+    const auto norm = field_reader.meta().features.find(irs::type<irs::norm>::id());
+    ASSERT_NE(field_reader.meta().features.end(), norm);
+    ASSERT_TRUE(irs::field_limits::valid(norm->second));
     ASSERT_FALSE(field->next());
     ASSERT_FALSE(field->next());
 
-    auto column_reader = segment.column_reader(field_reader.meta().norm);
+    auto column_reader = segment.column_reader(norm->second);
     ASSERT_NE(nullptr, column_reader);
     ASSERT_EQ(1, column_reader->size());
     auto it = column_reader->iterator();

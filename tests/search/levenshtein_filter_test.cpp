@@ -425,7 +425,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       : value_(std::move(value)), analyzer_(&analyzer) {
       this->name("id");
       this->index_features_ = irs::IndexFeatures::FREQ;
-      this->features_.add<irs::norm>();
+      this->features_.emplace_back(irs::type<irs::norm>::id());
     }
 
     bool write(data_output&) const noexcept {

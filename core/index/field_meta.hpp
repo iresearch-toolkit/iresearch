@@ -25,6 +25,7 @@
 #define IRESEARCH_FIELD_META_H
 
 #include "index/index_features.hpp"
+#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
@@ -44,6 +45,45 @@ struct field_stats {
   uint32_t num_unique{};
 }; // field_stats
 
+
+using feature_map_t = std::map<type_info::type_id, field_id>;
+using feature_set_t = std::set<type_info::type_id>;
+using features_t = range<const type_info::type_id>;
+
+inline void accumulate_features(
+    feature_set_t& accum,
+    const feature_map_t& features) {
+  for (auto& entry : features) {
+    accum.emplace(entry.first);
+  }
+}
+
+// FIXME remove
+template<typename Map>
+inline bool is_subset_of(
+    const feature_set_t& lhs,
+    const Map& rhs) noexcept {
+  for (auto& entry : lhs) {
+    if (!rhs.count(entry)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// FIXME remove
+template<typename Map>
+inline bool is_subset_of(
+    const feature_map_t& lhs,
+    const Map& rhs) noexcept {
+  for (auto& entry : lhs) {
+    if (!rhs.count(entry.first)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
 /// @brief represents field metadata
@@ -55,9 +95,7 @@ struct IRESEARCH_API field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(const string_ref& field,
-             IndexFeatures index_features,
-             const flags& features);
+  field_meta(const string_ref& field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
@@ -67,9 +105,8 @@ struct IRESEARCH_API field_meta {
     return !(*this == rhs);
   }
 
-  flags features;
+  feature_map_t features;
   std::string name;
-  field_id norm{ field_limits::invalid() };
   IndexFeatures index_features{IndexFeatures::DOCS};
 }; // field_meta
 

@@ -37,18 +37,14 @@ namespace iresearch {
 field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
-    norm(rhs.norm),
     index_features(rhs.index_features) {
-  rhs.norm = field_limits::invalid();
   rhs.index_features = IndexFeatures::DOCS;
 }
 
 field_meta::field_meta(
     const string_ref& name,
-    IndexFeatures index_features,
-    const flags& features)
-  : features(features),
-    name(name.c_str(), name.size()),
+    IndexFeatures index_features)
+  : name(name.c_str(), name.size()),
     index_features(index_features) {
 }
 
@@ -56,8 +52,6 @@ field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
   if (this != &rhs) {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
-    norm = rhs.norm;
-    rhs.norm = field_limits::invalid();
     index_features = rhs.index_features;
     rhs.index_features = IndexFeatures::DOCS;
   }

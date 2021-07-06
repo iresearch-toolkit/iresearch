@@ -479,7 +479,7 @@ void visit(
     return; // no terms to collect
   }
 
-  size_t prefix_size = reader.meta().features.check<irs::granularity_prefix>() ? 1 : 0;
+  const size_t prefix_size = reader.meta().features.count(irs::type<irs::granularity_prefix>::id());
 
   assert(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
   assert(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);

@@ -90,9 +90,13 @@ bool term::operator<( const term& rhs ) const {
 field::field(
     const irs::string_ref& name,
     irs::IndexFeatures index_features,
-    const irs::flags& features)
-  : field_meta(name, index_features, features),
+    const irs::features_t& features)
+  : field_meta(name, index_features),
     pos(0), offs(0) {
+  for (const auto feature : features) {
+    // FIXME
+    this->features[feature] = irs::field_limits::invalid();
+  }
 }
 
 term& field::add(const irs::bytes_ref& t) {
@@ -267,19 +271,17 @@ void field_writer::prepare(const irs::flush_state& state) {
 
 void field_writer::write(
     const std::string& name,
-    irs::field_id norm,
     irs::IndexFeatures expected_index_features,
-    const irs::flags& expected_field,
+    const irs::feature_map_t& expected_features,
     irs::term_iterator& actual_term) {
   // features to check
   const tests::field* fld = readers_.data().find(name);
   ASSERT_NE(nullptr, fld);
   ASSERT_EQ(fld->name, name);
-  ASSERT_EQ(fld->norm, norm);
-  ASSERT_EQ(fld->features, expected_field);
+  ASSERT_EQ(fld->features, expected_features);
   ASSERT_EQ(fld->index_features, expected_index_features);
   
-  auto index_features = index_features_ & fld->index_features;
+  const auto index_features = index_features_ & fld->index_features;
 
   const irs::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);

@@ -296,7 +296,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   class granular_double_field: public tests::double_field {
    public:
     granular_double_field() {
-      features_.add<irs::granularity_prefix>();
+      features_.emplace_back(irs::type<irs::granularity_prefix>::id());
     }
   };
 
@@ -593,7 +593,12 @@ TEST_P(format_test_case, fields_read_write) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.norm = 5;
+  field.features[irs::type<irs::norm>::id()] = 5;
+
+  irs::feature_set_t features;
+  for (auto& feature : field.features) {
+    features.emplace(feature.first);
+  }
 
   // write fields
   {
@@ -601,7 +606,7 @@ TEST_P(format_test_case, fields_read_write) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.custom_features = &field.features;
+    state.custom_features = &features;
     state.features = field.index_features;
 
     // should use sorted terms on write
@@ -609,7 +614,7 @@ TEST_P(format_test_case, fields_read_write) {
 
     auto writer = codec()->get_field_writer(false);
     writer->prepare(state);
-    writer->write(field.name, field.norm, field.index_features, field.features, terms);
+    writer->write(field.name, field.index_features, field.features, terms);
     writer->end();
   }
 
@@ -628,7 +633,7 @@ TEST_P(format_test_case, fields_read_write) {
     auto term_reader = reader->field(field.name);
     ASSERT_NE(nullptr, term_reader);
     ASSERT_EQ(field.name, term_reader->meta().name);
-    ASSERT_EQ(field.norm, term_reader->meta().norm);
+    ASSERT_EQ(field.index_features, term_reader->meta().index_features);
     ASSERT_EQ(field.features, term_reader->meta().features);
 
     ASSERT_EQ(sorted_terms.size(), term_reader->size());

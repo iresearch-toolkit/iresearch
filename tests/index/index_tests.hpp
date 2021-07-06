@@ -364,12 +364,12 @@ class string_field : public tests::field_base {
   string_field(
     const std::string& name,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
-    const irs::flags& extra_features = irs::flags::empty_instance());
+    const std::vector<irs::type_info::type_id>& extra_features = {});
   string_field(
     const std::string& name,
     const irs::string_ref& value,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
-    const irs::flags& extra_features = irs::flags::empty_instance());
+    const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);
   irs::string_ref value() const { return value_; }
@@ -391,12 +391,12 @@ class string_ref_field : public tests::field_base {
   string_ref_field(
     const std::string& name,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
-    const irs::flags& extra_features = irs::flags::empty_instance());
+    const std::vector<irs::type_info::type_id>& extra_features = {});
   string_ref_field(
     const std::string& name,
     const irs::string_ref& value,
     irs::IndexFeatures index_features = irs::IndexFeatures::DOCS,
-    const irs::flags& extra_features = irs::flags::empty_instance());
+    const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);
   irs::string_ref value() const { return value_; }

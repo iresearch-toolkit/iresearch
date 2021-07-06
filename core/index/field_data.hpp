@@ -63,7 +63,7 @@ class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
-    const flags& features,
+    const features_t& features,
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
     columnstore_writer& columns,
@@ -174,7 +174,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
   field_data* emplace(const hashed_string_ref& name,
                       IndexFeatures index_features,
-                      const flags& features,
+                      const features_t& features,
                       columnstore_writer& columns);
 
   //////////////////////////////////////////////////////////////////////////////

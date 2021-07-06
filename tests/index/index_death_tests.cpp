@@ -2507,14 +2507,6 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 }
 
 TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
-  const auto all_features = irs::flags{
-    irs::type<irs::document>::get(),
-    irs::type<irs::frequency>::get(),
-    irs::type<irs::position>::get(),
-    irs::type<irs::payload>::get(),
-    irs::type<irs::offset>::get()
-  };
-
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
     &tests::payloaded_json_field_factory

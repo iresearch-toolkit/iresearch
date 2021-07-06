@@ -60,7 +60,6 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   irs::columnstore2::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
@@ -80,7 +79,6 @@ TEST_P(columnstore2_test_case, empty_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   irs::columnstore2::writer writer(this->consolidation());
   writer.prepare(dir(), meta);
@@ -155,7 +153,6 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   {
     irs::columnstore2::writer writer(this->consolidation());
@@ -229,7 +226,6 @@ TEST_P(columnstore2_test_case, sparse_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   {
     irs::columnstore2::writer writer(this->consolidation());
@@ -310,7 +306,6 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   {
     irs::columnstore2::writer writer(this->consolidation());
@@ -388,7 +383,6 @@ TEST_P(columnstore2_test_case, dense_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   {
     irs::columnstore2::writer writer(this->consolidation());
@@ -468,7 +462,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   irs::flush_state state;
   state.doc_count = MAX;
   state.name = meta.name;
-  state.custom_features = &irs::flags::empty_instance();
 
   {
     irs::columnstore2::writer writer(this->consolidation());

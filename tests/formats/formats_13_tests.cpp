@@ -19,6 +19,7 @@
 
 #include "tests_shared.hpp"
 #include "formats_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "store/directory_attributes.hpp"
 
 namespace {
@@ -111,7 +112,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.norm = 5;
+  field.features[irs::type<irs::norm>::id()] = 5;
 
   auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
@@ -132,7 +133,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
     auto writer = codec->get_field_writer(false);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
-    writer->write(field.name, field.norm, field.index_features, field.features, terms);
+    writer->write(field.name, field.index_features, field.features, terms);
     writer->end();
   }
 

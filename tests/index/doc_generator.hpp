@@ -38,7 +38,6 @@
 namespace iresearch {
 
 struct data_output;
-class flags;
 class token_stream;
 
 } // namespace iresearch {
@@ -53,7 +52,7 @@ struct ifield {
   using ptr = std::shared_ptr<ifield>;
   virtual ~ifield() = default;
 
-  virtual const irs::flags& features() const = 0;
+  virtual irs::features_t features() const = 0;
   virtual irs::IndexFeatures index_features() const = 0;
   virtual irs::token_stream& get_tokens() const = 0;
   virtual irs::string_ref name() const = 0;
@@ -74,8 +73,8 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  virtual const irs::flags& features() const noexcept override {
-    return features_;
+  virtual irs::features_t features() const noexcept override {
+    return { features_.data(), features_.size() };
   }
 
   virtual irs::IndexFeatures index_features() const noexcept override {
@@ -88,7 +87,7 @@ class field_base : public ifield {
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
-  irs::flags features_;
+  std::vector<irs::type_info::type_id> features_;
   std::string name_;
   irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
 }; // field_base

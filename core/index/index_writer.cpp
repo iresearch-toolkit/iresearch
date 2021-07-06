@@ -1529,7 +1529,7 @@ index_writer::consolidation_result index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
   merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
@@ -1778,7 +1778,7 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {

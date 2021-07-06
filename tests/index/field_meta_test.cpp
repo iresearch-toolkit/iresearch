@@ -31,79 +31,72 @@ TEST(field_meta_test, ctor) {
   {
     const field_meta fm;
     ASSERT_EQ("", fm.name);
-    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(fm.norm));
-    ASSERT_EQ(irs::flags::empty_instance(), fm.features);
+    ASSERT_EQ(irs::IndexFeatures::DOCS, fm.index_features);
+    ASSERT_TRUE(fm.features.empty());
   }
 
   {
-    irs::flags features;
-    features.add<irs::offset>();
-    features.add<increment>();
-    features.add<offset>();
-
     const std::string name("name");
-    const field_meta fm(name, irs::IndexFeatures::OFFS, features);
+    const field_meta fm(name, irs::IndexFeatures::OFFS);
     ASSERT_EQ(name, fm.name);
-    ASSERT_EQ(features, fm.features);
+    ASSERT_TRUE(fm.features.empty());
     ASSERT_EQ(irs::IndexFeatures::OFFS, fm.index_features);
   }
 }
 
 TEST(field_meta_test, move) {
-  irs::flags features;
-  features.add<irs::offset>();
-  features.add<increment>();
-  features.add<offset>();
-
   const field_id norm = 10;
   const std::string name("name");
+
+  irs::feature_map_t features;
+  features[irs::type<irs::offset>::id()] = irs::field_limits::invalid();
+  features[irs::type<irs::increment>::id()] = irs::field_limits::invalid();
 
   // ctor
   {
     field_meta moved;
     moved.name = name;
+    moved.index_features = irs::IndexFeatures::FREQ;
     moved.features = features;
-    moved.norm = norm;
 
     field_meta fm(std::move(moved));
     ASSERT_EQ(name, fm.name);
     ASSERT_EQ(features, fm.features);
-    ASSERT_EQ(norm, fm.norm);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, fm.index_features);
 
-    ASSERT_EQ("", moved.name);
-    ASSERT_EQ(irs::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_TRUE(moved.name.empty());
+    ASSERT_TRUE(moved.features.empty());
+    ASSERT_EQ(irs::IndexFeatures::DOCS, moved.index_features);
   }
 
   // assign operator
   {
     field_meta moved;
     moved.name = name;
+    moved.index_features = irs::IndexFeatures::FREQ;
     moved.features = features;
-    moved.norm = norm;
 
     field_meta fm;
-    ASSERT_EQ("", fm.name);
-    ASSERT_EQ(irs::flags::empty_instance(), fm.features);
-    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(fm.norm));
+    ASSERT_TRUE(fm.name.empty());
+    ASSERT_TRUE(fm.features.empty());
+    ASSERT_EQ(irs::IndexFeatures::DOCS, fm.index_features);
 
     fm = std::move(moved);
     ASSERT_EQ(name, fm.name);
     ASSERT_EQ(features, fm.features);
-    ASSERT_EQ(norm, fm.norm);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, fm.index_features);
 
-    ASSERT_EQ("", moved.name);
-    ASSERT_EQ(irs::flags::empty_instance(), moved.features);
-    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(moved.norm));
+    ASSERT_TRUE(moved.name.empty());
+    ASSERT_TRUE(moved.features.empty());
+    ASSERT_EQ(irs::IndexFeatures::DOCS, moved.index_features);
   }
 }
 
 TEST(field_meta_test, compare) {
-  irs::flags features;
-  features.add<offset>();
-  features.add<increment>();
-  features.add<offset>();
-  features.add<document>();
+  irs::feature_map_t features;
+  features[irs::type<irs::offset>::id()]    = irs::field_limits::invalid();
+  features[irs::type<irs::increment>::id()] = irs::field_limits::invalid();
+  features[irs::type<irs::document>::id()]  = irs::field_limits::invalid();
 
   const std::string name("name");
 
