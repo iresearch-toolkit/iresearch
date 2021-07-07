@@ -34,8 +34,7 @@ class format_13_test_case : public tests::directory_test_case_base<> {
 TEST_P(format_13_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -51,8 +50,7 @@ TEST_P(format_13_test_case, read_zero_block_encryption) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -68,8 +66,7 @@ TEST_P(format_13_test_case, read_zero_block_encryption) {
 TEST_P(format_13_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -98,11 +95,11 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
 
   tests::json_doc_generator gen(
     resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-        ));
+    [&sorted_terms, &unsorted_terms] (
+        tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
+      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
 
       auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
       sorted_terms.emplace(ref);
@@ -120,11 +117,14 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
 
   // write fields
   {
+    const irs::feature_set_t features{irs::type<irs::norm>::id()};
+
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
     state.features = field.index_features;
+    state.custom_features = &features;
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
@@ -193,8 +193,7 @@ TEST_P(format_13_test_case, column_meta_read_write_wrong_encryption) {
 TEST_P(format_13_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -224,8 +223,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_wrong_encryption) {
 TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -240,8 +238,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -256,8 +253,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
 TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -272,8 +268,7 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -318,8 +313,7 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
 TEST_P(format_13_test_case, open_10_with_13) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -332,8 +326,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -377,8 +370,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
 TEST_P(format_13_test_case, formats_10_13) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -392,8 +384,7 @@ TEST_P(format_13_test_case, formats_10_13) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -407,8 +398,7 @@ TEST_P(format_13_test_case, formats_10_13) {
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
 
     writer->commit();
   }

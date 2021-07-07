@@ -103,11 +103,12 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
 
   tests::json_doc_generator gen(
     resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_terms, &unsorted_terms] (
+        tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+        name, data.str));
 
       auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
       sorted_terms.emplace(ref);
@@ -125,15 +126,17 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
 
   // write fields
   {
+    const irs::feature_set_t features{irs::type<irs::norm>::id()};
+
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
+    state.custom_features = &features;
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
-      sorted_terms.begin(), sorted_terms.end()
-    );
+      sorted_terms.begin(), sorted_terms.end());
 
     auto writer = codec->get_field_writer(false);
     ASSERT_NE(nullptr, writer);

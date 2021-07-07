@@ -641,6 +641,7 @@ void read_field_features_legacy(
   }
 
   const field_id norm = static_cast<field_id>(read_zvlong(in));
+
   if (field_limits::valid(norm)) {
     const auto it = features.find(irs::type<irs::norm>::id());
     if (IRS_UNLIKELY(it != features.end())) {
@@ -649,9 +650,6 @@ void read_field_features_legacy(
       throw irs::index_error(irs::string_utils::to_string(
         "'norm' feature is not registered with the field '%s'", field.name.c_str()));
     }
-  } else {
-      throw irs::index_error(irs::string_utils::to_string(
-        "'norm' feature is registered with the field '%s' but not set", field.name.c_str()));
   }
 }
 
