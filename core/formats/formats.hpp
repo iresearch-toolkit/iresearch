@@ -452,8 +452,7 @@ struct IRESEARCH_API segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) = 0;
+    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
 }; // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,14 +480,12 @@ struct IRESEARCH_API index_meta_reader {
   virtual ~index_meta_reader() = default;
 
   virtual bool last_segments_file(
-    const directory& dir, std::string& name
-  ) const = 0;
+    const directory& dir, std::string& name) const = 0;
 
   virtual void read(
     const directory& dir, 
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) = 0;
+    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
 
  protected:
   static void complete(
@@ -496,8 +493,7 @@ struct IRESEARCH_API index_meta_reader {
     uint64_t generation,
     uint64_t counter,
     index_meta::index_segments_t&& segments,
-    bstring* payload_buf
-  );
+    bstring* payload_buf);
 }; // index_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,7 +605,9 @@ class IRESEARCH_API format_registrar {
     format::ptr(*factory)(),
     const char* source = nullptr);
 
-  operator bool() const noexcept;
+  operator bool() const noexcept {
+    return registered_;
+  }
 
  private:
   bool registered_;
