@@ -118,9 +118,9 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
     field.name("doc_int");
     field.value(42 * 1);
   }
+
   doc1.insert(
-    std::make_shared<tests::templates::string_field>("doc_string", string1)
-  );
+    std::make_shared<tests::templates::string_field>("doc_string", string1));
 
   doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
   doc2.insert(std::make_shared<tests::int_field>());
@@ -912,7 +912,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   tests::document doc3;
   tests::document doc4;
 
-  // norm for 'doc_bytes' in 'doc1' : 1/sqrt(4)
+  // norm for 'doc_bytes' in 'doc1': 4
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
@@ -938,7 +938,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     field.features_.emplace_back(irs::type<irs::norm>::id());
   }
 
-  // do not track norms for 'doc_bytes' in 'doc2'
+  // do not track norms for 'doc_bytes' in 'doc2' explicitly,
+  // but norms are already tracked for 'doc_bytes' field
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
@@ -950,7 +951,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     field.value(bytes2);
   }
 
-  // norm for 'doc_bytes' in 'doc3' : 1/sqrt(2)
+  // norm for 'doc_bytes' in 'doc3' : 3
+  doc3.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc3.indexed.back<tests::binary_field>();
+    field.name("doc_bytes");
+    field.value(bytes3);
+    field.features_.emplace_back(irs::type<irs::norm>::id());
+  }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
@@ -1033,7 +1040,15 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
-  opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+  opts.features.emplace(
+    irs::type<irs::norm>::id(),
+    [](irs::type_info::type_id type,
+       const irs::field_stats& stats,
+       irs::doc_id_t doc,
+       irs::columnstore_writer::values_writer_f& writer) {
+      ASSERT_EQ(irs::type<irs::norm>::id(), type);
+      writer(doc).write_int(stats.len);
+    });
 
   // populate directory
   {
@@ -1072,7 +1087,6 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   };
 
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, column_info, feature_column_info);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1115,16 +1129,16 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         bytes2,
         2,
         features,
-        { { irs::type<irs::norm>::id(), 1 } },
+        { { irs::type<irs::norm>::id(), 0 } },
         expected_terms);
 
-      std::unordered_map<float_t, irs::doc_id_t> expected_values{
-        { 0.5f, 1 },
+      std::unordered_map<uint32_t, irs::doc_id_t> expected_values{
+        { 4, 1 }, { 2, 2 }
       };
 
       auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
-        const auto actual_value = irs::read_zvfloat(in); // read norm value
+        const auto actual_value = in.read_int(); // read norm value
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -1482,16 +1496,16 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         bytes3,
         1,
         features,
-        { { irs::type<irs::norm>::id(), 1 } },
+        { { irs::type<irs::norm>::id(), 0 } },
         expected_terms);
 
-      std::unordered_map<float_t, irs::doc_id_t> expected_values{
-        { float(1./std::sqrt(2)), 1 },
+      std::unordered_map<uint32_t, irs::doc_id_t> expected_values{
+        { 3, 1 },
       };
 
       auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
-        const auto actual_value = irs::read_zvfloat(in); // read norm value
+        const auto actual_value = in.read_int(); // read norm value
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -1790,12 +1804,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
+  irs::index_meta::index_segment_t index_segment;
+  index_segment.meta.codec = codec_ptr;
+
+  irs::merge_writer writer(dir, column_info, feature_column_info);
+  writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);
-
-  irs::index_meta::index_segment_t index_segment;
-
-  index_segment.meta.codec = codec_ptr;
   writer.flush(index_segment);
 
   auto segment = irs::segment_reader::open(dir, index_segment.meta);
@@ -1835,17 +1850,18 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       bytes3,
       3,
       features,
-      { { irs::type<irs::norm>::id(), 1 } },
+      { { irs::type<irs::norm>::id(), 6 } }, // columns 0-5 are occupied by stored fields
       expected_terms);
 
-    std::unordered_map<float_t, irs::doc_id_t> expected_values{
-      { 0.5f, 1 },                    // norm value for 'doc_bytes' in 'doc1'
-      { float_t(1/std::sqrt(2)), 3 }, // norm value for 'doc_bytes' in 'doc3'
+    std::unordered_map<uint32_t, irs::doc_id_t> expected_values{
+      { 4, 1 }, // norm value for 'doc_bytes' in 'doc1'
+      { 2, 2 }, // norm value for 'doc_bytes' in 'doc2'
+      { 3, 3 }, // norm value for 'doc_bytes' in 'doc3'
     };
 
     auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
       irs::bytes_ref_input in(value);
-      const auto actual_value = irs::read_zvfloat(in); // read norm value
+      const auto actual_value = in.read_int(); // read norm value
 
       auto it = expected_values.find(actual_value);
       if (it == expected_values.end()) {
@@ -2220,8 +2236,7 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
       ASSERT_TRUE(insert(
         *writer,
         doc->indexed.begin(), doc->indexed.end(),
-        doc->stored.begin(), doc->stored.end()
-      ));
+        doc->stored.begin(), doc->stored.end()));
       writer->commit(); // create segmentN
     }
   }
@@ -2269,22 +2284,19 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   {
     tests::json_doc_generator gen(
       test_base::resource("simple_sequential.json"),
-      &tests::generic_json_field_factory
-    );
+      &tests::generic_json_field_factory);
     auto* doc1 = gen.next();
     auto* doc2 = gen.next();
     auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(
       *writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit(); // create segment0
     ASSERT_TRUE(insert(
       *writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit(); // create segment1
   }
 

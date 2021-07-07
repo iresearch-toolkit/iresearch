@@ -67,14 +67,6 @@ IRESEARCH_API void compute_norm(
   doc_id_t doc,
   columnstore_writer::values_writer_f& writer);
 
-inline column_info norm_column_info() {
-  return {
-    type<compression::lz4>::get(),
-    compression::options(),
-    false
-  };
-}
-
 } // iresearch
 
 #endif // IRESEARCH_NORM_H

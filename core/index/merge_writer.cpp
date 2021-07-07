@@ -645,7 +645,7 @@ class compound_field_iterator : public basic_term_reader {
 
   void add(const sub_reader& reader, const doc_map_f& doc_id_map);
   bool next();
-  size_t size() const { return field_iterators_.size(); }
+  size_t size() const noexcept { return field_iterators_.size(); }
 
   // visit matched iterators
   template<typename Visitor>
@@ -783,7 +783,7 @@ bool compound_field_iterator::next() {
       current_meta_ = &field_meta;
     }
 
-    assert(is_subset_of(field_meta.features, meta().features)); // validated by caller
+    assert(field_meta.features <= meta().features); // validated by caller
     field_iterator_mask_.emplace_back(term_iterator_t{i, &field_meta, field_terms});
 
     // update min and max terms
@@ -821,12 +821,11 @@ bool compute_field_meta(
   REGISTER_TIMER_DETAILED();
   for (auto it = reader.fields(); it->next();) {
     const auto& field_meta = it->value().meta();
-    auto field_meta_map_itr = field_meta_map.emplace(field_meta.name, &field_meta);
-    auto* tracked_field_meta = field_meta_map_itr.first->second;
+    const auto [field_meta_it, is_new] = field_meta_map.emplace(field_meta.name, &field_meta);
 
     // validate field_meta equivalence
-    if (!field_meta_map_itr.second &&
-        !is_subset_of(field_meta.features, tracked_field_meta->features)) {
+    if (!is_new &&
+        field_meta.index_features > field_meta_it->second->index_features) {
       return false; // field_meta is not equal, so cannot merge segments
     }
 
@@ -841,10 +840,6 @@ bool compute_field_meta(
 /// @struct columnstore
 /// @brief Helper class responsible for writing a data from different sources
 ///        into single columnstore
-///
-///        Using by
-///         'write' function to merge field norms values from different segments
-///         'write_columns' function to merge columns values from different segmnets
 //////////////////////////////////////////////////////////////////////////////
 class columnstore {
  public:
@@ -934,7 +929,8 @@ class columnstore {
   }
 
   void reset(const column_info& info) {
-    if (!empty_) {
+    if (!empty_ || info_ != info) {
+      info_ = info;
       column_ = writer_->push_column(info);
       empty_ = true;
     }
@@ -945,7 +941,7 @@ class columnstore {
   //   'false' otherwise
   operator bool() const noexcept { return static_cast<bool>(writer_); }
 
-  // returns 'true' if no data has been written to columnstore
+  // returns 'true' if no data have been written to columnstore
   bool empty() const noexcept { return empty_; }
 
   // @return was anything actually flushed
@@ -958,6 +954,7 @@ class columnstore {
   progress_tracker progress_;
   columnstore_writer::ptr writer_;
   columnstore_writer::column_t column_{};
+  column_info info_{{}, {}, false};
   bool empty_{ false };
 }; // columnstore
 

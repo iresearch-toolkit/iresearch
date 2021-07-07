@@ -84,10 +84,12 @@ float_t norm::read() const {
 }
 
 void compute_norm(
-    type_info::type_id /*type*/,
+    [[maybe_unused]] type_info::type_id type,
     const field_stats& stats,
     doc_id_t doc,
     columnstore_writer::values_writer_f& writer) {
+  assert(irs::type<norm>::id() == type);
+
   if (stats.len > 0) {
     const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
     if (value != norm::DEFAULT()) {
