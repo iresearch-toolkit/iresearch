@@ -1462,8 +1462,8 @@ bool merge_writer::flush(
   flush_state state;
   state.dir = &dir;
   state.doc_count = segment.meta.docs_count;
-  state.custom_features = &fields_features;
-  state.features = index_features;
+  state.features = &fields_features;
+  state.index_features = index_features;
   state.name = segment.meta.name;
 
   // write field meta and field term data
@@ -1646,8 +1646,8 @@ bool merge_writer::flush_sorted(
   flush_state state;
   state.dir = &dir;
   state.doc_count = segment.meta.docs_count;
-  state.features = index_features;
-  state.custom_features = &fields_features;
+  state.index_features = index_features;
+  state.features = &fields_features;
   state.name = segment.meta.name;
 
   // write field meta and field term data

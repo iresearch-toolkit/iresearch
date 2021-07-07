@@ -606,8 +606,8 @@ TEST_P(format_test_case, fields_read_write) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.custom_features = &features;
-    state.features = field.index_features;
+    state.features = &features;
+    state.index_features = field.index_features;
 
     // should use sorted terms on write
     terms<sorted_terms_t::iterator> terms(sorted_terms.begin(), sorted_terms.end());

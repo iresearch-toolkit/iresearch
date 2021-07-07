@@ -423,7 +423,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   // prepare document stream
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
-  if (IndexFeatures::DOCS != (state.features & IndexFeatures::POS)) {
+  if (IndexFeatures::DOCS != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique<pos_buffer>();
@@ -432,7 +432,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     pos_->reset();
     prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
-    if (IndexFeatures::DOCS != (state.features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
+    if (IndexFeatures::DOCS != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_buffer>();

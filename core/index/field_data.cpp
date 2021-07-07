@@ -1175,8 +1175,8 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     accumulate_features(features, meta.features);
   }
 
-  state.features = static_cast<IndexFeatures>(index_features);
-  state.custom_features = &features;
+  state.index_features = static_cast<IndexFeatures>(index_features);
+  state.features = &features;
 
   std::sort(
     sorted_fields_.begin(), sorted_fields_.end(),

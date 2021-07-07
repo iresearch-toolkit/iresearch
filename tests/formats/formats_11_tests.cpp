@@ -132,7 +132,7 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.custom_features = &features;
+    state.features = &features;
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(

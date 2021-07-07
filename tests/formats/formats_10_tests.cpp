@@ -106,7 +106,7 @@ class format_10_test_case : public tests::format_test_case {
       state.dir = dir.get();
       state.doc_count = docs.back()+1;
       state.name = "segment_name";
-      state.features = field.index_features;
+      state.index_features = field.index_features;
 
       auto out = dir->create("attributes");
       ASSERT_FALSE(!out);
@@ -329,7 +329,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.features = field.index_features;
+    state.index_features = field.index_features;
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -484,7 +484,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     state.dir = &dir();
     state.doc_count = 150;
     state.name = "segment_name";
-    state.features = field.index_features;
+    state.index_features = field.index_features;
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -629,7 +629,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "0";
-    state.features = field.index_features; // all possible features in segment
+    state.index_features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -656,7 +656,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "1";
-    state.features = field.index_features; // all possible features in segment
+    state.index_features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -683,7 +683,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "2";
-    state.features = field.index_features; // all possible features in segment
+    state.index_features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -708,7 +708,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "3";
-    state.features = field.index_features; // all possible features in segment
+    state.index_features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -733,7 +733,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.dir = &dir();
     state.doc_count = 10000;
     state.name = "4";
-    state.features = field.index_features; // all possible features in segment
+    state.index_features = field.index_features; // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);

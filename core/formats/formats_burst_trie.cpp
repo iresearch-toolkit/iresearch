@@ -499,8 +499,8 @@ void write_segment_features_legacy(
     FeatureMap& feature_map,
     data_output& out,
     const flush_state& state) {
-  const auto* features = state.custom_features;
-  const auto index_features = state.features;
+  const auto* features = state.features;
+  const auto index_features = state.index_features;
 
   const size_t count = (features ? features->size() : 0) +
                        math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
@@ -658,14 +658,14 @@ void write_segment_features(
     FeatureMap& feature_map,
     data_output& out,
     const flush_state& state) {
-  auto* features = state.custom_features;
+  auto* features = state.features;
 
   const size_t count = (features ? features->size() : 0);
 
   feature_map.clear();
   feature_map.reserve(count);
 
-  out.write_int(static_cast<uint32_t>(state.features));
+  out.write_int(static_cast<uint32_t>(state.index_features));
   out.write_vlong(count);
 
   if (features) {

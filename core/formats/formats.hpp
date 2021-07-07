@@ -543,10 +543,10 @@ namespace iresearch {
 struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
-  const std::set<type_info::type_id>* custom_features{};
+  const std::set<type_info::type_id>* features{}; // segment features
   string_ref name; // segment name
   size_t doc_count;
-  IndexFeatures features{IndexFeatures::DOCS}; // segment features
+  IndexFeatures index_features{IndexFeatures::DOCS}; // segment index features
 };
 
 struct reader_state {
