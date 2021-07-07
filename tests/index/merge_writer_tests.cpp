@@ -33,7 +33,18 @@
 
 namespace tests {
 
-class merge_writer_tests : public ::testing::Test { };
+struct binary_comparer : public irs::comparer {
+ protected:
+  bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const override {
+    if (rhs.null() != lhs.null()) {
+      return lhs.null();
+    }
+    if (!lhs.null()) {
+      return lhs < rhs;
+    }
+    return false;
+  }
+};
 
 template<typename T>
 void validate_terms(
@@ -97,7 +108,27 @@ using namespace tests;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
+struct merge_writer_test_case : public tests::directory_test_case_base<std::string> {
+  irs::format_ptr codec() const {
+    const auto& p = tests::directory_test_case_base<std::string>::GetParam();
+    const auto& codec_name = std::get<std::string>(p);
+    const auto codec = irs::formats::get(codec_name);
+    EXPECT_NE(nullptr, codec);
+
+    return codec;
+  }
+
+  static std::string to_string(
+      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, std::string>>& info) {
+    tests::dir_factory_f factory;
+    std::string codec;
+    std::tie(factory, codec) = info.param;
+
+    return (*factory)(nullptr).second + "___" + codec;
+  }
+};
+
+TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   std::string string1;
   std::string string2;
   std::string string3;
@@ -140,7 +171,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
   doc4.insert(std::make_shared<tests::templates::string_field>("another_column", "another_value"));
 
-  auto codec_ptr = irs::formats::get("1_0");
+  auto codec_ptr = codec();
   irs::memory_directory dir;
 
   // populate directory
@@ -507,7 +538,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   }
 }
 
-TEST_F(merge_writer_tests, test_merge_writer_columns) {
+TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   std::string string1;
   std::string string2;
   std::string string3;
@@ -548,7 +579,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
 
-  auto codec_ptr = irs::formats::get("1_0");
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
@@ -870,8 +901,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   }
 }
 
-TEST_F(merge_writer_tests, test_merge_writer) {
-  auto codec_ptr = irs::formats::get("1_0");
+TEST_P(merge_writer_test_case, test_merge_writer) {
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
@@ -2211,8 +2242,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_TRUE(expected_string.empty());
 }
 
-TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
-  auto codec_ptr = irs::formats::get("1_0");
+TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory data_dir;
 
@@ -2220,8 +2251,7 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
   {
     tests::json_doc_generator gen(
       test_base::resource("simple_sequential_33.json"),
-      &tests::generic_json_field_factory
-    );
+      &tests::generic_json_field_factory);
     std::vector<const tests::document*> docs;
     docs.reserve(33);
 
@@ -2275,8 +2305,8 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
   }
 }
 
-TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
-  auto codec_ptr = irs::formats::get("1_0");
+TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory data_dir;
 
@@ -2440,7 +2470,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   }
 }
 
-TEST_F(merge_writer_tests, test_merge_writer_field_features) {
+TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
   std::string field("doc_string");
   std::string data("string_data");
   tests::document doc1; // string
@@ -2453,7 +2483,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 //  ASSERT_TRUE(irs::is_subset_of(doc1.indexed.get(field)->features(), doc2.indexed.get(field)->features()));
 //  ASSERT_FALSE(irs::is_subset_of(doc2.indexed.get(field)->features(), doc1.indexed.get(field)->features()));
 
-  auto codec_ptr = irs::formats::get("1_0");
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
@@ -2517,22 +2547,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   }
 }
 
-namespace {
-struct binary_comparer : public irs::comparer {
- protected:
-  bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const override {
-    if (rhs.null() != lhs.null()) {
-      return lhs.null();
-    }
-    if (!lhs.null()) {
-      return lhs < rhs;
-    }
-    return false;
-  }
-};
-} // namespace
-
-TEST_F(merge_writer_tests, test_merge_writer_sorted) {
+TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   std::string field("title");
   std::string field2("trigger"); // field present in all docs with same term -> will trigger out of order
   std::string value2{ "AAA" };
@@ -2558,7 +2573,7 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
   doc4.insert(std::make_shared<tests::templates::string_field>(field, data4));
   doc4.sorted = doc4.indexed.find(field)[0];
 
-  auto codec_ptr = irs::formats::get("1_3");
+  auto codec_ptr = codec();
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
   binary_comparer test_comparer;
@@ -2602,7 +2617,6 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
     writer->commit();
   }
 
-
   auto reader = irs::directory_reader::open(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
@@ -2618,6 +2632,13 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
   irs::index_meta::index_segment_t index_segment;
 
   index_segment.meta.codec = codec_ptr;
+
+  if (codec()->type().name() == "1_0") {
+    // primary sort is not supported in version 1_0
+    ASSERT_FALSE(writer.flush(index_segment));
+    return;
+  }
+
   ASSERT_TRUE(writer.flush(index_segment));
 
   auto segment = irs::segment_reader::open(dir, index_segment.meta);
@@ -2630,7 +2651,7 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
   auto expected_id = irs::doc_limits::min();
   irs::bytes_ref value;
   irs::bytes_ref_input in;
-  std::vector<std::string> expected_columns{ "B", "C", "D" };
+  constexpr irs::string_ref expected_columns[]{ "B", "C", "D" };
   size_t idx = 0;
   while (docs->next()) {
     SCOPED_TRACE(testing::Message("Doc id ") << expected_id);
@@ -2641,3 +2662,13 @@ TEST_F(merge_writer_tests, test_merge_writer_sorted) {
     ++expected_id;
   }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  merge_writer_test,
+  merge_writer_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory),
+    ::testing::Values("1_0", "1_3", "1_4")),
+  &merge_writer_test_case::to_string
+);
