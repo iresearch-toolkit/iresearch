@@ -571,7 +571,7 @@ void write_field_features_legacy(
     data_output& out,
     IndexFeatures index_features,
     const irs::feature_map_t& features) {
-  auto write_feature = [&out, &feature_map](type_info::type_id feature){
+  auto write_feature = [&out, &feature_map](irs::type_info::type_id feature){
     const auto it = feature_map.find(feature);
     assert(it != feature_map.end());
 
@@ -591,16 +591,16 @@ void write_field_features_legacy(
   out.write_vlong(count);
 
   if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
-    write_feature(type<frequency>::id());
+    write_feature(irs::type<frequency>::id());
   }
   if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
-    write_feature(type<position>::id());
+    write_feature(irs::type<position>::id());
   }
   if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
-    write_feature(type<offset>::id());
+    write_feature(irs::type<offset>::id());
   }
   if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
-    write_feature(type<payload>::id());
+    write_feature(irs::type<payload>::id());
   }
   for (const auto& feature : features) {
     write_feature(feature.first);
@@ -623,13 +623,13 @@ void read_field_features_legacy(
     if (id < feature_map.size()) {
       const auto feature = feature_map[id];
 
-      if (feature == type<frequency>::id()) {
+      if (feature == irs::type<frequency>::id()) {
         index_features |= IndexFeatures::FREQ;
-      } else if (feature == type<position>::id()) {
+      } else if (feature == irs::type<position>::id()) {
         index_features |= IndexFeatures::POS;
-      } else if (feature == type<offset>::id()) {
+      } else if (feature == irs::type<offset>::id()) {
         index_features |= IndexFeatures::OFFS;
-      } else if (feature == type<payload>::id()) {
+      } else if (feature == irs::type<payload>::id()) {
         index_features |= IndexFeatures::PAY;
       } else {
         features[feature] = field_limits::invalid();
@@ -682,7 +682,7 @@ void write_field_features(
     data_output& out,
     IndexFeatures index_features,
     const irs::feature_map_t& features) {
-  auto write_feature = [&out, feature_map](type_info::type_id feature){
+  auto write_feature = [&out, feature_map](irs::type_info::type_id feature){
     const auto it = feature_map.find(feature);
     assert(it != feature_map.end());
 
