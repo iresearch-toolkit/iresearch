@@ -50,40 +50,6 @@ using feature_map_t = std::map<type_info::type_id, field_id>;
 using feature_set_t = std::set<type_info::type_id>;
 using features_t = range<const type_info::type_id>;
 
-inline void accumulate_features(
-    feature_set_t& accum,
-    const feature_map_t& features) {
-  for (auto& entry : features) {
-    accum.emplace(entry.first);
-  }
-}
-
-// FIXME remove
-template<typename Map>
-inline bool is_subset_of(
-    const feature_set_t& lhs,
-    const Map& rhs) noexcept {
-  for (auto& entry : lhs) {
-    if (!rhs.count(entry)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// FIXME remove
-template<typename Map>
-inline bool is_subset_of(
-    const feature_map_t& lhs,
-    const Map& rhs) noexcept {
-  for (auto& entry : lhs) {
-    if (!rhs.count(entry.first)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
 /// @brief represents field metadata

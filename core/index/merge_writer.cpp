@@ -46,7 +46,23 @@
 #include <boost/iterator/filter_iterator.hpp>
 
 namespace {
+
 using namespace irs;
+
+bool is_subset_of(const feature_map_t& lhs, const feature_map_t& rhs) noexcept {
+  for (auto& entry : lhs) {
+    if (!rhs.count(entry.first)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
+  for (auto& entry : features) {
+    accum.emplace(entry.first);
+  }
+}
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
@@ -783,7 +799,8 @@ bool compound_field_iterator::next() {
       current_meta_ = &field_meta;
     }
 
-    assert(field_meta.features <= meta().features); // validated by caller
+    assert(is_subset_of(field_meta.features, meta().features)); // validated by caller
+    assert(field_meta.index_features <= meta().index_features); // validated by caller
     field_iterator_mask_.emplace_back(term_iterator_t{i, &field_meta, field_terms});
 
     // update min and max terms
@@ -819,13 +836,15 @@ bool compute_field_meta(
     feature_set_t& fields_features,
     const sub_reader& reader) {
   REGISTER_TIMER_DETAILED();
+
   for (auto it = reader.fields(); it->next();) {
     const auto& field_meta = it->value().meta();
     const auto [field_meta_it, is_new] = field_meta_map.emplace(field_meta.name, &field_meta);
 
     // validate field_meta equivalence
     if (!is_new &&
-        field_meta.index_features > field_meta_it->second->index_features) {
+        (field_meta.index_features > field_meta_it->second->index_features ||
+        !is_subset_of(field_meta.features, field_meta_it->second->features))) {
       return false; // field_meta is not equal, so cannot merge segments
     }
 

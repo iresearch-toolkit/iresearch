@@ -117,7 +117,7 @@ struct IRESEARCH_API frequency final : attribute {
 ///        exact values are prefixed with 0
 ///        the less precise the token the greater its granularity prefix value
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API granularity_prefix final : attribute {
+struct IRESEARCH_API granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::granularity_prefix";

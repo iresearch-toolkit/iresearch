@@ -62,6 +62,12 @@ const byte_block_pool EMPTY_POOL;
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
+void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
+  for (auto& entry : features) {
+    accum.emplace(entry.first);
+  }
+}
+
 template<typename Stream>
 void write_offset(
     posting& p,
@@ -739,8 +745,12 @@ field_data::field_data(
     last_doc_(doc_limits::invalid()) {
   features_.reserve(field_features.size());
   for (type_info::type_id feature : features) {
-    auto it = field_features.find(feature);
-    assert(it != field_features.end());
+    const auto it = field_features.find(feature);
+
+    if (IRS_UNLIKELY(it == field_features.end())) {
+      assert(false);
+      continue;
+    }
 
     if (it->second) {
       assert(feature_columns);

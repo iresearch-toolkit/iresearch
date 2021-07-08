@@ -37,6 +37,23 @@
 
 #include "index/norm.hpp"
 
+namespace {
+
+using namespace irs;
+
+inline bool is_subset_of(
+    const features_t& lhs,
+    const feature_map_t& rhs) noexcept {
+  for (const type_info::type_id type: lhs) {
+    if (!rhs.count(type)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}
+
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(
@@ -163,8 +180,7 @@ bool segment_writer::index(
 
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
-  // FIXME
-  //assert(is_subset_of(features, slot->meta().features));
+  assert(is_subset_of(features, slot->meta().features));
   if (index_features > slot->meta().index_features) {
     // invert only if new field index features are a subset of slot index features
     return false;
