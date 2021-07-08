@@ -50,8 +50,6 @@ struct IRESEARCH_API norm final {
   float_t read() const;
   bool empty() const noexcept;
 
-  void clear() noexcept;
-
  private:
   doc_iterator::ptr column_it_;
   const payload* payload_;

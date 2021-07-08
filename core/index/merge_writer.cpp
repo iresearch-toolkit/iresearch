@@ -991,7 +991,6 @@ class sorting_compound_column_iterator : util::noncopyable {
       return false;
     }
 
-    // FIXME don't cache blocks
     auto it = segment.mask(segment.sort()->iterator());
 
     if (!it) {
@@ -1200,7 +1199,6 @@ bool write_fields(
     return true;
   };
 
-  // FIXME
   feature_map_t features;
 
   while (field_itr.next()) {
@@ -1288,7 +1286,6 @@ bool write_fields(
     return field_itr.visit(add_iterators);
   };
 
-  // FIXME
   feature_map_t features;
 
   while (field_itr.next()) {
@@ -1364,7 +1361,6 @@ doc_id_t compute_doc_ids(
 
   return next_id;
 }
-
 
 const merge_writer::flush_progress_t PROGRESS_NOOP = [](){ return true; };
 

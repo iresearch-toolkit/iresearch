@@ -1936,7 +1936,7 @@ class index_test_case : public tests::index_test_base {
           value_(value),
           stored_valid_(stored_valid) {
         if (!indexed_valid) {
-          features_.emplace_back(irs::type<tests::incompatible_attribute>::id());
+          index_features_ |= irs::IndexFeatures::FREQ;
         }
       }
       indexed_and_stored_field(indexed_and_stored_field&& other) noexcept
@@ -1952,7 +1952,7 @@ class index_test_case : public tests::index_test_base {
         return *stream_;
       }
       irs::IndexFeatures index_features() const {
-        return irs::IndexFeatures::DOCS;
+        return index_features_;
       }
       irs::features_t features() const {
         return { features_.data(), features_.size() };
@@ -1967,6 +1967,7 @@ class index_test_case : public tests::index_test_base {
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
+      irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
       bool stored_valid_;
     }; // indexed_and_stored_field
 
@@ -1976,22 +1977,18 @@ class index_test_case : public tests::index_test_base {
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)), value_(value) {
         if (!valid) {
-          features_.emplace_back(irs::type<tests::incompatible_attribute>::id());
+          index_features_ |= irs::IndexFeatures::FREQ;
         }
       }
-      indexed_field(indexed_field&& other) noexcept
-        : features_(std::move(other.features_)),
-          stream_(std::move(other.stream_)),
-          name_(std::move(other.name_)),
-          value_(std::move(other.value_)) {
-      }
+      indexed_field(indexed_field&& other) noexcept = default;
+
       irs::string_ref name() const { return name_; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
       }
       irs::IndexFeatures index_features() const {
-        return irs::IndexFeatures::DOCS;
+        return index_features_;
       }
       irs::features_t features() const {
         return { features_.data(), features_.size() };
@@ -2002,6 +1999,7 @@ class index_test_case : public tests::index_test_base {
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
+      irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
     }; // indexed_field
 
     struct stored_field {
@@ -5365,11 +5363,10 @@ TEST_P(index_test_case, doc_update) {
     auto test_field3 = std::make_shared<test_field>();
     std::string test_field_name("test_field");
 
-    test_field0->features_.emplace_back(irs::type<irs::offset>::id());
-    test_field0->features_.emplace_back(irs::type<irs::frequency>::id()); // feature superset
-    test_field1->features_.emplace_back(irs::type<irs::offset>::id()); // feature subset of 'test_field0'
-    test_field2->features_.emplace_back(irs::type<irs::offset>::id());
-    test_field3->features_.emplace_back(irs::type<irs::increment>::id());
+    test_field0->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::OFFS; // feature superset
+    test_field1->index_features_ = irs::IndexFeatures::FREQ; // feature subset of 'test_field0'
+    test_field2->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::OFFS;
+    test_field3->index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::PAY;
     test_field0->name(test_field_name);
     test_field1->name(test_field_name);
     test_field2->name(test_field_name);
@@ -5393,13 +5390,13 @@ TEST_P(index_test_case, doc_update) {
       doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end())); // field features subset
+      doc2->stored.begin(), doc2->stored.end())); // index features subset
     ASSERT_FALSE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end())); // serializer returs false
     ASSERT_FALSE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end())); // field features differ
+      doc4->stored.begin(), doc4->stored.end())); // index features differ
     ASSERT_FALSE(update(*writer,
       *(query_doc1.filter.get()), 
       doc3->indexed.begin(), doc3->indexed.end(),

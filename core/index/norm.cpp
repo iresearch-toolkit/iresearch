@@ -42,12 +42,6 @@ norm::norm() noexcept
     doc_(&INVALID_DOCUMENT) {
 }
 
-void norm::clear() noexcept {
-  column_it_.reset();
-  payload_ = nullptr;
-  doc_ = &INVALID_DOCUMENT;
-}
-
 bool norm::empty() const noexcept {
   return doc_ == &INVALID_DOCUMENT;
 }
