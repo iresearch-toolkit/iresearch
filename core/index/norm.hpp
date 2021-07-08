@@ -29,10 +29,27 @@
 
 namespace iresearch {
 
+class norm_base {
+ public:
+  bool reset(const sub_reader& segment, field_id column, const document& doc);
+  bool empty() const noexcept;
+
+ protected:
+  norm_base() noexcept;
+
+  doc_iterator::ptr column_it_;
+  const payload* payload_;
+  const document* doc_;
+}; // norm_base
+
+static_assert(std::is_nothrow_move_constructible_v<norm_base>);
+static_assert(std::is_nothrow_move_assignable_v<norm_base>);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API norm final {
+class IRESEARCH_API norm final : public norm_base {
+ public:
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "norm";
@@ -42,28 +59,49 @@ struct IRESEARCH_API norm final {
     return 1.f;
   }
 
-  norm() noexcept;
-  norm(norm&&) = default;
-  norm& operator=(norm&&) = default;
+  static void compute(
+    const field_stats& stats,
+    doc_id_t doc,
+    columnstore_writer::values_writer_f& writer);
 
-  bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
-  bool empty() const noexcept;
-
- private:
-  doc_iterator::ptr column_it_;
-  const payload* payload_;
-  const document* doc_;
 }; // norm
 
 static_assert(std::is_nothrow_move_constructible_v<norm>);
 static_assert(std::is_nothrow_move_assignable_v<norm>);
 
-IRESEARCH_API void compute_norm(
-  type_info::type_id type,
-  const field_stats& stats,
-  doc_id_t doc,
-  columnstore_writer::values_writer_f& writer);
+//////////////////////////////////////////////////////////////////////////////
+/// @class norm2
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API norm2 final : public norm_base {
+ public:
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::norm2";
+  }
+
+  static void compute(
+      const field_stats& stats,
+      doc_id_t doc,
+      columnstore_writer::values_writer_f& writer) {
+    writer(doc).write_int(stats.len);
+  }
+
+  uint32_t read() const {
+    assert(column_it_);
+    assert(payload_);
+
+    if (IRS_LIKELY(doc_->value == column_it_->seek(doc_->value))) {
+      const auto* value = payload_->value.c_str();
+      return irs::read<uint32_t>(value);
+    }
+
+    return 0;
+  }
+}; // norm2
+
+static_assert(std::is_nothrow_move_constructible_v<norm2>);
+static_assert(std::is_nothrow_move_assignable_v<norm2>);
 
 } // iresearch
 

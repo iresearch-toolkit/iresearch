@@ -373,7 +373,7 @@ int put(
 
   irs::index_writer::init_options opts;
   opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
-  opts.features[irs::type<irs::norm>::id()] = &irs::compute_norm;
+  opts.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = UINT64_C(1) << 27; // 128M
   opts.feature_column_info = [](irs::type_info::type_id) {

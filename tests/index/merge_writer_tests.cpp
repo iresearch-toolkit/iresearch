@@ -1088,20 +1088,16 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::index_writer::init_options opts;
   opts.features.emplace(
     irs::type<irs::norm>::id(),
-    [](irs::type_info::type_id type,
-       const irs::field_stats& stats,
+    [](const irs::field_stats& stats,
        irs::doc_id_t doc,
        irs::columnstore_writer::values_writer_f& writer) {
-      ASSERT_EQ(irs::type<irs::norm>::id(), type);
       writer(doc).write_int(stats.len);
     });
   opts.features.emplace(
     irs::type<norm2>::id(),
-    [](irs::type_info::type_id type,
-       const irs::field_stats& stats,
+    [](const irs::field_stats& stats,
        irs::doc_id_t doc,
        irs::columnstore_writer::values_writer_f& writer) {
-      ASSERT_EQ(irs::type<norm2>::id(), type);
       writer(doc).write_int(stats.len + 1);
     });
 
@@ -2917,20 +2913,16 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::index_writer::init_options opts;
   opts.features.emplace(
     irs::type<irs::norm>::id(),
-    [](irs::type_info::type_id type,
-       const irs::field_stats& stats,
+    [](const irs::field_stats& stats,
        irs::doc_id_t doc,
        irs::columnstore_writer::values_writer_f& writer) {
-      ASSERT_EQ(irs::type<irs::norm>::id(), type);
       writer(doc).write_int(stats.len);
     });
   opts.features.emplace(
     irs::type<norm2>::id(),
-    [](irs::type_info::type_id type,
-       const irs::field_stats& stats,
+    [](const irs::field_stats& stats,
        irs::doc_id_t doc,
        irs::columnstore_writer::values_writer_f& writer) {
-      ASSERT_EQ(irs::type<norm2>::id(), type);
       writer(doc).write_int(stats.len + 1);
     });
 

@@ -69,7 +69,6 @@ class index_features {
 }; // index_features
 
 using feature_handler_f = void(*)(
-  type_info::type_id,
   const field_stats&,
   doc_id_t,
   std::function<column_output&(doc_id_t)>&);

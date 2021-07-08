@@ -22,6 +22,7 @@
 
 #include "norm.hpp"
 #include "store/store_utils.hpp"
+#include "utils/bytes_utils.hpp"
 
 namespace {
 
@@ -32,21 +33,22 @@ const irs::document INVALID_DOCUMENT;
 namespace iresearch {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                              norm
+// --SECTION--                                                         norm_base
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(norm);
-
-norm::norm() noexcept
+norm_base::norm_base() noexcept
   : payload_(nullptr),
     doc_(&INVALID_DOCUMENT) {
 }
 
-bool norm::empty() const noexcept {
+bool norm_base::empty() const noexcept {
   return doc_ == &INVALID_DOCUMENT;
 }
 
-bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
+bool norm_base::reset(
+    const sub_reader& reader,
+    field_id column,
+    const document& doc) {
   const auto* column_reader = reader.column_reader(column);
 
   if (!column_reader) {
@@ -66,6 +68,10 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
   return true;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              norm
+// -----------------------------------------------------------------------------
+
 float_t norm::read() const {
   assert(column_it_);
   if (doc_->value != column_it_->seek(doc_->value)) {
@@ -77,13 +83,10 @@ float_t norm::read() const {
   return read_zvfloat(in);
 }
 
-void compute_norm(
-    [[maybe_unused]] type_info::type_id type,
+void norm::compute(
     const field_stats& stats,
     doc_id_t doc,
     columnstore_writer::values_writer_f& writer) {
-  assert(irs::type<norm>::id() == type);
-
   if (stats.len > 0) {
     const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
     if (value != norm::DEFAULT()) {
@@ -92,5 +95,13 @@ void compute_norm(
     }
   }
 }
+
+REGISTER_ATTRIBUTE(norm);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             norm2
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(norm2);
 
 } // iresearch

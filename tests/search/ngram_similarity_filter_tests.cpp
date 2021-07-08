@@ -1021,7 +1021,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1043,7 +1043,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1066,7 +1066,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1089,7 +1089,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),

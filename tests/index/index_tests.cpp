@@ -6308,7 +6308,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 
 
   irs::index_writer::init_options opts;
-  opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+  opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
   auto writer = open_writer(irs::OM_CREATE, opts);
 
@@ -6899,9 +6899,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+          name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -13760,7 +13758,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::compute_norm);
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     auto writer = open_writer(irs::OM_CREATE, opts);
 
