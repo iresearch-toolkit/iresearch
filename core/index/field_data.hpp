@@ -91,6 +91,8 @@ class IRESEARCH_API field_data : util::noncopyable {
   void compute_features() const {
     for (auto& entry : features_) {
       auto& [type, handler, writer] = entry;
+      UNUSED(type);
+
       handler(stats_, doc(), writer);
     }
   }
