@@ -163,14 +163,14 @@ struct Doc {
     mutable irs::string_token_stream _stream;
 
     StringField(
-        const std::string& n,
+        const irs::string_ref& n,
         irs::IndexFeatures index_features,
         const irs::features_t& flags)
       : Field(n, index_features, flags) {
     }
 
     StringField(
-        const std::string& n,
+        const irs::string_ref& n,
         irs::IndexFeatures index_features,
         const irs::features_t& flags,
         const std::string& a)
@@ -193,7 +193,7 @@ struct Doc {
     mutable irs::analysis::analyzer::ptr stream;
 
     TextField(
-        const std::string& n,
+        const irs::string_ref& n,
         irs::IndexFeatures index_features,
         const irs::features_t& flags,
         irs::analysis::analyzer::ptr stream)
@@ -217,14 +217,14 @@ struct Doc {
     int64_t value;
 
     NumericField(
-        const std::string& n,
+        const irs::string_ref& n,
         irs::IndexFeatures index_features,
         const irs::features_t& flags)
       : Field(n, index_features, flags) {
     }
 
     NumericField(
-        const std::string& n,
+        const irs::string_ref& n,
         irs::IndexFeatures index_features,
         const irs::features_t& flags,
         uint64_t v)
