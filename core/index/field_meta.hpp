@@ -39,7 +39,7 @@ struct field_stats {
   uint32_t len{};
   /// @brief number of overlapped terms
   uint32_t num_overlap{};
-  /// @brief maximum number of terms in a field across all indexed documents
+  /// @brief maximum number of terms in a field
   uint32_t max_term_freq{};
   /// @brief number of unique terms
   uint32_t num_unique{};

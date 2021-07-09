@@ -13918,9 +13918,241 @@ const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4
 #endif
 }
 
+class index_test_case_14 : public index_test_case { };
+
+
+TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
+  struct feature1 { };
+  struct feature2 { };
+  struct feature3 { };
+
+  REGISTER_ATTRIBUTE(feature1);
+  REGISTER_ATTRIBUTE(feature2);
+  REGISTER_ATTRIBUTE(feature3);
+
+  struct test_field {
+    irs::string_ref name() const { return "test"; };
+    irs::IndexFeatures index_features() const {
+      return irs::IndexFeatures::DOCS | irs::IndexFeatures::FREQ;
+    }
+    irs::features_t features() const {
+      return { features_.data(), features_.size() };
+    }
+    irs::token_stream& get_tokens() const noexcept {
+      stream_.reset(value_);
+      return stream_;
+    }
+
+    std::array<irs::type_info::type_id, 3> features_ {
+      irs::type<feature1>::id(),
+      irs::type<feature2>::id(),
+      irs::type<feature3>::id()
+    };
+    std::string value_;
+    mutable irs::string_token_stream stream_;
+  } field;
+
+  {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<feature1>::id(), [](
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+      if (doc == 2) {
+        return;
+      }
+
+      auto& stream = writer(doc);
+      stream.write_int(doc);
+      stream.write_int(stats.len);
+      stream.write_int(stats.num_overlap);
+      stream.write_int(stats.max_term_freq);
+      stream.write_int(stats.num_unique);
+    });
+    opts.features.emplace(irs::type<feature2>::id(), nullptr); // marker feature
+    opts.features.emplace(irs::type<feature3>::id(), [](
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+      if (doc == 1) {
+        return;
+      }
+
+      auto& stream = writer(doc);
+      stream.write_int(doc);
+      stream.write_int(stats.len);
+      stream.write_int(stats.num_overlap);
+      stream.write_int(stats.max_term_freq);
+      stream.write_int(stats.num_unique);
+    });
+
+    auto writer = open_writer(irs::OM_CREATE, opts);
+
+    // doc1
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    // doc2
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    // doc3
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+
+      field.value_ = "foo";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+
+      field.value_ = "bar";
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = (*reader)[0];
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    auto fields = segment.fields();
+    ASSERT_NE(nullptr, fields);
+    ASSERT_TRUE(fields->next());
+    auto& field_reader = fields->value();
+    ASSERT_EQ(field.name(), field_reader.meta().name);
+    ASSERT_EQ(3, field_reader.meta().features.size());
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_EQ(irs::type<feature1>::id(), type);
+      ASSERT_EQ(0, id);
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+      ASSERT_EQ(irs::type<feature2>::id(), type);
+      ASSERT_FALSE(irs::field_limits::valid(id));
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_EQ(irs::type<feature3>::id(), type);
+      ASSERT_EQ(1, id);
+    }
+
+    // check feature1
+    {
+      auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
+      auto column_reader = segment.column_reader(feature->second);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_EQ(2, column_reader->size());
+      auto it = column_reader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      // doc1
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(1, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc3
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(3, it->value());
+        auto* p = payload->value.c_str();
+        ASSERT_EQ(3, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    // check feature3
+    {
+      auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
+      auto column_reader = segment.column_reader(feature->second);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_EQ(2, column_reader->size());
+      auto it = column_reader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      // doc2
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(2, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc3
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(3, it->value());
+        auto* p = payload->value.c_str();
+        ASSERT_EQ(3, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    ASSERT_FALSE(fields->next());
+    ASSERT_FALSE(fields->next());
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
   index_test_14,
-  index_test_case,
+  index_test_case_14,
   ::testing::Combine(
     ::testing::Values(
       tests::mmap_directory,
