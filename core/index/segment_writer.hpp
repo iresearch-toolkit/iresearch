@@ -424,7 +424,13 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     const hashed_string_ref& name,
     const doc_id_t doc);
 
-  void finish(); // finishes document
+  // finishes document
+  void finish() {
+    REGISTER_TIMER_DETAILED();
+    for (const auto* field : doc_) {
+      field->compute_features();
+    }
+  }
 
   size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
   void flush_column_meta(const segment_meta& meta); // flushes column meta to directory

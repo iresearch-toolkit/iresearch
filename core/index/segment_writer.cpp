@@ -210,25 +210,6 @@ column_output& segment_writer::stream(
   })->writer(doc_id);
 }
 
-void segment_writer::finish() {
-  REGISTER_TIMER_DETAILED();
-
-  for (const auto* field : doc_) {
-    field->compute_features();
-  }
-
-
-  //// write document normalization factors (for each field marked for normalization))
-  //for (const auto* field: doc_) {
-  //  assert(field && field->stats().len > 0);
-  //  const float_t value = 1.f / float_t(std::sqrt(double_t(field->stats().len)));
-  //  if (value != norm::DEFAULT()) {
-  //    auto& stream = field->norms(*col_writer_);
-  //    write_zvfloat(stream, value);
-  //  }
-  //}
-}
-
 void segment_writer::flush_column_meta(const segment_meta& meta) {
   // ensure columns are sorted
   sorted_columns_.resize(columns_.size());
