@@ -92,6 +92,7 @@ class IRESEARCH_API norm2 final : public norm_base {
     assert(payload_);
 
     if (IRS_LIKELY(doc_->value == column_it_->seek(doc_->value))) {
+      assert(sizeof(uint32_t) == payload_->value.size());
       const auto* value = payload_->value.c_str();
       return irs::read<uint32_t>(value);
     }

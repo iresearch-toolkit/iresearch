@@ -22,6 +22,8 @@
 
 #include "tfidf.hpp"
 
+#include <cmath>
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -277,19 +279,20 @@ struct score_ctx : public irs::score_ctx {
   float_t idf; // precomputed : boost * idf
 }; // score_ctx
 
+template<typename Norm>
 struct norm_score_ctx final : public score_ctx {
   norm_score_ctx(
       byte_type* score_buf,
-      norm&& norm,
+      Norm&& norm,
       boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq,
       const struct filter_boost* fb = nullptr) noexcept
     : score_ctx(score_buf, boost, idf, freq, fb),
-      norm_(std::move(norm)) {
+      norm_(std::forward<Norm>(norm)) {
   }
 
-  irs::norm norm_;
+  Norm norm_;
 }; // norm_score_ctx
 
 class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
@@ -362,8 +365,6 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
     // add norm attribute if requested
     if (normalize_) {
-      irs::norm norm;
-
       auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
@@ -371,34 +372,74 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         return { nullptr, nullptr };
       }
 
-      const auto it = field.meta().features.find(irs::type<irs::norm>::id());
+      const auto& features = field.meta().features;
 
-      if (it != field.meta().features.end() &&
-          norm.reset(segment, it->second, *doc)) {
-        
-        if (filter_boost) {
-          return {
-            memory::make_unique<tfidf::norm_score_ctx>(score_buf, std::move(norm), boost, stats, freq, filter_boost),
-            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<tfidf::norm_score_ctx*>(ctx);
-              assert(state.filter_boost);
-              irs::sort::score_cast<tfidf::score_t>(state.score_buf) = ::tfidf(state.freq->value,
-                                                                               state.idf * state.filter_boost->value) *
-                                                                       state.norm_.read();
+      auto it = features.find(irs::type<irs::norm2>::id());
 
-              return state.score_buf;
-            }
-          };
-        } else {
-          return {
-            memory::make_unique<tfidf::norm_score_ctx>(score_buf, std::move(norm), boost, stats, freq),
-            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-              auto& state = *static_cast<tfidf::norm_score_ctx*>(ctx);
-              irs::sort::score_cast<tfidf::score_t>(state.score_buf) = ::tfidf(state.freq->value, state.idf) * state.norm_.read();
+      if (it != field.meta().features.end()) {
+        irs::norm2 norm;
+        if (norm.reset(segment, it->second, *doc)) {
+          if (filter_boost) {
+            return {
+              memory::make_unique<tfidf::norm_score_ctx<irs::norm2>>(
+                score_buf, std::move(norm), boost, stats, freq, filter_boost),
+              [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                auto& state = *static_cast<tfidf::norm_score_ctx<irs::norm2>*>(ctx);
+                assert(state.filter_boost);
+                irs::sort::score_cast<tfidf::score_t>(state.score_buf) =
+                  // FIXME use multiplication
+                  ::tfidf(state.freq->value, state.idf * state.filter_boost->value) / SQRT(state.norm_.read());
 
-              return state.score_buf;
-            }
-          };
+                return state.score_buf;
+              }
+            };
+          } else {
+            return {
+              memory::make_unique<tfidf::norm_score_ctx<irs::norm2>>(
+                score_buf, std::move(norm), boost, stats, freq),
+              [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                auto& state = *static_cast<tfidf::norm_score_ctx<irs::norm2>*>(ctx);
+                irs::sort::score_cast<tfidf::score_t>(state.score_buf) =
+                  // FIXME use multiplication
+                  ::tfidf(state.freq->value, state.idf) / SQRT(state.norm_.read());
+
+                return state.score_buf;
+              }
+            };
+          }
+        }
+      }
+
+      it = features.find(irs::type<irs::norm>::id());
+
+      if (it != field.meta().features.end()) {
+        irs::norm norm;
+        if (norm.reset(segment, it->second, *doc)) {
+
+          if (filter_boost) {
+            return {
+              memory::make_unique<tfidf::norm_score_ctx<irs::norm>>(score_buf, std::move(norm), boost, stats, freq, filter_boost),
+              [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                auto& state = *static_cast<tfidf::norm_score_ctx<irs::norm>*>(ctx);
+                assert(state.filter_boost);
+                irs::sort::score_cast<tfidf::score_t>(state.score_buf) =
+                  ::tfidf(state.freq->value, state.idf * state.filter_boost->value) * state.norm_.read();
+
+                return state.score_buf;
+              }
+            };
+          } else {
+            return {
+              memory::make_unique<tfidf::norm_score_ctx<irs::norm>>(score_buf, std::move(norm), boost, stats, freq),
+              [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+                auto& state = *static_cast<tfidf::norm_score_ctx<irs::norm>*>(ctx);
+                irs::sort::score_cast<tfidf::score_t>(state.score_buf) =
+                  ::tfidf(state.freq->value, state.idf) * state.norm_.read();
+
+                return state.score_buf;
+              }
+            };
+          }
         }
       }
     }
