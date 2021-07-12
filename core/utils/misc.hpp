@@ -117,7 +117,6 @@ template<
   using output_type = std::invoke_result_t<Func, Input>;
 
   explicit cached_func(Func&& func)
-      noexcept(std::is_nothrow_invocable_v<Func, Input>)
     : func_{std::forward<Func>(func)} {
     for (input_type i = 0, size = Size; i < size; ++i) {
       cache_[i] = func_(i);
@@ -127,6 +126,10 @@ template<
   FORCE_INLINE output_type operator()(input_type value) const
       noexcept(std::is_nothrow_invocable_v<Func, Input>) {
     return value < Size ? cache_[value] : func_(value);
+  }
+
+  constexpr size_t size() const noexcept {
+    return cache_.size();
   }
 
  private:
