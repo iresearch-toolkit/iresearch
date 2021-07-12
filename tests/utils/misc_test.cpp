@@ -23,6 +23,17 @@
 #include "tests_shared.hpp"
 #include "utils/misc.hpp"
 
+TEST(misc_test, cached_func_contexpr) {
+  constexpr auto cached_func = irs::cache_func<uint32_t, 3>(
+    [](uint32_t v) { return v + 1; });
+  static_assert (3 == cached_func.size());
+  static_assert (1 == cached_func(0));
+  static_assert (2 == cached_func(1));
+  static_assert (3 == cached_func(2));
+  static_assert (4 == cached_func(3));
+  static_assert (5 == cached_func(4));
+}
+
 TEST(misc_test, cached_func) {
   size_t calls = 0;
   auto cached_func = irs::cache_func<uint32_t, 3>([&](uint32_t v) {

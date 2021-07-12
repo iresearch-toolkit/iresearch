@@ -110,35 +110,37 @@ template<
   typename Input,
   Input Size,
   typename Func,
-  typename = typename std::enable_if<std::is_integral<Input>::value>::type
+  typename = typename std::enable_if_t<std::is_integral_v<Input>>
 > class cached_func {
  public:
   using input_type = Input;
   using output_type = std::invoke_result_t<Func, Input>;
 
-  explicit cached_func(Func&& func)
+  constexpr explicit cached_func(Func&& func)
     : func_{std::forward<Func>(func)} {
-    for (input_type i = 0, size = Size; i < size; ++i) {
+    for (input_type i = 0; i < size(); ++i) {
       cache_[i] = func_(i);
     }
   }
 
-  FORCE_INLINE output_type operator()(input_type value) const
+  constexpr FORCE_INLINE output_type operator()(input_type value) const
       noexcept(std::is_nothrow_invocable_v<Func, Input>) {
-    return value < Size ? cache_[value] : func_(value);
+    return value < size() ? cache_[value] : func_(value);
   }
 
   constexpr size_t size() const noexcept {
-    return cache_.size();
+    return IRESEARCH_COUNTOF(cache_);
   }
 
  private:
   Func func_;
-  std::array<output_type, Size> cache_;
+  output_type cache_[Size]{};
+
+  static_assert(IRESEARCH_COUNTOF(decltype(cache_){}) == Size);
 }; // cached_func
 
 template<typename Input, size_t Size, typename Func>
-cached_func<Input, Size, Func> cache_func(Func&& func) {
+constexpr cached_func<Input, Size, Func> cache_func(Func&& func) {
   return cached_func<Input, Size, Func>{ std::forward<Func>(func) };
 }
 
