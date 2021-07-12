@@ -814,7 +814,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
   auto oldCWD = irs::utf8_path(true);
   auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
   newCWD.chdir();
-  auto reset_stopword_path = irs::make_finally([oldCWD]()->void {
+  auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
     oldCWD.chdir();
   });
 
@@ -893,7 +893,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath)
   auto oldCWD = irs::utf8_path(true);
   auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
   newCWD.chdir();
-  auto reset_stopword_path = irs::make_finally([oldCWD]()->void {
+  auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
     oldCWD.chdir();
   });
 
@@ -999,7 +999,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     auto oldCWD = irs::utf8_path(true);
     auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
     newCWD.chdir();
-    auto reset_stopword_path = irs::make_finally([oldCWD]()->void {
+    auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
       oldCWD.chdir();
     });
 

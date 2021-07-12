@@ -327,7 +327,7 @@ class bounded_object_pool {
   bool visit(const Visitor& visitor) const {
     stack list;
 
-    auto release_all = make_finally([this, &list] () {
+    auto release_all = make_finally([this, &list]()noexcept{
       while (auto* head = list.pop()) {
         free_list_.push(*head);
       }

@@ -1016,7 +1016,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
     auto segments_active_decrement =
-      irs::make_finally([&segments_active]()->void { --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
+      irs::make_finally([&segments_active]()noexcept{ --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
 
     ++segments_active; // increment counter to hold reservation while segment_context is being released and added to the freelist
     segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
@@ -1475,6 +1475,7 @@ index_writer::consolidation_result index_writer::consolidate(
 
   // unregisterer for all registered candidates
   auto unregister_segments = irs::make_finally([&candidates, this]() {
+    // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
     }
@@ -1558,25 +1559,26 @@ index_writer::consolidation_result index_writer::consolidate(
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
-    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]() {
-        if (!candidates.empty()) {
-          decltype(flush_context::segment_mask_) cached_mask;
-          // pointers are different so check by name
-          for (const auto* candidate : candidates) {
-            if (current_committed_meta->end() ==
-              std::find_if(current_committed_meta->begin(),
-                current_committed_meta->end(),
-                [&candidate](const index_meta::index_segment_t& s) {
-                  return candidate->name == s.meta.name; })) {
-              // found missing segment. Mask it!
-              cached_mask.insert(*candidate);
-            }
-          }
-          if (!cached_mask.empty()) {
-            cached_readers_.purge(cached_mask);
+    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this](){
+      // FIXME make me noexcept as I'm begin called from within ~finally()
+      if (!candidates.empty()) {
+        decltype(flush_context::segment_mask_) cached_mask;
+        // pointers are different so check by name
+        for (const auto* candidate : candidates) {
+          if (current_committed_meta->end() ==
+            std::find_if(current_committed_meta->begin(),
+              current_committed_meta->end(),
+              [&candidate](const index_meta::index_segment_t& s) {
+                return candidate->name == s.meta.name; })) {
+            // found missing segment. Mask it!
+            cached_mask.insert(*candidate);
           }
         }
-      };
+        if (!cached_mask.empty()) {
+          cached_readers_.purge(cached_mask);
+        }
+      }
+    };
 
     if (pending_state_) {
       // we could possibly need cleanup
@@ -1868,7 +1870,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx) {
   // release reservation (delcare before aquisition since operator++() is noexcept)
-  auto segments_active_decrement = irs::make_finally([this]()->void { --segments_active_; });
+  auto segments_active_decrement = irs::make_finally([this]()noexcept{ --segments_active_; });
   // increment counter to aquire reservation, if another thread
   // tries to reserve last context then it'll be over limit
   auto segments_active = ++segments_active_;
@@ -1937,21 +1939,21 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this]()
-    {
-      assert(ctx_raw);
-      if (ctx_raw->pending_segments_.empty()) {
-        return;
-      }
-      auto lock = make_lock_guard(consolidation_lock_);
+  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this](){
+    // FIXME make me noexcept as I'm begin called from within ~finally()
+    assert(ctx_raw);
+    if (ctx_raw->pending_segments_.empty()) {
+      return;
+    }
+    auto lock = make_lock_guard(consolidation_lock_);
 
-      for (auto& pending_segment : ctx_raw->pending_segments_) {
-        auto& candidates = pending_segment.consolidation_ctx.candidates;
-        for (const auto* candidate : candidates) {
-          consolidating_segments_.erase(candidate);
-        }
+    for (auto& pending_segment : ctx_raw->pending_segments_) {
+      auto& candidates = pending_segment.consolidation_ctx.candidates;
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
       }
-    });
+    }
+  });
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
   /// wait for any outstanding segments to settle to ensure that any rollbacks

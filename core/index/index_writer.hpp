@@ -286,7 +286,8 @@ class IRESEARCH_API index_writer
         ++segment->active_count_;
       }
 
-      auto clear_busy = make_finally([ctx, segment]()->void {
+      auto clear_busy = make_finally([ctx, segment](){
+        // FIXME make me noexcept as I'm begin called from within ~finally()
         if (!--segment->active_count_) {
           auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
@@ -299,8 +300,7 @@ class IRESEARCH_API index_writer
       auto uncomitted_doc_id_begin =
         segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
         ? (segment->uncomitted_doc_id_begin_ - segment->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-        : doc_limits::min() // uncommited start in 'flushed_'
-        ;
+        : doc_limits::min(); // uncommited start in 'flushed_'
       auto update = segment->make_update_context(std::forward<Filter>(filter));
 
       try {

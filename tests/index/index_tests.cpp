@@ -3142,8 +3142,7 @@ TEST_P(index_test_case, document_context) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     auto ctx = writer->documents();
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start

@@ -73,7 +73,7 @@ static_assert(std::is_nothrow_move_assignable_v<norm>);
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm2
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API norm2 final : public norm_base {
+class IRESEARCH_API norm2 : public norm_base {
  public:
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
