@@ -385,15 +385,16 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
       const auto& features = field.meta().features;
 
-      auto prepare_norm_scorer = [&](auto norm_factory) -> score_function {
+      auto prepare_norm_scorer = [&](auto norm_factory) -> std::optional<score_function> {
         using norm_type = std::invoke_result_t<decltype(norm_factory)>;
 
-        auto it = features.find(irs::type<norm_type>::id());
+        const auto it = features.find(irs::type<norm_type>::id());
+
         if (it != features.end()) {
           norm_type norm = norm_factory();
           if (norm.reset(segment, it->second, *doc)) {
             if (filter_boost) {
-              return {
+              return score_function{
                 memory::make_unique<tfidf::norm_score_ctx<norm_type>>(
                   score_buf, std::move(norm), boost, stats, freq, filter_boost),
                 [](irs::score_ctx* ctx) noexcept -> const byte_type* {
@@ -406,7 +407,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
                 }
               };
             } else {
-              return {
+              return score_function{
                 memory::make_unique<tfidf::norm_score_ctx<norm_type>>(
                   score_buf, std::move(norm), boost, stats, freq),
                 [](irs::score_ctx* ctx) noexcept -> const byte_type* {
@@ -421,20 +422,15 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
           }
         }
 
-        return {};
+        return std::nullopt;
       };
 
-
-      auto func = prepare_norm_scorer([](){ return tfidf::norm2_wrapper(); });
-
-      if (func) {
-        return func;
+      if (auto func = prepare_norm_scorer([](){ return tfidf::norm2_wrapper(); }); func) {
+        return std::move(func).value();
       }
 
-      func = prepare_norm_scorer([](){ return irs::norm(); });
-
-      if (func) {
-        return func;
+      if (auto func = prepare_norm_scorer([](){ return irs::norm(); }); func) {
+        return std::move(func).value();
       }
     }
 
@@ -492,5 +488,9 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
 sort::prepared::ptr tfidf_sort::prepare() const {
   return memory::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
+
+// use base irs::norm2 type for ancestors
+template<>
+struct type<tfidf::norm2_wrapper> : type<norm2> { };
 
 } // ROOT
