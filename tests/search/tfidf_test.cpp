@@ -1155,12 +1155,6 @@ TEST_P(tfidf_test_case, test_query_norms) {
   test_query_norms(irs::type<irs::norm>::id(), &irs::norm::compute);
 }
 
-class tfidf_test_case_14 : public tfidf_test_case { };
-
-TEST_P(tfidf_test_case_14, test_query_norms) {
-  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::compute);
-}
-
 #ifndef IRESEARCH_DLL
 
 TEST_P(tfidf_test_case, test_collector_serialization) {
@@ -1430,6 +1424,12 @@ INSTANTIATE_TEST_SUITE_P(
   ),
   tests::to_string
 );
+
+class tfidf_test_case_14 : public tfidf_test_case { };
+
+TEST_P(tfidf_test_case_14, test_query_norms) {
+  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::compute);
+}
 
 INSTANTIATE_TEST_SUITE_P(
   tfidf_test_14,

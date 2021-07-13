@@ -48,7 +48,7 @@ static_assert(std::is_nothrow_move_assignable_v<norm_base>);
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API norm final : public norm_base {
+class IRESEARCH_API norm : public norm_base {
  public:
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {

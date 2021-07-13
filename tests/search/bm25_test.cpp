@@ -49,8 +49,6 @@ struct bstring_data_output: public data_output {
 
 using namespace tests;
 
-class bm25_test: public index_test_base { };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -78,11 +76,151 @@ class bm25_test: public index_test_base { };
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
-TEST_P(bm25_test, consts) {
+class bm25_test_case : public index_test_base {
+ protected:
+  void test_query_norms(irs::type_info::type_id norm,
+                        irs::feature_handler_f handler);
+};
+
+
+void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
+                                      irs::feature_handler_f handler) {
+  {
+    const std::vector<irs::type_info::type_id> extra_features = { norm };
+
+    tests::json_doc_generator gen(
+      resource("simple_sequential_order.json"),
+      [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(
+            std::make_shared<templates::string_field>(
+              name, data.str, irs::IndexFeatures::DOCS,
+              extra_features),
+            true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(
+            std::make_shared<templates::string_field>(
+              name, value, irs::IndexFeatures::DOCS,
+              extra_features),
+            false, true);
+        }
+    });
+
+    irs::index_writer::init_options opts;
+    opts.features.emplace(norm, handler);
+
+    add_segment(gen, irs::OM_CREATE, opts);
+  }
+
+  irs::order order;
+  order.add(true, std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), irs::bm25_sort::B(), true));
+
+  auto prepared_order = order.prepare();
+  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
+    return prepared_order.less(lhs.c_str(), rhs.c_str());
+  };
+
+  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto& segment = *(reader.begin());
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
+
+  // by_range multiple
+  {
+    irs::by_range filter;
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
+      7, // 5.62794 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
+      3, // 3.22245 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
+      0, // 2.68195 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
+      1, // 2.60158 = (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
+      5, // 2.39742 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+
+    while(docs->next()) {
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score_value, seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_range multiple (3 values)
+  {
+    irs::by_range filter;
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
+      7, // 5.62794 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
+      0, // 5.42788 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
+      5, // 5.15876 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
+      3, // 3.22245 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
+      2, // 2.73505 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8)))
+      1, // 2.60158 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+
+    while(docs->next()) {
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      in.reset(actual_value);
+
+      auto str_seq = irs::read_string<std::string>(in);
+      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+      sorted.emplace(score_value, seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+}
+
+TEST_P(bm25_test_case, consts) {
   static_assert("bm25" == irs::type<irs::bm25_sort>::name());
 }
 
-TEST_P(bm25_test, test_load) {
+TEST_P(bm25_test_case, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
@@ -92,7 +230,7 @@ TEST_P(bm25_test, test_load) {
 
 #ifndef IRESEARCH_DLL
 
-TEST_P(bm25_test, make_from_array) {
+TEST_P(bm25_test_case, make_from_array) {
   // default args
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -158,7 +296,7 @@ TEST_P(bm25_test, make_from_array) {
 
 #endif // IRESEARCH_DLL
 
-TEST_P(bm25_test, test_normalize_features) {
+TEST_P(bm25_test_case, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -187,7 +325,7 @@ TEST_P(bm25_test, test_normalize_features) {
   }
 }
 
-TEST_P(bm25_test, test_phrase) {
+TEST_P(bm25_test_case, test_phrase) {
   auto analyzed_json_field_factory = [](
       tests::document& doc,
       const std::string& name,
@@ -333,7 +471,7 @@ TEST_P(bm25_test, test_phrase) {
   }
 }
 
-TEST_P(bm25_test, test_query) {
+TEST_P(bm25_test_case, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -1005,141 +1143,13 @@ TEST_P(bm25_test, test_query) {
   }
 }
 
-TEST_P(bm25_test, test_query_norms) {
-  {
-    const std::vector<irs::type_info::type_id> extra_features = { irs::type<irs::norm>::id() };
-
-    tests::json_doc_generator gen(
-      resource("simple_sequential_order.json"),
-      [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(
-            std::make_shared<templates::string_field>(
-              name, data.str, irs::IndexFeatures::DOCS,
-              extra_features),
-            true, false);
-        } else if (data.is_number()) { // seq
-          const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(
-            std::make_shared<templates::string_field>(
-              name, value, irs::IndexFeatures::DOCS,
-              extra_features),
-            false, true);
-        }
-    });
-
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
-
-    add_segment(gen, irs::OM_CREATE, opts);
-  }
-
-  irs::order order;
-  order.add(true, std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), irs::bm25_sort::B(), true));
-
-  auto prepared_order = order.prepare();
-  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-    return prepared_order.less(lhs.c_str(), rhs.c_str());
-  };
-
-  auto reader = iresearch::directory_reader::open(dir(), codec());
-  auto& segment = *(reader.begin());
-  const auto* column = segment.column_reader("seq");
-  ASSERT_NE(nullptr, column);
-  auto values = column->values();
-
-  // by_range multiple
-  {
-    irs::by_range filter;
-    *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
-    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
-    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
-
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      0, // 2.68195 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      1, // 2.60158 = (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-      5, // 2.39742 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-    };
-
-    irs::bytes_ref actual_value;
-    irs::bytes_ref_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
-    auto* score = irs::get<irs::score>(*docs);
-    ASSERT_TRUE(bool(score));
-
-    while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
-
-      auto str_seq = irs::read_string<std::string>(in);
-      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
-    }
-
-    ASSERT_EQ(expected.size(), sorted.size());
-    size_t i = 0;
-
-    for (auto& entry: sorted) {
-      ASSERT_EQ(expected[i++], entry.second);
-    }
-  }
-
-  // by_range multiple (3 values)
-  {
-    irs::by_range filter;
-    *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
-    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
-    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
-
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      0, // 5.42788 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      5, // 5.15876 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      2, // 2.73505 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8)))
-      1, // 2.60158 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-    };
-
-    irs::bytes_ref actual_value;
-    irs::bytes_ref_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
-    auto* score = irs::get<irs::score>(*docs);
-
-    while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
-
-      auto str_seq = irs::read_string<std::string>(in);
-      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
-    }
-
-    ASSERT_EQ(expected.size(), sorted.size());
-    size_t i = 0;
-
-    for (auto& entry: sorted) {
-      ASSERT_EQ(expected[i++], entry.second);
-    }
-  }
+TEST_P(bm25_test_case, test_query_norms) {
+  test_query_norms(irs::type<irs::norm>::id(), &irs::norm::compute);
 }
 
 #ifndef IRESEARCH_DLL
 
-TEST_P(bm25_test, test_collector_serialization) {
+TEST_P(bm25_test_case, test_collector_serialization) {
   // initialize test data
   {
     tests::json_doc_generator gen(
@@ -1276,7 +1286,7 @@ TEST_P(bm25_test, test_collector_serialization) {
   }
 }
 
-TEST_P(bm25_test, test_make) {
+TEST_P(bm25_test_case, test_make) {
   // default values
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -1373,7 +1383,7 @@ TEST_P(bm25_test, test_make) {
   }
 }
 
-TEST_P(bm25_test, test_order) {
+TEST_P(bm25_test_case, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -1440,9 +1450,11 @@ TEST_P(bm25_test, test_order) {
   }
 }
 
+#endif // IRESEARCH_DLL
+
 INSTANTIATE_TEST_SUITE_P(
   bm25_test,
-  bm25_test,
+  bm25_test_case,
   ::testing::Combine(
     ::testing::Values(
       &tests::memory_directory,
@@ -1454,6 +1466,24 @@ INSTANTIATE_TEST_SUITE_P(
   tests::to_string
 );
 
-#endif // IRESEARCH_DLL
+class bm25_test_case_14 : public bm25_test_case { };
+
+TEST_P(bm25_test_case_14, test_query_norms) {
+  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::compute);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  bm25_test_14,
+  bm25_test_case_14,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_4")
+  ),
+  tests::to_string
+);
 
 } // namespace {

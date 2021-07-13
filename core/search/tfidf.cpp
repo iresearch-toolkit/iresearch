@@ -285,6 +285,23 @@ struct score_ctx : public irs::score_ctx {
 }; // score_ctx
 
 template<typename Norm>
+struct norm_adapter;
+
+template<>
+struct norm_adapter<norm> : norm {
+  FORCE_INLINE float_t read() const {
+    return norm::read();
+  }
+}; // norm_adapter<norm>
+
+template<>
+struct norm_adapter<norm2> : norm2 {
+  FORCE_INLINE float_t read() const {
+    return RSQRT(norm2::read());
+  }
+}; // norm_adapter<norm2>
+
+template<typename Norm>
 struct norm_score_ctx final : public score_ctx {
   norm_score_ctx(
       byte_type* score_buf,
@@ -293,23 +310,18 @@ struct norm_score_ctx final : public score_ctx {
       const tfidf::idf& idf,
       const frequency* freq,
       const struct filter_boost* fb = nullptr) noexcept
-    : score_ctx(score_buf, boost, idf, freq, fb),
-      norm_(std::forward<Norm>(norm)) {
+    : score_ctx{score_buf, boost, idf, freq, fb},
+      norm_{std::forward<Norm>(norm)} {
   }
 
-  Norm norm_;
+  norm_adapter<Norm> norm_;
 }; // norm_score_ctx
-
-struct norm2_wrapper : norm2 {
-  FORCE_INLINE float_t read() const {
-    return RSQRT(norm2::read());
-  }
-};
 
 class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
  public:
   explicit sort(bool normalize, bool boost_as_score) noexcept
-    : normalize_(normalize), boost_as_score_(boost_as_score) {
+    : normalize_{normalize},
+      boost_as_score_{boost_as_score} {
   }
 
   virtual void collect(
@@ -425,7 +437,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         return std::nullopt;
       };
 
-      if (auto func = prepare_norm_scorer([](){ return tfidf::norm2_wrapper(); }); func) {
+      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
         return std::move(func).value();
       }
 
@@ -475,9 +487,9 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 }
 
 tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
-  : sort(irs::type<tfidf_sort>::get()),
-    normalize_(normalize),
-    boost_as_score_(boost_as_score) {
+  : sort{irs::type<tfidf_sort>::get()},
+    normalize_{normalize},
+    boost_as_score_{boost_as_score} {
 }
 
 /*static*/ void tfidf_sort::init() {
@@ -488,9 +500,5 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
 sort::prepared::ptr tfidf_sort::prepare() const {
   return memory::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
-
-// use base irs::norm2 type for ancestors
-template<>
-struct type<tfidf::norm2_wrapper> : type<norm2> { };
 
 } // ROOT
