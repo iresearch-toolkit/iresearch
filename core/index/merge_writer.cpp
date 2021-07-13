@@ -197,7 +197,7 @@ struct compound_doc_iterator : public doc_iterator {
     return !static_cast<bool>(progress);
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<attribute_provider_change>::id() == type
       ? &attribute_change
       : nullptr;
@@ -1181,7 +1181,7 @@ bool write_fields(
   auto field_writer = meta.codec->get_field_writer(true);
   field_writer->prepare(flush_state);
 
-  type_info::type_id feature{};
+  irs::type_info::type_id feature{};
 
   auto merge_features = [&cs, &feature] (
       const sub_reader& segment,
@@ -1257,7 +1257,7 @@ bool write_fields(
   auto field_writer = meta.codec->get_field_writer(true);
   field_writer->prepare(flush_state);
 
-  type_info::type_id feature{};
+  irs::type_info::type_id feature{};
 
   auto add_iterators = [&field_itr, &feature](compound_doc_iterator::iterators_t& itrs) {
     auto add_iterators = [&itrs, &feature](

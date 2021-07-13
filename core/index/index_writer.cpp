@@ -56,7 +56,7 @@ const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref
   return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
 };
 
-const irs::feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](type_info::type_id) {
+const irs::feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
   // no compression, no encryption
   return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
 };
