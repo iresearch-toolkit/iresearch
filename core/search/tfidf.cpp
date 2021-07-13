@@ -455,7 +455,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
           irs::sort::score_cast<score_t>(state.score_buf) =
             ::tfidf(state.freq->value, state.idf * state.filter_boost->value);
           return state.score_buf;
-      }
+        }
       };
     } else {
       return {

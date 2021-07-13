@@ -479,9 +479,14 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
                 [](irs::score_ctx* ctx) noexcept -> const byte_type* {
                   auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
                   assert(state.filter_boost_);
+
                   const float_t tf = ::SQRT(state.freq_->value);
+
+                  // FIXME optimize for norm2
+                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
                   irs::sort::score_cast<score_t>(state.score_buf)
                     = state.filter_boost_->value * state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+
                   return state.score_buf;
                 }
               };
@@ -492,6 +497,9 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
                   auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
 
                   const float_t tf = ::SQRT(state.freq_->value);
+
+                  // FIXME optimize for norm2
+                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
                   irs::sort::score_cast<score_t>(state.score_buf)
                     = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
 
