@@ -41,10 +41,10 @@
 namespace {
 
 const auto SQRT = irs::cache_func<uint32_t, 2048>(
-  [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
+  0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
 const auto RSQRT = irs::cache_func<uint32_t, 2048>(
-  [](uint32_t i) noexcept { return 1.f/std::sqrt(static_cast<float_t>(i)); });
+  1, [](uint32_t i) noexcept { return 1.f/std::sqrt(static_cast<float_t>(i)); });
 
 irs::sort::ptr make_from_bool(const VPackSlice slice) {
   assert(slice.isBool());

@@ -25,7 +25,7 @@
 
 TEST(misc_test, cached_func_contexpr) {
   constexpr auto cached_func = irs::cache_func<uint32_t, 3>(
-    [](uint32_t v) { return v + 1; });
+    0, [](uint32_t v) { return v + 1; });
   static_assert (3 == cached_func.size());
   static_assert (1 == cached_func(0));
   static_assert (2 == cached_func(1));
@@ -36,7 +36,7 @@ TEST(misc_test, cached_func_contexpr) {
 
 TEST(misc_test, cached_func) {
   size_t calls = 0;
-  auto cached_func = irs::cache_func<uint32_t, 3>([&](uint32_t v) {
+  auto cached_func = irs::cache_func<uint32_t, 3>(0, [&](uint32_t v) {
     ++calls;
     return v + 1;
   });

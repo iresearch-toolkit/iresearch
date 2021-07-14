@@ -37,7 +37,7 @@
 namespace {
 
 const auto SQRT = irs::cache_func<uint32_t, 2048>(
-  [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
+  0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());

@@ -84,7 +84,7 @@ finally<Func> make_finally(Func&& func) {
 template<typename T>
 class move_on_copy {
  public:
-  move_on_copy(T&& value) noexcept : value_(std::move(value)) {}
+  move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
   move_on_copy(const move_on_copy& rhs) noexcept : value_(std::move(rhs.value_)) {}
 
   T& value() noexcept { return value_; }
@@ -100,7 +100,7 @@ class move_on_copy {
 template<typename T>
 move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   static_assert(std::is_rvalue_reference_v<decltype(value)>, "parameter must be an rvalue");
-  return move_on_copy<T>(std::move(value));
+  return move_on_copy<T>(std::forward<T>(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,9 +116,9 @@ template<
   using input_type = Input;
   using output_type = std::invoke_result_t<Func, Input>;
 
-  constexpr explicit cached_func(Func&& func)
+  constexpr explicit cached_func(size_t offset, Func&& func)
     : func_{std::forward<Func>(func)} {
-    for (input_type i = 0; i < size(); ++i) {
+    for (input_type i = offset; i < size(); ++i) {
       cache_[i] = func_(i);
     }
   }
@@ -140,8 +140,8 @@ template<
 }; // cached_func
 
 template<typename Input, size_t Size, typename Func>
-constexpr cached_func<Input, Size, Func> cache_func(Func&& func) {
-  return cached_func<Input, Size, Func>{ std::forward<Func>(func) };
+constexpr cached_func<Input, Size, Func> cache_func(size_t offset, Func&& func) {
+  return cached_func<Input, Size, Func>{ offset, std::forward<Func>(func) };
 }
 
 }

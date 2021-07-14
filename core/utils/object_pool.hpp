@@ -547,8 +547,6 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       reset_impl(value_, owner_);
     }
 
-    // FIXME handle potential bad_alloc in shared_ptr constructor
-    // mark method as noexcept and move back all the stuff in case of error
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto moved_value = make_move_on_copy(std::move(value_));
