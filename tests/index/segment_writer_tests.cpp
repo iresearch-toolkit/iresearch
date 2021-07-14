@@ -424,9 +424,16 @@ TEST_F(segment_writer_tests, memory_index_field) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
   };
 
+  irs::segment_meta segment;
+  segment.name = "tmp";
+  segment.codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, segment.codec);
+
   irs::field_features_t features;
   irs::memory_directory dir;
   auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+  writer->reset(segment);
+
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
@@ -466,9 +473,16 @@ TEST_F(segment_writer_tests, index_field) {
       return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
     };
 
+    irs::segment_meta segment;
+    segment.name = "tmp";
+    segment.codec = irs::formats::get("1_0");
+    ASSERT_NE(nullptr, segment.codec);
+
     irs::field_features_t features;
     irs::memory_directory dir;
     auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+    writer->reset(segment);
+
     irs::segment_writer::update_context ctx;
     token_stream_mock stream;
     field_t field(stream);
@@ -494,9 +508,16 @@ TEST_F(segment_writer_tests, index_field) {
       return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
     };
 
+    irs::segment_meta segment;
+    segment.name = "tmp";
+    segment.codec = irs::formats::get("1_0");
+    ASSERT_NE(nullptr, segment.codec);
+
     irs::field_features_t features;
     irs::memory_directory dir;
     auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+    writer->reset(segment);
+
     irs::segment_writer::update_context ctx;
     token_stream_mock stream;
     field_t field(stream);
