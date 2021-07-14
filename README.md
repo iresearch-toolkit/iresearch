@@ -65,7 +65,8 @@ For type `T` to be `IndexedField`, the following conditions have to be satisfied
 |----|----|----|
 |`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
 |`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
-|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+|`m.index_features()`|The output type must be implicitly convertible to `iresearch::IndexFeatures`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of user supplied features which can be associated with a field. E.g. it may contain request of storing field norms. Later the evaluated information can be used during querying.|
 
 #### StoredField concept
 For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
