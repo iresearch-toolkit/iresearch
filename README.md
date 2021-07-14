@@ -59,7 +59,7 @@ A document is actually a collection of indexed/stored fields.
 In order to be processed each field should satisfy at least `IndexedField` or `StoredField` concept.
 
 #### IndexedField concept
-For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
@@ -69,7 +69,7 @@ For type `T` to be `IndexedField`, the following conditions have to be satisfied
 |`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of user supplied features to be associated with a field. E.g. it may contain request of storing field norms. Later the stored information can be used during querying and scoring.|
 
 #### StoredField concept
-For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `StoredField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
