@@ -392,7 +392,7 @@ class writer final : public irs::columnstore_writer {
   virtual void rollback() noexcept override;
 
  private:
-  class column final : public irs::columnstore_writer::column_output {
+  class column final : public irs::column_output {
    public:
     explicit column(writer& ctx, const irs::type_info& type,
                     const compression::compressor::ptr& compressor,

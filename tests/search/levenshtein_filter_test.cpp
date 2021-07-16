@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
@@ -423,8 +424,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     text_field(irs::analysis::analyzer& analyzer, std::string value)
       : value_(std::move(value)), analyzer_(&analyzer) {
       this->name("id");
-      this->features().add<irs::frequency>();
-      this->features().add<irs::norm>();
+      this->index_features_ = irs::IndexFeatures::FREQ;
+      this->features_.emplace_back(irs::type<irs::norm>::id());
     }
 
     bool write(data_output&) const noexcept {
@@ -455,7 +456,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
         }
       });
 
-    add_segment(gen);
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   irs::order ord;

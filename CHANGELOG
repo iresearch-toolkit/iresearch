@@ -1,6 +1,10 @@
 master
 -------------------------
 
+* Add new feature "iresearch::norm2" representing fixed length norm value.
+
+* Split field features into built-in set of index features and pluggable field features.
+
 * Add ability to specify target prefix for `by_edit_distance` query.
 
 * Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.

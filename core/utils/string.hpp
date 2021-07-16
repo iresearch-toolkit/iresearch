@@ -54,7 +54,7 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept {
-    assert(ptr);
+    assert(nullptr != ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
@@ -66,7 +66,8 @@ struct char_traits<::iresearch::byte_type> {
       return 0;
     }
 
-    assert(lhs && rhs);
+    assert(nullptr != lhs);
+    assert(nullptr != rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
@@ -75,7 +76,8 @@ struct char_traits<::iresearch::byte_type> {
       return dst;
     }
 
-    assert(dst && src);
+    assert(nullptr != dst);
+    assert(nullptr != src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
@@ -90,8 +92,8 @@ struct char_traits<::iresearch::byte_type> {
       return nullptr;
     }
 
-    assert(ptr);
-    return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
+    assert(nullptr != ptr);
+    return reinterpret_cast<const char_type*>(std::memchr(ptr, ch, count));
   }
 
   static size_t length(const char_type* /*ptr*/) noexcept {

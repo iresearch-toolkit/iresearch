@@ -42,7 +42,7 @@ namespace columnstore2 {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column
 ////////////////////////////////////////////////////////////////////////////////
-class column final : public irs::columnstore_writer::column_output {
+class column final : public irs::column_output {
  public:
   static constexpr size_t BLOCK_SIZE = sparse_bitmap_writer::BLOCK_SIZE;
   static_assert(math::is_power2(BLOCK_SIZE));
