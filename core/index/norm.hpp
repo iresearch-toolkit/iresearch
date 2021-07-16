@@ -97,7 +97,10 @@ class IRESEARCH_API norm2 : public norm_base {
       return irs::read<uint32_t>(value);
     }
 
-    return 0;
+    // we should investigate why we failed to find a norm2 value for doc
+    assert(false);
+
+    return 1;
   }
 }; // norm2
 

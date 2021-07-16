@@ -114,7 +114,7 @@ struct sort : irs::sort {
     }
 
     virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::DOCS;
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const {
