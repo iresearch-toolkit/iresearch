@@ -524,6 +524,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>"
   "$<TARGET_FILE:velocypack>"
+  "$<TARGET_FILE:text>"
 )
 
 if (TARGET zlibstatic)
@@ -1025,7 +1026,10 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ./analysis/segmentation_token_stream.hpp
 )
 
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared ${IResearch_TARGET_NAME}-unicorn)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-unicorn
+  text)
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
 
@@ -1033,7 +1037,10 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   STATIC
   ./analysis/segmentation_token_stream.cpp
 )
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IResearch_TARGET_NAME}-unicorn)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-unicorn
+  text)
 
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
@@ -1058,10 +1065,12 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-static
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+  PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+  PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 

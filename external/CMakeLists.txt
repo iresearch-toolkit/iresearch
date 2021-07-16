@@ -159,3 +159,9 @@ endif()
 
 set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(highway)
+
+################################################################################
+### Boost::Text library
+################################################################################
+
+add_subdirectory(text)

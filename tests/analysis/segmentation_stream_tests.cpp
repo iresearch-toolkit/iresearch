@@ -54,7 +54,7 @@ std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
 
 } // namespace
 
-void assert_stream(irs::analysis::analyzer* pipe, const std::string& data, const analyzer_tokens& expected_tokens) {
+void assert_stream(irs::analysis::analyzer* pipe, std::string_view data, const analyzer_tokens& expected_tokens) {
   SCOPED_TRACE(data);
   auto* offset = irs::get<irs::offset>(*pipe);
   ASSERT_TRUE(offset);
@@ -69,7 +69,6 @@ void assert_stream(irs::analysis::analyzer* pipe, const std::string& data, const
     auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:<") << term_value << ">");
     SCOPED_TRACE(testing::Message("Expected term:<") << expected_token->value << ">");
-    auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
     ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
@@ -91,8 +90,7 @@ TEST(segmentation_token_stream_test, alpha_no_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
   opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::NONE;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   const analyzer_tokens expected{
     { "File:Constantinople", 0, 19, 0},
     { "1878", 20, 24, 1},
@@ -111,8 +109,7 @@ TEST(segmentation_token_stream_test, alpha_no_case_test) {
 TEST(segmentation_token_stream_test, alpha_lower_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt; // LOWER is default
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   const analyzer_tokens expected{
     { "file:constantinople", 0, 19, 0},
     { "1878", 20, 24, 1},
@@ -132,8 +129,7 @@ TEST(segmentation_token_stream_test, alpha_upper_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
   opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   const analyzer_tokens expected{
     { "FILE:CONSTANTINOPLE", 0, 19, 0},
     { "1878", 20, 24, 1},
@@ -154,8 +150,7 @@ TEST(segmentation_token_stream_test, graphic_upper_case_test) {
   opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER;
   opt.word_break = irs::analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   const analyzer_tokens expected{
     { "FILE:CONSTANTINOPLE", 0, 19, 0},
     { "(", 19, 20, 1},
@@ -182,8 +177,7 @@ TEST(segmentation_token_stream_test, all_lower_case_test) {
   opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::LOWER;
   opt.word_break = irs::analysis::segmentation_token_stream::options_t::word_break_t::ALL;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  auto* term = irs::get<irs::term_attribute>(stream);
-  std::string data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
+  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
   const analyzer_tokens expected{
     { "file:constantinople", 0, 19, 0},
     { "(", 19, 20, 1},
