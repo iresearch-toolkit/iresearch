@@ -843,7 +843,7 @@ bool compute_field_meta(
 
     // validate field_meta equivalence
     if (!is_new &&
-        (field_meta.index_features > field_meta_it->second->index_features ||
+        (!is_subset_of(field_meta.index_features, field_meta_it->second->index_features) ||
         !is_subset_of(field_meta.features, field_meta_it->second->features))) {
       return false; // field_meta is not equal, so cannot merge segments
     }
