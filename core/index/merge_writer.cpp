@@ -1399,7 +1399,7 @@ bool merge_writer::flush(
   compound_field_iterator fields_itr(progress);
   compound_column_meta_iterator_t columns_meta_itr;
   feature_set_t fields_features;
-  IndexFeatures index_features{IndexFeatures::DOCS};
+  IndexFeatures index_features{IndexFeatures::NONE};
 
   doc_id_t base_id = doc_limits::min(); // next valid doc_id
 
@@ -1507,7 +1507,7 @@ bool merge_writer::flush_sorted(
   compound_column_meta_iterator_t columns_meta_itr;
   compound_field_iterator fields_itr(progress, comparator_);
   feature_set_t fields_features;
-  IndexFeatures index_features{IndexFeatures::DOCS};
+  IndexFeatures index_features{IndexFeatures::NONE};
 
   sorting_compound_column_iterator::iterators_t itrs;
   itrs.reserve(readers_.size());

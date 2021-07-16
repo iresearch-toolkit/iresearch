@@ -287,7 +287,7 @@ class format_10_test_case : public tests::format_test_case {
 
         // seek for INVALID_DOC
         {
-          auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+          auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
           ASSERT_TRUE(it->next());
@@ -296,7 +296,7 @@ class format_10_test_case : public tests::format_test_case {
 
         // seek for NO_MORE_DOCS
         {
-          auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+          auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
           ASSERT_FALSE(it->next());
@@ -427,7 +427,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       }
 
       // read documents
-      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++], it->value());
       }
@@ -450,7 +450,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       }
 
       // read documents
-      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++], it->value());
       }
@@ -461,7 +461,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 }
 
 TEST_P(format_10_test_case, postings_read_write) {
-  constexpr irs::IndexFeatures features = irs::IndexFeatures::DOCS;
+  constexpr irs::IndexFeatures features = irs::IndexFeatures::NONE;
 
   irs::field_meta field;
   field.index_features = features;
@@ -564,7 +564,7 @@ TEST_P(format_10_test_case, postings_read_write) {
       }
 
       // read documents
-      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++], it->value());
       }
@@ -587,7 +587,7 @@ TEST_P(format_10_test_case, postings_read_write) {
       }
 
       /* read documents */
-      auto it = reader->iterator(field.index_features, irs::IndexFeatures::DOCS, read_meta);
+      auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++], it->value());
       }
@@ -749,7 +749,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
   // writer segment without any attributes
   {
-    constexpr irs::IndexFeatures features = irs::IndexFeatures::DOCS;
+    constexpr irs::IndexFeatures features = irs::IndexFeatures::NONE;
 
     irs::field_meta field;
     field.name = "field";
@@ -822,14 +822,14 @@ TEST_P(format_10_test_case, postings_seek) {
 
     // ires-336 sequence
     {
-      auto docs = it->postings(irs::IndexFeatures::DOCS);
+      auto docs = it->postings(irs::IndexFeatures::NONE);
       ASSERT_EQ(4048, docs->seek(4048));
       ASSERT_EQ(6830, docs->seek(6829));
     }
 
     // ires-336 extended sequence
     {
-      auto docs = it->postings(irs::IndexFeatures::DOCS);
+      auto docs = it->postings(irs::IndexFeatures::NONE);
       ASSERT_EQ(1068, docs->seek(1068));
       ASSERT_EQ(1875, docs->seek(1873));
       ASSERT_EQ(4048, docs->seek(4048));
@@ -838,7 +838,7 @@ TEST_P(format_10_test_case, postings_seek) {
 
     // extended sequence
     {
-      auto docs = it->postings(irs::IndexFeatures::DOCS);
+      auto docs = it->postings(irs::IndexFeatures::NONE);
       ASSERT_EQ(4048, docs->seek(4048));
       ASSERT_EQ(4400, docs->seek(4400));
       ASSERT_EQ(6830, docs->seek(6829));
@@ -846,7 +846,7 @@ TEST_P(format_10_test_case, postings_seek) {
 
     // ires-336 full sequence
     {
-      auto docs = it->postings(irs::IndexFeatures::DOCS);
+      auto docs = it->postings(irs::IndexFeatures::NONE);
       ASSERT_EQ(334, docs->seek(334));
       ASSERT_EQ(1046, docs->seek(1046));
       ASSERT_EQ(1068, docs->seek(1068));
@@ -872,7 +872,7 @@ TEST_P(format_10_test_case, postings_seek) {
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
 
-    postings_seek(docs, irs::IndexFeatures::DOCS);
+    postings_seek(docs, irs::IndexFeatures::NONE);
     postings_seek(docs, irs::IndexFeatures::FREQ);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
@@ -889,7 +889,7 @@ TEST_P(format_10_test_case, postings_seek) {
       auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
-    postings_seek(docs, irs::IndexFeatures::DOCS);
+    postings_seek(docs, irs::IndexFeatures::NONE);
     postings_seek(docs, irs::IndexFeatures::FREQ);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
@@ -906,7 +906,7 @@ TEST_P(format_10_test_case, postings_seek) {
       auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
-    postings_seek(docs, irs::IndexFeatures::DOCS);
+    postings_seek(docs, irs::IndexFeatures::NONE);
     postings_seek(docs, irs::IndexFeatures::FREQ);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
@@ -923,7 +923,7 @@ TEST_P(format_10_test_case, postings_seek) {
       auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i+=2;});
     }
-    postings_seek(docs, irs::IndexFeatures::DOCS);
+    postings_seek(docs, irs::IndexFeatures::NONE);
     postings_seek(docs, irs::IndexFeatures::FREQ);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);

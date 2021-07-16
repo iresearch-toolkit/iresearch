@@ -171,10 +171,10 @@ class pos_iterator final : public irs::position {
     freq_ = &freq;
 
     std::get<attribute_ptr<offset>>(attrs_) =
-      IndexFeatures::DOCS != (features & IndexFeatures::OFFS) ? &offs_ : nullptr;
+      IndexFeatures::NONE != (features & IndexFeatures::OFFS) ? &offs_ : nullptr;
 
     std::get<attribute_ptr<payload>>(attrs_) =
-      IndexFeatures::DOCS != (features & IndexFeatures::PAY) ? &pay_ : nullptr;
+      IndexFeatures::NONE != (features & IndexFeatures::PAY) ? &pay_ : nullptr;
   }
 
   // reset value
@@ -258,10 +258,10 @@ class doc_iterator final : public irs::doc_iterator {
     has_cookie_ = false;
 
     const auto features = field.meta().index_features;
-    if (IndexFeatures::DOCS != (features & IndexFeatures::FREQ)) {
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
       freq = &freq_;
 
-      if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         pos = &pos_;
         has_cookie_ = field.prox_random_access();
@@ -384,10 +384,10 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     ppos = nullptr;
 
     const auto features = field.meta().index_features;
-    if (IndexFeatures::DOCS != (features & IndexFeatures::FREQ)) {
+    if (IndexFeatures::NONE != (features & IndexFeatures::FREQ)) {
       pfreq = &freq_;
 
-      if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
+      if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
         pos_.reset(features, freq_);
         ppos = &pos_;
       }
@@ -796,19 +796,19 @@ void field_data::new_term(
   *int_writer_ = prox_start; // prox stream start
 
   p.doc = did;
-  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start + 1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -827,7 +827,7 @@ void field_data::add_term(
     doc_id_t did,
     const payload* pay,
     const offset* offs) {
-  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -860,13 +860,13 @@ void field_data::add_term(
     stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
     ++stats_.num_unique;
 
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -879,13 +879,13 @@ void field_data::add_term(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto& prox_stream_end = *int_writer_->parent().seek(p.int_start+1);
       byte_block_pool::sliced_inserter prox_out(*byte_writer_, prox_stream_end);
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -915,18 +915,18 @@ void field_data::new_term_random_access(
   *int_writer_ = 0;      // last start cookie
 
   p.doc = did;
-  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     p.doc_code = did;
   } else {
     p.doc_code = uint64_t(did) << 1;
     p.freq = 1;
 
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       byte_block_pool::sliced_greedy_inserter prox_out(*byte_writer_, prox_start, 1);
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -947,7 +947,7 @@ void field_data::add_term_random_access(
     doc_id_t did,
     const payload* pay,
     const offset* offs) {
-  if (IndexFeatures::DOCS == (meta_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE == (meta_.index_features & IndexFeatures::FREQ)) {
     if (p.doc != did) {
       assert(did > p.doc);
 
@@ -982,7 +982,7 @@ void field_data::add_term_random_access(
     stats_.max_term_freq = std::max(1U, stats_.max_term_freq);
     ++stats_.num_unique;
 
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       auto prox_stream_cookie = int_writer_->parent().seek(p.int_start+2);
 
       auto& end_cookie = *prox_stream_cookie; ++prox_stream_cookie;
@@ -997,7 +997,7 @@ void field_data::add_term_random_access(
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         p.offs = 0; // reset base offset
         write_offset(p, prox_out, offs_, *offs);
@@ -1010,14 +1010,14 @@ void field_data::add_term_random_access(
     doc_stream_end = doc_out.pool_offset();
   } else { // exists in current doc
     stats_.max_term_freq = std::max(++p.freq, stats_.max_term_freq);
-    if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::POS)) {
+    if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::POS)) {
       // update end cookie
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
         assert(offs);
         write_offset(p, prox_out, offs_, *offs);
       }
@@ -1051,7 +1051,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     return false;
   }
 
-  if (IndexFeatures::DOCS != (meta_.index_features & IndexFeatures::OFFS)) {
+  if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
     offs = get<offset>(stream);
 
     if (offs) {
@@ -1170,7 +1170,7 @@ field_data* fields_data::emplace(
 void fields_data::flush(field_writer& fw, flush_state& state) {
   REGISTER_TIMER_DETAILED();
 
-  IndexFeatures index_features{IndexFeatures::DOCS};
+  IndexFeatures index_features{IndexFeatures::NONE};
   feature_set_t features;
 
   // sort fields

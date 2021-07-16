@@ -106,13 +106,13 @@ struct aligned_scorer : public irs::sort {
     bool empty_scorer_;
   };
 
-  static ptr make(irs::IndexFeatures index_features = irs::IndexFeatures::DOCS,
+  static ptr make(irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
                   bool empty_scorer = true) {
     return std::make_unique<aligned_scorer>(index_features, empty_scorer);
   }
 
   explicit aligned_scorer(
-      irs::IndexFeatures index_features = irs::IndexFeatures::DOCS,
+      irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
       bool empty_scorer = true)
     : irs::sort(irs::type<aligned_scorer>::get()),
       index_features_(index_features),
@@ -290,7 +290,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(1, prepared.size());
     ASSERT_EQ(4, prepared.score_size());
@@ -337,7 +337,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -371,7 +371,7 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::DOCS, false); // returns valid scorers
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false); // returns valid scorers
     ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true);
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true);
 
@@ -384,7 +384,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -486,7 +486,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(3, prepared.score_size());
@@ -519,8 +519,8 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::DOCS, false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::DOCS, false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::NONE, false);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false);
     ord.add<dummy_scorer0>(false);
 
     // first - score offset
@@ -532,7 +532,7 @@ TEST(sort_tests, prepare_order) {
 
     auto prepared = ord.prepare();
     ASSERT_FALSE(prepared.empty());
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_EQ(2, prepared.size());
     ASSERT_EQ(4, prepared.score_size());
     ASSERT_EQ(4, prepared.stats_size());
@@ -571,13 +571,13 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::DOCS, false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::NONE, false);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::DOCS, false);
-    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true, irs::IndexFeatures::DOCS, false);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false);
+    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true, irs::IndexFeatures::NONE, false);
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::IndexFeatures::DOCS, prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -634,7 +634,7 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::DOCS, false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::NONE, false);
     ord.add<aligned_scorer<aligned_value<5, 4>, aligned_value<5, 4>>>(false);
     ord.add<dummy_scorer0>(false);
     ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::FREQ, false);
@@ -693,7 +693,7 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::DOCS);
+    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::NONE);
     ord.add<dummy_scorer0>(false);
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
     ord.add<dummy_scorer0>(false);
@@ -749,7 +749,7 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::DOCS);
+    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::NONE);
     ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
@@ -849,7 +849,7 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::DOCS);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
@@ -900,7 +900,7 @@ TEST(sort_tests, prepare_order) {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::DOCS);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
@@ -950,7 +950,7 @@ TEST(sort_tests, prepare_order) {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::DOCS);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 

@@ -89,7 +89,7 @@ class field_base : public ifield {
 
   std::vector<irs::type_info::type_id> features_;
   std::string name_;
-  irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
+  irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
 }; // field_base
 
 //////////////////////////////////////////////////////////////////////////////

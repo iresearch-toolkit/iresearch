@@ -367,11 +367,11 @@ class doc_iterator : public irs::doc_iterator {
    public:
     pos_iterator(const doc_iterator& owner, irs::IndexFeatures features)
       : owner_(owner) {
-      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::OFFS)) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::OFFS)) {
         poffs_ = &offs_;
       }
 
-      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::PAY)) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::PAY)) {
         ppay_ = &pay_;
       }
     }
@@ -445,11 +445,11 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
   attrs_[irs::type<irs::document>::id()] = &doc_;
   attrs_[irs::type<irs::score>::id()] = &score_;
 
-  if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::FREQ)) {
+  if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
     attrs_[irs::type<irs::frequency>::id()] = &freq_;
   }
 
-  if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::POS)) {
+  if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::POS)) {
     attrs_[irs::type<irs::position>::id()] = &pos_;
   }
 }
@@ -567,7 +567,7 @@ size_t term_reader::bit_union(
   while (auto* cookie = provider()) {
     term->seek(irs::bytes_ref::NIL, *cookie);
 
-    auto docs = term->postings(irs::IndexFeatures::DOCS);
+    auto docs = term->postings(irs::IndexFeatures::NONE);
 
     if (docs) {
       auto* doc = irs::get<irs::document>(*docs);

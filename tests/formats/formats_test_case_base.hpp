@@ -49,11 +49,11 @@ class format_test_case : public index_test_base {
   class position final : public irs::position {
    public:
     explicit position(irs::IndexFeatures features) {
-      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::OFFS)) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::OFFS)) {
         poffs_ = &offs_;
       }
 
-      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::PAY)) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::PAY)) {
         ppay_ = &pay_;
       }
     }
@@ -115,13 +115,13 @@ class format_test_case : public index_test_base {
     postings(
         const docs_t::const_iterator& begin,
         const docs_t::const_iterator& end,
-        irs::IndexFeatures features = irs::IndexFeatures::DOCS)
+        irs::IndexFeatures features = irs::IndexFeatures::NONE)
       : next_(begin), end_(end), pos_(features) {
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
-      if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::FREQ)) {
+      if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
         freq_.value = 10;
         attrs_[irs::type<irs::frequency>::id()] = &freq_;
-        if (irs::IndexFeatures::DOCS != (features & irs::IndexFeatures::POS)) {
+        if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::POS)) {
           attrs_[irs::type<irs::position>::id()] = &pos_;
         }
       }

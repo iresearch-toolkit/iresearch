@@ -38,7 +38,7 @@ field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
     index_features(rhs.index_features) {
-  rhs.index_features = IndexFeatures::DOCS;
+  rhs.index_features = IndexFeatures::NONE;
 }
 
 field_meta::field_meta(
@@ -53,7 +53,7 @@ field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
     index_features = rhs.index_features;
-    rhs.index_features = IndexFeatures::DOCS;
+    rhs.index_features = IndexFeatures::NONE;
   }
 
   return *this;

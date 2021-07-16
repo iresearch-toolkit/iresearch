@@ -415,7 +415,7 @@ class ngram_similarity_query : public filter::prepared {
       }
 
       // get postings
-      auto docs = term->postings(IndexFeatures::DOCS);
+      auto docs = term->postings(IndexFeatures::NONE);
       assert(docs);
 
       // add iterator

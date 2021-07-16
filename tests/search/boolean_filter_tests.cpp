@@ -92,7 +92,7 @@ struct basic_sort : irs::sort {
     }
 
     virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::DOCS;
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::score_function prepare_scorer(

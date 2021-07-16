@@ -236,7 +236,7 @@ class term_reader : public irs::term_reader {
     : data_(data),
       min_(data_.terms.begin()->value),
       max_(data_.terms.rbegin()->value) {
-    if (irs::IndexFeatures::DOCS != (meta().index_features & irs::IndexFeatures::FREQ)) {
+    if (irs::IndexFeatures::NONE != (meta().index_features & irs::IndexFeatures::FREQ)) {
       for (auto& term : data.terms) {
         for (auto& p : term.postings) {
           freq_.value += static_cast<uint32_t>(p.positions().size());
@@ -359,7 +359,7 @@ class field_writer : public irs::field_writer {
 
  private:
   field_reader readers_;
-  irs::IndexFeatures index_features_{irs::IndexFeatures::DOCS};
+  irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
 };
 
 class format : public irs::format {

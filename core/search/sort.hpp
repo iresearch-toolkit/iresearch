@@ -1119,7 +1119,7 @@ class IRESEARCH_API order final {
     prepared_order_t order_;
     size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
-    IndexFeatures index_features_{ IndexFeatures::DOCS };
+    IndexFeatures index_features_{ IndexFeatures::NONE };
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 

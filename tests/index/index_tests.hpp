@@ -363,12 +363,12 @@ class string_field : public tests::field_base {
  public:
   string_field(
     const std::string& name,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
   string_field(
     const std::string& name,
     const irs::string_ref& value,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);
@@ -390,12 +390,12 @@ class string_ref_field : public tests::field_base {
  public:
   string_ref_field(
     const std::string& name,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::DOCS,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
   string_ref_field(
     const std::string& name,
     const irs::string_ref& value,
-    irs::IndexFeatures index_features = irs::IndexFeatures::DOCS,
+    irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);

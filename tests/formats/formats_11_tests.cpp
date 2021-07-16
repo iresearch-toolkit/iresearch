@@ -314,7 +314,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(irs::IndexFeatures::DOCS); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -373,7 +373,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(irs::IndexFeatures::DOCS); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -446,7 +446,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(irs::IndexFeatures::DOCS); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -472,7 +472,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(irs::IndexFeatures::DOCS); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }

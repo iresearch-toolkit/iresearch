@@ -260,22 +260,22 @@ using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 struct WikiDoc : Doc {
   explicit WikiDoc(const analyzer_factory_f& analyzer_factory) {
     // id
-    id = std::make_shared<StringField>("id", irs::IndexFeatures::DOCS, irs::features_t{});
+    id = std::make_shared<StringField>("id", irs::IndexFeatures::NONE, irs::features_t{});
     elements.emplace_back(id);
     store.emplace_back(id);
 
     // title: string
-    title = std::make_shared<StringField>("title", irs::IndexFeatures::DOCS, irs::features_t{});
+    title = std::make_shared<StringField>("title", irs::IndexFeatures::NONE, irs::features_t{});
     elements.push_back(title);
 
     // date: string
-    date = std::make_shared<StringField>("date", irs::IndexFeatures::DOCS, irs::features_t{});
+    date = std::make_shared<StringField>("date", irs::IndexFeatures::NONE, irs::features_t{});
     elements.push_back(date);
     store.push_back(date);
 
     // date: uint64_t
     ndate = std::make_shared<NumericField>(
-      "timesecnum", irs::IndexFeatures::DOCS,
+      "timesecnum", irs::IndexFeatures::NONE,
       irs::features_t{ NUMERIC_FEATURES.data(), NUMERIC_FEATURES.size() });
     elements.push_back(ndate);
 

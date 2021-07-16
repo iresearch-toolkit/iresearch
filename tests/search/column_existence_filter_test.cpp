@@ -49,7 +49,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
         bool write(data_output&) const { return true; }
         irs::string_ref name() const { return name_; }
-        irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::DOCS; }
+        irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::NONE; }
         irs::features_t features() const { return {}; }
         irs::token_stream& get_tokens() const {
           // nothing to index

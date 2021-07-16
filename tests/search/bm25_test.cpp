@@ -94,14 +94,14 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
         if (data.is_string()) { // field
           doc.insert(
             std::make_shared<templates::string_field>(
-              name, data.str, irs::IndexFeatures::DOCS,
+              name, data.str, irs::IndexFeatures::NONE,
               extra_features),
             true, false);
         } else if (data.is_number()) { // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(
             std::make_shared<templates::string_field>(
-              name, value, irs::IndexFeatures::DOCS,
+              name, value, irs::IndexFeatures::NONE,
               extra_features),
             false, true);
         }

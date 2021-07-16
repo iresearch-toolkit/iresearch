@@ -423,7 +423,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   // prepare document stream
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
-  if (IndexFeatures::DOCS != (state.index_features & IndexFeatures::POS)) {
+  if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique<pos_buffer>();
@@ -432,7 +432,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     pos_->reset();
     prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
-    if (IndexFeatures::DOCS != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
+    if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_buffer>();
@@ -2702,7 +2702,7 @@ void postings_reader_base::prepare(
   //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
-  if (IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
+  if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
@@ -2718,7 +2718,7 @@ void postings_reader_base::prepare(
     // some forms of corruption.
     format_utils::read_checksum(*pos_in_);
 
-    if (IndexFeatures::DOCS != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
@@ -2757,7 +2757,7 @@ size_t postings_reader_base::decode(
     irs::term_meta& state) {
   auto& term_meta = static_cast<version10::term_meta&>(state);
 
-  const bool has_freq = IndexFeatures::DOCS != (features & IndexFeatures::FREQ);
+  const bool has_freq = IndexFeatures::NONE != (features & IndexFeatures::FREQ);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
@@ -2766,14 +2766,14 @@ size_t postings_reader_base::decode(
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (has_freq && term_meta.freq && IndexFeatures::DOCS != (features & IndexFeatures::POS)) {
+  if (has_freq && term_meta.freq && IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     term_meta.pos_start += vread<uint64_t>(p);
 
     term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
-    if (IndexFeatures::DOCS != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       term_meta.pay_start += vread<uint64_t>(p);
     }
   }
@@ -2941,7 +2941,7 @@ size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
   uint32_t docs[postings_writer_base::BLOCK_SIZE];
-  const bool has_freq = IndexFeatures::DOCS != (field_features & IndexFeatures::FREQ);
+  const bool has_freq = IndexFeatures::NONE != (field_features & IndexFeatures::FREQ);
 
   assert(doc_in_);
   auto doc_in = doc_in_->reopen(); // reopen thread-safe stream

@@ -73,7 +73,7 @@ struct IRESEARCH_API field_meta {
 
   feature_map_t features;
   std::string name;
-  IndexFeatures index_features{IndexFeatures::DOCS};
+  IndexFeatures index_features{IndexFeatures::NONE};
 }; // field_meta
 
 static_assert(std::is_move_constructible<field_meta>::value,

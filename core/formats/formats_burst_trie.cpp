@@ -509,19 +509,19 @@ void write_segment_features_legacy(
   feature_map.reserve(count);
 
   out.write_vlong(count);
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     write_string(out, irs::type<frequency>::name());
     feature_map.emplace(irs::type<frequency>::id(), feature_map.size());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::POS)) {
     write_string(out, irs::type<position>::name());
     feature_map.emplace(irs::type<position>::id(), feature_map.size());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::OFFS)) {
     write_string(out, irs::type<offset>::name());
     feature_map.emplace(irs::type<offset>::id(), feature_map.size());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::PAY)) {
     write_string(out, irs::type<payload>::name());
     feature_map.emplace(irs::type<payload>::id(), feature_map.size());
   }
@@ -590,16 +590,16 @@ void write_field_features_legacy(
 
   out.write_vlong(count);
 
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     write_feature(irs::type<frequency>::id());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::POS)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::POS)) {
     write_feature(irs::type<position>::id());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::OFFS)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::OFFS)) {
     write_feature(irs::type<offset>::id());
   }
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::PAY)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::PAY)) {
     write_feature(irs::type<payload>::id());
   }
   for (const auto& feature : features) {
@@ -644,7 +644,7 @@ void read_field_features_legacy(
 
   if (field_limits::valid(norm)) {
     const auto it = features.find(irs::type<irs::norm>::id());
-    if (IRS_UNLIKELY(it != features.end())) {
+    if (IRS_LIKELY(it != features.end())) {
       it->second = norm;
     } else {
       throw irs::index_error(irs::string_utils::to_string(
@@ -707,13 +707,9 @@ void write_field_features(
 }
 
 IndexFeatures read_index_features(data_input& in) {
-  constexpr IndexFeatures ALL_FEATURES =
-    IndexFeatures::FREQ | IndexFeatures::POS |
-    IndexFeatures::OFFS | IndexFeatures::PAY;
-
   const uint32_t index_features = in.read_int();
 
-  if (index_features > static_cast<uint32_t>(ALL_FEATURES)) {
+  if (index_features > static_cast<uint32_t>(IndexFeatures::ALL)) {
     throw irs::index_error{irs::string_utils::to_string(
       "invalid segment index features %u",
       index_features )};
@@ -1366,7 +1362,7 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists =
-    IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ);
+    IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
 
   auto* docs = irs::get<version10::documents>(*pw_);
   assert(docs);
@@ -1453,7 +1449,7 @@ void field_writer::end_field(
   index_out_->write_vlong(total_doc_freq);
   write_string<irs::bytes_ref>(*index_out_, min_term_.second);
   write_string<irs::bytes_ref>(*index_out_, max_term_);
-  if (IndexFeatures::DOCS != (index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
   }
 
@@ -1566,7 +1562,7 @@ void term_reader_base::prepare(
   max_term_ = read_string<bstring>(in);
   max_term_ref_ = max_term_;
 
-  if (IndexFeatures::DOCS != (field_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
     pfreq_ = &freq_;
   }
@@ -3255,7 +3251,7 @@ void field_reader::prepare(
   //-----------------------------------------------------------------
 
   feature_map_t feature_map;
-  IndexFeatures features{IndexFeatures::DOCS};
+  IndexFeatures features{IndexFeatures::NONE};
   reader_state state;
 
   state.dir = &dir;

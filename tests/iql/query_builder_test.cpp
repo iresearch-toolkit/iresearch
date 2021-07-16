@@ -69,7 +69,7 @@ namespace tests {
         return nullptr; // do not need to collect stats
       }
       virtual irs::IndexFeatures features() const override {
-        return irs::IndexFeatures::DOCS;
+        return irs::IndexFeatures::NONE;
       }
       virtual bool less(const irs::byte_type*, const irs::byte_type*) const override {
         throw std::bad_function_call();

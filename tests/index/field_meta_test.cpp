@@ -31,7 +31,7 @@ TEST(field_meta_test, ctor) {
   {
     const field_meta fm;
     ASSERT_EQ("", fm.name);
-    ASSERT_EQ(irs::IndexFeatures::DOCS, fm.index_features);
+    ASSERT_EQ(irs::IndexFeatures::NONE, fm.index_features);
     ASSERT_TRUE(fm.features.empty());
   }
 
@@ -66,7 +66,7 @@ TEST(field_meta_test, move) {
 
     ASSERT_TRUE(moved.name.empty());
     ASSERT_TRUE(moved.features.empty());
-    ASSERT_EQ(irs::IndexFeatures::DOCS, moved.index_features);
+    ASSERT_EQ(irs::IndexFeatures::NONE, moved.index_features);
   }
 
   // assign operator
@@ -79,7 +79,7 @@ TEST(field_meta_test, move) {
     field_meta fm;
     ASSERT_TRUE(fm.name.empty());
     ASSERT_TRUE(fm.features.empty());
-    ASSERT_EQ(irs::IndexFeatures::DOCS, fm.index_features);
+    ASSERT_EQ(irs::IndexFeatures::NONE, fm.index_features);
 
     fm = std::move(moved);
     ASSERT_EQ(name, fm.name);
@@ -88,7 +88,7 @@ TEST(field_meta_test, move) {
 
     ASSERT_TRUE(moved.name.empty());
     ASSERT_TRUE(moved.features.empty());
-    ASSERT_EQ(irs::IndexFeatures::DOCS, moved.index_features);
+    ASSERT_EQ(irs::IndexFeatures::NONE, moved.index_features);
   }
 }
 

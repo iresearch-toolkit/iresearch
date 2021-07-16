@@ -542,7 +542,7 @@ struct flush_state {
   const std::set<type_info::type_id>* features{}; // segment features
   string_ref name; // segment name
   size_t doc_count;
-  IndexFeatures index_features{IndexFeatures::DOCS}; // segment index features
+  IndexFeatures index_features{IndexFeatures::NONE}; // segment index features
 };
 
 struct reader_state {
