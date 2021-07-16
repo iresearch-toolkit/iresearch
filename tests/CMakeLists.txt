@@ -90,6 +90,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
+  ./utils/encryption_test.cpp
   ./utils/container_utils_tests.cpp
   ./utils/compression_test.cpp
   ./utils/crc_test.cpp
@@ -102,7 +103,6 @@ set(IReSearch_tests_sources
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
-  ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
@@ -113,6 +113,7 @@ set(IReSearch_tests_sources
   ./utils/bitset_tests.cpp
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
+  ./utils/misc_test.cpp
   ./utils/std_test.cpp
   ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp

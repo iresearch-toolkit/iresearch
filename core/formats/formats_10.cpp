@@ -40,8 +40,9 @@ extern "C" {
 
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
-#include "index/index_reader.hpp"
 #include "index/index_meta.hpp"
+#include "index/index_features.hpp"
+#include "index/index_reader.hpp"
 
 #include "search/cost.hpp"
 #include "search/score.hpp"
@@ -133,62 +134,6 @@ struct format_traits {
     bitpack::skip_block32(in, BLOCK_SIZE);
   }
 }; // format_traits
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         features
-// ----------------------------------------------------------------------------
-
-// compiled features supported by current format
-class features {
- public:
-  enum Mask : uint32_t {
-    DOCS = 0,
-    FREQ = 1,
-    POS = 2,
-    OFFS = 4,
-    PAY = 8,
-  };
-
-  features() = default;
-
-  explicit features(const irs::flags& in) noexcept {
-    irs::set_bit<0>(in.check<irs::frequency>(), mask_);
-    irs::set_bit<1>(in.check<irs::position>(), mask_);
-    irs::set_bit<2>(in.check<irs::offset>(), mask_);
-    irs::set_bit<3>(in.check<irs::payload>(), mask_);
-  }
-
-  features operator&(const irs::flags& in) const noexcept {
-    return features(*this) &= in;
-  }
-
-  features& operator&=(const irs::flags& in) noexcept {
-    irs::unset_bit<0>(!in.check<irs::frequency>(), mask_);
-    irs::unset_bit<1>(!in.check<irs::position>(), mask_);
-    irs::unset_bit<2>(!in.check<irs::offset>(), mask_);
-    irs::unset_bit<3>(!in.check<irs::payload>(), mask_);
-    return *this;
-  }
-
-  bool freq() const noexcept { return irs::check_bit<0>(mask_); }
-  bool position() const noexcept { return irs::check_bit<1>(mask_); }
-  bool offset() const noexcept { return irs::check_bit<2>(mask_); }
-  bool payload() const noexcept { return irs::check_bit<3>(mask_); }
-  operator Mask() const noexcept { return static_cast<Mask>(mask_); }
-
-  bool any(Mask mask) const noexcept {
-    return Mask(0) != (mask_ & mask);
-  }
-
-  bool all(Mask mask) const noexcept {
-    return mask != (mask_ & mask);
-  }
-
- private:
-  irs::byte_type mask_{};
-}; // features
-
-ENABLE_BITMASK_ENUM(features::Mask);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -310,8 +255,8 @@ class postings_writer_base : public irs::postings_writer {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
-  virtual void begin_field(const irs::flags& field) final {
-    features_ = ::features(field);
+  virtual void begin_field(IndexFeatures features) final {
+    features_ = index_features{features};
     docs_.value.clear();
     last_state_.clear();
   }
@@ -452,7 +397,7 @@ class postings_writer_base : public irs::postings_writer {
   skip_writer skip_;
   version10::term_meta last_state_; // last final term state
   version10::documents docs_;       // bit set of all processed documents
-  features features_;               // features supported by current field
+  index_features features_;         // features supported by current field
   index_output::ptr doc_out_;       // postings (doc + freq)
   index_output::ptr pos_out_;       // positions
   index_output::ptr pay_out_;       // payload (payl + offs)
@@ -478,9 +423,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   // prepare document stream
   prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
 
-  auto& features = *state.features;
-
-  if (features.check<position>()) {
+  if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique<pos_buffer>();
@@ -489,7 +432,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     pos_->reset();
     prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_buffer>();
@@ -530,7 +473,7 @@ void postings_writer_base::encode(
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
@@ -577,7 +520,7 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       assert(pay_ && pay_out_);
 
       if (features_.payload()) {
@@ -599,7 +542,7 @@ void postings_writer_base::begin_term() {
     assert(pos_ && pos_out_);
     pos_->start = pos_out_->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.any(features::OFFS | features::PAY)) {
+    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
       assert(pay_ && pay_out_);
       pay_->start = pay_out_->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
@@ -621,7 +564,7 @@ void postings_writer_base::end_doc() {
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if (features_.any(features::OFFS | features::PAY)) {
+      if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
         assert(pay_ && pay_out_);
         pay_->end = pay_out_->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
@@ -952,7 +895,7 @@ struct doc_state {
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
-  ::features features;
+  IndexFeatures features;
 }; // doc_state
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1368,7 +1311,7 @@ struct position_impl<IteratorTraits, false, false> {
     cookie_.file_pointer_ = state.term_state->pos_start;
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
-    features_ = state.features;
+    features_ = index_features{state.features};
     enc_buf_ = state.enc_buf;
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
@@ -1444,7 +1387,7 @@ struct position_impl<IteratorTraits, false, false> {
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
   cookie cookie_;
   index_input::ptr pos_in_;
-  features features_;
+  index_features features_;
 }; // position_impl
 
 template<typename IteratorTraits, bool Position = IteratorTraits::position()>
@@ -1605,12 +1548,12 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   void prepare(
-      const features& field,
+      IndexFeatures field,
       const term_meta& meta,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
-    features_ = field; // set field features
+    features_ = index_features{field}; // set field features
 
     assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
     assert(!IteratorTraits::position() || IteratorTraits::position() == features_.position());
@@ -1651,7 +1594,7 @@ class doc_iterator final : public irs::doc_iterator {
         state.pay_in = pay_in;
         state.term_state = &term_state_;
         state.freq = &std::get<frequency>(attrs_).value;
-        state.features = features_;
+        state.features = static_cast<IndexFeatures>(features_);
         state.enc_buf = enc_buf_;
 
         if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
@@ -1883,7 +1826,7 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t term_freq_{}; // total term frequency
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
-  features features_; // field features
+  index_features features_; // field features
   attributes attrs_;
 }; // doc_iterator
 
@@ -2725,11 +2668,11 @@ class postings_reader_base : public irs::postings_reader {
   virtual void prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) final;
+    IndexFeatures features) final;
 
   virtual size_t decode(
     const byte_type* in,
-    const flags& field,
+    IndexFeatures field_features,
     irs::term_meta& state) final;
 
  protected:
@@ -2741,7 +2684,7 @@ class postings_reader_base : public irs::postings_reader {
 void postings_reader_base::prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features) {
+    IndexFeatures features) {
   std::string buf;
 
   // prepare document input
@@ -2759,7 +2702,7 @@ void postings_reader_base::prepare(
   //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
-  if (features.check<irs::position>()) {
+  if (IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
@@ -2775,7 +2718,7 @@ void postings_reader_base::prepare(
     // some forms of corruption.
     format_utils::read_checksum(*pos_in_);
 
-    if (features.check<payload>() || features.check<offset>()) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
@@ -2810,11 +2753,11 @@ void postings_reader_base::prepare(
 
 size_t postings_reader_base::decode(
     const byte_type* in,
-    const flags& meta,
+    IndexFeatures features,
     irs::term_meta& state) {
   auto& term_meta = static_cast<version10::term_meta&>(state);
 
-  const bool has_freq = meta.check<frequency>();
+  const bool has_freq = IndexFeatures::NONE != (features & IndexFeatures::FREQ);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
@@ -2823,14 +2766,14 @@ size_t postings_reader_base::decode(
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (has_freq && term_meta.freq && meta.check<irs::position>()) {
+  if (has_freq && term_meta.freq && IndexFeatures::NONE != (features & IndexFeatures::POS)) {
     term_meta.pos_start += vread<uint64_t>(p);
 
     term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
-    if (meta.check<payload>() || meta.check<offset>()) {
+    if (IndexFeatures::NONE != (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       term_meta.pay_start += vread<uint64_t>(p);
     }
   }
@@ -2856,12 +2799,12 @@ class postings_reader final: public postings_reader_base {
   };
 
   virtual irs::doc_iterator::ptr iterator(
-    const flags& field,
-    const flags& features,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     const term_meta& meta) override;
 
   virtual size_t bit_union(
-    const flags& field,
+    IndexFeatures field,
     const term_provider_f& provider,
     size_t* set) override;
 
@@ -2869,7 +2812,7 @@ class postings_reader final: public postings_reader_base {
   struct doc_iterator_maker {
     template<typename IteratorTraits>
     static typename doc_iterator<IteratorTraits>::ptr make(
-        const ::features& features,
+        IndexFeatures features,
         const postings_reader& ctx,
         const term_meta& meta) {
       auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
@@ -2886,8 +2829,8 @@ class postings_reader final: public postings_reader_base {
 
   template<typename Maker, typename... Args>
   irs::doc_iterator::ptr iterator_impl(
-    const flags& field,
-    const flags& features,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     Args&&... args);
 }; // postings_reader
 
@@ -2900,32 +2843,37 @@ class postings_reader final: public postings_reader_base {
 template<typename FormatTraits, bool OneBasedPositionStorage>
 template<typename Maker, typename... Args>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
-    const flags& field,
-    const flags& req,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     Args&&... args) {
-  const auto features = ::features(field);
   // get enabled features as the intersection
   // between requested and available features
-  const auto enabled = features & req;
+  const auto enabled = field_features & required_features;
 
   switch (enabled) {
-    case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return Maker::template make<iterator_traits<true, true, true, true>>(features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS | IndexFeatures::PAY: {
+      return Maker::template make<iterator_traits<true, true, true, true>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS | features::OFFS: {
-      return Maker::template make<iterator_traits<true, true, true, false>>(features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
+      return Maker::template make<iterator_traits<true, true, true, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS | features::PAY: {
-      return Maker::template make<iterator_traits<true, true, false, true>>(features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
+      return Maker::template make<iterator_traits<true, true, false, true>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
-    case features::FREQ | features::POS: {
-      return Maker::template make<iterator_traits<true, true, false, false>>(features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::FREQ | IndexFeatures::POS: {
+      return Maker::template make<iterator_traits<true, true, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
-    case features::FREQ: {
-      return Maker::template make<iterator_traits<true, false, false, false>>(features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::FREQ: {
+      return Maker::template make<iterator_traits<true, false, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
     default: {
-      return Maker::template make<iterator_traits<false, false, false, false>>(features, *this, std::forward<Args>(args)...);
+      return Maker::template make<iterator_traits<false, false, false, false>>(
+        field_features, *this, std::forward<Args>(args)...);
     }
   }
 
@@ -2940,10 +2888,10 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
-    const flags& field,
-    const flags& req,
+    IndexFeatures field_features,
+    IndexFeatures required_features,
     const term_meta& meta) {
-  return iterator_impl<doc_iterator_maker>(field, req, meta);
+  return iterator_impl<doc_iterator_maker>(field_features, required_features, meta);
 }
 
 template<typename IteratorTraits, size_t N>
@@ -2987,13 +2935,13 @@ void bit_union(
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
 size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
-    const flags& field,
+    const IndexFeatures field_features,
     const term_provider_f& provider,
     size_t* set) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
   uint32_t docs[postings_writer_base::BLOCK_SIZE];
-  const bool has_freq = field.check<frequency>();
+  const bool has_freq = IndexFeatures::NONE != (field_features & IndexFeatures::FREQ);
 
   assert(doc_in_);
   auto doc_in = doc_in_->reopen(); // reopen thread-safe stream

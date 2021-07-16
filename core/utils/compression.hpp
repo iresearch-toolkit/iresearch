@@ -65,6 +65,14 @@ struct options {
   options(Hint hint = Hint::DEFAULT)
     : hint(hint) {
   }
+
+  bool operator==(const options& rhs) const noexcept {
+    return hint == rhs.hint;
+  }
+
+  bool operator!=(const options& rhs) const noexcept {
+    return !(*this == rhs);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

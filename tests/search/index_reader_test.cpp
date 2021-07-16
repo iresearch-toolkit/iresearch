@@ -585,7 +585,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_FALSE(docs->next());
@@ -599,7 +599,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(2, docs->value());
             ASSERT_FALSE(docs->next());
@@ -614,7 +614,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(3, docs->value());
             ASSERT_FALSE(docs->next());
@@ -629,7 +629,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
             ASSERT_FALSE(docs->next());
@@ -644,7 +644,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(5, docs->value());
             ASSERT_FALSE(docs->next());
@@ -689,7 +689,7 @@ TEST(segment_reader_test, open) {
 
           /* check docs */
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_TRUE(docs->next());
@@ -731,7 +731,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_TRUE(docs->next());
@@ -748,7 +748,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(2, docs->value());
             ASSERT_TRUE(docs->next());
@@ -784,7 +784,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_FALSE(docs->next());
@@ -799,7 +799,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
             ASSERT_FALSE(docs->next());

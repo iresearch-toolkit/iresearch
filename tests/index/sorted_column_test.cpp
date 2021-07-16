@@ -102,7 +102,6 @@ TEST(sorted_column_test, flush_empty) {
     state.dir = &dir;
     state.doc_count = 0;
     state.name = segment.name;
-    state.features = &irs::flags::empty_instance();
 
     ASSERT_FALSE(writer->commit(state)); // nothing to commit
   }
@@ -204,7 +203,6 @@ TEST(sorted_column_test, insert_duplicates) {
     state.dir = &dir;
     state.doc_count = IRESEARCH_COUNTOF(values);
     state.name = segment.name;
-    state.features = &irs::flags::empty_instance();
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -319,7 +317,6 @@ TEST(sorted_column_test, sort) {
     state.dir = &dir;
     state.doc_count = IRESEARCH_COUNTOF(values);
     state.name = segment.name;
-    state.features = &irs::flags::empty_instance();
 
     ASSERT_TRUE(writer->commit(state));
   }

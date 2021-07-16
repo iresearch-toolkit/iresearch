@@ -499,7 +499,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         ++active_;
 
         {
-          auto dec = make_finally([this](){ --active_; });
+          auto dec = make_finally([this]()noexcept{ --active_; });
 
           // if have more tasks but no idle thread and can grow pool
           try {

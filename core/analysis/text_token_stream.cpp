@@ -117,7 +117,7 @@ struct text_token_stream::state_t {
     return 0 == ngram.length;
   }
 
-  void set_ngram_finished() {
+  void set_ngram_finished() noexcept {
     ngram.length = 0;
   }
 };
@@ -146,7 +146,7 @@ struct cached_options_t: public irs::analysis::text_token_stream::options_t {
 
 static absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
 static std::mutex mutex;
-static auto icu_cleanup = irs::make_finally([]()->void{
+static auto icu_cleanup = irs::make_finally([]()noexcept->void{
   // this call will release/free all memory used by ICU (for all users)
   // very dangerous to call if ICU is still in use by some other code
   //u_cleanup();
@@ -1027,7 +1027,7 @@ bool text_token_stream::reset(const string_ref& data) {
     data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8_ref.size() > std::numeric_limits<int32_t>::max()) {
+  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
@@ -1122,7 +1122,7 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  auto set_ngram_finished = irs::make_finally([this, &finished]()->void {
+  auto set_ngram_finished = irs::make_finally([this, &finished]()noexcept->void {
     if (finished) {
       state_->set_ngram_finished();
     }

@@ -327,18 +327,6 @@ struct math_traits<T, sizeof(uint64_t)> {
   }
 }; // math_traits
 
-//// MacOS size_t is a different type from any of the above
-//#if defined(__APPLE__)
-//  template<>
-//  struct math_traits<size_t> {
-//    typedef size_t type;
-//
-//    static size_t clz(type value) { return clz64(value); }
-//    static size_t ctz(type value) { return ctz64(value); }
-//    static size_t pop(type value) { return pop64(value); }
-//  };
-//#endif
-
 template<
   typename Input, 
   typename Output, 

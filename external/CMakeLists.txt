@@ -145,9 +145,11 @@ if (NOT TARGET velocypack)
   endif()
 
   if (NOT ("${VPACK_ROOT}" STREQUAL ""))
-    add_subdirectory(${VPACK_ROOT}
-                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
-                    EXCLUDE_FROM_ALL)
+    expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
+
+    add_subdirectory(${VPACK_ROOT_EXP}
+                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                     EXCLUDE_FROM_ALL)
   else()
    message(FATAL_ERROR "VPACK_ROOT not set")
   endif()

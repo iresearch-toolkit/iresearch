@@ -301,7 +301,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // find the token stem
   // ...........................................................................
   if (stemmer_) {
-    if (term_buf_ref.size() > std::numeric_limits<int>::max()) {
+    if (term_buf_ref.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
         std::numeric_limits<int>::max(), data.c_str());
