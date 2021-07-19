@@ -28,6 +28,8 @@
 
 #include <cmdline.h>
 
+#include <frozen/unordered_set.h>
+
 #if defined(_MSC_VER)
 #pragma warning(default: 4267)
 #pragma warning(default: 4101)
@@ -40,7 +42,7 @@
 #pragma warning(disable: 4229)
 #endif
 
-  #include <unicode/uclean.h> // for u_cleanup
+#include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
 #pragma warning(default: 4229)
@@ -84,7 +86,15 @@ const std::string DEFAULT_ANALYZER_OPTIONS
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
 
-constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm>::id()  };
+
+// legacy formats supportd only variable length norms, i.e. "norm" feature
+constexpr frozen::unordered_set<irs::string_ref, 6> LEGACY_FORMATS{
+  "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3" };
+
+// norm features supported by old format
+constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{ irs::type<irs::norm>::id()  };
+// fixed length norm
+constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm2>::id()  };
 constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::id() };
 
 }
@@ -258,7 +268,7 @@ std::atomic<uint64_t> Doc::next_id(0);
 using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 
 struct WikiDoc : Doc {
-  explicit WikiDoc(const analyzer_factory_f& analyzer_factory) {
+  explicit WikiDoc(const analyzer_factory_f& analyzer_factory, const irs::features_t& text_features) {
     // id
     id = std::make_shared<StringField>("id", irs::IndexFeatures::NONE, irs::features_t{});
     elements.emplace_back(id);
@@ -282,7 +292,7 @@ struct WikiDoc : Doc {
     // body: text
     body = std::make_shared<TextField>(
       "body", TEXT_INDEX_FEATURES,
-      irs::features_t{ TEXT_FEATURES.data(), TEXT_FEATURES.size() },
+      text_features,
       analyzer_factory());
     elements.push_back(body);
   }
@@ -346,6 +356,12 @@ int put(
   if (!codec) {
     std::cerr << "Unable to find format of type '" << format << "'" << std::endl;
     return 1;
+  }
+
+  irs::features_t text_features{ TEXT_FEATURES.begin(), TEXT_FEATURES.size() };
+  if (LEGACY_FORMATS.count(codec->type().name()) > 0) {
+    // legacy formats don't support pluggable features
+    text_features = { LEGACY_TEXT_FEATURES.begin(), LEGACY_TEXT_FEATURES.size() };
   }
 
   analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options](){
@@ -513,9 +529,9 @@ int put(
 
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
-    thread_pool.run([&analyzer_factory, &batch_provider, &writer]()->void {
+    thread_pool.run([text_features, &analyzer_factory, &batch_provider, &writer](){
       std::vector<std::string> buf;
-      WikiDoc doc(analyzer_factory);
+      WikiDoc doc(analyzer_factory, text_features);
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
