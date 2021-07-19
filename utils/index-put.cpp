@@ -79,9 +79,8 @@ const std::string FORMAT = "format";
 const std::string ANALYZER_TYPE = "analyzer-type";
 const std::string ANALYZER_OPTIONS = "analyzer-options";
 
-const std::string DEFAULT_ANALYZER_TYPE = "text";
-const std::string DEFAULT_ANALYZER_OPTIONS
-  = R"({"locale":"en", "stopwords":["abc", "def", "ghi"] })";
+const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
+const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
 
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
