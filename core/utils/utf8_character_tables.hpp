@@ -32,7 +32,7 @@ namespace utf8_utils {
 constexpr frozen::set<uint32_t, 10> WHITE_SPACE_TABLE = {
   0x9, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2028, 0x202f, 0x205f, 0x3000 };
 
-const frozen::map<uint32_t, uint8_t, 3566> GENERAL_CATEGORY_TABLE = {
+const frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
   {0x00,0x4363},
   {0x20,0x5a73},
   {0x21,0x506f},
