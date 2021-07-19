@@ -17,46 +17,50 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Andrey Abramov
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "segmentation_token_stream.hpp"
 
+#include <boost/text/case_mapping.hpp>
+#include <boost/text/word_break.hpp>
+
 #include <frozen/unordered_map.h>
 
-#include "unicorn/segment.hpp"
-#include "unicorn/string.hpp"
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/vpack_utils.hpp"
 #include "utils/hash_utils.hpp"
-
+#include "utils/utf8_character_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace {
 
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME  {"case"};
-constexpr VPackStringRef BREAK_PARAM_NAME         {"break"};
+using namespace irs;
+
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
+constexpr VPackStringRef BREAK_PARAM_NAME       {"break"};
 
 const frozen::unordered_map<
-    irs::string_ref,
-    irs::analysis::segmentation_token_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
-  { "lower", irs::analysis::segmentation_token_stream::options_t::case_convert_t::LOWER },
-  { "none", irs::analysis::segmentation_token_stream::options_t::case_convert_t::NONE },
-  { "upper", irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER },
+    string_ref,
+    analysis::segmentation_token_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", analysis::segmentation_token_stream::options_t::case_convert_t::LOWER },
+  { "none", analysis::segmentation_token_stream::options_t::case_convert_t::NONE },
+  { "upper", analysis::segmentation_token_stream::options_t::case_convert_t::UPPER },
 };
 
 const frozen::unordered_map<
-    irs::string_ref,
-    irs::analysis::segmentation_token_stream::options_t::word_break_t, 3> BREAK_CONVERT_MAP = {
-  { "all", irs::analysis::segmentation_token_stream::options_t::word_break_t::ALL },
-  { "alpha", irs::analysis::segmentation_token_stream::options_t::word_break_t::ALPHA },
-  { "graphic", irs::analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC },
+    string_ref,
+    analysis::segmentation_token_stream::options_t::word_break_t, 3> BREAK_CONVERT_MAP = {
+  { "all", analysis::segmentation_token_stream::options_t::word_break_t::ALL },
+  { "alpha", analysis::segmentation_token_stream::options_t::word_break_t::ALPHA },
+  { "graphic", analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC },
 };
 
 bool parse_vpack_options(const VPackSlice slice,
-                         irs::analysis::segmentation_token_stream::options_t& options) {
+                         analysis::segmentation_token_stream::options_t& options) {
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
       "Slice for segmentation_token_stream is not an object");
@@ -65,7 +69,6 @@ bool parse_vpack_options(const VPackSlice slice,
   if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
     auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);
     if (!case_convert_slice.isString()) {
-      
       IR_FRMT_WARN(
         "Invalid type '%s' (string expected) for segmentation_token_stream from"
         " VPack arguments",
@@ -73,11 +76,10 @@ bool parse_vpack_options(const VPackSlice slice,
       return false;
     }
     auto case_convert = case_convert_slice.stringRef();
-    auto itr = CASE_CONVERT_MAP.find(irs::string_ref(case_convert.data(),
+    auto itr = CASE_CONVERT_MAP.find(string_ref(case_convert.data(),
                                      case_convert.size()));
 
     if (itr == CASE_CONVERT_MAP.end()) {
-      
       IR_FRMT_WARN(
         "Invalid value in '%s' for segmentation_token_stream from"
         " VPack arguments",
@@ -89,7 +91,6 @@ bool parse_vpack_options(const VPackSlice slice,
   if (slice.hasKey(BREAK_PARAM_NAME)) {
     auto break_type_slice = slice.get(BREAK_PARAM_NAME);
     if (!break_type_slice.isString()) {
-      
       IR_FRMT_WARN(
         "Invalid type '%s' (string expected) for segmentation_token_stream from "
         "VPack arguments",
@@ -97,11 +98,10 @@ bool parse_vpack_options(const VPackSlice slice,
       return false;
     }
     auto break_type = break_type_slice.stringRef();
-    auto itr = BREAK_CONVERT_MAP.find(irs::string_ref(break_type.data(),
+    auto itr = BREAK_CONVERT_MAP.find(string_ref(break_type.data(),
                                                       break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
-      
       IR_FRMT_WARN(
         "Invalid value in '%s' for segmentation_token_stream from "
         "VPack arguments",
@@ -114,7 +114,7 @@ bool parse_vpack_options(const VPackSlice slice,
 }
 
 bool make_vpack_config(
-    const irs::analysis::segmentation_token_stream::options_t& options,
+    const analysis::segmentation_token_stream::options_t& options,
     VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
@@ -158,13 +158,13 @@ bool make_vpack_config(
 ///        "case"(string enum): modify token case
 ///        "break"(string enum): word breaking method
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
+analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   try {
-    irs::analysis::segmentation_token_stream::options_t options;
+    analysis::segmentation_token_stream::options_t options;
     if (!parse_vpack_options(slice, options)) {
       return nullptr;
     }
-    return irs::memory::make_unique<irs::analysis::segmentation_token_stream>(
+    return memory::make_unique<analysis::segmentation_token_stream>(
         std::move(options));
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -177,13 +177,13 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+analysis::analyzer::ptr make_vpack(const string_ref& args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder) {
-  irs::analysis::segmentation_token_stream::options_t options;
+  analysis::segmentation_token_stream::options_t options;
   try {
     if (parse_vpack_options(slice, options)) {
       return make_vpack_config(options, vpack_builder);
@@ -201,7 +201,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
   return false;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(const string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -211,7 +211,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+analysis::analyzer::ptr make_json(const string_ref& args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing segmentation_token_stream");
@@ -230,7 +230,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(const string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing segmentation_token_stream");
@@ -251,14 +251,37 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
   return false;
 }
 
+using word_break_t = analysis::segmentation_token_stream::options_t::word_break_t;
+
+template<typename Iterator>
+bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
+  switch (wb) {
+    case word_break_t::ALL:
+      return true;
+    case word_break_t::GRAPHIC:
+      return std::find_if_not(begin, end, utf8_utils::char_is_white_space) != end;
+    case word_break_t::ALPHA:
+      return std::find_if(begin, end, utf8_utils::char_is_alphanumeric) != end;
+    default:
+      assert(false);
+      return false;
+  }
+}
+
 } // namespace
 
 namespace iresearch {
 namespace analysis {
 
+using namespace boost::text;
+
+using data_t = decltype(as_graphemes(string_ref{}.begin(), string_ref{}.end()));
+using iterator_t = decltype(next_word_break(data_t{}, data_t{}.begin()));
+
 struct segmentation_token_stream::state_t {
-  RS::Unicorn::WordIterator<char> begin;
-  RS::Unicorn::WordIterator<char> end;
+  data_t data;
+  iterator_t begin;
+  iterator_t end;
 };
 
 REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
@@ -281,56 +304,60 @@ segmentation_token_stream::segmentation_token_stream(
 }
 
 bool segmentation_token_stream::next() {
-  if (state_->begin != state_->end) {
-    assert(state_->begin->first.offset() <=
-           std::numeric_limits<uint32_t>::max());
-    assert(state_->begin->second.offset() <=
-           std::numeric_limits<uint32_t>::max());
-    std::get<1>(attrs_).start =
-        static_cast<uint32_t>(state_->begin->first.offset());
-    std::get<1>(attrs_).end =
-        static_cast<uint32_t>(state_->begin->second.offset());
+  while (true) {
+    const auto gr_begin = state_->begin;
+    const auto gr_end = next_word_break(state_->data, gr_begin);
+
+    const auto begin = gr_begin.base();
+    const auto end = gr_end.base();
+
+    const size_t length = static_cast<size_t>(std::distance(begin.base(), end.base()));
+
+    if (!length) {
+      // eof
+      return false;
+    }
+
+    assert(std::get<1>(attrs_).end + length <= std::numeric_limits<uint32_t>::max());
+
+    std::get<1>(attrs_).start = std::get<1>(attrs_).end;
+    std::get<1>(attrs_).end += static_cast<uint32_t>(length);
+    state_->begin = gr_end;
+
+    if (!accept_token(begin, end, options_.word_break)) {
+      continue;
+    }
+
     switch (options_.case_convert) {
       case options_t::case_convert_t::NONE:
-        std::get<2>(attrs_).value =
-            irs::ref_cast<irs::byte_type>(RS::Unicorn::u_view(*state_->begin++));
+        std::get<2>(attrs_).value = {
+          reinterpret_cast<const byte_type*>(begin.base()), length };
         break;
       case options_t::case_convert_t::LOWER:
-        term_buf_ =
-            RS::Unicorn::str_lowercase(RS::Unicorn::u_view(*state_->begin++));
+        term_buf_.clear();
+        to_lower(as_graphemes(begin, end),
+                 from_utf32_back_inserter(term_buf_));
         std::get<2>(attrs_).value =
-            irs::ref_cast<irs::byte_type>(irs::string_ref(term_buf_));
+           irs::ref_cast<byte_type>(term_buf_);
         break;
       case options_t::case_convert_t::UPPER:
-        term_buf_ =
-            RS::Unicorn::str_uppercase(RS::Unicorn::u_view(*state_->begin++));
+        term_buf_.clear();
+        to_upper(as_graphemes(begin, end),
+                 from_utf32_back_inserter(term_buf_));
         std::get<2>(attrs_).value =
-            irs::ref_cast<irs::byte_type>(irs::string_ref(term_buf_));
+          irs::ref_cast<byte_type>(term_buf_);
         break;
     }
+
     return true;
   }
-  return false;
 }
 
 bool segmentation_token_stream::reset(const string_ref& data) {
-  auto flags = RS::Unicorn::Segment::alpha;
-  switch (options_.word_break) {
-    case options_t::word_break_t::ALL:
-      flags = RS::Unicorn::Segment::unicode;
-      break;
-    case options_t::word_break_t::GRAPHIC:
-      flags = RS::Unicorn::Segment::graphic;
-      break;
-    case options_t::word_break_t::ALPHA:
-    [[fallthrough]];
-    default:
-      assert(options_.word_break == options_t::word_break_t::ALPHA);
-      break;
-  }
-  auto range =  RS::Unicorn::word_range(static_cast<std::string_view>(data), flags);
-  state_->begin = range.begin();
-  state_->end = range.end();
+  state_->data = as_graphemes(data.begin(), data.end());
+  state_->begin = state_->data.begin();
+  state_->end = state_->data.end();
+
   return true;
 }
 
