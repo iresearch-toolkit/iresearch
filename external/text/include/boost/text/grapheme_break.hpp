@@ -12,10 +12,11 @@
 #include <boost/assert.hpp>
 
 #include <array>
-#include <unordered_map>
 
 #include <stdint.h>
 
+#include <absl/container/flat_hash_map.h>
+#include <frozen/set.h>
 
 namespace boost { namespace text {
 
@@ -41,20 +42,36 @@ namespace boost { namespace text {
     namespace detail {
         struct grapheme_prop_interval
         {
+            constexpr grapheme_prop_interval(
+                uint32_t lo, uint32_t hi, grapheme_property prop) noexcept
+              : lo_{lo}, hi_{hi}, prop_{prop} {
+            }
+
+            grapheme_prop_interval(uint32_t lo, uint32_t hi) noexcept
+              : lo_{lo}, hi_{hi} {
+            }
+
             uint32_t lo_;
             uint32_t hi_;
             grapheme_property prop_;
         };
 
-        inline bool operator<(
+        constexpr bool operator<(
             grapheme_prop_interval lhs, grapheme_prop_interval rhs) noexcept
         {
             return lhs.hi_ <= rhs.lo_;
         }
 
-        BOOST_TEXT_DECL std::array<grapheme_prop_interval, 6> const &
-        make_grapheme_prop_intervals();
-        BOOST_TEXT_DECL std::unordered_map<uint32_t, grapheme_property>
+        static constexpr frozen::set<grapheme_prop_interval, 6> GRAPHEME_INTERVALS {
+          grapheme_prop_interval{0xd800, 0xe000, grapheme_property::Control},
+          grapheme_prop_interval{0x1f266, 0x1f300, grapheme_property::ExtPict},
+          grapheme_prop_interval{0x1f442, 0x1f4f8, grapheme_property::ExtPict},
+          grapheme_prop_interval{0x1fa6e, 0x1fffe, grapheme_property::ExtPict},
+          grapheme_prop_interval{0xe0100, 0xe01f0, grapheme_property::Extend},
+          grapheme_prop_interval{0xe01f0, 0xe1000, grapheme_property::Control},
+        };
+
+        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, grapheme_property>
         make_grapheme_prop_map();
     }
 
@@ -62,15 +79,14 @@ namespace boost { namespace text {
     inline grapheme_property grapheme_prop(uint32_t cp) noexcept
     {
         static auto const map = detail::make_grapheme_prop_map();
-        static auto const intervals = detail::make_grapheme_prop_intervals();
 
         auto const it = map.find(cp);
         if (it == map.end()) {
-            auto const it2 = std::lower_bound(
-                intervals.begin(),
-                intervals.end(),
-                detail::grapheme_prop_interval{cp, cp + 1});
-            if (it2 == intervals.end() || cp < it2->lo_ || it2->hi_ <= cp)
+            auto const it2 = frozen::bits::lower_bound<detail::GRAPHEME_INTERVALS.size()>(
+                detail::GRAPHEME_INTERVALS.begin(),
+                detail::grapheme_prop_interval{cp, cp + 1},
+                detail::GRAPHEME_INTERVALS.key_comp());
+            if (it2 == detail::GRAPHEME_INTERVALS.end() || cp < it2->lo_ || it2->hi_ <= cp)
                 return grapheme_property::Other;
             return it2->prop_;
         }

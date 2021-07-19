@@ -122,6 +122,7 @@ target_include_directories(
 ### frozen library
 ################################################################################
 
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 
 ################################################################################

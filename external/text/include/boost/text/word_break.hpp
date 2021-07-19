@@ -11,13 +11,13 @@
 #include <boost/text/lazy_segment_range.hpp>
 
 #include <array>
-#include <unordered_map>
 
 #include <stdint.h>
 
+#include <absl/container/flat_hash_map.h>
+#include <frozen/set.h>
 
 namespace boost { namespace text {
-
     /** The word properties defined by Unicode. */
     enum word_property {
         Other,
@@ -45,20 +45,55 @@ namespace boost { namespace text {
     namespace detail {
         struct word_prop_interval
         {
+            constexpr word_prop_interval(
+                uint32_t lo, uint32_t hi, word_property prop) noexcept
+              : lo_(lo), hi_(hi), prop_(prop) {
+            }
+
+            word_prop_interval(uint32_t lo, uint32_t hi) noexcept
+              : lo_(lo), hi_(hi) {
+            }
+
             uint32_t lo_;
             uint32_t hi_;
             word_property prop_;
         };
 
-        inline bool
+
+        constexpr bool
         operator<(word_prop_interval lhs, word_prop_interval rhs) noexcept
         {
             return lhs.hi_ <= rhs.lo_;
         }
 
-        BOOST_TEXT_DECL std::array<word_prop_interval, 24> const &
-        make_word_prop_intervals();
-        BOOST_TEXT_DECL std::unordered_map<uint32_t, word_property>
+        static constexpr frozen::set<word_prop_interval, 24> WORD_INTERVALS = {
+          word_prop_interval{0xf8, 0x1bb, word_property::ALetter},
+          word_prop_interval{0x1c4, 0x294, word_property::ALetter},
+          word_prop_interval{0x3f7, 0x482, word_property::ALetter},
+          word_prop_interval{0x48a, 0x530, word_property::ALetter},
+          word_prop_interval{0x1100, 0x1249, word_property::ALetter},
+          word_prop_interval{0x1401, 0x166d, word_property::ALetter},
+          word_prop_interval{0x1e00, 0x1f16, word_property::ALetter},
+          word_prop_interval{0xa016, 0xa48d, word_property::ALetter},
+          word_prop_interval{0xa500, 0xa60c, word_property::ALetter},
+          word_prop_interval{0xac00, 0xd7a4, word_property::ALetter},
+          word_prop_interval{0xfbd3, 0xfd3e, word_property::ALetter},
+          word_prop_interval{0xfe76, 0xfefd, word_property::ALetter},
+          word_prop_interval{0x10600, 0x10737, word_property::ALetter},
+          word_prop_interval{0x12000, 0x1239a, word_property::ALetter},
+          word_prop_interval{0x12480, 0x12544, word_property::ALetter},
+          word_prop_interval{0x13000, 0x1342f, word_property::ALetter},
+          word_prop_interval{0x14400, 0x14647, word_property::ALetter},
+          word_prop_interval{0x16800, 0x16a39, word_property::ALetter},
+          word_prop_interval{0x1d552, 0x1d6a6, word_property::ALetter},
+          word_prop_interval{0x1e800, 0x1e8c5, word_property::ALetter},
+          word_prop_interval{0x1f266, 0x1f300, word_property::ExtPict},
+          word_prop_interval{0x1f442, 0x1f4f8, word_property::ExtPict},
+          word_prop_interval{0x1fa6e, 0x1fffe, word_property::ExtPict},
+          word_prop_interval{0xe0100, 0xe01f0, word_property::Extend},
+        };
+
+        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, word_property>
         make_word_prop_map();
     }
 
@@ -66,19 +101,18 @@ namespace boost { namespace text {
     inline word_property word_prop(uint32_t cp) noexcept
     {
         static auto const map = detail::make_word_prop_map();
-        static auto const intervals = detail::make_word_prop_intervals();
 
         auto const it = map.find(cp);
         if (it == map.end()) {
-            auto const it2 = std::lower_bound(
-                intervals.begin(),
-                intervals.end(),
-                detail::word_prop_interval{cp, cp + 1});
-            if (it2 == intervals.end() || cp < it2->lo_ || it2->hi_ <= cp)
+            auto it2 = frozen::bits::lower_bound<detail::WORD_INTERVALS.size()>(
+              detail::WORD_INTERVALS.begin(),
+              detail::word_prop_interval{cp, cp + 1},
+              detail::WORD_INTERVALS.key_comp());
+            if (it2 == detail::WORD_INTERVALS.end() || cp < it2->lo_ || it2->hi_ <= cp)
                 return word_property::Other;
             return it2->prop_;
         }
-        return it->second;
+        return static_cast<word_property>(it->second);
     }
 
     /** A callable type that returns the next `word_property` for the given

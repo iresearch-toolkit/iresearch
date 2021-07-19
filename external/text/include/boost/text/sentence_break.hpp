@@ -13,7 +13,6 @@
 #include <boost/assert.hpp>
 
 #include <array>
-#include <unordered_map>
 
 #include <stdint.h>
 
@@ -42,20 +41,58 @@ namespace boost { namespace text {
     namespace detail {
         struct sentence_prop_interval
         {
+            constexpr sentence_prop_interval(
+                uint32_t lo, uint32_t hi, sentence_property prop) noexcept
+              : lo_{lo}, hi_{hi}, prop_{prop} {
+            }
+
+            sentence_prop_interval(uint32_t lo, uint32_t hi) noexcept
+              : lo_{lo}, hi_{hi} {
+            }
+
             uint32_t lo_;
             uint32_t hi_;
             sentence_property prop_;
         };
 
-        inline bool operator<(
+        constexpr bool operator<(
             sentence_prop_interval lhs, sentence_prop_interval rhs) noexcept
         {
             return lhs.hi_ <= rhs.lo_;
         }
 
-        BOOST_TEXT_DECL std::array<sentence_prop_interval, 28> const &
-        make_sentence_prop_intervals();
-        BOOST_TEXT_DECL std::unordered_map<uint32_t, sentence_property>
+        static frozen::set<sentence_prop_interval, 28> SENTENCE_INTERVALS {
+          sentence_prop_interval{0x1100, 0x1249, sentence_property::OLetter},
+          sentence_prop_interval{0x1401, 0x166d, sentence_property::OLetter},
+          sentence_prop_interval{0x3400, 0x4db6, sentence_property::OLetter},
+          sentence_prop_interval{0x4e00, 0x9ff0, sentence_property::OLetter},
+          sentence_prop_interval{0xa016, 0xa48d, sentence_property::OLetter},
+          sentence_prop_interval{0xa500, 0xa60c, sentence_property::OLetter},
+          sentence_prop_interval{0xac00, 0xd7a4, sentence_property::OLetter},
+          sentence_prop_interval{0xf900, 0xfa6e, sentence_property::OLetter},
+          sentence_prop_interval{0xfbd3, 0xfd3e, sentence_property::OLetter},
+          sentence_prop_interval{0xfe76, 0xfefd, sentence_property::OLetter},
+          sentence_prop_interval{0x10600, 0x10737, sentence_property::OLetter},
+          sentence_prop_interval{0x12000, 0x1239a, sentence_property::OLetter},
+          sentence_prop_interval{0x12480, 0x12544, sentence_property::OLetter},
+          sentence_prop_interval{0x13000, 0x1342f, sentence_property::OLetter},
+          sentence_prop_interval{0x14400, 0x14647, sentence_property::OLetter},
+          sentence_prop_interval{0x16800, 0x16a39, sentence_property::OLetter},
+          sentence_prop_interval{0x17000, 0x187f2, sentence_property::OLetter},
+          sentence_prop_interval{0x18800, 0x18af3, sentence_property::OLetter},
+          sentence_prop_interval{0x1b000, 0x1b11f, sentence_property::OLetter},
+          sentence_prop_interval{0x1b170, 0x1b2fc, sentence_property::OLetter},
+          sentence_prop_interval{0x1e800, 0x1e8c5, sentence_property::OLetter},
+          sentence_prop_interval{0x20000, 0x2a6d7, sentence_property::OLetter},
+          sentence_prop_interval{0x2a700, 0x2b735, sentence_property::OLetter},
+          sentence_prop_interval{0x2b740, 0x2b81e, sentence_property::OLetter},
+          sentence_prop_interval{0x2b820, 0x2cea2, sentence_property::OLetter},
+          sentence_prop_interval{0x2ceb0, 0x2ebe1, sentence_property::OLetter},
+          sentence_prop_interval{0x2f800, 0x2fa1e, sentence_property::OLetter},
+          sentence_prop_interval{0xe0100, 0xe01f0, sentence_property::Extend},
+        };
+
+        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, sentence_property>
         make_sentence_prop_map();
     }
 
@@ -63,15 +100,14 @@ namespace boost { namespace text {
     inline sentence_property sentence_prop(uint32_t cp) noexcept
     {
         static auto const map = detail::make_sentence_prop_map();
-        static auto const intervals = detail::make_sentence_prop_intervals();
 
         auto const it = map.find(cp);
         if (it == map.end()) {
-            auto const it2 = std::lower_bound(
-                intervals.begin(),
-                intervals.end(),
-                detail::sentence_prop_interval{cp, cp + 1});
-            if (it2 == intervals.end() || cp < it2->lo_ || it2->hi_ <= cp)
+            auto const it2 = frozen::bits::lower_bound<detail::SENTENCE_INTERVALS.size()>(
+                detail::SENTENCE_INTERVALS.begin(),
+                detail::sentence_prop_interval{cp, cp + 1},
+                detail::SENTENCE_INTERVALS.key_comp());
+            if (it2 == detail::SENTENCE_INTERVALS.end() || cp < it2->lo_ || it2->hi_ <= cp)
                 return sentence_property::Other;
             return it2->prop_;
         }

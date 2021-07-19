@@ -8,14 +8,12 @@
 
 #include <boost/text/config.hpp>
 #include <boost/text/detail/case_constants.hpp>
+#include <boost/text/detail/case_mapping_tables.hpp>
 
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
+#include <absl/container/flat_hash_set.h>
+#include <absl/container/flat_hash_map.h>
 
 namespace boost { namespace text { namespace detail {
-
     struct case_mapping_to
     {
         uint16_t first_;      // cp indices
@@ -59,32 +57,18 @@ namespace boost { namespace text { namespace detail {
         }
     };
 
-    using case_map_t = std::unordered_map<uint32_t, case_elements>;
+    using case_map_t = iresearch_absl::flat_hash_map<uint32_t, case_elements>;
 
     BOOST_TEXT_DECL case_map_t make_to_lower_map();
     BOOST_TEXT_DECL case_map_t make_to_title_map();
     BOOST_TEXT_DECL case_map_t make_to_upper_map();
-    BOOST_TEXT_DECL std::vector<uint32_t> make_soft_dotted_cps();
-    BOOST_TEXT_DECL std::vector<uint32_t> make_soft_dotted_cps();
-    BOOST_TEXT_DECL std::unordered_set<uint32_t> make_cased_cps();
-    BOOST_TEXT_DECL std::unordered_set<uint32_t> make_case_ignorable_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_cased_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_case_ignorable_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_uppered_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_lowered_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_titled_cps();
     BOOST_TEXT_DECL std::array<uint32_t, 3007> make_case_cps();
     BOOST_TEXT_DECL std::array<case_mapping_to, 2926> make_case_mapping_to();
-    BOOST_TEXT_DECL std::unordered_set<uint32_t> make_changes_when_uppered_cps();
-    BOOST_TEXT_DECL std::unordered_set<uint32_t> make_changes_when_lowered_cps();
-    BOOST_TEXT_DECL std::unordered_set<uint32_t> make_changes_when_titled_cps();
-
-    inline uint32_t const * case_cps_ptr()
-    {
-        static auto const retval = make_case_cps();
-        return retval.data();
-    }
-
-    inline case_mapping_to const * case_mapping_to_ptr()
-    {
-        static auto const retval = make_case_mapping_to();
-        return retval.data();
-    }
 
     inline case_map_t const & to_lower_map()
     {
@@ -104,45 +88,51 @@ namespace boost { namespace text { namespace detail {
         return retval;
     }
 
-    inline bool cased(uint32_t cp)
+    inline uint32_t const * case_cps_ptr()
     {
-        static std::unordered_set<uint32_t> const cps = make_cased_cps();
+        static auto const retval = make_case_cps();
+        return retval.data();
+    }
+
+    inline case_mapping_to const * case_mapping_to_ptr()
+    {
+        static auto const retval = make_case_mapping_to();
+        return retval.data();
+    }
+
+    inline bool cased(uint32_t cp) noexcept
+    {
+        static auto const cps = make_cased_cps();
         return 0 < cps.count(cp);
     }
 
-    inline bool case_ignorable(uint32_t cp)
+    inline bool case_ignorable(uint32_t cp) noexcept
     {
-        static std::unordered_set<uint32_t> const cps =
-            make_case_ignorable_cps();
+        static auto const cps = make_case_ignorable_cps();
         return 0 < cps.count(cp);
     }
 
-    inline bool soft_dotted(uint32_t cp)
+    constexpr bool soft_dotted(uint32_t cp) noexcept
     {
-        static std::vector<uint32_t> const cps = make_soft_dotted_cps();
-        auto const it = std::lower_bound(cps.begin(), cps.end(), cp);
-        return it != cps.end() && *it == cp;
+        return 0 < detail::SOFT_DOTTED_CPS.count(cp);
     }
 
-    inline bool changes_when_uppered(uint32_t cp)
+    inline bool changes_when_uppered(uint32_t cp) noexcept
     {
-        static std::unordered_set<uint32_t> const cps =
-            make_changes_when_uppered_cps();
-        return cps.find(cp) != cps.end();
+        static auto const cps = make_changes_when_uppered_cps();
+        return 0 < cps.count(cp);
     }
 
-    inline bool changes_when_lowered(uint32_t cp)
+    inline bool changes_when_lowered(uint32_t cp) noexcept
     {
-        static std::unordered_set<uint32_t> const cps =
-            make_changes_when_lowered_cps();
-        return cps.find(cp) != cps.end();
+        static auto const cps = make_changes_when_lowered_cps();
+        return 0 < cps.count(cp);
     }
 
-    inline bool changes_when_titled(uint32_t cp)
+    inline bool changes_when_titled(uint32_t cp) noexcept
     {
-        static std::unordered_set<uint32_t> const cps =
-            make_changes_when_titled_cps();
-        return cps.find(cp) != cps.end();
+        static auto const cps = make_changes_when_titled_cps();
+        return 0 < cps.count(cp);
     }
 
 }}}

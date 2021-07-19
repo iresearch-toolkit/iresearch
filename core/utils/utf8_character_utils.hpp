@@ -73,7 +73,9 @@ struct GeneralCategory {
 };
 
 constexpr uint16_t char_general_category(uint32_t c) noexcept {
-  const auto it = GENERAL_CATEGORY_TABLE.lower_bound1(c);
+  const auto it = frozen::bits::lower_bound<GENERAL_CATEGORY_TABLE.size()>(
+    GENERAL_CATEGORY_TABLE.begin(), c, GENERAL_CATEGORY_TABLE.key_comp());
+
   if (it != GENERAL_CATEGORY_TABLE.begin() && it->first != c) {
     return std::prev(it)->second;
   }

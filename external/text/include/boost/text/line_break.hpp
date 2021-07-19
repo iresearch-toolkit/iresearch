@@ -23,7 +23,6 @@
 #include <memory>
 #endif
 #include <numeric>
-#include <unordered_map>
 
 #include <stdint.h>
 
@@ -79,20 +78,79 @@ namespace boost { namespace text {
     namespace detail {
         struct line_prop_interval
         {
+            constexpr line_prop_interval(
+                uint32_t lo, uint32_t hi, line_property prop)
+              : lo_{lo}, hi_{hi}, prop_{prop} {
+            }
+
+            line_prop_interval(uint32_t lo, uint32_t hi)
+              : lo_{lo}, hi_{hi} {
+            }
+
             uint32_t lo_;
             uint32_t hi_;
             line_property prop_;
         };
 
-        inline bool
+        constexpr bool
         operator<(line_prop_interval lhs, line_prop_interval rhs) noexcept
         {
             return lhs.hi_ <= rhs.lo_;
         }
 
-        BOOST_TEXT_DECL std::array<line_prop_interval, 49> const &
-        make_line_prop_intervals();
-        BOOST_TEXT_DECL std::unordered_map<uint32_t, line_property>
+        static constexpr frozen::set<line_prop_interval, 49> LINE_INTERVALS {
+          line_prop_interval{0x1c4, 0x250, line_property::AL},
+          line_prop_interval{0x400, 0x482, line_property::AL},
+          line_prop_interval{0x1401, 0x166d, line_property::AL},
+          line_prop_interval{0x1e00, 0x1f00, line_property::AL},
+          line_prop_interval{0x2800, 0x2900, line_property::AL},
+          line_prop_interval{0x2a00, 0x2b00, line_property::AL},
+          line_prop_interval{0x2f00, 0x2fd6, line_property::ID},
+          line_prop_interval{0x3300, 0x3400, line_property::ID},
+          line_prop_interval{0x3400, 0x4db6, line_property::ID},
+          line_prop_interval{0x4e00, 0x9ff0, line_property::ID},
+          line_prop_interval{0xa016, 0xa48d, line_property::ID},
+          line_prop_interval{0xa500, 0xa60c, line_property::AL},
+          line_prop_interval{0xd800, 0xdb80, line_property::AL},
+          line_prop_interval{0xdc00, 0xe000, line_property::AL},
+          line_prop_interval{0xe000, 0xf900, line_property::AL},
+          line_prop_interval{0xf900, 0xfa6e, line_property::ID},
+          line_prop_interval{0xfbd3, 0xfd3e, line_property::AL},
+          line_prop_interval{0xfe76, 0xfefd, line_property::AL},
+          line_prop_interval{0x10600, 0x10737, line_property::AL},
+          line_prop_interval{0x12000, 0x1239a, line_property::AL},
+          line_prop_interval{0x12480, 0x12544, line_property::AL},
+          line_prop_interval{0x13000, 0x13258, line_property::AL},
+          line_prop_interval{0x1328a, 0x13379, line_property::AL},
+          line_prop_interval{0x1337c, 0x1342f, line_property::AL},
+          line_prop_interval{0x14400, 0x145ce, line_property::AL},
+          line_prop_interval{0x16800, 0x16a39, line_property::AL},
+          line_prop_interval{0x17000, 0x187f2, line_property::ID},
+          line_prop_interval{0x18800, 0x18af3, line_property::ID},
+          line_prop_interval{0x1b000, 0x1b100, line_property::ID},
+          line_prop_interval{0x1b170, 0x1b2fc, line_property::ID},
+          line_prop_interval{0x1d000, 0x1d0f6, line_property::AL},
+          line_prop_interval{0x1d552, 0x1d6a6, line_property::AL},
+          line_prop_interval{0x1d800, 0x1da00, line_property::AL},
+          line_prop_interval{0x1e800, 0x1e8c5, line_property::AL},
+          line_prop_interval{0x1f266, 0x1f300, line_property::ID},
+          line_prop_interval{0x1f300, 0x1f385, line_property::ID},
+          line_prop_interval{0x1fa70, 0x1fffe, line_property::ID},
+          line_prop_interval{0x20000, 0x2a6d7, line_property::ID},
+          line_prop_interval{0x2a700, 0x2b735, line_property::ID},
+          line_prop_interval{0x2b740, 0x2b81e, line_property::ID},
+          line_prop_interval{0x2b820, 0x2cea2, line_property::ID},
+          line_prop_interval{0x2ceb0, 0x2ebe1, line_property::ID},
+          line_prop_interval{0x2ebe1, 0x2f800, line_property::ID},
+          line_prop_interval{0x2f800, 0x2fa1e, line_property::ID},
+          line_prop_interval{0x2fa20, 0x2fffe, line_property::ID},
+          line_prop_interval{0x30000, 0x3fffe, line_property::ID},
+          line_prop_interval{0xe0100, 0xe01f0, line_property::CM},
+          line_prop_interval{0xf0000, 0xffffe, line_property::AL},
+          line_prop_interval{0x100000, 0x10fffe, line_property::AL},
+        };
+
+        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, line_property>
         make_line_prop_map();
     }
 
@@ -100,15 +158,14 @@ namespace boost { namespace text {
     inline line_property line_prop(uint32_t cp) noexcept
     {
         static auto const map = detail::make_line_prop_map();
-        static auto const intervals = detail::make_line_prop_intervals();
 
         auto const it = map.find(cp);
         if (it == map.end()) {
-            auto const it2 = std::lower_bound(
-                intervals.begin(),
-                intervals.end(),
-                detail::line_prop_interval{cp, cp + 1});
-            if (it2 == intervals.end() || cp < it2->lo_ || it2->hi_ <= cp)
+            auto const it2 = frozen::bits::lower_bound<detail::LINE_INTERVALS.size()>(
+                detail::LINE_INTERVALS.begin(),
+                detail::line_prop_interval{cp, cp + 1},
+                detail::LINE_INTERVALS.key_comp());
+            if (it2 == detail::LINE_INTERVALS.end() || cp < it2->lo_ || it2->hi_ <= cp)
                 return line_property::AL; // AL in place of XX, due to Rule LB1
             return it2->prop_;
         }

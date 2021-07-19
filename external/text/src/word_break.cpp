@@ -3289,14 +3289,16 @@ constexpr std::array<unsigned char, 58204> compressed = {{
 }};
 }
 
-std::unordered_map<uint32_t, word_property> make_word_prop_map()
+iresearch_absl::flat_hash_map<uint32_t, word_property> make_word_prop_map()
 {
-std::unordered_map<uint32_t, word_property> retval;
+iresearch_absl::flat_hash_map<uint32_t, word_property> retval;
+retval.reserve(14551);
+
 container::small_vector<unsigned char, 256> buf;
 std::copy(
     compressed.begin(),
     compressed.end(),
-    lzw_to_break_prop_iter<word_property>(retval, buf));
+    lzw_to_break_prop_iter<word_property, decltype(retval)>(retval, buf));
 BOOST_ASSERT(buf.empty());
 //BOOST_ASSERT(retval.size() == 14551);
 return retval;

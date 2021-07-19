@@ -13,7 +13,7 @@
 
 namespace boost { namespace text { namespace detail {
 
-    template<typename Enum>
+    template<typename Enum, typename Map = std::unordered_map<uint32_t, Enum>>
     struct lzw_to_break_prop_iter
     {
         using value_type = std::pair<uint32_t, Enum>;
@@ -24,7 +24,7 @@ namespace boost { namespace text { namespace detail {
         using buffer_t = container::small_vector<unsigned char, 256>;
 
         lzw_to_break_prop_iter(
-            std::unordered_map<uint32_t, Enum> & map, buffer_t & buf) :
+            Map & map, buffer_t & buf) :
             map_(&map),
             buf_(&buf)
         {}
@@ -47,7 +47,7 @@ namespace boost { namespace text { namespace detail {
         lzw_to_break_prop_iter & operator++(int) { return *this; }
 
     private:
-        std::unordered_map<uint32_t, Enum> * map_;
+        Map * map_;
         buffer_t * buf_;
     };
 

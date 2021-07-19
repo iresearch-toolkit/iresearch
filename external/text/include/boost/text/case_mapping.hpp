@@ -534,14 +534,14 @@ namespace boost { namespace text {
         enum class map_case_mode { lower, title, upper };
         enum class final_sigma_state_t { none, after, before_after };
 
-        template<typename CPIter, typename Sentinel, typename OutIter>
+        template<typename CPIter, typename Sentinel, typename OutIter, typename CaseMap>
         OutIter map_case(
             CPIter first,
             CPIter it,
             Sentinel last,
             OutIter out,
             case_language lang,
-            case_map_t const & map,
+            CaseMap const & map,
             map_case_mode mode) noexcept
         {
             uint16_t const lang_conditions = lang_to_condition(lang);

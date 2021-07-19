@@ -156,11 +156,6 @@ public:
       return {lower, lower + 1};
   }
 
-  // FIXME
-  constexpr const_iterator lower_bound1(Key const &key) const {
-    return bits::lower_bound<N>(items_.begin(), key, less_than_);
-  }
-
   constexpr const_iterator lower_bound(Key const &key) const {
     auto const where = bits::lower_bound<N>(items_.begin(), key, less_than_);
     if ((where != end()) && !less_than_(key, *where))

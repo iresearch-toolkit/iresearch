@@ -12,8 +12,6 @@
 
 #include <algorithm>
 #include <array>
-#include <unordered_map>
-
 
 namespace boost { namespace text { namespace detail {
 
@@ -7340,14 +7338,16 @@ constexpr std::array<unsigned char, 130672> compressed = {{
 }};
 }
 
-std::unordered_map<uint32_t, line_property> make_line_prop_map()
+iresearch_absl::flat_hash_map<uint32_t, line_property> make_line_prop_map()
 {
-std::unordered_map<uint32_t, line_property> retval;
+iresearch_absl::flat_hash_map<uint32_t, line_property> retval;
+retval.reserve(32668);
+
 container::small_vector<unsigned char, 256> buf;
 std::copy(
     compressed.begin(),
     compressed.end(),
-    lzw_to_break_prop_iter<line_property>(retval, buf));
+    lzw_to_break_prop_iter<line_property, decltype(retval)>(retval, buf));
 BOOST_ASSERT(buf.empty());
 BOOST_ASSERT(retval.size() == 32668);
 return retval;
