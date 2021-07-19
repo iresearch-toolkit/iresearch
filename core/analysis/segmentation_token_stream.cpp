@@ -24,7 +24,6 @@
 #include "segmentation_token_stream.hpp"
 
 #include <boost/text/case_mapping.hpp>
-#include <boost/text/text.hpp>
 #include <boost/text/word_break.hpp>
 
 #include <frozen/unordered_map.h>
@@ -41,8 +40,8 @@ namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME  {"case"};
-constexpr VPackStringRef BREAK_PARAM_NAME         {"break"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
+constexpr VPackStringRef BREAK_PARAM_NAME       {"break"};
 
 const frozen::unordered_map<
     string_ref,
@@ -276,10 +275,11 @@ namespace analysis {
 
 using namespace boost::text;
 
-using iterator_t = decltype(next_word_break(text{}, text{}.begin()));
+using data_t = decltype(as_graphemes(string_ref{}.begin(), string_ref{}.end()));
+using iterator_t = decltype(next_word_break(data_t{}, data_t{}.begin()));
 
 struct segmentation_token_stream::state_t {
-  text data;
+  data_t data;
   iterator_t begin;
   iterator_t end;
 };
@@ -354,7 +354,7 @@ bool segmentation_token_stream::next() {
 }
 
 bool segmentation_token_stream::reset(const string_ref& data) {
-  state_->data.assign(data.begin(), data.end()); // FIXME don't normalize
+  state_->data = as_graphemes(data.begin(), data.end());
   state_->begin = state_->data.begin();
   state_->end = state_->data.end();
 
