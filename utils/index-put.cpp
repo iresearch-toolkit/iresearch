@@ -83,7 +83,7 @@ const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
 const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
 
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
-  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
+  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
 
 // legacy formats supportd only variable length norms, i.e. "norm" feature
