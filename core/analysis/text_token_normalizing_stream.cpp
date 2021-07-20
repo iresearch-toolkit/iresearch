@@ -39,7 +39,7 @@
   #pragma warning(disable: 4512)
 #endif
 
-  #include <unicode/normalizer2.h> // for icu::Normalizer2
+#include <unicode/normalizer2.h> // for icu::Normalizer2
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4512)
@@ -51,7 +51,7 @@
   #pragma warning(disable: 4229)
 #endif
 
-  #include <unicode/uclean.h> // for u_cleanup
+#include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
