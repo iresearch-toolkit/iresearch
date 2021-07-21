@@ -40,6 +40,7 @@ struct collation_token_stream::state_t {
   icu::Locale icu_locale;
   const options_t options;
   std::unique_ptr<icu::Collator> collator;
+  std::string utf8_buf;
   byte_type term_buf[32768];
 
   state_t(const options_t& opts)
@@ -265,11 +266,11 @@ namespace analysis {
 
 /*static*/ void collation_token_stream::init() {
   REGISTER_ANALYZER_JSON(collation_token_stream, make_json,
-                         normalize_json_config); // match registration above
+                         normalize_json_config);
   REGISTER_ANALYZER_TEXT(collation_token_stream, make_text,
-                         normalize_text_config); // match registration above
+                         normalize_text_config);
   REGISTER_ANALYZER_VPACK(collation_token_stream, make_vpack,
-                         normalize_vpack_config); // match registration above
+                         normalize_vpack_config);
 }
 
 /*static*/ analyzer::ptr collation_token_stream::make(
@@ -309,16 +310,15 @@ bool collation_token_stream::reset(const string_ref& data) {
   // ...........................................................................
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
-  std::string data_utf8;
   string_ref data_utf8_ref;
   if (locale_utils::is_utf8(state_->options.locale)) {
     data_utf8_ref = data;
   } else {
     // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+    if (!locale_utils::append_internal(state_->utf8_buf, data, state_->options.locale)) {
       return false; // UTF8 conversion failure
     }
-    data_utf8_ref = data_utf8;
+    data_utf8_ref = state_->utf8_buf;
   }
 
   if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
@@ -330,12 +330,12 @@ bool collation_token_stream::reset(const string_ref& data) {
 
   const int32_t term_size = state_->collator->getSortKey(
     icu_token, state_->term_buf, sizeof state_->term_buf);
-
-  assert(term_size >= 0); // FIXME
+  assert(term_size >= 0);
 
   if (term_size > static_cast<int32_t>(sizeof state_->term_buf)) {
-    // buffer is not long enough
-    // FIXME log???
+    IR_FRMT_ERROR(
+      "Collated token is %d bytes length which exceeds maximum allowed length of %d bytes",
+      term_size, static_cast<int32_t>(sizeof state_->term_buf));
     return false;
   }
 

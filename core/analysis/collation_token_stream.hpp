@@ -54,7 +54,7 @@ class collation_token_stream final
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() noexcept override {
-    const auto eof = term_eof_;
+    const auto eof = !term_eof_;
     term_eof_ = true;
     return eof;
   }
