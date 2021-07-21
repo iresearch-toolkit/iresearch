@@ -33,28 +33,6 @@
 #include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
-namespace iresearch {
-namespace analysis {
-
-struct collation_token_stream::state_t {
-  icu::Locale icu_locale;
-  const options_t options;
-  std::unique_ptr<icu::Collator> collator;
-  std::string utf8_buf;
-  byte_type term_buf[32768];
-
-  state_t(const options_t& opts)
-    : icu_locale("C"), options(opts) {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
-  }
-};
-
-} // analysis
-} // iresearch
-
 namespace {
 
 using namespace irs;
@@ -244,6 +222,24 @@ REGISTER_ANALYZER_VPACK(analysis::collation_token_stream, make_vpack,
 
 namespace iresearch {
 namespace analysis {
+
+constexpr size_t MAX_TOKEN_SIZE = 1 << 15;
+
+struct collation_token_stream::state_t {
+  icu::Locale icu_locale;
+  const options_t options;
+  std::unique_ptr<icu::Collator> collator;
+  std::string utf8_buf;
+  byte_type term_buf[MAX_TOKEN_SIZE];
+
+  state_t(const options_t& opts)
+    : icu_locale("C"), options(opts) {
+    // NOTE: use of the default constructor for Locale() or
+    //       use of Locale::createFromName(nullptr)
+    //       causes a memory leak with Boost 1.58, as detected by valgrind
+    icu_locale.setToBogus(); // set to uninitialized
+  }
+};
 
 /*static*/ void collation_token_stream::init() {
   REGISTER_ANALYZER_JSON(collation_token_stream, make_json,
