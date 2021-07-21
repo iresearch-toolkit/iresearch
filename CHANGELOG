@@ -1,7 +1,10 @@
 master
 -------------------------
 
-* Add new feature "iresearch::norm2" representing fixed length norm value.
+* Add new analyzer `collation` capable of producing tokens honoring language
+  specific sorting.
+
+* Add new feature `iresearch::norm2` representing fixed length norm value.
 
 * Split field features into built-in set of index features and pluggable field features.
 

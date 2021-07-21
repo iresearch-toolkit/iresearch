@@ -29,6 +29,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
+
 #include "utils/hash_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "utils/utf8_utils.hpp"
