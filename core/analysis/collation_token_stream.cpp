@@ -59,26 +59,6 @@ namespace {
 
 using namespace irs;
 
-bool make_locale_from_name(const string_ref& name,
-                           std::locale& locale) {
-  try {
-    // true == convert to unicode, required for ICU
-    locale = locale_utils::locale(name, string_ref::NIL, true);
-
-    // check if ICU supports locale
-    auto icu_locale =
-        icu::Locale(std::string(locale_utils::language(locale)).c_str(),
-                    std::string(locale_utils::country(locale)).c_str());
-    return !icu_locale.isBogus();
-  } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught error while constructing locale from "
-      "name: %s",
-      name.c_str());
-  }
-  return false;
-}
-
 constexpr VPackStringRef LOCALE_PARAM_NAME{"locale"};
 
 bool parse_vpack_options(
@@ -87,19 +67,19 @@ bool parse_vpack_options(
 
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
-      "Slice for delimited_token_stream is not an object or string");
+      "Slice for collation_token_stream is not an object or string");
     return false;
   }
 
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(get_string<string_ref>(slice), options.locale);  // required
+        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
       {
         auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (!param_name_slice.isNone() && param_name_slice.isString()) {
-          if (!make_locale_from_name(get_string<string_ref>(param_name_slice), options.locale)) {
+        if (param_name_slice.isString()) {
+          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
             return false;
           }
 
@@ -124,7 +104,8 @@ bool parse_vpack_options(
   }
   return false;
 }
-    ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +167,7 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
     analysis::collation_token_stream::options_t options;
 
-    if (make_locale_from_name(args, options.locale)) {// interpret 'args' as a locale name
+    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
       return memory::make_shared<analysis::collation_token_stream>(
           std::move(options));
     }
@@ -203,7 +184,7 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
   std::locale locale;
-  if (make_locale_from_name(args, locale)){
+  if (locale_utils::icu_locale(args, locale)){
     definition = locale_utils::name(locale);
     return true;
   }
