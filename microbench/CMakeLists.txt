@@ -22,6 +22,7 @@ add_executable(${IResearchBenchmark_TARGET_NAME}
   ./top_term_collector_benchmark.cpp
   ./segmentation_stream_benchmark.cpp
   ./simd_utils_benchmark.cpp
+  ./lower_bound_benchmark.cpp
   ./microbench_main.cpp
 )
 
