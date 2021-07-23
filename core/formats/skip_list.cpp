@@ -151,6 +151,7 @@ void skip_writer::reset() noexcept {
 
 skip_reader::level::level(
     index_input::ptr&& stream,
+    size_t id,
     size_t step,
     uint64_t begin, 
     uint64_t end,
@@ -161,6 +162,7 @@ skip_reader::level::level(
     begin(begin), 
     end(end),
     child(child),
+    id(id),
     step(step),
     skipped(skipped),
     doc(doc) {
@@ -174,7 +176,9 @@ skip_reader::skip_reader(
 
 void skip_reader::read_skip(skip_reader::level& level) {
   // read_ should return NO_MORE_DOCS when stream is exhausted
-  const auto doc = read_(size_t(std::distance(&level, &levels_.back())), level);
+
+  assert(size_t(std::distance(&level, &levels_.back())) == level.id);
+  const auto doc = read_(level.id, level);
 
   // read pointer to child level if needed
   if (!doc_limits::eof(doc) && level.child != UNDEFINED) {
@@ -271,7 +275,11 @@ void skip_reader::reset() {
   std::for_each(levels_.begin(), levels_.end(), reset);
 }
 
-void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t step) {
+void skip_reader::load_level(
+    levels_t& levels,
+    index_input::ptr&& stream,
+    size_t id,
+    size_t step) {
   assert(stream);
 
   // read level length
@@ -284,7 +292,7 @@ void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t
   const auto begin = stream->file_pointer();
   const auto end = begin + length;
 
-  levels.emplace_back(std::move(stream), step, begin, end); // load level
+  levels.emplace_back(std::move(stream), id, step, begin, end); // load level
 }
 
 void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */) {
@@ -301,7 +309,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(levels, in->dup(), step);
+      load_level(levels, in->dup(), max_levels, step);
 
       // seek to the next level
       in->seek(levels.back().end);
@@ -310,7 +318,7 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
     }
 
     // load 0 level
-    load_level(levels, std::move(in), skip_0_);
+    load_level(levels, std::move(in), 0, skip_0_);
     levels.back().child = UNDEFINED;
 
     levels_ = std::move(levels);
