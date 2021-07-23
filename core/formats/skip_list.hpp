@@ -240,21 +240,19 @@ class IRESEARCH_API skip_reader: util::noncopyable {
 
   static_assert(std::is_nothrow_move_constructible_v<level>);
 
-  typedef std::vector<level> levels_t;
-
   static void load_level(
-    levels_t& levels, index_input::ptr&& stream,
+    std::vector<level>& levels,
+    index_input::ptr&& stream,
     size_t id, size_t step);
 
   static doc_id_t nop(size_t, data_input&) noexcept { return doc_limits::invalid(); }
   static void seek_skip(skip_reader::level& level, uint64_t ptr, size_t skipped);
 
   void read_skip(skip_reader::level& level);
-  levels_t::iterator find_level(doc_id_t);
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   read_f read_;
-  levels_t levels_; // input streams for skip-list levels
+  std::vector<level> levels_; // input streams for skip-list levels
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
   IRESEARCH_API_PRIVATE_VARIABLES_END

@@ -158,20 +158,21 @@ skip_reader::level::level(
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
     doc_id_t doc /*= doc_limits::invalid()*/) noexcept
-  : stream(std::move(stream)), // thread-safe input
-    begin(begin), 
-    end(end),
-    child(child),
-    id(id),
-    step(step),
-    skipped(skipped),
-    doc(doc) {
+  : stream{std::move(stream)}, // thread-safe input
+    begin{begin},
+    end{end},
+    child{child},
+    id{id},
+    step{step},
+    skipped{skipped},
+    doc{doc} {
 }
 
 skip_reader::skip_reader(
     size_t skip_0, 
     size_t skip_n) noexcept
-  : skip_0_(skip_0), skip_n_(skip_n) {
+  : skip_0_{skip_0},
+    skip_n_{skip_n} {
 }
 
 void skip_reader::read_skip(skip_reader::level& level) {
@@ -204,79 +205,61 @@ void skip_reader::read_skip(skip_reader::level& level) {
   }
 }
 
-// returns highest level with the value not less than target 
-skip_reader::levels_t::iterator skip_reader::find_level(doc_id_t target) {
-  assert(std::is_sorted(
-    levels_.rbegin(), levels_.rend(),
-    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }
-  ));
-
-  auto level = std::upper_bound(
-    levels_.rbegin(),
-    levels_.rend(),
-    target,
-    [](doc_id_t target, const skip_reader::level& level) {
-      return target < level.doc;
-  });
-
-  if (level == levels_.rend()) {
-    return levels_.begin(); // the highest
-  }
-
-  // check if we have already found the lowest possible level
-  if (level != levels_.rbegin()) {
-    --level;
-  }
-
-  // convert reverse iterator to forward
-  return irstd::to_forward(level);
-}
 
 size_t skip_reader::seek(doc_id_t target) {
   assert(!levels_.empty());
+  assert(std::is_sorted(
+    levels_.rbegin(), levels_.rend(),
+    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
 
-  auto level = find_level(target); // the highest level for the specified target
+  // returns highest level with the value not less than target
+  auto level = [](auto begin, auto end, doc_id_t target) noexcept {
+    for (; begin != end; ++begin) {
+      if (target >= begin->doc) {
+        return begin;
+      }
+    }
+
+    return std::prev(end);
+  }(std::begin(levels_), std::end(levels_), target);
+
   uint64_t child = 0; // pointer to child skip
   size_t skipped = 0; // number of skipped documents
 
-  std::for_each(
-    level, levels_.end(),
-    [this, &child, &skipped, &target](skip_reader::level& level) {
-      if (level.doc < target) {
-        // seek to child
-        seek_skip(level, child, skipped);
+  for ( ; level != std::end(levels_); ++level) {
+    if (level->doc < target) {
+      // seek to child
+      seek_skip(*level, child, skipped);
 
-        // seek to skip
-        child = level.child;
-        read_skip(level);
+      // seek to skip
+      child = level->child;
+      read_skip(*level);
 
-        for (; level.doc < target; read_skip(level)) {
-          child = level.child;
-        }
-
-        skipped = level.skipped - level.step;
+      for (; level->doc < target; read_skip(*level)) {
+        child = level->child;
       }
-  });
+
+      skipped = level->skipped - level->step;
+    }
+  }
 
   skipped = levels_.back().skipped;
   return skipped ? skipped - skip_0_ : 0;
 }
 
 void skip_reader::reset() {
-  static auto reset = [](skip_reader::level& level) {
+  for (auto& level : levels_) {
     level.stream->seek(level.begin);
     if (level.child != UNDEFINED) {
       level.child = 0;
     }
     level.skipped = 0;
     level.doc = doc_limits::invalid();
-  };
-
-  std::for_each(levels_.begin(), levels_.end(), reset);
+  }
 }
 
-void skip_reader::load_level(
-    levels_t& levels,
+/*static*/ void skip_reader::load_level(
+    std::vector<level>& levels,
     index_input::ptr&& stream,
     size_t id,
     size_t step) {
