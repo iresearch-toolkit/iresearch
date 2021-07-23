@@ -214,6 +214,11 @@ size_t skip_reader::seek(doc_id_t target) {
 
   // returns highest level with the value not less than target
   auto level = [](auto begin, auto end, doc_id_t target) noexcept {
+    // we prefer linear scan over binary search because
+    // it's more performant for a small number of elements (< 30)
+
+    // FIXME consider storing only doc + pointer to level
+    // data to make linear search more cache friendly
     for (; begin != end; ++begin) {
       if (target >= begin->doc) {
         return begin;
