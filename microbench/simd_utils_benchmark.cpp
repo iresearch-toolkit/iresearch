@@ -5,6 +5,7 @@ extern "C" {
 }
 
 #include "store/store_utils.hpp"
+#include "utils/misc.hpp"
 #include "utils/simd_utils.hpp"
 
 namespace {
