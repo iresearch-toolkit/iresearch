@@ -112,11 +112,58 @@ constexpr inline uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
   return div_ceil32(value, step)*step;
 }
 
-IRESEARCH_API uint32_t log2_64(uint64_t value);
+constexpr uint32_t log2_64(uint64_t value) noexcept {
+  if (0 == value) return 0;
 
-IRESEARCH_API uint32_t log2_32(uint32_t value);
+  constexpr uint32_t tab64[64] = {
+    63, 0, 58, 1, 59, 47, 53, 2,
+    60, 39, 48, 27, 54, 33, 42, 3,
+    61, 51, 37, 40, 49, 18, 28, 20,
+    55, 30, 34, 11, 43, 14, 22, 4,
+    62, 57, 46, 52, 38, 26, 32, 41,
+    50, 36, 17, 19, 29, 10, 13, 21,
+    56, 45, 25, 31, 35, 16, 9, 12,
+    44, 24, 15, 8, 23, 7, 6, 5
+  };
 
-IRESEARCH_API uint32_t log(uint64_t x, uint64_t base);
+  value |= value >> 1;
+  value |= value >> 2;
+  value |= value >> 4;
+  value |= value >> 8;
+  value |= value >> 16;
+  value |= value >> 32;
+
+  return tab64[(static_cast<uint64_t>((value - (value >> 1)) * 0x07EDD5E59A4E28C2)) >> 58];
+}
+
+constexpr uint32_t log2_32(uint32_t value) noexcept {
+  constexpr uint32_t tab32[32] = {
+    0, 9, 1, 10, 13, 21, 2, 29,
+    11, 14, 16, 18, 22, 25, 3, 30,
+    8, 12, 20, 28, 15, 17, 24, 7,
+    19, 27, 23, 6, 26, 5, 4, 31
+  };
+
+  value |= value >> 1;
+  value |= value >> 2;
+  value |= value >> 4;
+  value |= value >> 8;
+  value |= value >> 16;
+
+  return tab32[static_cast<uint32_t>(value * 0x07C4ACDD) >> 27];
+}
+
+constexpr uint32_t log(uint64_t x, uint64_t base) noexcept {
+  assert(base > 1);
+
+  uint32_t res = 0;
+  while (x >= base) {
+    ++res;
+    x /= base;
+  }
+
+  return res;
+}
 
 /* returns number of set bits in a set of words */
 template<typename T>
@@ -247,8 +294,7 @@ FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 }
 
 FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
-  static const uint32_t CEIL_EXTRA[] = { 1, 0 };
-  return log2_floor_32(v) + CEIL_EXTRA[is_power2(v)];
+  return log2_floor_32(v) + static_cast<uint32_t>(!is_power2(v));
 }
 
 FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
@@ -264,7 +310,7 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 }
 
 FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
-  return log2_floor_64(v) + uint64_t(!is_power2(v));
+  return log2_floor_64(v) + static_cast<uint64_t>(!is_power2(v));
 }
 
 template<typename T, size_t N = sizeof(T)>
