@@ -35,15 +35,13 @@ namespace {
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
 // step skip_0 for 0 level, step skip_n for other levels
-inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
-  size_t levels = 0;
-  if (skip_0 < count) {
-    levels = 1 + irs::math::log(count/skip_0, skip_n);
-  }
-  return levels;
+constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
+  return skip_0 < count
+    ? 1 + irs::math::log(count/skip_0, skip_n)
+    : 0;
 }
 
-const size_t UNDEFINED = std::numeric_limits<size_t>::max();
+constexpr size_t UNDEFINED = std::numeric_limits<size_t>::max();
 
 } // LOCAL
 
@@ -55,14 +53,14 @@ namespace iresearch {
 
 skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
+  assert(skip_0_);
 }
 
 void skip_writer::prepare(
     size_t max_levels, 
     size_t count,
     const skip_writer::write_f& write, /* = nop */
-    const memory_allocator& alloc /* = memory_allocator::global() */
-) {
+    const memory_allocator& alloc /* = memory_allocator::global() */) {
   max_levels = std::max(size_t(1), max_levels);
   max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels);

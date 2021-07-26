@@ -58,10 +58,7 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_writer(
-    size_t skip_0,
-    size_t skip_n
-  ) noexcept;
+  skip_writer(size_t skip_0, size_t skip_n) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
