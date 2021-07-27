@@ -35,12 +35,10 @@ namespace {
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
 // step skip_0 for 0 level, step skip_n for other levels
-inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
-  size_t levels = 0;
-  if (skip_0 < count) {
-    levels = 1 + irs::math::log(count/skip_0, skip_n);
-  }
-  return levels;
+constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
+  return skip_0 < count
+    ? 1 + irs::math::log(count/skip_0, skip_n)
+    : 0;
 }
 
 const size_t UNDEFINED = std::numeric_limits<size_t>::max();
@@ -54,7 +52,7 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
-  : skip_0_(skip_0), skip_n_(skip_n) {
+  : skip_0_{skip_0}, skip_n_{skip_n} {
 }
 
 void skip_writer::prepare(
@@ -93,9 +91,9 @@ void skip_writer::skip(size_t count) {
   // write 0 level
   {
     auto& stream = levels_.front().stream;
+    child = stream.file_pointer();
     write_(0, stream);
     count /= skip_0_;
-    child = stream.file_pointer();
   }
 
   // write levels from 1 to n
@@ -194,6 +192,10 @@ void skip_reader::read_skip(skip_reader::level& level) {
   if (absolute_ptr > stream.file_pointer()) {
     stream.seek(absolute_ptr);
     level.skipped = skipped;
+    if (level.id == 0) {
+      // because we store pointer before actual skip data
+      level.skipped -= level.step;
+    }
     if (level.child != UNDEFINED) {
       level.child = stream.read_vlong();
     }

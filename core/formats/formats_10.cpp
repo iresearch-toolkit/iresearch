@@ -504,19 +504,24 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
   const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
   const uint64_t doc_ptr = doc_out_->file_pointer();
 
-  out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
+  out.write_int(doc_delta);
 
   doc_.skip_doc[level] = doc_.block_last;
   doc_.skip_ptr[level] = doc_ptr;
+
+  if (level) {
+    return;
+  }
+
+  out.write_long(doc_ptr);
 
   if (features_.position()) {
     assert(pos_);
 
     const uint64_t pos_ptr = pos_out_->file_pointer();
 
-    out.write_vint(pos_->block_last);
-    out.write_vlong(pos_ptr - pos_->skip_ptr[level]);
+    out.write_int(pos_->block_last);
+    out.write_long(pos_ptr);
 
     pos_->skip_ptr[level] = pos_ptr;
 
@@ -524,12 +529,12 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
       assert(pay_ && pay_out_);
 
       if (features_.payload()) {
-        out.write_vint(static_cast<uint32_t>(pay_->block_last));
+        out.write_int(static_cast<uint32_t>(pay_->block_last));
       }
 
       const uint64_t pay_ptr = pay_out_->file_pointer();
 
-      out.write_vlong(pay_ptr - pay_->skip_ptr[level]);
+      out.write_long(pay_ptr);
       pay_->skip_ptr[level] = pay_ptr;
     }
   }
@@ -882,10 +887,6 @@ struct skip_state {
   doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
 }; // skip_state
-
-struct skip_context : skip_state {
-  size_t level{}; // skip level
-}; // skip_context
 
 struct doc_state {
   const index_input* pos_in;
@@ -1540,8 +1541,7 @@ class doc_iterator final : public irs::doc_iterator {
   using ptr = memory::managed_ptr<doc_iterator>;
 
   doc_iterator() noexcept
-    : skip_levels_(1),
-      skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
+    : skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -1738,28 +1738,6 @@ class doc_iterator final : public irs::doc_iterator {
     return begin_ - docs_;
   }
 
-  doc_id_t read_skip(skip_state& state, data_input& in) {
-    state.doc = in.read_vint();
-    state.doc_ptr += in.read_vlong();
-
-    if (features_.position()) {
-      state.pend_pos = in.read_vint();
-      state.pos_ptr += in.read_vlong();
-
-      const bool has_pay = features_.payload();
-
-      if (has_pay || features_.offset()) {
-        if (has_pay) {
-          state.pay_pos = in.read_vint();
-        }
-
-        state.pay_ptr += in.read_vlong();
-      }
-    }
-
-    return state.doc;
-  }
-
   void read_end_block(size_t size) {
     if (features_.freq()) {
       for (size_t i = 0; i < size; ++i) {
@@ -1816,9 +1794,10 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t enc_buf_[postings_writer_base::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer_base::BLOCK_SIZE]{ }; // doc values
   uint32_t doc_freqs_[postings_writer_base::BLOCK_SIZE]; // document frequencies
-  std::vector<skip_state> skip_levels_;
+  doc_id_t skip_levels_[2]{};
   skip_reader skip_;
-  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
+  skip_state skip_ctx_; // pointer to used skip context, will be used by skip reader
+  skip_state next_skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
@@ -1833,10 +1812,8 @@ class doc_iterator final : public irs::doc_iterator {
 template<typename IteratorTraits>
 void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
-    skip_context last; // where block starts
-    skip_ctx_ = &last;
-
+  if (skip_levels_[1] < target &&
+      term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     // init skip writer in lazy fashion
     if (!skip_) {
       auto skip_in = doc_in_->dup();
@@ -1852,49 +1829,54 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
       skip_.prepare(
         std::move(skip_in),
         [this](size_t level, data_input& in) {
-          skip_state& last = *skip_ctx_;
-          auto& last_level = skip_ctx_->level;
-          auto& next = skip_levels_[level];
+          const bool is_leaf = (0 == level);
+          auto& next = skip_levels_[size_t(is_leaf)];
 
-          if (last_level > level) {
-            // move to the more granular level
-            next = last;
-          } else {
-            // store previous step on the same level
-            last = next;
+          if (is_leaf) {
+            skip_ctx_ = next_skip_ctx_;
+            skip_ctx_.doc = next;
           }
-
-          last_level = level;
 
           if (in.eof()) {
             // stream exhausted
-            return (next.doc = doc_limits::eof());
+            next = doc_limits::eof();
+            return doc_limits::eof();
           }
 
-          return read_skip(next, in);
+          next = in.read_int();
+
+          if (is_leaf) {
+            next_skip_ctx_.doc_ptr = in.read_long();
+
+            if (features_.position()) {
+              next_skip_ctx_.pend_pos = in.read_int();
+              next_skip_ctx_.pos_ptr = in.read_long();
+
+              const bool has_pay = features_.payload();
+
+              if (has_pay || features_.offset()) {
+                if (has_pay) {
+                  next_skip_ctx_.pay_pos = in.read_int();
+                }
+
+                next_skip_ctx_.pay_ptr = in.read_long();
+              }
+            }
+          }
+
+          return next;
       });
-
-      // initialize skip levels
-      const auto num_levels = skip_.num_levels();
-      if (num_levels) {
-        skip_levels_.resize(num_levels);
-
-        // since we store pointer deltas, add postings offset
-        auto& top = skip_levels_.back();
-        top.doc_ptr = term_state_.doc_start;
-        top.pos_ptr = term_state_.pos_start;
-        top.pay_ptr = term_state_.pay_start;
-      }
     }
 
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
-      doc_in_->seek(last.doc_ptr);
-      std::get<document>(attrs_).value = last.doc;
+      assert(skip_ctx_.doc_ptr);
+      doc_in_->seek(skip_ctx_.doc_ptr);
+      std::get<document>(attrs_).value = skip_ctx_.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
-        std::get<position<IteratorTraits>>(attrs_).prepare(last); // notify positions
+        std::get<position<IteratorTraits>>(attrs_).prepare(skip_ctx_); // notify positions
       }
     }
   }
