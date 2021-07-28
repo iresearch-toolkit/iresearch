@@ -13917,8 +13917,7 @@ const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4
 #endif
 }
 
-class index_test_case_14 : public index_test_case { };
-
+class index_test_case_14 : public tests::index_test_base { };
 
 TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   struct feature1 { };
@@ -14151,10 +14150,26 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
 
 INSTANTIATE_TEST_SUITE_P(
   index_test_14,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      tests::mmap_directory,
+      tests::memory_directory,
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    index_test_case_14_values
+  ),
+  tests::to_string
+);
+
+INSTANTIATE_TEST_SUITE_P(
+  index_test_14,
   index_test_case_14,
   ::testing::Combine(
     ::testing::Values(
       tests::mmap_directory,
+      tests::fs_directory,
       tests::memory_directory,
       &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
