@@ -2808,11 +2808,13 @@ class postings_reader final: public postings_reader_base {
  public:
   template<bool Freq, bool Pos, bool Offset, bool Payload>
   struct iterator_traits : FormatTraits {
-    static constexpr bool frequency() { return Freq; }
-    static constexpr bool position() { return Freq && Pos; }
-    static constexpr bool offset() { return position() && Offset; }
-    static constexpr bool payload() { return position() && Payload; }
-    static constexpr bool one_based_position_storage() { return OneBasedPositionStorage; }
+    static constexpr bool frequency() noexcept { return Freq; }
+    static constexpr bool position() noexcept { return Freq && Pos; }
+    static constexpr bool offset() noexcept { return position() && Offset; }
+    static constexpr bool payload() noexcept { return position() && Payload; }
+    static constexpr bool one_based_position_storage() noexcept {
+      return OneBasedPositionStorage;
+    }
   };
 
   virtual irs::doc_iterator::ptr iterator(
@@ -2826,26 +2828,23 @@ class postings_reader final: public postings_reader_base {
     size_t* set) override;
 
  private:
-  struct doc_iterator_maker {
-    template<typename IteratorTraits, typename FieldTraits>
-    static typename doc_iterator<IteratorTraits, FieldTraits>::ptr make(
-        const postings_reader& ctx,
-        const term_meta& meta) {
-      auto it = memory::make_managed<doc_iterator<IteratorTraits, FieldTraits>>();
+  template<typename IteratorTraits, typename FieldTraits>
+  static irs::doc_iterator::ptr iterator_impl(
+      const postings_reader& ctx,
+      const term_meta& meta) {
+    auto it = memory::make_managed<doc_iterator<IteratorTraits, FieldTraits>>();
 
-      it->prepare(
-        meta,
-        ctx.doc_in_.get(),
-        ctx.pos_in_.get(),
-        ctx.pay_in_.get());
+    it->prepare(
+      meta,
+      ctx.doc_in_.get(),
+      ctx.pos_in_.get(),
+      ctx.pay_in_.get());
 
-      return it;
-    }
-  };
+    return it;
+  }
 
-  template<typename Maker, typename FieldTraits, typename... Args>
-  irs::doc_iterator::ptr iterator_impl(
-    IndexFeatures enabled, Args&&... args);
+  template<typename FieldTraits, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(IndexFeatures enabled, Args&&... args);
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -2855,32 +2854,38 @@ class postings_reader final: public postings_reader_base {
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-template<typename Maker, typename FieldTraits, typename... Args>
+template<typename FieldTraits, typename... Args>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
     IndexFeatures enabled, Args&&... args) {
   switch (enabled) {
     case IndexFeatures::ALL : {
-      return Maker::template make<iterator_traits<true, true, true, true>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
-      return Maker::template make<iterator_traits<true, true, true, false>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
-      return Maker::template make<iterator_traits<true, true, false, true>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
-      return Maker::template make<iterator_traits<true, true, false, false>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ: {
-      return Maker::template make<iterator_traits<true, false, false, false>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     default: {
-      return Maker::template make<iterator_traits<false, false, false, false>, FieldTraits>(
+      using iterator_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
   }
@@ -2901,27 +2906,27 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
   switch (field_features) {
     case IndexFeatures::ALL : {
       using field_traits_t = iterator_traits<true, true, true, true>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
       using field_traits_t = iterator_traits<true, true, true, false>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
       using field_traits_t = iterator_traits<true, true, false, true>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
       using field_traits_t = iterator_traits<true, true, false, false>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ: {
       using field_traits_t = iterator_traits<true, false, false, false>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     default: {
       using field_traits_t = iterator_traits<false, false, false, false>;
-      return iterator_impl<doc_iterator_maker, field_traits_t>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
   }
 }
