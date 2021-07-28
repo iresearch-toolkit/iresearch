@@ -138,7 +138,7 @@ void skip_writer::flush(index_output& out) {
 }
 
 void skip_writer::reset() noexcept {
-  for(auto& level : levels_) {
+  for (auto& level : levels_) {
     level.stream.reset();
   }
 }
