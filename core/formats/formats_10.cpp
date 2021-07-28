@@ -188,6 +188,48 @@ inline void prepare_input(
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @enum TermsFormat
+//////////////////////////////////////////////////////////////////////////////
+enum class TermsFormat : int32_t {
+  MIN = 0,
+  MAX = MIN
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @enum PostingsFormat
+//////////////////////////////////////////////////////////////////////////////
+enum class PostingsFormat : int32_t {
+  MIN = 0,
+
+  // positions are stored one based (if first osition is 1 first offset is 0)
+  // This forces reader to adjust first read position of every document additionally to
+  // stored increment. Or incorrect positions will be read - 1 2 3 will be stored
+  // (offsets 0 1 1) but 0 1 2 will be read. At least this will lead to incorrect results in
+  // by_same_positions filter if searching for position 1
+  POSITIONS_ONEBASED = MIN,
+
+  // positions are stored one based, sse used
+  POSITIONS_ONEBASED_SSE,
+
+  // positions are stored zero based
+  // if first position is 1 first offset is also 1
+  // so no need to adjust position while reading first
+  // position for document, always just increment from previous pos
+  POSITIONS_ZEROBASED,
+
+  // positions are stored zero based, sse used
+  POSITIONS_ZEROBASED_SSE,
+
+  // store competitive scores in blocks
+  WAND,
+
+  // store block max scores, sse used
+  WAND_SSE,
+
+  MAX = WAND_SSE
+};
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  postings_writer
 // ----------------------------------------------------------------------------
@@ -230,28 +272,6 @@ class postings_writer_base : public irs::postings_writer {
   }; // index_features
 
  public:
-  static constexpr int32_t TERMS_FORMAT_MIN = 0;
-  static constexpr int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
-
-  static constexpr int32_t FORMAT_MIN = 0;
-  // positions are stored one based (if first osition is 1 first offset is 0)
-  // This forces reader to adjust first read position of every document additionally to
-  // stored increment. Or incorrect positions will be read - 1 2 3 will be stored
-  // (offsets 0 1 1) but 0 1 2 will be read. At least this will lead to incorrect results in
-  // by_same_positions filter if searching for position 1
-  static constexpr int32_t FORMAT_POSITIONS_ONEBASED = FORMAT_MIN;
-  // positions are stored one based, sse used
-  static constexpr int32_t FORMAT_SSE_POSITIONS_ONEBASED = FORMAT_POSITIONS_ONEBASED + 1;
-
-  // positions are stored zero based
-  // if first position is 1 first offset is also 1
-  // so no need to adjust position while reading first
-  // position for document, always just increment from previous pos
-  static constexpr int32_t FORMAT_POSITIONS_ZEROBASED = FORMAT_SSE_POSITIONS_ONEBASED + 1;
-  // positions are stored zero based, sse used
-  static constexpr int32_t FORMAT_SSE_POSITIONS_ZEROBASED = FORMAT_POSITIONS_ZEROBASED + 1;
-  static constexpr int32_t FORMAT_MAX = FORMAT_SSE_POSITIONS_ZEROBASED;
-
   static constexpr uint32_t MAX_SKIP_LEVELS = 10;
   static constexpr uint32_t BLOCK_SIZE = 128;
   static constexpr uint32_t SKIP_N = 8;
@@ -265,14 +285,18 @@ class postings_writer_base : public irs::postings_writer {
   static constexpr string_ref TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
 
  protected:
-  postings_writer_base(int32_t postings_format_version, int32_t terms_format_version)
-    : skip_(BLOCK_SIZE, SKIP_N),
-      postings_format_version_(postings_format_version),
-      terms_format_version_(terms_format_version),
-      pos_min_(postings_format_version_ >= FORMAT_POSITIONS_ZEROBASED ?   // first position offsets now is format dependent
-               pos_limits::invalid(): pos_limits::min()) {
-    assert(postings_format_version >= FORMAT_MIN && postings_format_version <= FORMAT_MAX);
-    assert(terms_format_version >= TERMS_FORMAT_MIN && terms_format_version <= TERMS_FORMAT_MAX);
+  postings_writer_base(PostingsFormat postings_format_version, TermsFormat terms_format_version)
+    : skip_{BLOCK_SIZE, SKIP_N},
+      postings_format_version_{postings_format_version},
+      terms_format_version_{terms_format_version},
+      // first position offsets now is format dependent
+      pos_min_{postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
+                 ? pos_limits::invalid()
+                 : pos_limits::min()} {
+    assert(postings_format_version >= PostingsFormat::MIN &&
+           postings_format_version <= PostingsFormat::MAX);
+    assert(terms_format_version >= TermsFormat::MIN &&
+           terms_format_version <= TermsFormat::MAX);
   }
 
  public:
@@ -431,8 +455,8 @@ class postings_writer_base : public irs::postings_writer {
   pos_buffer::ptr pos_;             // proximity stream
   pay_buffer::ptr pay_;             // payloads and offsets stream
   size_t docs_count_{};             // number of processed documents
-  const int32_t postings_format_version_;
-  const int32_t terms_format_version_;
+  const PostingsFormat postings_format_version_;
+  const TermsFormat terms_format_version_;
   uint32_t pos_min_; // initial base value for writing positions offsets
 };
 
@@ -446,7 +470,9 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   std::string name;
 
   // prepare document stream
-  prepare_output(name, doc_out_, state, DOC_EXT, DOC_FORMAT_NAME, postings_format_version_);
+  prepare_output(name, doc_out_, state,
+                 DOC_EXT, DOC_FORMAT_NAME,
+                 static_cast<int32_t>(postings_format_version_));
 
   if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
@@ -455,7 +481,9 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     }
 
     pos_->reset();
-    prepare_output(name, pos_out_, state, POS_EXT, POS_FORMAT_NAME, postings_format_version_);
+    prepare_output(name, pos_out_, state,
+                   POS_EXT, POS_FORMAT_NAME,
+                   static_cast<int32_t>(postings_format_version_));
 
     if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
@@ -464,7 +492,9 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
       }
 
       pay_->reset();
-      prepare_output(name, pay_out_, state, PAY_EXT, PAY_FORMAT_NAME, postings_format_version_);
+      prepare_output(name, pay_out_, state,
+                     PAY_EXT, PAY_FORMAT_NAME,
+                     static_cast<int32_t>(postings_format_version_));
     }
   }
 
@@ -474,7 +504,9 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     [this] (size_t i, index_output& out) { write_skip(i, out); },
     directory_utils::get_allocator(*state.dir));
 
-  format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
+  format_utils::write_header(
+    out, TERMS_FORMAT_NAME,
+    static_cast<int32_t>(terms_format_version_));
   out.write_vint(BLOCK_SIZE); // write postings block size
 
   // prepare documents bitset
@@ -812,8 +844,8 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
 template<typename FormatTraits, bool VolatileAttributes>
 class postings_writer final: public postings_writer_base {
  public:
-  explicit postings_writer(int32_t version)
-    : postings_writer_base(version, TERMS_FORMAT_MAX) {
+  explicit postings_writer(PostingsFormat version)
+    : postings_writer_base(version, TermsFormat::MAX) {
   }
 
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
@@ -2709,8 +2741,8 @@ void postings_reader_base::prepare(
     buf, doc_in_, irs::IOAdvice::RANDOM, state,
     postings_writer_base::DOC_EXT,
     postings_writer_base::DOC_FORMAT_NAME,
-    postings_writer_base::FORMAT_MIN,
-    postings_writer_base::FORMAT_MAX);
+    static_cast<int32_t>(PostingsFormat::MIN),
+    static_cast<int32_t>(PostingsFormat::MAX));
 
   // Since terms doc postings too large
   //  it is too costly to verify checksum of
@@ -2725,8 +2757,8 @@ void postings_reader_base::prepare(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
       postings_writer_base::POS_EXT,
       postings_writer_base::POS_FORMAT_NAME,
-      postings_writer_base::FORMAT_MIN,
-      postings_writer_base::FORMAT_MAX);
+      static_cast<int32_t>(PostingsFormat::MIN),
+      static_cast<int32_t>(PostingsFormat::MAX));
 
     // Since terms pos postings too large
     // it is too costly to verify checksum of
@@ -2741,8 +2773,8 @@ void postings_reader_base::prepare(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
         postings_writer_base::PAY_EXT,
         postings_writer_base::PAY_FORMAT_NAME,
-        postings_writer_base::FORMAT_MIN,
-        postings_writer_base::FORMAT_MAX);
+        static_cast<int32_t>(PostingsFormat::MIN),
+        static_cast<int32_t>(PostingsFormat::MAX));
 
       // Since terms pos postings too large
       // it is too costly to verify checksum of
@@ -2756,8 +2788,8 @@ void postings_reader_base::prepare(
   // check postings format
   format_utils::check_header(in,
     postings_writer_base::TERMS_FORMAT_NAME,
-    postings_writer_base::TERMS_FORMAT_MIN,
-    postings_writer_base::TERMS_FORMAT_MAX);
+    static_cast<int32_t>(TermsFormat::MIN),
+    static_cast<int32_t>(TermsFormat::MAX));
 
   const uint64_t block_size = in.read_vint();
 
@@ -3135,7 +3167,7 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_MIN;
+  constexpr const auto VERSION = PostingsFormat::POSITIONS_ONEBASED;
 
   if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
@@ -3276,7 +3308,7 @@ class format13 : public format12 {
 const ::format13 FORMAT13_INSTANCE;
 
 irs::postings_writer::ptr format13::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_POSITIONS_ZEROBASED;
+  constexpr const auto VERSION = PostingsFormat::POSITIONS_ZEROBASED;
 
   if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
@@ -3311,6 +3343,7 @@ class format14 : public format13 {
 
   format14() noexcept : format13(irs::type<format14>::get()) { }
 
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
   virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
   virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
@@ -3323,6 +3356,16 @@ class format14 : public format13 {
 };
 
 const ::format14 FORMAT14_INSTANCE;
+
+irs::postings_writer::ptr format14::get_postings_writer(bool consolidation) const {
+  constexpr const auto VERSION = PostingsFormat::WAND;
+
+  if (consolidation) {
+    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
+  }
+
+  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+}
 
 irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -3401,7 +3444,7 @@ class format12simd final : public format12 {
 const ::format12simd FORMAT12SIMD_INSTANCE;
 
 irs::postings_writer::ptr format12simd::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ONEBASED;
+  constexpr const auto VERSION = PostingsFormat::POSITIONS_ONEBASED_SSE;
 
   if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
@@ -3447,7 +3490,7 @@ class format13simd : public format13 {
 const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = postings_writer_base::FORMAT_SSE_POSITIONS_ZEROBASED;
+  constexpr const auto VERSION = PostingsFormat::POSITIONS_ZEROBASED_SSE;
 
   if (consolidation) {
     return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
@@ -3480,6 +3523,8 @@ class format14simd : public format13simd {
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
+
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override;
 
@@ -3492,6 +3537,16 @@ class format14simd : public format13simd {
 };
 
 const ::format14simd FORMAT14SIMD_INSTANCE;
+
+irs::postings_writer::ptr format14simd::get_postings_writer(bool consolidation) const {
+  constexpr const auto VERSION = PostingsFormat::WAND_SSE;
+
+  if (consolidation) {
+    return memory::make_unique<::postings_writer<format_traits_sse4, true>>(VERSION);
+  }
+
+  return memory::make_unique<::postings_writer<format_traits_sse4, false>>(VERSION);
+}
 
 irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
