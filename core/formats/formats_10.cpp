@@ -192,6 +192,130 @@ void prepare_input(
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   helper buffers
+// ----------------------------------------------------------------------------
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct skip_buffer
+/// @brief buffer for storing skip data
+//////////////////////////////////////////////////////////////////////////////
+template<size_t SkipLevels>
+struct skip_buffer {
+  void reset() noexcept {
+    start = end = 0;
+  }
+
+  uint64_t skip_ptr[SkipLevels]{}; // skip data
+  uint64_t start{};                // start position of block
+  uint64_t end{};                  // end position of block
+}; // stream
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct doc_buffer
+/// @brief buffer for stroring doc data
+//////////////////////////////////////////////////////////////////////////////
+template<size_t BlockSize, size_t SkipLevels>
+struct doc_buffer : skip_buffer<SkipLevels> {
+  bool full() const noexcept {
+    return doc == std::end(docs);
+  }
+
+  bool empty() const noexcept {
+    return doc == std::begin(docs);
+  }
+
+  void push(doc_id_t doc, uint32_t freq) noexcept {
+    *this->doc++ = doc;
+    *this->freq++ = freq;
+    last = doc;
+  }
+
+  void reset() noexcept {
+    skip_buffer<SkipLevels>::reset();
+    doc = docs;
+    freq = freqs;
+    last = doc_limits::invalid();
+    block_last = doc_limits::min();
+  }
+
+  //FIXME alignment
+  doc_id_t docs[BlockSize]{}; // document deltas
+  uint32_t freqs[BlockSize]{};
+  doc_id_t skip_doc[SkipLevels]{};
+  doc_id_t* doc{ docs };
+  uint32_t* freq{ freqs };
+  doc_id_t last{ doc_limits::invalid() }; // last buffered document id
+  doc_id_t block_last{ doc_limits::min() }; // last document id in a block
+}; // doc_buffer
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct pos_buffer
+/// @brief buffer for storing proximity data
+//////////////////////////////////////////////////////////////////////////////
+template<size_t BlockSize, size_t SkipLevels>
+struct pos_buffer : skip_buffer<SkipLevels> {
+  using ptr = std::unique_ptr<pos_buffer>;
+
+  bool full() const { return BlockSize == size; }
+  void next(uint32_t pos) { last = pos, ++size; }
+  void pos(uint32_t pos) {
+    buf[size] = pos;
+  }
+
+  void reset() noexcept {
+    skip_buffer<SkipLevels>::reset();
+    last = 0;
+    block_last = 0;
+    size = 0;
+  }
+
+  //FIXME alignment
+  uint32_t buf[BlockSize]{}; // buffer to store position deltas
+  uint32_t last{};            // last buffered position
+  uint32_t block_last{};      // last position in a block
+  uint32_t size{};            // number of buffered elements
+}; // pos_buffer
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct pay_buffer
+/// @brief buffer for storing payload data
+//////////////////////////////////////////////////////////////////////////////
+template<size_t BlockSize, size_t SkipLevels>
+struct pay_buffer : skip_buffer<SkipLevels> {
+  using ptr = std::unique_ptr<pay_buffer>;
+
+  void push_payload(uint32_t i, const bytes_ref& pay) {
+    if (!pay.empty()) {
+      pay_buf_.append(pay.c_str(), pay.size());
+    }
+    pay_sizes[i] = static_cast<uint32_t>(pay.size());
+  }
+
+  void push_offset(uint32_t i, uint32_t start, uint32_t end) {
+    assert(start >= last && start <= end);
+
+    offs_start_buf[i] = start - last;
+    offs_len_buf[i] = end - start;
+    last = start;
+  }
+
+  void reset() noexcept {
+    skip_buffer<SkipLevels>::reset();
+    pay_buf_.clear();
+    block_last = 0;
+    last = 0;
+  }
+
+  //FIXME alignment
+  uint32_t pay_sizes[BlockSize]{};       // buffer to store payloads sizes
+  uint32_t offs_start_buf[BlockSize]{};  // buffer to store start offsets
+  uint32_t offs_len_buf[BlockSize]{};    // buffer to store offset lengths
+  bstring pay_buf_;                       // buffer for payload
+  size_t block_last{};                    // last payload buffer length in a block
+  uint32_t last{};                        // last start offset
+}; // pay_buffer
+
 //////////////////////////////////////////////////////////////////////////////
 /// @enum TermsFormat
 //////////////////////////////////////////////////////////////////////////////
@@ -250,31 +374,6 @@ enum class PostingsFormat : int32_t {
 /// @class postings_writer_base
 //////////////////////////////////////////////////////////////////////////////
 class postings_writer_base : public irs::postings_writer {
- private:
-  // FIXME consider using a set of bools
-  class index_features {
-   public:
-    explicit index_features(IndexFeatures mask = IndexFeatures::NONE) noexcept
-      : mask_{static_cast<decltype(mask_)>(mask)} {
-    }
-
-    bool freq() const noexcept { return check_bit<0>(mask_); }
-    bool position() const noexcept { return check_bit<1>(mask_); }
-    bool offset() const noexcept { return check_bit<2>(mask_); }
-    bool payload() const noexcept { return check_bit<3>(mask_); }
-
-    explicit operator IndexFeatures() const noexcept {
-      return static_cast<IndexFeatures>(mask_);
-    }
-
-    bool any(IndexFeatures mask) const noexcept {
-      return IndexFeatures::NONE != (IndexFeatures{mask_} & mask);
-    }
-
-   private:
-    std::underlying_type_t<IndexFeatures> mask_{};
-  }; // index_features
-
  public:
   static constexpr uint32_t MAX_SKIP_LEVELS = 10;
   static constexpr uint32_t BLOCK_SIZE = 128;
@@ -307,7 +406,7 @@ class postings_writer_base : public irs::postings_writer {
   }
 
   virtual void begin_field(IndexFeatures features) final {
-    features_ = index_features{features};
+    features_ = features;
     docs_.value.clear();
     last_state_.clear();
   }
@@ -332,106 +431,6 @@ class postings_writer_base : public irs::postings_writer {
     alloc_.deallocate(state);
   }
 
-  struct skip_buffer {
-    void reset() noexcept {
-      start = end = 0;
-    }
-
-    uint64_t skip_ptr[MAX_SKIP_LEVELS]{}; // skip data
-    uint64_t start{};                     // start position of block
-    uint64_t end{};                       // end position of block
-  }; // stream
-
-  struct doc_buffer : skip_buffer {
-    bool full() const noexcept {
-      return doc == std::end(docs);
-    }
-
-    bool empty() const noexcept {
-      return doc == std::begin(docs);
-    }
-
-    void push(doc_id_t doc, uint32_t freq) noexcept {
-      *this->doc++ = doc;
-      *this->freq++ = freq;
-      last = doc;
-    }
-
-    void reset() noexcept {
-      skip_buffer::reset();
-      doc = docs;
-      freq = freqs;
-      last = doc_limits::invalid();
-      block_last = doc_limits::min();
-    }
-
-    //FIXME alignment
-    doc_id_t docs[BLOCK_SIZE]{}; // document deltas
-    uint32_t freqs[BLOCK_SIZE]{};
-    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
-    doc_id_t* doc{ docs };
-    uint32_t* freq{ freqs };
-    doc_id_t last{ doc_limits::invalid() }; // last buffered document id
-    doc_id_t block_last{ doc_limits::min() }; // last document id in a block
-  }; // doc_buffer
-
-  struct pos_buffer : skip_buffer {
-    using ptr = std::unique_ptr<pos_buffer>;
-
-    bool full() const { return BLOCK_SIZE == size; }
-    void next(uint32_t pos) { last = pos, ++size; }
-    void pos(uint32_t pos) {
-      buf[size] = pos;
-    }
-
-    void reset() noexcept {
-      skip_buffer::reset();
-      last = 0;
-      block_last = 0;
-      size = 0;
-    }
-
-    //FIXME alignment
-    uint32_t buf[BLOCK_SIZE]{}; // buffer to store position deltas
-    uint32_t last{};            // last buffered position
-    uint32_t block_last{};      // last position in a block
-    uint32_t size{};            // number of buffered elements
-  }; // pos_stream
-
-  struct pay_buffer : skip_buffer {
-    using ptr = std::unique_ptr<pay_buffer>;
-
-    void push_payload(uint32_t i, const bytes_ref& pay) {
-      if (!pay.empty()) {
-        pay_buf_.append(pay.c_str(), pay.size());
-      }
-      pay_sizes[i] = static_cast<uint32_t>(pay.size());
-    }
-
-    void push_offset(uint32_t i, uint32_t start, uint32_t end) {
-      assert(start >= last && start <= end);
-
-      offs_start_buf[i] = start - last;
-      offs_len_buf[i] = end - start;
-      last = start;
-    }
-
-    void reset() noexcept {
-      skip_buffer::reset();
-      pay_buf_.clear();
-      block_last = 0;
-      last = 0;
-    }
-
-    //FIXME alignment
-    uint32_t pay_sizes[BLOCK_SIZE]{};       // buffer to store payloads sizes
-    uint32_t offs_start_buf[BLOCK_SIZE]{};  // buffer to store start offsets
-    uint32_t offs_len_buf[BLOCK_SIZE]{};    // buffer to store offset lengths
-    bstring pay_buf_;                       // buffer for payload
-    size_t block_last{};                    // last payload buffer length in a block
-    uint32_t last{};                        // last start offset
-  }; // pay_stream
-
   void begin_term();
   void end_term(version10::term_meta& meta, const uint32_t* tfreq);
 
@@ -446,17 +445,17 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
-  version10::term_meta last_state_; // last final term state
-  version10::documents docs_;       // bit set of all processed documents
-  index_features features_;         // features supported by current field
-  index_output::ptr doc_out_;       // postings (doc + freq)
-  index_output::ptr pos_out_;       // positions
-  index_output::ptr pay_out_;       // payload (payl + offs)
-  uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
-  doc_buffer doc_;                  // document stream
-  pos_buffer::ptr pos_;             // proximity stream
-  pay_buffer::ptr pay_;             // payloads and offsets stream
-  size_t docs_count_{};             // number of processed documents
+  version10::term_meta last_state_;                  // last final term state
+  version10::documents docs_;                        // bit set of all processed documents
+  index_output::ptr doc_out_;                        // postings (doc + freq)
+  index_output::ptr pos_out_;                        // positions
+  index_output::ptr pay_out_;                        // payload (payl + offs)
+  uint32_t buf_[BLOCK_SIZE];                         // buffer for encoding (worst case)
+  doc_buffer<BLOCK_SIZE, MAX_SKIP_LEVELS> doc_;      // document stream
+  pos_buffer<BLOCK_SIZE, MAX_SKIP_LEVELS>::ptr pos_; // proximity stream
+  pay_buffer<BLOCK_SIZE, MAX_SKIP_LEVELS>::ptr pay_; // payloads and offsets stream
+  size_t docs_count_{};                              // number of processed documents
+  IndexFeatures features_;                           // features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
 };
@@ -478,7 +477,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     if (!pos_) {
-      pos_ = memory::make_unique<pos_buffer>();
+      pos_ = memory::make_unique<pos_buffer<BLOCK_SIZE, MAX_SKIP_LEVELS>>();
     }
 
     pos_->reset();
@@ -489,7 +488,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       if (!pay_) {
-        pay_ = memory::make_unique<pay_buffer>();
+        pay_ = memory::make_unique<pay_buffer<BLOCK_SIZE, MAX_SKIP_LEVELS>>();
       }
 
       pay_->reset();
@@ -526,12 +525,12 @@ void postings_writer_base::encode(
   }
 
   out.write_vlong(meta.doc_start - last_state_.doc_start);
-  if (features_.position()) {
+  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     out.write_vlong(meta.pos_start - last_state_.pos_start);
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
+    if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
       out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
@@ -547,12 +546,12 @@ void postings_writer_base::end() {
   format_utils::write_footer(*doc_out_);
   doc_out_.reset(); // ensure stream is closed
 
-  if (pos_ && pos_out_) { // check both for the case where the writer is reused
+  if (pos_out_) {
     format_utils::write_footer(*pos_out_);
     pos_out_.reset(); // ensure stream is closed
   }
 
-  if (pay_ && pay_out_) { // check both for the case where the writer is reused
+  if (pay_out_) {
     format_utils::write_footer(*pay_out_);
     pay_out_.reset(); // ensure stream is closed
   }
@@ -568,7 +567,7 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
   doc_.skip_doc[level] = doc_.block_last;
   doc_.skip_ptr[level] = doc_ptr;
 
-  if (features_.position()) {
+  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     assert(pos_);
 
     const uint64_t pos_ptr = pos_out_->file_pointer();
@@ -578,10 +577,10 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
+    if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
       assert(pay_ && pay_out_);
 
-      if (features_.payload()) {
+      if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
         out.write_vint(static_cast<uint32_t>(pay_->block_last));
       }
 
@@ -596,11 +595,11 @@ void postings_writer_base::write_skip(size_t level, index_output& out) {
 void postings_writer_base::begin_term() {
   doc_.start = doc_out_->file_pointer();
   std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
-  if (features_.position()) {
+  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     assert(pos_ && pos_out_);
     pos_->start = pos_out_->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
+    if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
       assert(pay_ && pay_out_);
       pay_->start = pay_out_->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
@@ -616,13 +615,13 @@ void postings_writer_base::end_doc() {
   if (doc_.full()) {
     doc_.block_last = doc_.last;
     doc_.end = doc_out_->file_pointer();
-    if (features_.position()) {
+    if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
       assert(pos_ && pos_out_);
       pos_->end = pos_out_->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if (features_.any(IndexFeatures::OFFS | IndexFeatures::PAY)) {
+      if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
         assert(pay_ && pay_out_);
         pay_->end = pay_out_->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
@@ -648,7 +647,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
     auto* doc = doc_.docs;
     auto prev = doc_.block_last;
 
-    if (features_.freq()) {
+    if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
       auto* doc_freq = doc_.freqs;
       for (; doc < doc_.doc; ++doc) {
         const uint32_t freq = *doc_freq;
@@ -676,7 +675,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
   // write remaining position using
   // variable length encoding
-  if (features_.position()) {
+  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     assert(pos_ && pos_out_);
 
     if (meta.freq > BLOCK_SIZE) {
@@ -690,7 +689,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
       uint32_t pay_buf_start = 0;
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
-        if (features_.payload()) {
+        if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
           assert(pay_ && pay_out_);
 
           const uint32_t size = pay_->pay_sizes[i];
@@ -710,7 +709,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
           out.write_vint(pos_delta);
         }
 
-        if (features_.offset()) {
+        if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
           assert(pay_ && pay_out_);
 
           const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
@@ -725,7 +724,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
         }
       }
 
-      if (features_.payload()) {
+      if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
         assert(pay_ && pay_out_);
         pay_->pay_buf_.clear();
       }
@@ -802,7 +801,8 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
 template<typename FormatTraits>
 void postings_writer_base::add_position(uint32_t pos, const offset* offs, const payload* pay) {
   assert(!offs || offs->start <= offs->end);
-  assert(features_.position() && pos_ && pos_out_); /* at least positions stream should be created */
+  assert(IndexFeatures::NONE != (features_ & IndexFeatures::POS) &&
+         pos_ && pos_out_); /* at least positions stream should be created */
 
   pos_->pos(pos - pos_->last);
 
@@ -821,7 +821,8 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
     pos_->size = 0;
 
     if (pay) {
-      assert(features_.payload() && pay_ && pay_out_);
+      assert(IndexFeatures::NONE != (features_ & IndexFeatures::PAY) &&
+             pay_ && pay_out_);
       auto& pay_buf = pay_->pay_buf_;
 
       pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
@@ -833,7 +834,8 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
     }
 
     if (offs) {
-      assert(features_.offset() && pay_ && pay_out_);
+      assert(IndexFeatures::NONE != (features_ & IndexFeatures::OFFS) &&
+             pay_ && pay_out_);
       FormatTraits::write_block(*pay_out_, pay_->offs_start_buf, buf_);
       FormatTraits::write_block(*pay_out_, pay_->offs_len_buf, buf_);
     }
