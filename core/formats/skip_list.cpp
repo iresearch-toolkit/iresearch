@@ -117,24 +117,21 @@ void skip_writer::flush(index_output& out) {
   auto level = std::find_if(
     levels_.rbegin(), rend,
     [](const memory_output& level) {
-      return level.stream.file_pointer();
-  });
+      return level.stream.file_pointer(); });
 
   // write number of levels
   out.write_vint(uint32_t(std::distance(level, rend)));
 
   // write levels from n downto 0
-  std::for_each(
-    level, rend,
-    [&out](memory_output& level) {
-      auto& stream = level.stream;
-      stream.flush(); // update length of each buffer
+  for (; level != rend; ++level) {
+    auto& stream = level->stream;
+    stream.flush(); // update length of each buffer
 
-      const uint64_t length = stream.file_pointer();
-      assert(length);
-      out.write_vlong(length);
-      stream >> out;
-  });
+    const uint64_t length = stream.file_pointer();
+    assert(length);
+    out.write_vlong(length);
+    stream >> out;
+  }
 }
 
 void skip_writer::reset() noexcept {
