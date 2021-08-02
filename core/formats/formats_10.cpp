@@ -1670,7 +1670,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   doc_iterator() noexcept
     : skip_levels_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N} {
+      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{this}} {
     assert(
       std::all_of(docs_, docs_ + IteratorTraits::block_size(),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -1855,32 +1855,55 @@ class doc_iterator final : public irs::doc_iterator {
 #endif
 
  private:
+  struct read_skip {
+    doc_iterator* self;
+
+    doc_id_t operator()(size_t level, size_t end, index_input& in) {
+      skip_state& last = *self->skip_ctx_;
+      auto& last_level = self->skip_ctx_->level;
+      auto& next = self->skip_levels_[level];
+
+      if (last_level > level) {
+        // move to the more granular level
+        next = last;
+      } else {
+        // store previous step on the same level
+        last = next;
+      }
+
+      last_level = level;
+
+      if (in.file_pointer() >= end) {
+        // stream exhausted
+        return (next.doc = doc_limits::eof());
+      }
+
+      next.doc = in.read_vint();
+      next.doc_ptr += in.read_vlong();
+
+      if constexpr (FieldTraits::position()) {
+        next.pend_pos = in.read_vint();
+        next.pos_ptr += in.read_vlong();
+
+        if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+          if constexpr (FieldTraits::payload()) {
+            next.pay_pos = in.read_vint();
+          }
+
+          next.pay_ptr += in.read_vlong();
+        }
+      }
+
+      return next.doc;
+    }
+  };
+
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() noexcept {
     assert(begin_ >= docs_);
     return begin_ - docs_;
-  }
-
-  doc_id_t read_skip(skip_state& state, data_input& in) {
-    state.doc = in.read_vint();
-    state.doc_ptr += in.read_vlong();
-
-    if constexpr (FieldTraits::position()) {
-      state.pend_pos = in.read_vint();
-      state.pos_ptr += in.read_vlong();
-
-      if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
-        if constexpr (FieldTraits::payload()) {
-          state.pay_pos = in.read_vint();
-        }
-
-        state.pay_ptr += in.read_vlong();
-      }
-    }
-
-    return state.doc;
   }
 
   void read_end_block(size_t size) {
@@ -1927,7 +1950,7 @@ class doc_iterator final : public irs::doc_iterator {
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    if (auto& doc = std::get<document>(attrs_);
+    if (auto& doc = std::get<irs::document>(attrs_);
         !doc_limits::valid(doc.value)) {
       doc.value = (doc_limits::min)();
     }
@@ -1940,7 +1963,7 @@ class doc_iterator final : public irs::doc_iterator {
   doc_id_t docs_[IteratorTraits::block_size()]{}; // doc values
   uint32_t doc_freqs_[IteratorTraits::block_size()]; // document frequencies
   std::vector<skip_state> skip_levels_;
-  skip_reader skip_;
+  skip_reader<read_skip> skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
@@ -1972,30 +1995,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
 
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
-
-      skip_.prepare(std::move(skip_in),
-        [this](size_t level, data_input& in) {
-          skip_state& last = *skip_ctx_;
-          auto& last_level = skip_ctx_->level;
-          auto& next = skip_levels_[level];
-
-          if (last_level > level) {
-            // move to the more granular level
-            next = last;
-          } else {
-            // store previous step on the same level
-            last = next;
-          }
-
-          last_level = level;
-
-          if (in.eof()) {
-            // stream exhausted
-            return (next.doc = doc_limits::eof());
-          }
-
-          return read_skip(next, in);
-      });
+      skip_.prepare(std::move(skip_in));
 
       // initialize skip levels
       const auto num_levels = skip_.num_levels();

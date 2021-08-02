@@ -41,8 +41,6 @@ constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
     : 0;
 }
 
-constexpr size_t UNDEFINED = std::numeric_limits<size_t>::max();
-
 } // LOCAL
 
 namespace iresearch {
@@ -104,110 +102,35 @@ void skip_writer_base::flush(index_output& out) {
 // --SECTION--                                       skip_reader implementation
 // ----------------------------------------------------------------------------
 
-skip_reader::level::level(
+skip_reader_base::level::level(
     index_input::ptr&& stream,
     size_t id,
     size_t step,
-    uint64_t begin, 
-    uint64_t end,
-    uint64_t child /*= 0*/,
-    size_t skipped /*= 0*/,
-    doc_id_t doc /*= doc_limits::invalid()*/) noexcept
+    uint64_t begin,
+    uint64_t end) noexcept
   : stream{std::move(stream)}, // thread-safe input
     begin{begin},
     end{end},
-    child{child},
     id{id},
-    step{step},
-    skipped{skipped},
-    doc{doc} {
+    step{step} {
 }
 
-skip_reader::skip_reader(
-    size_t skip_0, 
-    size_t skip_n) noexcept
-  : skip_0_{skip_0},
-    skip_n_{skip_n} {
-}
-
-void skip_reader::read_skip(skip_reader::level& level) {
-  // read_ should return NO_MORE_DOCS when stream is exhausted
-
-  assert(size_t(std::distance(&level, &levels_.back())) == level.id);
-  const auto doc = read_(level.id, level);
-
-  // read pointer to child level if needed
-  if (!doc_limits::eof(doc) && level.child != UNDEFINED) {
-    level.child = level.stream->read_vlong();
-  }
-
-  level.doc = doc;
-  level.skipped += level.step;
-}
-
-/* static */ void skip_reader::seek_skip(
-    skip_reader::level& level, 
+/* static */ void skip_reader_base::seek_skip(
+    level& lvl,
     uint64_t ptr,
     size_t skipped) {
-  auto &stream = *level.stream;
-  const auto absolute_ptr = level.begin + ptr;
+  auto &stream = *lvl.stream;
+  const auto absolute_ptr = lvl.begin + ptr;
   if (absolute_ptr > stream.file_pointer()) {
     stream.seek(absolute_ptr);
-    level.skipped = skipped;
-    if (level.child != UNDEFINED) {
-      level.child = stream.read_vlong();
+    lvl.skipped = skipped;
+    if (lvl.child != UNDEFINED) {
+      lvl.child = stream.read_vlong();
     }
   }
 }
 
-
-size_t skip_reader::seek(doc_id_t target) {
-  assert(!levels_.empty());
-  assert(std::is_sorted(
-    levels_.rbegin(), levels_.rend(),
-    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
-
-  // returns highest level with the value not less than target
-  auto level = [](auto begin, auto end, doc_id_t target) noexcept {
-    // we prefer linear scan over binary search because
-    // it's more performant for a small number of elements (< 30)
-
-    // FIXME consider storing only doc + pointer to level
-    // data to make linear search more cache friendly
-    for (; begin != end; ++begin) {
-      if (target >= begin->doc) {
-        return begin;
-      }
-    }
-
-    return std::prev(end);
-  }(std::begin(levels_), std::end(levels_), target);
-
-  uint64_t child = 0; // pointer to child skip
-  size_t skipped = 0; // number of skipped documents
-
-  for ( ; level != std::end(levels_); ++level) {
-    if (level->doc < target) {
-      // seek to child
-      seek_skip(*level, child, skipped);
-
-      // seek to skip
-      child = level->child;
-      read_skip(*level);
-
-      for (; level->doc < target; read_skip(*level)) {
-        child = level->child;
-      }
-
-      skipped = level->skipped - level->step;
-    }
-  }
-
-  skipped = levels_.back().skipped;
-  return skipped ? skipped - skip_0_ : 0;
-}
-
-void skip_reader::reset() {
+void skip_reader_base::reset() {
   for (auto& level : levels_) {
     level.stream->seek(level.begin);
     if (level.child != UNDEFINED) {
@@ -218,7 +141,7 @@ void skip_reader::reset() {
   }
 }
 
-/*static*/ void skip_reader::load_level(
+/*static*/ void skip_reader_base::load_level(
     std::vector<level>& levels,
     index_input::ptr&& stream,
     size_t id,
@@ -238,8 +161,8 @@ void skip_reader::reset() {
   levels.emplace_back(std::move(stream), id, step, begin, end); // load level
 }
 
-void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */) {
-  assert(in && read);
+void skip_reader_base::prepare(index_input::ptr&& in) {
+  assert(in);
 
   // read number of levels in a skip-list
   size_t max_levels = in->read_vint();
@@ -266,8 +189,6 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
 
     levels_ = std::move(levels);
   }
-
-  read_ = read;
 }
 
 }

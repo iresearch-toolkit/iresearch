@@ -113,7 +113,7 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_writer
-/// @brief base writer for storing skip-list in a directory
+/// @brief writer for storing skip-list in a directory
 ///
 /// Example (skip_0 = skip_n = 3):
 ///
@@ -126,11 +126,11 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
 /// d - document
 /// x - skip data
 /// c - skip data with child pointer
-/// @tparam WriteFunc
+/// @tparam Write
 ///   this function will be called every skip allowing users to store
 ///   arbitrary data for a given level in corresponding output stream
 ////////////////////////////////////////////////////////////////////////////////
-template<typename WriteFunc>
+template<typename Write>
 class skip_writer : public skip_writer_base {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -138,9 +138,9 @@ class skip_writer : public skip_writer_base {
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_writer(size_t skip_0, size_t skip_n, WriteFunc&& write) noexcept
+  skip_writer(size_t skip_0, size_t skip_n, Write&& write) noexcept
     : skip_writer_base(skip_0, skip_n),
-      write_(std::forward<WriteFunc>(write)) {
+      write_(std::forward<Write>(write)) {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -178,30 +178,15 @@ class skip_writer : public skip_writer_base {
   }
 
  private:
-  WriteFunc write_;
+  Write write_;
 }; // skip_writer
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class skip_reader
-/// @brief base write for searching in skip-lists in a directory 
+/// @class skip_reader_base
+/// @brief base reader for searching in skip-lists in a directory
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_reader: util::noncopyable {
+class IRESEARCH_API skip_reader_base : util::noncopyable {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief function will be called when reading of next skip 
-  /// @param index of the level in a skip-list
-  /// @param stream where level data resides 
-  /// @returns readed key if stream is not exhausted, NO_MORE_DOCS otherwise
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<doc_id_t(size_t, data_input&)> read_f;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
-  skip_reader(size_t skip_0, size_t skip_n) noexcept;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
@@ -224,9 +209,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   /// @param count total number of elements to store in a skip-list
   /// @param read read function
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(
-    index_input::ptr&& in,
-    const read_f& read = nop);
+  void prepare(index_input::ptr&& in);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief seeks to the specified target
@@ -244,49 +227,28 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   /// @returns true if skip_reader was succesfully prepared
   //////////////////////////////////////////////////////////////////////////////
   explicit operator bool() const noexcept  {
-    return static_cast<bool>(read_);
+    return !levels_.empty();
   }
 
- private:
-  struct level final : public data_input {
+ protected:
+  static constexpr size_t UNDEFINED = std::numeric_limits<size_t>::max();
+
+  struct level final {
     level(
       index_input::ptr&& stream,
       size_t id,
       size_t step,
       uint64_t begin,
-      uint64_t end,
-      uint64_t child = 0,
-      size_t skipped = 0,
-      doc_id_t doc = doc_limits::invalid()) noexcept;
+      uint64_t end) noexcept;
     level(level&&) = default;
     level& operator=(level&&) = delete;
-
-    virtual uint8_t read_byte() override {
-      return stream->read_byte();
-    }
-    virtual size_t read_bytes(byte_type* b, size_t count) override {
-      static_assert(sizeof(size_t) >= sizeof(uint64_t));
-      return stream->read_bytes(b, std::min(size_t(end) - file_pointer(), count));
-    }
-    virtual const byte_type* read_buffer(size_t size, BufferHint hint) override {
-      return stream->read_buffer(size, hint);
-    }
-    virtual size_t file_pointer() const override {
-      return stream->file_pointer() - begin;
-    }
-    virtual size_t length() const override {
-      return end - begin;
-    }
-    virtual bool eof() const override {
-      return stream->file_pointer() >= end;
-    }
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
     uint64_t end; // where current level ends
     uint64_t child{}; // pointer to current child level
     size_t id; // level id
-    size_t step{}; // how many docs we jump over with a single skip
+    size_t step; // how many docs we jump over with a single skip
     size_t skipped{}; // number of sipped documents
     doc_id_t doc{ doc_limits::invalid() }; // current key
   };
@@ -298,19 +260,111 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     index_input::ptr&& stream,
     size_t id, size_t step);
 
-  static doc_id_t nop(size_t, data_input&) noexcept { return doc_limits::invalid(); }
-  static void seek_skip(skip_reader::level& level, uint64_t ptr, size_t skipped);
+  static void seek_skip(level& lvl, uint64_t ptr, size_t skipped);
 
-  void read_skip(skip_reader::level& level);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  /// @param skip_0 skip interval for level 0
+  /// @param skip_n skip interval for levels 1..n
+  //////////////////////////////////////////////////////////////////////////////
+  skip_reader_base(size_t skip_0, size_t skip_n) noexcept
+    : skip_0_{skip_0},
+      skip_n_{skip_n} {
+  }
+
+  void read_skip(level& level);
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  read_f read_;
   std::vector<level> levels_; // input streams for skip-list levels
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
   IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // skip_reader_base
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief function will be called when reading of next skip
+  /// @param index of the level in a skip-list
+  /// @param stream where level data resides
+  /// @returns readed key if stream is not exhausted, NO_MORE_DOCS otherwise
+  //////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class skip_reader_impl
+/// @brief reader for searching in skip-lists in a directory
+////////////////////////////////////////////////////////////////////////////////
+template<typename Read>
+class skip_reader : public skip_reader_base {
+ public:
+  skip_reader(size_t skip_0, size_t skip_n, Read&& read)
+    : skip_reader_base{skip_0, skip_n},
+      read_{std::forward<Read>(read)} {
+  }
+
+  size_t seek(doc_id_t target) {
+    assert(!levels_.empty());
+    assert(std::is_sorted(
+      levels_.rbegin(), levels_.rend(),
+      [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
+
+    // returns highest level with the value not less than target
+    auto level = [](auto begin, auto end, doc_id_t target) noexcept {
+      // we prefer linear scan over binary search because
+      // it's more performant for a small number of elements (< 30)
+
+      // FIXME consider storing only doc + pointer to level
+      // data to make linear search more cache friendly
+      for (; begin != end; ++begin) {
+        if (target >= begin->doc) {
+          return begin;
+        }
+      }
+
+      return std::prev(end);
+    }(std::begin(levels_), std::end(levels_), target);
+
+    uint64_t child = 0; // pointer to child skip
+    size_t skipped = 0; // number of skipped documents
+
+    for ( ; level != std::end(levels_); ++level) {
+      if (level->doc < target) {
+        // seek to child
+        seek_skip(*level, child, skipped);
+
+        // seek to skip
+        child = level->child;
+        read_skip(*level);
+
+        for (; level->doc < target; read_skip(*level)) {
+          child = level->child;
+        }
+
+        skipped = level->skipped - level->step;
+      }
+    }
+
+    skipped = levels_.back().skipped;
+    return skipped ? skipped - skip_0_ : 0;
+  }
+
+ private:
+  void read_skip(level& lvl) {
+    // read_ should return doc_limits::eof() when stream is exhausted
+
+    assert(size_t(std::distance(&lvl, &levels_.back())) == lvl.id);
+    const auto doc = read_(lvl.id, lvl.end, *lvl.stream);
+
+    // read pointer to child level if needed
+    if (!doc_limits::eof(doc) && lvl.child != UNDEFINED) {
+      lvl.child = lvl.stream->read_vlong();
+    }
+
+    lvl.doc = doc;
+    lvl.skipped += lvl.step;
+  }
+
+  Read read_;
 }; // skip_reader
 
-}
+} // iresearch
 
 #endif

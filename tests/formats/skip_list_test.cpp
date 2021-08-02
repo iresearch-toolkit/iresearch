@@ -373,8 +373,8 @@ TEST_F(skip_reader_test, prepare) {
     size_t max_levels = 5;
     size_t skip = 8;
 
-    auto noop = [](size_t, irs::index_output&) { };
-    irs::skip_writer writer(skip, skip, std::move(noop));
+    auto noop_write = [](size_t, irs::index_output&) { };
+    irs::skip_writer<decltype(noop_write)> writer(skip, skip, std::move(noop_write));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -385,7 +385,9 @@ TEST_F(skip_reader_test, prepare) {
       writer.flush(*out);
     }
 
-    irs::skip_reader reader(skip, skip);
+
+    auto noop_read = [](size_t, irs::data_input&) { return irs::doc_limits::eof(); };
+    irs::skip_reader<decltype(noop_read)> reader(skip, skip, std::move(noop_read));
     ASSERT_FALSE(reader);
     {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
@@ -430,7 +432,11 @@ TEST_F(skip_reader_test, prepare) {
       writer.flush(*out);
     }
 
-    irs::skip_reader reader(skip, skip);
+    auto noop = [](size_t, irs::data_input&) {
+      return irs::doc_limits::eof();
+    };
+
+    irs::skip_reader<decltype(noop)> reader(skip, skip, std::move(noop));
     ASSERT_FALSE(reader);
     auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
@@ -499,27 +505,29 @@ TEST_F(skip_reader_test, seek) {
       irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       size_t calls_count = 0;
 
-      irs::skip_reader reader(skip_0, skip_n);
+
+      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+        ++calls_count;
+
+        if (in.eof()) {
+          lower = upper;
+          upper = irs::doc_limits::eof();
+        } else {
+          if (!level) {
+            lower = in.read_vlong();
+          }
+
+          upper = in.read_vlong();
+        }
+
+        return upper;
+      };
+
+      irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
       ASSERT_FALSE(reader);
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (in.eof()) {
-            lower = upper;
-            upper = irs::doc_limits::eof();
-          } else {
-            if (!level) {
-              lower = in.read_vlong();
-            }
-
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
+      reader.prepare(std::move(in));
       ASSERT_TRUE(static_cast<bool>(reader));
       ASSERT_EQ(skip_0, reader.skip_0());
       ASSERT_EQ(skip_n, reader.skip_n());
@@ -800,26 +808,27 @@ TEST_F(skip_reader_test, seek) {
       irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       size_t calls_count = 0;
 
-      irs::skip_reader reader(skip_0, skip_n);
+      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+        ++calls_count;
+
+        if (in.eof()) {
+          lower = upper;
+          upper = irs::doc_limits::eof();
+        } else {
+          if (!level) {
+            lower = in.read_vlong();
+          }
+          upper = in.read_vlong();
+        }
+
+        return upper;
+      };
+
+      irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
       ASSERT_FALSE(reader);
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (in.eof()) {
-            lower = upper;
-            upper = irs::doc_limits::eof();
-          } else {
-            if (!level) {
-              lower = in.read_vlong();
-            }
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
+      reader.prepare(std::move(in));
       ASSERT_TRUE(static_cast<bool>(reader));
       ASSERT_EQ(writer.num_levels(), reader.num_levels());
       ASSERT_EQ(skip_0, reader.skip_0());
@@ -1009,29 +1018,30 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      irs::skip_reader reader(skip_0, skip_n);
+      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+        ++calls_count;
+
+        if (last_level > level) {
+          upper = lower;
+        } else {
+          lower = upper;
+        }
+        last_level = level;
+
+        if (in.eof()) {
+          upper = irs::doc_limits::eof();
+        } else {
+          upper = in.read_vlong();
+        }
+
+        return upper;
+      };
+
+      irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
       ASSERT_FALSE(reader);
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (last_level > level) {
-            upper = lower;
-          } else {
-            lower = upper;
-          }
-          last_level = level;
-
-          if (in.eof()) {
-            upper = irs::doc_limits::eof();
-          } else {
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
+      reader.prepare(std::move(in));
       ASSERT_TRUE(static_cast<bool>(reader));
       ASSERT_EQ(writer.num_levels(), reader.num_levels());
       ASSERT_EQ(skip_0, reader.skip_0());
@@ -1190,29 +1200,30 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      irs::skip_reader reader(skip_0, skip_n);
+      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t, irs::data_input &in) {
+        ++calls_count;
+
+        if (last_level > level) {
+          upper = lower;
+        } else {
+          lower = upper;
+        }
+        last_level = level;
+
+        if (in.eof()) {
+          upper = irs::doc_limits::eof();
+        } else {
+          upper = in.read_vlong();
+        }
+
+        return upper;
+      };
+
+      irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
       ASSERT_FALSE(reader);
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input &in) {
-          ++calls_count;
-
-          if (last_level > level) {
-            upper = lower;
-          } else {
-            lower = upper;
-          }
-          last_level = level;
-
-          if (in.eof()) {
-            upper = irs::doc_limits::eof();
-          } else {
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
+      reader.prepare(std::move(in));
 
       // seek for every document
       {
