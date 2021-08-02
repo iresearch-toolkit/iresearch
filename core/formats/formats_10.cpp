@@ -488,6 +488,18 @@ class postings_writer_base : public irs::postings_writer {
     }
   };
 
+  struct score_buffer {
+    uint32_t freq{};
+
+    void add(uint32_t value) noexcept {
+      freq = std::max(value, freq);
+    }
+
+    void reset() noexcept {
+      freq = 0;
+    }
+  };
+
   struct write_skip{
     const postings_writer_base* self;
 
@@ -503,10 +515,10 @@ class postings_writer_base : public irs::postings_writer {
   }
 
   void begin_term();
-  void end_term(version10::term_meta& meta, const uint32_t* tfreq);
+  void end_term(version10::term_meta& meta);
 
   template<typename FormatTraits>
-  void begin_doc(doc_id_t id, const frequency* freq);
+  void begin_doc(doc_id_t id, uint32_t freq);
   template<typename FormatTraits>
   void add_position(uint32_t pos, const offset* offs, const payload* pay);
   void end_doc();
@@ -523,7 +535,6 @@ class postings_writer_base : public irs::postings_writer {
   pos_buffer pos_;                                // proximity stream
   pay_buffer pay_;                                // payloads and offsets stream
   uint32_t* buf_;                                 // buffer for encoding
-  size_t docs_count_{};                           // number of processed documents
   attributes attrs_;                              // set of attributes
   IndexFeatures features_;                        // features supported by current field
   const PostingsFormat postings_format_version_;
@@ -566,9 +577,6 @@ void postings_writer_base::write_skip::operator()(size_t level, index_output &ou
 void postings_writer_base::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
-
-  // reset writer state
-  docs_count_ = 0;
 
   std::string name;
 
@@ -692,8 +700,8 @@ void postings_writer_base::end_doc() {
   }
 }
 
-void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
-  if (docs_count_ == 0) {
+void postings_writer_base::end_term(version10::term_meta& meta) {
+  if (meta.docs_count == 0) {
     return; // no documents to write
   }
 
@@ -790,19 +798,18 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
     }
   }
 
-  if (!tfreq) {
+  if (!attrs_.freq_) {
     meta.freq = std::numeric_limits<uint32_t>::max();
   }
 
   // if we have flushed at least
   // one block there was buffered
   // skip data, so we need to flush it
-  if (docs_count_ > skip_.skip_0()) {
+  if (meta.docs_count > skip_.skip_0()) {
     meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
     skip_.flush(*doc_out_);
   }
 
-  docs_count_ = 0;
   doc_.doc = doc_.docs.begin();
   doc_.freq = doc_.freqs.begin();
   doc_.last = doc_limits::invalid();
@@ -821,34 +828,28 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 }
 
 template<typename FormatTraits>
-void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
-  if (doc_limits::valid(doc_.last) && doc_.empty()) {
-    skip_.skip(docs_count_);
-  }
+void postings_writer_base::begin_doc(doc_id_t id, uint32_t freq) {
+  if (IRS_LIKELY(doc_.last < id)) {
+    doc_.push(id, freq);
 
-  if (id < doc_.last) {
+    if (doc_.full()) {
+      // FIXME do aligned?
+      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.begin(), doc_.block_last);
+      FormatTraits::write_block(*doc_out_, doc_.docs.begin(), buf_);
+      if (attrs_.freq_) {
+        assert(freq);
+        FormatTraits::write_block(*doc_out_, doc_.freqs.begin(), buf_);
+      }
+    }
+
+    // first position offsets now is format dependent
+    pos_.last = FormatTraits::pos_min();
+    pay_.last = 0;
+  } else {
     throw index_error(string_utils::to_string(
       "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
       id, doc_.last));
   }
-
-  doc_.push(id, freq ? freq->value : 0);
-
-  if (doc_.full()) {
-    // FIXME do aligned
-    simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.begin(), doc_.block_last);
-    FormatTraits::write_block(*doc_out_, doc_.docs.begin(), buf_);
-
-    if (freq) {
-      FormatTraits::write_block(*doc_out_, doc_.freqs.begin(), buf_);
-    }
-  }
-
-  // first position offsets now is format dependent
-  pos_.last = FormatTraits::pos_min();
-  pay_.last = 0;
-
-  ++docs_count_;
 }
 
 template<typename FormatTraits>
@@ -944,6 +945,7 @@ class postings_writer final: public postings_writer_base {
   struct {
     uint32_t buf[FormatTraits::block_size()];               // buffer for encoding (worst case)
   } encbuf_;
+  score_buffer score_buf_;
 }; // postings_writer
 
 #if defined(_MSC_VER)
@@ -969,15 +971,34 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     attrs_.reset(docs);
   }
 
+  const frequency no_freq;
+  const frequency* freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
   begin_term();
+  if constexpr (FormatTraits::wand()) {
+    score_buf_.reset();
+  }
+
+  uint32_t docs_count = 0;
+  uint32_t total_freq = 0;
 
   while (docs.next()) {
     const auto did = docs.value();
     assert(doc_limits::valid(did));
+    const uint32_t freqv = freq->value;
 
-    begin_doc<FormatTraits>(did, attrs_.freq_);
+    if (doc_limits::valid(doc_.last) && doc_.empty()) {
+      skip_.skip(docs_count);
+      if constexpr (FormatTraits::wand()) {
+        score_buf_.reset();
+      }
+    }
+
+    begin_doc<FormatTraits>(did, freqv);
+    if constexpr (FormatTraits::wand()) {
+      score_buf_.add(freqv);
+    }
     docs_.value.set(did);
 
     assert(attrs_.pos_);
@@ -986,15 +1007,15 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
       add_position<FormatTraits>(attrs_.pos_->value(), attrs_.offs_, attrs_.pay_);
     }
 
-    ++meta->docs_count;
-    if (attrs_.freq_) {
-      meta->freq += attrs_.freq_->value;
-    }
+    ++docs_count;
+    total_freq += freqv;
 
     end_doc();
   }
 
-  end_term(*meta, attrs_.freq_ ? &meta->freq : nullptr);
+  meta->docs_count = docs_count;
+  meta->freq = total_freq;
+  end_term(*meta);
 
   return make_state(*meta.release());
 }
