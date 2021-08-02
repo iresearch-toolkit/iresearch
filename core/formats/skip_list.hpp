@@ -25,25 +25,12 @@
 
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
-#include <functional>
 
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_writer_base
 /// @brief base writer for storing skip-list in a directory
-///
-/// Example (skip_0 = skip_n = 3):
-///
-///                                                        c         (skip level 2)
-///                    c                 c                 c         (skip level 1)
-///        x     x     x     x     x     x     x     x     x     x   (skip level 0)
-///  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
-///        3     6     9     12    15    18    21    24    27    30  (doc_count)
-///
-/// d - document
-/// x - skip data
-/// c - skip data with child pointer
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API skip_writer_base : util::noncopyable {
  public:
@@ -114,8 +101,10 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_writer
 /// @brief writer for storing skip-list in a directory
-///
-/// Example (skip_0 = skip_n = 3):
+/// @tparam Write functional object is called for every skip allowing users to
+///         store arbitrary data for a given level in corresponding output
+///         stream
+/// @note Example (skip_0 = skip_n = 3):
 ///
 ///                                                        c         (skip level 2)
 ///                    c                 c                 c         (skip level 1)
@@ -126,12 +115,9 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
 /// d - document
 /// x - skip data
 /// c - skip data with child pointer
-/// @tparam Write
-///   this function will be called every skip allowing users to store
-///   arbitrary data for a given level in corresponding output stream
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Write>
-class skip_writer : public skip_writer_base {
+class skip_writer final : public skip_writer_base {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -183,7 +169,7 @@ class skip_writer : public skip_writer_base {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_reader_base
-/// @brief base reader for searching in skip-lists in a directory
+/// @brief base object for searching in skip-lists
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API skip_reader_base : util::noncopyable {
  public:
@@ -262,11 +248,6 @@ class IRESEARCH_API skip_reader_base : util::noncopyable {
 
   static void seek_skip(level& lvl, uint64_t ptr, size_t skipped);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
   skip_reader_base(size_t skip_0, size_t skip_n) noexcept
     : skip_0_{skip_0},
       skip_n_{skip_n} {
@@ -281,75 +262,36 @@ class IRESEARCH_API skip_reader_base : util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_reader_base
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief function will be called when reading of next skip
-  /// @param index of the level in a skip-list
-  /// @param stream where level data resides
-  /// @returns readed key if stream is not exhausted, NO_MORE_DOCS otherwise
-  //////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_reader_impl
 /// @brief reader for searching in skip-lists in a directory
+/// @tparam Read function object is called when reading of next skip. Accepts
+///   the following parameters: index of the level in a skip-list, where a data
+///   stream ends, stream where level data resides and  readed key if stream is
+///   not exhausted, doc_limits::eof() otherwise
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Read>
-class skip_reader : public skip_reader_base {
+class skip_reader final : public skip_reader_base {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  /// @param skip_0 skip interval for level 0
+  /// @param skip_n skip interval for levels 1..n
+  //////////////////////////////////////////////////////////////////////////////
   skip_reader(size_t skip_0, size_t skip_n, Read&& read)
     : skip_reader_base{skip_0, skip_n},
       read_{std::forward<Read>(read)} {
   }
 
-  size_t seek(doc_id_t target) {
-    assert(!levels_.empty());
-    assert(std::is_sorted(
-      levels_.rbegin(), levels_.rend(),
-      [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
-
-    // returns highest level with the value not less than target
-    auto level = [](auto begin, auto end, doc_id_t target) noexcept {
-      // we prefer linear scan over binary search because
-      // it's more performant for a small number of elements (< 30)
-
-      // FIXME consider storing only doc + pointer to level
-      // data to make linear search more cache friendly
-      for (; begin != end; ++begin) {
-        if (target >= begin->doc) {
-          return begin;
-        }
-      }
-
-      return std::prev(end);
-    }(std::begin(levels_), std::end(levels_), target);
-
-    uint64_t child = 0; // pointer to child skip
-    size_t skipped = 0; // number of skipped documents
-
-    for ( ; level != std::end(levels_); ++level) {
-      if (level->doc < target) {
-        // seek to child
-        seek_skip(*level, child, skipped);
-
-        // seek to skip
-        child = level->child;
-        read_skip(*level);
-
-        for (; level->doc < target; read_skip(*level)) {
-          child = level->child;
-        }
-
-        skipped = level->skipped - level->step;
-      }
-    }
-
-    skipped = levels_.back().skipped;
-    return skipped ? skipped - skip_0_ : 0;
-  }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief seeks to the specified target
+  /// @param target target to find
+  /// @returns number of elements skipped
+  //////////////////////////////////////////////////////////////////////////////
+  size_t seek(doc_id_t target);
 
  private:
   void read_skip(level& lvl) {
-    // read_ should return doc_limits::eof() when stream is exhausted
-
     assert(size_t(std::distance(&lvl, &levels_.back())) == lvl.id);
     const auto doc = read_(lvl.id, lvl.end, *lvl.stream);
 
@@ -364,6 +306,53 @@ class skip_reader : public skip_reader_base {
 
   Read read_;
 }; // skip_reader
+
+template<typename Read>
+size_t skip_reader<Read>::seek(doc_id_t target) {
+  assert(!levels_.empty());
+  assert(std::is_sorted(
+    levels_.rbegin(), levels_.rend(),
+    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
+
+  // returns highest level with the value not less than target
+  auto level = [](auto begin, auto end, doc_id_t target) noexcept {
+    // we prefer linear scan over binary search because
+    // it's more performant for a small number of elements (< 30)
+
+    // FIXME consider storing only doc + pointer to level
+    // data to make linear search more cache friendly
+    for (; begin != end; ++begin) {
+      if (target >= begin->doc) {
+        return begin;
+      }
+    }
+
+    return std::prev(end);
+  }(std::begin(levels_), std::end(levels_), target);
+
+  uint64_t child = 0; // pointer to child skip
+  size_t skipped = 0; // number of skipped documents
+
+  for ( ; level != std::end(levels_); ++level) {
+    if (level->doc < target) {
+      // seek to child
+      seek_skip(*level, child, skipped);
+
+      // seek to skip
+      child = level->child;
+      read_skip(*level);
+
+      for (; level->doc < target; read_skip(*level)) {
+        child = level->child;
+      }
+
+      skipped = level->skipped - level->step;
+    }
+  }
+
+  skipped = levels_.back().skipped;
+  return skipped ? skipped - skip_0_ : 0;
+}
 
 } // iresearch
 
