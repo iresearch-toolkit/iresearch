@@ -58,10 +58,10 @@ void skip_writer_base::prepare(
     size_t max_levels, 
     size_t count,
     const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels = std::max(size_t(1), max_levels);
-  max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
+  max_levels = std::min(
+    std::max(size_t(1), max_levels),
+    ::max_levels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels);
-  max_levels = std::max(max_levels, levels_.capacity());
 
   // reset existing skip levels
   for (auto& level : levels_) {

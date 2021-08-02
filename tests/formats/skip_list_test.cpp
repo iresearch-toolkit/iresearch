@@ -32,14 +32,6 @@ using namespace std::chrono_literals;
 namespace {
 
 class skip_writer_test : public test_base {
-  virtual void SetUp() {
-    test_base::SetUp();
-  }
-
-  virtual void TearDown() {
-    test_base::TearDown();
-  }
-
  protected:
   void write_flush(size_t count, size_t max_levels, size_t skip) {
     std::vector<std::vector<int>> levels(max_levels);
@@ -122,15 +114,7 @@ class skip_writer_test : public test_base {
   }
 };
 
-class skip_reader_test : public test_base {
-  virtual void SetUp() {
-    test_base::SetUp();
-  }
-
-  virtual void TearDown() {
-    test_base::TearDown();
-  }
-};
+class skip_reader_test : public test_base { };
 
 }
 
@@ -146,7 +130,7 @@ TEST_F(skip_writer_test, prepare) {
     irs::skip_writer<decltype(noop)> writer(skip_0, skip_n, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
+    ASSERT_FALSE(static_cast<bool>(writer));
     ASSERT_EQ(skip_0, writer.skip_0());
     ASSERT_EQ(skip_n, writer.skip_n());
     ASSERT_EQ(0, writer.num_levels());
@@ -155,7 +139,7 @@ TEST_F(skip_writer_test, prepare) {
   // at least 1 level must exists
   {
     const size_t max_levels = 0;
-    const size_t doc_count = 0;
+    const size_t doc_count = 17;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
     auto noop = [](size_t, irs::index_output&){};
@@ -165,7 +149,7 @@ TEST_F(skip_writer_test, prepare) {
     ASSERT_TRUE(static_cast<bool>(writer));
     ASSERT_EQ(skip_0, writer.skip_0());
     ASSERT_EQ(skip_n, writer.skip_n());
-    ASSERT_EQ(0, writer.num_levels());
+    ASSERT_EQ(1, writer.num_levels());
   }
 
   // less than max levels
@@ -394,7 +378,7 @@ TEST_F(skip_reader_test, prepare) {
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
     }
-    ASSERT_TRUE(static_cast<bool>(reader));
+    ASSERT_FALSE(static_cast<bool>(reader));
     ASSERT_EQ(0, reader.num_levels());
     ASSERT_EQ(skip, reader.skip_0());
     ASSERT_EQ(skip, reader.skip_n());
@@ -506,10 +490,10 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
 
 
-      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
         ++calls_count;
 
-        if (in.eof()) {
+        if (in.file_pointer() >= end) {
           lower = upper;
           upper = irs::doc_limits::eof();
         } else {
@@ -808,10 +792,10 @@ TEST_F(skip_reader_test, seek) {
       irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       size_t calls_count = 0;
 
-      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
         ++calls_count;
 
-        if (in.eof()) {
+        if (in.file_pointer() >= end) {
           lower = upper;
           upper = irs::doc_limits::eof();
         } else {
@@ -1018,7 +1002,7 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t, irs::data_input& in) {
+      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
         ++calls_count;
 
         if (last_level > level) {
@@ -1028,7 +1012,7 @@ TEST_F(skip_reader_test, seek) {
         }
         last_level = level;
 
-        if (in.eof()) {
+        if (in.file_pointer() >= end) {
           upper = irs::doc_limits::eof();
         } else {
           upper = in.read_vlong();
@@ -1200,7 +1184,7 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t, irs::data_input &in) {
+      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input &in) {
         ++calls_count;
 
         if (last_level > level) {
@@ -1210,7 +1194,7 @@ TEST_F(skip_reader_test, seek) {
         }
         last_level = level;
 
-        if (in.eof()) {
+        if (in.file_pointer() >= end) {
           upper = irs::doc_limits::eof();
         } else {
           upper = in.read_vlong();
