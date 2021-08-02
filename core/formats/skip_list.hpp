@@ -311,8 +311,8 @@ template<typename Read>
 size_t skip_reader<Read>::seek(doc_id_t target) {
   assert(!levels_.empty());
   assert(std::is_sorted(
-    levels_.rbegin(), levels_.rend(),
-    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }));
+    levels_.begin(), levels_.end(),
+    [](level& lhs, level& rhs) { return lhs.doc > rhs.doc; }));
 
   // returns highest level with the value not less than target
   auto level = [](auto begin, auto end, doc_id_t target) noexcept {
