@@ -960,19 +960,25 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
+  const frequency no_freq;
+  const frequency* freq;
+
+  auto refresh = [this, &freq, &no_freq](auto& attrs) noexcept {
+    attrs_.reset(attrs);
+    freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
+  };
+
   if constexpr (VolatileAttributes) {
     auto* subscription = irs::get<attribute_provider_change>(docs);
     assert(subscription);
 
-    subscription->subscribe([this](attribute_provider& attrs) {
-      attrs_.reset(attrs);
+    subscription->subscribe([refresh](attribute_provider& attrs) {
+      refresh(attrs);
     });
   } else {
-    attrs_.reset(docs);
+    refresh(docs);
   }
 
-  const frequency no_freq;
-  const frequency* freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
   begin_term();
