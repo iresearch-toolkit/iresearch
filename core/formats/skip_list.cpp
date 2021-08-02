@@ -51,15 +51,14 @@ namespace iresearch {
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
+skip_writer_base::skip_writer_base(size_t skip_0, size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
   assert(skip_0_);
 }
 
-void skip_writer::prepare(
+void skip_writer_base::prepare(
     size_t max_levels, 
     size_t count,
-    const skip_writer::write_f& write, /* = nop */
     const memory_allocator& alloc /* = memory_allocator::global() */) {
   max_levels = std::max(size_t(1), max_levels);
   max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
@@ -75,42 +74,9 @@ void skip_writer::prepare(
   for (auto size = levels_.size(); size < max_levels; ++size) {
     levels_.emplace_back(alloc);
   }
-
-  write_ = write;
 }
 
-void skip_writer::skip(size_t count) {
-  assert(!levels_.empty());
-
-  if (0 != count % skip_0_) {
-    return;
-  }
-
-  uint64_t child = 0;
-
-  // write 0 level
-  {
-    auto& stream = levels_.front().stream;
-    write_(0, stream);
-    count /= skip_0_;
-    child = stream.file_pointer();
-  }
-
-  // write levels from 1 to n
-  size_t num = 0;
-  for (auto level = levels_.begin()+1, end = levels_.end();
-       0 == count % skip_n_ && level != end;
-       ++level, count /= skip_n_) {
-    auto& stream = level->stream;
-    write_(++num, stream);
-
-    uint64_t next_child = stream.file_pointer();
-    stream.write_vlong(child);
-    child = next_child;
-  }
-}
-
-void skip_writer::flush(index_output& out) {
+void skip_writer_base::flush(index_output& out) {
   const auto rend = levels_.rend();
 
   // find first filled level
@@ -131,12 +97,6 @@ void skip_writer::flush(index_output& out) {
     assert(length);
     out.write_vlong(length);
     stream >> out;
-  }
-}
-
-void skip_writer::reset() noexcept {
-  for (auto& level : levels_) {
-    level.stream.reset();
   }
 }
 

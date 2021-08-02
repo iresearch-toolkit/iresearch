@@ -43,21 +43,20 @@ class skip_writer_test : public test_base {
  protected:
   void write_flush(size_t count, size_t max_levels, size_t skip) {
     std::vector<std::vector<int>> levels(max_levels);
+    size_t cur_doc = std::numeric_limits<size_t>::max();
 
-    irs::skip_writer writer(skip, skip);
+    auto write_skip = [&levels, &cur_doc](size_t level, irs::index_output& out) {
+      levels[level].push_back(irs::doc_id_t(cur_doc));
+      out.write_vlong(irs::doc_id_t(cur_doc));
+    };
+
+    irs::skip_writer<decltype(write_skip)> writer(skip, skip, std::move(write_skip));
     ASSERT_FALSE(writer);
     irs::memory_directory dir;
 
     // write data
     {
-      size_t cur_doc = std::numeric_limits<size_t>::max();
-
-      writer.prepare(
-        max_levels, count,
-        [&levels, &cur_doc](size_t level, irs::index_output& out) {
-          levels[level].push_back(irs::doc_id_t(cur_doc));
-          out.write_vlong(irs::doc_id_t(cur_doc));
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       for (size_t doc = 0; doc < count; ++doc) {
@@ -142,7 +141,9 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 0;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::skip_writer writer(skip_0, skip_n);
+
+    auto noop = [](size_t, irs::index_output&){};
+    irs::skip_writer<decltype(noop)> writer(skip_0, skip_n, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, doc_count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -157,7 +158,8 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 0;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::skip_writer writer(skip_0, skip_n);
+    auto noop = [](size_t, irs::index_output&){};
+    irs::skip_writer<decltype(noop)> writer(skip_0, skip_n, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, doc_count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -171,7 +173,8 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 1923;
     const size_t skip = 8;
     const size_t max_levels = 10;
-    irs::skip_writer writer(skip, skip);
+    auto noop = [](size_t, irs::index_output&){};
+    irs::skip_writer<decltype(noop)> writer(skip, skip, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, doc_count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -185,7 +188,8 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 1923000;
     const size_t skip = 8;
     const size_t max_levels = 5;
-    irs::skip_writer writer(skip, skip);
+    auto noop = [](size_t, irs::index_output&){};
+    irs::skip_writer<decltype(noop)> writer(skip, skip, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, doc_count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -207,15 +211,15 @@ TEST_F(skip_writer_test, reset) {
   std::vector<int> levels[max_levels];
   size_t cur_doc = std::numeric_limits<size_t>::max();
 
+  auto write_skip = [&cur_doc, &levels](size_t level, irs::index_output& out) {
+    levels[level].push_back(cur_doc);
+    out.write_vlong(cur_doc);
+  };
+
   // prepare writer
-  irs::skip_writer writer(skip, skip);
+  irs::skip_writer<decltype(write_skip)> writer(skip, skip, std::move(write_skip));
   ASSERT_FALSE(writer);
-  writer.prepare(
-    max_levels, count,
-    [&cur_doc, &levels](size_t level, irs::index_output& out) {
-      levels[level].push_back(cur_doc);
-      out.write_vlong(cur_doc);
-  });
+  writer.prepare(max_levels, count);
   ASSERT_TRUE(static_cast<bool>(writer));
 
   // prepare directory
@@ -369,7 +373,8 @@ TEST_F(skip_reader_test, prepare) {
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::skip_writer writer(skip, skip);
+    auto noop = [](size_t, irs::index_output&) { };
+    irs::skip_writer writer(skip, skip, std::move(noop));
     ASSERT_FALSE(writer);
     writer.prepare(max_levels, count);
     ASSERT_TRUE(static_cast<bool>(writer));
@@ -399,17 +404,19 @@ TEST_F(skip_reader_test, prepare) {
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::skip_writer writer(skip, skip);
+    struct write_skip {
+      void operator()(size_t, irs::index_output& out) {
+        out.write_vint(0);
+      }
+    };
+
+    irs::skip_writer<write_skip> writer(skip, skip, {});
     ASSERT_FALSE(writer);
     irs::memory_directory dir;
 
     // write data
     {
-      writer.prepare(
-        max_levels, count,
-        [](size_t, irs::index_output& out) {
-          out.write_vint(0);
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       for (size_t i = 0; i <= count; ++i) {
@@ -446,22 +453,27 @@ TEST_F(skip_reader_test, seek) {
     irs::memory_directory dir;
     // write data
     {
-      irs::skip_writer writer(skip_0, skip_n);
+      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+
+      struct write_skip {
+        size_t* low;
+        size_t* high;
+
+        void operator()(size_t level, irs::index_output& out) {
+          if (!level) {
+            out.write_vlong(*low);
+          }
+          out.write_vlong(*high); // upper
+        }
+      };
+
+      irs::skip_writer<write_skip> writer(skip_0, skip_n, write_skip{&low, &high});
       ASSERT_FALSE(writer);
 
       // write data
 
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          if (!level) {
-            out.write_vlong(low);
-          }
-          out.write_vlong(high); // upper
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       size_t size = 0;
@@ -738,8 +750,23 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 16;
     const std::string file = "docs";
 
+    size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+
+    struct write_skip {
+      size_t* low;
+      size_t* high;
+
+      void operator()(size_t level, irs::index_output& out) {
+        if (!level) {
+          out.write_vlong(*low);
+        }
+        out.write_vlong(*high); // upper
+      }
+    };
+
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::skip_writer<write_skip> writer(skip_0, skip_n, write_skip{&low, &high});
 
     // write data
     {
@@ -747,17 +774,7 @@ TEST_F(skip_reader_test, seek) {
 
       // write data
 
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          if (!level) {
-            out.write_vlong(low);
-          }
-          out.write_vlong(high); // upper
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       size_t size = 0;
@@ -945,8 +962,19 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 8;
     const std::string file = "docs";
 
+    size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+
+    struct write_skip {
+      size_t* high;
+
+      void operator()(size_t, irs::index_output& out) {
+        out.write_vlong(*high); // upper
+      }
+    };
+
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::skip_writer<write_skip> writer(skip_0, skip_n, write_skip{&high});
 
     // write data
     {
@@ -954,14 +982,7 @@ TEST_F(skip_reader_test, seek) {
 
       // write data
 
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          out.write_vlong(high); // upper
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       size_t size = 0;
@@ -1126,21 +1147,25 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 8;
     const std::string file = "docs";
 
+    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+
+    struct write_skip {
+      size_t* high;
+
+      void operator()(size_t, irs::index_output& out) {
+          out.write_vlong(*high); // upper
+      }
+    };
+
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::skip_writer<write_skip> writer(skip_0, skip_n, write_skip{&high});
 
     // write data
     {
       ASSERT_FALSE(writer);
 
       // write data
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&high, skip_0](size_t level, irs::index_output& out) {
-          out.write_vlong(high); // upper
-      });
+      writer.prepare(max_levels, count);
       ASSERT_TRUE(static_cast<bool>(writer));
 
       irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
