@@ -491,7 +491,7 @@ class postings_writer_base : public irs::postings_writer {
   struct write_skip{
     const postings_writer_base* self;
 
-    void operator()(size_t level, index_output& out);
+    void operator()(size_t level, index_output& out) const;
   };
 
   virtual void release(irs::term_meta *meta) noexcept final {
@@ -530,7 +530,7 @@ class postings_writer_base : public irs::postings_writer {
   const TermsFormat terms_format_version_;
 }; // postings_writer_base
 
-void postings_writer_base::write_skip::operator()(size_t level, index_output &out) {
+void postings_writer_base::write_skip::operator()(size_t level, index_output &out) const {
   const doc_id_t doc_delta = self->doc_.block_last; //- doc_.skip_doc[level];
   const uint64_t doc_ptr = self->doc_out_->file_pointer();
 
@@ -1858,7 +1858,7 @@ class doc_iterator final : public irs::doc_iterator {
   struct read_skip {
     doc_iterator* self;
 
-    doc_id_t operator()(size_t level, size_t end, index_input& in) {
+    doc_id_t operator()(size_t level, size_t end, index_input& in) const {
       skip_state& last = *self->skip_ctx_;
       auto& last_level = self->skip_ctx_->level;
       auto& next = self->skip_levels_[level];
