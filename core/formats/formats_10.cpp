@@ -503,7 +503,7 @@ class postings_writer_base : public irs::postings_writer {
   struct write_skip{
     const postings_writer_base* self;
 
-    void operator()(size_t level, index_output& out) const;
+    void operator()(size_t level, memory_index_output& out) const;
   };
 
   virtual void release(irs::term_meta *meta) noexcept final {
@@ -541,7 +541,8 @@ class postings_writer_base : public irs::postings_writer {
   const TermsFormat terms_format_version_;
 }; // postings_writer_base
 
-void postings_writer_base::write_skip::operator()(size_t level, index_output &out) const {
+void postings_writer_base::write_skip::operator()(
+    size_t level, memory_index_output &out) const {
   const doc_id_t doc_delta = self->doc_.block_last; //- doc_.skip_doc[level];
   const uint64_t doc_ptr = self->doc_out_->file_pointer();
 
@@ -842,6 +843,8 @@ void postings_writer_base::begin_doc(doc_id_t id, uint32_t freq) {
       }
     }
 
+    docs_.value.set(id);
+
     // first position offsets now is format dependent
     pos_.last = FormatTraits::pos_min();
     pay_.last = 0;
@@ -1005,7 +1008,6 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     if constexpr (FormatTraits::wand()) {
       score_buf_.add(freqv);
     }
-    docs_.value.set(did);
 
     assert(attrs_.pos_);
     while (attrs_.pos_->next()) {
