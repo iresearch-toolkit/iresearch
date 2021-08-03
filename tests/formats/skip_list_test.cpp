@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_DLL
+
 #include "tests_shared.hpp"
 #include "formats/skip_list.hpp"
 #include "store/memory_directory.hpp"
@@ -1228,3 +1230,5 @@ TEST_F(skip_reader_test, seek) {
     }
   }
 }
+
+#endif // IRESEARCH_DLL

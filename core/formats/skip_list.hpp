@@ -43,7 +43,7 @@ namespace iresearch {
 /// x - skip data
 /// c - skip data with child pointer
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_writer : util::noncopyable {
+class skip_writer : util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -115,11 +115,9 @@ class IRESEARCH_API skip_writer : util::noncopyable {
   }
 
  protected:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<memory_output> levels_;
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_writer
 
 template<typename Writer>
@@ -157,7 +155,7 @@ void skip_writer::skip(size_t count, Writer&& write) {
 /// @class skip_reader_base
 /// @brief base object for searching in skip-lists
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_reader_base : util::noncopyable {
+class skip_reader_base : util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
@@ -241,11 +239,9 @@ class IRESEARCH_API skip_reader_base : util::noncopyable {
 
   void read_skip(level& level);
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<level> levels_; // input streams for skip-list levels
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_reader_base
 
 ////////////////////////////////////////////////////////////////////////////////
