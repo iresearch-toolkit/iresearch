@@ -945,7 +945,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_0", "1_3", "1_3simd", "1_4simd", "1_4")
   ),
   tests::to_string
 );
@@ -963,7 +963,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_0", "1_3", "1_3simd", "1_4simd", "1_4")
   ),
   tests::to_string
 );
