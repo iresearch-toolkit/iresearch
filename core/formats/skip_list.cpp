@@ -49,12 +49,7 @@ namespace iresearch {
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer_base::skip_writer_base(size_t skip_0, size_t skip_n) noexcept
-  : skip_0_(skip_0), skip_n_(skip_n) {
-  assert(skip_0_);
-}
-
-void skip_writer_base::prepare(
+void skip_writer::prepare(
     size_t max_levels, 
     size_t count,
     const memory_allocator& alloc /* = memory_allocator::global() */) {
@@ -74,7 +69,7 @@ void skip_writer_base::prepare(
   }
 }
 
-void skip_writer_base::flush(index_output& out) {
+void skip_writer::flush(index_output& out) {
   const auto rend = levels_.rend();
 
   // find first filled level

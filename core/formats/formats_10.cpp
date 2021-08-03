@@ -429,7 +429,7 @@ class postings_writer_base : public irs::postings_writer {
       uint32_t* enc_buf,
       PostingsFormat postings_format_version,
       TermsFormat terms_format_version)
-    : skip_{block_size, SKIP_N, write_skip{this}},
+    : skip_{block_size, SKIP_N},
       doc_{docs, freqs, skip_doc, doc_skip_ptr},
       pos_{prox_buf, prox_skip_ptr},
       pay_{pay_sizes, offs_start_buf, offs_len_buf, pay_skip_ptr},
@@ -500,12 +500,6 @@ class postings_writer_base : public irs::postings_writer {
     }
   };
 
-  struct write_skip{
-    const postings_writer_base* self;
-
-    void operator()(size_t level, memory_index_output& out) const;
-  };
-
   virtual void release(irs::term_meta *meta) noexcept final {
     auto* state = static_cast<version10::term_meta*>(meta);
     assert(state);
@@ -513,6 +507,8 @@ class postings_writer_base : public irs::postings_writer {
     alloc_.destroy(state);
     alloc_.deallocate(state);
   }
+
+  void write_skip(size_t level, memory_index_output& out) const;
 
   void begin_term();
   void end_term(version10::term_meta& meta);
@@ -525,7 +521,7 @@ class postings_writer_base : public irs::postings_writer {
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
-  skip_writer<write_skip> skip_;
+  skip_writer skip_;
   version10::term_meta last_state_;               // last final term state
   version10::documents docs_;                     // bit set of all processed documents
   index_output::ptr doc_out_;                     // postings (doc + freq)
@@ -541,36 +537,36 @@ class postings_writer_base : public irs::postings_writer {
   const TermsFormat terms_format_version_;
 }; // postings_writer_base
 
-void postings_writer_base::write_skip::operator()(
+void postings_writer_base::write_skip(
     size_t level, memory_index_output &out) const {
-  const doc_id_t doc_delta = self->doc_.block_last; //- doc_.skip_doc[level];
-  const uint64_t doc_ptr = self->doc_out_->file_pointer();
+  const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
+  const uint64_t doc_ptr = doc_out_->file_pointer();
 
   out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - self->doc_.skip_ptr[level]);
+  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
 
-  self->doc_.skip_doc[level] = self->doc_.block_last;
-  self->doc_.skip_ptr[level] = doc_ptr;
+  doc_.skip_doc[level] = doc_.block_last;
+  doc_.skip_ptr[level] = doc_ptr;
 
-  if (IndexFeatures::NONE != (self->features_ & IndexFeatures::POS)) {
-    const uint64_t pos_ptr = self->pos_out_->file_pointer();
+  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+    const uint64_t pos_ptr = pos_out_->file_pointer();
 
-    out.write_vint(self->pos_.block_last);
-    out.write_vlong(pos_ptr - self->pos_.skip_ptr[level]);
+    out.write_vint(pos_.block_last);
+    out.write_vlong(pos_ptr - pos_.skip_ptr[level]);
 
-    self->pos_.skip_ptr[level] = pos_ptr;
+    pos_.skip_ptr[level] = pos_ptr;
 
-    if (IndexFeatures::NONE != (self->features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
-      assert(self->pay_out_);
+    if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
+      assert(pay_out_);
 
-      if (IndexFeatures::NONE != (self->features_ & IndexFeatures::PAY)) {
-        out.write_vint(static_cast<uint32_t>(self->pay_.block_last));
+      if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+        out.write_vint(static_cast<uint32_t>(pay_.block_last));
       }
 
-      const uint64_t pay_ptr = self->pay_out_->file_pointer();
+      const uint64_t pay_ptr = pay_out_->file_pointer();
 
-      out.write_vlong(pay_ptr - self->pay_.skip_ptr[level]);
-      self->pay_.skip_ptr[level] = pay_ptr;
+      out.write_vlong(pay_ptr - pay_.skip_ptr[level]);
+      pay_.skip_ptr[level] = pay_ptr;
     }
   }
 }
@@ -998,7 +994,16 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     const uint32_t freqv = freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
-      skip_.skip(docs_count);
+      skip_.skip(
+        docs_count,
+        [this](size_t level, memory_index_output& out) {
+          write_skip(level, out);
+
+          if constexpr (FormatTraits::wand()) {
+
+          }
+      });
+
       if constexpr (FormatTraits::wand()) {
         score_buf_.reset();
       }

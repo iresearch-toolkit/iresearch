@@ -29,11 +29,32 @@
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class skip_writer_base
-/// @brief base writer for storing skip-list in a directory
+/// @class skip_writer
+/// @brief writer for storing skip-list in a directory
+/// @note Example (skip_0 = skip_n = 3):
+///
+///                                                        c         (skip level 2)
+///                    c                 c                 c         (skip level 1)
+///        x     x     x     x     x     x     x     x     x     x   (skip level 0)
+///  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
+///        3     6     9     12    15    18    21    24    27    30  (doc_count)
+///
+/// d - document
+/// x - skip data
+/// c - skip data with child pointer
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_writer_base : util::noncopyable {
+class IRESEARCH_API skip_writer : util::noncopyable {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  /// @param skip_0 skip interval for level 0
+  /// @param skip_n skip interval for levels 1..n
+  //////////////////////////////////////////////////////////////////////////////
+  skip_writer(size_t skip_0, size_t skip_n) noexcept
+    : skip_0_(skip_0), skip_n_(skip_n) {
+    assert(skip_0_);
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
@@ -77,6 +98,16 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief adds skip at the specified number of elements
+  /// @param count number of elements to skip
+  /// @tparam Write functional object is called for every skip allowing users to
+  ///         store arbitrary data for a given level in corresponding output
+  ///         stream
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Writer>
+  void skip(size_t count, Writer&& write);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @returns true if skip_writer was succesfully prepared
   //////////////////////////////////////////////////////////////////////////////
   explicit operator bool() const noexcept {
@@ -84,88 +115,43 @@ class IRESEARCH_API skip_writer_base : util::noncopyable {
   }
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
-  skip_writer_base(size_t skip_0, size_t skip_n) noexcept;
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<memory_output> levels_;
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
   IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // skip_writer_base
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class skip_writer
-/// @brief writer for storing skip-list in a directory
-/// @tparam Write functional object is called for every skip allowing users to
-///         store arbitrary data for a given level in corresponding output
-///         stream
-/// @note Example (skip_0 = skip_n = 3):
-///
-///                                                        c         (skip level 2)
-///                    c                 c                 c         (skip level 1)
-///        x     x     x     x     x     x     x     x     x     x   (skip level 0)
-///  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
-///        3     6     9     12    15    18    21    24    27    30  (doc_count)
-///
-/// d - document
-/// x - skip data
-/// c - skip data with child pointer
-////////////////////////////////////////////////////////////////////////////////
-template<typename Write>
-class skip_writer final : public skip_writer_base {
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
-  skip_writer(size_t skip_0, size_t skip_n, Write&& write) noexcept
-    : skip_writer_base(skip_0, skip_n),
-      write_(std::forward<Write>(write)) {
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief adds skip at the specified number of elements
-  /// @param count number of elements to skip
-  //////////////////////////////////////////////////////////////////////////////
-  void skip(size_t count) {
-    assert(static_cast<bool>(*this));
-
-    if (0 != count % skip_0_) {
-      return;
-    }
-
-    uint64_t child = 0;
-
-    // write 0 level
-    {
-      auto& stream = levels_.front().stream;
-      write_(0, stream);
-      count /= skip_0_;
-      child = stream.file_pointer();
-    }
-
-    // write levels from 1 to n
-    for (size_t i = 1, size = levels_.size();
-         0 == count % skip_n_ && i < size;
-         ++i, count /= skip_n_) {
-      auto& stream = levels_[i].stream;
-      write_(i, stream);
-
-      uint64_t next_child = stream.file_pointer();
-      stream.write_vlong(child);
-      child = next_child;
-    }
-  }
-
- private:
-  Write write_;
 }; // skip_writer
+
+template<typename Writer>
+void skip_writer::skip(size_t count, Writer&& write) {
+  assert(static_cast<bool>(*this));
+
+  if (0 != count % skip_0_) {
+    return;
+  }
+
+  uint64_t child = 0;
+
+  // write 0 level
+  {
+    auto& stream = levels_.front().stream;
+    write(0, stream);
+    count /= skip_0_;
+    child = stream.file_pointer();
+  }
+
+  // write levels from 1 to n
+  for (size_t i = 1, size = levels_.size();
+       0 == count % skip_n_ && i < size;
+       ++i, count /= skip_n_) {
+    auto& stream = levels_[i].stream;
+    write(i, stream);
+
+    uint64_t next_child = stream.file_pointer();
+    stream.write_vlong(child);
+    child = next_child;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_reader_base
