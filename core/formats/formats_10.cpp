@@ -517,14 +517,8 @@ class postings_writer_base : public irs::postings_writer {
   }
 
   void write_skip(size_t level, memory_index_output& out) const;
-
   void begin_term();
   void end_term(version10::term_meta& meta);
-
-  template<typename FormatTraits>
-  void begin_doc(doc_id_t id, uint32_t freq);
-  template<typename FormatTraits>
-  void add_position(uint32_t pos, const offset* offs, const payload* pay);
   void end_doc();
 
   memory::memory_pool<> meta_pool_;
@@ -832,75 +826,6 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
   }
 }
 
-template<typename FormatTraits>
-void postings_writer_base::begin_doc(doc_id_t id, uint32_t freq) {
-  if (IRS_LIKELY(doc_.last < id)) {
-    doc_.push(id, freq);
-
-    if (doc_.full()) {
-      // FIXME do aligned?
-      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.begin(), doc_.block_last);
-      FormatTraits::write_block(*doc_out_, doc_.docs.begin(), buf_);
-      if (attrs_.freq_) {
-        assert(freq);
-        FormatTraits::write_block(*doc_out_, doc_.freqs.begin(), buf_);
-      }
-    }
-
-    docs_.value.set(id);
-
-    // first position offsets now is format dependent
-    pos_.last = FormatTraits::pos_min();
-    pay_.last = 0;
-  } else {
-    throw index_error(string_utils::to_string(
-      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc_.last));
-  }
-}
-
-template<typename FormatTraits>
-void postings_writer_base::add_position(uint32_t pos, const offset* offs, const payload* pay) {
-  // at least positions stream should be created
-  assert(IndexFeatures::NONE != (features_ & IndexFeatures::POS) && pos_out_);
-  assert(!offs || offs->start <= offs->end);
-
-  pos_.pos(pos - pos_.last);
-
-  if (pay) {
-    pay_.push_payload(pos_.size, pay->value);
-  }
-
-  if (offs) {
-    pay_.push_offset(pos_.size, offs->start, offs->end);
-  }
-
-  pos_.next(pos);
-
-  if (pos_.full()) {
-    FormatTraits::write_block(*pos_out_, pos_.buf.begin(), buf_);
-    pos_.size = 0;
-
-    if (pay) {
-      assert(IndexFeatures::NONE != (features_ & IndexFeatures::PAY) && pay_out_);
-      auto& pay_buf = pay_.pay_buf_;
-
-      pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
-      if (!pay_buf.empty()) {
-        FormatTraits::write_block(*pay_out_, pay_.pay_sizes, buf_);
-        pay_out_->write_bytes(pay_buf.c_str(), pay_buf.size());
-        pay_buf.clear();
-      }
-    }
-
-    if (offs) {
-      assert(IndexFeatures::NONE != (features_ & IndexFeatures::OFFS) && pay_out_);
-      FormatTraits::write_block(*pay_out_, pay_.offs_start_buf, buf_);
-      FormatTraits::write_block(*pay_out_, pay_.offs_len_buf, buf_);
-    }
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class postings_writer
 //////////////////////////////////////////////////////////////////////////////
@@ -933,6 +858,9 @@ class postings_writer final: public postings_writer_base {
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
 
  private:
+  void add_position(uint32_t pos);
+  void begin_doc(doc_id_t id, uint32_t freq);
+
   struct {
     doc_id_t docs[FormatTraits::block_size()]{};           // buffer to store document deltas
     uint32_t freqs[FormatTraits::block_size()]{};          // buffer to store frequencies
@@ -956,6 +884,76 @@ class postings_writer final: public postings_writer_base {
   score_buffer score_levels_[MAX_SKIP_LEVELS];
   bool volatile_attributes_;
 }; // postings_writer
+
+
+template<typename FormatTraits>
+void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
+  if (IRS_LIKELY(doc_.last < id)) {
+    doc_.push(id, freq);
+
+    if (doc_.full()) {
+      // FIXME do aligned?
+      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.begin(), doc_.block_last);
+      FormatTraits::write_block(*doc_out_, doc_.docs.begin(), buf_);
+      if (attrs_.freq_) {
+        assert(freq);
+        FormatTraits::write_block(*doc_out_, doc_.freqs.begin(), buf_);
+      }
+    }
+
+    docs_.value.set(id);
+
+    // first position offsets now is format dependent
+    pos_.last = FormatTraits::pos_min();
+    pay_.last = 0;
+  } else {
+    throw index_error(string_utils::to_string(
+      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc_.last));
+  }
+}
+
+template<typename FormatTraits>
+void postings_writer<FormatTraits>::add_position(uint32_t pos) {
+  // at least positions stream should be created
+  assert(IndexFeatures::NONE != (features_ & IndexFeatures::POS) && pos_out_);
+  assert(!attrs_.offs_ || attrs_.offs_->start <= attrs_.offs_->end);
+
+  pos_.pos(pos - pos_.last);
+
+  if (attrs_.pay_) {
+    pay_.push_payload(pos_.size, attrs_.pay_->value);
+  }
+
+  if (attrs_.offs_) {
+    pay_.push_offset(pos_.size, attrs_.offs_->start, attrs_.offs_->end);
+  }
+
+  pos_.next(pos);
+
+  if (pos_.full()) {
+    FormatTraits::write_block(*pos_out_, pos_.buf.begin(), buf_);
+    pos_.size = 0;
+
+    if (attrs_.pay_) {
+      assert(IndexFeatures::NONE != (features_ & IndexFeatures::PAY) && pay_out_);
+      auto& pay_buf = pay_.pay_buf_;
+
+      pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
+      if (!pay_buf.empty()) {
+        FormatTraits::write_block(*pay_out_, pay_.pay_sizes, buf_);
+        pay_out_->write_bytes(pay_buf.c_str(), pay_buf.size());
+        pay_buf.clear();
+      }
+    }
+
+    if (attrs_.offs_) {
+      assert(IndexFeatures::NONE != (features_ & IndexFeatures::OFFS) && pay_out_);
+      FormatTraits::write_block(*pay_out_, pay_.offs_start_buf, buf_);
+      FormatTraits::write_block(*pay_out_, pay_.offs_len_buf, buf_);
+    }
+  }
+}
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4706)
@@ -1024,7 +1022,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
       }
     }
 
-    begin_doc<FormatTraits>(did, freqv);
+    begin_doc(did, freqv);
     if constexpr (FormatTraits::wand()) {
       score_buf_.add(freqv);
     }
@@ -1032,7 +1030,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     assert(attrs_.pos_);
     while (attrs_.pos_->next()) {
       assert(pos_limits::valid(attrs_.pos_->value()));
-      add_position<FormatTraits>(attrs_.pos_->value(), attrs_.offs_, attrs_.pay_);
+      add_position(attrs_.pos_->value());
     }
 
     ++docs_count;
