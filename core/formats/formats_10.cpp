@@ -495,8 +495,16 @@ class postings_writer_base : public irs::postings_writer {
       freq = std::max(value, freq);
     }
 
+    void add(const score_buffer& rhs) noexcept {
+      add(rhs.freq);
+    }
+
     void reset() noexcept {
       freq = 0;
+    }
+
+    void write(memory_index_output& out) const {
+      out.write_vint(freq);
     }
   };
 
@@ -896,26 +904,26 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
 //////////////////////////////////////////////////////////////////////////////
 /// @class postings_writer
 //////////////////////////////////////////////////////////////////////////////
-template<typename FormatTraits, bool VolatileAttributes>
+template<typename FormatTraits>
 class postings_writer final: public postings_writer_base {
  public:
-  explicit postings_writer(PostingsFormat version)
+  explicit postings_writer(PostingsFormat version, bool volatile_attributes)
     : postings_writer_base{
         FormatTraits::block_size(),
-        { docbuf_.docs, IRESEARCH_COUNTOF(docbuf_.docs) },
-        { docbuf_.freqs, IRESEARCH_COUNTOF(docbuf_.freqs) },
-        docbuf_.skip_doc,
-        docbuf_.skip_ptr,
-        { proxbuf_.buf, IRESEARCH_COUNTOF(proxbuf_.buf) },
-        proxbuf_.skip_ptr,
-        paybuf_.pay_sizes,
-        paybuf_.offs_start_buf,
-        paybuf_.offs_len_buf,
-        paybuf_.skip_ptr,
+        { doc_buf_.docs, IRESEARCH_COUNTOF(doc_buf_.docs) },
+        { doc_buf_.freqs, IRESEARCH_COUNTOF(doc_buf_.freqs) },
+        doc_buf_.skip_doc,
+        doc_buf_.skip_ptr,
+        { prox_buf_.buf, IRESEARCH_COUNTOF(prox_buf_.buf) },
+        prox_buf_.skip_ptr,
+        pay_buf_.pay_sizes,
+        pay_buf_.offs_start_buf,
+        pay_buf_.offs_len_buf,
+        pay_buf_.skip_ptr,
         encbuf_.buf,
         version,
-        TermsFormat::MAX
-      } {
+        TermsFormat::MAX },
+      volatile_attributes_{volatile_attributes} {
     assert(
       (postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
          ? pos_limits::invalid()
@@ -930,21 +938,23 @@ class postings_writer final: public postings_writer_base {
     uint32_t freqs[FormatTraits::block_size()]{};          // buffer to store frequencies
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};                  // buffer to store skip documents
     uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                  // buffer to store skip pointers
-  } docbuf_;
+  } doc_buf_;
   struct {
     uint32_t buf[FormatTraits::block_size()]{};             // buffer to store position deltas
     uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                   // buffer to store skip pointers
-  } proxbuf_;
+  } prox_buf_;
   struct {
     uint32_t pay_sizes[FormatTraits::block_size()]{};       // buffer to store payloads sizes
     uint32_t offs_start_buf[FormatTraits::block_size()]{};  // buffer to store start offsets
     uint32_t offs_len_buf[FormatTraits::block_size()]{};    // buffer to store offset lengths
     uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                   // buffer to store skip pointers
-  } paybuf_;
+  } pay_buf_;
   struct {
     uint32_t buf[FormatTraits::block_size()];               // buffer for encoding (worst case)
   } encbuf_;
   score_buffer score_buf_;
+  score_buffer score_levels_[MAX_SKIP_LEVELS];
+  bool volatile_attributes_;
 }; // postings_writer
 
 #if defined(_MSC_VER)
@@ -954,28 +964,27 @@ class postings_writer final: public postings_writer_base {
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-template<typename FormatTraits, bool VolatileAttributes>
-irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(
+template<typename FormatTraits>
+irs::postings_writer::state postings_writer<FormatTraits>::write(
     irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
-  const frequency no_freq;
   const frequency* freq;
 
-  auto refresh = [this, &freq, &no_freq](auto& attrs) noexcept {
+  auto refresh = [this, &freq, no_freq = frequency{}](auto& attrs) noexcept {
     attrs_.reset(attrs);
     freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
   };
 
-  if constexpr (VolatileAttributes) {
+  if (!volatile_attributes_) {
+    refresh(docs);
+  } else {
     auto* subscription = irs::get<attribute_provider_change>(docs);
     assert(subscription);
 
     subscription->subscribe([refresh](attribute_provider& attrs) {
       refresh(attrs);
     });
-  } else {
-    refresh(docs);
   }
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
@@ -994,13 +1003,19 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     const uint32_t freqv = freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
+      score_levels_[0].add(score_buf_);
+
       skip_.skip(
         docs_count,
         [this](size_t level, memory_index_output& out) {
           write_skip(level, out);
 
           if constexpr (FormatTraits::wand()) {
-
+            auto& score = score_levels_[level];
+            if (level) {
+              score.add(score_levels_[level - 1]);
+            }
+            score.write(out);
           }
       });
 
@@ -1928,6 +1943,10 @@ class doc_iterator final : public irs::doc_iterator {
         }
       }
 
+      if constexpr (IteratorTraits::wand()) {
+        in.read_vint();
+      }
+
       return next.doc;
     }
   };
@@ -1963,21 +1982,16 @@ class doc_iterator final : public irs::doc_iterator {
 
     if (left >= IteratorTraits::block_size()) {
       // read doc deltas
-      IteratorTraits::read_block(
-        *doc_in_,
-        enc_buf_,
-        docs_);
+      IteratorTraits::read_block(*doc_in_, enc_buf_, docs_);
 
       if constexpr (IteratorTraits::frequency()) {
-        IteratorTraits::read_block(
-          *doc_in_,
-          enc_buf_,
-          doc_freqs_);
+        IteratorTraits::read_block(*doc_in_, enc_buf_, doc_freqs_);
       } else if constexpr (FieldTraits::frequency()) {
         IteratorTraits::skip_block(*doc_in_);
       }
 
-      end_ = docs_ + IteratorTraits::block_size();
+      static_assert(IRESEARCH_COUNTOF(decltype(docs_){}) == IteratorTraits::block_size());
+      end_ = std::end(docs_);
     } else {
       read_end_block(left);
       end_ = docs_ + left;
@@ -3288,13 +3302,8 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::POSITIONS_ONEBASED;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::POSITIONS_ONEBASED, consolidation);
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
@@ -3431,13 +3440,8 @@ class format13 : public format12 {
 const ::format13 FORMAT13_INSTANCE;
 
 irs::postings_writer::ptr format13::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::POSITIONS_ZEROBASED;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::POSITIONS_ZEROBASED, consolidation);
 }
 
 irs::postings_reader::ptr format13::get_postings_reader() const {
@@ -3483,13 +3487,8 @@ class format14 : public format13 {
 const ::format14 FORMAT14_INSTANCE;
 
 irs::postings_writer::ptr format14::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::WAND;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::WAND, consolidation);
 }
 
 irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
@@ -3574,13 +3573,8 @@ class format12simd final : public format12 {
 const ::format12simd FORMAT12SIMD_INSTANCE;
 
 irs::postings_writer::ptr format12simd::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::POSITIONS_ONEBASED_SSE;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
@@ -3622,13 +3616,8 @@ class format13simd : public format13 {
 const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::POSITIONS_ZEROBASED_SSE;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
@@ -3674,13 +3663,8 @@ class format14simd : public format13simd {
 const ::format14simd FORMAT14SIMD_INSTANCE;
 
 irs::postings_writer::ptr format14simd::get_postings_writer(bool consolidation) const {
-  constexpr const auto VERSION = PostingsFormat::WAND_SSE;
-
-  if (consolidation) {
-    return memory::make_unique<::postings_writer<format_traits, true>>(VERSION);
-  }
-
-  return memory::make_unique<::postings_writer<format_traits, false>>(VERSION);
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::WAND_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format14simd::get_postings_reader() const {
