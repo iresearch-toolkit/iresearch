@@ -362,29 +362,18 @@ struct score_buffer {
     freq = 0;
   }
 
-  void write_score(memory_index_output& out) const {
+  void write(memory_index_output& out) const {
     out.write_vint(freq);
   }
 
-  void read_score(index_input& in) noexcept {
+  void read(index_input& in) {
     freq = in.read_vint();
   }
-}; // score_buffer
 
-struct empty_score_buffer {
-  void add(uint32_t) noexcept { }
-
-  void add(const score_buffer&) noexcept { }
-
-  void reset() noexcept { }
-
-  void write(memory_index_output&) const { }
-
-  void read_score(index_input& in) noexcept {
-    // skip score
+  static void skip(index_input& in) {
     in.read_vint();
   }
-}; // empty_score_buffer
+}; // score_buffer
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1037,7 +1026,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
             if (level) {
               score.add(score_levels_[level - 1]);
             }
-            score.write_score(out);
+            score.write(out);
           }
       });
 
@@ -1083,17 +1072,9 @@ struct skip_state {
   size_t pend_pos{}; // positions to skip before new document block
   doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
-  score_buffer score;
 }; // skip_state
 
-template<bool Wand>
-struct skip
-  : skip_state,
-    std::conditional_t<Wand, score_buffer, empty_score_buffer> {
-};
-
-template<bool Wand>
-struct skip_context : skip<Wand> {
+struct skip_context : skip_state {
   size_t level{}; // skip level
 }; // skip_context
 
@@ -1745,9 +1726,6 @@ class doc_iterator final : public irs::doc_iterator {
         std::tuple<document, cost, score>
       >>;
 
-   using skip_t = skip<IteratorTraits::use_wand()>;
-   using skip_context_t = skip_context<IteratorTraits::use_wand()>;
-
  public:
   // hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<doc_iterator>;
@@ -1944,18 +1922,17 @@ class doc_iterator final : public irs::doc_iterator {
 
     doc_id_t operator()(size_t level, size_t end, index_input& in) const {
       auto& last = *self->skip_ctx_;
-      auto& last_level = self->skip_ctx_->level;
       auto& next = self->skip_levels_[level];
 
-      if (last_level > level) {
+      if (last.level > level) {
         // move to the more granular level
         next = last;
       } else {
         // store previous step on the same level
-        static_cast<skip_t&>(last) = next;
+        static_cast<skip_state&>(last) = next;
       }
 
-      last_level = level;
+      last.level = level;
 
       if (in.file_pointer() >= end) {
         // stream exhausted
@@ -1979,7 +1956,7 @@ class doc_iterator final : public irs::doc_iterator {
       }
 
       if constexpr (FieldTraits::wand()) {
-        next.read_score(in);
+        score_buffer::skip(in);
       }
 
       return next.doc;
@@ -2045,9 +2022,9 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   doc_id_t docs_[IteratorTraits::block_size()]{}; // doc values
   uint32_t doc_freqs_[IteratorTraits::block_size()]; // document frequencies
-  std::vector<skip_t> skip_levels_;
+  std::vector<skip_state> skip_levels_;
   skip_reader<read_skip> skip_;
-  skip_context_t* skip_ctx_; // pointer to used skip context, will be used by skip reader
+  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
@@ -2063,7 +2040,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target &&
       term_state_.docs_count > IteratorTraits::block_size()) {
-    skip_context_t last; // where block starts
+    skip_context last; // where block starts
     skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
@@ -3002,13 +2979,12 @@ size_t postings_reader_base::decode(
 template<typename FormatTraits>
 class postings_reader final: public postings_reader_base {
  public:
-  template<bool Freq, bool Pos, bool Offset, bool Payload, bool UseWand>
+  template<bool Freq, bool Pos, bool Offset, bool Payload>
   struct iterator_traits : FormatTraits {
     static constexpr bool frequency() noexcept { return Freq; }
     static constexpr bool offset() noexcept { return position() && Offset; }
     static constexpr bool payload() noexcept { return position() && Payload; }
     static constexpr bool position() noexcept { return Freq && Pos; }
-    static constexpr bool use_wand() noexcept { return UseWand; }
     static constexpr bool one_based_position_storage() noexcept {
       return FormatTraits::pos_min() == pos_limits::min();
     }
@@ -3021,16 +2997,7 @@ class postings_reader final: public postings_reader_base {
   virtual irs::doc_iterator::ptr iterator(
       IndexFeatures field_features,
       IndexFeatures required_features,
-      const term_meta& meta) override {
-    return iterator_impl<false>(field_features, required_features, meta);
-  }
-
-  irs::doc_iterator::ptr iterator_wand(
-      IndexFeatures field_features,
-      IndexFeatures required_features,
-      const term_meta& meta) {
-    return iterator_impl<true>(field_features, required_features, meta);
-  }
+      const term_meta& meta) override;
 
   virtual size_t bit_union(
     IndexFeatures field,
@@ -3053,11 +3020,10 @@ class postings_reader final: public postings_reader_base {
     return it;
   }
 
-  template<typename FieldTraits, bool UseWand, typename... Args>
+  template<typename FieldTraits, typename... Args>
   irs::doc_iterator::ptr iterator_impl(
     IndexFeatures enabled, Args&&... args);
 
-  template<bool UseWand>
   irs::doc_iterator::ptr iterator_impl(
     IndexFeatures field_features,
     IndexFeatures required_features,
@@ -3071,37 +3037,37 @@ class postings_reader final: public postings_reader_base {
 #endif
 
 template<typename FormatTraits>
-template<typename FieldTraits, bool UseWand, typename... Args>
+template<typename FieldTraits, typename... Args>
 irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
     IndexFeatures enabled, Args&&... args) {
   switch (enabled) {
     case IndexFeatures::ALL : {
-      using iterator_traits_t = iterator_traits<true, true, true, true, UseWand>;
+      using iterator_traits_t = iterator_traits<true, true, true, true>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
-      using iterator_traits_t = iterator_traits<true, true, true, false, UseWand>;
+      using iterator_traits_t = iterator_traits<true, true, true, false>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
-      using iterator_traits_t = iterator_traits<true, true, false, true, UseWand>;
+      using iterator_traits_t = iterator_traits<true, true, false, true>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
-      using iterator_traits_t = iterator_traits<true, true, false, false, UseWand>;
+      using iterator_traits_t = iterator_traits<true, true, false, false>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ: {
-      using iterator_traits_t = iterator_traits<true, false, false, false, UseWand>;
+      using iterator_traits_t = iterator_traits<true, false, false, false>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
     default: {
-      using iterator_traits_t = iterator_traits<false, false, false, false, UseWand>;
+      using iterator_traits_t = iterator_traits<false, false, false, false>;
       return iterator_impl<iterator_traits_t, FieldTraits>(
         *this, std::forward<Args>(args)...);
     }
@@ -3112,8 +3078,7 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
 }
 
 template<typename FormatTraits>
-template<bool UseWand>
-irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
+irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator(
     IndexFeatures field_features,
     IndexFeatures required_features,
     const term_meta& meta) {
@@ -3123,28 +3088,28 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
 
   switch (field_features) {
     case IndexFeatures::ALL : {
-      using field_traits_t = iterator_traits<true, true, true, true, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
-      using field_traits_t = iterator_traits<true, true, true, false, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
-      using field_traits_t = iterator_traits<true, true, false, true, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
-      using field_traits_t = iterator_traits<true, true, false, false, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     case IndexFeatures::FREQ: {
-      using field_traits_t = iterator_traits<true, false, false, false, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
     default: {
-      using field_traits_t = iterator_traits<false, false, false, false, FormatTraits::wand()>;
-      return iterator_impl<field_traits_t, UseWand>(enabled, meta);
+      using field_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
     }
   }
 }
@@ -3222,10 +3187,10 @@ size_t postings_reader<FormatTraits>::bit_union(
       assert(!doc_in->eof());
 
       if (has_freq) {
-        using field_traits_t = iterator_traits<true, false, false, false, FormatTraits::wand()>;
+        using field_traits_t = iterator_traits<true, false, false, false>;
         ::bit_union<field_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
       } else {
-        using field_traits_t = iterator_traits<false, false, false, false, FormatTraits::wand()>;
+        using field_traits_t = iterator_traits<false, false, false, false>;
         ::bit_union<field_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
       }
 
