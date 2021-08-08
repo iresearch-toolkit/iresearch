@@ -1798,8 +1798,10 @@ class doc_iterator final : public irs::doc_iterator {
 
     if (1 == term_state_.docs_count) {
       *docs_ = (doc_limits::min)() + term_state_.e_single_doc;
-      *doc_freqs_ = term_freq_;
-      doc_freq_ = doc_freqs_;
+      if constexpr (IteratorTraits::frequency()) {
+        *doc_freqs_ = term_freq_;
+        doc_freq_ = doc_freqs_;
+      }
       ++end_;
     }
   }
@@ -3303,7 +3305,7 @@ class postings_reader final: public postings_reader_base {
       IndexFeatures field_features,
       IndexFeatures required_features,
       const term_meta& meta) {
-    return iterator_impl<true>(field_features, required_features, meta);
+    return iterator_impl<FormatTraits::wand()>(field_features, required_features, meta);
   }
 
   virtual size_t bit_union(
