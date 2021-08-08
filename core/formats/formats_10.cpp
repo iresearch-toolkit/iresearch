@@ -1973,17 +1973,21 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   void read_end_block(size_t size) {
+    end_ = docs_ + size;
+    auto* doc = std::begin(docs_);
+
     if constexpr (FieldTraits::frequency()) {
-      for (size_t i = 0; i < size; ++i) {
-        if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
-          doc_freqs_[i] = 1;
+      auto* doc_freq = std::begin(doc_freqs_);
+      while (doc < end_) {
+        if (shift_unpack_32(doc_in_->read_vint(), *doc++)) {
+          *doc_freq++ = 1;
         } else {
-          doc_freqs_[i] = doc_in_->read_vint();
+          *doc_freq++ = doc_in_->read_vint();
         }
       }
     } else {
-      for (size_t i = 0; i < size; ++i) {
-        docs_[i] = doc_in_->read_vint();
+      while (doc < end_) {
+        *doc++ = doc_in_->read_vint();
       }
     }
   }
@@ -2007,7 +2011,6 @@ class doc_iterator final : public irs::doc_iterator {
       end_ = std::end(docs_);
     } else {
       read_end_block(left);
-      end_ = docs_ + left;
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
