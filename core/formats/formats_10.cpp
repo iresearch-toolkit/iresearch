@@ -1773,7 +1773,6 @@ class doc_iterator final : public irs::doc_iterator {
 
     if constexpr (IteratorTraits::frequency()) {
       assert(meta.freq);
-      term_freq_ = meta.freq;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
@@ -1783,15 +1782,17 @@ class doc_iterator final : public irs::doc_iterator {
         state.freq = &std::get<frequency>(attrs_).value;
         state.enc_buf = enc_buf_;
 
-        if (term_freq_ < IteratorTraits::block_size()) {
+        const auto term_freq = meta.freq;
+
+        if (term_freq < IteratorTraits::block_size()) {
           state.tail_start = term_state_.pos_start;
-        } else if (term_freq_ == IteratorTraits::block_size()) {
+        } else if (term_freq == IteratorTraits::block_size()) {
           state.tail_start = type_limits<type_t::address_t>::invalid();
         } else {
           state.tail_start = term_state_.pos_start + term_state_.pos_end;
         }
 
-        state.tail_length = term_freq_ % IteratorTraits::block_size();
+        state.tail_length = term_freq % IteratorTraits::block_size();
         std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
       }
     }
@@ -1799,7 +1800,7 @@ class doc_iterator final : public irs::doc_iterator {
     if (1 == term_state_.docs_count) {
       *docs_ = (doc_limits::min)() + term_state_.e_single_doc;
       if constexpr (IteratorTraits::frequency()) {
-        *doc_freqs_ = term_freq_;
+        *doc_freqs_ = meta.freq;
         doc_freq_ = doc_freqs_;
       }
       ++end_;
@@ -2020,7 +2021,9 @@ class doc_iterator final : public irs::doc_iterator {
     }
 
     begin_ = docs_;
-    doc_freq_ = doc_freqs_;
+    if constexpr (IteratorTraits::frequency()) {
+      doc_freq_ = doc_freqs_;
+    }
   }
 
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
@@ -2028,12 +2031,11 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t doc_freqs_[IteratorTraits::block_size()]; // document frequencies
   std::vector<skip_state> skip_levels_;
   skip_reader<read_skip> skip_;
-  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
+  skip_context* skip_ctx_; // pointer to skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{docs_};
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
-  uint32_t term_freq_{}; // total term frequency
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   attributes attrs_;
@@ -2086,305 +2088,6 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     }
   }
 }
-
-/*
-///////////////////////////////////////////////////////////////////////////////
-/// @class wanderator
-/// @tparam IteratorTraits requested features
-/// @tparam FieldTraits actual field features
-///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits, typename FieldTraits>
-class wanderator final : public irs::doc_iterator {
- private:
-  using attributes = std::conditional_t<
-    IteratorTraits::frequency() && IteratorTraits::position(),
-      std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
-      std::conditional_t<IteratorTraits::frequency(),
-        std::tuple<document, frequency, cost, score>,
-        std::tuple<document, cost, score>
-      >>;
-
- public:
-  // hide 'ptr' defined in irs::doc_iterator
-  using ptr = memory::managed_ptr<wanderator>;
-
-  wanderator() noexcept
-    : skip_levels_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{this}} {
-    assert(
-      std::all_of(docs_, docs_ + IteratorTraits::block_size(),
-                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
-  }
-
-  void prepare(
-      const term_meta& meta,
-      const index_input* doc_in,
-      [[maybe_unused]] const index_input* pos_in,
-      [[maybe_unused]] const index_input* pay_in) {
-    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == FieldTraits::frequency());
-    assert(!IteratorTraits::position() || IteratorTraits::position() == FieldTraits::position());
-    assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
-    assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
-
-    begin_ = end_ = docs_;
-
-    term_state_ = static_cast<const version10::term_meta&>(meta);
-
-    // init document stream
-    if (term_state_.docs_count > 1) {
-      if (!doc_in_) {
-        doc_in_ = doc_in->reopen(); // reopen thread-safe stream
-
-        if (!doc_in_) {
-          // implementation returned wrong pointer
-          IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
-
-          throw io_error("failed to reopen document input");
-        }
-      }
-
-      doc_in_->seek(term_state_.doc_start);
-      assert(!doc_in_->eof());
-    }
-
-    std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
-
-    if constexpr (IteratorTraits::frequency()) {
-      assert(meta.freq);
-      term_freq_ = meta.freq;
-
-      if constexpr (IteratorTraits::position()) {
-        doc_state state;
-        state.pos_in = pos_in;
-        state.pay_in = pay_in;
-        state.term_state = &term_state_;
-        state.freq = &std::get<frequency>(attrs_).value;
-        state.enc_buf = enc_buf_;
-
-        if (term_freq_ < IteratorTraits::block_size()) {
-          state.tail_start = term_state_.pos_start;
-        } else if (term_freq_ == IteratorTraits::block_size()) {
-          state.tail_start = type_limits<type_t::address_t>::invalid();
-        } else {
-          state.tail_start = term_state_.pos_start + term_state_.pos_end;
-        }
-
-        state.tail_length = term_freq_ % IteratorTraits::block_size();
-        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
-      }
-    }
-
-    if (1 == term_state_.docs_count) {
-      *docs_ = (doc_limits::min)() + term_state_.e_single_doc;
-      *doc_freqs_ = term_freq_;
-      doc_freq_ = doc_freqs_;
-      ++end_;
-    }
-  }
-
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    auto& doc = std::get<document>(attrs_);
-
-    if (target <= doc.value) {
-      return doc.value;
-    }
-
-    seek_to_block(target);
-
-    if (begin_ == end_) {
-      cur_pos_ += relative_pos();
-
-      if (cur_pos_ == term_state_.docs_count) {
-        doc.value = doc_limits::eof();
-        begin_ = end_ = docs_; // seal the iterator
-        return doc_limits::eof();
-      }
-
-      refill();
-    }
-
-    [[maybe_unused]] uint32_t notify{0};
-    while (begin_ < end_) {
-      doc.value += *begin_++;
-
-      if constexpr (!IteratorTraits::position()) {
-        if (doc.value >= target) {
-          if constexpr (IteratorTraits::frequency()) {
-            doc_freq_ = doc_freqs_ + relative_pos();
-            assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
-            std::get<frequency>(attrs_).value = doc_freq_[-1];
-          }
-          return doc.value;
-        }
-      } else {
-        assert(IteratorTraits::frequency());
-        auto& freq = std::get<frequency>(attrs_);
-        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        freq.value = *doc_freq_++;
-        notify += freq.value;
-
-        if (doc.value >= target) {
-          pos.notify(notify);
-          pos.clear();
-          return doc.value;
-        }
-      }
-    }
-
-    if constexpr (IteratorTraits::position()) {
-      std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
-    }
-    while (doc.value < target) {
-      next();
-    }
-
-    return doc.value;
-  }
-
-  virtual doc_id_t value() const noexcept final {
-    return std::get<document>(attrs_).value;
-  }
-
-#if defined(_MSC_VER)
-  #pragma warning(disable : 4706)
-#elif defined(__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
-  virtual bool next() override {
-    return seek(std::get<document>(attrs_).value + 1);
-  }
-
-#if defined(_MSC_VER)
-  #pragma warning(default : 4706)
-#elif defined(__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
- private:
-  struct read_skip {
-    wanderator* self;
-
-    doc_id_t operator()(size_t level, size_t end, index_input& in) const {
-      auto& last = *self->skip_ctx_;
-      auto& next = self->skip_levels_[level];
-
-      if (last.level > level) {
-        // move to the more granular level
-        next = last;
-      } else {
-        // store previous step on the same level
-        static_cast<skip_state&>(last) = next;
-      }
-
-      last.level = level;
-
-      if (in.file_pointer() >= end) {
-        // stream exhausted
-        return (next.doc = doc_limits::eof());
-      }
-
-      next.doc = in.read_vint();
-      next.doc_ptr += in.read_vlong();
-
-      if constexpr (FieldTraits::position()) {
-        next.pend_pos = in.read_vint();
-        next.pos_ptr += in.read_vlong();
-
-        if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
-          if constexpr (FieldTraits::payload()) {
-            next.pay_pos = in.read_vint();
-          }
-
-          next.pay_ptr += in.read_vlong();
-        }
-      }
-
-      if constexpr (FieldTraits::wand()) {
-        score_buffer::skip(in);
-      }
-
-      return next.doc;
-    }
-  };
-
-  void seek_to_block(doc_id_t target);
-
-  // returns current position in the document block 'docs_'
-  size_t relative_pos() noexcept {
-    assert(begin_ >= docs_);
-    return begin_ - docs_;
-  }
-
-  void read_end_block(size_t size) {
-    if constexpr (FieldTraits::frequency()) {
-      for (size_t i = 0; i < size; ++i) {
-        if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
-          doc_freqs_[i] = 1;
-        } else {
-          doc_freqs_[i] = doc_in_->read_vint();
-        }
-      }
-    } else {
-      for (size_t i = 0; i < size; ++i) {
-        docs_[i] = doc_in_->read_vint();
-      }
-    }
-  }
-
-  void refill() {
-    // should never call refill for singleton documents
-    assert(1 != term_state_.docs_count);
-    const auto left = term_state_.docs_count - cur_pos_;
-
-    if (left >= IteratorTraits::block_size()) {
-      // read doc deltas
-      IteratorTraits::read_block(*doc_in_, enc_buf_, docs_);
-
-      if constexpr (IteratorTraits::frequency()) {
-        IteratorTraits::read_block(*doc_in_, enc_buf_, doc_freqs_);
-      } else if constexpr (FieldTraits::frequency()) {
-        IteratorTraits::skip_block(*doc_in_);
-      }
-
-      static_assert(IRESEARCH_COUNTOF(decltype(docs_){}) == IteratorTraits::block_size());
-      end_ = std::end(docs_);
-    } else {
-      read_end_block(left);
-      end_ = docs_ + left;
-    }
-
-    // if this is the initial doc_id then set it to min() for proper delta value
-    if (auto& doc = std::get<irs::document>(attrs_);
-        !doc_limits::valid(doc.value)) {
-      doc.value = (doc_limits::min)();
-    }
-
-    begin_ = docs_;
-    doc_freq_ = doc_freqs_;
-  }
-
-  uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
-  doc_id_t docs_[IteratorTraits::block_size()]{}; // doc values
-  uint32_t doc_freqs_[IteratorTraits::block_size()]; // document frequencies
-  std::vector<skip_state> skip_levels_;
-  skip_reader<read_skip> skip_;
-  skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  uint32_t cur_pos_{};
-  const doc_id_t* begin_{docs_};
-  doc_id_t* end_{docs_};
-  uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
-  uint32_t term_freq_{}; // total term frequency
-  index_input::ptr doc_in_;
-  version10::term_meta term_state_;
-  attributes attrs_;
-}; // wanderator
-*/
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                index_meta_writer
