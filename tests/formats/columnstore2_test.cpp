@@ -191,6 +191,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX/2, column->size());
 
+    // seek stateful
     {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
@@ -207,6 +208,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       }
     }
 
+    // seek stateless
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
@@ -219,6 +221,28 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_EQ(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+
+      auto next_it = column->iterator();
+      ASSERT_EQ(doc, next_it->seek(doc));
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+      }
     }
   }
 }
@@ -302,6 +326,34 @@ TEST_P(columnstore2_test_case, sparse_column) {
       const auto str = std::to_string(doc);
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
     }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+      const auto str = std::to_string(doc);
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+
+      auto next_it = column->iterator();
+      auto* next_payload = irs::get<irs::payload>(*next_it);
+      ASSERT_NE(nullptr, next_payload);
+      ASSERT_EQ(doc, next_it->seek(doc));
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+        const auto str = std::to_string(next_doc);
+        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+      }
+    }
   }
 }
 
@@ -380,6 +432,28 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_TRUE(payload->value.null());
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+
+      auto next_it = column->iterator();
+      ASSERT_EQ(doc, next_it->seek(doc));
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+      }
     }
   }
 }
@@ -461,6 +535,34 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+      const auto str = std::to_string(doc);
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+
+      auto next_it = column->iterator();
+      auto* next_payload = irs::get<irs::payload>(*next_it);
+      ASSERT_NE(nullptr, next_payload);
+      ASSERT_EQ(doc, next_it->seek(doc));
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+        const auto str = std::to_string(next_doc);
+        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+      }
     }
   }
 }
@@ -545,6 +647,35 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(expected_doc, it->seek(doc));
       const auto str = std::to_string(expected_doc);
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      const auto expected_doc = (doc <= MIN ? MIN : doc);
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
+      const auto str = std::to_string(expected_doc);
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+
+      auto next_it = column->iterator();
+      ASSERT_EQ(expected_doc, next_it->seek(expected_doc));
+      auto* next_payload = irs::get<irs::payload>(*next_it);
+      ASSERT_NE(nullptr, next_payload);
+      for (auto next_doc = expected_doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+        const auto str = std::to_string(next_doc);
+        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+      }
     }
   }
 }
@@ -632,6 +763,32 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(sizeof doc, payload->value.size());
       const irs::doc_id_t actual_doc = *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str());
       EXPECT_EQ(doc, actual_doc);
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+
+      auto next_it = column->iterator();
+      auto* next_payload = irs::get<irs::payload>(*next_it);
+      ASSERT_NE(nullptr, next_payload);
+      ASSERT_EQ(doc, next_it->seek(doc));
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        ASSERT_EQ(next_doc, next_it->value());
+        const auto str = std::to_string(next_doc);
+        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+      }
     }
   }
 }
