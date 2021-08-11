@@ -184,20 +184,20 @@ class range_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    if (IRS_LIKELY(min_doc_ < doc && doc <= max_doc_)) {
-      min_doc_ = doc;
+    if (IRS_LIKELY(min_doc_ <= doc && doc <= max_doc_)) {
       std::get<document>(attrs_).value = doc;
+      min_doc_ = doc + 1;
       std::get<irs::payload>(attrs_).value = this->payload(doc - min_base_);
       return doc;
-    } else if (doc <= min_doc_) {
-      std::get<document>(attrs_).value = min_doc_;
-      std::get<irs::payload>(attrs_).value = this->payload(min_doc_ - min_base_);
-      return min_doc_;
-    } else { // max_doc_ < doc
+    }
+
+    if (doc != value()) {
       std::get<document>(attrs_).value = doc_limits::eof();
       std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
       return doc_limits::eof();
     }
+
+    return doc;
   }
 
   virtual bool next() override {

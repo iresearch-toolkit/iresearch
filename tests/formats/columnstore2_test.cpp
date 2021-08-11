@@ -347,6 +347,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
       auto* next_payload = irs::get<irs::payload>(*next_it);
       ASSERT_NE(nullptr, next_payload);
       ASSERT_EQ(doc, next_it->seek(doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
       for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
         ASSERT_TRUE(next_it->next());
         ASSERT_EQ(next_doc, next_it->value());
@@ -435,7 +436,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     }
 
     // seek + next
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
@@ -538,7 +539,7 @@ TEST_P(columnstore2_test_case, dense_column) {
     }
 
     // seek + next
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
@@ -557,6 +558,7 @@ TEST_P(columnstore2_test_case, dense_column) {
       auto* next_payload = irs::get<irs::payload>(*next_it);
       ASSERT_NE(nullptr, next_payload);
       ASSERT_EQ(doc, next_it->seek(doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
       for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
         ASSERT_TRUE(next_it->next());
         ASSERT_EQ(next_doc, next_it->value());
@@ -650,7 +652,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     }
 
     // seek + next
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
@@ -670,6 +672,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(expected_doc, next_it->seek(expected_doc));
       auto* next_payload = irs::get<irs::payload>(*next_it);
       ASSERT_NE(nullptr, next_payload);
+      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
       for (auto next_doc = expected_doc + 1; next_doc < MAX; ++next_doc) {
         ASSERT_TRUE(next_it->next());
         ASSERT_EQ(next_doc, next_it->value());
@@ -766,7 +769,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
     }
 
     // seek + next
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
       auto it = column->iterator();
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
@@ -778,11 +781,14 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
+      const auto str = std::to_string(doc);
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
 
       auto next_it = column->iterator();
       auto* next_payload = irs::get<irs::payload>(*next_it);
       ASSERT_NE(nullptr, next_payload);
       ASSERT_EQ(doc, next_it->seek(doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
       for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
         ASSERT_TRUE(next_it->next());
         ASSERT_EQ(next_doc, next_it->value());
