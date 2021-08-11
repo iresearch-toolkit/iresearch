@@ -457,6 +457,24 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
         ASSERT_EQ(next_doc, next_it->value());
       }
     }
+
+    // next + seek
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      ASSERT_TRUE(it->next());
+      ASSERT_EQ(irs::doc_limits::min(), document->value);
+      ASSERT_TRUE(payload->value.null());
+      ASSERT_EQ(118774, it->seek(118774));
+      ASSERT_TRUE(payload->value.null());
+      ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
+    }
   }
 }
 
@@ -567,6 +585,24 @@ TEST_P(columnstore2_test_case, dense_column) {
         const auto str = std::to_string(next_doc);
         EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
       }
+    }
+
+    // next + seek
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      ASSERT_TRUE(it->next());
+      ASSERT_EQ(irs::doc_limits::min(), document->value);
+      const auto str = std::to_string(118774);
+      ASSERT_EQ(118774, it->seek(118774));
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
     }
   }
 }
@@ -803,6 +839,24 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(sizeof next_doc, next_payload->value.size());
         EXPECT_EQ(next_doc, *reinterpret_cast<const irs::doc_id_t*>(next_payload->value.c_str()));
       }
+    }
+
+    // next + seek
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      ASSERT_TRUE(it->next());
+      ASSERT_EQ(irs::doc_limits::min(), document->value);
+      ASSERT_EQ(118774, it->seek(118774));
+      ASSERT_EQ(sizeof(irs::doc_id_t), payload->value.size());
+      EXPECT_EQ(118774, *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str()));
+      ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
     }
   }
 }

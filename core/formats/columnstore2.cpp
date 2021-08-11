@@ -172,6 +172,8 @@ class range_column_iterator final
       min_base_{header.min},
       min_doc_{min_base_},
       max_doc_{min_base_ + header.docs_count - 1} {
+    assert(min_doc_ <= max_doc_);
+    assert(!doc_limits::eof(max_doc_));
     std::get<irs::cost>(attrs_).reset(header.docs_count);
   }
 
@@ -192,6 +194,7 @@ class range_column_iterator final
     }
 
     if (doc != value()) {
+      min_doc_ = max_doc_;
       std::get<document>(attrs_).value = doc_limits::eof();
       std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
       return doc_limits::eof();
