@@ -338,9 +338,10 @@ TEST_P(columnstore2_test_case, sparse_column) {
       ASSERT_NE(nullptr, cost);
       ASSERT_EQ(column->size(), cost->estimate());
 
-      ASSERT_EQ(doc, it->seek(doc));
-      ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
+      ASSERT_EQ(doc, it->seek(doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_EQ(doc, it->seek(doc));
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
 
       auto next_it = column->iterator();
@@ -549,9 +550,10 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_NE(nullptr, cost);
       ASSERT_EQ(column->size(), cost->estimate());
 
-      ASSERT_EQ(doc, it->seek(doc));
-      ASSERT_EQ(doc, it->seek(doc));
       const auto str = std::to_string(doc);
+      ASSERT_EQ(doc, it->seek(doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_EQ(doc, it->seek(doc));
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
 
       auto next_it = column->iterator();
@@ -627,9 +629,10 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         const auto expected_doc = (doc <= MIN ? MIN : doc);
-        ASSERT_EQ(expected_doc, it->seek(doc));
-        ASSERT_EQ(expected_doc, it->seek(doc));
         const auto str = std::to_string(expected_doc);
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
+        EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
         EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
       }
     }
@@ -645,9 +648,10 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
 
       const auto expected_doc = (doc <= MIN ? MIN : doc);
-      ASSERT_EQ(expected_doc, it->seek(doc));
-      ASSERT_EQ(expected_doc, it->seek(doc));
       const auto str = std::to_string(expected_doc);
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
     }
 
@@ -663,9 +667,10 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
 
       const auto expected_doc = (doc <= MIN ? MIN : doc);
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto str = std::to_string(expected_doc);
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
+      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_EQ(expected_doc, it->seek(expected_doc));
       EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
 
       auto next_it = column->iterator();
@@ -780,20 +785,23 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(column->size(), cost->estimate());
 
       ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(sizeof doc, payload->value.size());
+      EXPECT_EQ(doc, *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str()));
       ASSERT_EQ(doc, it->seek(doc));
-      const auto str = std::to_string(doc);
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+      ASSERT_EQ(sizeof doc, payload->value.size());
+      EXPECT_EQ(doc, *reinterpret_cast<const irs::doc_id_t*>(payload->value.c_str()));
 
       auto next_it = column->iterator();
       auto* next_payload = irs::get<irs::payload>(*next_it);
       ASSERT_NE(nullptr, next_payload);
       ASSERT_EQ(doc, next_it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+      ASSERT_EQ(sizeof doc, next_payload->value.size());
+      EXPECT_EQ(doc, *reinterpret_cast<const irs::doc_id_t*>(next_payload->value.c_str()));
       for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
         ASSERT_TRUE(next_it->next());
         ASSERT_EQ(next_doc, next_it->value());
-        const auto str = std::to_string(next_doc);
-        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+        ASSERT_EQ(sizeof next_doc, next_payload->value.size());
+        EXPECT_EQ(next_doc, *reinterpret_cast<const irs::doc_id_t*>(next_payload->value.c_str()));
       }
     }
   }
