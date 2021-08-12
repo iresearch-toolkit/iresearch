@@ -193,14 +193,15 @@ class range_column_iterator final
       return doc;
     }
 
-    if (doc != value()) {
-      min_doc_ = max_doc_;
+    if (value() < doc) {
+      max_doc_ = doc_limits::invalid();
+      min_doc_ = doc_limits::eof();
       std::get<document>(attrs_).value = doc_limits::eof();
       std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
       return doc_limits::eof();
     }
 
-    return doc;
+    return value();
   }
 
   virtual bool next() override {
