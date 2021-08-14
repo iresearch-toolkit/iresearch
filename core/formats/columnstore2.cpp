@@ -268,7 +268,7 @@ class bitmap_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    assert(doc_limits::valid(doc));
+    assert(doc_limits::valid(doc) || doc_limits::valid(value()));
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {
