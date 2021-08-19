@@ -122,12 +122,8 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  // get terms iterator
-  auto terms = state->reader->iterator();
-
-  if (IRS_UNLIKELY(!terms)) {
-    return doc_iterator::empty();
-  }
+  auto* reader = state->reader;
+  assert(reader);
 
   // get required features for order
   const IndexFeatures features = ord.features();
@@ -143,11 +139,7 @@ doc_iterator::ptr multiterm_query::execute(
   const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
-    if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
-      return doc_iterator::empty(); // internal error
-    }
-
-    auto docs = terms->postings(features);
+    auto docs = reader->postings(*entry.cookie, features);
 
     if (IRS_UNLIKELY(!docs)) {
       continue;

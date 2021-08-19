@@ -52,6 +52,12 @@ class empty_term_reader final : public irs::term_reader {
     return 0;
   }
 
+  virtual doc_iterator::ptr postings(
+      const seek_term_iterator::seek_cookie& cookie,
+      IndexFeatures features) const noexcept override {
+    return doc_iterator::empty();
+  }
+
   virtual const irs::field_meta& meta() const noexcept override {
     return irs::field_meta::EMPTY;
   }

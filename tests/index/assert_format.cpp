@@ -455,7 +455,7 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
 }
 
 class term_iterator final : public irs::seek_term_iterator {
- private:
+ public:
   struct term_cookie : seek_cookie {
     explicit term_cookie(irs::bytes_ref term) noexcept
       : term(term) { }
@@ -463,7 +463,6 @@ class term_iterator final : public irs::seek_term_iterator {
     irs::bytes_ref term;
   };
 
- public:
   explicit term_iterator(const tests::field& data) noexcept
     : data_(data) {
     next_ = data_.terms.begin();
@@ -581,6 +580,16 @@ size_t term_reader::bit_union(
   }
 
   return count;
+}
+
+irs::doc_iterator::ptr term_reader::postings(
+    const irs::seek_term_iterator::seek_cookie& cookie,
+    irs::IndexFeatures features) const {
+  auto it = this->iterator();
+  if (!it->seek(irs::bytes_ref::NIL, cookie)) {
+    return irs::doc_iterator::empty();
+  }
+  return it->postings(features);
 }
 
 field_reader::field_reader(const index_segment& data)

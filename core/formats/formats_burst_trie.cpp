@@ -3213,6 +3213,19 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_, matcher);
     }
 
+    virtual doc_iterator::ptr postings(
+        const seek_term_iterator::seek_cookie& cookie,
+        IndexFeatures features) const override {
+#ifdef IRESEARCH_DEBUG
+      auto* impl = dynamic_cast<const ::cookie*>(&cookie);
+      assert(impl);
+#else
+      auto* impl = static_cast<const ::cookie*>(&cookie);
+#endif
+      return owner_->pr_->iterator(
+        meta().index_features, features, impl->meta);
+    }
+
    private:
     field_reader* owner_;
     std::unique_ptr<FST> fst_;

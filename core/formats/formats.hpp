@@ -238,6 +238,10 @@ struct IRESEARCH_API term_reader: public attribute_provider {
   virtual size_t bit_union(const cookie_provider& provider,
                            size_t* bitset) const = 0;
 
+  virtual doc_iterator::ptr postings(
+    const seek_term_iterator::seek_cookie& cookie,
+    IndexFeatures features) const = 0;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @returns field metadata
   //////////////////////////////////////////////////////////////////////////////

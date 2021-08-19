@@ -256,6 +256,9 @@ class term_reader : public irs::term_reader {
   virtual size_t bit_union(
     const cookie_provider& provider,
     size_t* bitset) const override;
+  virtual irs::doc_iterator::ptr postings(
+      const irs::seek_term_iterator::seek_cookie& cookie,
+      irs::IndexFeatures features) const override;
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::frequency>::id() == type) {
       return pfreq_;
