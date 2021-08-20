@@ -1645,7 +1645,7 @@ class block_iterator : util::noncopyable {
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
-  SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
+  SeekResult scan_to_term(const bytes_ref& term, Reader&& reader) {
     assert(term.size() >= prefix_);
     assert(!dirty_);
 
@@ -2680,6 +2680,141 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @class single_term_iterator
+/// @brief an iterator optimized for performing exact single seeks
+///////////////////////////////////////////////////////////////////////////////
+template<typename FST>
+class single_term_iterator final : public seek_term_iterator {
+ public:
+  using weight_t = typename FST::Weight;
+  using stateid_t = typename FST::StateId;
+
+  explicit single_term_iterator(
+      const field_meta& field,
+      postings_reader& postings,
+      index_input::ptr&& terms_in,
+      irs::encryption::stream* terms_cipher,
+      const FST& fst) noexcept
+    : terms_in_{std::move(terms_in)},
+      cipher_{terms_cipher},
+      postings_{&postings},
+      field_{&field},
+      fst_{&fst} {
+    assert(terms_in_);
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) override {
+    return type == irs::type<term_meta>::id()
+      ? &meta_
+      : nullptr;
+  }
+
+  virtual const bytes_ref& value() const {
+    throw not_supported();
+  }
+
+  virtual bool next() override {
+    throw not_supported();
+  }
+
+  virtual SeekResult seek_ge(const bytes_ref&) override {
+    throw not_supported();
+  }
+
+  virtual bool seek(const bytes_ref& term) override;
+
+  virtual bool seek(
+      const bytes_ref&,
+      const irs::seek_term_iterator::seek_cookie& cookie) override {
+#ifdef IRESEARCH_DEBUG
+    const auto& state = dynamic_cast<const ::cookie&>(cookie);
+#else
+    const auto& state = static_cast<const ::cookie&>(cookie);
+#endif // IRESEARCH_DEBUG
+
+    meta_ = state.meta;
+    return true;
+  }
+
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
+    return memory::make_unique<::cookie>(meta_);
+  }
+
+  virtual void read() override { /*NOOP*/ }
+
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+    return postings_->iterator(field_->index_features, features, meta_);
+  }
+
+ private:
+  friend class block_iterator;
+
+  version10::term_meta meta_;
+  index_input::ptr terms_in_;
+  irs::encryption::stream* cipher_;
+  postings_reader* postings_;
+  const field_meta* field_;
+  const FST* fst_;
+}; // single_term_iterator
+
+// -----------------------------------------------------------------------------
+// --SECTION--                               single_term_iterator implementation
+// -----------------------------------------------------------------------------
+
+template<typename FST>
+bool single_term_iterator<FST>::seek(const bytes_ref& term) {
+  assert(fst_->GetImpl());
+  auto& fst = *fst_->GetImpl();
+
+  size_t prefix = 0;
+  stateid_t state = fst.Start();
+  explicit_matcher<FST> matcher{fst_, fst::MATCH_INPUT};
+
+  const auto& weight = fst.FinalRef(state);
+  byte_weight weight_acc{weight.begin(), weight.end()};
+
+  while (fst_buffer::fst_byte_builder::final != state && prefix < term.size()) {
+    matcher.SetState(state);
+
+    if (!matcher.Find(term[prefix])) {
+      break;
+    }
+
+    const auto& arc = matcher.Value();
+    weight_acc.PushBack(arc.weight.begin(), arc.weight.end());
+    ++prefix;
+
+    const auto& weight = fst.FinalRef(arc.nextstate);
+
+    if (!weight.Empty()) {
+      weight_acc.PushBack(weight.begin(), weight.end());
+    }
+
+    state = arc.nextstate;
+  }
+
+  // FIXME check header before creation
+  block_iterator cur_block{std::move(weight_acc), prefix};
+
+  if (prefix < term.size()) {
+    cur_block.scan_to_sub_block(term[prefix]);
+  }
+
+  if (!block_meta::terms(cur_block.meta())) {
+    return false;
+  }
+
+  cur_block.load(*terms_in_, cipher_);
+
+  if (SeekResult::FOUND == cur_block.scan_to_term(term, [](auto, auto){})) {
+    cur_block.load_data(*field_, meta_, *postings_);
+    return true;
+  }
+
+  return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_arc_matcher
 ///////////////////////////////////////////////////////////////////////////////
 class automaton_arc_matcher {
@@ -3155,7 +3290,22 @@ class field_reader final : public irs::field_reader {
       }
     }
 
-    virtual seek_term_iterator::ptr iterator() const override {
+    virtual seek_term_iterator::ptr iterator(SeekMode mode) const override {
+      if (mode == SeekMode::RANDOM_ONLY) {
+        auto terms_in = owner_->terms_in_->reopen(); // reopen thread-safe stream
+
+        if (!terms_in) {
+          // implementation returned wrong pointer
+          IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+
+          throw io_error("failed to reopen terms input");
+        }
+
+        return memory::make_managed<single_term_iterator<FST>>(
+          meta(), *owner_->pr_, std::move(terms_in),
+          owner_->terms_in_cipher_.get(), *fst_);
+      }
+
       return memory::make_managed<term_iterator<FST>>(
         meta(), *owner_->pr_, *owner_->terms_in_,
         owner_->terms_in_cipher_.get(), *fst_);
@@ -3193,7 +3343,7 @@ class field_reader final : public irs::field_reader {
       if (!acceptor.NumArcs(start)) {
         if (acceptor.Final(start)) {
           // match all
-          return this->iterator();
+          return this->iterator(SeekMode::NORMAL);
         }
 
         return seek_term_iterator::empty();

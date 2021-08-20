@@ -246,7 +246,7 @@ class term_reader : public irs::term_reader {
     }
   }
 
-  virtual irs::seek_term_iterator::ptr iterator() const override;
+  virtual irs::seek_term_iterator::ptr iterator(irs::SeekMode) const override;
   virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
   virtual const irs::field_meta& meta() const override { return data_; }
   virtual size_t size() const override { return data_.terms.size(); }
@@ -399,7 +399,8 @@ typedef std::vector<index_segment> index_t;
 void assert_term(
   const irs::term_iterator& expected_term,
   const irs::term_iterator& actual_term,
-  irs::IndexFeatures features);
+  irs::IndexFeatures features,
+  bool check_term_value = true);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,

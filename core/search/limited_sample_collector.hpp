@@ -151,7 +151,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     for (auto& scored_state : scored_states_) {
       assert(scored_state.cookie);
       auto& field = *scored_state.state->reader;
-      auto term_itr = field.iterator(); // FIXME
+      auto term_itr = field.iterator(SeekMode::NORMAL); // FIXME
       assert(term_itr);
 
       // find the stats for the current term

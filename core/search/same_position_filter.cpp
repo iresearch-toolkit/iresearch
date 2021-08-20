@@ -247,7 +247,7 @@ filter::prepared::ptr by_same_position::prepare(
       field_stats.collect(segment, *field); // collect field statistics once per segment
 
       // find terms
-      seek_term_iterator::ptr term = field->iterator();
+      seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {

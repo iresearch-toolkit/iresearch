@@ -91,7 +91,7 @@ struct aggregated_stats_visitor : util::noncopyable {
   void operator()(const irs::sub_reader& segment,
                   const irs::term_reader& field,
                   uint32_t docs_count) const {
-    it = field.iterator();
+    it = field.iterator(SeekMode::NORMAL);
     this->segment = &segment;
     this->field = &field;
     state = &states.insert(segment);

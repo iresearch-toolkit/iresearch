@@ -514,7 +514,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     field_stats.collect(segment, *field); // collect field statistics once per segment
     size_t term_idx = 0;
     size_t count_terms = 0;
-    seek_term_iterator::ptr term = field->iterator();
+    seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
     for (const auto& ngram : ngrams) {
       term_states.emplace_back();
       auto& state = term_states.back();
