@@ -210,9 +210,13 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return irs::doc_iterator::empty();
   }
 
-  struct seek_ptr : seek_cookie {
+  struct seek_ptr final : seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept
       : ptr(ptr) {
+    }
+
+    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+      return nullptr;
     }
 
     iterator_type  ptr;

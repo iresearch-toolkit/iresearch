@@ -823,9 +823,17 @@ inline int32_t prepare_input(
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
-struct cookie : irs::seek_term_iterator::seek_cookie {
+struct cookie final : irs::seek_term_iterator::seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept
     : meta(meta) {
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) override {
+    if (IRS_LIKELY(type == irs::type<term_meta>::id())) {
+      return &meta;
+    }
+
+    return nullptr;
   }
 
   version10::term_meta meta;

@@ -128,10 +128,8 @@ struct IRESEARCH_API seek_term_iterator : term_iterator {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an empty struct tag type, parent for all seek_term_iterator cookies
   //////////////////////////////////////////////////////////////////////////////
-  struct seek_cookie {
+  struct seek_cookie : attribute_provider {
     using ptr = std::unique_ptr<seek_cookie>;
-
-    virtual ~seek_cookie() = default;
   }; // seek_cookie
 
   static seek_term_iterator::ptr empty();

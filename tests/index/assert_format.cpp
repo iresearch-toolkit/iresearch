@@ -456,9 +456,13 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
 
 class term_iterator final : public irs::seek_term_iterator {
  public:
-  struct term_cookie : seek_cookie {
+  struct term_cookie final : seek_cookie {
     explicit term_cookie(irs::bytes_ref term) noexcept
       : term(term) { }
+
+    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+      return nullptr;
+    }
 
     irs::bytes_ref term;
   };
