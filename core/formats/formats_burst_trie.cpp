@@ -2526,7 +2526,6 @@ ptrdiff_t term_iterator<FST>::seek_cached(
 template<typename FST>
 bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
   assert(fst_->GetImpl());
-
   auto& fst = *fst_->GetImpl();
 
   prefix = 0; // number of current symbol to process
@@ -2766,14 +2765,15 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
-  size_t prefix = 0;
   stateid_t state = fst.Start();
   explicit_matcher<FST> matcher{fst_, fst::MATCH_INPUT};
 
-  const auto& weight = fst.FinalRef(state);
-  byte_weight weight_acc{weight.begin(), weight.end()};
+  byte_weight weight_prefix;
+  const auto* weight_suffix = &fst.FinalRef(state);
+  size_t weight_prefix_length = 0;
+  size_t block_prefix = 0;
 
-  while (fst_buffer::fst_byte_builder::final != state && prefix < term.size()) {
+  for (size_t prefix = 0; fst_buffer::fst_byte_builder::final != state && prefix < term.size(); ) {
     matcher.SetState(state);
 
     if (!matcher.Find(term[prefix])) {
@@ -2781,23 +2781,25 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
     }
 
     const auto& arc = matcher.Value();
-    weight_acc.PushBack(arc.weight.begin(), arc.weight.end());
+    state = arc.nextstate;
+    weight_prefix.PushBack(arc.weight.begin(), arc.weight.end());
     ++prefix;
 
-    const auto& weight = fst.FinalRef(arc.nextstate);
+    auto& weight = fst.FinalRef(state);
 
-    if (!weight.Empty()) {
-      weight_acc.PushBack(weight.begin(), weight.end());
+    if (!weight.Empty() || fst_buffer::fst_byte_builder::final == state) {
+      weight_prefix_length = weight_prefix.Size();
+      weight_suffix = &weight;
+      block_prefix = prefix;
     }
-
-    state = arc.nextstate;
   }
 
-  // FIXME check header before creation
-  block_iterator cur_block{std::move(weight_acc), prefix};
+  weight_prefix.Resize(weight_prefix_length);
+  weight_prefix.PushBack(weight_suffix->begin(), weight_suffix->end());
+  block_iterator cur_block{std::move(weight_prefix), block_prefix};
 
-  if (prefix < term.size()) {
-    cur_block.scan_to_sub_block(term[prefix]);
+  if (block_prefix < term.size()) {
+    cur_block.scan_to_sub_block(term[block_prefix]);
   }
 
   if (!block_meta::terms(cur_block.meta())) {

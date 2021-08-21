@@ -836,6 +836,12 @@ void assert_terms_seek(
   ASSERT_NE(nullptr, actual_term_with_state_random_only);
 
   for (; expected_term->next();) {
+    // seek with state
+    {
+      ASSERT_TRUE(actual_term_with_state->seek(expected_term->value()));
+      assert_term(*expected_term, *actual_term_with_state, features);
+    }
+
     // seek without state random only
     {
       auto actual_term = actual_term_reader.iterator(irs::SeekMode::RANDOM_ONLY);
@@ -850,13 +856,7 @@ void assert_terms_seek(
       ASSERT_TRUE(actual_term_with_state_random_only->seek(expected_term->value()));
 
       // RANDOM_ONLY iterators are allowed to avoid setting term value
-      assert_term(*expected_term, *actual_term_with_state, features, false);
-    }
-
-    // seek with state
-    {
-      ASSERT_TRUE(actual_term_with_state->seek(expected_term->value()));
-      assert_term(*expected_term, *actual_term_with_state, features);
+      assert_term(*expected_term, *actual_term_with_state_random_only, features, false);
     }
 
     // seek without state, iterate forward
