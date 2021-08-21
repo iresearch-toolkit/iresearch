@@ -399,8 +399,7 @@ typedef std::vector<index_segment> index_t;
 void assert_term(
   const irs::term_iterator& expected_term,
   const irs::term_iterator& actual_term,
-  irs::IndexFeatures features,
-  bool check_term_value = true);
+  irs::IndexFeatures features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,

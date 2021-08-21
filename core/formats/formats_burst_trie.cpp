@@ -2714,7 +2714,7 @@ class single_term_iterator final : public seek_term_iterator {
   }
 
   virtual const bytes_ref& value() const {
-    throw not_supported();
+    return value_;
   }
 
   virtual bool next() override {
@@ -2754,6 +2754,7 @@ class single_term_iterator final : public seek_term_iterator {
   friend class block_iterator;
 
   version10::term_meta meta_;
+  bytes_ref value_;
   index_input::ptr terms_in_;
   irs::encryption::stream* cipher_;
   postings_reader* postings_;
@@ -2817,9 +2818,11 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
 
   if (SeekResult::FOUND == cur_block.scan_to_term(term, [](auto, auto){})) {
     cur_block.load_data(*field_, meta_, *postings_);
+    value_ = term;
     return true;
   }
 
+  value_ = bytes_ref::NIL;
   return false;
 }
 

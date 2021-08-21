@@ -715,11 +715,8 @@ REGISTER_FORMAT(tests::format);
 void assert_term(
     const irs::term_iterator& expected_term,
     const irs::term_iterator& actual_term,
-    irs::IndexFeatures requested_features,
-    bool check_term_value /*= true*/) {
-  if (check_term_value) {
-    ASSERT_EQ(expected_term.value(), actual_term.value());
-  }
+    irs::IndexFeatures requested_features) {
+  ASSERT_EQ(expected_term.value(), actual_term.value());
 
   const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
   const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
@@ -851,16 +848,14 @@ void assert_terms_seek(
       auto actual_term = actual_term_reader.iterator(irs::SeekMode::RANDOM_ONLY);
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
 
-      // RANDOM_ONLY iterators are allowed to avoid setting term value
-      assert_term(*expected_term, *actual_term, features, false);
+      assert_term(*expected_term, *actual_term, features);
     }
 
     // seek with state random only
     {
       ASSERT_TRUE(actual_term_with_state_random_only->seek(expected_term->value()));
 
-      // RANDOM_ONLY iterators are allowed to avoid setting term value
-      assert_term(*expected_term, *actual_term_with_state_random_only, features, false);
+      assert_term(*expected_term, *actual_term_with_state_random_only, features);
     }
 
     // seek without state, iterate forward
