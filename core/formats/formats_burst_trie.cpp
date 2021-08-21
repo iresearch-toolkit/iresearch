@@ -2685,9 +2685,6 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 template<typename FST>
 class single_term_iterator final : public seek_term_iterator {
  public:
-  using weight_t = typename FST::Weight;
-  using stateid_t = typename FST::StateId;
-
   explicit single_term_iterator(
       const field_meta& field,
       postings_reader& postings,
@@ -2765,7 +2762,7 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
-  stateid_t state = fst.Start();
+  auto state = fst.Start();
   explicit_matcher<FST> matcher{fst_, fst::MATCH_INPUT};
 
   byte_weight weight_prefix;
@@ -2773,13 +2770,11 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
   size_t weight_prefix_length = 0;
   size_t block_prefix = 0;
 
-  for (size_t prefix = 0; fst_buffer::fst_byte_builder::final != state && prefix < term.size(); ) {
-    matcher.SetState(state);
+  matcher.SetState(state);
 
-    if (!matcher.Find(term[prefix])) {
-      break;
-    }
-
+  for (size_t prefix = 0;
+       prefix < term.size() && matcher.Find(term[prefix]);
+       matcher.SetState(state)) {
     const auto& arc = matcher.Value();
     state = arc.nextstate;
     weight_prefix.PushBack(arc.weight.begin(), arc.weight.end());
@@ -2791,6 +2786,10 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
       weight_prefix_length = weight_prefix.Size();
       weight_suffix = &weight;
       block_prefix = prefix;
+
+      if (fst_buffer::fst_byte_builder::final == state) {
+        break;
+      }
     }
   }
 
