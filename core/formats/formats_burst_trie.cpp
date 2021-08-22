@@ -2731,14 +2731,15 @@ class single_term_iterator final : public seek_term_iterator {
   virtual bool seek(const bytes_ref& term) override;
 
   virtual bool seek(
-      const bytes_ref&,
-      const seek_cookie& cookie) override {
+      const bytes_ref& value,
+      const seek_cookie& cookie) noexcept override {
 #ifdef IRESEARCH_DEBUG
     const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
     const auto& state = static_cast<const ::cookie&>(cookie);
 #endif // IRESEARCH_DEBUG
 
+    value_ = value;
     meta_ = state.meta;
     return true;
   }

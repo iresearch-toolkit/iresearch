@@ -625,6 +625,7 @@ doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features*/) c
       auto& term_itr = term_iterators_[itr_id];
 
       itrs.emplace_back(term_itr.first->postings(meta().index_features), term_itr.second);
+      assert(itrs.back().first);
     }
 
     return true;

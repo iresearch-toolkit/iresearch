@@ -666,10 +666,22 @@ TEST_P(format_test_case, fields_read_write) {
          ASSERT_THROW(term->seek_ge(*expected_sorted_term), irs::not_supported);
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
-         auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie);
-         ASSERT_NE(nullptr, meta_from_cookie);
-         ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
-         ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+         {
+           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie);
+           ASSERT_NE(nullptr, meta_from_cookie);
+           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
+           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+         }
+
+         auto cookie_term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
+         ASSERT_TRUE(cookie_term->seek(term->value(), *cookie));
+         ASSERT_EQ(term->value(), cookie_term->value());
+         {
+           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie_term);
+           ASSERT_NE(nullptr, meta_from_cookie);
+           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
+           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+         }
        }
      }
 
