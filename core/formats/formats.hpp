@@ -229,7 +229,7 @@ enum class SeekMode : uint32_t {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
-  using cookie_provider = std::function<const seek_term_iterator::seek_cookie*()>;
+  using cookie_provider = std::function<const seek_cookie*()>;
 
   virtual ~term_reader() = default;
 
@@ -256,7 +256,7 @@ struct IRESEARCH_API term_reader: public attribute_provider {
                            size_t* bitset) const = 0;
 
   virtual doc_iterator::ptr postings(
-    const seek_term_iterator::seek_cookie& cookie,
+    const seek_cookie& cookie,
     IndexFeatures features) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////

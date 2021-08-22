@@ -172,12 +172,12 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
   virtual bool seek(
       const irs::bytes_ref& term,
-      const seek_cookie& cookie) {
+      const irs::seek_cookie& cookie) {
 
     return true;
   }
 
-  virtual seek_cookie::ptr cookie() const override {
+  virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
@@ -210,7 +210,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return irs::doc_iterator::empty();
   }
 
-  struct seek_ptr final : seek_cookie {
+  struct seek_ptr final : irs::seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept
       : ptr(ptr) {
     }

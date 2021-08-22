@@ -655,6 +655,28 @@ TEST_P(format_test_case, fields_read_write) {
      {
        auto expected_sorted_term = sorted_terms.begin();
        for (auto end = sorted_terms.end(); expected_sorted_term != end; ++expected_sorted_term) {
+         auto term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
+         ASSERT_NE(nullptr, term);
+         auto* meta = irs::get<irs::term_meta>(*term);
+         ASSERT_NE(nullptr, meta);
+         ASSERT_TRUE(term->seek(*expected_sorted_term));
+         ASSERT_EQ(*expected_sorted_term, term->value());
+         ASSERT_NO_THROW(term->read());
+         ASSERT_THROW(term->next(), irs::not_supported);
+         ASSERT_THROW(term->seek_ge(*expected_sorted_term), irs::not_supported);
+         auto cookie = term->cookie();
+         ASSERT_NE(nullptr, cookie);
+         auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie);
+         ASSERT_NE(nullptr, meta_from_cookie);
+         ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
+         ASSERT_EQ(meta->freq, meta_from_cookie->freq);
+       }
+     }
+
+    // check terms using single "seek"
+     {
+       auto expected_sorted_term = sorted_terms.begin();
+       for (auto end = sorted_terms.end(); expected_sorted_term != end; ++expected_sorted_term) {
          auto term = term_reader->iterator(irs::SeekMode::NORMAL);
          ASSERT_TRUE(term->seek(*expected_sorted_term));
          ASSERT_EQ(*expected_sorted_term, term->value());

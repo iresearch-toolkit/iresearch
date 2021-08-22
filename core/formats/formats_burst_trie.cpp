@@ -823,7 +823,7 @@ inline int32_t prepare_input(
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
-struct cookie final : seek_term_iterator::seek_cookie {
+struct cookie final : seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept
     : meta(meta) {
   }
@@ -2200,7 +2200,7 @@ class term_iterator_base : public seek_term_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const override final {
+  virtual seek_cookie::ptr cookie() const override final {
     return memory::make_unique<::cookie>(std::get<version10::term_meta>(attrs_));
   }
 
@@ -2208,7 +2208,7 @@ class term_iterator_base : public seek_term_iterator {
 
   virtual bool seek(
       const bytes_ref& term,
-      const seek_term_iterator::seek_cookie& cookie) override {
+      const seek_cookie& cookie) override {
 #ifdef IRESEARCH_DEBUG
     const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
@@ -2296,7 +2296,7 @@ class term_iterator final : public term_iterator_base {
   }
   virtual bool seek(
       const bytes_ref& term,
-      const seek_term_iterator::seek_cookie& cookie) override {
+      const seek_cookie& cookie) override {
     term_iterator_base::seek(term, cookie);
 
     // reset seek state
@@ -2689,6 +2689,9 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class single_term_iterator
 /// @brief an iterator optimized for performing exact single seeks
+/// @warning BE CAREFUL: we intentially do not copy term value to avoid
+///          unnecessary allocations as this is mostly useless in case of
+///          exact single seek
 ///////////////////////////////////////////////////////////////////////////////
 template<typename FST>
 class single_term_iterator final : public seek_term_iterator {
@@ -2729,7 +2732,7 @@ class single_term_iterator final : public seek_term_iterator {
 
   virtual bool seek(
       const bytes_ref&,
-      const seek_term_iterator::seek_cookie& cookie) override {
+      const seek_cookie& cookie) override {
 #ifdef IRESEARCH_DEBUG
     const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
@@ -2740,7 +2743,7 @@ class single_term_iterator final : public seek_term_iterator {
     return true;
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
+  virtual seek_cookie::ptr cookie() const override {
     return memory::make_unique<::cookie>(meta_);
   }
 
@@ -2937,7 +2940,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual bool seek(
       const bytes_ref& term,
-      const seek_term_iterator::seek_cookie& cookie) override {
+      const seek_cookie& cookie) override {
     term_iterator_base::seek(term, cookie);
 
     // mark block as invalid
@@ -3376,7 +3379,7 @@ class field_reader final : public irs::field_reader {
     }
 
     virtual doc_iterator::ptr postings(
-        const seek_term_iterator::seek_cookie& cookie,
+        const seek_cookie& cookie,
         IndexFeatures features) const override {
 #ifdef IRESEARCH_DEBUG
       auto* impl = dynamic_cast<const ::cookie*>(&cookie);

@@ -2304,7 +2304,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
     0b0000000000000000000000000000000000000000000000000000000010101010
   };
 
-  irs::seek_term_iterator::seek_cookie::ptr cookies[2];
+  irs::seek_cookie::ptr cookies[2];
 
   auto term = term_reader->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(term->next());
@@ -2318,7 +2318,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
 
   auto cookie_provider = [
       begin = std::begin(cookies),
-      end = std::end(cookies)]()mutable -> const irs::seek_term_iterator::seek_cookie*{
+      end = std::end(cookies)]()mutable -> const irs::seek_cookie*{
     if (begin != end) {
       auto cookie = begin->get();
       ++begin;

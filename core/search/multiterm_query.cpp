@@ -78,7 +78,7 @@ bool lazy_bitset_iterator::refill(
   std::memset(set_.get(), 0, sizeof(word_t)*words);
 
   auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
-      -> const seek_term_iterator::seek_cookie* {
+      -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
       ++begin;

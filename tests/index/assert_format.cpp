@@ -456,7 +456,7 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
 
 class term_iterator final : public irs::seek_term_iterator {
  public:
-  struct term_cookie final : seek_cookie {
+  struct term_cookie final : irs::seek_cookie {
     explicit term_cookie(irs::bytes_ref term) noexcept
       : term(term) { }
 
@@ -535,12 +535,12 @@ class term_iterator final : public irs::seek_term_iterator {
 
   virtual bool seek(
       const irs::bytes_ref& /*term*/,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const irs::seek_cookie& cookie) override {
     auto& state = dynamic_cast<const term_cookie&>(cookie);
     return seek(state.term);
   }
 
-  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const override {
+  virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<term_cookie>(value_);
   }
 
@@ -588,7 +588,7 @@ size_t term_reader::bit_union(
 }
 
 irs::doc_iterator::ptr term_reader::postings(
-    const irs::seek_term_iterator::seek_cookie& cookie,
+    const irs::seek_cookie& cookie,
     irs::IndexFeatures features) const {
   auto it = this->iterator(irs::SeekMode::NORMAL);
   if (!it->seek(irs::bytes_ref::NIL, cookie)) {
@@ -859,7 +859,7 @@ void assert_terms_seek(
     }
 
     // seek without state, iterate forward
-    irs::seek_term_iterator::seek_cookie::ptr cookie;
+    irs::seek_cookie::ptr cookie;
     {
       auto actual_term = actual_term_reader.iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
