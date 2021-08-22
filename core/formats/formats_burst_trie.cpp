@@ -823,12 +823,12 @@ inline int32_t prepare_input(
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct cookie
 ///////////////////////////////////////////////////////////////////////////////
-struct cookie final : irs::seek_term_iterator::seek_cookie {
+struct cookie final : seek_term_iterator::seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept
     : meta(meta) {
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) override {
     if (IRS_LIKELY(type == irs::type<term_meta>::id())) {
       return &meta;
     }
@@ -2208,7 +2208,7 @@ class term_iterator_base : public seek_term_iterator {
 
   virtual bool seek(
       const bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const seek_term_iterator::seek_cookie& cookie) override {
 #ifdef IRESEARCH_DEBUG
     const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
@@ -2296,7 +2296,7 @@ class term_iterator final : public term_iterator_base {
   }
   virtual bool seek(
       const bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const seek_term_iterator::seek_cookie& cookie) override {
     term_iterator_base::seek(term, cookie);
 
     // reset seek state
@@ -2707,7 +2707,7 @@ class single_term_iterator final : public seek_term_iterator {
     assert(terms_in_);
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) override {
     return type == irs::type<term_meta>::id()
       ? &meta_
       : nullptr;
@@ -2729,7 +2729,7 @@ class single_term_iterator final : public seek_term_iterator {
 
   virtual bool seek(
       const bytes_ref&,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const seek_term_iterator::seek_cookie& cookie) override {
 #ifdef IRESEARCH_DEBUG
     const auto& state = dynamic_cast<const ::cookie&>(cookie);
 #else
@@ -2937,7 +2937,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual bool seek(
       const bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const seek_term_iterator::seek_cookie& cookie) override {
     term_iterator_base::seek(term, cookie);
 
     // mark block as invalid
