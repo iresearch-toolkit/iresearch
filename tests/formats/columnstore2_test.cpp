@@ -1098,9 +1098,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_tail_block) {
       ASSERT_TRUE(score->is_default());
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-        if (doc >= TAIL_BEGIN) {
-          int i = 5;
-        }
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(doc, it->seek(doc));
         assert_payload(doc, payload->value);
