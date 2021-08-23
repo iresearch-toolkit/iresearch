@@ -1011,6 +1011,173 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   }
 }
 
+TEST_P(columnstore2_test_case, dense_fixed_length_column_tail_block) {
+  constexpr irs::doc_id_t MAX = 1000000;
+  constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
+  constexpr auto TAIL_BEGIN = (MAX / BLOCK_SIZE) * BLOCK_SIZE;
+  const irs::segment_meta meta("test", nullptr);
+  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+
+  irs::flush_state state;
+  state.doc_count = MAX;
+  state.name = meta.name;
+
+  {
+    auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc), sizeof doc);
+      if (doc > TAIL_BEGIN) {
+        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc), sizeof doc);
+      }
+    };
+
+    irs::columnstore2::writer writer(this->consolidation());
+    writer.prepare(dir(), meta);
+
+    auto [id, column] = writer.push_column({
+      irs::type<irs::compression::none>::get(),
+      {}, has_encryption });
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      write_payload(doc, column(doc));
+    }
+
+    ASSERT_TRUE(writer.commit(state));
+  }
+
+  {
+    irs::columnstore2::reader reader;
+    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_EQ(1, reader.size());
+
+    auto* header = reader.header(0);
+    ASSERT_NE(nullptr, header);
+    ASSERT_EQ(MAX, header->docs_count);
+    ASSERT_EQ(0, header->docs_index);
+    ASSERT_EQ(irs::doc_limits::min(), header->min);
+    ASSERT_EQ(
+      this->consolidation()
+        ? irs::columnstore2::ColumnType::DENSE_FIXED
+        : irs::columnstore2::ColumnType::FIXED,
+      header->type);
+    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::ENCRYPT
+                             : irs::columnstore2::ColumnProperty::NORMAL,
+              header->props);
+
+    auto* column = reader.column(0);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(MAX, column->size());
+
+    auto assert_payload = [](irs::doc_id_t doc, irs::bytes_ref payload) {
+      SCOPED_TRACE(doc);
+      ASSERT_FALSE(payload.empty());
+      if (doc > TAIL_BEGIN) {
+        ASSERT_EQ(2*sizeof doc, payload.size());
+        const irs::doc_id_t* actual_doc
+          = reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+        ASSERT_EQ(doc, actual_doc[0]);
+        ASSERT_EQ(doc, actual_doc[1]);
+      } else {
+        ASSERT_EQ(sizeof doc, payload.size());
+        const irs::doc_id_t actual_doc
+          = *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+        ASSERT_EQ(doc, actual_doc);
+      }
+    };
+
+    {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      auto* score = irs::get<irs::score>(*it);
+      ASSERT_NE(nullptr, score);
+      ASSERT_TRUE(score->is_default());
+
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+        if (doc >= TAIL_BEGIN) {
+          int i = 5;
+        }
+        ASSERT_EQ(doc, it->seek(doc));
+        ASSERT_EQ(doc, it->seek(doc));
+        assert_payload(doc, payload->value);
+      }
+    }
+
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      auto* score = irs::get<irs::score>(*it);
+      ASSERT_NE(nullptr, score);
+      ASSERT_TRUE(score->is_default());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      ASSERT_EQ(doc, it->seek(doc));
+      assert_payload(doc, payload->value);
+    }
+
+    // seek + next
+    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      auto* score = irs::get<irs::score>(*it);
+      ASSERT_NE(nullptr, score);
+      ASSERT_TRUE(score->is_default());
+
+      ASSERT_EQ(doc, it->seek(doc));
+      assert_payload(doc, payload->value);
+      ASSERT_EQ(doc, it->seek(doc));
+      assert_payload(doc, payload->value);
+      ASSERT_EQ(doc, it->seek(doc-1));
+      assert_payload(doc, payload->value);
+
+      auto next_it = column->iterator();
+      auto* next_payload = irs::get<irs::payload>(*next_it);
+      ASSERT_NE(nullptr, next_payload);
+      ASSERT_EQ(doc, next_it->seek(doc));
+      assert_payload(doc, next_payload->value);
+      for (auto next_doc = doc + 1; next_doc < MAX; ++next_doc) {
+        ASSERT_TRUE(next_it->next());
+        assert_payload(next_doc, next_payload->value);
+      }
+    }
+
+    // next + seek
+    {
+      constexpr irs::doc_id_t doc = 118774;
+
+      auto it = column->iterator();
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      ASSERT_TRUE(it->next());
+      ASSERT_EQ(irs::doc_limits::min(), document->value);
+      ASSERT_EQ(doc, it->seek(doc));
+      assert_payload(doc, payload->value);
+      ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
+    }
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
   columnstore2_test,
   columnstore2_test_case,

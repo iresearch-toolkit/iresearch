@@ -69,7 +69,7 @@ bool is_encrypted(const column_header& hdr) noexcept {
   return ColumnProperty::ENCRYPT == (hdr.props & ColumnProperty::ENCRYPT);
 }
 
-void write_index(index_output& out, const column_index& blocks) {
+void write_bitmap_index(index_output& out, const column_index& blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
 
   if (count > 2) {
@@ -83,7 +83,7 @@ void write_index(index_output& out, const column_index& blocks) {
   }
 }
 
-column_index read_index(index_input& in) {
+column_index read_bitmap_index(index_input& in) {
   const uint32_t count = in.read_int();
 
   if (count > std::numeric_limits<uint16_t>::max()) {
@@ -643,6 +643,7 @@ class dense_fixed_length_column final : public column_base {
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
+    assert(!header().docs_index);
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
@@ -1109,7 +1110,11 @@ void column::finish(index_output& index_out) {
 
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
-  write_index(index_out, docs_writer_.index());
+
+  if (hdr.docs_index) {
+    // write bitmap index IFF it's really necessary
+    write_bitmap_index(index_out, docs_writer_.index());
+  }
 
   if (ColumnType::SPARSE == hdr.type) {
     write_blocks_sparse(index_out, blocks_);
@@ -1370,7 +1375,9 @@ void reader::prepare_index(
         i)};
     }
 
-    auto index = read_index(*index_in);
+    auto index = hdr.docs_index
+      ? read_bitmap_index(*index_in)
+      : column_index{};
 
     const size_t idx = static_cast<size_t>(hdr.type);
     if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
