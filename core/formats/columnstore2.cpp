@@ -1013,59 +1013,68 @@ void column::flush_block() {
   auto* begin = addr_table_.begin();
   auto* end = begin + addr_table_size;
 
-  std::tie(block.data, block.avg) = encode::avg::encode(begin, addr_table_.current());
+  if (!data_.file.empty()) {
+    bool all_equal;
+    std::tie(block.data, block.avg, all_equal)
+      = encode::avg::encode(begin, addr_table_.current());
 
-  if (simd::all_equal<false>(begin, addr_table_size)) {
-    block.bits = bitpack::ALL_EQUAL;
+    if (all_equal) {
+      assert(simd::all_equal<false>(begin, addr_table_size));
+      block.bits = bitpack::ALL_EQUAL;
 
-    // column is fixed length IFF
-    // * it is still a fixed length column
-    // * values in a block are of the same length including the last one
-    // * values in all blocks have the same length
-    fixed_length_ = (fixed_length_ &&
-                     (0 == *begin) &&
-                     (block.last_size == block.avg) &&
-                     (0 == docs_count_ || block.avg == prev_avg_));
-    prev_avg_ = block.avg;
-  } else {
-    block.bits = packed::maxbits64(begin, end);
-    const size_t buf_size = packed::bytes_required_64(addr_table_size, block.bits);
-    std::memset(ctx_.u64buf, 0, buf_size);
-    packed::pack(begin, end, ctx_.u64buf, block.bits);
+      // column is fixed length IFF
+      // * it is still a fixed length column
+      // * values in a block are of the same length including the last one
+      // * values in all blocks have the same length
+      fixed_length_ = (fixed_length_ &&
+                       (0 == *begin) &&
+                       (block.last_size == block.avg) &&
+                       (0 == docs_count_ || block.avg == prev_avg_));
+      prev_avg_ = block.avg;
+    } else {
+      block.bits = packed::maxbits64(begin, end);
+      const size_t buf_size = packed::bytes_required_64(addr_table_size, block.bits);
+      std::memset(ctx_.u64buf, 0, buf_size);
+      packed::pack(begin, end, ctx_.u64buf, block.bits);
 
-    data_out.write_bytes(ctx_.u8buf, buf_size);
-    fixed_length_ = false;
-  }
-  addr_table_.reset();
-
-  block.data += data_out.file_pointer();
-
-  if (ctx_.cipher) {
-    auto offset = data_out.file_pointer();
-
-    auto encrypt_and_copy
-        = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
-      assert(cipher);
-
-      if (!cipher->encrypt(offset, b, len)) {
-        return false;
-      }
-
-      data_out.write_bytes(b, len);
-      offset += len;
-      return true;
-    };
-
-    if (!data_.file.visit(encrypt_and_copy)) {
-      throw io_error("failed to encrypt columnstore");
+      data_out.write_bytes(ctx_.u8buf, buf_size);
+      fixed_length_ = false;
     }
+
+    block.data += data_out.file_pointer();
+
+    if (ctx_.cipher) {
+      auto offset = data_out.file_pointer();
+
+      auto encrypt_and_copy
+          = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
+        assert(cipher);
+
+        if (!cipher->encrypt(offset, b, len)) {
+          return false;
+        }
+
+        data_out.write_bytes(b, len);
+        offset += len;
+        return true;
+      };
+
+      if (!data_.file.visit(encrypt_and_copy)) {
+        throw io_error("failed to encrypt columnstore");
+      }
+    } else {
+      data_.file >> data_out;
+    }
+
+    assert(data_.stream.file_pointer());
+    data_.stream.seek(0);
   } else {
-    data_.file >> data_out;
+    block.bits = bitpack::ALL_EQUAL;
+    block.avg = 0;
+    block.data = data_out.file_pointer();
   }
 
-  if (data_.stream.file_pointer()) { // FIXME
-    data_.stream.seek(0);
-  }
+  addr_table_.reset();
 
   docs_count_ += docs_count;
 }
