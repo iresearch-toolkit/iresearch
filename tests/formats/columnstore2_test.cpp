@@ -425,9 +425,9 @@ TEST_P(columnstore2_test_case, sparse_column) {
 }
 
 TEST_P(columnstore2_test_case, sparse_column_gap) {
-  constexpr irs::doc_id_t MAX = 500000;
-  constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
-  constexpr auto GAP_BEGIN = ((MAX / BLOCK_SIZE) - 4) * BLOCK_SIZE;
+  static constexpr irs::doc_id_t MAX = 500000;
+  static constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
+  static constexpr auto GAP_BEGIN = ((MAX / BLOCK_SIZE) - 4) * BLOCK_SIZE;
   const irs::segment_meta meta("test", nullptr);
   const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
@@ -587,9 +587,9 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
 }
 
 TEST_P(columnstore2_test_case, sparse_column_tail_block) {
-  constexpr irs::doc_id_t MAX = 500000;
-  constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
-  constexpr auto TAIL_BEGIN = (MAX / BLOCK_SIZE) * BLOCK_SIZE;
+  static constexpr irs::doc_id_t MAX = 500000;
+  static constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
+  static constexpr auto TAIL_BEGIN = (MAX / BLOCK_SIZE) * BLOCK_SIZE;
   const irs::segment_meta meta("test", nullptr);
   const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
