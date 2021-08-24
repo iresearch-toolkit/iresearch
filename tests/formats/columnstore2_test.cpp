@@ -747,8 +747,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
 }
 
 TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
-  constexpr irs::doc_id_t MAX = 500000;
-  constexpr auto TAIL_BEGIN = MAX - 1; // last value has different length
+  static constexpr irs::doc_id_t MAX = 500000;
+  static constexpr auto TAIL_BEGIN = MAX - 1; // last value has different length
   const irs::segment_meta meta("test", nullptr);
   const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
 
