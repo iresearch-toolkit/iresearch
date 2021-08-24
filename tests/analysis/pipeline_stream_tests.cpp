@@ -230,10 +230,10 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
     "{\"min\":2, \"max\":2, \"preserveOriginal\":true }");
 
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(delimiter);
-  pipeline_options.push_back(delimiter2);
-  pipeline_options.push_back(text);
-  pipeline_options.push_back(ngram);
+  pipeline_options.emplace_back(std::move(delimiter));
+  pipeline_options.emplace_back(std::move(delimiter2));
+  pipeline_options.emplace_back(std::move(text));
+  pipeline_options.emplace_back(std::move(ngram));
 
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   ASSERT_EQ(irs::type<irs::analysis::pipeline_token_stream>::id(), pipe.type());
@@ -282,8 +282,8 @@ TEST(pipeline_token_stream_test, overlapping_ngrams) {
     "{\"min\":2, \"max\":3, \"preserveOriginal\":false }");
 
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(ngram);
-  pipeline_options.push_back(ngram2);
+  pipeline_options.emplace_back(std::move(ngram));
+  pipeline_options.emplace_back(std::move(ngram2));
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
 
   std::string data = "ABCDEFJH";
@@ -322,15 +322,15 @@ TEST(pipeline_token_stream_test, case_ngrams) {
   };
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(ngram);
-    pipeline_options.push_back(norm);
+    pipeline_options.emplace_back(std::move(ngram));
+    pipeline_options.emplace_back(std::move(norm));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(norm);
-    pipeline_options.push_back(ngram);
+    pipeline_options.emplace_back(std::move(norm));
+    pipeline_options.emplace_back(std::move(ngram));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
@@ -348,8 +348,8 @@ TEST(pipeline_token_stream_test, no_tokenizers) {
     {"quick", 0, 5, 0},
   };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(norm1);
-  pipeline_options.push_back(norm2);
+  pipeline_options.emplace_back(std::move(norm1));
+  pipeline_options.emplace_back(std::move(norm2));
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
@@ -370,15 +370,15 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
   };
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(text);
-    pipeline_options.push_back(norm);
+    pipeline_options.emplace_back(std::move(text));
+    pipeline_options.emplace_back(std::move(norm));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(norm);
-    pipeline_options.push_back(text);
+    pipeline_options.emplace_back(std::move(norm));
+    pipeline_options.emplace_back(std::move(text));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
@@ -396,7 +396,7 @@ TEST(pipeline_token_stream_test, signle_tokenizer) {
     {"jump", 16, 21, 3}
   };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(text);
+  pipeline_options.emplace_back(std::move(text));
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
@@ -410,7 +410,7 @@ TEST(pipeline_token_stream_test, signle_non_tokenizer) {
     {"quick", 0, 5, 0}
   };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(norm);
+  pipeline_options.emplace_back(std::move(norm));
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
   assert_pipeline(&pipe, data, expected);
 }
@@ -435,15 +435,15 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
   };
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(ngram);
-    pipeline_options.push_back(norm);
+    pipeline_options.emplace_back(std::move(ngram));
+    pipeline_options.emplace_back(std::move(norm));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(norm);
-    pipeline_options.push_back(ngram);
+    pipeline_options.emplace_back(std::move(norm));
+    pipeline_options.emplace_back(std::move(ngram));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
@@ -498,9 +498,9 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   };
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.push_back(tokenizer1);
-    pipeline_options.push_back(tokenizer2);
-    pipeline_options.push_back(tokenizer3);
+    pipeline_options.emplace_back(std::move(tokenizer1));
+    pipeline_options.emplace_back(std::move(tokenizer2));
+    pipeline_options.emplace_back(std::move(tokenizer3));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     assert_pipeline(&pipe, data, expected);
   }
@@ -664,15 +664,14 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   // store as separate arrays to make asan happy
   iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
   iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
-  pipeline_test_analyzer payload_offset(true, {p1, IRESEARCH_COUNTOF(p1)});
-  pipeline_test_analyzer only_payload(false, {p2, IRESEARCH_COUNTOF(p2)});
-  pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
-  pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 
   {
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto only_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
+
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_offset);
+    pipeline_options.emplace_back(std::move(payload_offset));
+    pipeline_options.emplace_back(std::move(only_offset));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     auto* offset = irs::get<irs::offset>(pipe);
     ASSERT_TRUE(offset);
@@ -687,9 +686,12 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto only_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
+
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_offset);
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    pipeline_options.emplace_back(std::move(only_offset));
+    pipeline_options.emplace_back(std::move(payload_offset));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     auto* offset = irs::get<irs::offset>(pipe);
     ASSERT_TRUE(offset);
@@ -704,9 +706,12 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
+    pipeline_options.emplace_back(std::move(payload_offset));
+    pipeline_options.emplace_back(std::move(only_payload));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     auto* offset = irs::get<irs::offset>(pipe);
     ASSERT_FALSE(offset);
@@ -721,9 +726,12 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p2, pay->value.c_str());
   }
   {
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &payload_offset);
+    pipeline_options.emplace_back(std::move(only_payload));
+    pipeline_options.emplace_back(std::move(payload_offset));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     auto* offset = irs::get<irs::offset>(pipe);
     ASSERT_FALSE(offset);
@@ -738,9 +746,12 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+    auto no_payload_no_offset = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref::NIL);
+
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &only_payload);
-    pipeline_options.emplace_back(irs::analysis::analyzer::ptr(), &no_payload_no_offset);
+    pipeline_options.emplace_back(std::move(only_payload));
+    pipeline_options.emplace_back(std::move(no_payload_no_offset));
     irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
     auto* offset = irs::get<irs::offset>(pipe);
     ASSERT_FALSE(offset);
@@ -777,20 +788,20 @@ TEST(pipeline_token_stream_test, members_visitor) {
   std::vector<irs::type_info::type_id> expected_nested{ delimiter->type(), norm->type(),
                                                  text->type(), ngram->type() };
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
-  pipeline_options.push_back(delimiter);
-  pipeline_options.push_back(norm);
-  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
-  assert_pipeline_members(pipe, expected);
+  pipeline_options.emplace_back(std::move(delimiter));
+  pipeline_options.emplace_back(std::move(norm));
+  auto pipe = std::make_unique<irs::analysis::pipeline_token_stream>(std::move(pipeline_options));
+  assert_pipeline_members(*pipe, expected);
 
   irs::analysis::pipeline_token_stream::options_t pipeline_options2;
-  pipeline_options2.push_back(text);
+  pipeline_options2.emplace_back(std::move(text));
 
-  irs::analysis::pipeline_token_stream pipe2(std::move(pipeline_options2));
+  auto pipe2 = std::make_unique<irs::analysis::pipeline_token_stream>(std::move(pipeline_options2));
 
   irs::analysis::pipeline_token_stream::options_t pipeline_options3;
-  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe));
-  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe2));
-  pipeline_options3.push_back(ngram);
+  pipeline_options3.emplace_back(std::move(pipe));
+  pipeline_options3.emplace_back(std::move(pipe2));
+  pipeline_options3.emplace_back(std::move(ngram));
   irs::analysis::pipeline_token_stream pipe3(std::move(pipeline_options3));
   assert_pipeline_members(pipe3, expected_nested);
 }
