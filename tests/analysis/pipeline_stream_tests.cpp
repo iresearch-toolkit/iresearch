@@ -306,12 +306,6 @@ TEST(pipeline_token_stream_test, overlapping_ngrams) {
 
 
 TEST(pipeline_token_stream_test, case_ngrams) {
-  auto ngram = irs::analysis::analyzers::get("ngram",
-    irs::type<irs::text_format::json>::get(),
-    "{\"min\":3, \"max\":3, \"preserveOriginal\":false }");
-  auto norm = irs::analysis::analyzers::get("norm",
-    irs::type<irs::text_format::json>::get(),
-    "{\"locale\":\"en\", \"case\":\"upper\"}");
   std::string data = "QuIck BroWN FoX";
   const analyzer_tokens expected{
     {"QUI", 0, 3, 0}, {"UIC", 1, 4, 1}, {"ICK", 2, 5, 2},
@@ -321,6 +315,12 @@ TEST(pipeline_token_stream_test, case_ngrams) {
     {"FOX", 12, 15, 12},
   };
   {
+    auto ngram = irs::analysis::analyzers::get("ngram",
+      irs::type<irs::text_format::json>::get(),
+      "{\"min\":3, \"max\":3, \"preserveOriginal\":false }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"upper\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(ngram));
     pipeline_options.emplace_back(std::move(norm));
@@ -328,6 +328,12 @@ TEST(pipeline_token_stream_test, case_ngrams) {
     assert_pipeline(&pipe, data, expected);
   }
   {
+    auto ngram = irs::analysis::analyzers::get("ngram",
+      irs::type<irs::text_format::json>::get(),
+      "{\"min\":3, \"max\":3, \"preserveOriginal\":false }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"upper\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(norm));
     pipeline_options.emplace_back(std::move(ngram));
@@ -337,13 +343,13 @@ TEST(pipeline_token_stream_test, case_ngrams) {
 }
 
 TEST(pipeline_token_stream_test, no_tokenizers) {
+  std::string data = "QuIck";
   auto norm1 = irs::analysis::analyzers::get("norm",
     irs::type<irs::text_format::json>::get(),
     "{\"locale\":\"en\", \"case\":\"upper\"}");
   auto norm2 = irs::analysis::analyzers::get("norm",
     irs::type<irs::text_format::json>::get(),
     "{\"locale\":\"en\", \"case\":\"lower\"}");
-  std::string data = "QuIck";
   const analyzer_tokens expected{
     {"quick", 0, 5, 0},
   };
@@ -355,12 +361,6 @@ TEST(pipeline_token_stream_test, no_tokenizers) {
 }
 
 TEST(pipeline_token_stream_test, source_modification_tokenizer) {
-  auto text = irs::analysis::analyzers::get("text",
-    irs::type<irs::text_format::json>::get(),
-    "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":true }");
-  auto norm = irs::analysis::analyzers::get("norm",
-    irs::type<irs::text_format::json>::get(),
-    "{\"locale\":\"en\", \"case\":\"lower\"}");
   std::string data = "QuIck broWn fox jumps";
   const analyzer_tokens expected{
     {"quick", 0, 5, 0},
@@ -369,6 +369,12 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
     {"jump", 16, 21, 3}
   };
   {
+    auto text = irs::analysis::analyzers::get("text",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":true }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"lower\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(text));
     pipeline_options.emplace_back(std::move(norm));
@@ -376,6 +382,12 @@ TEST(pipeline_token_stream_test, source_modification_tokenizer) {
     assert_pipeline(&pipe, data, expected);
   }
   {
+    auto text = irs::analysis::analyzers::get("text",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":true }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"lower\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(norm));
     pipeline_options.emplace_back(std::move(text));
@@ -416,12 +428,6 @@ TEST(pipeline_token_stream_test, signle_non_tokenizer) {
 }
 
 TEST(pipeline_token_stream_test, hold_position_tokenizer) {
-  auto ngram = irs::analysis::analyzers::get("ngram",
-    irs::type<irs::text_format::json>::get(),
-    "{\"min\":2, \"max\":3, \"preserveOriginal\":true }");
-  auto norm = irs::analysis::analyzers::get("norm",
-    irs::type<irs::text_format::json>::get(),
-    "{\"locale\":\"en\", \"case\":\"lower\"}");
   std::string data = "QuIck";
   const analyzer_tokens expected{
     {"qu", 0, 2, 0},
@@ -434,6 +440,12 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
     {"ck", 3, 5, 3},
   };
   {
+    auto ngram = irs::analysis::analyzers::get("ngram",
+      irs::type<irs::text_format::json>::get(),
+      "{\"min\":2, \"max\":3, \"preserveOriginal\":true }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"lower\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(ngram));
     pipeline_options.emplace_back(std::move(norm));
@@ -441,6 +453,12 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
     assert_pipeline(&pipe, data, expected);
   }
   {
+    auto ngram = irs::analysis::analyzers::get("ngram",
+      irs::type<irs::text_format::json>::get(),
+      "{\"min\":2, \"max\":3, \"preserveOriginal\":true }");
+    auto norm = irs::analysis::analyzers::get("norm",
+      irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"lower\"}");
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(norm));
     pipeline_options.emplace_back(std::move(ngram));
