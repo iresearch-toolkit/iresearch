@@ -134,7 +134,7 @@ class column final : public irs::column_output {
 
     void pop_back() noexcept {
       assert(offset_ > offsets_);
-      offset_--;
+      *--offset_ = 0;
     }
 
     // returns number of items to be flushed

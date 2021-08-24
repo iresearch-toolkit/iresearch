@@ -1112,13 +1112,14 @@ void column::finish(index_output& index_out) {
     hdr.props |= ColumnProperty::ENCRYPT;
   }
 
-  if (data_.file.empty()) {
-    // we haven't added any buffers
-    hdr.type = ColumnType::MASK;
-  } else if (fixed_length_) {
-    hdr.type = ctx_.consolidation
-      ? ColumnType::DENSE_FIXED
-      : ColumnType::FIXED;
+  if (fixed_length_) {
+    if (0 == prev_avg_) {
+      hdr.type = ColumnType::MASK;
+    } else if (ctx_.consolidation) {
+      hdr.type = ColumnType::DENSE_FIXED;
+    } else {
+      hdr.type = ColumnType::FIXED;
+    }
   }
 
   irs::write_string(index_out, compression_.name());
