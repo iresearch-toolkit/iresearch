@@ -884,9 +884,9 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
 
-    size_t length = block.last_size;
-    if (IRS_LIKELY(block.last != index)) {
-      length = block.avg;
+    size_t length = block.avg;
+    if (IRS_UNLIKELY(block.last == index)) {
+      length = block.last_size;
     }
 
     return ValueReader::value(addr, length);
@@ -1019,13 +1019,14 @@ void column::flush_block() {
     block.bits = bitpack::ALL_EQUAL;
 
     // column is fixed length IFF
-    // * values in every document have the same length
-    // * blocks have the same length
+    // * it is still a fixed length column
+    // * values in a block are of the same length including the last one
+    // * values in all blocks have the same length
     fixed_length_ = (fixed_length_ &&
                      (0 == *begin) &&
                      (block.last_size == block.avg) &&
-                     (0 == docs_count_ || data_.file.length() == prev_block_size_));
-    prev_block_size_ = data_.file.length();
+                     (0 == docs_count_ || block.avg == prev_avg_));
+    prev_avg_ = block.avg;
   } else {
     block.bits = packed::maxbits64(begin, end);
     const size_t buf_size = packed::bytes_required_64(addr_table_size, block.bits);
@@ -1070,10 +1071,10 @@ void column::flush_block() {
 }
 
 void column::finish(index_output& index_out) {
+  assert(ctx_.data_out);
+
   docs_writer_.finish();
   if (!addr_table_.empty()) {
-    // we don't care of the tail block size
-    prev_block_size_ = data_.stream.file_pointer();
     flush_block();
   }
   docs_.stream.flush();
@@ -1089,10 +1090,12 @@ void column::finish(index_output& index_out) {
 
   // FIXME how to deal with rollback() and docs_writer_.back()?
   if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != pend_)) {
+    auto& data_out = *ctx_.data_out;
+
     // we don't need to store bitmap index in case
     // if every document in a column has a value
-    hdr.docs_index = ctx_.data_out->file_pointer();
-    docs_.file >> *ctx_.data_out;
+    hdr.docs_index = data_out.file_pointer();
+    docs_.file >> data_out;
   }
 
   hdr.props = ColumnProperty::NORMAL;
@@ -1123,6 +1126,7 @@ void column::finish(index_output& index_out) {
     if (ColumnType::DENSE_FIXED == hdr.type) {
       index_out.write_long(blocks_.front().data);
     } else {
+      assert(ColumnType::FIXED == hdr.type);
       write_blocks_dense(index_out, blocks_);
     }
   }
