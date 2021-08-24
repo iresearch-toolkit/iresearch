@@ -50,8 +50,11 @@ struct test_sobject {
   using ptr = std::shared_ptr<test_sobject>;
   int id;
   test_sobject(int i): id(i) { }
-  static ptr make(int i) { return ptr(new test_sobject(i)); }
+  static ptr make(int i) { ++make_count; return ptr(new test_sobject(i)); }
+  static std::atomic<size_t> make_count;
 };
+
+std::atomic<size_t> test_sobject::make_count = 0;
 
 struct test_sobject_nullptr {
   using ptr = std::shared_ptr<test_sobject_nullptr>;
@@ -650,6 +653,25 @@ TEST(unbounded_object_pool_tests, control_object_move) {
   }
 }
 
+TEST(unbounded_object_pool_tests, control_object_move_pools) {
+  irs::unbounded_object_pool<test_sobject> pool(2);
+  test_sobject::make_count = 0;
+  {
+     irs::unbounded_object_pool<test_sobject> pool_other(2);
+     auto from_other = pool_other.emplace(1);
+     ASSERT_EQ(1, test_sobject::make_count);
+     {
+       auto from_this = pool.emplace(1);
+       ASSERT_EQ(2, test_sobject::make_count);
+       from_other = std::move(from_this);
+     }
+     // from_other should be returned to pool_other now
+     // and no new make should be called
+     auto from_other2 = pool_other.emplace(1);
+     ASSERT_EQ(2, test_sobject::make_count);
+  }
+}
+
 TEST(unbounded_object_pool_volatile_tests, construct) {
   iresearch::unbounded_object_pool_volatile<test_sobject> pool(42);
   ASSERT_EQ(42, pool.size());
@@ -729,6 +751,20 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     ASSERT_EQ(nullptr, moved.get());
     ASSERT_EQ(obj.get(), moved_ptr);
     ASSERT_EQ(1, obj->id);
+  }
+
+  // move between two identical pools
+  {
+     irs::unbounded_object_pool_volatile<test_sobject> pool_other(2);
+     auto from_other = pool_other.emplace(1);
+     ASSERT_EQ(1, pool_other.generation_size());
+     {
+       auto from_this = pool.emplace(3);
+       ASSERT_EQ(1, pool.generation_size());
+       from_other = std::move(from_this);
+     }
+     // from_other should be returned to pool_other now
+     ASSERT_EQ(0, pool_other.generation_size());
   }
 
   ASSERT_EQ(0, pool.generation_size());
