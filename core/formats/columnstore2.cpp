@@ -1066,8 +1066,9 @@ void column::flush_block() {
       data_.file >> data_out;
     }
 
-    assert(data_.stream.file_pointer());
-    data_.stream.seek(0);
+    if (data_.stream.file_pointer()) { // FIXME
+      data_.stream.seek(0);
+    }
   } else {
     block.bits = bitpack::ALL_EQUAL;
     block.avg = 0;
