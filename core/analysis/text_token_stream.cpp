@@ -92,7 +92,7 @@ struct text_token_stream::state_t {
   bstring term_buf;
   std::string tmp_buf; // used by processTerm(...)
   std::unique_ptr<icu::BreakIterator> break_iterator;
-  std::unique_ptr<const icu::Normalizer2, memory::noop_deleter> normalizer;
+  const icu::Normalizer2* normalizer; // reusable object owned by ICU
   std::unique_ptr<sb_stemmer, void(*)(sb_stemmer*)> stemmer;
   std::unique_ptr<icu::Transliterator> transliterator;
   ngram_state_t ngram;
@@ -942,10 +942,10 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(icu::Normalizer2::getNFCInstance(err));
+    state_->normalizer = icu::Normalizer2::getNFCInstance(err);
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
-      state_->normalizer.reset();
+      state_->normalizer = nullptr;
 
       return false;
     }

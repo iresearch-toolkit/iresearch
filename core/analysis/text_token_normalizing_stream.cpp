@@ -69,10 +69,13 @@ struct text_token_normalizing_stream::state_t {
   icu::Locale icu_locale;
   const options_t options;
   std::string term_buf; // used by reset()
-  std::unique_ptr<const icu::Normalizer2, memory::noop_deleter> normalizer;
+  const icu::Normalizer2* normalizer; // reusable object owned by ICU
   std::unique_ptr<icu::Transliterator> transliterator;
 
-  state_t(const options_t& opts): icu_locale("C"), options(opts) {
+  explicit state_t(const options_t& opts)
+    : icu_locale{"C"},
+      options{opts},
+      normalizer{} {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
@@ -396,10 +399,10 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(icu::Normalizer2::getNFCInstance(err));
+    state_->normalizer = icu::Normalizer2::getNFCInstance(err);
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
-      state_->normalizer.reset();
+      state_->normalizer = nullptr;
 
       return false;
     }
@@ -412,8 +415,7 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
 
     // reusable object owned by *this
     state_->transliterator.reset(icu::Transliterator::createInstance(
-      collationRule, UTransDirection::UTRANS_FORWARD, err
-    ));
+      collationRule, UTransDirection::UTRANS_FORWARD, err));
 
     if (!U_SUCCESS(err) || !state_->transliterator) {
       state_->transliterator.reset();
