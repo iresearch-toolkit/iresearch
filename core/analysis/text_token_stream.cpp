@@ -104,6 +104,7 @@ struct text_token_stream::state_t {
     : icu_locale("C"),
       options(opts),
       stopwords(stopw),
+      normalizer{},
       stemmer(nullptr, &sb_stemmer_delete) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
