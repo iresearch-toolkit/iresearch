@@ -75,7 +75,7 @@ struct text_token_normalizing_stream::state_t {
   explicit state_t(const options_t& opts)
     : icu_locale{"C"},
       options{opts},
-      normalizer{nullptr} {
+      normalizer{} {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
