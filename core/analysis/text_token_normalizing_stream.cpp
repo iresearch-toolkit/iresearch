@@ -67,10 +67,11 @@ namespace analysis {
 struct text_token_normalizing_stream::state_t {
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t options;
   std::string term_buf; // used by reset()
-  std::shared_ptr<icu::Transliterator> transliterator;
+  std::unique_ptr<const icu::Normalizer2, memory::noop_deleter> normalizer;
+  std::unique_ptr<icu::Transliterator> transliterator;
+
   state_t(const options_t& opts): icu_locale("C"), options(opts) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
@@ -343,11 +344,16 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
+void text_token_normalizing_stream::state_deleter_t::operator()(
+    state_t* p) const noexcept {
+  delete p;
+}
+
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
   : analyzer{irs::type<text_token_normalizing_stream>::get()},
-    state_(memory::make_unique<state_t>(options)),
-    term_eof_(true) {
+    state_{new state_t{options}},
+    term_eof_{true} {
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
@@ -390,9 +396,7 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(
-      icu::Normalizer2::getNFCInstance(err), [](const icu::Normalizer2*)->void{}
-    );
+    state_->normalizer.reset(icu::Normalizer2::getNFCInstance(err));
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
       state_->normalizer.reset();
