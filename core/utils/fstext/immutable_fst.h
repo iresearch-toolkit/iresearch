@@ -148,13 +148,14 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
   auto* arc = arcs.get();
   for (auto state = states.get(), end = state + nstates; state != end; ++state) {
     state->arcs = arc;
-    state->narcs = stream.read_byte(); // FIXME total number of arcs can be encoded with 1 byte
+    state->narcs = static_cast<uint32_t>(stream.read_short()); // FIXME total number of arcs can be encoded with 1 byte
+    assert(state->narcs <= (1U + std::numeric_limits<irs::byte_type>::max()));
     state->weight = { weight, stream.read_vlong() };
 
     weight += state->weight.Size();
 
     for (auto* end = arc + state->narcs; arc != end; ++arc) {
-      arc->ilabel = stream.read_byte() + 1;
+      arc->ilabel = stream.read_byte();
       arc->nextstate = stream.read_vint();
       arc->weight = { weight, stream.read_vlong() };
       weight += arc->weight.Size();
@@ -270,8 +271,8 @@ bool ImmutableFst<A>::Write(
     const StateId s = siter.Value();
     const size_t narcs = impl->NumArcs(s);
 
-    assert(narcs <= (1 + std::numeric_limits<irs::byte_type>::max()));
-    stream.write_byte(static_cast<irs::byte_type>((narcs-1) & 0xFF)); // -1 to fit irs::byte_type
+    assert(narcs <= (1U + std::numeric_limits<irs::byte_type>::max()));
+    stream.write_short(narcs & 0xFFFF);
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
       stream.write_vlong(impl->FinalRef(s).Size());
     } else {
