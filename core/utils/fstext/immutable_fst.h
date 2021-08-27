@@ -154,7 +154,7 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(irs::data_inp
     weight += state->weight.Size();
 
     for (auto* end = arc + state->narcs; arc != end; ++arc) {
-      arc->ilabel = stream.read_byte();
+      arc->ilabel = stream.read_byte() + 1;
       arc->nextstate = stream.read_vint();
       arc->weight = { weight, stream.read_vlong() };
       weight += arc->weight.Size();
@@ -270,8 +270,8 @@ bool ImmutableFst<A>::Write(
     const StateId s = siter.Value();
     const size_t narcs = impl->NumArcs(s);
 
-    assert(narcs <= std::numeric_limits<irs::byte_type>::max());
-    stream.write_byte(static_cast<irs::byte_type>(narcs & 0xFF));
+    assert(narcs <= (1 + std::numeric_limits<irs::byte_type>::max()));
+    stream.write_byte(static_cast<irs::byte_type>((narcs-1) & 0xFF)); // -1 to fit irs::byte_type
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
       stream.write_vlong(impl->FinalRef(s).Size());
     } else {
