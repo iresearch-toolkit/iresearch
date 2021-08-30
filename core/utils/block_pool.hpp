@@ -1089,6 +1089,8 @@ class block_pool {
 
     while (count--) {
       auto* p = proxy_alloc.allocate(1);
+      assert(p);
+
       p->start = blocks.size() * block_type::SIZE;
 
       try {
