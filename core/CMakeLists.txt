@@ -288,6 +288,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
     ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
     ${BFD_INCLUDE_DIR}
     ${Lz4_INCLUDE_DIR}
+    ${Fasttext_INCLUDE_DIR}
     ${Unwind_INCLUDE_DIR}
     ${FROZEN_INCLUDE_DIR})
 
@@ -462,6 +463,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
+  ${Fasttext_SHARED_LIB}
   velocypack
 )
 
@@ -487,6 +489,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   ${ABSL_LIBRARY_STATIC}
+  ${Fasttext_STATIC_LIB}
   velocypack
 )
 

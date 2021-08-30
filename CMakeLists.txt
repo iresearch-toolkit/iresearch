@@ -88,6 +88,7 @@ option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_MICROBENCH "Build micro-benchmark project" OFF)
+option(USE_FASTTEXT "Build with FastText embeddings library" ON)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON) 
 
 add_option_gprof(FALSE)
@@ -218,6 +219,10 @@ else()
   set(Unwind_SHARED_LIBS "")
   set(Unwind_STATIC_LIBS "")
   set(Unwind_SHARED_LIB_RESOURCES "")
+endif()
+
+if (USE_FASTTEXT)
+  find_package(Fasttext REQUIRED)
 endif()
 
 # set external dirs
