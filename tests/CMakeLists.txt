@@ -86,7 +86,6 @@ set(IReSearch_tests_sources
   ./search/same_position_filter_tests.cpp
   ./search/ngram_similarity_filter_tests.cpp
   ./search/top_terms_collector_test.cpp
-  ./search/embeddings_test.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
@@ -129,7 +128,12 @@ set(IReSearch_tests_sources
   ./tests_main.cpp
 )
 
-
+if (Fasttext_FOUND)
+  set(IReSearch_tests_sources
+    ${IReSearch_tests_sources}
+    ./search/embeddings_test.cpp
+  )
+endif()
 
 set(IReSearch_tests_headers
   ./index/assert_format.hpp
