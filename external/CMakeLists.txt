@@ -162,3 +162,10 @@ add_subdirectory(highway)
 ################################################################################
 
 add_subdirectory(text)
+
+################################################################################
+### fastText library
+################################################################################
+
+add_subdirectory(fastText)
+set(FASTTEXT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fastText/src)

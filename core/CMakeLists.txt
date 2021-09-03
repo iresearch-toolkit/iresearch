@@ -15,6 +15,8 @@ endif()
 set(SIMD_LIBRARY_SHARED "simdcomp-shared")
 set(SIMD_LIBRARY_STATIC "simdcomp-static")
 set(ABSL_LIBRARY_STATIC "absl-static")
+set(FASTTEXT_LIBRARY_STATIC "fasttext-static")
+set(FASTTEXT_LIBRARY_SHARED "fasttext-shared")
 
 # set libatomic library 
 # (not available on Windows and Mac)
@@ -463,7 +465,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
-  ${Fasttext_SHARED_LIB}
+  ${FASTTEXT_LIBRARY_SHARED}
+#  ${Fasttext_SHARED_LIB}
   velocypack
 )
 
@@ -489,7 +492,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   ${ABSL_LIBRARY_STATIC}
-  ${Fasttext_STATIC_LIB}
+  ${FASTTEXT_LIBRARY_STATIC}
   velocypack
 )
 
@@ -516,6 +519,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:fasttext-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"

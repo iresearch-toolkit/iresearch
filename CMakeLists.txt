@@ -221,10 +221,6 @@ else()
   set(Unwind_SHARED_LIB_RESOURCES "")
 endif()
 
-if (USE_FASTTEXT)
-  find_package(Fasttext REQUIRED)
-endif()
-
 # set external dirs
 set(EXTERNAL_INCLUDE_DIRS 
   ${PROJECT_SOURCE_DIR}/external
