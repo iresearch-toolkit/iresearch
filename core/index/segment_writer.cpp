@@ -37,23 +37,6 @@
 
 #include "index/norm.hpp"
 
-namespace {
-
-using namespace irs;
-
-inline bool is_subset_of(
-    const features_t& lhs,
-    const feature_map_t& rhs) noexcept {
-  for (const irs::type_info::type_id type: lhs) {
-    if (!rhs.count(type)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}
-
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(

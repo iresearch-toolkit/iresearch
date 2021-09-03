@@ -75,7 +75,7 @@ ENABLE_BITMASK_ENUM(IndexFeatures);
 //////////////////////////////////////////////////////////////////////////////
 /// @return true if 'lhs' is a subset of 'rhs'
 //////////////////////////////////////////////////////////////////////////////
-[[maybe_unused]] FORCE_INLINE bool is_subset_of(
+FORCE_INLINE bool is_subset_of(
     IndexFeatures lhs, IndexFeatures rhs) noexcept {
   return lhs == (lhs & rhs);
 }
