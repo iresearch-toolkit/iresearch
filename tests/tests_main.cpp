@@ -301,7 +301,7 @@ void install_stack_trace_handler() {
 #ifndef _MSC_VER
   // override GCC 'throw' handler to print stack trace before throw
   extern "C" {
-    #if defined(__APPLE__)
+    #if defined(__clang__)
       void __cxa_throw(void* ex, struct std::type_info* info, void(*dest)(void *)) {
         static void(*rethrow)(void*,struct std::type_info*,void(*)(void*)) =
           (void(*)(void*,struct std::type_info*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");

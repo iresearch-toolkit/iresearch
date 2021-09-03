@@ -2722,7 +2722,7 @@ class single_term_iterator final : public seek_term_iterator {
       : nullptr;
   }
 
-  virtual const bytes_ref& value() const {
+  virtual const bytes_ref& value() const override {
     return value_;
   }
 
