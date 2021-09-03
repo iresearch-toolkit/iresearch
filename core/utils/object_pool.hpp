@@ -305,7 +305,7 @@ class bounded_object_pool {
       } catch (...) {
         slot.initialized.clear(std::memory_order::memory_order_release);
         free_list_.push(*head);
-        notify();
+        cond_.notify_all();
         throw;
       }
 
@@ -315,7 +315,7 @@ class bounded_object_pool {
 
       slot.initialized.clear(std::memory_order::memory_order_release);
       free_list_.push(*head); // put empty slot back into the free list
-      notify();
+      cond_.notify_all();
 
       return ptr();
     }
@@ -376,14 +376,6 @@ class bounded_object_pool {
 
   void unlock(node_type& slot) const {
     free_list_.push(slot);
-    notify();
-  }
-
-  void notify() const {
-    {
-      auto lock = make_unique_lock(mutex_);
-    }
-
     cond_.notify_all();
   }
 
