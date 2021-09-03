@@ -193,6 +193,7 @@ class bounded_object_pool {
   struct slot_t : util::noncopyable {
     bounded_object_pool* owner;
     typename T::ptr ptr;
+    std::atomic_flag initialized = ATOMIC_FLAG_INIT;
   }; // slot_t
 
   typedef concurrent_stack<slot_t> stack;
@@ -298,22 +299,28 @@ class bounded_object_pool {
     auto& slot = head->value;
     auto& value = slot.ptr;
 
-    if (!value) {
+    if (!slot.initialized.test_and_set(std::memory_order_acquire)) {
       try {
         value = T::make(std::forward<Args>(args)...);
       } catch (...) {
+        slot.initialized.clear(std::memory_order::memory_order_release);
         free_list_.push(*head);
+        notify();
         throw;
       }
+
+      if (value) {
+        return ptr(*head);
+      }
+
+      slot.initialized.clear(std::memory_order::memory_order_release);
+      free_list_.push(*head); // put empty slot back into the free list
+      notify();
+
+      return ptr();
     }
 
-    if (value) {
-      return ptr(*head);
-    }
-
-    free_list_.push(*head); // put empty slot back into the free list
-
-    return ptr();
+    return ptr(*head);
   }
 
   size_t size() const noexcept { return pool_.size(); }
@@ -363,12 +370,20 @@ class bounded_object_pool {
     auto lock = make_unique_lock(mutex_);
 
     if (free_list_.empty()) {
-      cond_.wait_for(lock, 1000ms);
+      cond_.wait_for(lock, 100ms);
     }
   }
 
-  void unlock(node_type& slot) const noexcept {
+  void unlock(node_type& slot) const {
     free_list_.push(slot);
+    notify();
+  }
+
+  void notify() const {
+    {
+      auto lock = make_unique_lock(mutex_);
+    }
+
     cond_.notify_all();
   }
 

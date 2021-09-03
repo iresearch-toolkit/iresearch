@@ -133,7 +133,10 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   }
 
   // ready
-  ready = true;
+  {
+    auto lock = irs::make_unique_lock(mutex);
+    ready = true;
+  }
   ready_cv.notify_all();
 
   for (auto& thread : threads) {
