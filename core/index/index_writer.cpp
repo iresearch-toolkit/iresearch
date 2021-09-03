@@ -1062,8 +1062,9 @@ index_writer::segment_context::segment_context(
 }
 
 uint64_t index_writer::segment_context::flush() {
+  // must be already locked to
   // prevent concurrent flush related modifications
-  auto lock = make_lock_guard(flush_mutex_);
+  assert(!flush_mutex_.try_lock());
 
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
     return 0; // skip flushing an empty writer
@@ -1974,7 +1975,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // because it was started by a different 'flush_context', i.e. by 'ctx'
     while (entry.segment_->active_count_.load()
            || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
-      ctx->pending_segment_context_cond_.wait_for(lock, 1000ms); // arbitrary sleep interval
+      ctx->pending_segment_context_cond_.wait_for(lock, 50ms); // arbitrary sleep interval
     }
 
     // FIXME TODO flush_all() blocks flush_context::emplace(...) and insert()/remove()/replace()

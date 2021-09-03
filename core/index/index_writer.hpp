@@ -860,7 +860,7 @@ class IRESEARCH_API index_writer
     format::ptr codec_; // the codec to used for flushing a segment writer
     std::atomic<bool> dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
+    std::mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
