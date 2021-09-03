@@ -524,6 +524,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-classification-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-collation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stopwords-static>"
@@ -1137,6 +1138,51 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-static
+)
+
+################################################################################
+### analysis plugin: embedding classification
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  SHARED
+  ./analysis/embedding_classification_stream.cpp
+  ./analysis/embedding_classification_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-classification-static
+  STATIC
+  ./analysis/embedding_classification_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-classification
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-classification-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-classification-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-static
   ${IResearch_TARGET_NAME}-static
 )
 
