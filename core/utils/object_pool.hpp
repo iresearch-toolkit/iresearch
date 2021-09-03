@@ -193,6 +193,7 @@ class bounded_object_pool {
   struct slot_t : util::noncopyable {
     bounded_object_pool* owner;
     typename T::ptr ptr;
+    std::atomic<T*> value{};
   }; // slot_t
 
   typedef concurrent_stack<slot_t> stack;
@@ -212,22 +213,28 @@ class bounded_object_pool {
 
    public:
     ptr() noexcept
-      : slot_(&EMPTY_SLOT) {
+      : slot_(&EMPTY_SLOT),
+        ptr_(nullptr) {
     }
 
-    explicit ptr(node_type& slot) noexcept
-      : slot_(&slot) {
+    explicit ptr(node_type& slot, element_type& ptr) noexcept
+      : slot_(&slot),
+        ptr_(&ptr)  {
     }
 
     ptr(ptr&& rhs) noexcept
-      : slot_(rhs.slot_) {
+      : slot_(rhs.slot_),
+        ptr_(rhs.ptr_) {
       rhs.slot_ = &EMPTY_SLOT; // take ownership
+      rhs.ptr_ = nullptr;
     }
 
     ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
         slot_ = rhs.slot_;
+        ptr_ = rhs.ptr_;
         rhs.slot_ = &EMPTY_SLOT; // take ownership
+        rhs.ptr_ = nullptr;
       }
       return *this;
     }
@@ -238,17 +245,19 @@ class bounded_object_pool {
 
     FORCE_INLINE void reset() noexcept {
       reset_impl(slot_);
+      ptr_ = nullptr;
     }
 
     std::shared_ptr<element_type> release() {
-      auto* raw = get();
       auto* slot = slot_;
+      auto* ptr = ptr_;
       slot_ = &EMPTY_SLOT; // moved
+      ptr_ = nullptr;
 
       // in case if exception occurs
       // destructor will be called
       return std::shared_ptr<element_type>(
-        raw,
+        ptr,
         [slot] (element_type*) mutable noexcept {
           reset_impl(slot);
       });
@@ -257,9 +266,7 @@ class bounded_object_pool {
     operator bool() const noexcept { return &EMPTY_SLOT != slot_; }
     element_type& operator*() const noexcept { return *slot_->value.ptr; }
     element_type* operator->() const noexcept { return get(); }
-    element_type* get() const noexcept {
-      return slot_->value.ptr.get();
-    }
+    element_type* get() const noexcept { return ptr_; }
 
    private:
     static void reset_impl(node_type*& slot) noexcept {
@@ -274,6 +281,7 @@ class bounded_object_pool {
     }
 
     node_type* slot_;
+    T* ptr_;
   }; // ptr
 
   explicit bounded_object_pool(size_t size)
@@ -296,24 +304,34 @@ class bounded_object_pool {
     }
 
     auto& slot = head->value;
-    auto& value = slot.ptr;
 
-    if (!value) {
+    auto* p = slot.value.load(std::memory_order_acquire);
+
+    if (!p) {
+      auto& value = slot.ptr;
+
       try {
         value = T::make(std::forward<Args>(args)...);
       } catch (...) {
         free_list_.push(*head);
+        cond_.notify_all();
         throw;
       }
+
+      p = value.get();
+
+      if (p) {
+        slot.value.store(p, std::memory_order::memory_order_release);
+        return ptr(*head, *p);
+      }
+
+      free_list_.push(*head); // put empty slot back into the free list
+      cond_.notify_all();
+
+      return ptr();
     }
 
-    if (value) {
-      return ptr(*head);
-    }
-
-    free_list_.push(*head); // put empty slot back into the free list
-
-    return ptr();
+    return ptr(*head, *p);
   }
 
   size_t size() const noexcept { return pool_.size(); }
@@ -363,11 +381,11 @@ class bounded_object_pool {
     auto lock = make_unique_lock(mutex_);
 
     if (free_list_.empty()) {
-      cond_.wait_for(lock, 1000ms);
+      cond_.wait_for(lock, 100ms);
     }
   }
 
-  void unlock(node_type& slot) const noexcept {
+  void unlock(node_type& slot) const {
     free_list_.push(slot);
     cond_.notify_all();
   }
