@@ -200,10 +200,10 @@ void read_compact(
   // try direct buffer access
   const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize, BufferHint::NORMAL);
 
+  uint64_t buff_size = 0;
   if (buf) {
-    in.seek(in.file_pointer() - bytes_io<uint64_t>::const_max_vsize);
-    decode_buf.resize(zvread<uint64_t>(in) + MAX_DATA_BLOCK_SIZE);
-
+    const byte_type* ptr = buf + buf_size;
+    buff_size = zvread<uint64_t>(ptr);
   } else {
     irs::string_utils::oversize(encode_buf, buf_size);
 
@@ -221,10 +221,11 @@ void read_compact(
     }
 
     buf = encode_buf.c_str();
-
-    // ensure that we have enough space to store decompressed data
-    decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
+    buff_size = irs::read_zvlong(in);
   }
+
+  // ensure that we have enough space to store decompressed data
+  decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
     buf, buf_size,
