@@ -110,12 +110,11 @@ std::vector<irs::index_file_refs::ref_t> extract_refs(
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
-    modification_contexts_ref& modifications, // where to get document update_contexts from
-    irs::document_mask& docs_mask, // where to apply document removals to
-    irs::readers_cache& readers, // where to get segment readers from
-    irs::segment_meta& meta, // key used to get reader for the segment to evaluate
-    size_t min_modification_generation = 0
-) {
+    modification_contexts_ref& modifications,
+    irs::document_mask& docs_mask,
+    irs::readers_cache& readers,
+    irs::segment_meta& meta,
+    size_t min_modification_generation = 0) {
   if (modifications.empty()) {
     return false; // nothing new to flush
   }
@@ -177,10 +176,9 @@ bool add_document_mask_modified_records(
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
-    modification_contexts_ref& modifications, // where to get document update_contexts from
-    flush_segment_context& ctx, // where to apply document removals to
-    irs::readers_cache& readers // where to get segment readers from
-) {
+    modification_contexts_ref& modifications,
+    flush_segment_context& ctx,
+    irs::readers_cache& readers) {
   if (modifications.empty()) {
     return false; // nothing new to flush
   }
@@ -292,8 +290,7 @@ template<typename T, typename M>
 void append_segments_refs(
     T& buf,
     irs::directory& dir,
-    const M& meta
-) {
+    const M& meta) {
   auto visitor = [&buf](const irs::index_file_refs::ref_t& ref)->bool {
     buf.emplace_back(ref);
     return true;
@@ -307,8 +304,7 @@ const std::string& write_document_mask(
     irs::directory& dir,
     irs::segment_meta& meta,
     const irs::document_mask& docs_mask,
-    bool increment_version = true
-) {
+    bool increment_version = true) {
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
@@ -349,8 +345,7 @@ using candidates_mapping_t = absl::flat_hash_map<
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
     const irs::index_writer::consolidation_t& candidates,
-    const irs::index_meta::index_segments_t& segments
-) {
+    const irs::index_meta::index_segments_t& segments) {
   size_t i = 0;
   for (auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -601,9 +596,8 @@ const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
 index_writer::active_segment_context::active_segment_context(
     segment_context_ptr ctx,
     std::atomic<size_t>& segments_active,
-    flush_context* flush_ctx /*= nullptr*/, // the flush_context the segment_context is currently registered with
-    size_t pending_segment_context_offset /*= std::numeric_limits<size_t>::max()*/ // the segment offset in flush_ctx_->pending_segments_
-) noexcept
+    flush_context* flush_ctx /*= nullptr*/,
+    size_t pending_segment_context_offset /*= std::numeric_limits<size_t>::max()*/) noexcept
   : ctx_(ctx),
     flush_ctx_(flush_ctx),
     pending_segment_context_offset_(pending_segment_context_offset),
@@ -658,11 +652,11 @@ index_writer::active_segment_context& index_writer::active_segment_context::oper
 index_writer::documents_context::document::document(
     flush_context_ptr&& ctx,
     const segment_context_ptr& segment,
-    const segment_writer::update_context& update
-): segment_writer::document(*(segment->writer_)),
-   ctx_(*ctx),
-   segment_(segment),
-   update_id_(update.update_id) {
+    const segment_writer::update_context& update)
+  : segment_writer::document(*(segment->writer_)),
+    ctx_(*ctx),
+    segment_(segment),
+    update_id_(update.update_id) {
   assert(ctx);
   assert(segment_);
   assert(segment_->writer_);
