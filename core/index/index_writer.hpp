@@ -1106,6 +1106,10 @@ class IRESEARCH_API index_writer
     index_meta&& meta,
     committed_state_t&& committed_state);
 
+  std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> flush_pending(
+    flush_context& ctx,
+    std::unique_lock<std::mutex>& ctx_lock);
+
   pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);

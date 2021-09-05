@@ -539,6 +539,8 @@ std::string to_string(const irs::index_writer::consolidation_t& consolidation) {
 
 namespace iresearch {
 
+using namespace std::chrono_literals;
+
 readers_cache::key_t::key_t(const segment_meta& meta)
   : name(meta.name), version(meta.version) {
 }
@@ -1922,9 +1924,48 @@ index_writer::active_segment_context index_writer::get_segment_context(
   return active_segment_context(segment_ctx, segments_active_);
 }
 
+std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> index_writer::flush_pending(
+    flush_context& ctx, std::unique_lock<std::mutex>& ctx_lock) {
+  uint64_t max_tick = 0;
+  std::vector<std::unique_lock<std::mutex>> segment_flush_locks;
+  segment_flush_locks.reserve(ctx.pending_segment_contexts_.size());
+
+  for (auto& entry : ctx.pending_segment_contexts_) {
+    // mark the 'segment_context' as dirty so that it will not be reused if this
+    // 'flush_context' once again becomes the active context while the
+    // 'segment_context' handle is still held by documents()
+    entry.segment_->dirty_ = true;
+
+    // wait for the segment to no longer be active
+    // i.e. wait for all ongoing document operations to finish (insert/replace)
+    // the segment will not be given out again by the active 'flush_context'
+    // because it was started by a different 'flush_context', i.e. by 'ctx'
+    while (entry.segment_->active_count_.load()
+           || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
+      ctx.pending_segment_context_cond_.wait_for(ctx_lock, 50ms); // arbitrary sleep interval
+    }
+
+    // prevent concurrent modification of segment_context properties during flush_context::emplace(...)
+    // FIXME TODO flush_all() blocks flush_context::emplace(...) and insert()/remove()/replace()
+    segment_flush_locks.emplace_back(entry.segment_->flush_mutex_);
+
+    // force a flush of the underlying segment_writer
+    max_tick = std::max(entry.segment_->flush(), max_tick);
+
+    // may be std::numeric_limits<size_t>::max() if segment_meta only in this flush_context
+    entry.doc_id_end_ = std::min(
+      entry.segment_->uncomitted_doc_id_begin_,
+      entry.doc_id_end_);
+    entry.modification_offset_end_ = std::min(
+      entry.segment_->uncomitted_modification_queries_,
+      entry.modification_offset_end_);
+  }
+
+  return { std::move(segment_flush_locks), max_tick };
+}
+
 index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
-  using namespace std::chrono_literals;
 
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
@@ -1935,7 +1976,6 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
-  std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
   auto lock = make_unique_lock(ctx->mutex_); // ensure there are no active struct update operations
 
   // register consolidating segments cleanup.
@@ -1955,42 +1995,14 @@ index_writer::pending_context_t index_writer::flush_all() {
       }
     }
   });
+
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
   /// wait for any outstanding segments to settle to ensure that any rollbacks
   /// are properly tracked in 'modification_queries_'
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t max_tick = 0;
-
-  for (auto& entry : ctx->pending_segment_contexts_) {
-    // mark the 'segment_context' as dirty so that it will not be reused if this
-    // 'flush_context' once again becomes the active context while the
-    // 'segment_context' handle is still held by documents()
-    entry.segment_->dirty_ = true;
-
-    // wait for the segment to no longer be active
-    // i.e. wait for all ongoing document operations to finish (insert/replace)
-    // the segment will not be given out again by the active 'flush_context'
-    // because it was started by a different 'flush_context', i.e. by 'ctx'
-    while (entry.segment_->active_count_.load()
-           || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
-      ctx->pending_segment_context_cond_.wait_for(lock, 50ms); // arbitrary sleep interval
-    }
-
-    // FIXME TODO flush_all() blocks flush_context::emplace(...) and insert()/remove()/replace()
-    segment_flush_locks.emplace_back(entry.segment_->flush_mutex_); // prevent concurrent modification of segment_context properties during flush_context::emplace(...)
-
-    // force a flush of the underlying segment_writer
-    max_tick = std::max(entry.segment_->flush(), max_tick);
-
-    entry.doc_id_end_ = // may be std::numeric_limits<size_t>::max() if segment_meta only in this flush_context
-      std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below
-    entry.modification_offset_end_ = std::min(
-      entry.segment_->uncomitted_modification_queries_,
-      entry.modification_offset_end_
-    ); // update so that can use valid value below
-  }
+  const auto [segment_flush_locks, max_tick] = flush_pending(*ctx, lock);
 
   /////////////////////////////////////////////////////////////////////////////
   /// Stage 1

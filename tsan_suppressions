@@ -1,0 +1,2 @@
+# false positive `lock-order-inversion` error
+deadlock:index_writer::flush_all_pending
