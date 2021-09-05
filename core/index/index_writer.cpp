@@ -580,7 +580,7 @@ size_t readers_cache::purge(
   auto lock = make_lock_guard(lock_);
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
-    if (segments.end() != segments.find(it->first)) {
+    if (segments.contains(it->first)) {
       const auto erase_me = it++;
       cache_.erase(erase_me);
       ++erased;
@@ -1743,7 +1743,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // mask mapped (matched) segments
       // segments from the already finished commit
       for (auto& segment: current_committed_meta->segments()) {
-        if (mappings.end() != mappings.find(segment.meta.name)) {
+        if (mappings.contains(segment.meta.name)) {
           segment_mask.emplace(segment.meta);
         }
       }
@@ -2013,7 +2013,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   for (auto& existing_segment : meta_) {
     // skip already masked segments
-    if (segment_mask.end() != segment_mask.find(existing_segment.meta)) {
+    if (segment_mask.contains(existing_segment.meta)) {
       continue;
     }
 
@@ -2103,7 +2103,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       // mask mapped (matched) segments
       // segments from the currently ongoing commit
       for (auto& segment: segments) {
-        if (mappings.end() != mappings.find(segment.meta.name)) {
+        if (mappings.contains(segment.meta.name)) {
           ctx->segment_mask_.emplace(segment.meta);
         }
       }
@@ -2114,8 +2114,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           mappings,
           pending_segment.consolidation_ctx.merger,
           cached_readers_,
-          docs_mask
-        );
+          docs_mask);
 
         if (!success) {
           // consolidated segment has docs missing from 'segments'
@@ -2216,7 +2215,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       auto& segment = segments[i];
 
       // valid segment
-      const bool valid = ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta);
+      const bool valid = !ctx->segment_mask_.contains(segment.meta);
 
       if (begin != end && i == begin->first) {
         if (valid) {
