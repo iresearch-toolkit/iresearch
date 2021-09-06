@@ -58,6 +58,69 @@ TEST(collation_token_stream_test, construct) {
   }
 }
 
+TEST(collation_token_stream_test, check_variant) {
+
+  auto err = UErrorCode::U_ZERO_ERROR;
+
+  constexpr irs::string_ref locale_name = "de.utf-8@de-u-co-phonebk";
+
+  const auto locale = irs::locale_utils::locale(locale_name, irs::string_ref::NIL, true);
+
+  const icu::Locale icu_locale{
+    std::string(irs::locale_utils::language(locale)).c_str(),
+    std::string(irs::locale_utils::country(locale)).c_str(),
+    std::string(irs::locale_utils::variant(locale)).c_str()};
+
+  icu::CollationKey key;
+  std::unique_ptr<icu::Collator> coll{
+    icu::Collator::createInstance(icu_locale, err) };
+  ASSERT_NE(nullptr, coll);
+  ASSERT_TRUE(U_SUCCESS(err));
+
+  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+    err = UErrorCode::U_ZERO_ERROR;
+    coll->getCollationKey(
+      icu::UnicodeString::fromUTF8(
+        icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())}),
+      key, err);
+    EXPECT_TRUE(U_SUCCESS(err));
+
+    int32_t size = 0;
+    const irs::byte_type* p = key.getByteArray(size);
+    EXPECT_NE(nullptr, p);
+    EXPECT_NE(0, size);
+
+    return { p, static_cast<size_t>(size)-1 };
+  };
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({ "locale" : "de.utf-8@de-u-co-phonebk" })");
+
+    ASSERT_NE(nullptr, stream);
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
+
+    {
+      constexpr irs::string_ref data{"Ärger Aerosol Abbruch Aqua"};
+      ASSERT_TRUE(stream->reset(data));
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(data.size(), offset->end);
+      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_EQ(1, inc->value);
+      ASSERT_FALSE(stream->next());
+    }
+  }
+
+}
+
 TEST(collation_token_stream_test, check_tokens_utf8) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
@@ -67,7 +130,8 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 
   const icu::Locale icu_locale{
     std::string(irs::locale_utils::language(locale)).c_str(),
-    std::string(irs::locale_utils::country(locale)).c_str() };
+    std::string(irs::locale_utils::country(locale)).c_str(),
+    std::string(irs::locale_utils::variant(locale)).c_str()};
 
   icu::CollationKey key;
   std::unique_ptr<icu::Collator> coll{
@@ -171,7 +235,8 @@ TEST(collation_token_stream_test, check_tokens) {
 
   const icu::Locale icu_locale{
     std::string(irs::locale_utils::language(locale)).c_str(),
-    std::string(irs::locale_utils::country(locale)).c_str() };
+    std::string(irs::locale_utils::country(locale)).c_str(),
+    std::string(irs::locale_utils::variant(locale)).c_str()};
 
   icu::CollationKey key;
   std::unique_ptr<icu::Collator> coll{

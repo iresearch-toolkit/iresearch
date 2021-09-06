@@ -3728,6 +3728,16 @@ const irs::string_ref& language(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).language();
 }
 
+const irs::string_ref& variant(std::locale const& locale) {
+  auto* loc = &locale;
+
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
+  }
+
+  return std::use_facet<locale_info_facet>(*loc).variant();
+}
+
 bool is_utf8(std::locale const& locale) {
   auto* loc = &locale;
 

@@ -271,7 +271,8 @@ bool collation_token_stream::reset(const string_ref& data) {
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
       std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str());
+      std::string(locale_utils::country(state_->options.locale)).c_str(),
+      std::string(locale_utils::variant(state_->options.locale)).c_str());
 
     if (state_->icu_locale.isBogus()) {
       return false;
