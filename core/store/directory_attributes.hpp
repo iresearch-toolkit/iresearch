@@ -38,17 +38,15 @@ namespace iresearch {
 class IRESEARCH_API memory_allocator : public stored_attribute {
  private:
   struct IRESEARCH_API buffer {
-    typedef std::unique_ptr<byte_type[]> ptr;
-    DECLARE_FACTORY(size_t size);
+    using ptr = std::unique_ptr<byte_type[]>;
+    static ptr make(size_t size);
   }; // buffer
 
  public:
-  DECLARE_FACTORY(size_t pool_size);
+  static ptr make(size_t pool_size);
 
-  typedef container_utils::memory::bucket_allocator<
-    buffer,
-    16 // as in memory_file
-  > allocator_type;
+  using allocator_type = container_utils::memory::bucket_allocator<
+    buffer, 16>; // as in memory_file
 
   static memory_allocator& global() noexcept;
 
@@ -68,7 +66,7 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 ///        where applicable, e.g. fs_directory
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API fd_pool_size: public stored_attribute {
-  DECLARE_FACTORY();
+  static ptr make();
 
   fd_pool_size() noexcept;
   void clear() noexcept;
@@ -86,7 +84,8 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
 
-  DECLARE_FACTORY();
+  static ptr make();
+
   index_file_refs() = default;
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);

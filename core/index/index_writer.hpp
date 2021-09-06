@@ -853,7 +853,7 @@ class IRESEARCH_API index_writer
         : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
-    using ptr = std::shared_ptr<segment_context>;
+    using ptr = std::unique_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
@@ -960,10 +960,11 @@ class IRESEARCH_API index_writer
       size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
       const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      const segment_context::ptr segment_;
+      const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(
-          const segment_context::ptr& segment, size_t pending_segment_context_offset)
+          const std::shared_ptr<segment_context>& segment,
+          size_t pending_segment_context_offset)
         : doc_id_begin_(segment->uncomitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
           modification_offset_begin_(segment->uncomitted_modification_queries_),

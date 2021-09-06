@@ -1106,7 +1106,7 @@ index_writer::segment_context::ptr index_writer::segment_context::make(
     const column_info_provider_t& column_info,
     const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) {
-  return memory::make_shared<segment_context>(
+  return memory::make_unique<segment_context>(
     dir, std::move(meta_generator),
     field_features, column_info,
     feature_column_info, comparator);

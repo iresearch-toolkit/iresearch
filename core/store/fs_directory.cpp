@@ -410,7 +410,15 @@ class pooled_fs_index_input final : public fs_index_input {
   virtual index_input::ptr reopen() const override;
 
  private:
-  typedef unbounded_object_pool<file_handle> fd_pool_t;
+  struct builder {
+    using ptr = std::unique_ptr<file_handle>;
+
+    static std::unique_ptr<file_handle> make() {
+      return memory::make_unique<file_handle>();
+    }
+  };
+
+  using fd_pool_t = unbounded_object_pool<builder>;
   std::shared_ptr<fd_pool_t> fd_pool_;
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;

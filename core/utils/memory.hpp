@@ -593,7 +593,7 @@ typename std::enable_if<
 // --SECTION--                                                            maker
 // ----------------------------------------------------------------------------
 
-template<typename Class, bool = is_shared_ptr<typename Class::ptr>::value>
+template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
 struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
