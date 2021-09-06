@@ -752,7 +752,7 @@ class unbounded_object_pool_volatile
   class ptr : private util::noncopyable {
    public:
     ptr(pointer value,
-        const generation_ptr_t& gen) noexcept
+        generation_ptr_t gen) noexcept
       : value_{value},
         gen_{std::move(gen)} {
     }
@@ -907,13 +907,12 @@ class unbounded_object_pool_volatile
 
   template<typename... Args>
   ptr emplace(Args&&... args) {
-    static const generation_ptr_t no_gen;
     const auto gen = atomic_utils::atomic_load(&gen_); // retrieve before seek/instantiate
     auto value = this->acquire(std::forward<Args>(args)...);
 
     return value
       ? ptr{value, gen}
-      : ptr{nullptr, no_gen};
+      : ptr{nullptr, generation_ptr_t{}};
   }
 
   size_t generation_size() const noexcept {

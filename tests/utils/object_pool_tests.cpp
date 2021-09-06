@@ -681,7 +681,7 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
   }
 }
 
-TEST(unbounded_object_pool_tests, control_object_move) {
+TEST(unbounded_object_pool_tests, control_objectb_move) {
   irs::unbounded_object_pool<test_uobject> pool(2);
   ASSERT_EQ(2, pool.size());
 
@@ -694,7 +694,8 @@ TEST(unbounded_object_pool_tests, control_object_move) {
 
     auto obj = std::move(moved);
     ASSERT_FALSE(moved);
-    ASSERT_EQ(nullptr, moved.get());
+    ASSERT_EQ(nullptr, moved);
+    ASSERT_EQ(moved, nullptr);
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
   }
@@ -703,7 +704,8 @@ TEST(unbounded_object_pool_tests, control_object_move) {
   {
     auto moved = pool.emplace(1);
     ASSERT_TRUE(moved);
-    ASSERT_NE(nullptr, moved.get());
+    ASSERT_NE(nullptr, moved);
+    ASSERT_NE(moved, nullptr);
     ASSERT_EQ(1, moved->id);
     auto* moved_ptr = moved.get();
 
@@ -802,7 +804,8 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     auto moved = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(moved);
-    ASSERT_NE(nullptr, moved.get());
+    ASSERT_NE(nullptr, moved);
+    ASSERT_NE(moved, nullptr);
     ASSERT_EQ(1, moved->id);
     auto* moved_ptr = moved.get();
 
@@ -815,7 +818,8 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_FALSE(moved);
-    ASSERT_EQ(nullptr, moved.get());
+    ASSERT_EQ(nullptr, moved);
+    ASSERT_EQ(moved, nullptr);
     ASSERT_EQ(obj.get(), moved_ptr);
     ASSERT_EQ(1, obj->id);
   }
