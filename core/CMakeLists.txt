@@ -466,7 +466,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
   ${FASTTEXT_LIBRARY_SHARED}
-#  ${Fasttext_SHARED_LIB}
   velocypack
 )
 
