@@ -25,7 +25,6 @@
 #define IRESEARCH_DIRECTORY_ATTRIBUTES_H
 
 #include "shared.hpp"
-#include "utils/attribute_store.hpp"
 #include "utils/ref_counter.hpp"
 #include "utils/container_utils.hpp"
 
@@ -35,7 +34,7 @@ namespace iresearch {
 /// @class memory_allocator
 /// @brief a reusable thread-safe allocator for memory files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_allocator : public stored_attribute {
+class IRESEARCH_API memory_allocator {
  private:
   struct IRESEARCH_API buffer {
     using ptr = std::unique_ptr<byte_type[]>;
@@ -43,6 +42,8 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
   }; // buffer
 
  public:
+  using ptr = memory::managed_ptr<memory_allocator>;
+
   static ptr make(size_t pool_size);
 
   using allocator_type = container_utils::memory::bucket_allocator<
@@ -61,26 +62,55 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 }; // memory_allocator
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class fd_pool_size
-/// @brief the size of file descriptor pools
-///        where applicable, e.g. fs_directory
+/// @struct encryption
+/// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API fd_pool_size: public stored_attribute {
-  static ptr make();
+struct IRESEARCH_API encryption {
+  // FIXME check if it's possible to rename to iresearch::encryption?
+  static constexpr string_ref type_name() noexcept {
+    return "encryption";
+  }
 
-  fd_pool_size() noexcept;
-  void clear() noexcept;
+  ////////////////////////////////////////////////////////////////////////////
+  /// @struct stream
+  ////////////////////////////////////////////////////////////////////////////
+  struct stream {
+    using ptr = std::unique_ptr<stream>;
 
-  size_t size;
-}; // fd_pool_size
+    virtual ~stream() = default;
+
+    /// @returns size of the block supported by stream
+    virtual size_t block_size() const = 0;
+
+    /// @brief decrypt specified data at a provided offset
+    virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) = 0;
+
+    /// @brief encrypt specified data at a provided offset
+    virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) = 0;
+  };
+
+  /// @returns the length of the header that is added to every file
+  ///          and used for storing encryption options
+  virtual size_t header_length() = 0;
+
+  /// @brief an allocated block of header memory for a new file
+  virtual bool create_header(
+    const std::string& filename,
+    byte_type* header) = 0;
+
+  /// @returns a cipher stream for a file given file name
+  virtual stream::ptr create_stream(
+    const std::string& filename,
+    byte_type* header) = 0;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class index_file_refs
 /// @brief represents a ref_counter for index related files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_file_refs : public stored_attribute {
+class IRESEARCH_API index_file_refs {
  public:
-  typedef attribute_store::ref<index_file_refs>::type attribute_t;
+  typedef std::unique_ptr<index_file_refs> ptr;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
 
@@ -100,6 +130,24 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   counter_t refs_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
+
+struct encryption;
+
+class directory_attributes {
+ public:
+  directory_attributes(std::unique_ptr<irs::encryption> enc);
+  virtual ~directory_attributes() = default;
+
+  directory_attributes(directory_attributes&&) = default;
+  directory_attributes& operator=(directory_attributes&&) = default;
+
+  index_file_refs& refs() const noexcept { return *refs_; }
+  irs::encryption* encryption() const noexcept { return enc_.get(); }
+
+ private:
+  std::unique_ptr<index_file_refs> refs_;
+  std::unique_ptr<irs::encryption> enc_;
+};
 
 }
 

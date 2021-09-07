@@ -47,27 +47,15 @@ namespace iresearch {
 }
 
 /*static*/ memory_allocator::ptr memory_allocator::make(size_t pool_size) {
-  return memory::make_unique<memory_allocator>(pool_size);
+  if (pool_size) {
+    return memory::make_managed<memory_allocator>(pool_size);
+  }
+
+  return memory::to_managed<memory_allocator, false>(&GLOBAL_ALLOC);
 }
 
 memory_allocator::memory_allocator(size_t pool_size)
   : allocator_(pool_size) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      fd_pool_size
-// -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(fd_pool_size)
-
-const size_t FD_POOL_DEFAULT_SIZE = 8;
-
-fd_pool_size::fd_pool_size() noexcept
-  : size(FD_POOL_DEFAULT_SIZE) { // arbitrary size
-}
-
-void fd_pool_size::clear() noexcept {
-  size = FD_POOL_DEFAULT_SIZE;
 }
 
 // -----------------------------------------------------------------------------

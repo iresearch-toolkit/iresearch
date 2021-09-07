@@ -23,51 +23,74 @@
 #ifndef IRESEARCH_FILE_SYSTEM_DIRECTORY_H
 #define IRESEARCH_FILE_SYSTEM_DIRECTORY_H
 
-#include "directory.hpp"
+#include "store/directory.hpp"
+#include "store/directory_attributes.hpp"
 #include "utils/string.hpp"
-#include "utils/attribute_store.hpp"
 
 namespace iresearch {
+
+class fs_directory_attributes : public directory_attributes {
+ public:
+  static constexpr size_t DEFAULT_POOL_SIZE = 8;
+
+  // 0 == pool_size -> use global allocator, noexcept
+  explicit fs_directory_attributes(
+      size_t fd_pool_size = DEFAULT_POOL_SIZE,
+      std::unique_ptr<irs::encryption> enc = {})
+    : directory_attributes{std::move(enc)},
+      fd_pool_size_{fd_pool_size} {
+  }
+
+  size_t fd_pool_size() const noexcept {
+    return fd_pool_size_;
+  }
+
+  private:
+   size_t fd_pool_size_;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API fs_directory : public directory {
  public:
-  explicit fs_directory(const std::string& dir);
+  explicit fs_directory(
+    std::string dir,
+    fs_directory_attributes attrs = fs_directory_attributes{});
 
   using directory::attributes;
 
-  virtual attribute_store& attributes() noexcept override;
+  virtual directory_attributes& attributes() noexcept override;
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
 
   const std::string& directory() const noexcept;
 
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const noexcept override;
+    bool& result,
+    const std::string& name) const noexcept override;
 
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const noexcept override;
+    uint64_t& result,
+    const std::string& name) const noexcept override;
 
-  virtual index_lock::ptr make_lock(const std::string& name) noexcept override;
+  virtual index_lock::ptr make_lock(
+    const std::string& name) noexcept override;
 
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const noexcept override;
+    std::time_t& result,
+    const std::string& name) const noexcept override;
 
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept override;
+    IOAdvice advice) const noexcept override;
 
-  virtual bool remove(const std::string& name) noexcept override;
+  virtual bool remove(
+    const std::string& name) noexcept override;
 
   virtual bool rename(
-    const std::string& src, const std::string& dst
-  ) noexcept override;
+    const std::string& src,
+    const std::string& dst) noexcept override;
 
   virtual bool sync(const std::string& name) noexcept override;
 
@@ -75,7 +98,7 @@ class IRESEARCH_API fs_directory : public directory {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  attribute_store attributes_;
+  fs_directory_attributes attrs_;
   std::string dir_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory

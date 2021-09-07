@@ -52,7 +52,7 @@ class directory_mock: public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::attribute_store& attributes() noexcept override {
+  virtual irs::directory_attributes& attributes() noexcept override {
     return impl_.attributes();
   }
 

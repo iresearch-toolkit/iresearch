@@ -32,7 +32,6 @@
 
 namespace iresearch {
 
-class format;
 class index_meta;
 struct segment_meta;
 
@@ -106,8 +105,7 @@ struct IRESEARCH_API tracking_directory final : public directory {
     return impl_;
   }
 
-  using directory::attributes;
-  virtual attribute_store& attributes() noexcept override {
+  virtual directory_attributes& attributes() noexcept override {
     return impl_.attributes();
   }
 
@@ -184,8 +182,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
     return impl_;
   }
 
-  using directory::attributes;
-  virtual attribute_store& attributes() noexcept override {
+  virtual directory_attributes& attributes() noexcept override {
     return impl_.attributes();
   }
 
@@ -240,7 +237,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
     index_file_refs::counter_t::equal_to> ;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const index_file_refs::attribute_t& attribute_;
+  index_file_refs& attribute_;
   directory& impl_;
   mutable std::mutex mutex_; // for use with refs_
   mutable refs_t refs_;

@@ -496,14 +496,9 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(const std::string& dir)
-  : dir_(dir) {
-  attributes_.emplace<fd_pool_size>();
-  directory_cleaner::init(*this);
-}
-
-attribute_store& fs_directory::attributes() noexcept {
-  return attributes_;
+fs_directory::fs_directory(std::string dir, fs_directory_attributes attrs)
+  : attrs_{std::move(attrs)},
+    dir_{std::move(dir)} {
 }
 
 index_output::ptr fs_directory::create(const std::string& name) noexcept {
@@ -546,8 +541,8 @@ index_lock::ptr fs_directory::make_lock(const std::string& name) noexcept {
 }
 
 bool fs_directory::mtime(
-  std::time_t& result, const std::string& name
-) const noexcept {
+    std::time_t& result,
+    const std::string& name) const noexcept {
   return ((utf8_path()/=dir_)/=name).mtime(result);
 }
 
@@ -568,15 +563,10 @@ index_input::ptr fs_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
   try {
-    auto& attribute = attributes().get<fd_pool_size>();
-    assert(attribute); // ensured by ctor
-
-    const auto pool_size = attribute->size;
-
     utf8_path path;
     (path/=dir_)/=name;
 
-    return fs_index_input::open(path.c_str(), pool_size, advice);
+    return fs_index_input::open(path.c_str(), attrs_.fd_pool_size(), advice);
   } catch(...) {
   }
 
@@ -584,8 +574,8 @@ index_input::ptr fs_directory::open(
 }
 
 bool fs_directory::rename(
-  const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src,
+    const std::string& dst) noexcept {
   try {
     utf8_path src_path;
     utf8_path dst_path;

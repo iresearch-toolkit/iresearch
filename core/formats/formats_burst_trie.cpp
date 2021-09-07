@@ -1308,7 +1308,7 @@ void field_writer::prepare(const irs::flush_state& state) {
 
   std::string filename;
   bstring enc_header;
-  auto* enc = get_encryption(state.dir->attributes());
+  auto* enc = state.dir->attributes().encryption();
 
   // prepare term dictionary
   prepare_output(filename, terms_out_, state,
@@ -3475,7 +3475,7 @@ void field_reader::prepare(
     index_in->seek(ptr);
   }
 
-  auto* enc = get_encryption(dir.attributes());
+  auto* enc = dir.attributes().encryption();
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > burst_trie::Version::MIN) {

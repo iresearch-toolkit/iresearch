@@ -21,9 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "directory_utils.hpp"
+#include "store/directory_attributes.hpp"
 #include "index/index_meta.hpp"
 #include "formats/formats.hpp"
+#include "utils/directory_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
@@ -60,14 +61,10 @@ index_file_refs::ref_t reference(
     const directory& dir,
     const std::string& name,
     bool include_missing /*= false*/) {
-  auto& refs = dir.attributes().get<index_file_refs>();
-
-  if (!refs) {
-    return nullptr;
-  }
+  auto& refs = dir.attributes().refs();
 
   if (include_missing) {
-    return refs->add(name);
+    return refs.add(name);
   }
 
   bool exists;
@@ -77,7 +74,7 @@ index_file_refs::ref_t reference(
     return nullptr;
   }
 
-  auto ref = refs->add(name);
+  auto ref = refs.add(name);
 
   return dir.exists(exists, name) && exists
     ? ref : index_file_refs::ref_t(nullptr);
@@ -96,15 +93,12 @@ bool reference(
     const std::function<const std::string*()>& source,
     const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
     bool include_missing /*= false*/) {
-  auto& refs = dir.attributes().get<index_file_refs>();
+  auto& refs = dir.attributes().refs();
 
-  if (!refs) {
-    return false;
-  }
 
   for (const std::string* file; file = source();) {
     if (include_missing) {
-      if (!visitor(refs->add(*file))) {
+      if (!visitor(refs.add(*file))) {
         return false;
       }
 
@@ -118,7 +112,7 @@ bool reference(
       continue;
     }
 
-    auto ref = refs->add(*file);
+    auto ref = refs.add(*file);
 
     if (dir.exists(exists, *file) && exists && !visitor(std::move(ref))) {
       return false;
@@ -144,15 +138,11 @@ bool reference(
     return true;
   }
 
-  auto& refs = dir.attributes().get<index_file_refs>();
-
-  if (!refs) {
-    return false;
-  }
+  auto& refs = dir.attributes().refs();
 
   return meta.visit_files([include_missing, &refs, &dir, &visitor](const std::string& file) {
     if (include_missing) {
-      return visitor(refs->add(file));
+      return visitor(refs.add(file));
     }
 
     bool exists;
@@ -162,7 +152,7 @@ bool reference(
       return true;
     }
 
-    auto ref = refs->add(file);
+    auto ref = refs.add(file);
 
     if (dir.exists(exists, file) && exists) {
       return visitor(std::move(ref));
@@ -184,15 +174,11 @@ bool reference(
     return true;
   }
 
-  auto& refs = dir.attributes().get<index_file_refs>();
-
-  if (!refs) {
-    return false;
-  }
+  auto& refs = dir.attributes().refs();
 
   for (auto& file: files) {
     if (include_missing) {
-      if (!visitor(refs->add(file))) {
+      if (!visitor(refs.add(file))) {
         return false;
       }
 
@@ -206,7 +192,7 @@ bool reference(
       continue;
     }
 
-    auto ref = refs->add(file);
+    auto ref = refs.add(file);
 
     if (dir.exists(exists, file) && exists && !visitor(std::move(ref))) {
       return false;
@@ -217,14 +203,10 @@ bool reference(
 }
 
 bool remove_all_unreferenced(directory& dir) {
-  auto& refs = const_cast<const directory&>(dir).attributes().get<index_file_refs>();
-
-  if (!refs) {
-    return false;
-  }
+  auto& refs = dir.attributes().refs();
 
   dir.visit([&refs] (std::string& name) {
-    refs->add(std::move(name)); // ensure all files in dir are tracked
+    refs.add(std::move(name)); // ensure all files in dir are tracked
     return true;
   });
 
@@ -329,7 +311,7 @@ void tracking_directory::flush_tracked(file_set& other) noexcept {
 ref_tracking_directory::ref_tracking_directory(
     directory& impl,
     bool track_open /*= false*/)
-  : attribute_(const_cast<const directory&>(impl).attributes().get<index_file_refs>()),
+  : attribute_(impl.attributes().refs()),
     impl_(impl),
     track_open_(track_open) {
 }
@@ -353,8 +335,8 @@ index_output::ptr ref_tracking_directory::create(
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
-    if (result && attribute_) {
-      auto ref = attribute_->add(name);
+    if (result) {
+      auto ref = attribute_.add(name);
 
       auto lock = make_lock_guard(mutex_);
       refs_.emplace(ref);
@@ -377,9 +359,9 @@ index_input::ptr ref_tracking_directory::open(
   auto result = impl_.open(name, advice);
 
   // only track ref on successful call to impl_
-  if (result && attribute_) {
+  if (result) {
     try {
-      auto ref = attribute_->add(name);
+      auto ref = attribute_.add(name);
       auto lock = make_lock_guard(mutex_);
 
       refs_.emplace(ref);
@@ -398,18 +380,16 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
   }
 
   try {
-    if (attribute_) {
-      attribute_->remove(name);
+    attribute_.remove(name);
 
-      // aliasing ctor
-      const index_file_refs::ref_t ref(
-        index_file_refs::ref_t(),
-        &name);
+    // aliasing ctor
+    const index_file_refs::ref_t ref(
+      index_file_refs::ref_t(),
+      &name);
 
-      auto lock = make_lock_guard(mutex_);
+    auto lock = make_lock_guard(mutex_);
 
-      refs_.erase(ref);
-    }
+    refs_.erase(ref);
     return true;
   } catch (...) {
     // ignore failure since removal from impl_ was sucessful
@@ -426,24 +406,22 @@ bool ref_tracking_directory::rename(
   }
 
   try {
-    if (attribute_) {
-      auto ref = attribute_->add(dst);
+    auto ref = attribute_.add(dst);
 
-      {
-        // aliasing ctor
-        const index_file_refs::ref_t src_ref(
-          index_file_refs::ref_t(),
-          &src
-        );
+    {
+      // aliasing ctor
+      const index_file_refs::ref_t src_ref(
+        index_file_refs::ref_t(),
+        &src
+      );
 
-        auto lock = make_lock_guard(mutex_);
+      auto lock = make_lock_guard(mutex_);
 
-        refs_.emplace(ref);
-        refs_.erase(src_ref);
-      }
-
-      attribute_->remove(src);
+      refs_.emplace(ref);
+      refs_.erase(src_ref);
     }
+
+    attribute_.remove(src);
     return true;
   } catch (...) {
   }

@@ -93,7 +93,6 @@ class format_10_test_case : public tests::format_test_case {
     auto dir = get_directory(*this);
 
     // attributes for term
-    irs::attribute_store attrs;
     auto codec = std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
     ASSERT_NE(nullptr, codec);
     auto writer = codec->get_postings_writer(false);
@@ -125,8 +124,6 @@ class format_10_test_case : public tests::format_test_case {
         /* write attributes to out */
 //      writer.encode(*out, attrs);
       }
-
-      attrs.clear();
 
       // begin field
       writer->begin_field(features);

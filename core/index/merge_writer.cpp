@@ -80,8 +80,8 @@ class noop_directory : public directory {
     return INSTANCE;
   }
 
-  virtual attribute_store& attributes() noexcept override {
-    return const_cast<attribute_store&>(attribute_store::empty_instance());
+  virtual directory_attributes& attributes() noexcept override {
+    return attrs_;
   }
 
   virtual index_output::ptr create(const std::string&) noexcept override {
@@ -128,7 +128,9 @@ class noop_directory : public directory {
   }
 
  private:
-  noop_directory() noexcept { }
+  noop_directory() noexcept = default;
+
+  directory_attributes attrs_{nullptr};
 }; // noop_directory
 
 class progress_tracker {

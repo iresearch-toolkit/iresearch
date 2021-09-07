@@ -43,8 +43,6 @@ class IRESEARCH_API directory_cleaner {
  public:
   typedef std::function<bool(const std::string& filename)> removal_acceptor_t;
 
-  static index_file_refs::counter_t& init(directory& dir);
-
   // @param acceptor returns if removal candidates should actually be removed
   // @return count of files removed
   static size_t clean(

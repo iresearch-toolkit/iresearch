@@ -2522,7 +2522,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (version_ > FORMAT_MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
       assert(out_cipher_ && out_cipher_->block_size());
@@ -2637,7 +2637,7 @@ bool meta_reader::prepare(
     meta_writer::FORMAT_MAX);
 
   if (version > meta_writer::FORMAT_MIN) {
-    encryption* enc = get_encryption(dir.attributes());
+    encryption* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
       assert(in_cipher_ && in_cipher_->block_size());

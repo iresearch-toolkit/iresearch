@@ -425,9 +425,8 @@ void memory_index_output::operator>>( data_output& out ) {
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
-memory_directory::memory_directory(size_t pool_size /* = 0*/) {
-  alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
-  directory_cleaner::init(*this);
+memory_directory::memory_directory(memory_directory_attributes attrs)
+  : attrs_{std::move(attrs)} {
 }
 
 memory_directory::~memory_directory() noexcept {
@@ -435,10 +434,6 @@ memory_directory::~memory_directory() noexcept {
   auto lock = make_lock_guard(mutex);
 
   files_.clear();
-}
-
-attribute_store& memory_directory::attributes() noexcept {
-  return attributes_;
 }
 
 bool memory_directory::exists(
@@ -464,10 +459,10 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = memory::make_unique<memory_file>(*alloc_);
+      file = memory::make_unique<memory_file>(attrs_.allocator());
     }
 
-    file->reset(*alloc_);
+    file->reset(attrs_.allocator());
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
