@@ -790,7 +790,9 @@ class unbounded_object_pool_volatile
       return std::shared_ptr<element_type>(
         raw,
         [moved_gen] (pointer p) noexcept {
-          reset_impl(p, *moved_gen.value());
+          if (p) {
+            reset_impl(p, *moved_gen.value());
+          }
       });
     }
 

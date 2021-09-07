@@ -116,13 +116,13 @@ class converter_pool : private irs::util::noncopyable {
   const std::string& encoding() const noexcept { return encoding_; }
 
  private:
-  struct ucnv_deleter {
-    void operator()(UConverter* p) const noexcept {
-      ucnv_close(p);
-    }
-  };
+  struct converter_factory {
+    struct ucnv_deleter {
+      void operator()(UConverter* p) const noexcept {
+        ucnv_close(p);
+      }
+    };
 
-  struct builder {
     using ptr = std::unique_ptr<UConverter, ucnv_deleter>;
 
     static ptr make(const std::string& encoding) {
@@ -137,7 +137,7 @@ class converter_pool : private irs::util::noncopyable {
   };
 
   std::string encoding_;
-  irs::unbounded_object_pool_volatile<builder, ucnv_deleter> pool_;
+  irs::unbounded_object_pool_volatile<converter_factory> pool_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
