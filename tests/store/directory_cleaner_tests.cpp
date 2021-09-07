@@ -223,10 +223,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
-    &tests::generic_json_field_factory 
-  );
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+    &tests::generic_json_field_factory);
   auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");

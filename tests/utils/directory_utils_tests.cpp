@@ -136,10 +136,16 @@ TEST_F(directory_utils_tests, test_reference_fail) {
       return &tmp;
     };
 
+    irs::segment_meta segment;
+    segment.files.emplace(tmp);
+
+    irs::index_meta index;
+    index.add(irs::index_meta::index_segment_t{irs::segment_meta{segment}});
+
     auto visitor = [](irs::index_file_refs::ref_t&&)->bool { return true; };
     ASSERT_FALSE(irs::directory_utils::reference(dir, source, visitor));
-    ASSERT_FALSE(irs::directory_utils::reference(dir, irs::segment_meta{}, visitor));
-    ASSERT_FALSE(irs::directory_utils::reference(dir, irs::index_meta{}, visitor));
+    ASSERT_FALSE(irs::directory_utils::reference(dir, segment, visitor));
+    ASSERT_FALSE(irs::directory_utils::reference(dir, index, visitor));
   }
   ASSERT_FALSE(irs::directory_utils::remove_all_unreferenced(dir));
 }
@@ -179,12 +185,25 @@ TEST_F(directory_utils_tests, test_reference) {
   // test add file (no missing)
   {
     irs::memory_directory dir;
+    dir.attributes().clear();
 
     ASSERT_FALSE(irs::directory_utils::reference(dir, "abc").operator bool());
 
     auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
-    ASSERT_FALSE(attribute.operator bool());
+    ASSERT_FALSE(attribute);
+  }
+
+  // test add file (with missing)
+  {
+    irs::memory_directory dir;
+    dir.attributes().clear();
+
+    ASSERT_FALSE(irs::directory_utils::reference(dir, "abc", true).operator bool());
+
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
+
+    ASSERT_FALSE(attribute);
   }
 
   // test add file (with missing)
@@ -224,7 +243,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     files.emplace("abc");
     files.emplace("def");
@@ -256,7 +275,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     files.emplace("abc");
     files.emplace("def");
@@ -289,7 +308,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc", "def",
     };
@@ -333,14 +352,14 @@ TEST_F(directory_utils_tests, test_reference) {
     irs::memory_directory dir;
     irs::segment_meta meta;
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(0, count);
 
     auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
-    ASSERT_FALSE(attribute.operator bool());
+    ASSERT_TRUE(attribute.operator bool());
   }
 
   // test add segment_meta files
@@ -350,7 +369,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     meta.files.emplace("abc");
     meta.files.emplace("def");
@@ -373,7 +392,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     meta.files.emplace("abc");
     meta.files.emplace("def");
@@ -396,7 +415,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc",
       "def",
@@ -433,14 +452,14 @@ TEST_F(directory_utils_tests, test_reference) {
     irs::index_meta meta;
     irs::index_meta::index_segments_t segments;
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(0, count);
 
     auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
-    ASSERT_FALSE(attribute.operator bool());
+    ASSERT_TRUE(attribute.operator bool());
   }
 
   // test add index_meta files
@@ -451,7 +470,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
@@ -476,7 +495,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return true; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return true; };
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
@@ -501,7 +520,7 @@ TEST_F(directory_utils_tests, test_reference) {
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
-    auto visitor = [&count](irs::index_file_refs::ref_t&& ref)->bool { ++count; return false; };
+    auto visitor = [&count](irs::index_file_refs::ref_t&&)->bool { ++count; return false; };
     std::unordered_set<std::string> expected_one_of = {
       "abc",
       "def",
@@ -605,7 +624,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(2, count);
@@ -620,7 +639,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(0, count);
@@ -650,7 +669,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return false; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return false; };
 
     ASSERT_FALSE(track_dir.visit_refs(visitor));
     ASSERT_EQ(1, count);
@@ -664,15 +683,15 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     irs::attribute_store attrs;
     virtual irs::attribute_store& attributes() noexcept override { return attrs; }
     virtual irs::index_output::ptr create(const std::string&) noexcept override { return nullptr; }
-    virtual bool exists(bool& result, const std::string&) const noexcept override { return false; }
-    virtual bool length(uint64_t& result, const std::string&) const noexcept override { return false; }
+    virtual bool exists(bool&, const std::string&) const noexcept override { return false; }
+    virtual bool length(uint64_t&, const std::string&) const noexcept override { return false; }
     virtual bool visit(const visitor_f&) const override { return false; }
     virtual irs::index_lock::ptr make_lock(const std::string&) noexcept override { return nullptr; }
-    virtual bool mtime(std::time_t& result, const std::string& name) const noexcept override { return false; }
+    virtual bool mtime(std::time_t&, const std::string&) const noexcept override { return false; }
     virtual irs::index_input::ptr open(const std::string&, irs::IOAdvice) const noexcept override { return nullptr; }
     virtual bool remove(const std::string&) noexcept override { return false; }
     virtual bool rename(const std::string&, const std::string&) noexcept override { return false; }
-    virtual bool sync(const std::string& name) noexcept override { return false; }
+    virtual bool sync(const std::string&) noexcept override { return false; }
   } error_dir;
 
   // test create failure
@@ -703,6 +722,58 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_TRUE(refs.empty());
+  }
+}
+
+TEST_F(directory_utils_tests, test_ref_tracking_dir_no_refs) {
+  // test open (no-track-open)
+  {
+    irs::memory_directory dir;
+    dir.attributes().clear();
+    irs::ref_tracking_directory track_dir(dir, true);
+    {
+      auto file1 = dir.create("abc");
+      ASSERT_TRUE(file1);
+      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    track_dir.visit_refs([](const auto&) {
+      EXPECT_TRUE(false);
+      return true;
+    });
+    ASSERT_TRUE(dir.remove("abc"));
+    track_dir.visit_refs([](const auto&) {
+      EXPECT_TRUE(false);
+      return true;
+    });
+  }
+
+  // test open (track-open)
+  {
+    irs::memory_directory dir;
+    dir.attributes().clear();
+    irs::ref_tracking_directory track_dir(dir, true);
+    {
+      auto file1 = dir.create("abc");
+      ASSERT_TRUE(file1);
+      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    track_dir.visit_refs([](const auto&) {
+      EXPECT_TRUE(false);
+      return true;
+    });
+    ASSERT_TRUE(dir.rename("abc", "adc"));
+    {
+      auto file1 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_FALSE(file1);
+      auto file2 = track_dir.open("adc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    track_dir.visit_refs([](const auto&) {
+      EXPECT_TRUE(false);
+      return true;
+    });
   }
 }
 
@@ -782,52 +853,6 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     track_dir.flush_tracked(files);
     ASSERT_EQ(1, files.size());
     track_dir.flush_tracked(files); // tracked files were cleared
-    ASSERT_EQ(0, files.size());
-  }
-}
-
-TEST_F(directory_utils_tests, test_tracking_dir_no_refs) {
-  // test open (no-track-open)
-  {
-    irs::memory_directory dir;
-    dir.attributes().clear();
-    irs::tracking_directory track_dir(dir, true);
-    {
-      auto file1 = dir.create("abc");
-      ASSERT_TRUE(file1);
-      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-      ASSERT_TRUE(file2);
-    }
-    irs::tracking_directory::file_set files;
-    track_dir.flush_tracked(files);
-    ASSERT_EQ(0, files.size());
-    ASSERT_TRUE(dir.remove("abc"));
-    track_dir.flush_tracked(files);
-    ASSERT_EQ(0, files.size());
-  }
-
-  // test open (track-open)
-  {
-    irs::memory_directory dir;
-    dir.attributes().clear();
-    irs::tracking_directory track_dir(dir, true);
-    {
-      auto file1 = dir.create("abc");
-      ASSERT_TRUE(file1);
-      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-      ASSERT_TRUE(file2);
-    }
-    irs::tracking_directory::file_set files;
-    track_dir.flush_tracked(files);
-    ASSERT_EQ(0, files.size());
-    ASSERT_TRUE(dir.rename("abc", "adc"));
-    {
-      auto file1 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-      ASSERT_FALSE(file1);
-      auto file2 = track_dir.open("adc", irs::IOAdvice::NORMAL);
-      ASSERT_TRUE(file2);
-    }
-    track_dir.flush_tracked(files);
     ASSERT_EQ(0, files.size());
   }
 }
