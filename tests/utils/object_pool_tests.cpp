@@ -44,7 +44,7 @@ struct test_object {
   static ptr make(int i) {
     ++MAKE_COUNT;
 
-    if constexpr (SleepSec) {
+    if constexpr (SleepSec > 0) {
       std::this_thread::sleep_for(std::chrono::seconds{SleepSec});
     }
 
