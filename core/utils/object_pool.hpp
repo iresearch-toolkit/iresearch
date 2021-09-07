@@ -661,20 +661,6 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
   unbounded_object_pool& operator=(unbounded_object_pool&&) = delete;
 }; // unbounded_object_pool
 
-namespace detail {
-
-template<typename Pool>
-struct pool_generation {
-  explicit pool_generation(Pool* owner) noexcept
-    : owner{owner} {
-  }
-
-  bool stale{false}; // stale mark
-  Pool* owner; // current owner
-}; // pool_generation
-
-} // detail
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class unbounded_object_pool_volatile
 /// @brief a fixed size pool of objects
@@ -689,17 +675,20 @@ struct pool_generation {
 ///       will be discarded instead
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-class unbounded_object_pool_volatile
-    : public unbounded_object_pool_base<T>,
-      private atomic_shared_ptr_helper<
-        async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>> {
+class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
  private:
-  using base_t = unbounded_object_pool_base<T>;
+  struct generation {
+    explicit generation(unbounded_object_pool_volatile * owner) noexcept
+      : owner{owner} {
+    }
 
-  using generation_t = async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>;
+    unbounded_object_pool_volatile* owner; // current owner (null == stale generation)
+  }; // generation
+
+  using base_t = unbounded_object_pool_base<T>;
+  using generation_t = async_value<generation>;
   using generation_ptr_t = std::shared_ptr<generation_t>;
   using atomic_utils = atomic_shared_ptr_helper<generation_t>;
-
   using deleter_type = typename base_t::deleter_type;
 
  public:
@@ -792,8 +781,8 @@ class unbounded_object_pool_volatile
         auto lock = make_lock_guard(gen.read_lock());
         auto& value = gen.value();
 
-        if (!value.stale) {
-          value.owner->release(obj);
+        if (auto* owner = value.owner; owner) {
+          owner->release(obj);
           return;
         }
       }
@@ -836,7 +825,7 @@ class unbounded_object_pool_volatile
     auto& value = gen->value();
 
     if (value.owner == this) {
-      value.stale = true;
+      value.owner = nullptr;
     }
   }
 
@@ -852,7 +841,7 @@ class unbounded_object_pool_volatile
       {
         auto gen = atomic_utils::atomic_load(&gen_);
         auto lock = make_lock_guard(gen->write_lock());
-        gen->value().stale = true;
+        gen->value().owner = nullptr;
       }
 
       // mark new generation

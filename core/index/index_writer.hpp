@@ -112,12 +112,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer
-    : private atomic_shared_ptr_helper<
-        std::pair<
-          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-      >>,
-      private util::noncopyable {
+class IRESEARCH_API index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
