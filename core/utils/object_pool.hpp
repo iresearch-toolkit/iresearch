@@ -39,44 +39,18 @@ namespace iresearch {
 
 template<typename T>
 class atomic_shared_ptr_helper {
-  #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
-   public:
-    // for compatibility 'std::mutex' is not moveable
-    atomic_shared_ptr_helper() = default;
-    atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) noexcept { }
-    atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
+ public:
+  static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
+    return std::atomic_exchange(p, r);
+  }
 
-    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-      auto lock = irs::make_lock_guard(mutex_);
-      return std::atomic_exchange(p, r);
-    }
+  static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
+    std::atomic_store(p, r);
+  }
 
-    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-      auto lock = irs::make_lock_guard(mutex_);
-      std::atomic_store(p, r);
-    }
-
-    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
-      auto lock = irs::make_lock_guard(mutex_);
-      return std::atomic_load(p);
-    }
-
-   private:
-    mutable std::mutex mutex_;
-  #else
-   public:
-    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-      return std::atomic_exchange(p, r);
-    }
-
-    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
-      std::atomic_store(p, r);
-    }
-
-    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
-      return std::atomic_load(p);
-    }
-  #endif // defined(IRESEARCH_VALGRIND)
+  static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
+    return std::atomic_load(p);
+  }
 }; // atomic_shared_ptr_helper
 
 //////////////////////////////////////////////////////////////////////////////
@@ -100,30 +74,26 @@ class concurrent_stack : private util::noncopyable {
 
   concurrent_stack(concurrent_stack&& rhs) noexcept
     : head_(nullptr) {
-    if (this != &rhs) {
-      auto rhshead = rhs.head_.load();
-      while (!rhs.head_.compare_exchange_weak(rhshead, head_));
-      head_.store(rhshead);
-    }
+    auto rhshead = rhs.head_.load(std::memory_order_relaxed);
+    while (!rhs.head_.compare_exchange_weak(rhshead, head_, std::memory_order_acq_rel));
+    head_.store(rhshead, std::memory_order_release);
   }
 
   concurrent_stack& operator=(concurrent_stack&& rhs) noexcept {
     if (this != &rhs) {
-      auto rhshead = rhs.head_.load();
+      auto rhshead = rhs.head_.load(std::memory_order_relaxed);
       const concurrent_node empty;
-      while (!rhs.head_.compare_exchange_weak(rhshead, empty));
-      head_.store(rhshead);
+      while (!rhs.head_.compare_exchange_weak(rhshead, empty, std::memory_order_acq_rel));
+      head_.store(rhshead, std::memory_order_release);
     }
     return *this;
   }
 
   bool empty() const noexcept {
-    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
-    return nullptr == head_.load().node;
+    return nullptr == head_.load(std::memory_order_relaxed).node;
   }
 
   node_type* pop() noexcept {
-    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load(std::memory_order_relaxed);
     concurrent_node new_head;
 
@@ -134,13 +104,12 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_relaxed));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel));
 
     return head.node;
   }
 
   void push(node_type& new_node) noexcept {
-    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load(std::memory_order_relaxed);
     concurrent_node new_head;
 
@@ -149,7 +118,7 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_relaxed));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel));
   }
 
  private:
@@ -169,7 +138,6 @@ class concurrent_stack : private util::noncopyable {
     "invalid alignment");
 
   std::atomic<concurrent_node> head_;
-  VALGRIND_ONLY(mutable std::mutex mutex_;)
 }; // concurrent_stack
 
 // -----------------------------------------------------------------------------

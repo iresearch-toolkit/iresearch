@@ -373,7 +373,7 @@ TEST(unbounded_object_pool_tests, construct) {
 }
 
 TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
-  const size_t MAX_COUNT = 2;
+  constexpr size_t MAX_COUNT = 8;
   irs::unbounded_object_pool<test_uobject> pool(MAX_COUNT);
 
   std::mutex mutex;
@@ -393,7 +393,10 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
       }
     }
 
-    pool.emplace(id++);
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++);
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
@@ -406,10 +409,13 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
       }
     }
 
-    pool.emplace(id++).release();
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++).release();
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
-  const size_t THREADS_COUNT = 32;
+  constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
   for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
@@ -1165,7 +1171,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
 }
 
 TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instances) {
-  const size_t MAX_COUNT = 2;
+  constexpr size_t MAX_COUNT = 2;
   irs::unbounded_object_pool_volatile<test_uobject> pool(MAX_COUNT);
 
   std::mutex mutex;
@@ -1185,7 +1191,10 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
       }
     }
 
-    pool.emplace(id++);
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++);
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
@@ -1198,10 +1207,13 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
       }
     }
 
-    pool.emplace(id++).release();
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++).release();
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
-  const size_t THREADS_COUNT = 32;
+  constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
   for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
