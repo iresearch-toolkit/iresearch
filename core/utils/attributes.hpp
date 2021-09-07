@@ -62,7 +62,6 @@ struct IRESEARCH_API attribute { };
 ///        static const attribute::type_id type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 ///        static ptr make(Args&&... args)
-///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
   using ptr = std::unique_ptr<stored_attribute>;

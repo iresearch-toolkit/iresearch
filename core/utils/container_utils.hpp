@@ -200,7 +200,7 @@ class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // no
   // number of pools
   static const size_t SIZE = Size;
 
-  using pool_type = unbounded_object_pool<BucketFactory, std::default_delete<byte_type[]>>;
+  using pool_type = unbounded_object_pool<BucketFactory>;
   using value_type = typename pool_type::ptr;
 
   explicit bucket_allocator(size_t pool_size)

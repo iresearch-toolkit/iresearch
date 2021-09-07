@@ -304,7 +304,7 @@ struct boosted: public irs::filter {
     irs::bstring stats;
   }; // prepared
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   virtual irs::filter::prepared::ptr prepare(
       const irs::index_reader&,
@@ -1250,7 +1250,7 @@ struct unestimated: public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
 }; // unestimated
@@ -1313,7 +1313,7 @@ struct estimated: public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   explicit estimated()
     : filter(irs::type<estimated>::get()) {

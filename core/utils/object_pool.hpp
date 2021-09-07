@@ -460,14 +460,12 @@ class async_value {
 //////////////////////////////////////////////////////////////////////////////
 template<
   typename T,
-  typename D,
   typename = std::enable_if_t<
     is_unique_ptr_v<typename T::ptr> &&
-    std::is_same_v<typename T::ptr::deleter_type, D> &&
-    std::is_empty_v<D>>>
+    std::is_empty_v<typename T::ptr::deleter_type>>>
 class unbounded_object_pool_base : private util::noncopyable {
  public:
-  using deleter_type = D;
+  using deleter_type = typename T::ptr::deleter_type;
   using element_type = typename T::ptr::element_type;
   using pointer = typename T::ptr::pointer;
 
@@ -556,12 +554,10 @@ class unbounded_object_pool_base : private util::noncopyable {
 /// @note object 'ptr' that evaluate to false when returnd back into the pool
 ///       will be discarded instead
 //////////////////////////////////////////////////////////////////////////////
-template<
-  typename T,
-  typename D = std::default_delete<typename T::ptr::element_type>>
-class unbounded_object_pool : public unbounded_object_pool_base<T, D> {
+template<typename T>
+class unbounded_object_pool : public unbounded_object_pool_base<T> {
  private:
-  using base_t = unbounded_object_pool_base<T, D>;
+  using base_t = unbounded_object_pool_base<T>;
   using node = typename base_t::node;
 
  public:
@@ -724,17 +720,15 @@ struct pool_generation {
 /// @note object 'ptr' that evaluate to false when returnd back into the pool
 ///       will be discarded instead
 //////////////////////////////////////////////////////////////////////////////
-template<
-  typename T,
-  typename D = std::default_delete<typename T::ptr::element_type>>
+template<typename T>
 class unbounded_object_pool_volatile
-    : public unbounded_object_pool_base<T, D>,
+    : public unbounded_object_pool_base<T>,
       private atomic_shared_ptr_helper<
-        async_value<detail::pool_generation<unbounded_object_pool_volatile<T, D>>>> {
+        async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>> {
  private:
-  using base_t = unbounded_object_pool_base<T, D>;
+  using base_t = unbounded_object_pool_base<T>;
 
-  using generation_t = async_value<detail::pool_generation<unbounded_object_pool_volatile<T, D>>>;
+  using generation_t = async_value<detail::pool_generation<unbounded_object_pool_volatile<T>>>;
   using generation_ptr_t = std::shared_ptr<generation_t>;
   using atomic_utils = atomic_shared_ptr_helper<generation_t>;
 
@@ -775,8 +769,15 @@ class unbounded_object_pool_volatile
       reset();
     }
 
-    FORCE_INLINE void reset() noexcept {
-      reset_impl(value_, gen_);
+    void reset() noexcept {
+      if (!gen_) {
+        // already destroyed
+        return;
+      }
+
+      reset_impl(value_, *gen_);
+      value_ = nullptr;
+      gen_ = nullptr; // mark as destroyed
     }
 
     std::shared_ptr<element_type> release() {
@@ -788,8 +789,8 @@ class unbounded_object_pool_volatile
       // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
-        [moved_gen] (pointer p) mutable noexcept {
-          reset_impl(p, moved_gen.value());
+        [moved_gen] (pointer p) noexcept {
+          reset_impl(p, *moved_gen.value());
       });
     }
 
@@ -814,27 +815,21 @@ class unbounded_object_pool_volatile
     }
 
    private:
-    static void reset_impl(pointer& obj, generation_ptr_t& gen) noexcept {
-      if (!gen) {
-        // already destroyed
-        return;
-      }
-
+    static void reset_impl(pointer obj, generation_t& gen) noexcept {
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'
       {
-        auto lock = make_lock_guard(gen->read_lock());
-        auto& value = gen->value();
+        auto lock = make_lock_guard(gen.read_lock());
+        auto& value = gen.value();
 
         if (!value.stale) {
-          value.owner->release(std::move(obj));
+          value.owner->release(obj);
+          return;
         }
       }
 
-      // clear object oustide the lock
+      // clear object oustide the lock if necessary
       deleter_type{}(obj);
-      obj = nullptr;
-      gen = nullptr; // mark as destroyed
     }
 
     pointer value_;
