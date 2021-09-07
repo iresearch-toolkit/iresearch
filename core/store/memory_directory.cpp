@@ -442,8 +442,7 @@ attribute_store& memory_directory::attributes() noexcept {
 }
 
 bool memory_directory::exists(
-  bool& result, const std::string& name
-) const noexcept {
+    bool& result, const std::string& name) const noexcept {
   async_utils::read_write_mutex::read_mutex mutex(flock_);
   auto lock = make_lock_guard(mutex);
 
@@ -460,8 +459,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
     auto res = files_.emplace(
       std::piecewise_construct,
       std::forward_as_tuple(name),
-      std::forward_as_tuple()
-    );
+      std::forward_as_tuple());
 
     auto& file = res.first->second;
 
@@ -479,8 +477,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 }
 
 bool memory_directory::length(
-    uint64_t& result, const std::string& name
-) const noexcept {
+    uint64_t& result, const std::string& name) const noexcept {
   async_utils::read_write_mutex::read_mutex mutex(flock_);
   auto lock = make_lock_guard(mutex);
 
