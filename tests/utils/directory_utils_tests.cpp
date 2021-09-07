@@ -47,57 +47,53 @@ class directory_utils_tests: public ::testing::Test {
     }
 
     virtual irs::index_output::ptr create(
-      const std::string& name
-    ) noexcept override {
+        const std::string&) noexcept override {
       return nullptr;
     }
 
     virtual bool exists(
-      bool& result, const std::string& name
-    ) const noexcept override {
+        bool&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual bool length(
-      uint64_t& result, const std::string& name
-    ) const noexcept override {
+        uint64_t&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual irs::index_lock::ptr make_lock(
-      const std::string& name
-    ) noexcept override {
+        const std::string&) noexcept override {
       return nullptr;
     }
 
     virtual bool mtime(
-      std::time_t& result, const std::string& name
-    ) const noexcept override {
+        std::time_t&,
+        const std::string&) const noexcept override {
       return false;
     }
 
     virtual irs::index_input::ptr open(
-      const std::string& name,
-      irs::IOAdvice advice
-    ) const noexcept override {
+        const std::string&,
+        irs::IOAdvice) const noexcept override {
       return nullptr;
     }
 
-    virtual bool remove(const std::string& name) noexcept override {
+    virtual bool remove(const std::string&) noexcept override {
       return false;
     }
 
     virtual bool rename(
-      const std::string& src, const std::string& dst
-    ) noexcept override {
+        const std::string&, const std::string&) noexcept override {
       return false;
     }
 
-    virtual bool sync(const std::string& name) noexcept override {
+    virtual bool sync(const std::string&) noexcept override {
       return false;
     }
 
-    virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+    virtual bool visit(const irs::directory::visitor_f&) const override {
       return false;
     }
 
@@ -129,6 +125,23 @@ TEST_F(directory_utils_tests, ensure_get_allocator) {
   ASSERT_NE(nullptr, *alloc_attr);
   ASSERT_EQ(&alloc, alloc_attr->get());
   ASSERT_EQ(&alloc, &irs::directory_utils::get_allocator(dir));
+}
+
+TEST_F(directory_utils_tests, test_reference_fail) {
+  directory_mock dir; // empty dir
+  ASSERT_EQ(nullptr, irs::directory_utils::reference(dir, "abc", true));
+  {
+    std::string tmp("foo");
+    auto source = [&tmp]()->const std::string* {
+      return &tmp;
+    };
+
+    auto visitor = [](irs::index_file_refs::ref_t&&)->bool { return true; };
+    ASSERT_FALSE(irs::directory_utils::reference(dir, source, visitor));
+    ASSERT_FALSE(irs::directory_utils::reference(dir, irs::segment_meta{}, visitor));
+    ASSERT_FALSE(irs::directory_utils::reference(dir, irs::index_meta{}, visitor));
+  }
+  ASSERT_FALSE(irs::directory_utils::remove_all_unreferenced(dir));
 }
 
 TEST_F(directory_utils_tests, test_reference) {
@@ -622,7 +635,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t& ref)->bool { ++count; return true; };
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool { ++count; return true; };
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(1, count);
@@ -769,6 +782,52 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     track_dir.flush_tracked(files);
     ASSERT_EQ(1, files.size());
     track_dir.flush_tracked(files); // tracked files were cleared
+    ASSERT_EQ(0, files.size());
+  }
+}
+
+TEST_F(directory_utils_tests, test_tracking_dir_no_refs) {
+  // test open (no-track-open)
+  {
+    irs::memory_directory dir;
+    dir.attributes().clear();
+    irs::tracking_directory track_dir(dir, true);
+    {
+      auto file1 = dir.create("abc");
+      ASSERT_TRUE(file1);
+      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    irs::tracking_directory::file_set files;
+    track_dir.flush_tracked(files);
+    ASSERT_EQ(0, files.size());
+    ASSERT_TRUE(dir.remove("abc"));
+    track_dir.flush_tracked(files);
+    ASSERT_EQ(0, files.size());
+  }
+
+  // test open (track-open)
+  {
+    irs::memory_directory dir;
+    dir.attributes().clear();
+    irs::tracking_directory track_dir(dir, true);
+    {
+      auto file1 = dir.create("abc");
+      ASSERT_TRUE(file1);
+      auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    irs::tracking_directory::file_set files;
+    track_dir.flush_tracked(files);
+    ASSERT_EQ(0, files.size());
+    ASSERT_TRUE(dir.rename("abc", "adc"));
+    {
+      auto file1 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+      ASSERT_FALSE(file1);
+      auto file2 = track_dir.open("adc", irs::IOAdvice::NORMAL);
+      ASSERT_TRUE(file2);
+    }
+    track_dir.flush_tracked(files);
     ASSERT_EQ(0, files.size());
   }
 }
