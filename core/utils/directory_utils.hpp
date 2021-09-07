@@ -63,40 +63,31 @@ IRESEARCH_API memory_allocator& get_allocator(
 IRESEARCH_API index_file_refs::ref_t reference(
   directory& dir,
   const std::string& name,
-  bool include_missing = false
-);
+  bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
 IRESEARCH_API bool reference(
   directory& dir,
   const std::function<const std::string*()>& source,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false
-);
+  bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with index_meta
 IRESEARCH_API bool reference(
   directory& dir,
   const index_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false
-);
+  bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with segment_meta
 IRESEARCH_API bool reference(
   directory& dir,
   const segment_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false
-);
+  bool include_missing = false);
 
 // remove all (tracked and non-tracked) files if they are unreferenced
 IRESEARCH_API void remove_all_unreferenced(directory& dir);
-
-// remove tracked files if they are unreferenced and not part of the latest segments
-IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segments(
-  const directory& dir, const format& codec
-);
 
 }
 

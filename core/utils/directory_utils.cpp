@@ -35,8 +35,7 @@ namespace directory_utils {
 // ----------------------------------------------------------------------------
 
 memory_allocator& ensure_allocator(
-    directory& dir, size_t size
-) {
+    directory& dir, size_t size) {
   return size
     ? *dir.attributes().emplace<memory_allocator>(size)
     : memory_allocator::global();
@@ -90,8 +89,7 @@ bool reference(
     directory& dir,
     const std::function<const std::string*()>& source,
     const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-    bool include_missing /*= false*/
-) {
+    bool include_missing /*= false*/) {
   auto& attribute = dir.attributes().emplace<index_file_refs>();
 
   for (const std::string* file; file = source();) {
@@ -131,8 +129,7 @@ bool reference(
     directory& dir,
     const index_meta& meta,
     const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-    bool include_missing /*= false*/
-) {
+    bool include_missing /*= false*/) {
   if (meta.empty()) {
     return true;
   }
@@ -166,8 +163,7 @@ bool reference(
   directory& dir,
   const segment_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing /*= false*/
-) {
+  bool include_missing /*= false*/) {
   auto files = meta.files;
 
   if (files.empty()) {
@@ -213,40 +209,6 @@ void remove_all_unreferenced(directory& dir) {
   directory_cleaner::clean(dir);
 }
 
-directory_cleaner::removal_acceptor_t remove_except_current_segments(
-    const directory& dir, const format& codec) {
-  const auto acceptor = [](
-      const std::string& filename, 
-      const absl::flat_hash_set<std::string>& retain) {
-    return !retain.contains(filename);
-  };
-
-  index_meta meta;
-  auto reader = codec.get_index_meta_reader();
-
-  std::string segment_file;
-  const bool index_exists = reader->last_segments_file(dir, segment_file);
-
-  if (!index_exists) {
-    // can't find segments file
-    return [](const std::string&)->bool { return true; };
-  }
-
-  reader->read(dir, meta, segment_file);
-
-  absl::flat_hash_set<std::string> retain;
-  retain.reserve(meta.size());
-
-  meta.visit_files([&retain] (std::string& file) {
-    retain.emplace(std::move(file));
-    return true;
-  });
-
-  retain.emplace(std::move(segment_file));
-
-  return std::bind(acceptor, std::placeholders::_1, std::move(retain));
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -255,15 +217,13 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
 
 tracking_directory::tracking_directory(
     directory& impl,
-    bool track_open /*= false*/
-) noexcept
+    bool track_open /*= false*/) noexcept
   : impl_(impl),
     track_open_(track_open) {
 }
 
 index_output::ptr tracking_directory::create(
-  const std::string& name
-) noexcept {
+    const std::string& name) noexcept {
   try {
     files_.emplace(name);
   } catch (...) {
@@ -285,8 +245,7 @@ index_output::ptr tracking_directory::create(
 
 index_input::ptr tracking_directory::open(
     const std::string& name,
-    IOAdvice advice
-) const noexcept {
+    IOAdvice advice) const noexcept {
   if (track_open_) {
     try {
       files_.emplace(name);
@@ -315,8 +274,7 @@ bool tracking_directory::remove(const std::string& name) noexcept {
 }
 
 bool tracking_directory::rename(
-  const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src, const std::string& dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -347,15 +305,14 @@ void tracking_directory::flush_tracked(file_set& other) noexcept {
 
 ref_tracking_directory::ref_tracking_directory(
     directory& impl,
-    bool track_open /*= false*/
-) : attribute_(impl.attributes().emplace<index_file_refs>()),
+    bool track_open /*= false*/)
+  : attribute_(impl.attributes().emplace<index_file_refs>()),
     impl_(impl),
     track_open_(track_open) {
 }
 
 ref_tracking_directory::ref_tracking_directory(
-    ref_tracking_directory&& other
-) noexcept
+    ref_tracking_directory&& other) noexcept
   : attribute_(other.attribute_), // references do not require std::move(...)
     impl_(other.impl_), // references do not require std::move(...)
     refs_(std::move(other.refs_)),
@@ -368,8 +325,7 @@ void ref_tracking_directory::clear_refs() const noexcept {
 }
 
 index_output::ptr ref_tracking_directory::create(
-  const std::string& name
-) noexcept {
+    const std::string& name) noexcept {
   try {
     auto result = impl_.create(name);
 
@@ -389,9 +345,8 @@ index_output::ptr ref_tracking_directory::create(
 }
 
 index_input::ptr ref_tracking_directory::open(
-  const std::string& name,
-  IOAdvice advice
-) const noexcept {
+    const std::string& name,
+    IOAdvice advice) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
   }

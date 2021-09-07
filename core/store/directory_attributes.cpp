@@ -85,9 +85,7 @@ index_file_refs::ref_t index_file_refs::add(std::string&& key) {
 }
 
 void index_file_refs::clear() {
-  static auto cleaner = [](const std::string&, size_t)->bool { return true; };
-
-  refs_.visit(cleaner, true);
+  refs_.visit([](const std::string&, size_t){ return true; }, true);
 
   if (!refs_.empty()) {
     throw illegal_state(); // cannot clear ref_counter due to live refs
