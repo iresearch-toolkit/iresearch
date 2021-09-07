@@ -775,6 +775,8 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 
    private:
     static void reset_impl(pointer obj, generation_t& gen) noexcept {
+      assert(obj);
+
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'
       {
