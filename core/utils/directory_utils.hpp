@@ -46,14 +46,12 @@ namespace directory_utils {
 // directory and returns a refernece to it
 // if size equals to 0, returns 'memory_allocator::global' allocator
 IRESEARCH_API memory_allocator& ensure_allocator(
-  directory& dir, size_t size
-);
+  directory& dir, size_t size);
 
 // returns a memory allocator assigned to a specified directory or
 // `memory_allocator::global()` allocator if there is no allocator assigned
 IRESEARCH_API memory_allocator& get_allocator(
-  const directory& dir
-);
+  const directory& dir);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                            index_file_refs utils
@@ -61,33 +59,34 @@ IRESEARCH_API memory_allocator& get_allocator(
 
 // return a reference to a file or empty() if not found
 IRESEARCH_API index_file_refs::ref_t reference(
-  directory& dir,
+  const directory& dir,
   const std::string& name,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
 IRESEARCH_API bool reference(
-  directory& dir,
+  const directory& dir,
   const std::function<const std::string*()>& source,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with index_meta
 IRESEARCH_API bool reference(
-  directory& dir,
+  const directory& dir,
   const index_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with segment_meta
 IRESEARCH_API bool reference(
-  directory& dir,
+  const directory& dir,
   const segment_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
 // remove all (tracked and non-tracked) files if they are unreferenced
-IRESEARCH_API void remove_all_unreferenced(directory& dir);
+// return success
+IRESEARCH_API bool remove_all_unreferenced(directory& dir);
 
 }
 
@@ -101,8 +100,7 @@ struct IRESEARCH_API tracking_directory final : public directory {
   // @param track_open - track file refs for calls to open(...)
   explicit tracking_directory(
     directory& impl,
-    bool track_open = false
-  ) noexcept;
+    bool track_open = false) noexcept;
 
   directory& operator*() noexcept {
     return impl_;
@@ -118,16 +116,16 @@ struct IRESEARCH_API tracking_directory final : public directory {
   void clear_tracked() noexcept;
 
   virtual bool exists(
-      bool& result, const std::string& name
-  ) const noexcept override {
+      bool& result,
+      const std::string& name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   void flush_tracked(file_set& other) noexcept;
 
   virtual bool length(
-      uint64_t& result, const std::string& name
-  ) const noexcept override {
+      uint64_t& result,
+      const std::string& name) const noexcept override {
     return impl_.length(result, name);
   }
 
@@ -138,8 +136,8 @@ struct IRESEARCH_API tracking_directory final : public directory {
   }
 
   virtual bool mtime(
-      std::time_t& result, const std::string& name
-  ) const noexcept override {
+      std::time_t& result,
+      const std::string& name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
@@ -151,8 +149,8 @@ struct IRESEARCH_API tracking_directory final : public directory {
   virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
-    const std::string& src, const std::string& dst
-  ) noexcept override;
+    const std::string& src,
+    const std::string& dst) noexcept override;
 
   virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
@@ -196,14 +194,14 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   virtual index_output::ptr create(const std::string &name) noexcept override;
 
   virtual bool exists(
-      bool& result, const std::string& name
-  ) const noexcept override {
+      bool& result,
+      const std::string& name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
-      uint64_t& result, const std::string& name
-  ) const noexcept override {
+      uint64_t& result,
+      const std::string& name) const noexcept override {
     return impl_.length(result, name);
   }
 
@@ -212,15 +210,14 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   }
 
   virtual bool mtime(
-      std::time_t& result, const std::string& name
-  ) const noexcept override {
+      std::time_t& result,
+      const std::string& name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept override;
+    IOAdvice advice) const noexcept override;
 
   virtual bool remove(const std::string& name) noexcept override;
 
@@ -243,7 +240,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
     index_file_refs::counter_t::equal_to> ;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  index_file_refs::attribute_t& attribute_;
+  const index_file_refs::attribute_t& attribute_;
   directory& impl_;
   mutable std::mutex mutex_; // for use with refs_
   mutable refs_t refs_;

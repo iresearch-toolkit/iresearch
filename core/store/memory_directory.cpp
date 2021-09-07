@@ -427,6 +427,7 @@ void memory_index_output::operator>>( data_output& out ) {
 
 memory_directory::memory_directory(size_t pool_size /* = 0*/) {
   alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
+  directory_cleaner::init(*this);
 }
 
 memory_directory::~memory_directory() noexcept {

@@ -132,11 +132,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
    public:
     active_segment_context() = default;
     active_segment_context(
-        segment_context_ptr ctx,
-        std::atomic<size_t>& segments_active,
-        flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
-    ) noexcept;
+      segment_context_ptr ctx,
+      std::atomic<size_t>& segments_active,
+      flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
+      size_t pending_segment_context_offset = std::numeric_limits<size_t>::max()) noexcept; // the segment offset in flush_ctx_->pending_segments_
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;

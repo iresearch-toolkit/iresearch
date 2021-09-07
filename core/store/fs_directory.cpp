@@ -21,9 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "directory_attributes.hpp"
 #include "fs_directory.hpp"
+
+#include "shared.hpp"
+#include "store/directory_attributes.hpp"
+#include "store/directory_cleaner.hpp"
 #include "error/error.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
@@ -496,6 +498,8 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 
 fs_directory::fs_directory(const std::string& dir)
   : dir_(dir) {
+  attributes_.emplace<fd_pool_size>();
+  directory_cleaner::init(*this);
 }
 
 attribute_store& fs_directory::attributes() noexcept {
@@ -564,10 +568,12 @@ index_input::ptr fs_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
   try {
-    utf8_path path;
-    auto pool_size =
-      const_cast<attribute_store&>(attributes()).emplace<fd_pool_size>()->size;
+    auto& attribute = attributes().get<fd_pool_size>();
+    assert(attribute); // ensured by ctor
 
+    const auto pool_size = attribute->size;
+
+    utf8_path path;
     (path/=dir_)/=name;
 
     return fs_index_input::open(path.c_str(), pool_size, advice);

@@ -284,30 +284,28 @@ class IRESEARCH_API memory_directory final : public directory {
   virtual index_output::ptr create(const std::string& name) noexcept override;
 
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const noexcept override;
+    bool& result,
+    const std::string& name) const noexcept override;
 
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const noexcept override;
+    uint64_t& result,
+    const std::string& name) const noexcept override;
 
   virtual index_lock::ptr make_lock(const std::string& name) noexcept override;
 
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const noexcept override;
+    std::time_t& result,
+    const std::string& name) const noexcept override;
 
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept override;
+    IOAdvice advice) const noexcept override;
 
   virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
     const std::string& src,
-    const std::string& dst
-  ) noexcept override;
+    const std::string& dst) noexcept override;
 
   virtual bool sync(const std::string& name) noexcept override;
 

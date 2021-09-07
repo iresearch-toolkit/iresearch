@@ -46,31 +46,31 @@
 namespace {
 using namespace irs;
 
-typedef range<irs::index_writer::modification_context> modification_contexts_ref;
-typedef range<irs::segment_writer::update_context> update_contexts_ref;
+typedef range<index_writer::modification_context> modification_contexts_ref;
+typedef range<segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
 
-const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
+const column_info_provider_t DEFAULT_COLUMN_INFO = [](const string_ref&) {
   // no compression, no encryption
-  return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+  return column_info{ irs::type<compression::none>::get(), {}, false };
 };
 
-const irs::feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
+const feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
   // no compression, no encryption
-  return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+  return column_info{ irs::type<compression::none>::get(), {}, false };
 };
 
 struct flush_segment_context {
   const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
   const size_t doc_id_end_; // ending doc_id to consider in 'segment.meta' (exclusive)
-  irs::document_mask docs_mask_; // doc_ids masked in segment_meta
+  document_mask docs_mask_; // doc_ids masked in segment_meta
   const modification_contexts_ref modification_contexts_; // modification contexts referenced by 'update_contexts_'
-  irs::index_meta::index_segment_t segment_; // copy so that it can be moved into 'index_writer::pending_state_'
+  index_meta::index_segment_t segment_; // copy so that it can be moved into 'index_writer::pending_state_'
   const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
 
   flush_segment_context(
-      const irs::index_meta::index_segment_t& segment,
+      const index_meta::index_segment_t& segment,
       size_t doc_id_begin,
       size_t doc_id_end,
       const update_contexts_ref& update_contexts,
@@ -81,17 +81,17 @@ struct flush_segment_context {
       segment_(segment),
       update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
-    assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
+    assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
   }
 };
 
-std::vector<irs::index_file_refs::ref_t> extract_refs(
-    const irs::ref_tracking_directory& dir) {
-  std::vector<irs::index_file_refs::ref_t> refs;
+std::vector<index_file_refs::ref_t> extract_refs(
+    const ref_tracking_directory& dir) {
+  std::vector<index_file_refs::ref_t> refs;
   // FIXME reserve
 
-  auto visitor = [&refs](const irs::index_file_refs::ref_t& ref) {
+  auto visitor = [&refs](const index_file_refs::ref_t& ref) {
     refs.emplace_back(ref);
     return true;
   };
@@ -111,9 +111,9 @@ std::vector<irs::index_file_refs::ref_t> extract_refs(
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
     modification_contexts_ref& modifications,
-    irs::document_mask& docs_mask,
-    irs::readers_cache& readers,
-    irs::segment_meta& meta,
+    document_mask& docs_mask,
+    readers_cache& readers,
+    segment_meta& meta,
     size_t min_modification_generation = 0) {
   if (modifications.empty()) {
     return false; // nothing new to flush
@@ -122,7 +122,7 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(meta);
 
   if (!reader) {
-    throw irs::index_error(irs::string_utils::to_string(
+    throw index_error(string_utils::to_string(
       "while adding document mask modified records to document_mask of segment '%s', error: failed to open segment",
       meta.name.c_str()
     ));
@@ -178,7 +178,7 @@ bool add_document_mask_modified_records(
 bool add_document_mask_modified_records(
     modification_contexts_ref& modifications,
     flush_segment_context& ctx,
-    irs::readers_cache& readers) {
+    readers_cache& readers) {
   if (modifications.empty()) {
     return false; // nothing new to flush
   }
@@ -186,15 +186,15 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
-    throw irs::index_error(irs::string_utils::to_string(
+    throw index_error(string_utils::to_string(
       "while adding document mask modified records to flush_segment_context of segment '%s', error: failed to open segment",
       ctx.segment_.meta.name.c_str()
     ));
   }
 
-  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
+  assert(doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
   for (auto& modification : modifications) {
@@ -221,7 +221,7 @@ bool add_document_mask_modified_records(
         continue; // doc_id is not part of the current flush_context
       }
 
-      auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
+      auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
@@ -257,13 +257,13 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   if (ctx.modification_contexts_.empty()) {
     return false; // nothing new to add
   }
-  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
+  assert(doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
-    auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
+    auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
     if (doc_ctx.update_id == NON_UPDATE_RECORD) {
       continue; // not an update operation
@@ -289,21 +289,21 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
 template<typename T, typename M>
 void append_segments_refs(
     T& buf,
-    irs::directory& dir,
+    directory& dir,
     const M& meta) {
-  auto visitor = [&buf](const irs::index_file_refs::ref_t& ref)->bool {
+  auto visitor = [&buf](const index_file_refs::ref_t& ref)->bool {
     buf.emplace_back(ref);
     return true;
   };
 
   // track all files referenced in index_meta
-  irs::directory_utils::reference(dir, meta, visitor, true);
+  directory_utils::reference(dir, meta, visitor, true);
 }
 
 const std::string& write_document_mask(
-    irs::directory& dir,
-    irs::segment_meta& meta,
-    const irs::document_mask& docs_mask,
+    directory& dir,
+    segment_meta& meta,
+    const document_mask& docs_mask,
     bool increment_version = true) {
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
@@ -333,10 +333,10 @@ const std::string& write_document_mask(
 
 // mapping: name -> { new segment, old segment }
 using candidates_mapping_t = absl::flat_hash_map<
-  irs::string_ref,
+  string_ref,
   std::pair<
-    const irs::segment_meta*, // new segment
-    std::pair<const irs::segment_meta*, size_t>>>; // old segment + index within merge_writer
+    const segment_meta*, // new segment
+    std::pair<const segment_meta*, size_t>>>; // old segment + index within merge_writer
 
 /// @param candidates_mapping output mapping
 /// @param candidates candidates for mapping
@@ -344,8 +344,8 @@ using candidates_mapping_t = absl::flat_hash_map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const irs::index_writer::consolidation_t& candidates,
-    const irs::index_meta::index_segments_t& segments) {
+    const index_writer::consolidation_t& candidates,
+    const index_meta::index_segments_t& segments) {
   size_t i = 0;
   for (auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -389,9 +389,9 @@ std::pair<bool, size_t> map_candidates(
 
 bool map_removals(
     const candidates_mapping_t& candidates_mapping,
-    const irs::merge_writer& merger,
-    irs::readers_cache& readers,
-    irs::document_mask& docs_mask) {
+    const merge_writer& merger,
+    readers_cache& readers,
+    document_mask& docs_mask) {
   assert(merger);
 
   for (auto& mapping : candidates_mapping) {
@@ -430,7 +430,7 @@ bool map_removals(
       // mask all remaining doc_ids
       if (!current_itr->next()) {
         do {
-          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
         } while (merged_itr->next());
 
@@ -440,7 +440,7 @@ bool map_removals(
       // validate that all docs in the current reader were merged, and add any removed docs to the meged mask
       for (;;) {
         while (merged_itr->value() < current_itr->value()) {
-          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
@@ -491,7 +491,7 @@ bool map_removals(
         // mask all remaining doc_ids
         if (!current_itr->next()) {
           do {
-            assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+            assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
             docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
           } while (merged_itr->next());
 
@@ -504,7 +504,7 @@ bool map_removals(
   return true;
 }
 
-std::string to_string(const irs::index_writer::consolidation_t& consolidation) {
+std::string to_string(const index_writer::consolidation_t& consolidation) {
   std::stringstream ss;
   size_t total_size = 0;
   size_t total_docs_count = 0;
@@ -1012,7 +1012,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
     auto segments_active_decrement =
-      irs::make_finally([&segments_active]()noexcept{ --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
+      make_finally([&segments_active]()noexcept{ --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
 
     ++segments_active; // increment counter to hold reservation while segment_context is being released and added to the freelist
     segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
@@ -1279,8 +1279,10 @@ void index_writer::clear(uint64_t tick) {
     throw illegal_state();
   }
 
-  pending_refs.emplace_back(
-    directory_utils::reference(dir, writer_->filename(pending_meta), true));
+  auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
+  if (ref) {
+    pending_refs.emplace_back(std::move(ref));
+  }
 
   // 1st phase of the transaction successfully finished here
   meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
@@ -1348,7 +1350,10 @@ index_writer::ptr index_writer::make(
     } else {
       reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
-      file_refs.emplace_back(directory_utils::reference(dir, segments_file));
+      auto ref = directory_utils::reference(dir, segments_file);
+      if (ref) {
+        file_refs.emplace_back(std::move(ref));
+      }
     }
   }
 
@@ -1471,7 +1476,7 @@ index_writer::consolidation_result index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates, this]() {
+  auto unregister_segments = make_finally([&candidates, this]() {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
@@ -1579,7 +1584,7 @@ index_writer::consolidation_result index_writer::consolidate(
 
     if (pending_state_) {
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
+      auto unregister_missing_cached_readers = make_finally(std::move(cleanup_cached_readers));
 
       // check we didn`t added to reader cache already absent readers
       // only if we have different index meta
@@ -1666,7 +1671,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // there was a commit(s) since consolidation was started,
 
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
+      auto unregister_missing_cached_readers = make_finally(std::move(cleanup_cached_readers));
 
       auto ctx = get_flush_context();
       auto ctx_lock = make_lock_guard(ctx->mutex_); // lock due to context modification
@@ -1694,7 +1699,7 @@ index_writer::consolidation_result index_writer::consolidate(
 
       // handle deletes if something changed
       if (res.first) {
-        irs::document_mask docs_mask;
+        document_mask docs_mask;
 
         if (!map_removals(mappings, merger, cached_readers_, docs_mask)) {
           // consolidated segment has docs missing from current_committed_meta->segments()
@@ -1867,7 +1872,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx) {
   // release reservation (delcare before aquisition since operator++() is noexcept)
-  auto segments_active_decrement = irs::make_finally([this]()noexcept{ --segments_active_; });
+  auto segments_active_decrement = make_finally([this]()noexcept{ --segments_active_; });
   // increment counter to aquire reservation, if another thread
   // tries to reserve last context then it'll be over limit
   auto segments_active = ++segments_active_;
@@ -1974,7 +1979,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this](){
+  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this](){
     // FIXME make me noexcept as I'm begin called from within ~finally()
     assert(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
@@ -2454,9 +2459,10 @@ bool index_writer::start() {
     // track all refs
     file_refs_t pending_refs;
     append_segments_refs(pending_refs, dir, pending_meta);
-    pending_refs.emplace_back(
-      directory_utils::reference(dir, writer_->filename(pending_meta), true)
-    );
+    auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
+    if (ref) {
+      pending_refs.emplace_back(std::move(ref));
+    }
 
     meta_.segments_ = to_commit.meta->segments_; // create copy
 
@@ -2492,7 +2498,7 @@ void index_writer::finish() {
     return;
   }
 
-  auto reset_state = irs::make_finally([this]()noexcept {
+  auto reset_state = make_finally([this]()noexcept {
     // release reference to flush_context
     pending_state_.reset();
   });
