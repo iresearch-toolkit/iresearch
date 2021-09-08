@@ -42,8 +42,9 @@ class IRESEARCH_API fs_directory : public directory {
     size_t fd_pool_size = DEFAULT_POOL_SIZE);
 
   using directory::attributes;
-
-  virtual directory_attributes& attributes() noexcept override;
+  virtual directory_attributes& attributes() noexcept override {
+    return attrs_;
+  }
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
 

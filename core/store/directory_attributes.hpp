@@ -34,7 +34,7 @@ namespace iresearch {
 /// @class memory_allocator
 /// @brief a reusable thread-safe allocator for memory files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_allocator {
+class IRESEARCH_API memory_allocator final {
  private:
   struct IRESEARCH_API buffer {
     using ptr = std::unique_ptr<byte_type[]>;
@@ -73,6 +73,8 @@ struct IRESEARCH_API encryption {
     return "encryption";
   }
 
+  virtual ~encryption() = default;
+
   ////////////////////////////////////////////////////////////////////////////
   /// @struct stream
   ////////////////////////////////////////////////////////////////////////////
@@ -110,7 +112,7 @@ struct IRESEARCH_API encryption {
 /// @class index_file_refs
 /// @brief represents a ref_counter for index related files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_file_refs {
+class IRESEARCH_API index_file_refs final {
  public:
   typedef std::unique_ptr<index_file_refs> ptr;
   typedef ref_counter<std::string> counter_t;
