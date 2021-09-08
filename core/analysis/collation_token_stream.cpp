@@ -37,7 +37,119 @@ namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME{"locale"};
+constexpr VPackStringRef LOCALE_PARAM_NAME    {"locale"};
+constexpr VPackStringRef LANGUAGE_PARAM_NAME  {"language"};
+constexpr VPackStringRef COUNTRY_PARAM_NAME   {"country"};
+constexpr VPackStringRef ENCODING_PARAM_NAME  {"encoding"};
+constexpr VPackStringRef VARIANT_PARAM_NAME   {"variant"};
+
+std::string get_locale_name(const string_ref language,
+                            const string_ref country = string_ref::EMPTY,
+                            const string_ref encodingOverride = string_ref::EMPTY,
+                            const string_ref variant = string_ref::EMPTY) {
+  std::string result;
+  result.reserve(32);
+
+  result.append(language.c_str(), language.size());
+
+  if (!country.empty()) {
+    result.append(1, '_').append(country.c_str(), country.size());
+  }
+
+  if (!encodingOverride.empty()) {
+    result.append(1, '.').append(encodingOverride.c_str(), encodingOverride.size());
+  }
+
+  if (!variant.empty()) {
+    result.append(1, '@').append(variant.c_str(), variant.size());
+  }
+
+  return result;
+}
+
+bool get_locale_from_vpack(const VPackSlice slice, std::locale& locale) {
+
+  if(!slice.isObject()) {
+    return false;
+  }
+
+  string_ref language;
+  string_ref country;
+  string_ref encoding;
+  string_ref variant;
+
+  auto lang_slice = slice.get(LANGUAGE_PARAM_NAME);
+  if (lang_slice.isNone()) {
+    IR_FRMT_WARN(
+      "Language parameter is not specified",
+      LANGUAGE_PARAM_NAME.data());
+    return false;
+  }
+
+  if (!lang_slice.isString()) {
+    return false;
+  }
+  language = get_string<string_ref>(lang_slice);
+
+  if (slice.hasKey(COUNTRY_PARAM_NAME)) {
+    auto country_slice = slice.get(COUNTRY_PARAM_NAME);
+    if (!country_slice.isString()) {
+      return false;
+    }
+    country = get_string<string_ref>(country_slice);
+  }
+
+  if (slice.hasKey(ENCODING_PARAM_NAME)) {
+    auto encoding_slice = slice.get(ENCODING_PARAM_NAME);
+    if (!encoding_slice.isString()) {
+      return false;
+    }
+    encoding = get_string<string_ref>(encoding_slice);
+  }
+
+  if (slice.hasKey(VARIANT_PARAM_NAME)) {
+    auto variant_slice = slice.get(VARIANT_PARAM_NAME);
+    if (!variant_slice.isString()) {
+      return false;
+    }
+    variant = get_string<string_ref>(variant_slice);
+  }
+
+  auto loc_name = get_locale_name(language, country, encoding, variant);
+  locale = locale_utils::locale(loc_name);
+
+  return true;
+}
+
+bool verify_icu_locale(const std::locale& locale) {
+
+  auto language = locale_utils::language(locale);
+  auto country = locale_utils::country(locale);
+  auto variant = locale_utils::variant(locale);
+
+  auto icu_locale = icu::Locale(std::string(language.c_str(), language.c_str()).c_str(),
+                                std::string(country.c_str(), country.c_str()).c_str(),
+                                std::string(variant.c_str(), variant.c_str()).c_str());
+
+  if (icu_locale.isBogus()) {
+    return false;
+  }
+
+  int32_t count;
+  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+  std::string curr_locale(language.c_str(), language.size());
+  bool is_correct = false;
+
+  for (int i = 0; i < count; ++i) {
+    std::string lc(locales[i].getName());
+    if (lc == curr_locale) {
+      is_correct = true;
+      break;
+    }
+  }
+
+  return is_correct;
+}
 
 bool parse_vpack_options(
     const VPackSlice slice,
@@ -55,13 +167,15 @@ bool parse_vpack_options(
         return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
       {
-        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (param_name_slice.isString()) {
-          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
-            return false;
-          }
+        auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+        if (locale_slice.isString()) {
+          return locale_utils::icu_locale(get_string<string_ref>(locale_slice), options.locale);
+        } else if (locale_slice.isObject()) {
+          get_locale_from_vpack(locale_slice, options.locale);
 
-          return true;
+          return verify_icu_locale(options.locale);
+        } else {
+          return false;
         }
       }
       [[fallthrough]];
@@ -112,8 +226,21 @@ bool make_vpack_config(
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = locale_utils::name(options.locale);
-    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
+    {
+      VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
+
+      const auto& language = locale_utils::language(options.locale);
+      builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
+
+      const auto& country = locale_utils::country(options.locale);
+      builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
+
+      const auto& encoding = locale_utils::encoding(options.locale);
+      builder->add(ENCODING_PARAM_NAME, VPackValue(encoding));
+
+      const auto& variant = locale_utils::variant(options.locale);
+      builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
+    }
   }
 
   return true;
