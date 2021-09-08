@@ -30,7 +30,7 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include "directory_attributes.hpp"
+#include "store/directory_attributes.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
@@ -266,24 +266,6 @@ class IRESEARCH_API memory_index_output : public index_output {
   byte_type* end_;
 }; // memory_index_output
 
-class memory_directory_attributes : public directory_attributes {
- public:
-  // 0 == pool_size -> use global allocator, noexcept
-  explicit memory_directory_attributes(
-      size_t pool_size = 0,
-      std::unique_ptr<irs::encryption> enc = {})
-    : directory_attributes{std::move(enc)},
-      alloc_{memory_allocator::make(pool_size)} {
-  }
-
-  memory_allocator& allocator() noexcept {
-    return *alloc_;
-  }
-
- private:
-  memory_allocator::ptr alloc_;
-}; // memory_directory_attributes
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_directory
 /// @brief in memory index directory
@@ -291,7 +273,7 @@ class memory_directory_attributes : public directory_attributes {
 class IRESEARCH_API memory_directory final : public directory {
  public:
   explicit memory_directory(
-    memory_directory_attributes attributes = memory_directory_attributes{});
+    directory_attributes attributes = directory_attributes{});
 
   virtual ~memory_directory() noexcept;
 
@@ -335,7 +317,7 @@ class IRESEARCH_API memory_directory final : public directory {
   using lock_map = absl::flat_hash_set<std::string>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  memory_directory_attributes attrs_;
+  directory_attributes attrs_;
   mutable async_utils::read_write_mutex flock_;
   std::mutex llock_;
   file_map files_;

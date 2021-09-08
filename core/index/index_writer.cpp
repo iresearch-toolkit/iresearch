@@ -1380,7 +1380,6 @@ index_writer::ptr index_writer::make(
     std::move(meta),
     std::move(comitted_state));
 
-  directory_utils::ensure_allocator(dir, opts.memory_pool_size); // ensure memory_allocator set in directory
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;

@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_DIRECTORY_H
 #define IRESEARCH_DIRECTORY_H
 
+#include <ctime>
+
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
 #include "utils/memory.hpp"
@@ -222,6 +224,13 @@ struct IRESEARCH_API directory : private util::noncopyable {
   /// @returns directory attributes
   ////////////////////////////////////////////////////////////////////////////
   virtual directory_attributes& attributes() noexcept = 0;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns directory attributes
+  ////////////////////////////////////////////////////////////////////////////
+  const directory_attributes& attributes() const noexcept {
+    return const_cast<const directory*>(this)->attributes();
+  }
 }; // directory
 
 }

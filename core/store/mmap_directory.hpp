@@ -29,8 +29,10 @@ namespace iresearch {
 
 class mmap_directory_attributes final : public fs_directory_attributes {
  public:
-  explicit mmap_directory_attributes(std::unique_ptr<irs::encryption> enc = {})
-    : fs_directory_attributes{0, std::move(enc)} {
+  explicit mmap_directory_attributes(
+      size_t memory_pool_size = 0,
+      std::unique_ptr<irs::encryption> enc = {})
+    : fs_directory_attributes{0, memory_pool_size, std::move(enc)} {
   }
 
  private:

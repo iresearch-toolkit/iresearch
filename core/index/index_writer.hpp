@@ -465,12 +465,6 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const comparer* comparator{nullptr};
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
     ///        0 == do not cache any segments, i.e. always create new segments
     ////////////////////////////////////////////////////////////////////////////

@@ -66,6 +66,8 @@ class IRESEARCH_API memory_allocator {
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API encryption {
+  DECLARE_UNIQUE_PTR(encryption);
+
   // FIXME check if it's possible to rename to iresearch::encryption?
   static constexpr string_ref type_name() noexcept {
     return "encryption";
@@ -120,34 +122,37 @@ class IRESEARCH_API index_file_refs {
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
   void clear();
-  bool remove(const std::string& key) { return refs_.remove(key); }
+  bool remove(const std::string& key) {
+    return refs_.remove(key);
+  }
   counter_t& refs() noexcept {
     return refs_;
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   counter_t refs_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
 
-struct encryption;
-
-class directory_attributes {
+class IRESEARCH_API directory_attributes {
  public:
-  directory_attributes(std::unique_ptr<irs::encryption> enc);
+  // 0 == pool_size -> use global allocator, noexcept
+  directory_attributes(
+    size_t memory_pool_size = 0,
+    std::unique_ptr<irs::encryption> enc = nullptr);
   virtual ~directory_attributes() = default;
 
   directory_attributes(directory_attributes&&) = default;
   directory_attributes& operator=(directory_attributes&&) = default;
 
-  index_file_refs& refs() const noexcept { return *refs_; }
+  memory_allocator& allocator() const noexcept { return *alloc_; }
   irs::encryption* encryption() const noexcept { return enc_.get(); }
+  index_file_refs& refs() const noexcept { return *refs_; }
 
  private:
-  std::unique_ptr<index_file_refs> refs_;
-  std::unique_ptr<irs::encryption> enc_;
-};
+  memory_allocator::ptr alloc_;
+  irs::encryption::ptr enc_;
+  index_file_refs::ptr refs_;
+}; // directory_attributes
 
 }
 

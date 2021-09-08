@@ -75,7 +75,7 @@ using field_meta_map_t = absl::flat_hash_map<string_ref, const field_meta*>;
 
 class noop_directory : public directory {
  public:
-  static noop_directory& instance() noexcept {
+  static noop_directory& instance() {
     static noop_directory INSTANCE;
     return INSTANCE;
   }
@@ -128,9 +128,9 @@ class noop_directory : public directory {
   }
 
  private:
-  noop_directory() noexcept = default;
+  noop_directory() = default;
 
-  directory_attributes attrs_{nullptr};
+  directory_attributes attrs_{0, nullptr};
 }; // noop_directory
 
 class progress_tracker {

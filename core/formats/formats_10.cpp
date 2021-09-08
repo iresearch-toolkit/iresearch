@@ -472,7 +472,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     MAX_SKIP_LEVELS,
     state.doc_count,
     [this] (size_t i, index_output& out) { write_skip(i, out); },
-    directory_utils::get_allocator(*state.dir));
+    state.dir->attributes().allocator());
 
   format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
   out.write_vint(BLOCK_SIZE); // write postings block size

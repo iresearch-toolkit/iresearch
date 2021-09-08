@@ -1353,7 +1353,7 @@ void field_writer::prepare(const irs::flush_state& state) {
   pw_->prepare(*terms_out_, state);
 
   // reset allocator from a directory
-  auto& allocator = directory_utils::get_allocator(*state.dir);
+  auto& allocator = state.dir->attributes().allocator();
   suffix_.reset(allocator);
   stats_.reset(allocator);
 }

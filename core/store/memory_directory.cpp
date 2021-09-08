@@ -425,7 +425,7 @@ void memory_index_output::operator>>( data_output& out ) {
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
-memory_directory::memory_directory(memory_directory_attributes attrs)
+memory_directory::memory_directory(directory_attributes attrs)
   : attrs_{std::move(attrs)} {
 }
 

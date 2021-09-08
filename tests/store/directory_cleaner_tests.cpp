@@ -268,16 +268,13 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
 
-  irs::directory_cleaner::init(dir);
-
   // writer commit tracks files that are in active segments
   {
     auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     std::vector<std::string> files;

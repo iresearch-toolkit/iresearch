@@ -605,10 +605,9 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
     UNUSED(encrypt);
   }
 
-  alloc_ = &directory_utils::get_allocator(dir);
-
   // noexcept block
   dir_ = &dir;
+  alloc_ = &dir.attributes().allocator();
   data_out_ = std::move(data_out);
   data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);

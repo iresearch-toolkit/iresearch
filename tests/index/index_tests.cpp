@@ -702,31 +702,26 @@ class index_test_case : public tests::index_test_base {
     // use global allocator everywhere
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use global allocator in directory
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       irs::index_writer::init_options options;
       options.memory_pool_size = 42;
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr);
-      ASSERT_NE(nullptr, *alloc_attr);
-      ASSERT_NE(&irs::memory_allocator::global(), alloc_attr->get());
+      auto& alloc_attr = dir.attributes().allocator();
+      ASSERT_NE(&irs::memory_allocator::global(), &alloc_attr);
     }
 
     // use memory directory allocator everywhere

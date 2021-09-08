@@ -36,8 +36,9 @@ class fs_directory_attributes : public directory_attributes {
   // 0 == pool_size -> use global allocator, noexcept
   explicit fs_directory_attributes(
       size_t fd_pool_size = DEFAULT_POOL_SIZE,
+      size_t memory_pool_size = 0,
       std::unique_ptr<irs::encryption> enc = {})
-    : directory_attributes{std::move(enc)},
+    : directory_attributes{memory_pool_size, std::move(enc)},
       fd_pool_size_{fd_pool_size} {
   }
 
@@ -45,9 +46,9 @@ class fs_directory_attributes : public directory_attributes {
     return fd_pool_size_;
   }
 
-  private:
-   size_t fd_pool_size_;
-};
+ private:
+  size_t fd_pool_size_;
+}; // fs_directory_attributes
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
