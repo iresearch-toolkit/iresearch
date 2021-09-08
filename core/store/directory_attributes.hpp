@@ -135,6 +135,10 @@ class IRESEARCH_API index_file_refs final {
   counter_t refs_;
 }; // index_file_refs
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class directory_attributes
+/// @brief represents common directory attributes
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API directory_attributes {
  public:
   // 0 == pool_size -> use global allocator, noexcept
