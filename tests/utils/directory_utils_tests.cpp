@@ -108,29 +108,6 @@ class directory_utils_tests: public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(directory_utils_tests, test_reference_fail) {
-  directory_mock dir; // empty dir
-  ASSERT_EQ(nullptr, irs::directory_utils::reference(dir, "abc", true));
-  {
-    std::string tmp("foo");
-    auto source = [&tmp]()->const std::string* {
-      return &tmp;
-    };
-
-    irs::segment_meta segment;
-    segment.files.emplace(tmp);
-
-    irs::index_meta index;
-    index.add(irs::index_meta::index_segment_t{irs::segment_meta{segment}});
-
-    auto visitor = [](irs::index_file_refs::ref_t&&)->bool { return true; };
-    ASSERT_FALSE(irs::directory_utils::reference(dir, source, visitor));
-    ASSERT_FALSE(irs::directory_utils::reference(dir, segment, visitor));
-    ASSERT_FALSE(irs::directory_utils::reference(dir, index, visitor));
-  }
-  ASSERT_FALSE(irs::directory_utils::remove_all_unreferenced(dir));
-}
-
 TEST_F(directory_utils_tests, test_reference) {
   // test clear refs (all free)
   {

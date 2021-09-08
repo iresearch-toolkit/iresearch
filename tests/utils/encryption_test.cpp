@@ -248,6 +248,9 @@ class encryption_test_case : public tests::directory_test_case_base<> {
     };
     const size_t magic = 0x43219876;
 
+    ASSERT_EQ(nullptr, dir().attributes().encryption());
+    dir().attributes() = irs::directory_attributes{
+      0, std::make_unique<tests::rot13_encryption>(block_size, header_length) };
     auto* enc = dir().attributes().encryption();
     ASSERT_NE(nullptr, enc);
 
@@ -275,7 +278,6 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       ASSERT_EQ(std::max(buf_size,size_t(1))*cipher->block_size(), encryptor.buffer_size());
       ASSERT_EQ(0, encryptor.file_pointer());
 
-      size_t step = 321;
       for (auto& str : data) {
         irs::write_string(encryptor, str);
         irs::write_string(*raw_out, str);
@@ -404,11 +406,23 @@ class encryption_test_case : public tests::directory_test_case_base<> {
   }
 };
 
-TEST_P(encryption_test_case, encrypted_io) {
+TEST_P(encryption_test_case, encrypted_io_0) {
   assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 0);
+}
+
+TEST_P(encryption_test_case, encrypted_io_1) {
   assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
+}
+
+TEST_P(encryption_test_case, encrypted_io_2) {
   assert_ecnrypted_streams(7, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 5);
+}
+
+TEST_P(encryption_test_case, encrypted_io_3) {
   assert_ecnrypted_streams(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 64);
+}
+
+TEST_P(encryption_test_case, encrypted_io_4) {
   assert_ecnrypted_streams(2048, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
 }
 
