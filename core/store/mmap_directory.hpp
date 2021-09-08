@@ -27,18 +27,6 @@
 
 namespace iresearch {
 
-class mmap_directory_attributes final : public fs_directory_attributes {
- public:
-  explicit mmap_directory_attributes(
-      size_t memory_pool_size = 0,
-      std::unique_ptr<irs::encryption> enc = {})
-    : fs_directory_attributes{0, memory_pool_size, std::move(enc)} {
-  }
-
- private:
-  using fs_directory_attributes::fd_pool_size;
-};
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_directory
 //////////////////////////////////////////////////////////////////////////////
@@ -46,7 +34,7 @@ class IRESEARCH_API mmap_directory : public fs_directory {
  public:
   explicit mmap_directory(
     std::string dir,
-    mmap_directory_attributes attrs = mmap_directory_attributes{});
+    directory_attributes attrs = directory_attributes{});
 
   virtual index_input::ptr open(
     const std::string& name,

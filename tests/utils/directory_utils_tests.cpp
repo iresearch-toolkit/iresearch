@@ -98,7 +98,7 @@ class directory_utils_tests: public ::testing::Test {
     }
 
    private:
-    irs::directory_attributes attrs_{nullptr};
+    irs::directory_attributes attrs_{};
   }; // directory_mock
 };
 
@@ -107,25 +107,6 @@ class directory_utils_tests: public ::testing::Test {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
-TEST_F(directory_utils_tests, ensure_get_allocator) {
-  directory_mock dir;
-  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
-
-  // size == 0 -> use global allocator
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::ensure_allocator(dir, 0));
-  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
-
-  // size != 0 -> create allocator
-  auto& alloc = irs::directory_utils::ensure_allocator(dir, 42);
-  auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-  ASSERT_NE(nullptr, alloc_attr);
-  ASSERT_NE(nullptr, *alloc_attr);
-  ASSERT_EQ(&alloc, alloc_attr->get());
-  ASSERT_EQ(&alloc, &irs::directory_utils::get_allocator(dir));
-}
 
 TEST_F(directory_utils_tests, test_reference_fail) {
   directory_mock dir; // empty dir
@@ -635,7 +616,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   // ...........................................................................
 
   struct error_directory: public irs::directory {
-    irs::directory_attributes attrs{nullptr};
+    irs::directory_attributes attrs{};
     virtual irs::directory_attributes& attributes() noexcept override { return attrs; }
     virtual irs::index_output::ptr create(const std::string&) noexcept override { return nullptr; }
     virtual bool exists(bool&, const std::string&) const noexcept override { return false; }

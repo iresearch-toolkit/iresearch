@@ -159,12 +159,14 @@ struct format_info {
   const char* module;
 };
 
-typedef std::tuple<dir_factory_f, format_info> index_test_context;
-
-std::string to_string(const testing::TestParamInfo<index_test_context>& info);
+typedef std::tuple<tests::dir_param_f, format_info> index_test_context;
 
 class index_test_base : public virtual test_param_base<index_test_context> {
+ public:
+  static std::string to_string(const testing::TestParamInfo<index_test_context>& info);
+
  protected:
+
   std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
 
   irs::format::ptr get_codec() const;

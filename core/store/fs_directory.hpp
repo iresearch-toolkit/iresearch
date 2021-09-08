@@ -29,35 +29,17 @@
 
 namespace iresearch {
 
-class fs_directory_attributes : public directory_attributes {
- public:
-  static constexpr size_t DEFAULT_POOL_SIZE = 8;
-
-  // 0 == pool_size -> use global allocator, noexcept
-  explicit fs_directory_attributes(
-      size_t fd_pool_size = DEFAULT_POOL_SIZE,
-      size_t memory_pool_size = 0,
-      std::unique_ptr<irs::encryption> enc = {})
-    : directory_attributes{memory_pool_size, std::move(enc)},
-      fd_pool_size_{fd_pool_size} {
-  }
-
-  size_t fd_pool_size() const noexcept {
-    return fd_pool_size_;
-  }
-
- private:
-  size_t fd_pool_size_;
-}; // fs_directory_attributes
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API fs_directory : public directory {
  public:
+  static constexpr size_t DEFAULT_POOL_SIZE = 8;
+
   explicit fs_directory(
     std::string dir,
-    fs_directory_attributes attrs = fs_directory_attributes{});
+    directory_attributes attrs = directory_attributes{},
+    size_t fd_pool_size = DEFAULT_POOL_SIZE);
 
   using directory::attributes;
 
@@ -99,8 +81,9 @@ class IRESEARCH_API fs_directory : public directory {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  fs_directory_attributes attrs_;
+  directory_attributes attrs_;
   std::string dir_;
+  size_t fd_pool_size_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory
 

@@ -248,8 +248,8 @@ class encryption_test_case : public tests::directory_test_case_base<> {
     };
     const size_t magic = 0x43219876;
 
-    ASSERT_FALSE(dir().attributes().contains<irs::encryption>());
-    auto& enc = dir().attributes().emplace<tests::rot13_encryption>(block_size, header_length);
+    auto* enc = dir().attributes().encryption();
+    ASSERT_NE(nullptr, enc);
 
     uint64_t fp_magic = 0;
     uint64_t encrypted_length = 0;
@@ -401,8 +401,6 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       ASSERT_NE(nullptr, in);
       ASSERT_EQ(in->file_pointer(), header_length + irs::bytes_io<uint64_t>::vsize(header.size()) + fp);
     }
-
-    ASSERT_TRUE(dir().attributes().remove<irs::encryption>());
   }
 };
 
@@ -550,10 +548,9 @@ INSTANTIATE_TEST_SUITE_P(
   encryption_test,
   encryption_test_case,
   ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory
-  ),
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
   tests::directory_test_case_base<>::to_string
 );
 

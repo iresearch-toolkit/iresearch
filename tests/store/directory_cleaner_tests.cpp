@@ -91,9 +91,6 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
   }
 
-  // start tracking refs
-  auto& refs = irs::directory_cleaner::init(dir);
-
   // add a more dummy files
   {
     irs::index_output::ptr tmp;
@@ -102,6 +99,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
     tmp = dir.create("dummy.file.4");
     ASSERT_FALSE(!tmp);
   }
+
+  auto& refs = dir.attributes().refs();
 
   // add tracked files
   auto ref1 = refs.add("tracked.file.1");
@@ -254,7 +253,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
   }
 
   // test empty references removed too
-  ASSERT_TRUE(refs.empty());
+  ASSERT_TRUE(refs.refs().empty());
 }
 
 TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {

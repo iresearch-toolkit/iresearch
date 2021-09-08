@@ -496,9 +496,13 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(std::string dir, fs_directory_attributes attrs)
+fs_directory::fs_directory(
+    std::string dir,
+    directory_attributes attrs,
+    size_t fd_pool_size)
   : attrs_{std::move(attrs)},
-    dir_{std::move(dir)} {
+    dir_{std::move(dir)},
+    fd_pool_size_{fd_pool_size} {
 }
 
 index_output::ptr fs_directory::create(const std::string& name) noexcept {
@@ -566,7 +570,7 @@ index_input::ptr fs_directory::open(
     utf8_path path;
     (path/=dir_)/=name;
 
-    return fs_index_input::open(path.c_str(), attrs_.fd_pool_size(), advice);
+    return fs_index_input::open(path.c_str(), fd_pool_size_, advice);
   } catch(...) {
   }
 

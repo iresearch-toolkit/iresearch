@@ -229,7 +229,7 @@ struct IRESEARCH_API directory : private util::noncopyable {
   /// @returns directory attributes
   ////////////////////////////////////////////////////////////////////////////
   const directory_attributes& attributes() const noexcept {
-    return const_cast<const directory*>(this)->attributes();
+    return const_cast<directory*>(this)->attributes();
   }
 }; // directory
 

@@ -29,10 +29,8 @@
 class columnstore2_test_case : public virtual tests::directory_test_case_base<bool> {
  public:
   static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, bool>>& info) {
-    tests::dir_factory_f factory;
-    bool consolidation;
-    std::tie(factory, consolidation) = info.param;
+      const testing::TestParamInfo<std::tuple<tests::dir_param_f, bool>>& info) {
+    auto [factory, consolidation] = info.param;
 
     if (consolidation) {
       return (*factory)(nullptr).second + "___consolidation";
@@ -1497,12 +1495,12 @@ INSTANTIATE_TEST_SUITE_P(
   columnstore2_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
     ::testing::Values(false, true)),
   &columnstore2_test_case::to_string
 );

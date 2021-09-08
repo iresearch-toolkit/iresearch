@@ -143,8 +143,8 @@ namespace iresearch {
 
 mmap_directory::mmap_directory(
     std::string path,
-    mmap_directory_attributes attrs /* = {} */)
-  : fs_directory{path, std::move(attrs)} {
+    directory_attributes attrs /* = {} */)
+  : fs_directory{std::move(path), std::move(attrs)} {
 }
 
 index_input::ptr mmap_directory::open(

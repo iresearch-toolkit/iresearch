@@ -136,7 +136,7 @@ class IRESEARCH_API index_file_refs {
 class IRESEARCH_API directory_attributes {
  public:
   // 0 == pool_size -> use global allocator, noexcept
-  directory_attributes(
+  explicit directory_attributes(
     size_t memory_pool_size = 0,
     std::unique_ptr<irs::encryption> enc = nullptr);
   virtual ~directory_attributes() = default;
