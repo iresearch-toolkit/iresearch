@@ -24,7 +24,6 @@
 #include <thread>
 
 #include "index_tests.hpp"
-#include "tests_shared.hpp"
 #include "search/term_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
@@ -39,8 +38,7 @@ class index_profile_test_case : public tests::index_test_base {
       size_t num_update_threads,
       size_t batch_size,
       irs::index_writer::ptr writer = nullptr,
-      std::atomic<size_t>* commit_count = nullptr
-  ) {
+      std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       std::vector<std::shared_ptr<tests::templates::string_field>> fields;
 
@@ -470,16 +468,10 @@ TEST_P(index_profile_test_case, profile_bulk_index_singlethread_batched_mt) {
 }
 
 TEST_P(index_profile_test_case, profile_bulk_index_multithread_cleanup_mt) {
-  tests::dir_factory_f factory;
+  tests::dir_param_f factory;
   std::tie(factory, std::ignore) = GetParam();
 
-  if (factory == &tests::memory_directory) {
-    profile_bulk_index_dedicated_cleanup(16, 10000, 100);
-  } else {
-    // a lot of threads cause a lot of contention for the segment pool
-    // small consolidate_interval causes too many policies to be added and slows down test
-    profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
-  }
+  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
 TEST_P(index_profile_test_case, profile_bulk_index_multithread_consolidate_mt) {
@@ -528,9 +520,9 @@ INSTANTIATE_TEST_SUITE_P(
   index_profile_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0", "1_2", "1_3", "1_4")),
-  tests::to_string
+  index_profile_test_case::to_string
 );

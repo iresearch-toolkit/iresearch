@@ -1344,10 +1344,9 @@ INSTANTIATE_TEST_SUITE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory
-  ),
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
   tests::directory_test_case_base<>::to_string
 );
 
@@ -1595,18 +1594,13 @@ TEST(memory_directory_test, construct_check_allocator) {
   // default ctor
   {
     irs::memory_directory dir;
-    ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-    ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+    ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 
   // specify pool size
   {
-    irs::memory_directory dir(42);
-    auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-    ASSERT_NE(nullptr, alloc_attr);
-    ASSERT_NE(nullptr, *alloc_attr);
-    ASSERT_NE(alloc_attr->get(), &irs::memory_allocator::global()); // not a global allocator
-    ASSERT_EQ(alloc_attr->get(), &irs::directory_utils::get_allocator(dir));
+    irs::memory_directory dir{irs::directory_attributes{42}};
+    ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 }
 

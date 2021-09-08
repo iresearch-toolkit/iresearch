@@ -425,8 +425,8 @@ void memory_index_output::operator>>( data_output& out ) {
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
-memory_directory::memory_directory(size_t pool_size /* = 0*/) {
-  alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
+memory_directory::memory_directory(directory_attributes attrs)
+  : attrs_{std::move(attrs)} {
 }
 
 memory_directory::~memory_directory() noexcept {
@@ -436,13 +436,8 @@ memory_directory::~memory_directory() noexcept {
   files_.clear();
 }
 
-attribute_store& memory_directory::attributes() noexcept {
-  return attributes_;
-}
-
 bool memory_directory::exists(
-  bool& result, const std::string& name
-) const noexcept {
+    bool& result, const std::string& name) const noexcept {
   async_utils::read_write_mutex::read_mutex mutex(flock_);
   auto lock = make_lock_guard(mutex);
 
@@ -459,16 +454,15 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
     auto res = files_.emplace(
       std::piecewise_construct,
       std::forward_as_tuple(name),
-      std::forward_as_tuple()
-    );
+      std::forward_as_tuple());
 
     auto& file = res.first->second;
 
     if (res.second) {
-      file = memory::make_unique<memory_file>(*alloc_);
+      file = memory::make_unique<memory_file>(attrs_.allocator());
     }
 
-    file->reset(*alloc_);
+    file->reset(attrs_.allocator());
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
@@ -478,8 +472,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 }
 
 bool memory_directory::length(
-    uint64_t& result, const std::string& name
-) const noexcept {
+    uint64_t& result, const std::string& name) const noexcept {
   async_utils::read_write_mutex::read_mutex mutex(flock_);
   auto lock = make_lock_guard(mutex);
 

@@ -132,13 +132,11 @@ void read_write_mutex::lock_write() {
   }
 
   --exclusive_count_;
-  VALGRIND_ONLY(auto valgrind_lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 }
 
 bool read_write_mutex::owns_write() noexcept {
-  VALGRIND_ONLY(auto lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   return exclusive_owner_.load() == std::this_thread::get_id();
 }
 
@@ -175,7 +173,6 @@ bool read_write_mutex::try_lock_write() {
     return false;
   }
 
-  VALGRIND_ONLY(auto valgrind_lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 
@@ -199,7 +196,6 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
       ++concurrent_count_; // acquire the read-lock
     }
 
-    VALGRIND_ONLY(auto valgrind_lock = make_lock_guard(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
     exclusive_owner_.store(std::thread::id());
     reader_cond_.notify_all(); // wake all reader and writers
     writer_cond_.notify_all(); // wake all reader and writers

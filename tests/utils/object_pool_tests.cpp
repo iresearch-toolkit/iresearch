@@ -31,66 +31,58 @@ using namespace std::chrono_literals;
 
 namespace tests {
 
-struct test_slow_sobject {
-  using ptr = std::shared_ptr<test_slow_sobject>;
-  int id;
-  explicit test_slow_sobject(int i): id(i) {
-    ++TOTAL_COUNT;
-  }
-  ~test_slow_sobject() {
-    --TOTAL_COUNT;
-  }
+template<bool Shared, bool ReturnNull, size_t SleepSec>
+struct test_object {
+  using ptr = std::conditional_t<
+    Shared,
+    std::shared_ptr<test_object>,
+    std::unique_ptr<test_object>>;
+
   static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
-  static ptr make(int i) {
-    std::this_thread::sleep_for(2s); // wait 1 sec to ensure index file timestamps differ
-    return ptr(new test_slow_sobject(i));
-  }
-};
+  static std::atomic<size_t> MAKE_COUNT; // # number of objects created
 
-std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
-
-struct test_sobject {
-  using ptr = std::shared_ptr<test_sobject>;
-  int id;
-  explicit test_sobject(int i): id(i) {
-    ++TOTAL_COUNT;
-  }
-  ~test_sobject() {
-    --TOTAL_COUNT;
-  }
   static ptr make(int i) {
     ++MAKE_COUNT;
-    return ptr(new test_sobject(i));
+
+    if constexpr (SleepSec > 0) {
+      std::this_thread::sleep_for(std::chrono::seconds{SleepSec});
+    }
+
+    if constexpr (ReturnNull) {
+      return nullptr;
+    }
+
+    return ptr{new test_object{i}};
   }
-  static std::atomic<size_t> MAKE_COUNT;
-  static std::atomic<size_t> TOTAL_COUNT;
-};
 
-std::atomic<size_t> test_sobject::MAKE_COUNT{};
-std::atomic<size_t> test_sobject::TOTAL_COUNT{};
+  static ptr make() {
+    return make(0);
+  }
 
-struct test_sobject_nullptr {
-  using ptr = std::shared_ptr<test_sobject_nullptr>;
-  static size_t MAKE_COUNT;
-  static ptr make() { ++MAKE_COUNT; return nullptr; }
-};
+  explicit test_object(int i)
+    : id{i} {
+    ++TOTAL_COUNT;
+  }
 
-/*static*/ size_t test_sobject_nullptr::MAKE_COUNT = 0;
+  ~test_object() {
+    --TOTAL_COUNT;
+  }
 
-struct test_uobject {
-  using ptr = std::unique_ptr<test_uobject>;
   int id;
-  explicit test_uobject(int i): id(i) {}
-  static ptr make(int i) { return ptr(new test_uobject(i)); }
 };
 
-struct test_uobject_nullptr {
-  using ptr = std::unique_ptr<test_uobject_nullptr>;
-  static size_t MAKE_COUNT;
-  static ptr make() { ++MAKE_COUNT; return nullptr; }
-};
+template<bool Shared, bool ReturnNull, size_t SleepSec>
+std::atomic<size_t> test_object<Shared, ReturnNull, SleepSec>::TOTAL_COUNT{};
 
-/*static*/ size_t test_uobject_nullptr::MAKE_COUNT = 0;
+template<bool Shared, bool ReturnNull, size_t SleepSec>
+std::atomic<size_t> test_object<Shared, ReturnNull, SleepSec>::MAKE_COUNT{};
+
+using test_slow_sobject = test_object<true, false, 2>;
+using test_slow_uobject = test_object<false, false, 2>;
+using test_sobject = test_object<true, false, 0>;
+using test_uobject = test_object<false, false, 0>;
+using test_sobject_nullptr = test_object<true, true, 0>;
+using test_uobject_nullptr = test_object<false, true, 0>;
 
 } // namespace tests
 
@@ -376,20 +368,20 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
 }
 
 TEST(unbounded_object_pool_tests, construct) {
-  irs::unbounded_object_pool<test_sobject> pool(42);
+  irs::unbounded_object_pool<test_uobject> pool(42);
   ASSERT_EQ(42, pool.size());
 }
 
 TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
-  const size_t MAX_COUNT = 2;
-  irs::unbounded_object_pool<test_sobject> pool(MAX_COUNT);
+  constexpr size_t MAX_COUNT = 8;
+  irs::unbounded_object_pool<test_uobject> pool(MAX_COUNT);
 
   std::mutex mutex;
   std::condition_variable ready_cv;
   bool ready{false};
 
   std::atomic<size_t> id{};
-  test_sobject::TOTAL_COUNT = 0;
+  test_uobject::TOTAL_COUNT = 0;
 
   auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
     // wait for all threads to be ready
@@ -401,7 +393,10 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
       }
     }
 
-    pool.emplace(id++);
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++);
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
@@ -414,10 +409,13 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
       }
     }
 
-    pool.emplace(id++).release();
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++).release();
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
-  const size_t THREADS_COUNT = 32;
+  constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
   for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
@@ -436,15 +434,15 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
     thread.join();
   }
 
-  ASSERT_LE(test_slow_sobject::TOTAL_COUNT.load(), MAX_COUNT);
+  ASSERT_LE(test_slow_uobject::TOTAL_COUNT.load(), MAX_COUNT);
 }
 
-TEST(unbounded_object_pool_tests, test_sobject_pool) {
+TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
   // create new untracked object on full pool
   {
     std::condition_variable cond;
     std::mutex mutex;
-    irs::unbounded_object_pool<test_sobject> pool(1);
+    irs::unbounded_object_pool<test_uobject> pool(1);
     auto obj = pool.emplace(1).release();
 
     {
@@ -462,7 +460,7 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
 
   // test empty pool
   {
-    irs::unbounded_object_pool<test_sobject> pool;
+    irs::unbounded_object_pool<test_uobject> pool;
     ASSERT_EQ(0, pool.size());
     auto obj = pool.emplace(1);
     ASSERT_TRUE(obj);
@@ -478,21 +476,21 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
 
   // null objects not considered part of pool
   {
-    irs::unbounded_object_pool<test_sobject_nullptr> pool(2);
-    test_sobject_nullptr::MAKE_COUNT = 0;
+    irs::unbounded_object_pool<test_uobject_nullptr> pool(2);
+    test_uobject_nullptr::MAKE_COUNT = 0;
     auto obj = pool.emplace();
     ASSERT_FALSE(obj);
-    ASSERT_EQ(1, test_sobject_nullptr::MAKE_COUNT);
+    ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
     auto obj_shared = pool.emplace().release();
     ASSERT_FALSE(obj);
-    ASSERT_EQ(2, test_sobject_nullptr::MAKE_COUNT);
+    ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
   }
 
   // test object reuse
   {
-    irs::unbounded_object_pool<test_sobject> pool(1);
+    irs::unbounded_object_pool<test_uobject> pool(1);
     auto obj = pool.emplace(1);
     ASSERT_TRUE(obj);
     auto* obj_ptr = obj.get();
@@ -509,7 +507,7 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
 
   // ensure untracked object is not placed back in the pool
   {
-    irs::unbounded_object_pool<test_sobject> pool(1);
+    irs::unbounded_object_pool<test_uobject> pool(1);
     auto obj0 = pool.emplace(1);
     ASSERT_TRUE(obj0);
     auto obj1 = pool.emplace(2).release();
@@ -539,7 +537,7 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
 
   // test pool clear
   {
-    irs::unbounded_object_pool<test_sobject> pool(1);
+    irs::unbounded_object_pool<test_uobject> pool(1);
     auto obj = pool.emplace(1);
     ASSERT_TRUE(obj);
     auto* obj_ptr = obj.get();
@@ -572,7 +570,7 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
   }
 }
 
-TEST(unbounded_object_pool_tests, test_uobject_pool) {
+TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
   // create new untracked object on full pool
   {
     std::condition_variable cond;
@@ -689,8 +687,8 @@ TEST(unbounded_object_pool_tests, test_uobject_pool) {
   }
 }
 
-TEST(unbounded_object_pool_tests, control_object_move) {
-  irs::unbounded_object_pool<test_sobject> pool(2);
+TEST(unbounded_object_pool_tests, control_objectb_move) {
+  irs::unbounded_object_pool<test_uobject> pool(2);
   ASSERT_EQ(2, pool.size());
 
   // move constructor
@@ -702,7 +700,8 @@ TEST(unbounded_object_pool_tests, control_object_move) {
 
     auto obj = std::move(moved);
     ASSERT_FALSE(moved);
-    ASSERT_EQ(nullptr, moved.get());
+    ASSERT_EQ(nullptr, moved);
+    ASSERT_EQ(moved, nullptr);
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
   }
@@ -711,7 +710,8 @@ TEST(unbounded_object_pool_tests, control_object_move) {
   {
     auto moved = pool.emplace(1);
     ASSERT_TRUE(moved);
-    ASSERT_NE(nullptr, moved.get());
+    ASSERT_NE(nullptr, moved);
+    ASSERT_NE(moved, nullptr);
     ASSERT_EQ(1, moved->id);
     auto* moved_ptr = moved.get();
 
@@ -729,32 +729,32 @@ TEST(unbounded_object_pool_tests, control_object_move) {
 }
 
 TEST(unbounded_object_pool_tests, control_object_move_pools) {
-  irs::unbounded_object_pool<test_sobject> pool(2);
-  test_sobject::MAKE_COUNT = 0;
+  irs::unbounded_object_pool<test_uobject> pool(2);
+  test_uobject::MAKE_COUNT = 0;
   {
-     irs::unbounded_object_pool<test_sobject> pool_other(2);
+     irs::unbounded_object_pool<test_uobject> pool_other(2);
      auto from_other = pool_other.emplace(1);
-     ASSERT_EQ(1, test_sobject::MAKE_COUNT);
+     ASSERT_EQ(1, test_uobject::MAKE_COUNT);
      {
        auto from_this = pool.emplace(1);
-       ASSERT_EQ(2, test_sobject::MAKE_COUNT);
+       ASSERT_EQ(2, test_uobject::MAKE_COUNT);
        from_other = std::move(from_this);
      }
      // from_other should be returned to pool_other now
      // and no new make should be called
      auto from_other2 = pool_other.emplace(1);
-     ASSERT_EQ(2, test_sobject::MAKE_COUNT);
+     ASSERT_EQ(2, test_uobject::MAKE_COUNT);
   }
 }
 
 TEST(unbounded_object_pool_volatile_tests, construct) {
-  irs::unbounded_object_pool_volatile<test_sobject> pool(42);
+  irs::unbounded_object_pool_volatile<test_uobject> pool(42);
   ASSERT_EQ(42, pool.size());
   ASSERT_EQ(0, pool.generation_size());
 }
 
 TEST(unbounded_object_pool_volatile_tests, move) {
-  irs::unbounded_object_pool_volatile<test_sobject> moved(2);
+  irs::unbounded_object_pool_volatile<test_uobject> moved(2);
   ASSERT_EQ(2, moved.size());
   ASSERT_EQ(0, moved.generation_size());
 
@@ -764,7 +764,7 @@ TEST(unbounded_object_pool_volatile_tests, move) {
   ASSERT_NE(nullptr, obj0.get());
   ASSERT_EQ(1, obj0->id);
 
-  irs::unbounded_object_pool_volatile<test_sobject> pool(std::move(moved));
+  irs::unbounded_object_pool_volatile<test_uobject> pool(std::move(moved));
   ASSERT_EQ(2, moved.generation_size());
   ASSERT_EQ(2, pool.generation_size());
 
@@ -785,7 +785,7 @@ TEST(unbounded_object_pool_volatile_tests, move) {
 }
 
 TEST(unbounded_object_pool_volatile_tests, control_object_move) {
-  irs::unbounded_object_pool_volatile<test_sobject> pool(2);
+  irs::unbounded_object_pool_volatile<test_uobject> pool(2);
   ASSERT_EQ(2, pool.size());
   ASSERT_EQ(0, pool.generation_size());
 
@@ -794,12 +794,12 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     auto moved = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(moved);
-    ASSERT_NE(nullptr, moved.get());
+    ASSERT_NE(nullptr, moved);
     ASSERT_EQ(1, moved->id);
 
     auto obj = std::move(moved);
     ASSERT_FALSE(moved);
-    ASSERT_EQ(nullptr, moved.get());
+    ASSERT_EQ(nullptr, moved);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
@@ -810,7 +810,8 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     auto moved = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(moved);
-    ASSERT_NE(nullptr, moved.get());
+    ASSERT_NE(nullptr, moved);
+    ASSERT_NE(moved, nullptr);
     ASSERT_EQ(1, moved->id);
     auto* moved_ptr = moved.get();
 
@@ -823,14 +824,15 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_FALSE(moved);
-    ASSERT_EQ(nullptr, moved.get());
+    ASSERT_EQ(nullptr, moved);
+    ASSERT_EQ(moved, nullptr);
     ASSERT_EQ(obj.get(), moved_ptr);
     ASSERT_EQ(1, obj->id);
   }
 
   // move between two identical pools
   {
-     irs::unbounded_object_pool_volatile<test_sobject> pool_other(2);
+     irs::unbounded_object_pool_volatile<test_uobject> pool_other(2);
      auto from_other = pool_other.emplace(1);
      ASSERT_EQ(1, pool_other.generation_size());
      {
@@ -845,12 +847,12 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
   ASSERT_EQ(0, pool.generation_size());
 }
 
-TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
+TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
   // create new untracked object on full pool
   {
     std::condition_variable cond;
     std::mutex mutex;
-    irs::unbounded_object_pool_volatile<test_sobject> pool(1);
+    irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
     auto obj = pool.emplace(1).release();
     ASSERT_EQ(1, pool.generation_size());
@@ -872,7 +874,7 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
 
   // test empty pool
   {
-    irs::unbounded_object_pool_volatile<test_sobject> pool;
+    irs::unbounded_object_pool_volatile<test_uobject> pool;
     ASSERT_EQ(0, pool.size());
     auto obj = pool.emplace(1);
     ASSERT_TRUE(obj);
@@ -888,21 +890,21 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
 
   // null objects not considered part of pool
   {
-    irs::unbounded_object_pool_volatile<test_sobject_nullptr> pool(2);
-    test_sobject_nullptr::MAKE_COUNT = 0;
+    irs::unbounded_object_pool_volatile<test_uobject_nullptr> pool(2);
+    test_uobject_nullptr::MAKE_COUNT = 0;
     auto obj = pool.emplace();
     ASSERT_FALSE(obj);
-    ASSERT_EQ(1, test_sobject_nullptr::MAKE_COUNT);
+    ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
     auto obj_shared = pool.emplace().release();
     ASSERT_FALSE(obj);
-    ASSERT_EQ(2, test_sobject_nullptr::MAKE_COUNT);
+    ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
   }
 
   // test object reuse
   {
-    irs::unbounded_object_pool_volatile<test_sobject> pool(1);
+    irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
     auto obj = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
@@ -921,7 +923,7 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
 
   // ensure untracked object is not placed back in the pool
   {
-    irs::unbounded_object_pool_volatile<test_sobject> pool(1);
+    irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
     auto obj0 = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
@@ -958,7 +960,7 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
 
   // test pool clear
   {
-    irs::unbounded_object_pool_volatile<test_sobject> pool(1);
+    irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
     auto obj_noreuse = pool.emplace(-1);
     ASSERT_EQ(1, pool.generation_size());
@@ -1013,7 +1015,7 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
 }
 
 TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
-  auto pool = irs::memory::make_unique<irs::unbounded_object_pool_volatile<test_sobject>>(1);
+  auto pool = irs::memory::make_unique<irs::unbounded_object_pool_volatile<test_uobject>>(1);
   ASSERT_EQ(0, pool->generation_size());
   ASSERT_NE(nullptr, pool);
 
@@ -1035,7 +1037,7 @@ TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
   ASSERT_EQ(442, objShared->id);
 }
 
-TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
+TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
   // create new untracked object on full pool
   {
     std::condition_variable cond;
@@ -1169,15 +1171,15 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
 }
 
 TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instances) {
-  const size_t MAX_COUNT = 2;
-  irs::unbounded_object_pool_volatile<test_sobject> pool(MAX_COUNT);
+  constexpr size_t MAX_COUNT = 2;
+  irs::unbounded_object_pool_volatile<test_uobject> pool(MAX_COUNT);
 
   std::mutex mutex;
   std::condition_variable ready_cv;
   bool ready{false};
 
   std::atomic<size_t> id{};
-  test_sobject::TOTAL_COUNT = 0;
+  test_uobject::TOTAL_COUNT = 0;
 
   auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
     // wait for all threads to be ready
@@ -1189,7 +1191,10 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
       }
     }
 
-    pool.emplace(id++);
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++);
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
@@ -1202,10 +1207,13 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
       }
     }
 
-    pool.emplace(id++).release();
+    for (size_t i = 0; i < 100000; ++i) {
+      auto p = pool.emplace(id++).release();
+      ASSERT_TRUE(p->id >= 0);
+    }
   };
 
-  const size_t THREADS_COUNT = 32;
+  constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
   for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
@@ -1224,7 +1232,7 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
     thread.join();
   }
 
-  ASSERT_LE(test_slow_sobject::TOTAL_COUNT.load(), MAX_COUNT);
+  ASSERT_LE(test_slow_uobject::TOTAL_COUNT.load(), MAX_COUNT);
 }
 
 TEST(concurrent_linked_list_test, push_pop) {

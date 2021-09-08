@@ -112,12 +112,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer
-    : private atomic_shared_ptr_helper<
-        std::pair<
-          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-      >>,
-      private util::noncopyable {
+class IRESEARCH_API index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -137,11 +132,10 @@ class IRESEARCH_API index_writer
    public:
     active_segment_context() = default;
     active_segment_context(
-        segment_context_ptr ctx,
-        std::atomic<size_t>& segments_active,
-        flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
-    ) noexcept;
+      segment_context_ptr ctx,
+      std::atomic<size_t>& segments_active,
+      flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
+      size_t pending_segment_context_offset = std::numeric_limits<size_t>::max()) noexcept; // the segment offset in flush_ctx_->pending_segments_
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
@@ -469,12 +463,6 @@ class IRESEARCH_API index_writer
     ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
     const comparer* comparator{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -853,7 +841,7 @@ class IRESEARCH_API index_writer
         : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
-    using ptr = std::shared_ptr<segment_context>;
+    using ptr = std::unique_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
@@ -960,10 +948,11 @@ class IRESEARCH_API index_writer
       size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
       const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      const segment_context::ptr segment_;
+      const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(
-          const segment_context::ptr& segment, size_t pending_segment_context_offset)
+          const std::shared_ptr<segment_context>& segment,
+          size_t pending_segment_context_offset)
         : doc_id_begin_(segment->uncomitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
           modification_offset_begin_(segment->uncomitted_modification_queries_),

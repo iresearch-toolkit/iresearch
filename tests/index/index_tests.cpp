@@ -323,10 +323,9 @@ void normalized_string_json_field_factory(
   }
 }
 
-std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
-  dir_factory_f factory;
-  format_info codec;
-  std::tie(factory, codec) = info.param;
+/*static*/ std::string index_test_base::to_string(
+    const testing::TestParamInfo<index_test_context>& info) {
+  auto [factory, codec] = info.param;
 
   std::string str = (*factory)(nullptr).second;
   if (codec.codec) {
@@ -338,7 +337,7 @@ std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
 }
 
 std::shared_ptr<irs::directory> index_test_base::get_directory(const test_base& ctx) const {
-  dir_factory_f factory;
+  dir_param_f factory;
   std::tie(factory, std::ignore) = GetParam();
 
   return (*factory)(&ctx).first;
@@ -702,48 +701,35 @@ class index_test_case : public tests::index_test_base {
     // use global allocator everywhere
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use global allocator in directory
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       irs::index_writer::init_options options;
-      options.memory_pool_size = 42;
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr);
-      ASSERT_NE(nullptr, *alloc_attr);
-      ASSERT_NE(&irs::memory_allocator::global(), alloc_attr->get());
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use memory directory allocator everywhere
     {
-      irs::memory_directory dir(42);
-      auto* alloc_attr_before = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr_before);
-      ASSERT_NE(nullptr, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_before->get(), &irs::directory_utils::get_allocator(dir));
+      irs::memory_directory dir{irs::directory_attributes{42}};
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr_after = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_EQ(alloc_attr_after, alloc_attr_before);
-      ASSERT_EQ(*alloc_attr_after, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_after->get(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
   }
 
@@ -13836,13 +13822,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case::to_string
 );
 
 INSTANTIATE_TEST_SUITE_P(
@@ -13850,13 +13834,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    ::testing::Values(tests::format_info{"1_1", "1_0"})
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    ::testing::Values(tests::format_info{"1_1", "1_0"})),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13874,13 +13856,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_12_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_12_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13898,13 +13878,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_13_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_13_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13918,7 +13896,6 @@ const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4
 }
 
 class index_test_case_14 : public index_test_case { };
-
 
 TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   struct feature1 { };
@@ -14154,14 +14131,12 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_14,
   ::testing::Combine(
     ::testing::Values(
-      tests::mmap_directory,
-      tests::memory_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_14_values
-  ),
-  tests::to_string
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_14_values),
+  index_test_case_14::to_string
 );
 
 class index_test_case_10 : public tests::index_test_base { };
@@ -14411,13 +14386,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_10,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case_10::to_string
 );
 
 class index_test_case_11 : public tests::index_test_base { };
@@ -14954,11 +14927,9 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_11,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    index_test_case_11_values
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    index_test_case_11_values),
+  index_test_case_11::to_string
 );
