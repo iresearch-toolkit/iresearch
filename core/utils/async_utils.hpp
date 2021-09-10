@@ -160,6 +160,7 @@ class IRESEARCH_API thread_pool {
   struct shared_state {
     std::mutex lock;
     std::condition_variable cond;
+    std::atomic<State> state{ State::RUN };
   };
 
   struct task {
@@ -191,7 +192,6 @@ class IRESEARCH_API thread_pool {
   size_t max_threads_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
-  std::atomic<State> state_{ State::RUN };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // thread_pool
 

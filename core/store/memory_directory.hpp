@@ -27,6 +27,7 @@
 #include "directory.hpp"
 
 #include <mutex>
+#include <shared_mutex>
 
 #include <absl/container/flat_hash_map.h>
 
@@ -318,7 +319,7 @@ class IRESEARCH_API memory_directory final : public directory {
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
-  mutable async_utils::read_write_mutex flock_;
+  mutable std::shared_mutex flock_;
   std::mutex llock_;
   file_map files_;
   lock_map locks_;

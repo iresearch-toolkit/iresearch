@@ -1034,8 +1034,7 @@ class index_test_case : public tests::index_test_base {
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #2
       writer->rollback(); // rollback tx #2
       irs::directory_utils::remove_all_unreferenced(dir());

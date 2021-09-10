@@ -965,7 +965,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
 
     std::atomic<size_t> generation_{ 0 }; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
-    async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
+    std::shared_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. pending_segments_, pending_segment_contexts_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)

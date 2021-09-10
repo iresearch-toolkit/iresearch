@@ -1813,8 +1813,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 
   if (!shared) {
     for(;;) {
-      async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
-      auto lock = make_unique_lock(mutex); // lock ctx exchange (write-lock)
+      auto lock = make_unique_lock(ctx->flush_mutex_); // lock ctx exchange (write-lock)
 
       // aquire the current flush_context and its lock
       if (!flush_context_.compare_exchange_strong(ctx, ctx->next_context_)) {
@@ -1827,8 +1826,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
       return {
         ctx,
         [](flush_context* ctx) noexcept ->void {
-          async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
-          auto lock = make_unique_lock(mutex, std::adopt_lock);
+          auto lock = make_unique_lock(ctx->flush_mutex_, std::adopt_lock);
 
           ctx->reset(); // reset context and make ready for reuse
         }
@@ -1837,8 +1835,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
   }
 
   for(;;) {
-    async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
-    auto lock = make_unique_lock(mutex, std::try_to_lock); // lock current ctx (read-lock)
+    auto lock = make_shared_lock(ctx->flush_mutex_, std::try_to_lock); // lock current ctx (read-lock)
 
     if (!lock) {
       std::this_thread::yield(); // allow flushing thread to finish exchange
@@ -1861,8 +1858,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
     return {
       ctx,
       [](flush_context* ctx) noexcept ->void {
-        async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
-        auto lock = make_unique_lock(mutex, std::adopt_lock);
+        auto lock = make_shared_lock(ctx->flush_mutex_, std::adopt_lock);
       }
     };
   }

@@ -1,2 +1,7 @@
 # false positive `lock-order-inversion` error
 deadlock:index_writer::flush_pending
+deadlock:index_test_case::writer_begin_rollback
+deadlock:index_test_case::writer_transaction_isolation
+deadlock:index_test_*writer_begin_clear*
+deadlock:index_test_*initial_two_phase_commit_payload*
+deadlock:index_test_*commit_payload*

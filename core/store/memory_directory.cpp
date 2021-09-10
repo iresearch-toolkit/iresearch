@@ -430,16 +430,14 @@ memory_directory::memory_directory(directory_attributes attrs)
 }
 
 memory_directory::~memory_directory() noexcept {
-  async_utils::read_write_mutex::write_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_lock_guard(flock_);
 
   files_.clear();
 }
 
 bool memory_directory::exists(
     bool& result, const std::string& name) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_shared_lock(flock_);
 
   result = files_.find(name) != files_.end();
 
@@ -448,8 +446,7 @@ bool memory_directory::exists(
 
 index_output::ptr memory_directory::create(const std::string& name) noexcept {
   try {
-    async_utils::read_write_mutex::write_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     auto res = files_.emplace(
       std::piecewise_construct,
@@ -473,8 +470,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 
 bool memory_directory::length(
     uint64_t& result, const std::string& name) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -501,8 +497,7 @@ index_lock::ptr memory_directory::make_lock(
 bool memory_directory::mtime(
     std::time_t& result,
     const std::string& name) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -519,8 +514,7 @@ index_input::ptr memory_directory::open(
     const std::string& name,
     IOAdvice /*advice*/) const noexcept {
   try {
-    async_utils::read_write_mutex::read_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_shared_lock(flock_);
 
     const auto it = files_.find(name);
 
@@ -540,8 +534,7 @@ index_input::ptr memory_directory::open(
 
 bool memory_directory::remove(const std::string& name) noexcept {
   try {
-    async_utils::read_write_mutex::write_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     return files_.erase(name) > 0;
   } catch (...) {
@@ -553,10 +546,8 @@ bool memory_directory::remove(const std::string& name) noexcept {
 bool memory_directory::rename(
     const std::string& src,
     const std::string& dst) noexcept {
-  async_utils::read_write_mutex::write_mutex mutex(flock_);
-
   try {
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     const auto res = files_.try_emplace(dst);
     auto it = files_.find(src);
@@ -588,8 +579,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // take a snapshot of existing files in directory
   // to avoid potential recursive read locks in visitor
   {
-    async_utils::read_write_mutex::read_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_shared_lock(flock_);
 
     files.reserve(files_.size());
 

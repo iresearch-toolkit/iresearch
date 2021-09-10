@@ -34,7 +34,7 @@ using namespace std::chrono_literals;
 
 namespace {
 
-constexpr auto RW_MUTEX_WAIT_TIMEOUT = 100ms;
+constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
 
 }
 
@@ -299,7 +299,7 @@ void thread_pool::max_threads(size_t value) {
 
     max_threads_ = value;
 
-    if (State::ABORT != state_) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -322,7 +322,7 @@ void thread_pool::max_threads_delta(int delta) {
       max_threads_ = max_threads;
     }
 
-    if (State::ABORT != state_) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -340,7 +340,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
   {
     auto lock = make_lock_guard(state.lock);
 
-    if (State::RUN != state_) {
+    if (State::RUN != state.state.load()) {
       return false; // pool not active
     }
 
@@ -349,7 +349,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
     try {
       maybe_spawn_worker();
     } catch (...) {
-      if (0 == threads_) {
+      if (0 == threads_.load()) {
         // failed to spawn a thread to execute a task
         queue_.pop();
         throw;
@@ -363,7 +363,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 }
 
 void thread_pool::stop(bool skip_pending /*= false*/) {
-  state_ = skip_pending ? State::ABORT : State::FINISH;
+  shared_state_->state.store(skip_pending ? State::ABORT : State::FINISH);
 
   decltype(queue_) empty;
   {
@@ -372,7 +372,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
     // wait for all threads to terminate
     while (threads_.load()) {
       shared_state_->cond.notify_all(); // wake all threads
-      shared_state_->cond.wait_for(lock, 100ms);
+      shared_state_->cond.wait_for(lock, 50ms);
     }
 
     queue_.swap(empty);
@@ -388,7 +388,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
     max_threads_ = max_threads;
     max_idle_ = max_idle;
 
-    if (State::ABORT != state_) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -406,7 +406,7 @@ bool thread_pool::maybe_spawn_worker() {
     std::thread worker(&thread_pool::worker, this, shared_state_);
     worker.detach();
 
-    ++threads_;
+    threads_.fetch_add(1);
 
     return true;
   }
@@ -423,7 +423,7 @@ std::pair<size_t, size_t> thread_pool::limits() const {
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return { active_, queue_.size(), threads_};
+  return { active_, queue_.size(), threads_.load() };
 }
 
 size_t thread_pool::tasks_active() const {
@@ -441,7 +441,7 @@ size_t thread_pool::tasks_pending() const {
 size_t thread_pool::threads() const {
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return threads_;
+  return threads_.load();
 }
 
 void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
@@ -459,19 +459,21 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
       // NOOP
     }
 
-    --threads_;
+    threads_.fetch_sub(1);
   }
 
-  if (State::RUN != state_) {
+  if (State::RUN != shared_state->state.load()) {
     shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 
 void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
                               std::shared_ptr<shared_state> shared_state) {
+  auto& state = shared_state->state;
+
   lock.lock();
 
-  while (State::ABORT != state_ && threads_ <= max_threads_) {
+  while (State::ABORT != state.load() && threads_.load() <= max_threads_) {
     if (!queue_.empty()) {
       auto& top = queue_.top();
 
@@ -528,11 +530,11 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
     }
 
     assert(lock.owns_lock());
-    assert(active_ <= threads_);
+    assert(active_ <= threads_.load());
 
-    if (const auto idle = threads_ - active_;
-        (idle <= max_idle_ || (!queue_.empty() && threads_ == 1))) {
-      if (const auto run_state = state_.load();
+    if (const auto idle = threads_.load() - active_;
+        (idle <= max_idle_ || (!queue_.empty() && threads_.load() == 1))) {
+      if (const auto run_state = state.load();
           !queue_.empty() && State::ABORT != run_state) {
         const auto at = queue_.top().at; // queue_ might be modified
         shared_state->cond.wait_until(lock, at);
