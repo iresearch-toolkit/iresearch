@@ -299,7 +299,7 @@ void thread_pool::max_threads(size_t value) {
 
     max_threads_ = value;
 
-    if (State::ABORT != state_.load()) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -322,7 +322,7 @@ void thread_pool::max_threads_delta(int delta) {
       max_threads_ = max_threads;
     }
 
-    if (State::ABORT != state_.load()) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -340,7 +340,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
   {
     auto lock = make_lock_guard(state.lock);
 
-    if (State::RUN != state_.load()) {
+    if (State::RUN != state.state.load()) {
       return false; // pool not active
     }
 
@@ -363,7 +363,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 }
 
 void thread_pool::stop(bool skip_pending /*= false*/) {
-  state_.store(skip_pending ? State::ABORT : State::FINISH);
+  shared_state_->state.store(skip_pending ? State::ABORT : State::FINISH);
 
   decltype(queue_) empty;
   {
@@ -388,7 +388,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
     max_threads_ = max_threads;
     max_idle_ = max_idle;
 
-    if (State::ABORT != state_.load()) {
+    if (State::ABORT != state.state.load()) {
       maybe_spawn_worker();
     }
   }
@@ -450,8 +450,6 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
     set_thread_name(worker_name_.c_str());
   }
 
-  State state;
-
   {
     auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
 
@@ -461,22 +459,21 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
       // NOOP
     }
 
-    // copy state value to avoid races with dtor
-    state = state_.load();
-
     threads_.fetch_sub(1);
   }
 
-  if (State::RUN != state) {
+  if (State::RUN != shared_state->state.load()) {
     shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 
 void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
                               std::shared_ptr<shared_state> shared_state) {
+  auto& state = shared_state->state;
+
   lock.lock();
 
-  while (State::ABORT != state_.load() && threads_.load() <= max_threads_) {
+  while (State::ABORT != state.load() && threads_.load() <= max_threads_) {
     if (!queue_.empty()) {
       auto& top = queue_.top();
 
@@ -537,7 +534,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
 
     if (const auto idle = threads_.load() - active_;
         (idle <= max_idle_ || (!queue_.empty() && threads_.load() == 1))) {
-      if (const auto run_state = state_.load();
+      if (const auto run_state = state.load();
           !queue_.empty() && State::ABORT != run_state) {
         const auto at = queue_.top().at; // queue_ might be modified
         shared_state->cond.wait_until(lock, at);
