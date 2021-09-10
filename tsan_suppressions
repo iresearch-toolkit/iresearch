@@ -5,3 +5,4 @@ deadlock:index_test_case::writer_transaction_isolation
 deadlock:index_test_*writer_begin_clear*
 deadlock:index_test_*initial_two_phase_commit_payload*
 deadlock:index_test_*commit_payload*
+deadlock:index_test_*initial_two_phase_commit_no_payload*
