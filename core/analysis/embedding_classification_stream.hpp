@@ -48,6 +48,7 @@ class embedding_classification_stream final
     static void init(); // for registration in a static build
 
     explicit embedding_classification_stream(const Options& options);
+    ~embedding_classification_stream();
 
     virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::get_mutable(attrs_, type);
@@ -60,11 +61,36 @@ class embedding_classification_stream final
     using attributes = std::tuple<
       increment,
       offset,
+      payload,
       term_attribute>;
 
     attributes attrs_;
-    std::shared_ptr<fasttext::FastText> modelContainer;
+    std::shared_ptr<fasttext::FastText> model_container;
+    const std::string& model_location;
     bool term_eof_;
+};
+
+class EmbeddingsModelLoader {
+  public:
+    static EmbeddingsModelLoader& getInstance() {
+      static EmbeddingsModelLoader instance{};
+      return instance;
+    }
+
+    std::shared_ptr<fasttext::FastText> get_model_and_increment_count(const std::string& model_location);
+
+    void decrement_model_usage_count(const std::string& model_location);
+
+    EmbeddingsModelLoader(EmbeddingsModelLoader const&) = delete;
+    void operator=(EmbeddingsModelLoader const&) = delete;
+
+  private:
+    EmbeddingsModelLoader() : model_map{}, model_usage_count{}, map_mutex{} {}
+
+
+    std::unordered_map<std::string, std::shared_ptr<fasttext::FastText>> model_map;
+    std::unordered_map<std::string, uint32_t> model_usage_count;
+    std::mutex map_mutex;
 };
 
 } // analysis

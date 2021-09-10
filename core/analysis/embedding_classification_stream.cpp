@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+#include <iostream>
+#include <sstream>
 #include "embedding_classification_stream.hpp"
 
 #include "velocypack/Parser.h"
@@ -114,10 +116,11 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 
 
 bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
-  VPackSlice slice{reinterpret_cast<const uint8_t*>(args.c_str())};
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+    return true;
   }
   return false;
 }
@@ -132,7 +135,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
-      return true;
+      return !definition.empty();
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -148,40 +151,50 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 REGISTER_ANALYZER_VPACK(irs::analysis::embedding_classification_stream, make_vpack, normalize_vpack_config);
 REGISTER_ANALYZER_JSON(irs::analysis::embedding_classification_stream, make_json, normalize_json_config);
 
-class EmbeddingsModelLoader {
-  public:
-    static std::shared_ptr<fasttext::FastText> getModel(std::string model_location) {
-      std::unique_lock<std::mutex> lock(map_Mutex);
-      if (modelMap.find(model_location) == modelMap.end()) {
-        auto ft = iresearch::memory::make_shared<fasttext::FastText>();
-        ft->loadModel(model_location);
-        modelMap[model_location] = std::move(ft);
-      }
-      return modelMap.at(model_location);
-    }
-
-  private:
-    EmbeddingsModelLoader();
-    ~EmbeddingsModelLoader();
-    EmbeddingsModelLoader(const EmbeddingsModelLoader &embeddingsModelLoader);
-    const EmbeddingsModelLoader &operator=(const EmbeddingsModelLoader &embeddingsModelLoader);
-
-    static std::unordered_map<std::string, std::shared_ptr<fasttext::FastText>> modelMap;
-    static std::mutex map_Mutex;
-};
-
 } // namespace
 
 namespace iresearch {
 namespace analysis {
 
+std::shared_ptr<fasttext::FastText> EmbeddingsModelLoader::get_model_and_increment_count(const std::string& model_location) {
+  std::unique_lock<std::mutex> lock(this->map_mutex);
+  if (model_map.find(model_location) == this->model_map.end()) {
+    auto ft = iresearch::memory::make_shared<fasttext::FastText>();
+    ft->loadModel(model_location);
+    this->model_map[model_location] = std::move(ft);
+    this->model_usage_count[model_location] = 0;
+  }
+  this->model_usage_count[model_location] += 1;
+  return this->model_map.at(model_location);
+}
+
+void EmbeddingsModelLoader::decrement_model_usage_count(const std::string& model_location) {
+  std::unique_lock<std::mutex> lock(this->map_mutex);
+  if (this->model_map.find(model_location) == this->model_map.end()) {
+    // Something's gone horribly wrong here.
+    // TODO: Throw exception to escape invalid state
+  } else {
+    this->model_usage_count[model_location] -= 1;
+    if (this->model_usage_count[model_location] == 0) {
+      this->model_usage_count.erase(model_location);
+      this->model_map.erase(model_location);
+    }
+  }
+}
+
 embedding_classification_stream::embedding_classification_stream(const Options &options)
   : analyzer{irs::type<embedding_classification_stream>::get()},
-  modelContainer{EmbeddingsModelLoader::getModel(options.model_location)} {}
+  model_container{EmbeddingsModelLoader::getInstance().get_model_and_increment_count(options.model_location)},
+  model_location{options.model_location} {}
+
+
+embedding_classification_stream::~embedding_classification_stream() {
+  EmbeddingsModelLoader::getInstance().decrement_model_usage_count(model_location);
+}
 
 void embedding_classification_stream::init() {
-  REGISTER_ANALYZER_VPACK(embedding_classification_stream, make_vpack, normalize_vpack_config);
   REGISTER_ANALYZER_JSON(embedding_classification_stream, make_json, normalize_json_config);
+  REGISTER_ANALYZER_VPACK(embedding_classification_stream, make_vpack, normalize_vpack_config);
 }
 
 bool embedding_classification_stream::next() {
@@ -194,7 +207,24 @@ bool embedding_classification_stream::next() {
   return true;
 }
 
+bool embedding_classification_stream::reset(const string_ref& data) {
+  // convert encoding to UTF-8
+  auto& term = std::get<term_attribute>(attrs_);
 
+  term.value = bytes_ref::NIL; // clear the term value
+  term_eof_ = true;
+
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(data.size());
+
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
+  term_eof_ = false;
+
+  // Now classify token!
+
+  return true;
+}
 
 }
 }
