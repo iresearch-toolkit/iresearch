@@ -148,8 +148,6 @@ template<typename T>
 class async_value {
  public:
   using value_type = T;
-  using read_lock_type = async_utils::read_write_mutex::read_mutex;
-  using write_lock_type = async_utils::read_write_mutex::write_mutex;
 
   template<typename... Args>
   explicit async_value(Args&&... args)
@@ -164,19 +162,17 @@ class async_value {
     return value_;
   }
 
-  read_lock_type& read_lock() const noexcept {
-    return read_lock_;
+  auto lock_read() {
+    return make_shared_lock(lock_);
   }
 
-  write_lock_type& write_lock() const noexcept {
-    return write_lock_;
+  auto lock_write() {
+    return make_unique_lock(lock_);
   }
 
  protected:
   value_type value_;
-  async_utils::read_write_mutex lock_;
-  mutable read_lock_type read_lock_{ lock_ };
-  mutable write_lock_type write_lock_{ lock_ };
+  std::shared_mutex lock_;
 }; // async_value
 
 //////////////////////////////////////////////////////////////////////////////
@@ -772,7 +768,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'
       {
-        auto lock = make_lock_guard(gen.read_lock());
+        auto lock = gen.lock_read();
         auto& value = gen.value();
 
         if (auto* owner = value.owner; owner) {
@@ -803,7 +799,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     : base_t{std::move(rhs)} {
     gen_ = atomic_utils::atomic_load(&rhs.gen_);
 
-    auto lock = make_lock_guard(gen_->write_lock());
+    auto lock = gen_->lock_write();
     gen_->value().owner = this; // change owner
 
     this->free_slots_ = std::move(rhs.free_slots_);
@@ -814,7 +810,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     // prevent existing elements from returning into the pool
     // if pool doesn't own generation anymore
     const auto gen = atomic_utils::atomic_load(&gen_);
-    auto lock = make_lock_guard(gen->write_lock());
+    auto lock = gen->lock_write();
 
     auto& value = gen->value();
 
@@ -834,7 +830,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     if (new_generation) {
       {
         auto gen = atomic_utils::atomic_load(&gen_);
-        auto lock = make_lock_guard(gen->write_lock());
+        auto lock = gen->lock_write();
         gen->value().owner = nullptr;
       }
 
