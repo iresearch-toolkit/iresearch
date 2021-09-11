@@ -7826,19 +7826,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+          name, data.str));
       }
   });
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
-
-  constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   // 2-phase: clear + consolidate
   {
@@ -7848,22 +7842,19 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     writer->clear();
@@ -7882,22 +7873,19 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
@@ -7916,15 +7904,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
@@ -7953,15 +7939,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     writer->clear();
@@ -8469,9 +8453,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+          name, data.str));
       }
   });
 
@@ -8501,16 +8483,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
