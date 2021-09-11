@@ -578,7 +578,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -602,7 +602,7 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
 TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -625,7 +625,7 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
 TEST_P(ngram_similarity_filter_test_case, one_match_case) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -656,7 +656,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -687,7 +687,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -718,7 +718,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -750,7 +750,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -782,7 +782,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -814,7 +814,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -867,7 +867,7 @@ struct test_score_ctx : public irs::score_ctx {
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -943,7 +943,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -1024,7 +1024,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
     opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::normalized_string_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1046,7 +1046,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
     opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::normalized_string_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1069,7 +1069,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
     opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::normalized_string_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1092,7 +1092,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
     opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
 
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::normalized_string_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1112,7 +1112,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 TEST_P(ngram_similarity_filter_test_case, seek_next) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -1154,7 +1154,7 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
 TEST_P(ngram_similarity_filter_test_case, seek) {
   {
     tests::json_doc_generator gen(
-      resource("ngram_similarity.json"),
+      irs::utf8_path{resource("ngram_similarity.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }

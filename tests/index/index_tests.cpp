@@ -365,7 +365,7 @@ class index_test_case : public tests::index_test_base {
 
   void clear_writer() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      irs::utf8_path{resource("simple_sequential.json")},
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -541,7 +541,7 @@ class index_test_case : public tests::index_test_base {
     // write test docs
     {
       tests::json_doc_generator gen(
-        resource("simple_single_column_multi_term.json"),
+        irs::utf8_path{resource("simple_single_column_multi_term.json")},
         &tests::payloaded_json_field_factory);
       add_segment(gen);
     }
@@ -838,7 +838,7 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
@@ -866,7 +866,7 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND | irs::OM_CREATE);
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
@@ -893,7 +893,7 @@ class index_test_case : public tests::index_test_base {
 
   void writer_transaction_isolation() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      irs::utf8_path{resource("simple_sequential.json")},
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
           doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -980,7 +980,7 @@ class index_test_case : public tests::index_test_base {
 
   void writer_begin_rollback() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"), 
+      irs::utf8_path{resource("simple_sequential.json")},
       &tests::generic_json_field_factory);
 
     irs::bytes_ref actual_value;
@@ -1061,7 +1061,7 @@ class index_test_case : public tests::index_test_base {
   }
 
   void concurrent_read_single_column_smoke() {
-    tests::json_doc_generator gen(resource("simple_sequential.json"),
+    tests::json_doc_generator gen(irs::utf8_path{resource("simple_sequential.json")},
                                   &tests::generic_json_field_factory);
     std::vector<const tests::document*> expected_docs;
 
@@ -1172,7 +1172,7 @@ class index_test_case : public tests::index_test_base {
     // write columns 
     {
       csv_doc_template_t csv_doc_template;
-      tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
+      tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
       const tests::document* doc;
@@ -1199,7 +1199,7 @@ class index_test_case : public tests::index_test_base {
 
         irs::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
-        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
+        tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
         auto visitor = [&gen, &column_name, &expected_id] (irs::doc_id_t id, const irs::bytes_ref& actual_value) {
           if (id != ++expected_id) {
             return false;
@@ -1240,7 +1240,7 @@ class index_test_case : public tests::index_test_base {
         }
 
         csv_doc_template_t csv_doc_template;
-        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
+        tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
         const tests::document* doc = nullptr;
 
         auto column = segment.column_reader(meta->id);
@@ -1292,7 +1292,7 @@ class index_test_case : public tests::index_test_base {
 
         irs::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
-        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
+        tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
         const tests::document* doc = nullptr;
 
         auto column = segment.column_reader(meta->id);
@@ -2165,7 +2165,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2200,7 +2200,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2322,7 +2322,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
 TEST_P(index_test_case, arango_demo_docs) {
   {
     tests::json_doc_generator gen(
-      resource("arango_demo.json"),
+      irs::utf8_path{resource("arango_demo.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -2368,7 +2368,7 @@ TEST_P(index_test_case, writer_begin_rollback) {
 
 TEST_P(index_test_case, writer_begin_clear_empty_index) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
 
@@ -2401,7 +2401,7 @@ TEST_P(index_test_case, writer_begin_clear_empty_index) {
 
 TEST_P(index_test_case, writer_begin_clear) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
 
@@ -2456,7 +2456,7 @@ TEST_P(index_test_case, writer_begin_clear) {
 
 TEST_P(index_test_case, writer_commit_clear) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
 
@@ -2506,7 +2506,7 @@ TEST_P(index_test_case, insert_null_empty_term) {
 TEST_P(index_test_case, europarl_docs) {
   {
     tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    tests::delim_doc_generator gen(irs::utf8_path{resource("europarl.subset.txt")}, doc);
     add_segment(gen);
   }
   assert_index();
@@ -2520,7 +2520,7 @@ TEST_P(index_test_case, docs_bit_union) {
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
     tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    tests::delim_doc_generator gen(irs::utf8_path{resource("europarl.subset.txt")}, doc);
     add_segment(gen);
   }
 
@@ -2549,7 +2549,7 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 TEST_P(index_test_case, monarch_eco_onthology) {
   {
     tests::json_doc_generator gen(
-      resource("ECO_Monarch.json"),
+      irs::utf8_path{resource("ECO_Monarch.json")},
       &tests::payloaded_json_field_factory);
     add_segment(gen);
   }
@@ -2566,7 +2566,9 @@ TEST_P(index_test_case, concurrent_read_index_mt) {
 }
 
 TEST_P(index_test_case, concurrent_add_mt) {
-  tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen(
+    irs::utf8_path{resource("simple_sequential.json")},
+    &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
@@ -2605,7 +2607,7 @@ TEST_P(index_test_case, concurrent_add_mt) {
 
 TEST_P(index_test_case, concurrent_add_remove_mt) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -2683,7 +2685,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
 
 TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -2815,7 +2817,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
 TEST_P(index_test_case, document_context) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -4233,7 +4235,7 @@ TEST_P(index_test_case, document_context) {
 
 TEST_P(index_test_case, doc_removal) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -4755,7 +4757,7 @@ TEST_P(index_test_case, doc_removal) {
 
 TEST_P(index_test_case, doc_update) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -5328,7 +5330,7 @@ TEST_P(index_test_case, doc_update) {
       }
     };
 
-    tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(irs::utf8_path{resource("simple_sequential.json")}, &tests::generic_json_field_factory);
     auto doc1 = gen.next();
     auto doc2 = gen.next();
     auto doc3 = gen.next();
@@ -5525,7 +5527,7 @@ TEST_P(index_test_case, doc_update) {
 
 TEST_P(index_test_case, import_reader) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -5930,7 +5932,7 @@ TEST_P(index_test_case, import_reader) {
 
 TEST_P(index_test_case, refresh_reader) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -6177,8 +6179,8 @@ TEST_P(index_test_case, refresh_reader) {
 }
 
 TEST_P(index_test_case, reuse_segment_writer) {
-  tests::json_doc_generator gen0(resource("arango_demo.json"), &tests::generic_json_field_factory);
-  tests::json_doc_generator gen1(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen0(irs::utf8_path{resource("arango_demo.json")}, &tests::generic_json_field_factory);
+  tests::json_doc_generator gen1(irs::utf8_path{resource("simple_sequential.json")}, &tests::generic_json_field_factory);
   auto writer = open_writer();
 
   // populate initial 2 very small segments
@@ -6261,7 +6263,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
 
 TEST_P(index_test_case, segment_column_user_system) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [](tests::document& doc,
        const std::string& name,
        const tests::json_doc_generator::json_value& data) {
@@ -6374,7 +6376,7 @@ TEST_P(index_test_case, import_concurrent) {
 
   std::set<std::string> names;
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -6472,7 +6474,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
 
   std::set<std::string> names;
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -6598,7 +6600,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
 
   std::set<std::string> names;
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -6737,7 +6739,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
 
   std::set<std::string> names;
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -6879,7 +6881,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
 
   std::set<std::string> names;
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -7012,7 +7014,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -7067,7 +7069,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
 
 TEST_P(index_test_case, consolidate_single_segment) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -7203,7 +7205,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   }("_3");
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc,
         const std::string& name,
         const tests::json_doc_generator::json_value& data) {
@@ -7822,7 +7824,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -7992,7 +7994,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -8331,7 +8333,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
 TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -8465,7 +8467,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -10010,7 +10012,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     return true;
   };
 
-  tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen(irs::utf8_path{resource("simple_sequential.json")}, &tests::generic_json_field_factory);
   auto const* doc1 = gen.next();
   auto const* doc2 = gen.next();
   auto const* doc3 = gen.next();
@@ -11590,7 +11592,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 */
 TEST_P(index_test_case, consolidate_progress) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto* doc1 = gen.next();
@@ -11760,7 +11762,7 @@ TEST_P(index_test_case, consolidate_progress) {
 
 TEST_P(index_test_case, segment_consolidate) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
@@ -12462,7 +12464,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // add 2nd segment
     tests::json_doc_generator gen(
-      resource("simple_sequential_upper_case.json"),
+      irs::utf8_path{resource("simple_sequential_upper_case.json")},
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
@@ -12553,7 +12555,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // add 2nd segment
     tests::json_doc_generator gen(
-      resource("simple_sequential_upper_case.json"),
+      irs::utf8_path{resource("simple_sequential_upper_case.json")},
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
@@ -12627,7 +12629,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
 TEST_P(index_test_case, segment_consolidate_policy) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -13188,7 +13190,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
 TEST_P(index_test_case, segment_options) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -13409,7 +13411,7 @@ TEST_P(index_test_case, segment_options) {
 
 TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13445,7 +13447,7 @@ TEST_P(index_test_case, writer_close) {
 
 TEST_P(index_test_case, writer_insert_immediate_remove) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13512,7 +13514,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
 TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13581,7 +13583,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
 
 TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13634,7 +13636,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
 
 TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -14142,7 +14144,7 @@ class index_test_case_10 : public tests::index_test_base { };
 
 TEST_P(index_test_case_10, commit_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14396,7 +14398,7 @@ class index_test_case_11 : public tests::index_test_base { };
 
 TEST_P(index_test_case_11, clean_writer_with_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
@@ -14444,7 +14446,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
 TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14476,7 +14478,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
 
 TEST_P(index_test_case_11, initial_commit_no_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14504,7 +14506,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
 
 TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14546,7 +14548,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
 
 TEST_P(index_test_case_11, initial_commit_payload_revert) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14584,7 +14586,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
 
 TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14623,7 +14625,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
 
 TEST_P(index_test_case_11, initial_commit_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();
@@ -14658,7 +14660,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
 
 TEST_P(index_test_case_11, commit_payload) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
 
   auto& directory = dir();

@@ -33,33 +33,18 @@ namespace iresearch {
 class IRESEARCH_API utf8_path {
  public:
   #ifdef _WIN32
-    typedef wchar_t native_char_t;
+    using native_char_t = wchar_t;
   #else
-    typedef char native_char_t;
+    using native_char_t = char;
   #endif
 
-  typedef std::function<bool(const native_char_t* name)> directory_visitor;
-  typedef std::basic_string<native_char_t> native_str_t;
+  using directory_visitor = std::function<bool(const native_char_t* name)> ;
+  using native_str_t = std::basic_string<native_char_t> ;
 
-  utf8_path(bool current_working_path = false);
-  utf8_path(const char* utf8_path);
-  utf8_path(const std::string& utf8_path);
-  utf8_path(const irs::string_ref& utf8_path);
-  utf8_path(const wchar_t* utf8_path);
-  utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path);
-  utf8_path(const std::wstring& ucs2_path);
-  utf8_path& operator+=(const char* utf8_name);
-  utf8_path& operator+=(const std::string& utf8_name);
-  utf8_path& operator+=(const irs::string_ref& utf8_name);
-  utf8_path& operator+=(const wchar_t* ucs2_name);
-  utf8_path& operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator+=(const std::wstring& ucs2_name);
-  utf8_path& operator/=(const char* utf8_name);
-  utf8_path& operator/=(const std::string& utf8_name);
-  utf8_path& operator/=(const irs::string_ref& utf8_name);
-  utf8_path& operator/=(const wchar_t* ucs2_name);
-  utf8_path& operator/=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator/=(const std::wstring& ucs2_name);
+  explicit utf8_path(bool current_working_path = false);
+  explicit utf8_path(basic_string_ref<native_char_t> path);
+  utf8_path& operator+=(basic_string_ref<native_char_t> name);
+  utf8_path& operator/=(basic_string_ref<native_char_t> name);
 
   bool absolute(bool& result) const noexcept;
   bool chdir() const noexcept;
@@ -75,8 +60,7 @@ class IRESEARCH_API utf8_path {
   bool rename(const utf8_path& destination) const noexcept;
   bool visit_directory(
     const directory_visitor& visitor,
-    bool include_dot_dir = true
-  );
+    bool include_dot_dir = true);
 
   const native_char_t* c_str() const noexcept;
   const native_str_t& native() const noexcept;

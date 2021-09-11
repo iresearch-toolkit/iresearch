@@ -153,7 +153,6 @@ int fseek(void* fd, long pos, int origin);
 int ferror(void*);
 long ftell(void* fd);
 
-
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
   ref_t basename;  // path component after the last path delimiter (ref_t::NIL if not present)
@@ -162,15 +161,18 @@ struct path_parts_t {
   ref_t stem;      // basename without extension (ref_t::NIL if not present)
 };
 
-IRESEARCH_API path_parts_t path_parts(const file_path_t path) noexcept;
+path_parts_t path_parts(const file_path_t path) noexcept;
 
-IRESEARCH_API bool read_cwd(
-  std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) noexcept;
+bool read_cwd(
+  std::basic_string<std::remove_pointer_t<file_path_t>>& result) noexcept;
 
 bool remove(const file_path_t path) noexcept;
 
 bool set_cwd(const file_path_t path) noexcept;
+
+bool append(
+  std::string& buf,
+  basic_string_ref<std::remove_pointer_t<file_path_t>> str);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
@@ -179,8 +181,7 @@ bool set_cwd(const file_path_t path) noexcept;
 bool visit_directory(
   const file_path_t name,
   const std::function<bool(const file_path_t name)>& visitor,
-  bool include_dot_dir = true
-);
+  bool include_dot_dir = true);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              misc

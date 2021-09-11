@@ -27,7 +27,6 @@
 #include "store/directory_attributes.hpp"
 #include "store/directory_cleaner.hpp"
 #include "error/error.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string_utils.hpp"
@@ -171,11 +170,8 @@ class fs_index_output : public buffered_index_output {
                                                  IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
+      file_utils::append(path, name);
 
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
@@ -272,11 +268,8 @@ class fs_index_input : public buffered_index_input {
     handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
 
     if (nullptr == handle->handle) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
+      file_utils::append(path, name);
 
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", GetLastError(), path.c_str());
@@ -289,11 +282,8 @@ class fs_index_input : public buffered_index_input {
 
     uint64_t size;
     if (!file_utils::byte_size(size, *handle)) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
+      file_utils::append(path, name);
 
       #ifdef _WIN32
         auto error = GetLastError();

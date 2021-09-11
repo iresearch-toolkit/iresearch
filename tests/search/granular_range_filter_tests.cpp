@@ -118,7 +118,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
       tests::json_doc_generator gen(
-        resource("granular_sequential.json"),
+        irs::utf8_path{resource("granular_sequential.json")},
         &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE, opts);
@@ -165,7 +165,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
       tests::json_doc_generator gen(
-        resource("granular_sequential.json"),
+        irs::utf8_path{resource("granular_sequential.json")},
         &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE, opts);
@@ -444,7 +444,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE, opts);
@@ -1247,7 +1247,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE, opts);
@@ -1713,7 +1713,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      irs::utf8_path{resource("simple_sequential.json")},
       &by_range_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1908,7 +1908,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     // add segment
     {
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &by_range_json_field_factory);
 
       write_segment(*writer, segment, gen);
@@ -1945,7 +1945,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   // add segment
   tests::json_doc_generator gen(
-    resource("numeric_sequence.json"),
+    irs::utf8_path{resource("numeric_sequence.json")},
     [] (
       tests::document& doc,
       const std::string& name,
@@ -2199,7 +2199,7 @@ TEST_P(granular_range_filter_test_case, visit) {
     opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
 
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      irs::utf8_path{resource("simple_sequential.json")},
       &tests::generic_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE, opts);

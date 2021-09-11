@@ -246,7 +246,7 @@ class failing_directory : public tests::directory_mock {
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -356,7 +356,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
 TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -501,7 +501,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
 TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -609,7 +609,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
 TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -861,7 +861,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
 TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -994,7 +994,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
 TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -1130,7 +1130,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
 TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -1256,7 +1256,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
 TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -1371,7 +1371,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
 
 TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -1543,7 +1543,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
 
 TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -1821,7 +1821,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
 TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -1930,7 +1930,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
 TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2044,7 +2044,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2288,7 +2288,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2433,7 +2433,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2508,7 +2508,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
 TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2563,7 +2563,7 @@ TEST(index_death_test_formats_10, open_reader) {
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2663,7 +2663,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();
@@ -2763,7 +2763,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
     irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::payloaded_json_field_factory
   );
   const auto* doc1 = gen.next();

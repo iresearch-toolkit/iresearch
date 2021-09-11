@@ -1582,7 +1582,7 @@ TEST_F(fs_directory_test, utf8_chars_native) {
     SetUp();
     directory_test_case::smoke_store(*dir_);
     // Read files from directory
-    check_files(*dir_, native_path);
+    check_files(*dir_, irs::utf8_path{native_path});
   }
 }
 

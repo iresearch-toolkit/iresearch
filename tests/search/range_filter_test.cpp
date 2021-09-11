@@ -48,7 +48,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     /* add segment */
     {
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         [](tests::document& doc,
            const std::string& name,
            const tests::json_doc_generator::json_value& data) {
@@ -634,7 +634,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     /* add segment */
     {
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
       add_segment( gen );
     }
@@ -1006,7 +1006,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory
       );
       add_segment(gen);
@@ -1248,7 +1248,7 @@ TEST_P(range_filter_test_case, visit) {
   // add segment
   {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
+      irs::utf8_path{resource("simple_sequential.json")},
       &tests::generic_json_field_factory);
     add_segment(gen);
   }

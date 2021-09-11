@@ -183,8 +183,8 @@ void test_env::make_directories() {
   auto path_parts = irs::file_utils::path_parts(&exec_native[0]);
 
   exec_path_ = exec_path;
-  exec_file_ = path_parts.basename;
-  exec_dir_ = path_parts.dirname;
+  exec_file_ = irs::utf8_path{path_parts.basename};
+  exec_dir_ = irs::utf8_path{path_parts.dirname};
   test_name_ = irs::utf8_path(path_parts.stem).utf8();
 
   if (out_dir_.native().empty()) {
@@ -196,7 +196,7 @@ void test_env::make_directories() {
   std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.utf8() << std::endl;
   std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.utf8() << std::endl;
 
-  out_dir_ = out_dir_.utf8_absolute();
+  out_dir_ = irs::utf8_path{out_dir_.utf8_absolute()};
   (res_dir_ = out_dir_) /= test_name_;
 
   // add timestamp to res_dir_
@@ -259,8 +259,8 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
     return;
   }
 
-  resource_dir_ = cmd.get<std::string>(IRES_RESOURCE_DIR);
-  out_dir_ = cmd.get<std::string>(IRES_OUTPUT_PATH);
+  resource_dir_ = irs::utf8_path{cmd.get<std::string>(IRES_RESOURCE_DIR)};
+  out_dir_ = irs::utf8_path{cmd.get<std::string>(IRES_OUTPUT_PATH)};
 }
 
 int test_env::initialize(int argc, char* argv[]) {

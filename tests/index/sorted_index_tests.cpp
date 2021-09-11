@@ -99,7 +99,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
   // build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
@@ -261,7 +261,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
   // build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
@@ -596,7 +596,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
   // build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
@@ -752,7 +752,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
 TEST_P(sorted_index_test_case, europarl) {
   sorted_europarl_doc_template doc("date");
-  tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+  tests::delim_doc_generator gen(irs::utf8_path{resource("europarl.subset.txt")}, doc);
 
   long_comparer less;
 
@@ -844,7 +844,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
@@ -1000,7 +1000,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_with_removals) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
@@ -1205,7 +1205,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(

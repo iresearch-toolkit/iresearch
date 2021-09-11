@@ -151,7 +151,7 @@ TEST(directory_reader_test, open_newest_index) {
 
 TEST(directory_reader_test, open) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (tests::json_doc_generator::ValueType::STRING == data.vt) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -427,7 +427,7 @@ TEST(segment_reader_test, open_invalid_segment) {
 
 TEST(segment_reader_test, open) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
+    irs::utf8_path{test_base::resource("simple_sequential.json")},
     &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();

@@ -36,7 +36,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        resource("phrase_sequential.json"),
+        irs::utf8_path{resource("phrase_sequential.json")},
         [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) { // field
             doc.insert(std::make_shared<tests::templates::text_field<std::string>>(name, data.str), true, false);
@@ -183,7 +183,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
   void sub_objects_unordered() {
     // add segment
     tests::json_doc_generator gen(
-      resource("same_position.json"),
+      irs::utf8_path{resource("same_position.json")},
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         typedef tests::templates::text_field<std::string> text_field;
         if (data.is_string()) {

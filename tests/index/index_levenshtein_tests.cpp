@@ -95,7 +95,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   // add data
   {
     tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    tests::delim_doc_generator gen(irs::utf8_path{resource("europarl.subset.txt")}, doc);
     add_segment(gen);
   }
 

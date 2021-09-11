@@ -491,13 +491,11 @@ class json_doc_generator: public doc_generator_base {
 
   json_doc_generator(
     const irs::utf8_path& file,
-    const factory_f& factory
-  );
+    const factory_f& factory);
 
   json_doc_generator(
     const char* data,
-    const factory_f& factory
-  );
+    const factory_f& factory);
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 

@@ -2307,7 +2307,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
   // populate directory
   {
     tests::json_doc_generator gen(
-      test_base::resource("simple_sequential_33.json"),
+      irs::utf8_path{test_base::resource("simple_sequential_33.json")},
       &tests::generic_json_field_factory);
     std::vector<const tests::document*> docs;
     docs.reserve(33);
@@ -2370,7 +2370,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // populate directory
   {
     tests::json_doc_generator gen(
-      test_base::resource("simple_sequential.json"),
+      irs::utf8_path{test_base::resource("simple_sequential.json")},
       &tests::generic_json_field_factory);
     auto* doc1 = gen.next();
     auto* doc2 = gen.next();

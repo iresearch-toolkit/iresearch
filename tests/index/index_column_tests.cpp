@@ -7814,7 +7814,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   };
 
   csv_doc_template_t csv_doc_template;
-  tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
+  tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
   size_t docs_count = 0;
 
   // write attributes 
@@ -8423,7 +8423,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   tests::document const* doc1 = gen.next();
@@ -8747,7 +8747,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   };
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
+    irs::utf8_path{resource("simple_sequential.json")},
     &tests::generic_json_field_factory
   );
   tests::document const* doc1 = gen.next();

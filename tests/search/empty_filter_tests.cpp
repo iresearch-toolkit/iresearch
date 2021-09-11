@@ -32,7 +32,7 @@ TEST_P(empty_filter_test_case, empty) {
    // add segment
    {
      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
+        irs::utf8_path{resource("simple_sequential.json")},
         &tests::generic_json_field_factory);
      add_segment(gen);
    }
