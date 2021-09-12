@@ -175,10 +175,6 @@ bool remove(const file_path_t path) noexcept;
 
 bool set_cwd(const file_path_t path) noexcept;
 
-bool append(
-  std::string& buf,
-  basic_string_ref<path_char_t> str);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
 // -----------------------------------------------------------------------------

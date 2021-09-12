@@ -170,13 +170,12 @@ class fs_index_output : public buffered_index_output {
                                                  IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
-      std::string path;
-      file_utils::append(path, name);
-
 #ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                    GetLastError(), fs::path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                    errno, fs::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -268,13 +267,12 @@ class fs_index_input : public buffered_index_input {
     handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
 
     if (nullptr == handle->handle) {
-      std::string path;
-      file_utils::append(path, name);
-
 #ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", GetLastError(), path.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
+                    GetLastError(), fs::path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
+                    errno, fs::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -282,16 +280,14 @@ class fs_index_input : public buffered_index_input {
 
     uint64_t size;
     if (!file_utils::byte_size(size, *handle)) {
-      std::string path;
-      file_utils::append(path, name);
-
       #ifdef _WIN32
         auto error = GetLastError();
       #else
         auto error = errno;
       #endif
 
-      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s", error, path.c_str());
+      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
+                    error, fs::path{name}.c_str());
 
       return nullptr;
     }
