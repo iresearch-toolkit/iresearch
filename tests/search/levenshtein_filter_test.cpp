@@ -147,7 +147,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("levenshtein_sequential.json")},
+      resource("levenshtein_sequential.json"),
       &tests::generic_json_field_factory
     );
     add_segment(gen);
@@ -301,7 +301,7 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   // add data
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("levenshtein_sequential.json")},
+      resource("levenshtein_sequential.json"),
       &tests::generic_json_field_factory
     );
     add_segment(gen);
@@ -454,7 +454,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
   {
     json_doc_generator gen(
-      irs::utf8_path{resource("v_DSS_Entity_id.json")},
+      resource("v_DSS_Entity_id.json"),
       [&analyzer](tests::document& doc,
          const std::string& name,
          const json_doc_generator::json_value& data) {
@@ -788,7 +788,7 @@ TEST_P(by_edit_distance_test_case, visit) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
     add_segment(gen);
   }

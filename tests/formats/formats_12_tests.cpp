@@ -36,7 +36,7 @@ class format_12_test_case : public tests::directory_test_case_base<> { };
 
 TEST_P(format_12_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -68,7 +68,7 @@ TEST_P(format_12_test_case, read_zero_block_encryption) {
 
 TEST_P(format_12_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -98,7 +98,7 @@ TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
   unsorted_terms_t unsorted_terms;
 
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("fst_prefixes.json")},
+    resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms](
         tests::document& doc,
         const std::string& name,
@@ -200,7 +200,7 @@ TEST_P(format_12_test_case, column_meta_read_write_wrong_encryption) {
 
 TEST_P(format_12_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -229,7 +229,7 @@ TEST_P(format_12_test_case, open_ecnrypted_with_wrong_encryption) {
 
 TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -259,7 +259,7 @@ TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
 
 TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -322,7 +322,7 @@ TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
 
 TEST_P(format_12_test_case, open_10_with_12) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
@@ -380,7 +380,7 @@ TEST_P(format_12_test_case, open_10_with_12) {
 
 TEST_P(format_12_test_case, formats_10_12) {
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();

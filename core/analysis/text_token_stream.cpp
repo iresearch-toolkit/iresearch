@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -31,6 +31,7 @@
 
 #include <cctype> // for std::isspace(...)
 #include <fstream>
+#include <filesystem>
 #include <mutex>
 
 #include "velocypack/Slice.h"
@@ -46,8 +47,8 @@
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/utf8_utils.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
 #if defined(_MSC_VER)
@@ -71,6 +72,8 @@
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
 #endif
+
+namespace fs = std::filesystem;
 
 namespace iresearch {
 namespace analysis {
@@ -170,59 +173,57 @@ bool get_stopwords(
     const std::locale& locale,
     const irs::string_ref& path = irs::string_ref::NIL) {
   auto language = irs::locale_utils::language(locale);
-  irs::utf8_path stopword_path;
-  auto* custom_stopword_path =
-    !path.null()
+  fs::path stopword_path;
+
+  auto* custom_stopword_path = !path.null()
     ? path.c_str()
     : irs::getenv(irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
 
   if (custom_stopword_path) {
-    bool absolute;
+    stopword_path.assign(custom_stopword_path);
 
-    stopword_path = irs::utf8_path(custom_stopword_path);
-
-    if (!stopword_path.absolute(absolute)) {
-      IR_FRMT_ERROR("Failed to determine absoluteness of path: %s",
-        stopword_path.utf8().c_str());
-
-      return false;
-    }
+    const bool absolute = stopword_path.is_absolute();
 
     if (!absolute) {
-      stopword_path = irs::utf8_path(true) /= custom_stopword_path;
+      std::basic_string<std::remove_pointer_t<file_path_t>> cwd;
+      file_utils::read_cwd(cwd);
+
+      stopword_path = fs::path{std::move(cwd)} /= custom_stopword_path;
     }
-  }
-  else {
+  } else {
+    std::basic_string<std::remove_pointer_t<file_path_t>> cwd;
+    file_utils::read_cwd(cwd);
+
     // use CWD if the environment variable STOPWORD_PATH_ENV_VARIABLE is undefined
-    stopword_path = irs::utf8_path(true);
+    stopword_path = std::move(cwd);
   }
 
   try {
     bool result;
 
-    if (!stopword_path.exists_directory(result) || !result
-        || !(stopword_path /= language).exists_directory(result) || !result) {
-      if (custom_stopword_path) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
-        return false;
-      } else {
-        IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
-          "Analyzer will continue without stopwords",
-          stopword_path.utf8().c_str());
-        return true;
+    if (!file_utils::exists_directory(result, stopword_path.c_str()) || !result) {
+      stopword_path /= std::string_view(language);
+
+      if (!file_utils::exists_directory(result, stopword_path.c_str()) || !result) {
+        if (custom_stopword_path) {
+          IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.u8string().c_str());
+          return false;
+        } else {
+          IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
+                        "Analyzer will continue without stopwords",
+                        stopword_path.u8string().c_str());
+          return true;
+        }
       }
     }
 
     irs::analysis::text_token_stream::stopwords_t stopwords;
-    auto visitor = [&stopwords, &stopword_path](
-        const irs::utf8_path::native_char_t* name)->bool {
-      auto path = stopword_path;
+    auto visitor = [&stopwords, &stopword_path](auto name)->bool {
       bool result;
+      const auto path = stopword_path / name;
 
-      path /= name;
-
-      if (!path.exists_file(result)) {
-        IR_FRMT_ERROR("Failed to identify stopword path: %s", path.utf8().c_str());
+      if (!file_utils::exists_file(result, path.c_str())) {
+        IR_FRMT_ERROR("Failed to identify stopword path: %s", path.u8string().c_str());
 
         return false;
       }
@@ -234,7 +235,7 @@ bool get_stopwords(
       std::ifstream in(path.native());
 
       if (!in) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s", path.utf8().c_str());
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", path.u8string().c_str());
 
         return false;
       }
@@ -254,7 +255,7 @@ bool get_stopwords(
       return true;
     };
 
-    if (!stopword_path.visit_directory(visitor, false)) {
+    if (!file_utils::visit_directory(stopword_path.c_str(), visitor, false)) {
       return !custom_stopword_path;
     }
 
@@ -262,7 +263,7 @@ bool get_stopwords(
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
+    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.u8string().c_str());
   }
 
   return false;

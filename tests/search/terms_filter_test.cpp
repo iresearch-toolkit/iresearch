@@ -99,7 +99,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
     add_segment(gen);
   }
@@ -179,7 +179,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_utf8.json")},
+      resource("simple_sequential_utf8.json"),
       &tests::generic_json_field_factory);
     add_segment(gen);
   }

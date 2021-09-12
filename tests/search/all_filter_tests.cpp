@@ -35,7 +35,7 @@ TEST_P(all_filter_test_case, all_sequential) {
   // add segment
   {
     tests::json_doc_generator gen(
-       irs::utf8_path{resource("simple_sequential.json")},
+       resource("simple_sequential.json"),
        &tests::generic_json_field_factory);
     add_segment( gen );
   }
@@ -68,7 +68,7 @@ TEST_P(all_filter_test_case, all_order) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory
     );
     add_segment(gen);

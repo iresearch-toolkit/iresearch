@@ -63,7 +63,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("phrase_sequential.json")},
+      resource("phrase_sequential.json"),
       &tests::analyzed_json_field_factory);
     add_segment(gen);
   }
@@ -2946,7 +2946,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("phrase_sequential.json")},
+      resource("phrase_sequential.json"),
       &tests::analyzed_json_field_factory);
     add_segment(gen);
   }
@@ -5322,7 +5322,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("phrase_sequential.json")},
+      resource("phrase_sequential.json"),
       &tests::analyzed_json_field_factory);
     add_segment(gen);
   }

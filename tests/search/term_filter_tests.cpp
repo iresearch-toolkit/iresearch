@@ -44,7 +44,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        irs::utf8_path{resource("simple_sequential.json")},
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       add_segment(gen);
     }
@@ -96,7 +96,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        irs::utf8_path{resource("simple_sequential.json")},
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       add_segment( gen );
     }
@@ -162,7 +162,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        irs::utf8_path{resource("simple_sequential.json")},
+        resource("simple_sequential.json"),
         [](tests::document& doc,
            const std::string& name,
            const tests::json_doc_generator::json_value& data) {
@@ -443,7 +443,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        irs::utf8_path{resource("simple_sequential.json")},
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       add_segment(gen);
     }
@@ -511,7 +511,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // add segment
     {
       tests::json_doc_generator gen(
-        irs::utf8_path{resource("simple_sequential.json")},
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       add_segment( gen );
     }
@@ -551,27 +551,27 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       std::vector<tests::doc_generator_base::ptr> gens;
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("AdventureWorks2014.json")},
+        resource("AdventureWorks2014.json"),
         &tests::generic_json_field_factory
       ));
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("AdventureWorks2014Edges.json")},
+        resource("AdventureWorks2014Edges.json"),
         &tests::generic_json_field_factory
       ));
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("Northwnd.json")},
+        resource("Northwnd.json"),
         &tests::generic_json_field_factory
       ));
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("NorthwndEdges.json")},
+        resource("NorthwndEdges.json"),
         &tests::generic_json_field_factory
       ));
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("Northwnd.json")},
+        resource("Northwnd.json"),
         &tests::generic_json_field_factory
       ));
       gens.emplace_back(new tests::json_doc_generator(
-        irs::utf8_path{resource("NorthwndEdges.json")},
+        resource("NorthwndEdges.json"),
         &tests::generic_json_field_factory
       ));
       add_segments(*writer, gens);
@@ -610,7 +610,7 @@ TEST_P(term_filter_test_case, visit) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
     add_segment(gen);
   }

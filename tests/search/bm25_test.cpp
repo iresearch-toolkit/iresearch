@@ -35,7 +35,6 @@
 #include "search/score.hpp"
 #include "search/bm25.hpp"
 #include "search/term_filter.hpp"
-#include "utils/utf8_path.hpp"
 
 namespace {
 
@@ -89,7 +88,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     const std::vector<irs::type_info::type_id> extra_features = { norm };
 
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_order.json")},
+      resource("simple_sequential_order.json"),
       [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(
@@ -353,7 +352,7 @@ TEST_P(bm25_test_case, test_phrase) {
   // add segment
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("phrase_sequential.json")},
+      resource("phrase_sequential.json"),
       analyzed_json_field_factory);
     add_segment(gen);
   }
@@ -474,7 +473,7 @@ TEST_P(bm25_test_case, test_phrase) {
 TEST_P(bm25_test_case, test_query) {
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_order.json")},
+      resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
@@ -537,7 +536,7 @@ TEST_P(bm25_test_case, test_query) {
   // by term multi-segment, same term (same score for all docs)
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_order.json")},
+      resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
@@ -623,7 +622,7 @@ TEST_P(bm25_test_case, test_query) {
   // by_term disjunction multi-segment, different terms (same score for all docs)
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_order.json")},
+      resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
@@ -719,7 +718,7 @@ TEST_P(bm25_test_case, test_query) {
   // by_prefix empty multi-segment, different terms (same score for all docs)
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
@@ -1153,7 +1152,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // initialize test data
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential.json")},
+      resource("simple_sequential.json"),
       &tests::payloaded_json_field_factory
     );
     auto writer = open_writer(irs::OM_CREATE);
@@ -1386,7 +1385,7 @@ TEST_P(bm25_test_case, test_make) {
 TEST_P(bm25_test_case, test_order) {
   {
     tests::json_doc_generator gen(
-      irs::utf8_path{resource("simple_sequential_order.json")},
+      resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);

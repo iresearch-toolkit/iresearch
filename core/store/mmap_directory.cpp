@@ -22,7 +22,6 @@
 
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
 
@@ -142,7 +141,7 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 mmap_directory::mmap_directory(
-    std::string path,
+    fs::path path,
     directory_attributes attrs /* = {} */)
   : fs_directory{std::move(path), std::move(attrs)} {
 }
@@ -150,15 +149,13 @@ mmap_directory::mmap_directory(
 index_input::ptr mmap_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
-  utf8_path path;
-
   try {
-    (path/=directory())/=name;
+    const auto path = directory() / name;
+
+    return mmap_index_input::open(path.c_str(), advice);
   } catch(...) {
     return nullptr;
   }
-
-  return mmap_index_input::open(path.c_str(), advice);
 }
 
 } // ROOT

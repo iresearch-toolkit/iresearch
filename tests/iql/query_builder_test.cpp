@@ -170,7 +170,7 @@ irs::directory_reader load_json(
   auto writer =
     irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
   json_doc_generator generator(
-    irs::utf8_path{test_base::resource(json_resource)},
+    test_base::resource(json_resource),
     analyze_text ? analyzed_field_factory
                  : &tests::generic_json_field_factory);
   const document* doc;

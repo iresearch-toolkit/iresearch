@@ -32,7 +32,6 @@
 #include "store/data_input.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/crc.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
@@ -1362,28 +1361,25 @@ class fs_directory_test : public test_base {
 
   virtual void SetUp() override {
     test_base::SetUp();
-    path_ = test_case_dir();
-    path_ /= name_;
+    path_ = test_case_dir() / name_;
 
-    ASSERT_TRUE(path_.mkdir(false));
-    dir_ = std::make_shared<fs_directory>(path_.utf8());
+    fs::create_directory(path_);
+    dir_ = std::make_shared<fs_directory>(path_);
   }
 
   virtual void TearDown() override {
     dir_ = nullptr;
-    ASSERT_TRUE(path_.remove());
+    fs::remove(path_);
     test_base::TearDown();
   }
 
  protected:
-  static void check_files(const directory& dir, const utf8_path& path) {
+  static void check_files(const directory& dir, const fs::path& path) {
     const std::string file_name = "abcd";
 
     // create empty file
     {
-      auto file = path;
-
-      file /= file_name;
+      const auto file = path / file_name;
 
       std::ofstream f(file.native());
     }
@@ -1400,7 +1396,7 @@ class fs_directory_test : public test_base {
   }
 
   std::string name_;
-  utf8_path path_;
+  fs::path path_;
   std::shared_ptr<fs_directory> dir_;
 }; // fs_directory_test
 
@@ -1548,9 +1544,9 @@ TEST_F(fs_directory_test, orphaned_lock) {
 
 TEST_F(fs_directory_test, utf8_chars) {
   std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
+  fs::path path(path_ucs2);
 
-  name_ = path.utf8();
+  name_ = path.u8string();
   TearDown();
 
   // create directory via iResearch functions
@@ -1564,9 +1560,9 @@ TEST_F(fs_directory_test, utf8_chars) {
 
 TEST_F(fs_directory_test, utf8_chars_native) {
   std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
+  fs::path path(path_ucs2);
 
-  name_ = path.utf8();
+  name_ = path.u8string();
   TearDown();
 
   // create directory via native functions
@@ -1575,14 +1571,14 @@ TEST_F(fs_directory_test, utf8_chars_native) {
       auto native_path = test_case_dir().native() + L'\\' + path.native();
       ASSERT_EQ(0, _wmkdir(native_path.c_str()));
     #else
-      auto native_path = test_case_dir().native() + '/' + path.utf8();
+      auto native_path = test_case_dir().native() + '/' + path.u8string();
       ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
     #endif
 
     SetUp();
     directory_test_case::smoke_store(*dir_);
     // Read files from directory
-    check_files(*dir_, irs::utf8_path{native_path});
+    check_files(*dir_, fs::path{native_path});
   }
 }
 

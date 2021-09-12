@@ -95,7 +95,7 @@ class index_profile_test_case : public tests::index_test_base {
       {
         REGISTER_TIMER_NAMED_DETAILED("init - setup");
         tests::json_doc_generator import_gen{
-          irs::utf8_path{resource("simple_sequential.json")},
+          resource("simple_sequential.json"),
           &tests::generic_json_field_factory};
 
         for (const tests::document* doc; (doc = import_gen.next());) {
@@ -125,7 +125,7 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t gen_skip = i;
 
           for(size_t count = 0;; ++count) {
@@ -220,7 +220,7 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, csv_doc_template);
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t doc_skip = update_skip;
           size_t gen_skip = i;
 
@@ -447,7 +447,7 @@ class index_profile_test_case : public tests::index_test_base {
       virtual void value(size_t, const irs::string_ref&) {}
     };
     dummy_doc_template_t dummy_doc_template;
-    tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, dummy_doc_template);
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template);
     size_t docs_count = 0;
 
     // determine total number of docs in source data

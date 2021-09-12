@@ -30,7 +30,7 @@ namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::json_doc_generator gen{
-    irs::utf8_path{resource("simple_sequential.json")},
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory};
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -575,7 +575,7 @@ TEST_P(format_test_case, fields_read_write) {
   unsorted_terms_t unsorted_terms;
 
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("fst_prefixes.json")},
+    resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         name,
@@ -1509,7 +1509,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     virtual void reset() {}
   } doc_template; // two_columns_doc_template
 
-  tests::csv_doc_generator gen{irs::utf8_path{resource("simple_two_column.csv")}, doc_template};
+  tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
   irs::segment_meta seg("_1", nullptr);
 
   seg.codec = codec();
@@ -1759,7 +1759,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     virtual void reset() {}
   } doc_template; // two_columns_doc_template
 
-  tests::csv_doc_generator gen(irs::utf8_path{resource("simple_two_column.csv")}, doc_template);
+  tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
 
   irs::segment_meta seg_1("_1", nullptr);
   irs::segment_meta seg_2("_2", nullptr);
@@ -1993,7 +1993,7 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   std::deque<Value> values;
   tests::json_doc_generator gen(
-    irs::utf8_path{resource("simple_sequential_33.json")},
+    resource("simple_sequential_33.json"),
     [&values](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<templates::string_field>(

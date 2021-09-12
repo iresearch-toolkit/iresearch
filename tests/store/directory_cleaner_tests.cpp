@@ -258,7 +258,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 
 TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(
-    irs::utf8_path{test_base::resource("simple_sequential.json")},
+    test_base::resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
