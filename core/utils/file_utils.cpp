@@ -21,15 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "file_utils.hpp"
-#include "process_utils.hpp"
-#include "network_utils.hpp"
-
-#include "string.hpp"
-#include "error/error.hpp"
-#include "utils/log.hpp"
-#include "utils/memory.hpp"
 
 #if defined(__APPLE__)
   #include <sys/param.h> // for MAXPATHLEN
@@ -52,6 +44,16 @@
 #include <unistd.h>
 
 #endif // _WIN32
+
+
+#include "error/error.hpp"
+#include "utils/log.hpp"
+#include "utils/memory.hpp"
+#include "utils/process_utils.hpp"
+#include "utils/network_utils.hpp"
+#include "utils/string.hpp"
+
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -86,7 +88,6 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
 
 namespace iresearch {
 namespace file_utils {
-
 
 void file_deleter::operator()(void* f) const noexcept {
 #if _WIN32
@@ -868,7 +869,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 
   if (!parts.dirname.empty()) {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
-    std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
+    fs::path::string_type parent(parts.dirname);
     if (!mkdir(parent.c_str(), false)) { // intermediate path parts can exist, this is ok anyway
       return false;
     }
@@ -998,8 +999,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
   }
 }
 
-bool read_cwd(
-    std::basic_string<std::remove_pointer<file_path_t>::type>& result) noexcept {
+bool read_cwd(std::basic_string<fs::path::value_type>& result) noexcept {
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -1078,10 +1078,19 @@ bool read_cwd(
   return false;
 }
 
+void to_absolute(fs::path& path) {
+  if (!path.is_absolute()) {
+    fs::path::string_type str;
+    read_cwd(str);
+
+    path = fs::path{str} / path;
+  }
+}
+
 bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
-    std::basic_string<std::remove_pointer<file_path_t>::type> buf;
+    std::basic_string<fs::path::value_type> buf;
 
     // must remove each directory entry recursively (ignore result, check final ::remove() instead)
     visit_directory(
@@ -1196,7 +1205,7 @@ bool set_cwd(const file_path_t path) noexcept {
   #endif
 }
 
-bool append(std::string& buf, basic_string_ref<std::remove_pointer_t<file_path_t>> str) {
+bool append(std::string& buf, basic_string_ref<fs::path::value_type> str) {
   #ifdef _WIN32
     if (str.empty()) {
       return true;

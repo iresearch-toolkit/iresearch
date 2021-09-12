@@ -24,10 +24,15 @@
 #ifndef IRESEARCH_FILE_UTILS_H
 #define IRESEARCH_FILE_UTILS_H
 
+#include <filesystem>
+
 #include <memory>
 #include <cstdio>
 #include <functional>
 #include <fcntl.h> // open/_wopen
+
+#include "shared.hpp"
+#include "string.hpp"
 
 #ifdef _WIN32  
   #include <tchar.h>
@@ -84,8 +89,7 @@
 #endif
 #endif
 
-#include "shared.hpp"
-#include "string.hpp"
+using path_char_t = std::remove_pointer_t<file_path_t>;
 
 namespace iresearch {
 namespace file_utils {
@@ -154,7 +158,7 @@ int ferror(void*);
 long ftell(void* fd);
 
 struct path_parts_t {
-  typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
+  using ref_t = irs::basic_string_ref<path_char_t>;
   ref_t basename;  // path component after the last path delimiter (ref_t::NIL if not present)
   ref_t dirname;   // path component before the last path delimiter (ref_t::NIL if not present)
   ref_t extension; // basename extension (ref_t::NIL if not present)
@@ -163,8 +167,9 @@ struct path_parts_t {
 
 path_parts_t path_parts(const file_path_t path) noexcept;
 
-bool read_cwd(
-  std::basic_string<std::remove_pointer_t<file_path_t>>& result) noexcept;
+bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
+
+void to_absolute(std::filesystem::path& path);
 
 bool remove(const file_path_t path) noexcept;
 
@@ -172,7 +177,7 @@ bool set_cwd(const file_path_t path) noexcept;
 
 bool append(
   std::string& buf,
-  basic_string_ref<std::remove_pointer_t<file_path_t>> str);
+  basic_string_ref<path_char_t> str);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils

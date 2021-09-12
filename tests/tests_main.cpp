@@ -193,7 +193,7 @@ void test_env::make_directories() {
   std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.u8string() << std::endl;
   std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.u8string() << std::endl;
 
-  out_dir_ = fs::path{out_dir_.utf8_absolute()};
+  irs::file_utils::to_absolute(out_dir_);
   (res_dir_ = out_dir_) /= test_name_;
 
   // add timestamp to res_dir_

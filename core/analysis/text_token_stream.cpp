@@ -31,7 +31,6 @@
 
 #include <cctype> // for std::isspace(...)
 #include <fstream>
-#include <filesystem>
 #include <mutex>
 
 #include "velocypack/Slice.h"

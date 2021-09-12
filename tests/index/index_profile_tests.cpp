@@ -29,6 +29,7 @@
 #include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/file_utils.hpp"
 
 class index_profile_test_case : public tests::index_test_base {
  public:
@@ -316,7 +317,9 @@ class index_profile_test_case : public tests::index_test_base {
     irs::timer_utils::flush_stats(out);
 
     out.close();
-    std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
+
+    irs::file_utils::to_absolute(path);
+    std::cout << "Path to timing log: " << path.u8string() << std::endl;
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits
