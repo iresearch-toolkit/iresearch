@@ -167,7 +167,7 @@ void load_libraries(
       return true; // skip non-library extensions
     }
 
-    auto stem = fs::path{std::string_view(path_parts.stem)}.u8string();
+    auto stem = fs::path{fs::path::string_type(path_parts.stem)}.u8string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
