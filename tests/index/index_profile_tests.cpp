@@ -318,7 +318,7 @@ class index_profile_test_case : public tests::index_test_base {
 
     out.close();
 
-    irs::file_utils::to_absolute(path);
+    irs::file_utils::ensure_absolute(path);
     std::cout << "Path to timing log: " << path.u8string() << std::endl;
 
     auto reader = irs::directory_reader::open(dir(), codec());

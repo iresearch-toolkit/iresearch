@@ -377,7 +377,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
   irs::timer_utils::flush_stats(out);
   out.close();
 
-  irs::file_utils::to_absolute(path);
+  irs::file_utils::ensure_absolute(path);
   std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
@@ -582,7 +582,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
   irs::timer_utils::flush_stats(out);
   out.close();
 
-  irs::file_utils::to_absolute(path);
+  irs::file_utils::ensure_absolute(path);
   std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
@@ -731,7 +731,7 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
   irs::timer_utils::flush_stats(out);
   out.close();
 
-  irs::file_utils::to_absolute(path);
+  irs::file_utils::ensure_absolute(path);
   std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 
@@ -906,7 +906,7 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
   irs::timer_utils::flush_stats(out);
   out.close();
 
-  irs::file_utils::to_absolute(path);
+  irs::file_utils::ensure_absolute(path);
   std::cout << "Path to timing log: " << path.u8string() << std::endl;
 }
 

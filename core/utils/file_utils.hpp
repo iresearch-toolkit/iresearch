@@ -169,7 +169,7 @@ path_parts_t path_parts(const file_path_t path) noexcept;
 
 bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
 
-void to_absolute(std::filesystem::path& path);
+void ensure_absolute(std::filesystem::path& path);
 
 bool remove(const file_path_t path) noexcept;
 

@@ -1057,7 +1057,7 @@ bool read_cwd(std::basic_string<fs::path::value_type>& result) noexcept {
   return false;
 }
 
-void to_absolute(fs::path& path) {
+void ensure_absolute(fs::path& path) {
   if (!path.is_absolute()) {
     fs::path::string_type str;
     read_cwd(str);
