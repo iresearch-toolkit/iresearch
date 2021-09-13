@@ -24,6 +24,9 @@
 
 #include <unicode/coll.h>
 #include <unicode/sortkey.h>
+#include <cstring.h>
+#include <unicode/locid.h>
+#include <charstr.h>
 
 #include "analysis/collation_token_stream.hpp"
 #include "utils/locale_utils.hpp"
@@ -36,7 +39,7 @@ TEST(collation_token_stream_test, construct) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale": "en-EN.UTF-8" })");
+      R"({ "locale": {"language" : "en", "country": "US", "variant" : "UTF-8"}})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -44,7 +47,7 @@ TEST(collation_token_stream_test, construct) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::text>::get(),
-      "en-EN");
+      R"({ "locale": {"language" : "en-US"}})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -55,20 +58,155 @@ TEST(collation_token_stream_test, construct) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(),
+                                                     R"({ "locale": {"language" : "en", "country": "EN", "variant" : "UTF-8"}})")); // no such locale
   }
 }
 
-TEST(collation_token_stream_test, check_variant) {
+void MyLocale( const   char * newLanguage,
+                const   char * newCountry,
+                const   char * newVariant,
+                const   char * newKeywords)
+{
+//    if( (newLanguage==NULL) && (newCountry == NULL) && (newVariant == NULL) )
+//    {
+//        icu::init(NULL, FALSE); /* shortcut */
+//    }
+    //else
+    {
+        UErrorCode status = U_ZERO_ERROR;
+        int32_t size = 0;
+        int32_t lsize = 0;
+        int32_t csize = 0;
+        int32_t vsize = 0;
+        int32_t ksize = 0;
+
+        // Calculate the size of the resulting string.
+
+        // Language
+        if ( newLanguage != NULL )
+        {
+            lsize = (int32_t)uprv_strlen(newLanguage);
+            if ( lsize < 0 || lsize > 357913941 ) { // int32 wrap
+                //setToBogus();
+                return;
+            }
+            size = lsize;
+        }
+
+        icu::CharString togo(newLanguage, lsize, status); // start with newLanguage
+
+        // _Country
+        if ( newCountry != NULL )
+        {
+            csize = (int32_t)uprv_strlen(newCountry);
+            if ( csize < 0 || csize > 357913941 ) { // int32 wrap
+                //setToBogus();
+                return;
+            }
+            size += csize;
+        }
+
+        // _Variant
+        if ( newVariant != NULL )
+        {
+            // remove leading _'s
+            while(newVariant[0] == '_')
+            {
+                newVariant++;
+            }
+
+            // remove trailing _'s
+            vsize = (int32_t)uprv_strlen(newVariant);
+            if ( vsize < 0 || vsize > 357913941 ) { // int32 wrap
+                //setToBogus();
+                return;
+            }
+            while( (vsize>1) && (newVariant[vsize-1] == '_') )
+            {
+                vsize--;
+            }
+        }
+
+        if( vsize > 0 )
+        {
+            size += vsize;
+        }
+
+        // Separator rules:
+        if ( vsize > 0 )
+        {
+            size += 2;  // at least: __v
+        }
+        else if ( csize > 0 )
+        {
+            size += 1;  // at least: _v
+        }
+
+        if ( newKeywords != NULL)
+        {
+            ksize = (int32_t)uprv_strlen(newKeywords);
+            if ( ksize < 0 || ksize > 357913941 ) {
+              //setToBogus();
+              return;
+            }
+            size += ksize + 1;
+        }
+
+        //  NOW we have the full locale string..
+        // Now, copy it back.
+
+        // newLanguage is already copied
+
+        if ( ( vsize != 0 ) || (csize != 0) )  // at least:  __v
+        {                                      //            ^
+            togo.append('_', status);
+        }
+
+        if ( csize != 0 )
+        {
+            togo.append(newCountry, status);
+        }
+
+        if ( vsize != 0)
+        {
+            togo.append('_', status)
+                .append(newVariant, vsize, status);
+        }
+
+        if ( ksize != 0)
+        {
+            if (uprv_strchr(newKeywords, '=')) {
+                togo.append('@', status); /* keyword parsing */
+            }
+            else {
+                togo.append('_', status); /* Variant parsing with a script */
+                if ( vsize == 0) {
+                    togo.append('_', status); /* No country found */
+                }
+            }
+            togo.append(newKeywords, status);
+        }
+
+        if (U_FAILURE(status)) {
+            // Something went wrong with appending, etc.
+            //setToBogus();
+            return;
+        }
+        // Parse it, because for example 'language' might really be a complete
+        // string.
+//        init(togo.data(), FALSE);
+        std::cout << togo.data() << std::endl;
+    }
+}
+
+
+TEST(collation_token_stream_test, check_collation) {
 
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = "de.utf-8@u-co-phonebk";
-
-  const auto locale = irs::locale_utils::locale(locale_name, irs::string_ref::NIL, true);
-  const icu::Locale icu_locale{
-    std::string(irs::locale_utils::language(locale)).c_str(),
-    std::string(irs::locale_utils::country(locale)).c_str(),
-    std::string(irs::locale_utils::variant(locale)).c_str()};
+  constexpr irs::string_ref locale_name = R"(en)";
+  const icu::Locale icu_locale = icu::Locale::createFromName(locale_name.c_str());
 
   icu::CollationKey key;
   std::unique_ptr<icu::Collator> coll{
@@ -92,13 +230,10 @@ TEST(collation_token_stream_test, check_variant) {
     return { p, static_cast<size_t>(size)-1 };
   };
 
-  // variant is taking into account. should be NOT EQUAL
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale": {"language" : "de",
-                     "encoding" : "utf-8",
-                     "variant" : "phonebook"}})");
+      R"({"locale": {"language" : "en"}})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -110,34 +245,7 @@ TEST(collation_token_stream_test, check_variant) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
-      ASSERT_TRUE(stream->reset(data));
-      ASSERT_TRUE(stream->next());
-      ASSERT_EQ(0, offset->start);
-      ASSERT_EQ(data.size(), offset->end);
-      ASSERT_NE(get_collation_key(data), term->value);
-      ASSERT_EQ(1, inc->value);
-      ASSERT_FALSE(stream->next());
-    }
-  }
-
-  // variant is useless. Should BE EQUAL
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale" : "de.utf-8@u-co-phonebk" })");
-
-    ASSERT_NE(nullptr, stream);
-
-    auto* offset = irs::get<irs::offset>(*stream);
-    ASSERT_NE(nullptr, offset);
-    auto* term = irs::get<irs::term_attribute>(*stream);
-    ASSERT_NE(nullptr, term);
-    auto* inc = irs::get<irs::increment>(*stream);
-    ASSERT_NE(nullptr, inc);
-
-    {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr irs::string_ref data{"å b z a"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -148,6 +256,32 @@ TEST(collation_token_stream_test, check_variant) {
     }
   }
 
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale": {"language" : "sv"}})");
+
+    ASSERT_NE(nullptr, stream);
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
+
+    {
+      constexpr irs::string_ref data{"a å b z"};
+      ASSERT_TRUE(stream->reset(data));
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(data.size(), offset->end);
+      ASSERT_NE(get_collation_key(data), term->value);
+
+      ASSERT_EQ(1, inc->value);
+      ASSERT_FALSE(stream->next());
+    }
+  }
 }
 
 TEST(collation_token_stream_test, check_tokens_utf8) {
@@ -155,12 +289,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 
   constexpr irs::string_ref locale_name = "en-EN.UTF-8";
 
-  const auto locale = irs::locale_utils::locale(locale_name, irs::string_ref::NIL, true);
-
-  const icu::Locale icu_locale{
-    std::string(irs::locale_utils::language(locale)).c_str(),
-    std::string(irs::locale_utils::country(locale)).c_str(),
-    std::string(irs::locale_utils::variant(locale)).c_str()};
+  const auto icu_locale =icu::Locale::createFromName(locale_name.c_str());
 
   icu::CollationKey key;
   std::unique_ptr<icu::Collator> coll{
@@ -187,7 +316,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale" : "en.UTF-8" })");
+      R"({ "locale" : {"language" : "en" }})");
 
     ASSERT_NE(nullptr, stream);
 
@@ -260,16 +389,12 @@ TEST(collation_token_stream_test, check_tokens) {
 
   constexpr irs::string_ref locale_name = "de-DE";
 
-  const auto locale = irs::locale_utils::locale(locale_name, irs::string_ref::NIL, true);
-
-  const icu::Locale icu_locale{
-    std::string(irs::locale_utils::language(locale)).c_str(),
-    std::string(irs::locale_utils::country(locale)).c_str(),
-    std::string(irs::locale_utils::variant(locale)).c_str()};
+  const auto icu_locale =icu::Locale::createFromName(locale_name.c_str());
 
   icu::CollationKey key;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
+
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
@@ -289,33 +414,33 @@ TEST(collation_token_stream_test, check_tokens) {
     return { p, static_cast<size_t>(size)-1 };
   };
 
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::json>::get(),
-      R"({ "locale" : "de_DE" })");
+//  {
+//    auto stream = irs::analysis::analyzers::get(
+//      "collation", irs::type<irs::text_format::json>::get(),
+//      R"({ "locale" : {"language" : "de_DE" }})");
 
-    ASSERT_NE(nullptr, stream);
+//    ASSERT_NE(nullptr, stream);
 
-    auto* offset = irs::get<irs::offset>(*stream);
-    ASSERT_NE(nullptr, offset);
-    auto* term = irs::get<irs::term_attribute>(*stream);
-    ASSERT_NE(nullptr, term);
-    auto* inc = irs::get<irs::increment>(*stream);
-    ASSERT_NE(nullptr, inc);
+//    auto* offset = irs::get<irs::offset>(*stream);
+//    ASSERT_NE(nullptr, offset);
+//    auto* term = irs::get<irs::term_attribute>(*stream);
+//    ASSERT_NE(nullptr, term);
+//    auto* inc = irs::get<irs::increment>(*stream);
+//    ASSERT_NE(nullptr, inc);
 
-    {
-      std::wstring unicodeData = L"\u00F6\u00F5";
+//    {
+//      std::wstring unicodeData = L"\u00F6\u00F5";
 
-      std::string data;
-      ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
+//      std::string data;
+//      ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
 
-      ASSERT_TRUE(stream->reset(data));
-      ASSERT_TRUE(stream->next());
-      ASSERT_EQ(0, offset->start);
-      ASSERT_EQ(data.size(), offset->end);
-      ASSERT_EQ(get_collation_key(data), term->value);
-      ASSERT_EQ(1, inc->value);
-      ASSERT_FALSE(stream->next());
-    }
-  }
+//      ASSERT_TRUE(stream->reset(data));
+//      ASSERT_TRUE(stream->next());
+//      ASSERT_EQ(0, offset->start);
+//      ASSERT_EQ(data.size(), offset->end);
+//      ASSERT_EQ(get_collation_key(data), term->value);
+//      ASSERT_EQ(1, inc->value);
+//      ASSERT_FALSE(stream->next());
+//    }
+//  }
 }

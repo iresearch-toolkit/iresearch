@@ -26,6 +26,7 @@
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
+#include "unicode/locid.h"
 
 namespace iresearch {
 namespace analysis {
@@ -38,7 +39,7 @@ class collation_token_stream final
     private util::noncopyable {
  public:
   struct options_t {
-    std::locale locale;
+    icu::Locale locale;
   };
 
   static constexpr string_ref type_name() noexcept { 

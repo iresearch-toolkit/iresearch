@@ -32,130 +32,19 @@
 
 #include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
+#include "utils/icu_locale_utils.hpp"
 
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME    {"locale"};
-constexpr VPackStringRef LANGUAGE_PARAM_NAME  {"language"};
-constexpr VPackStringRef COUNTRY_PARAM_NAME   {"country"};
-constexpr VPackStringRef ENCODING_PARAM_NAME  {"encoding"};
-constexpr VPackStringRef VARIANT_PARAM_NAME   {"variant"};
-
-std::string get_locale_name(const string_ref language,
-                            const string_ref country = string_ref::EMPTY,
-                            const string_ref encodingOverride = string_ref::EMPTY,
-                            const string_ref variant = string_ref::EMPTY) {
-  std::string result;
-  result.reserve(32);
-
-  result.append(language.c_str(), language.size());
-
-  if (!country.empty()) {
-    result.append(1, '_').append(country.c_str(), country.size());
-  }
-
-  if (!encodingOverride.empty()) {
-    result.append(1, '.').append(encodingOverride.c_str(), encodingOverride.size());
-  }
-
-  if (!variant.empty()) {
-    result.append(1, '@').append(variant.c_str(), variant.size());
-  }
-
-  return result;
-}
-
-bool get_locale_from_vpack(const VPackSlice slice, std::locale& locale) {
-
-  if(!slice.isObject()) {
-    return false;
-  }
-
-  string_ref language;
-  string_ref country;
-  string_ref encoding;
-  string_ref variant;
-
-  auto lang_slice = slice.get(LANGUAGE_PARAM_NAME);
-  if (lang_slice.isNone()) {
-    IR_FRMT_WARN(
-      "Language parameter is not specified",
-      LANGUAGE_PARAM_NAME.data());
-    return false;
-  }
-
-  if (!lang_slice.isString()) {
-    return false;
-  }
-  language = get_string<string_ref>(lang_slice);
-
-  if (slice.hasKey(COUNTRY_PARAM_NAME)) {
-    auto country_slice = slice.get(COUNTRY_PARAM_NAME);
-    if (!country_slice.isString()) {
-      return false;
-    }
-    country = get_string<string_ref>(country_slice);
-  }
-
-  if (slice.hasKey(ENCODING_PARAM_NAME)) {
-    auto encoding_slice = slice.get(ENCODING_PARAM_NAME);
-    if (!encoding_slice.isString()) {
-      return false;
-    }
-    encoding = get_string<string_ref>(encoding_slice);
-  }
-
-  if (slice.hasKey(VARIANT_PARAM_NAME)) {
-    auto variant_slice = slice.get(VARIANT_PARAM_NAME);
-    if (!variant_slice.isString()) {
-      return false;
-    }
-    variant = get_string<string_ref>(variant_slice);
-  }
-
-  auto loc_name = get_locale_name(language, country, encoding, variant);
-  locale = locale_utils::locale(loc_name);
-
-  return true;
-}
-
-bool verify_icu_locale(const std::locale& locale) {
-
-  auto language = locale_utils::language(locale);
-  auto country = locale_utils::country(locale);
-  auto variant = locale_utils::variant(locale);
-
-  auto icu_locale = icu::Locale(std::string(language.c_str(), language.c_str()).c_str(),
-                                std::string(country.c_str(), country.c_str()).c_str(),
-                                std::string(variant.c_str(), variant.c_str()).c_str());
-
-  if (icu_locale.isBogus()) {
-    return false;
-  }
-
-  int32_t count;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
-  std::string curr_locale(language.c_str(), language.size());
-  bool is_correct = false;
-
-  for (int i = 0; i < count; ++i) {
-    std::string lc(locales[i].getName());
-    if (lc == curr_locale) {
-      is_correct = true;
-      break;
-    }
-  }
-
-  return is_correct;
-}
+constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
 bool parse_vpack_options(
     const VPackSlice slice,
     analysis::collation_token_stream::options_t& options) {
 
-  if (!slice.isObject() && !slice.isString()) {
+  if (!slice.isObject()) {
     IR_FRMT_ERROR(
       "Slice for collation_token_stream is not an object or string");
     return false;
@@ -163,17 +52,13 @@ bool parse_vpack_options(
 
   try {
     switch (slice.type()) {
-      case VPackValueType::String:
-        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
       {
         auto locale_slice = slice.get(LOCALE_PARAM_NAME);
-        if (locale_slice.isString()) {
-          return locale_utils::icu_locale(get_string<string_ref>(locale_slice), options.locale);
-        } else if (locale_slice.isObject()) {
-          get_locale_from_vpack(locale_slice, options.locale);
+        if (locale_slice.isObject()) {
 
-          return verify_icu_locale(options.locale);
+          icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
+          return icu_locale_utils::verify_icu_locale(options.locale);
         } else {
           return false;
         }
@@ -229,17 +114,18 @@ bool make_vpack_config(
     {
       VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
 
-      const auto& language = locale_utils::language(options.locale);
-      builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
+      const auto& language = options.locale.getLanguage();
+      builder->add(icu_locale_utils::LANGUAGE_PARAM_NAME, VPackValue(language));
 
-      const auto& country = locale_utils::country(options.locale);
-      builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
+      const auto& country = options.locale.getCountry();
+      if (country) {
+        builder->add(icu_locale_utils::COUNTRY_PARAM_NAME, VPackValue(country));
+      }
 
-      const auto& encoding = locale_utils::encoding(options.locale);
-      builder->add(ENCODING_PARAM_NAME, VPackValue(encoding));
-
-      const auto& variant = locale_utils::variant(options.locale);
-      builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
+      const auto& variant = options.locale.getVariant();
+      if (variant) {
+        builder->add(icu_locale_utils::VARIANT_PARAM_NAME, VPackValue(variant));
+      }
     }
   }
 
@@ -268,22 +154,33 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for normalizing
 ////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
+analysis::analyzer::ptr make_text(const VPackSlice& slice) {
   try {
     analysis::collation_token_stream::options_t options;
-
-    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
+    if (parse_vpack_options(slice, options)) {
       return memory::make_unique<analysis::collation_token_stream>(
           std::move(options));
     }
   } catch (...) {
-    std::string err_msg = static_cast<std::string>(args);
+    std::string err_msg = static_cast<std::string>(slice.toString());
     IR_FRMT_ERROR(
       "Caught error while constructing collation_token_stream TEXT arguments: %s",
       err_msg.c_str());
   }
 
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a language to use for normalizing
+////////////////////////////////////////////////////////////////////////////////
+analysis::analyzer::ptr make_text(const string_ref& args) {
+  if (args.null()) {
+    IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
+    return nullptr;
+  }
+  auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+  return make_text(vpack->slice());
 }
 
 bool normalize_text_config(const string_ref& args,
@@ -396,10 +293,9 @@ collation_token_stream::collation_token_stream(
 
 bool collation_token_stream::reset(const string_ref& data) {
   if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(
-      std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str(),
-      std::string(locale_utils::variant(state_->options.locale)).c_str());
+    state_->icu_locale = icu::Locale(state_->options.locale.getLanguage(),
+                                     state_->options.locale.getCountry(),
+                                     state_->options.locale.getVariant());
 
     if (state_->icu_locale.isBogus()) {
       return false;
@@ -417,19 +313,7 @@ bool collation_token_stream::reset(const string_ref& data) {
     }
   }
 
-  // ...........................................................................
-  // convert encoding to UTF8 for use with ICU
-  // ...........................................................................
-  string_ref data_utf8_ref;
-  if (locale_utils::is_utf8(state_->options.locale)) {
-    data_utf8_ref = data;
-  } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(state_->utf8_buf, data, state_->options.locale)) {
-      return false; // UTF8 conversion failure
-    }
-    data_utf8_ref = state_->utf8_buf;
-  }
+  string_ref data_utf8_ref = data;
 
   if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
