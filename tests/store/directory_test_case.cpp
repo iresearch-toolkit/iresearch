@@ -1542,46 +1542,6 @@ TEST_F(fs_directory_test, orphaned_lock) {
   }
 }
 
-TEST_F(fs_directory_test, utf8_chars) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  fs::path path(path_ucs2);
-
-  name_ = path.u8string();
-  TearDown();
-
-  // create directory via iResearch functions
-  {
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, path_);
-  }
-}
-
-TEST_F(fs_directory_test, utf8_chars_native) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  fs::path path(path_ucs2);
-
-  name_ = path.u8string();
-  TearDown();
-
-  // create directory via native functions
-  {
-    #ifdef _WIN32
-      auto native_path = test_case_dir().native() + L'\\' + path.native();
-      ASSERT_EQ(0, _wmkdir(native_path.c_str()));
-    #else
-      auto native_path = test_case_dir().native() + '/' + path.u8string();
-      ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
-    #endif
-
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, fs::path{native_path});
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 fs_directory_test
 // -----------------------------------------------------------------------------
