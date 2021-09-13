@@ -180,9 +180,9 @@ void test_env::make_directories() {
   auto path_parts = irs::file_utils::path_parts(exec_path.c_str());
 
   exec_path_ = exec_path;
-  exec_file_ = fs::path{std::string_view(path_parts.basename)};
-  exec_dir_ = fs::path{std::string_view(path_parts.dirname)};
-  test_name_ = fs::path{std::string_view(path_parts.stem)}.u8string();
+  exec_file_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.basename)};
+  exec_dir_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.dirname)};
+  test_name_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.stem)}.u8string();
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;
@@ -204,7 +204,7 @@ void test_env::make_directories() {
       char buf[21]{};
 
       strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", &tinfo);
-      res_dir_ += irs::string_ref(buf, sizeof buf - 1);
+      res_dir_ += fs::path{std::string_view{buf, sizeof buf - 1}};
     } else {
       res_dir_ += "_unknown";
     }
@@ -214,7 +214,7 @@ void test_env::make_directories() {
   {
     char templ[] = "_XXXXXX";
 
-    res_dir_ += irs::string_ref(templ, sizeof templ - 1);
+    res_dir_ += std::string_view{templ, sizeof templ - 1};
   }
 
   auto res_dir_templ = res_dir_.u8string();
