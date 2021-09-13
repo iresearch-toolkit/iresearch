@@ -30,10 +30,6 @@ namespace icu_locale_utils {
 
 void LocaleChecker::init() {
 
-  if (this->is_init_) {
-    return;
-  }
-
   int32_t count;
   const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
 
@@ -55,7 +51,7 @@ std::shared_ptr<LocaleChecker> locale_checker = std::make_shared<LocaleChecker>(
 
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
 
-  if(!slice.isObject()) {
+  if (!slice.isObject()) {
     return false;
   }
 
@@ -104,14 +100,13 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
 
 bool verify_icu_locale(const icu::Locale& locale) {
 
-  // check locale by standard way
+  // check locale by a standard way
   if (locale.isBogus()) {
     return false;
   }
 
   auto language = std::string(locale.getLanguage());
   auto country = std::string(locale.getCountry());
-  auto variant = std::string(locale.getVariant());
 
   std::string name_to_check = language;
   if (!country.empty()) {

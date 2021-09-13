@@ -30,7 +30,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "utils/icu_locale_utils.hpp"
 
@@ -56,7 +55,6 @@ bool parse_vpack_options(
       {
         auto locale_slice = slice.get(LOCALE_PARAM_NAME);
         if (locale_slice.isObject()) {
-
           icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
           return icu_locale_utils::verify_icu_locale(options.locale);
         } else {
@@ -151,9 +149,6 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a language to use for normalizing
-////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const VPackSlice& slice) {
   try {
     analysis::collation_token_stream::options_t options;
@@ -172,7 +167,7 @@ analysis::analyzer::ptr make_text(const VPackSlice& slice) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a language to use for normalizing
+/// @brief args is a locale config to use for normalizing
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const string_ref& args) {
   if (args.null()) {
@@ -185,9 +180,9 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 
 bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)){
-    definition = locale_utils::name(locale);
+  icu::Locale icu_locale = icu::Locale::createFromName(args.c_str());
+  if (icu_locale_utils::verify_icu_locale(icu_locale)) {
+    definition = icu_locale.getName();
     return true;
   }
   return false;

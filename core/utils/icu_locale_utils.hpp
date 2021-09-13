@@ -51,11 +51,6 @@ constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
 constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
-std::string get_locale_name(const string_ref language,
-                            const string_ref country = string_ref::EMPTY,
-                            const string_ref encodingOverride = string_ref::EMPTY,
-                            const string_ref variant = string_ref::EMPTY);
-
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale);
 
 bool verify_icu_locale(const icu::Locale& locale);
