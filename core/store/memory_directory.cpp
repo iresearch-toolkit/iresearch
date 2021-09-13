@@ -30,7 +30,6 @@
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/std.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/crc.hpp"

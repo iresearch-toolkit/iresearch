@@ -27,7 +27,11 @@
 #include "store/directory_attributes.hpp"
 #include "utils/string.hpp"
 
+#include <filesystem>
+
 namespace iresearch {
+
+namespace fs = std::filesystem;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
@@ -37,7 +41,7 @@ class IRESEARCH_API fs_directory : public directory {
   static constexpr size_t DEFAULT_POOL_SIZE = 8;
 
   explicit fs_directory(
-    std::string dir,
+    fs::path dir,
     directory_attributes attrs = directory_attributes{},
     size_t fd_pool_size = DEFAULT_POOL_SIZE);
 
@@ -48,7 +52,7 @@ class IRESEARCH_API fs_directory : public directory {
 
   virtual index_output::ptr create(const std::string& name) noexcept override;
 
-  const std::string& directory() const noexcept;
+  const fs::path& directory() const noexcept;
 
   virtual bool exists(
     bool& result,
@@ -83,7 +87,7 @@ class IRESEARCH_API fs_directory : public directory {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
-  std::string dir_;
+  fs::path dir_;
   size_t fd_pool_size_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory

@@ -35,7 +35,6 @@
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/type_limits.hpp"
 
 namespace {
