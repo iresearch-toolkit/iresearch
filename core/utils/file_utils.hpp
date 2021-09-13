@@ -24,11 +24,10 @@
 #ifndef IRESEARCH_FILE_UTILS_H
 #define IRESEARCH_FILE_UTILS_H
 
-#include <filesystem>
-
 #include <memory>
 #include <cstdio>
 #include <functional>
+#include <filesystem>
 #include <fcntl.h> // open/_wopen
 
 #include "shared.hpp"
@@ -39,7 +38,6 @@
   #include <io.h> // _close
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
-  #define file_path_t wchar_t*
   #define file_stat_t struct _stat64
   #define mode_t unsigned short
 
@@ -63,7 +61,6 @@
   #include <sys/types.h> // for blksize_t
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
-  #define file_path_t char*
   #define file_stat_t struct stat    
 
   #define file_stat stat
@@ -89,7 +86,8 @@
 #endif
 #endif
 
-using path_char_t = std::remove_pointer_t<file_path_t>;
+using path_char_t = std::filesystem::path::value_type;
+#define file_path_t path_char_t*
 
 namespace iresearch {
 namespace file_utils {
