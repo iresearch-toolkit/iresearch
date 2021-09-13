@@ -44,12 +44,12 @@ std::shared_ptr<irs::directory> fs_directory(
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir(false);
+    std::filesystem::create_directory(dir);
 
     impl = std::shared_ptr<irs::fs_directory>(
-      new irs::fs_directory(dir.utf8(), std::move(attrs)),
+      new irs::fs_directory(dir, std::move(attrs)),
       [dir](irs::fs_directory* p) {
-        dir.remove();
+        std::filesystem::remove_all(dir);
         delete p;
     });
   }
@@ -66,12 +66,12 @@ std::shared_ptr<irs::directory> mmap_directory(
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir(false);
+    std::filesystem::create_directory(dir);
 
     impl = std::shared_ptr<irs::mmap_directory>(
-      new irs::mmap_directory(dir.utf8(), std::move(attrs)),
+      new irs::mmap_directory(dir, std::move(attrs)),
       [dir](irs::mmap_directory* p) {
-        dir.remove();
+        std::filesystem::remove_all(dir);
         delete p;
     });
   }
