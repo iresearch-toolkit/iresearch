@@ -164,11 +164,11 @@ bool test_env::prepare(const cmdline::parser& parser) {
 
   if (parser.exist(IRES_OUTPUT)) {
     std::unique_ptr<char*[]> argv(new char*[2 + argc_]);
-    std::memcpy(argv.get(), argv_, sizeof(char*)*(argc_));    
-    argv_ires_output_.append("--gtest_output=xml:").append(res_path_);
+    std::memcpy(argv.get(), argv_, sizeof(char*)*(argc_));
+    argv_ires_output_.append("--gtest_output=xml:").append(res_path_.u8string());
     argv[argc_++] = &argv_ires_output_[0];
 
-    /* let last argv equals to nullptr */
+    // let last argv equals to nullptr
     argv[argc_] = nullptr;
     argv_ = argv.release();
   }
