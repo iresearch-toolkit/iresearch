@@ -26,14 +26,16 @@
 
 #include <filesystem>
 
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+
 #include "analysis/text_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+#include "utils/file_utils.hpp"
 
 namespace {
 
@@ -818,9 +820,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
   // no stopwords, but valid CWD
   auto reset_stopword_path = irs::make_finally(
       [oldCWD = std::filesystem::current_path()]()noexcept{
-    std::error_code e;
-    std::filesystem::current_path(oldCWD, e);
-    EXPECT_TRUE(e);
+    EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
   std::filesystem::current_path({IResearch_test_resource_dir});
 
@@ -900,9 +900,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath)
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
   auto reset_stopword_path = irs::make_finally(
       [oldCWD = std::filesystem::current_path()]()noexcept{
-    std::error_code e;
-    std::filesystem::current_path(oldCWD, e);
-    EXPECT_TRUE(e);
+    EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
   std::filesystem::current_path({IResearch_test_resource_dir});
 
@@ -1007,9 +1005,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   {
     auto reset_stopword_path = irs::make_finally(
         [oldCWD = std::filesystem::current_path()]()noexcept{
-      std::error_code e;
-      std::filesystem::current_path(oldCWD, e);
-      EXPECT_TRUE(e);
+      EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
     });
     std::filesystem::current_path({IResearch_test_resource_dir});
 
