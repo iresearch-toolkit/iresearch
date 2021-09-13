@@ -29,9 +29,9 @@
 namespace tests {
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
-  tests::json_doc_generator gen(
+  tests::json_doc_generator gen{
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory);
+    &tests::generic_json_field_factory};
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
@@ -1509,7 +1509,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     virtual void reset() {}
   } doc_template; // two_columns_doc_template
 
-  tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
+  tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
   irs::segment_meta seg("_1", nullptr);
 
   seg.codec = codec();

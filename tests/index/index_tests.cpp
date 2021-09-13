@@ -838,7 +838,7 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
@@ -980,7 +980,7 @@ class index_test_case : public tests::index_test_base {
 
   void writer_begin_rollback() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"), 
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
 
     irs::bytes_ref actual_value;
@@ -2165,7 +2165,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2200,7 +2200,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2566,7 +2566,9 @@ TEST_P(index_test_case, concurrent_read_index_mt) {
 }
 
 TEST_P(index_test_case, concurrent_add_mt) {
-  tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
