@@ -2837,14 +2837,22 @@ TEST_P(index_test_case, document_context) {
     std::condition_variable cond;
     std::mutex cond_mutex;
     std::mutex mutex;
+    std::condition_variable wait_cond;
+    std::atomic<bool> wait;
     const irs::string_ref& name() { return irs::string_ref::EMPTY; }
     irs::features_t features() const { return {}; }
     bool write(irs::data_output&) {
       {
         auto cond_lock = irs::make_lock_guard(cond_mutex);
-        cond.notify_all();
       }
-      auto lock = irs::make_lock_guard(mutex);
+
+      cond.notify_all();
+
+      while (wait) {
+        auto lock = irs::make_unique_lock(mutex);
+        wait_cond.wait_for(lock, 100ms);
+      }
+
       return true;
     }
   } field;
@@ -2853,32 +2861,42 @@ TEST_P(index_test_case, document_context) {
   {
     auto writer = open_writer();
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
-    writer->documents().insert().insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()); // ensure segment is prsent in the active flush_context
+    // ensure segment is prsent in the active flush_context
+    writer->documents().insert().insert<irs::Action::STORE>(
+      doc1->stored.begin(), doc1->stored.end());
 
     std::thread thread0([&writer, &field]()->void {
       writer->documents().insert().insert<irs::Action::STORE>(field);
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> stop(false);
     std::thread thread1([&writer, &field, &stop]()->void {
       writer->commit();
       stop = true;
-      auto lock = irs::make_lock_guard(field.cond_mutex);
+      {
+        auto lock = irs::make_lock_guard(field.cond_mutex);
+      }
       field.cond.notify_all();
     });
 
     auto result = field.cond.wait_for(field_cond_lock, 100ms);
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
+    while (!stop && result == std::cv_status::no_timeout) {
+      result = field.cond.wait_for(field_cond_lock, 100ms);
+    }
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
+
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(stop);
     thread0.join();
@@ -2896,7 +2914,7 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(*query_doc1.filter).insert<irs::Action::STORE>(field);
@@ -2918,8 +2936,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -2936,7 +2956,8 @@ TEST_P(index_test_case, document_context) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+   // auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(
@@ -2964,8 +2985,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
