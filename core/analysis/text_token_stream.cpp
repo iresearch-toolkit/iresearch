@@ -191,20 +191,17 @@ bool get_stopwords(
 
   try {
     bool result;
+    stopword_path /= std::string_view(language);
 
     if (!file_utils::exists_directory(result, stopword_path.c_str()) || !result) {
-      stopword_path /= std::string_view(language);
-
-      if (!file_utils::exists_directory(result, stopword_path.c_str()) || !result) {
-        if (custom_stopword_path) {
-          IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.u8string().c_str());
-          return false;
-        } else {
-          IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
-                        "Analyzer will continue without stopwords",
-                        stopword_path.u8string().c_str());
-          return true;
-        }
+      if (custom_stopword_path) {
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.u8string().c_str());
+        return false;
+      } else {
+        IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
+                      "Analyzer will continue without stopwords",
+                      stopword_path.u8string().c_str());
+        return true;
       }
     }
 
