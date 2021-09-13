@@ -1369,7 +1369,7 @@ class fs_directory_test : public test_base {
 
   virtual void TearDown() override {
     dir_ = nullptr;
-    fs::remove(path_);
+    fs::remove_all(path_);
     test_base::TearDown();
   }
 

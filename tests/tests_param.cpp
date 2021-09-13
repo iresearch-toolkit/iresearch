@@ -49,7 +49,7 @@ std::shared_ptr<irs::directory> fs_directory(
     impl = std::shared_ptr<irs::fs_directory>(
       new irs::fs_directory(dir, std::move(attrs)),
       [dir](irs::fs_directory* p) {
-        std::filesystem::remove(dir);
+        std::filesystem::remove_all(dir);
         delete p;
     });
   }
@@ -71,7 +71,7 @@ std::shared_ptr<irs::directory> mmap_directory(
     impl = std::shared_ptr<irs::mmap_directory>(
       new irs::mmap_directory(dir, std::move(attrs)),
       [dir](irs::mmap_directory* p) {
-        std::filesystem::remove(dir);
+        std::filesystem::remove_all(dir);
         delete p;
     });
   }
