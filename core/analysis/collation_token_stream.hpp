@@ -27,6 +27,7 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "unicode/locid.h"
+#include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -39,7 +40,9 @@ class collation_token_stream final
     private util::noncopyable {
  public:
   struct options_t {
+    options_t() : encoding(icu_locale_utils::unicode_t::UTF8) {}
     icu::Locale locale;
+    icu_locale_utils::unicode_t encoding;
   };
 
   static constexpr string_ref type_name() noexcept { 

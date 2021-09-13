@@ -23,6 +23,7 @@
 #ifndef ICU_LOCALE_UTILS_HPP
 #define ICU_LOCALE_UTILS_HPP
 
+#include <set>
 #include <unicode/locid.h>
 #include "string.hpp"
 #include "velocypack/Slice.h"
@@ -31,9 +32,24 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
+class LocaleChecker {
+public:
+  LocaleChecker() : is_init_(false) {}
+  void init();
+  bool is_locale_correct(const std::string& locale_name);
+private:
+  bool is_init_;
+  std::set<std::string> locales_;
+};
+
+extern std::shared_ptr<LocaleChecker> locale_checker;
+
+enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
+
 constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
 constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
+constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
 std::string get_locale_name(const string_ref language,
                             const string_ref country = string_ref::EMPTY,

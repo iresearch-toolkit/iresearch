@@ -28,7 +28,7 @@
 #include "velocypack/velocypack-aliases.h"
 
 namespace tests {
-  class LocaleUtils2TestSuite: public ::testing::Test {
+  class IcuLocaleUtilsTestSuite: public ::testing::Test {
     virtual void SetUp() {
       // Code here will be called immediately after the constructor (right before each test).
     }
@@ -47,28 +47,39 @@ using namespace iresearch::icu_locale_utils;
 // -----------------------------------------------------------------------------
 
 
-TEST_F(LocaleUtils2TestSuite, test_get_locale_from_vpack) {
-
-//  {
-//    std::string config = R"({"language" : "de", "country" : "DE"})";
-//    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
-
-//    std::locale actual_locale;
-//    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
-
-//    std::locale expected_locale;
-//    std::string expected_locale_name = "de_DE";
-//    expected_locale = locale(expected_locale_name);
-
-//    ASSERT_EQ(actual_locale, expected_locale);
-//  }
-
-}
-
-TEST_F(LocaleUtils2TestSuite, test_verify_icu_locale) {
+TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
   {
+    std::string config = R"({"language" : "de", "country" : "DE"})";
+    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
+    icu::Locale actual_locale;
+    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
 
+    icu::Locale expected_locale("de", "DE");
+    ASSERT_EQ(actual_locale, expected_locale);
+    ASSERT_TRUE(verify_icu_locale(actual_locale));
+  }
+
+  {
+    std::string config = R"({"language" : "EN", "country" : "US", "variant" : "phonebook"})";
+    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
+    icu::Locale actual_locale;
+    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
+
+    icu::Locale expected_locale("EN", "US", "phonebook");
+    ASSERT_EQ(actual_locale, expected_locale);
+  }
+
+  {
+    std::string config = R"({"language" : "EN", "country" : "EN", "variant" : "pinyan"})";
+    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
+    icu::Locale actual_locale;
+    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
+
+    icu::Locale expected_locale("de", "DE", "phonebook");
+    ASSERT_NE(actual_locale, expected_locale);
+
+    ASSERT_FALSE(verify_icu_locale(actual_locale));
   }
 
 }

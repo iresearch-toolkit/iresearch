@@ -28,6 +28,31 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
+void LocaleChecker::init() {
+
+  if (this->is_init_) {
+    return;
+  }
+
+  int32_t count;
+  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+
+  for (int i = 0; i < count; ++i) {
+    locales_.insert(locales[i].getName());
+  }
+
+  is_init_ = true;
+}
+
+bool LocaleChecker::is_locale_correct(const std::string &locale_name) {
+  if (!is_init_) {
+    init();
+  }
+  return (locales_.find(locale_name) != locales_.end());
+}
+
+std::shared_ptr<LocaleChecker> locale_checker = std::make_shared<LocaleChecker>();
+
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
 
   if(!slice.isObject()) {
@@ -72,12 +97,7 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
     locale_name.append(1, '_').append(variant.c_str(), variant.size());
   }
 
-  std::string l(language.c_str(), language.size());
-  std::string c(country.c_str(), country.size());
-  std::string v(variant.c_str(), variant.size());
-
-  //locale = icu::Locale::createFromName(locale_name.c_str());
-  locale = icu::Locale(l.c_str(), c.c_str(), v.c_str());
+  locale = icu::Locale::createFromName(locale_name.c_str());
 
   return true;
 }
@@ -98,19 +118,7 @@ bool verify_icu_locale(const icu::Locale& locale) {
     name_to_check.append(1, '_').append(country);
   }
 
-  int32_t count;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
-  bool is_correct = false;
-
-  for (int i = 0; i < count; ++i) {
-    std::string lc(locales[i].getName());
-    if (lc == name_to_check) {
-      is_correct = true;
-      break;
-    }
-  }
-
-  return is_correct;
+  return locale_checker->is_locale_correct(name_to_check);
 }
 
 } // icu_locale_utils
