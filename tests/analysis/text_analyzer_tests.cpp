@@ -816,11 +816,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
   SetStopwordsPath(nullptr);
 
   // no stopwords, but valid CWD
-  auto oldCWD = std::filesystem::current_path();
-  std::filesystem::current_path(std::filesystem::path{IResearch_test_resource_dir});
-  auto reset_stopword_path = irs::make_finally([oldCWD]()noexcept{
-    std::filesystem::current_path(oldCWD);
+  auto reset_stopword_path = irs::make_finally(
+      [oldCWD = std::filesystem::current_path()]()noexcept{
+    std::error_code e;
+    std::filesystem::current_path(oldCWD, e);
+    EXPECT_TRUE(e);
   });
+  std::filesystem::current_path({IResearch_test_resource_dir});
 
   {
     const std::string sDataASCII = "A E I O U";
@@ -896,8 +898,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
-  auto reset_stopword_path = irs::make_finally([oldCWD = std::filesystem::current_path()]()noexcept{
-    std::filesystem::current_path(oldCWD);
+  auto reset_stopword_path = irs::make_finally(
+      [oldCWD = std::filesystem::current_path()]()noexcept{
+    std::error_code e;
+    std::filesystem::current_path(oldCWD, e);
+    EXPECT_TRUE(e);
   });
   std::filesystem::current_path({IResearch_test_resource_dir});
 
@@ -1000,8 +1005,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
   {
-    auto reset_stopword_path = irs::make_finally([oldCWD = std::filesystem::current_path()]()noexcept{
-      std::filesystem::current_path(oldCWD);
+    auto reset_stopword_path = irs::make_finally(
+        [oldCWD = std::filesystem::current_path()]()noexcept{
+      std::error_code e;
+      std::filesystem::current_path(oldCWD, e);
+      EXPECT_TRUE(e);
     });
     std::filesystem::current_path({IResearch_test_resource_dir});
 
