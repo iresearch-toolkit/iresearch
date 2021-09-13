@@ -222,6 +222,14 @@ bool embedding_classification_stream::reset(const string_ref& data) {
   term_eof_ = false;
 
   // Now classify token!
+  std::vector<std::pair<float, std::string>> predictions{};
+  std::string s{data.c_str(), data.size()};
+  std::stringstream ss{s};
+  if (model_container->predictLine(ss, predictions, 1, 0.0)) {
+    for (const auto& prediction : predictions) {
+      term.value = bytes_ref(reinterpret_cast<const byte_type *>(prediction.second.c_str()), prediction.second.size());
+    }
+  }
 
   return true;
 }
