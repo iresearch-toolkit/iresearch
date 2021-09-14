@@ -20,9 +20,7 @@
 /// @author Alex Geenen
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
-#include "analysis/embedding_classification_stream.hpp"
+#include "analysis/classification_stream.hpp"
 
 #include "tests_shared.hpp"
 #include "velocypack/Parser.h"
@@ -30,19 +28,19 @@
 
 #ifndef IRESEARCH_DLL
 
-TEST(embedding_classification_stream_test, consts) {
-  static_assert("classification" == irs::type<irs::analysis::embedding_classification_stream>::name());
+TEST(classification_stream_test, consts) {
+  static_assert("classification" == irs::type<irs::analysis::classification_stream>::name());
 }
 
-TEST(embedding_classification_stream_test, load_model) {
+TEST(classification_stream_test, load_model) {
   auto model_loc = test_base::resource("ag_news.bin");
-  irs::analysis::embedding_classification_stream::Options classification_options{model_loc};
-  ASSERT_NO_THROW(irs::analysis::embedding_classification_stream{std::move(classification_options)});
+  irs::analysis::classification_stream::Options classification_options{model_loc};
+  ASSERT_NO_THROW(irs::analysis::classification_stream{std::move(classification_options)});
 }
 
 #endif
 
-TEST(embedding_classification_stream_test, test_load) {
+TEST(classification_stream_test, test_load) {
   // load json string
   {
     auto model_loc = test_base::resource("ag_news.bin");
@@ -66,7 +64,7 @@ TEST(embedding_classification_stream_test, test_load) {
   }
 }
 
-TEST(embedding_classification_stream_test, test_make_config_json) {
+TEST(classification_stream_test, test_make_config_json) {
   // random extra param
   {
     auto model_loc = test_base::resource("ag_news.bin");

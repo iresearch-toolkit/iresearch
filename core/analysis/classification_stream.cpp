@@ -23,7 +23,7 @@
 
 #include <iostream>
 #include <sstream>
-#include "embedding_classification_stream.hpp"
+#include "classification_stream.hpp"
 
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
@@ -33,13 +33,13 @@ namespace {
 
 constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
 
-bool parse_vpack_options(const VPackSlice slice, irs::analysis::embedding_classification_stream::Options& options, const char* action) {
+bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_stream::Options& options, const char* action) {
   switch (slice.type()) {
     case VPackValueType::Object: {
       auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
       if (!model_location_slice.isString() && !model_location_slice.isNone()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while %s embedding_classification_stream from VPack arguments. %s value should be a string.",
+          "Invalid vpack while %s classification_stream from VPack arguments. %s value should be a string.",
           action,
           MODEL_LOCATION_PARAM_NAME.data());
         return false;
@@ -51,21 +51,21 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::embedding_classi
     }
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while %s embedding_classification_stream from VPack arguments. Object was expected.",
+        "Invalid vpack while %s classification_stream from VPack arguments. Object was expected.",
         action);
     }
   }
   return false;
 }
 
-irs::analysis::analyzer::ptr construct(irs::analysis::embedding_classification_stream::Options& options) {
+irs::analysis::analyzer::ptr construct(irs::analysis::classification_stream::Options& options) {
   // TODO: create the model here & put it into a singleton.
   // TODO: This will require modification of options
-  return irs::memory::make_shared<irs::analysis::embedding_classification_stream>(std::move(options));
+  return irs::memory::make_shared<irs::analysis::classification_stream>(std::move(options));
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  irs::analysis::embedding_classification_stream::Options options{};
+  irs::analysis::classification_stream::Options options{};
   if (parse_vpack_options(slice, options, "constructing")) {
     return construct(options);
   }
@@ -97,7 +97,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 }
 
 bool make_vpack_config(
-  const irs::analysis::embedding_classification_stream::Options& options,
+  const irs::analysis::classification_stream::Options& options,
   VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
   {
@@ -107,7 +107,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  irs::analysis::embedding_classification_stream::Options options{};
+  irs::analysis::classification_stream::Options options{};
   if (parse_vpack_options(slice, options, "normalizing")) {
     return make_vpack_config(options, builder);
   }
@@ -148,8 +148,8 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::embedding_classification_stream, make_vpack, normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::embedding_classification_stream, make_json, normalize_json_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::classification_stream, make_vpack, normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normalize_json_config);
 
 } // namespace
 
@@ -182,22 +182,22 @@ void EmbeddingsModelLoader::decrement_model_usage_count(const std::string& model
   }
 }
 
-embedding_classification_stream::embedding_classification_stream(const Options &options)
-  : analyzer{irs::type<embedding_classification_stream>::get()},
+classification_stream::classification_stream(const Options &options)
+  : analyzer{irs::type<classification_stream>::get()},
   model_container{EmbeddingsModelLoader::getInstance().get_model_and_increment_count(options.model_location)},
   model_location{options.model_location} {}
 
 
-embedding_classification_stream::~embedding_classification_stream() {
+classification_stream::~classification_stream() {
   EmbeddingsModelLoader::getInstance().decrement_model_usage_count(model_location);
 }
 
-void embedding_classification_stream::init() {
-  REGISTER_ANALYZER_JSON(embedding_classification_stream, make_json, normalize_json_config);
-  REGISTER_ANALYZER_VPACK(embedding_classification_stream, make_vpack, normalize_vpack_config);
+void classification_stream::init() {
+  REGISTER_ANALYZER_JSON(classification_stream, make_json, normalize_json_config);
+  REGISTER_ANALYZER_VPACK(classification_stream, make_vpack, normalize_vpack_config);
 }
 
-bool embedding_classification_stream::next() {
+bool classification_stream::next() {
   if (term_eof_) {
     return false;
   }
@@ -207,7 +207,7 @@ bool embedding_classification_stream::next() {
   return true;
 }
 
-bool embedding_classification_stream::reset(const string_ref& data) {
+bool classification_stream::reset(const string_ref& data) {
   // convert encoding to UTF-8
   auto& term = std::get<term_attribute>(attrs_);
 

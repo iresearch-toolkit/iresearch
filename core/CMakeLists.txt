@@ -1146,15 +1146,15 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
 
 add_library(${IResearch_TARGET_NAME}-analyzer-classification-shared
   SHARED
-  ./analysis/embedding_classification_stream.cpp
-  ./analysis/embedding_classification_stream.hpp
+        analysis/classification_stream.cpp
+        analysis/classification_stream.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-shared)
 
 add_library(${IResearch_TARGET_NAME}-analyzer-classification-static
   STATIC
-  ./analysis/embedding_classification_stream.cpp
+        analysis/classification_stream.cpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-static)

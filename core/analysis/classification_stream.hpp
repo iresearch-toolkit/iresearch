@@ -32,7 +32,7 @@
 namespace iresearch {
 namespace analysis {
 
-class embedding_classification_stream final
+class classification_stream final
     : public analyzer,
       private util::noncopyable {
   public:
@@ -47,8 +47,8 @@ class embedding_classification_stream final
 
     static void init(); // for registration in a static build
 
-    explicit embedding_classification_stream(const Options& options);
-    ~embedding_classification_stream();
+    explicit classification_stream(const Options& options);
+    ~classification_stream();
 
     virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::get_mutable(attrs_, type);
