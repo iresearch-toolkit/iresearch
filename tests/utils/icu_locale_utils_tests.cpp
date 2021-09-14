@@ -82,4 +82,116 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
     ASSERT_FALSE(verify_icu_locale(actual_locale));
   }
 
+  {
+    std::string config = R"({"language" : "EN", "country" : "US", "variant" : "pinyan", "encoding" : "utf-16"})";
+    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
+    icu::Locale actual_locale;
+    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
+
+    icu::Locale expected_locale("en", "US", "pinyan");
+    ASSERT_EQ(actual_locale, expected_locale);
+
+    ASSERT_TRUE(verify_icu_locale(actual_locale));
+  }
+
+  {
+    std::string config = R"({"language" : "EN", "variant" : "pinyan"})";
+    auto vpack = VPackParser::fromJson(config.c_str(), config.size());
+    icu::Locale actual_locale;
+    ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
+
+    icu::Locale expected_locale("en", NULL, "pinyan");
+    ASSERT_EQ(actual_locale, expected_locale);
+
+    ASSERT_TRUE(verify_icu_locale(actual_locale));
+  }
+}
+
+TEST_F(IcuLocaleUtilsTestSuite, test_locale_to_vpack) {
+
+  {
+    icu::Locale icu_locale("UK");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"uk"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE", "phonebook");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE","variant":"PHONEBOOK"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE", NULL, "phonebook");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE","variant":"PHONEBOOK"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE", NULL, "collation=phonebook");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE", "pinyan", "collation=phonebook");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE","variant":"PINYAN"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+
+  {
+    icu::Locale icu_locale("de", "DE", "pinyan", "phonebook");
+    VPackBuilder builder;
+    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder));
+
+    auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE","variant":"PINYAN_PHONEBOOK"}})")->slice();
+    auto actual_config = builder.slice();
+    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+  }
+}
+
+TEST_F(IcuLocaleUtilsTestSuite, test_verify_icu_locale) {
+  {
+    ASSERT_FALSE(verify_icu_locale(icu::Locale("de", "RU")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("de_DE")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("RU", "UA")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("shi_Tfng_MA"))); // because we can't create such locale by default ctor
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", "wrong arg")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", "wrong arg", "wrong arg")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", NULL, "wrong arg")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("fr_SN")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("fr_SN_wrong_arg")));
+    ASSERT_FALSE(verify_icu_locale(icu::Locale("wrong arg")));
+    ASSERT_TRUE(verify_icu_locale(icu::Locale("RU", "wrong arg")));
+  }
 }

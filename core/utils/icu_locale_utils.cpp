@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,10 +15,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
+#include <absl/container/flat_hash_set.h>
 #include "icu_locale_utils.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/vpack_utils.hpp"
@@ -28,26 +29,11 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
-void LocaleChecker::init() {
-
-  int32_t count;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
-
-  for (int i = 0; i < count; ++i) {
-    locales_.insert(locales[i].getName());
-  }
-
-  is_init_ = true;
-}
-
-bool LocaleChecker::is_locale_correct(const std::string &locale_name) {
-  if (!is_init_) {
-    init();
-  }
-  return (locales_.find(locale_name) != locales_.end());
-}
-
-std::shared_ptr<LocaleChecker> locale_checker = std::make_shared<LocaleChecker>();
+constexpr VPackStringRef LOCALE_PARAM_NAME   {"locale"};
+constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
+constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
+constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
+constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
 
@@ -98,22 +84,64 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
   return true;
 }
 
+bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder) {
+  VPackObjectBuilder object(builder);
+  {
+    // locale
+    {
+      VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
+
+      const auto language = locale.getLanguage();
+      builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
+
+      const auto country = locale.getCountry();
+      if (strlen(country)) {
+        builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
+      }
+
+      const auto variant = locale.getVariant();
+      if (strlen(variant)) {
+        builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
+      }
+    }
+  }
+
+  return true;
+}
+
 bool verify_icu_locale(const icu::Locale& locale) {
+
+  static absl::flat_hash_set<std::string> available_locales;
+
+  if (available_locales.empty()) {
+    int32_t count;
+    const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+    for (int i = 0; i < count; ++i) {
+      available_locales.insert(locales[i].getName());
+    }
+  }
 
   // check locale by a standard way
   if (locale.isBogus()) {
     return false;
   }
 
-  auto language = std::string(locale.getLanguage());
-  auto country = std::string(locale.getCountry());
+  const auto language = locale.getLanguage();
+  const auto country = locale.getCountry();
 
   std::string name_to_check = language;
-  if (!country.empty()) {
+  if (strlen(country)) {
     name_to_check.append(1, '_').append(country);
   }
 
-  return locale_checker->is_locale_correct(name_to_check);
+  auto itr = available_locales.find(name_to_check);
+  // if we didin't find 'name_to_check' in 'available_locales' set,
+  // try to find locale by name
+  if (itr == available_locales.end()) {
+    itr = available_locales.find(locale.getName());
+  }
+
+  return itr != available_locales.end();
 }
 
 } // icu_locale_utils

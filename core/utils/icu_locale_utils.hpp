@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,43 +15,28 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
-///
+
 #ifndef ICU_LOCALE_UTILS_HPP
 #define ICU_LOCALE_UTILS_HPP
 
-#include <set>
 #include <unicode/locid.h>
 #include "string.hpp"
 #include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
 namespace iresearch {
 namespace icu_locale_utils {
 
-class LocaleChecker {
-public:
-  LocaleChecker() : is_init_(false) {}
-  void init();
-  bool is_locale_correct(const std::string& locale_name);
-private:
-  bool is_init_;
-  std::set<std::string> locales_;
-};
-
-extern std::shared_ptr<LocaleChecker> locale_checker;
-
 enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
 
-constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
-constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
-constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
-constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
-
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale);
+
+bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder);
 
 bool verify_icu_locale(const icu::Locale& locale);
 

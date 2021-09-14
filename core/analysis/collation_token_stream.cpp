@@ -55,8 +55,8 @@ bool parse_vpack_options(
       {
         auto locale_slice = slice.get(LOCALE_PARAM_NAME);
         if (locale_slice.isObject()) {
-          icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
-          return icu_locale_utils::verify_icu_locale(options.locale);
+          return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale) &&
+                 icu_locale_utils::verify_icu_locale(options.locale);
         } else {
           return false;
         }
@@ -106,28 +106,7 @@ bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
 
-  VPackObjectBuilder object(builder);
-  {
-    // locale
-    {
-      VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
-
-      const auto& language = options.locale.getLanguage();
-      builder->add(icu_locale_utils::LANGUAGE_PARAM_NAME, VPackValue(language));
-
-      const auto& country = options.locale.getCountry();
-      if (country) {
-        builder->add(icu_locale_utils::COUNTRY_PARAM_NAME, VPackValue(country));
-      }
-
-      const auto& variant = options.locale.getVariant();
-      if (variant) {
-        builder->add(icu_locale_utils::VARIANT_PARAM_NAME, VPackValue(variant));
-      }
-    }
-  }
-
-  return true;
+  return icu_locale_utils::locale_to_vpack(options.locale, builder);
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
