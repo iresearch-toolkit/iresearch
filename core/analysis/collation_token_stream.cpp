@@ -200,7 +200,7 @@ void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexc
 
 /*static*/ analyzer::ptr collation_token_stream::make(
     const string_ref& locale) {
-  return make_vpack(locale);
+  return make_json(locale);
 }
 
 collation_token_stream::collation_token_stream(
