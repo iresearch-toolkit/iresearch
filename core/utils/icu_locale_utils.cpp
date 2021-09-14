@@ -76,7 +76,7 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
     locale_name.append(1, '_').append(country.c_str(), country.size());
   }
   if (variant.size() > 0) {
-    locale_name.append(1, '_').append(variant.c_str(), variant.size());
+    locale_name.append(variant.c_str(), variant.size());
   }
 
   locale = icu::Locale::createFromName(locale_name.c_str());
