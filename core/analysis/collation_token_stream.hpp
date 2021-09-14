@@ -40,7 +40,12 @@ class collation_token_stream final
     private util::noncopyable {
  public:
   struct options_t {
-    options_t() : encoding(icu_locale_utils::unicode_t::UTF8) {}
+    // NOTE: use of the default constructor for Locale() or
+    //       use of Locale::createFromName(nullptr)
+    //       causes a memory leak with Boost 1.58, as detected by valgrind
+    options_t() : locale("C"), encoding(icu_locale_utils::unicode_t::UTF8) {
+      locale.setToBogus();
+    }
     icu::Locale locale;
     icu_locale_utils::unicode_t encoding;
   };

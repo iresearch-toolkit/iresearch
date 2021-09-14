@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,6 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
     icu::Locale expected_locale("de", "DE");
     ASSERT_EQ(actual_locale, expected_locale);
-    ASSERT_TRUE(verify_icu_locale(actual_locale));
   }
 
   {
@@ -78,8 +77,6 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
     icu::Locale expected_locale("de", "DE", "phonebook");
     ASSERT_NE(actual_locale, expected_locale);
-
-    ASSERT_FALSE(verify_icu_locale(actual_locale));
   }
 
   {
@@ -90,8 +87,6 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
     icu::Locale expected_locale("en", "US", "pinyan");
     ASSERT_EQ(actual_locale, expected_locale);
-
-    ASSERT_TRUE(verify_icu_locale(actual_locale));
   }
 
   {
@@ -102,8 +97,6 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
     icu::Locale expected_locale("en", NULL, "pinyan");
     ASSERT_EQ(actual_locale, expected_locale);
-
-    ASSERT_TRUE(verify_icu_locale(actual_locale));
   }
 }
 
@@ -177,21 +170,5 @@ TEST_F(IcuLocaleUtilsTestSuite, test_locale_to_vpack) {
     auto expected_config = VPackParser::fromJson(R"({"locale":{"language":"de","country":"DE","variant":"PINYAN_PHONEBOOK"}})")->slice();
     auto actual_config = builder.slice();
     ASSERT_EQ(expected_config.toString(), actual_config.toString());
-  }
-}
-
-TEST_F(IcuLocaleUtilsTestSuite, test_verify_icu_locale) {
-  {
-    ASSERT_FALSE(verify_icu_locale(icu::Locale("de", "RU")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("de_DE")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("RU", "UA")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("shi_Tfng_MA"))); // because we can't create such locale by default ctor
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", "wrong arg")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", "wrong arg", "wrong arg")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("fr", "SN", NULL, "wrong arg")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("fr_SN")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale::createFromName("fr_SN_wrong_arg")));
-    ASSERT_FALSE(verify_icu_locale(icu::Locale("wrong arg")));
-    ASSERT_TRUE(verify_icu_locale(icu::Locale("RU", "wrong arg")));
   }
 }

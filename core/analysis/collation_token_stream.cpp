@@ -55,8 +55,7 @@ bool parse_vpack_options(
       {
         auto locale_slice = slice.get(LOCALE_PARAM_NAME);
         if (locale_slice.isObject()) {
-          return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale) &&
-                 icu_locale_utils::verify_icu_locale(options.locale);
+          return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
         } else {
           return false;
         }
@@ -160,7 +159,7 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
   icu::Locale icu_locale = icu::Locale::createFromName(args.c_str());
-  if (icu_locale_utils::verify_icu_locale(icu_locale)) {
+  if (!icu_locale.isBogus()) {
     definition = icu_locale.getName();
     return true;
   }
@@ -224,19 +223,13 @@ namespace analysis {
 constexpr size_t MAX_TOKEN_SIZE = 1 << 15;
 
 struct collation_token_stream::state_t {
-  icu::Locale icu_locale;
   const options_t options;
   std::unique_ptr<icu::Collator> collator;
   std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
-  state_t(const options_t& opts)
-    : icu_locale("C"),
+  state_t(const options_t& opts) :
       options(opts) {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
   }
 };
 
@@ -266,19 +259,10 @@ collation_token_stream::collation_token_stream(
 }
 
 bool collation_token_stream::reset(const string_ref& data) {
-  if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(state_->options.locale.getLanguage(),
-                                     state_->options.locale.getCountry(),
-                                     state_->options.locale.getVariant());
-
-    if (state_->icu_locale.isBogus()) {
-      return false;
-    }
-  }
 
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
-    state_->collator.reset(icu::Collator::createInstance(state_->icu_locale, err));
+    state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
 
     if (!U_SUCCESS(err) || !state_->collator) {
       state_->collator.reset();

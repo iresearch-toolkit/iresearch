@@ -38,8 +38,6 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale);
 
 bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder);
 
-bool verify_icu_locale(const icu::Locale& locale);
-
 } // icu_locale_utils
 } // iresearch
 

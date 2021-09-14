@@ -109,40 +109,5 @@ bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder) {
   return true;
 }
 
-bool verify_icu_locale(const icu::Locale& locale) {
-
-  static absl::flat_hash_set<std::string> available_locales;
-
-  if (available_locales.empty()) {
-    int32_t count;
-    const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
-    for (int i = 0; i < count; ++i) {
-      available_locales.insert(locales[i].getName());
-    }
-  }
-
-  // check locale by a standard way
-  if (locale.isBogus()) {
-    return false;
-  }
-
-  const auto language = locale.getLanguage();
-  const auto country = locale.getCountry();
-
-  std::string name_to_check = language;
-  if (strlen(country)) {
-    name_to_check.append(1, '_').append(country);
-  }
-
-  auto itr = available_locales.find(name_to_check);
-  // if we didin't find 'name_to_check' in 'available_locales' set,
-  // try to find locale by name
-  if (itr == available_locales.end()) {
-    itr = available_locales.find(locale.getName());
-  }
-
-  return itr != available_locales.end();
-}
-
 } // icu_locale_utils
 } // iresearch
