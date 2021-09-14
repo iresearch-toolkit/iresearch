@@ -60,15 +60,6 @@ TEST(collation_token_stream_test, construct) {
     ASSERT_EQ(nullptr, stream);
   }
 
-  // text
-  {
-    auto stream = irs::analysis::analyzers::get(
-      "collation", irs::type<irs::text_format::text>::get(),
-      R"({ "locale": {"language" : "en-US"}})");
-    ASSERT_NE(nullptr, stream);
-    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
-  }
-
   // vpack
   {
     std::string config = R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook"}})";

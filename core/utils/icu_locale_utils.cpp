@@ -40,31 +40,39 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
   if (!slice.isObject()) {
     return false;
   }
+  auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+  if (locale_slice.isNone() || !locale_slice.isObject()) {
+    return false;
+  }
 
   string_ref language;
   string_ref country;
   string_ref variant;
 
-  auto lang_slice = slice.get(LANGUAGE_PARAM_NAME);
+  auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
   if (lang_slice.isNone() || !lang_slice.isString()) {
     IR_FRMT_WARN(
-      "Language parameter is not specified or it is not a string",
+      "Language parameter '%s' is not specified or it is not a string",
       LANGUAGE_PARAM_NAME.data());
     return false;
   }
   language = get_string<string_ref>(lang_slice);
 
-  if (slice.hasKey(COUNTRY_PARAM_NAME)) {
-    auto country_slice = slice.get(COUNTRY_PARAM_NAME);
+  if (locale_slice.hasKey(COUNTRY_PARAM_NAME)) {
+    auto country_slice = locale_slice.get(COUNTRY_PARAM_NAME);
     if (!country_slice.isString()) {
+      IR_FRMT_WARN(
+        "'%s' parameter name should be string", COUNTRY_PARAM_NAME.data());
       return false;
     }
     country = get_string<string_ref>(country_slice);
   }
 
-  if (slice.hasKey(VARIANT_PARAM_NAME)) {
-    auto variant_slice = slice.get(VARIANT_PARAM_NAME);
+  if (locale_slice.hasKey(VARIANT_PARAM_NAME)) {
+    auto variant_slice = locale_slice.get(VARIANT_PARAM_NAME);
     if (!variant_slice.isString()) {
+      IR_FRMT_WARN(
+        "'%s' parameter name should be string", VARIANT_PARAM_NAME.data());
       return false;
     }
     variant = get_string<string_ref>(variant_slice);

@@ -44,7 +44,7 @@ bool parse_vpack_options(
     analysis::collation_token_stream::options_t& options) {
 
   if (!slice.isObject()) {
-    IR_FRMT_ERROR(
+    IR_FRMT_WARN(
       "Slice for collation_token_stream is not an object or string");
     return false;
   }
@@ -53,12 +53,7 @@ bool parse_vpack_options(
     switch (slice.type()) {
       case VPackValueType::Object:
       {
-        auto locale_slice = slice.get(LOCALE_PARAM_NAME);
-        if (locale_slice.isObject()) {
-          return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
-        } else {
-          return false;
-        }
+        return icu_locale_utils::get_locale_from_vpack(slice, options.locale);
       }
       [[fallthrough]];
       default:
@@ -127,45 +122,6 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_text(const VPackSlice& slice) {
-  try {
-    analysis::collation_token_stream::options_t options;
-    if (parse_vpack_options(slice, options)) {
-      return memory::make_unique<analysis::collation_token_stream>(
-          std::move(options));
-    }
-  } catch (...) {
-    std::string err_msg = static_cast<std::string>(slice.toString());
-    IR_FRMT_ERROR(
-      "Caught error while constructing collation_token_stream TEXT arguments: %s",
-      err_msg.c_str());
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a locale config to use for normalizing
-////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
-  if (args.null()) {
-    IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
-    return nullptr;
-  }
-  auto vpack = VPackParser::fromJson(args.c_str(), args.size());
-  return make_text(vpack->slice());
-}
-
-bool normalize_text_config(const string_ref& args,
-                           std::string& definition) {
-  icu::Locale icu_locale = icu::Locale::createFromName(args.c_str());
-  if (!icu_locale.isBogus()) {
-    definition = icu_locale.getName();
-    return true;
-  }
-  return false;
-}
-
 analysis::analyzer::ptr make_json(const string_ref& args) {
   try {
     if (args.null()) {
@@ -203,15 +159,13 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing text_token_normalizing_stream from JSON");
+      "Caught error while normalizing collation_token_stream from JSON");
   }
   return false;
 }
 
 REGISTER_ANALYZER_JSON(analysis::collation_token_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(analysis::collation_token_stream, make_text,
-                       normalize_text_config);
 REGISTER_ANALYZER_VPACK(analysis::collation_token_stream, make_vpack,
                        normalize_vpack_config);
 
@@ -236,8 +190,6 @@ struct collation_token_stream::state_t {
 /*static*/ void collation_token_stream::init() {
   REGISTER_ANALYZER_JSON(collation_token_stream, make_json,
                          normalize_json_config);
-  REGISTER_ANALYZER_TEXT(collation_token_stream, make_text,
-                         normalize_text_config);
   REGISTER_ANALYZER_VPACK(collation_token_stream, make_vpack,
                          normalize_vpack_config);
 }
@@ -248,7 +200,7 @@ void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexc
 
 /*static*/ analyzer::ptr collation_token_stream::make(
     const string_ref& locale) {
-  return make_text(locale);
+  return make_vpack(locale);
 }
 
 collation_token_stream::collation_token_stream(

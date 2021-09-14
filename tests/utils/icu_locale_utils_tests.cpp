@@ -50,7 +50,7 @@ using namespace iresearch::icu_locale_utils;
 TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
 
   {
-    std::string config = R"({"language" : "de", "country" : "DE"})";
+    std::string config = R"({"locale":{"language" : "de", "country" : "DE"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
@@ -60,7 +60,7 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
   }
 
   {
-    std::string config = R"({"language" : "EN", "country" : "US", "variant" : "_phonebook"})";
+    std::string config = R"({"locale":{"language" : "EN", "country" : "US", "variant" : "_phonebook"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
@@ -70,7 +70,7 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
   }
 
   {
-    std::string config = R"({"language" : "EN", "country" : "EN", "variant" : "_pinyan"})";
+    std::string config = R"({"locale":{"language" : "EN", "country" : "EN", "variant" : "_pinyan"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
@@ -80,7 +80,7 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
   }
 
   {
-    std::string config = R"({"language" : "EN", "country" : "US", "variant" : "_pinyan", "encoding" : "utf-16"})";
+    std::string config = R"({"locale":{"language" : "EN", "country" : "US", "variant" : "_pinyan", "encoding" : "utf-16"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
@@ -90,7 +90,7 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
   }
 
   {
-    std::string config = R"({"language" : "EN", "variant" : "_pinyan"})";
+    std::string config = R"({"locale":{"language" : "EN", "variant" : "_pinyan"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
@@ -100,7 +100,7 @@ TEST_F(IcuLocaleUtilsTestSuite, test_get_locale_from_vpack) {
   }
 
   {
-    std::string config = R"({"language" : "DE@collation=phonebook"})";
+    std::string config = R"({"locale":{"language" : "DE@collation=phonebook"}})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
     icu::Locale actual_locale;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale));
