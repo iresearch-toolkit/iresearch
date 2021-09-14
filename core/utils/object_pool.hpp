@@ -64,37 +64,37 @@ class concurrent_stack : private util::noncopyable {
 
   struct node_type {
     element_type value{};
-    // next needs to be atomic because nodes are kept in a free-list and reused!
-    std::atomic<node_type*> next{};
+    std::atomic<node_type*> next{}; // next needs to be atomic because
+                                    // nodes are kept in a free-list and reused!
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
-    : head_(head) {
+    : head_{head} {
   }
 
   concurrent_stack(concurrent_stack&& rhs) noexcept
-    : head_(nullptr) {
-    auto rhshead = rhs.head_.load(std::memory_order_relaxed);
-    while (!rhs.head_.compare_exchange_weak(rhshead, head_, std::memory_order_acq_rel));
+    : head_{nullptr} {
+    concurrent_node rhshead = rhs.head_.load(std::memory_order_acquire);
+    while (!rhs.head_.compare_exchange_weak(rhshead, head_, std::memory_order_release));
     head_.store(rhshead, std::memory_order_release);
   }
 
   concurrent_stack& operator=(concurrent_stack&& rhs) noexcept {
     if (this != &rhs) {
-      auto rhshead = rhs.head_.load(std::memory_order_relaxed);
+      concurrent_node rhshead = rhs.head_.load(std::memory_order_acquire);
       const concurrent_node empty;
-      while (!rhs.head_.compare_exchange_weak(rhshead, empty, std::memory_order_acq_rel));
+      while (!rhs.head_.compare_exchange_weak(rhshead, empty, std::memory_order_release));
       head_.store(rhshead, std::memory_order_release);
     }
     return *this;
   }
 
   bool empty() const noexcept {
-    return nullptr == head_.load(std::memory_order_relaxed).node;
+    return nullptr == head_.load(std::memory_order_acquire).node;
   }
 
   node_type* pop() noexcept {
-    concurrent_node head = head_.load(std::memory_order_relaxed);
+    concurrent_node head = head_.load(std::memory_order_acquire);
     concurrent_node new_head;
 
     do {
@@ -102,15 +102,15 @@ class concurrent_stack : private util::noncopyable {
         return nullptr;
       }
 
-      new_head.node = head.node->next.load(std::memory_order_relaxed);
+      new_head.node = head.node->next.load(std::memory_order_acquire);
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_seq_cst));
 
     return head.node;
   }
 
   void push(node_type& new_node) noexcept {
-    concurrent_node head = head_.load(std::memory_order_relaxed);
+    concurrent_node head = head_.load(std::memory_order_acquire);
     concurrent_node new_head;
 
     do {
@@ -118,7 +118,7 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_seq_cst));
   }
 
  private:
@@ -126,7 +126,7 @@ class concurrent_stack : private util::noncopyable {
   // (memory) operand be 16-byte aligned
   struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
     concurrent_node(node_type* node = nullptr) noexcept
-      : version(0), node(node) {
+      : version{0}, node{node} {
     }
 
     uintptr_t version; // avoid aba problem
