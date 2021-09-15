@@ -86,7 +86,12 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
       return false;
     }
     encoding = get_string<string_ref>(encoding_slice);
-    if (encoding != "utf-8") {
+    std::string encoding_low;
+    encoding_low.resize(encoding.size());
+
+    std::transform(encoding.begin(), encoding.end(), encoding_low.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+    if (encoding_low != "utf-8") {
       IR_FRMT_ERROR(
         "Unsupported encoding parameter '%s'", encoding.c_str());
       return false;
@@ -120,12 +125,12 @@ bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder, con
     builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
 
     const auto country = locale.getCountry();
-    if (strlen(country)) {
+    if (*country) {
       builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
     }
 
     const auto variant = locale.getVariant();
-    if (strlen(variant)) {
+    if (*variant) {
       builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
     }
 
