@@ -55,7 +55,8 @@ class atomic_shared_ptr_helper {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class concurrent_stack
-/// @brief lock-free single linked list
+/// @brief lock-free stack
+/// @note move construction/assignment is not thread-safe
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class concurrent_stack : private util::noncopyable {
@@ -69,22 +70,16 @@ class concurrent_stack : private util::noncopyable {
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
-    : head_{head} {
+    : head_{concurrent_node{head}} {
   }
 
-  concurrent_stack(concurrent_stack&& rhs) noexcept
-    : head_{nullptr} {
-    concurrent_node rhshead = rhs.head_.load(std::memory_order_acquire);
-    while (!rhs.head_.compare_exchange_weak(rhshead, head_, std::memory_order_release));
-    head_.store(rhshead, std::memory_order_release);
+  concurrent_stack(concurrent_stack&& rhs) noexcept {
+    move_unsynchronized(std::move(rhs));
   }
 
   concurrent_stack& operator=(concurrent_stack&& rhs) noexcept {
     if (this != &rhs) {
-      concurrent_node rhshead = rhs.head_.load(std::memory_order_acquire);
-      const concurrent_node empty;
-      while (!rhs.head_.compare_exchange_weak(rhshead, empty, std::memory_order_release));
-      head_.store(rhshead, std::memory_order_release);
+      move_unsynchronized(std::move(rhs));
     }
     return *this;
   }
@@ -104,7 +99,8 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = head.node->next.load(std::memory_order_acquire);
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_seq_cst));
+    } while (!head_.compare_exchange_weak(head, new_head,
+                                          std::memory_order_seq_cst));
 
     return head.node;
   }
@@ -118,14 +114,15 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_seq_cst));
+    } while (!head_.compare_exchange_weak(head, new_head,
+                                          std::memory_order_seq_cst));
   }
 
  private:
   // CMPXCHG16B requires that the destination
   // (memory) operand be 16-byte aligned
   struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
-    concurrent_node(node_type* node = nullptr) noexcept
+    explicit concurrent_node(node_type* node = nullptr) noexcept
       : version{0}, node{node} {
     }
 
@@ -136,6 +133,11 @@ class concurrent_stack : private util::noncopyable {
   static_assert(
     IRESEARCH_CMPXCHG16B_ALIGNMENT == alignof(concurrent_node),
     "invalid alignment");
+
+  void move_unsynchronized(concurrent_stack&& rhs) noexcept {
+    head_ = rhs.head_.load(std::memory_order_relaxed);
+    rhs.head_.store(concurrent_node{}, std::memory_order_relaxed);
+  }
 
   std::atomic<concurrent_node> head_;
 }; // concurrent_stack
