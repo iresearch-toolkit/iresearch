@@ -44,7 +44,7 @@ bool parse_vpack_options(
     analysis::collation_token_stream::options_t& options) {
 
   if (!slice.isObject()) {
-    IR_FRMT_WARN(
+    IR_FRMT_ERROR(
       "Slice for collation_token_stream is not an object or string");
     return false;
   }
@@ -53,7 +53,11 @@ bool parse_vpack_options(
     switch (slice.type()) {
       case VPackValueType::Object:
       {
-        return icu_locale_utils::get_locale_from_vpack(slice, options.locale);
+        auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+        if (!locale_slice.isObject()) {
+          return false;
+        }
+        return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
       }
       [[fallthrough]];
       default:
@@ -100,7 +104,13 @@ bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
 
-  return icu_locale_utils::locale_to_vpack(options.locale, builder);
+  // locale
+  {
+    VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
+    icu_locale_utils::locale_to_vpack(options.locale, builder);
+  }
+
+  return true;
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
@@ -223,14 +233,12 @@ bool collation_token_stream::reset(const string_ref& data) {
     }
   }
 
-  string_ref data_utf8_ref = data;
-
-  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
+    icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
 
   int32_t term_size = state_->collator->getSortKey(
     icu_token, state_->term_buf, sizeof state_->term_buf);

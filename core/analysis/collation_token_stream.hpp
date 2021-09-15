@@ -23,10 +23,11 @@
 #ifndef IRESEARCH_COLLATION_TOKEN_STREAM_H
 #define IRESEARCH_COLLATION_TOKEN_STREAM_H
 
+#include <unicode/locid.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "unicode/locid.h"
 #include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
@@ -43,11 +44,11 @@ class collation_token_stream final
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
-    options_t() : locale("C"), encoding(icu_locale_utils::unicode_t::UTF8) {
+    options_t() : locale("C"), encoding(icu_locale_utils::Unicode::UTF8) {
       locale.setToBogus();
     }
     icu::Locale locale;
-    icu_locale_utils::unicode_t encoding;
+    icu_locale_utils::Unicode encoding;
   };
 
   static constexpr string_ref type_name() noexcept { 

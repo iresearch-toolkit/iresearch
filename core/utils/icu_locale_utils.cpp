@@ -19,8 +19,10 @@
 ///
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
-#include <absl/container/flat_hash_set.h>
 #include "icu_locale_utils.hpp"
+
+#include <absl/container/flat_hash_set.h>
+
 #include "utils/string_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "utils/locale_utils.hpp"
@@ -35,13 +37,9 @@ constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
 constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
-bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
+bool get_locale_from_vpack(const VPackSlice locale_slice, icu::Locale& locale) {
 
-  if (!slice.isObject()) {
-    return false;
-  }
-  auto locale_slice = slice.get(LOCALE_PARAM_NAME);
-  if (locale_slice.isNone() || !locale_slice.isObject()) {
+  if (!locale_slice.isObject()) {
     return false;
   }
 
@@ -50,8 +48,8 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
   string_ref variant;
 
   auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
-  if (lang_slice.isNone() || !lang_slice.isString()) {
-    IR_FRMT_WARN(
+  if (!lang_slice.isString()) {
+    IR_FRMT_ERROR(
       "Language parameter '%s' is not specified or it is not a string",
       LANGUAGE_PARAM_NAME.data());
     return false;
@@ -61,7 +59,7 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
   if (locale_slice.hasKey(COUNTRY_PARAM_NAME)) {
     auto country_slice = locale_slice.get(COUNTRY_PARAM_NAME);
     if (!country_slice.isString()) {
-      IR_FRMT_WARN(
+      IR_FRMT_ERROR(
         "'%s' parameter name should be string", COUNTRY_PARAM_NAME.data());
       return false;
     }
@@ -71,7 +69,7 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
   if (locale_slice.hasKey(VARIANT_PARAM_NAME)) {
     auto variant_slice = locale_slice.get(VARIANT_PARAM_NAME);
     if (!variant_slice.isString()) {
-      IR_FRMT_WARN(
+      IR_FRMT_ERROR(
         "'%s' parameter name should be string", VARIANT_PARAM_NAME.data());
       return false;
     }
@@ -93,25 +91,23 @@ bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale) {
 }
 
 bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder) {
-  VPackObjectBuilder object(builder);
   {
-    // locale
-    {
-      VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
+    VPackObjectBuilder object(builder);
 
-      const auto language = locale.getLanguage();
-      builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
+    const auto language = locale.getLanguage();
+    builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
 
-      const auto country = locale.getCountry();
-      if (strlen(country)) {
-        builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
-      }
-
-      const auto variant = locale.getVariant();
-      if (strlen(variant)) {
-        builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
-      }
+    const auto country = locale.getCountry();
+    if (strlen(country)) {
+      builder->add(COUNTRY_PARAM_NAME, VPackValue(country));
     }
+
+    const auto variant = locale.getVariant();
+    if (strlen(variant)) {
+      builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
+    }
+
+    builder->add(ENCODING_PARAM_NAME, VPackValue("utf-8"));
   }
 
   return true;

@@ -24,6 +24,7 @@
 #define ICU_LOCALE_UTILS_HPP
 
 #include <unicode/locid.h>
+
 #include "string.hpp"
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -32,7 +33,7 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
-enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
+enum class Unicode { UTF8 };
 
 bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale);
 
