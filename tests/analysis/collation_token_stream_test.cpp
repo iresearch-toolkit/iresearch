@@ -79,6 +79,7 @@ TEST(collation_token_stream_test, construct) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-32"}})"));
   }
 }
 
@@ -493,21 +494,28 @@ TEST(collation_token_stream_test, check_tokens) {
 
 TEST(collation_token_stream_test, normalize) {
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-32"}})";
+    std::string config = R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-8"}})";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "variant" : "PHONEBOOK","encoding":"utf-8"}})")->toString(), actual);
   }
 
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-32"}})";
+    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
   }
 
   {
-    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-32"}})";
+    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook"}})";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
+  }
+
+  {
+    std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
     auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
     std::string in_str;
     in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());

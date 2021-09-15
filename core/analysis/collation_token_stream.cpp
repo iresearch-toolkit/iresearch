@@ -57,7 +57,7 @@ bool parse_vpack_options(
         if (!locale_slice.isObject()) {
           return false;
         }
-        return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale);
+        return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale, &options.encoding);
       }
       [[fallthrough]];
       default:
@@ -105,9 +105,9 @@ bool make_vpack_config(
     VPackBuilder* builder) {
 
   // locale
+  VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
   {
-    VPackObjectBuilder locale_obj(builder, LOCALE_PARAM_NAME.data());
-    icu_locale_utils::locale_to_vpack(options.locale, builder);
+    icu_locale_utils::locale_to_vpack(options.locale, builder, &options.encoding);
   }
 
   return true;

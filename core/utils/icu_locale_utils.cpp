@@ -37,7 +37,9 @@ constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
 constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
-bool get_locale_from_vpack(const VPackSlice locale_slice, icu::Locale& locale) {
+bool get_locale_from_vpack(const VPackSlice locale_slice,
+                           icu::Locale& locale,
+                           Unicode* const unicode) {
 
   if (!locale_slice.isObject()) {
     return false;
@@ -46,6 +48,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice, icu::Locale& locale) {
   string_ref language;
   string_ref country;
   string_ref variant;
+  string_ref encoding;
 
   auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
   if (!lang_slice.isString()) {
@@ -76,6 +79,25 @@ bool get_locale_from_vpack(const VPackSlice locale_slice, icu::Locale& locale) {
     variant = get_string<string_ref>(variant_slice);
   }
 
+  if (locale_slice.hasKey(ENCODING_PARAM_NAME)) {
+    auto encoding_slice = locale_slice.get(ENCODING_PARAM_NAME);
+    if (!encoding_slice.isString()) {
+      IR_FRMT_ERROR(
+        "'%s' parameter name should be string", ENCODING_PARAM_NAME.data());
+      return false;
+    }
+    encoding = get_string<string_ref>(encoding_slice);
+    if (encoding != "utf-8") {
+      IR_FRMT_ERROR(
+        "Unsupported encoding parameter '%s'", encoding.c_str());
+      return false;
+    }
+  }
+
+  if (unicode) {
+    *unicode = Unicode::UTF8;
+  }
+
   std::string locale_name(language.c_str(), language.size());
 
   if (country.size() > 0) {
@@ -90,9 +112,10 @@ bool get_locale_from_vpack(const VPackSlice locale_slice, icu::Locale& locale) {
   return true;
 }
 
-bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder) {
+bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder, const Unicode* unicode) {
+
+  VPackObjectBuilder object(builder);
   {
-    VPackObjectBuilder object(builder);
 
     const auto language = locale.getLanguage();
     builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
@@ -107,7 +130,9 @@ bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder) {
       builder->add(VARIANT_PARAM_NAME, VPackValue(variant));
     }
 
-    builder->add(ENCODING_PARAM_NAME, VPackValue("utf-8"));
+    if (unicode && *unicode == Unicode::UTF8) {
+      builder->add(ENCODING_PARAM_NAME, VPackValue("utf-8"));
+    }
   }
 
   return true;

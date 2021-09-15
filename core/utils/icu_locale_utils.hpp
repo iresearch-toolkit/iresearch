@@ -35,9 +35,13 @@ namespace icu_locale_utils {
 
 enum class Unicode { UTF8 };
 
-bool get_locale_from_vpack(const VPackSlice slice, icu::Locale& locale);
+bool get_locale_from_vpack(const VPackSlice slice,
+                           icu::Locale& locale,
+                           Unicode* const unicode = nullptr);
 
-bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder);
+bool locale_to_vpack(const icu::Locale& locale,
+                     VPackBuilder* const builder,
+                     const Unicode* unicode = nullptr);
 
 } // icu_locale_utils
 } // iresearch
