@@ -97,16 +97,16 @@ class concurrent_stack : private util::noncopyable {
         return nullptr;
       }
 
-      new_head.node = head.node->next.load(std::memory_order_acquire);
+      new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head,
-                                          std::memory_order_seq_cst));
+                                          std::memory_order_acquire));
 
     return head.node;
   }
 
   void push(node_type& new_node) noexcept {
-    concurrent_node head = head_.load(std::memory_order_acquire);
+    concurrent_node head = head_.load(std::memory_order_relaxed);
     concurrent_node new_head;
 
     do {
@@ -115,7 +115,7 @@ class concurrent_stack : private util::noncopyable {
       new_head.node = &new_node;
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head,
-                                          std::memory_order_seq_cst));
+                                          std::memory_order_release));
   }
 
  private:
