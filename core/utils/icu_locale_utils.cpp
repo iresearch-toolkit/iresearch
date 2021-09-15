@@ -31,7 +31,6 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
-constexpr VPackStringRef LOCALE_PARAM_NAME   {"locale"};
 constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
 constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
