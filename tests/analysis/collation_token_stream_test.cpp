@@ -56,7 +56,7 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale" : "de_DE@phonebook"})");
+      R"({"locale" : "de_DE.utf-8@phonebook"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -64,7 +64,7 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale" : "de_DE@collation=phonebook"})");
+      R"({"locale" : "de_DE.utf-16@collation=phonebook"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }

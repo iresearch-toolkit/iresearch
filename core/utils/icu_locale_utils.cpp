@@ -120,19 +120,39 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
 
 bool get_locale_from_str(string_ref locale_str,
                          icu::Locale& locale,
-                         bool is_new_format) {
+                         bool is_new_format,
+                         Unicode* encoding) {
 
   std::string locale_name;
+  const char* at_pos = strchr(locale_str.c_str(), '@'); // find pos of '@' symbol
+  const char* dot_pos = strchr(locale_str.c_str(), '.'); // find pos of '.' symbol
 
   // new format accept locale string including '@' and following items
-  if (is_new_format) {
-    locale_name.assign(locale_str.c_str(), locale_str.size());
-  } else { // include items before '@'
-    const char* pos = strchr(locale_str.c_str(), '@');
-    if (!pos) {
-      locale_name.assign(locale_str.c_str(), locale_str.size());
+  if (is_new_format || !at_pos) {
+    locale_name.assign(locale_str.begin(), locale_str.end());
+  } else { // include items only before '@'
+    locale_name.assign(locale_str.begin(), at_pos);
+  }
+
+  // extract encoding
+  if (!dot_pos) {
+    *encoding = Unicode::UTF8; // encoding is not specified. Set to default value
+  } else {
+    std::string enc;
+    if (at_pos) {
+      enc.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
     } else {
-      locale_name.assign(locale_str.c_str(), pos);
+      enc.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
+    }
+
+    // trasnform encoding to lower case
+    std::transform(enc.begin(), enc.end(), enc.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+
+    if (enc == "utf-8") {
+      *encoding = Unicode::UTF8;
+    } else {
+      *encoding = Unicode::NON_UTF8;
     }
   }
 

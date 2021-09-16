@@ -110,27 +110,45 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
   {
     irs::string_ref locale_name = "de@collation=phonebook";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     ASSERT_EQ(locale_name, actual);
   }
 
-  // new format. Keywords are considered
+
+  // new format. Keywords are considered. utf-8 encoding
   {
-    irs::string_ref locale_name = "de_DE@collation=phonebook";
+    irs::string_ref locale_name = "de_DE.utf-8@collation=phonebook";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     ASSERT_EQ(locale_name, actual);
   }
 
-  // old format. Keywords are ignored
+  // new format. Keywords are considered. non utf-8 encoding
   {
-    irs::string_ref locale_name = "de@collation=phonebook";
+    irs::string_ref locale_name = "de_DE.utf-16@collation=phonebook";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
-    irs::string_ref expected = "de";
+    ASSERT_EQ(locale_name, actual);
+  }
+
+  // old format. Keywords are ignored. utf-8 encoding
+  {
+    irs::string_ref locale_name = "de.UTF-8@collation=phonebook";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de.UTF-8";
     ASSERT_EQ(expected, actual);
   }
 
@@ -138,7 +156,9 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
   {
     irs::string_ref locale_name = "de-DE@collation=phonebook";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE";
     ASSERT_EQ(expected, actual);
@@ -148,7 +168,9 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
   {
     irs::string_ref locale_name = "de-DE_phonebook";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE_PHONEBOOK";
     ASSERT_EQ(expected, actual);
@@ -158,7 +180,9 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
   {
     irs::string_ref locale_name = "de-DE_phonebook@wrong=keywords";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE_PHONEBOOK";
     ASSERT_EQ(expected, actual);
@@ -168,9 +192,47 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
   {
     irs::string_ref locale_name = "";
     icu::Locale locale;
-    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored. Non utf8 encoding
+  {
+    irs::string_ref locale_name = "de-DE_phonebook.UTF-16@wrong=keywords";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK.UTF-16";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored. Non utf8 encoding
+  {
+    irs::string_ref locale_name = "de-DE_phonebook.utf-32@wrong=keywords";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK.utf-32";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored. Non utf8 encoding
+  {
+    irs::string_ref locale_name = "de-DE_phonebook.utf-32";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK.utf-32";
     ASSERT_EQ(expected, actual);
   }
 }

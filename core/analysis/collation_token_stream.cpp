@@ -57,7 +57,9 @@ bool parse_vpack_options(
       case VPackValueType::String:
       {
         return icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
-                                                     options.locale, true);  // true - new format of locale string
+                                                     options.locale,
+                                                     true,
+                                                     &options.encoding);  // true - new format of locale string
       }
       case VPackValueType::Object:
       {
