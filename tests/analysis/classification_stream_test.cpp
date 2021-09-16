@@ -33,7 +33,7 @@ TEST(classification_stream_test, consts) {
 }
 
 TEST(classification_stream_test, load_model) {
-  auto model_loc = test_base::resource("ag_news.bin");
+  auto model_loc = test_base::resource("ag_news.bin").u8string();
   irs::analysis::classification_stream::Options classification_options{model_loc};
   ASSERT_NO_THROW(irs::analysis::classification_stream{std::move(classification_options)});
 }
@@ -43,7 +43,7 @@ TEST(classification_stream_test, load_model) {
 TEST(classification_stream_test, test_load) {
   // load json string
   {
-    auto model_loc = test_base::resource("ag_news.bin");
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
     irs::string_ref data{"tests"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -65,7 +65,7 @@ TEST(classification_stream_test, test_load) {
 TEST(classification_stream_test, test_make_config_json) {
   // random extra param
   {
-    auto model_loc = test_base::resource("ag_news.bin");
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\"}";
     std::string actual;
@@ -75,7 +75,7 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test VPack
   {
-    auto model_loc = test_base::resource("ag_news.bin");
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc + "\"}";
     auto in_vpack = VPackParser::fromJson(config);

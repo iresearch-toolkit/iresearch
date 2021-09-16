@@ -58,9 +58,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
 }
 
 irs::analysis::analyzer::ptr construct(irs::analysis::classification_stream::Options& options) {
-  // TODO: create the model here & put it into a singleton.
-  // TODO: This will require modification of options
-  return irs::memory::make_shared<irs::analysis::classification_stream>(std::move(options));
+  return irs::memory::make_unique<irs::analysis::classification_stream>(std::move(options));
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
