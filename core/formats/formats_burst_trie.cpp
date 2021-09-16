@@ -1308,7 +1308,7 @@ void field_writer::prepare(const irs::flush_state& state) {
 
   std::string filename;
   bstring enc_header;
-  auto* enc = get_encryption(state.dir->attributes());
+  auto* enc = state.dir->attributes().encryption();
 
   // prepare term dictionary
   prepare_output(filename, terms_out_, state,
@@ -1353,7 +1353,7 @@ void field_writer::prepare(const irs::flush_state& state) {
   pw_->prepare(*terms_out_, state);
 
   // reset allocator from a directory
-  auto& allocator = directory_utils::get_allocator(*state.dir);
+  auto& allocator = state.dir->attributes().allocator();
   suffix_.reset(allocator);
   stats_.reset(allocator);
 }
@@ -1483,13 +1483,19 @@ void field_writer::end_field(
 #endif
 
   // write FST
+  bool ok;
   if (version_ > burst_trie::Version::ENCRYPTION_MIN) {
-    immutable_byte_fst::Write(fst, *index_out_, fst_stats);
+    ok = immutable_byte_fst::Write(fst, *index_out_, fst_stats);
   } else {
     // wrap stream to be OpenFST compliant
     output_buf isb(index_out_.get());
     std::ostream os(&isb);
-    fst.Write(os, fst_write_options());
+    ok = fst.Write(os, fst_write_options());
+  }
+
+  if (IRS_UNLIKELY(!ok)) {
+    throw irs::index_error(irs::string_utils::to_string(
+      "failed to write term index for field '%s'", name.c_str()));
   }
 
   stack_.clear();
@@ -2716,7 +2722,7 @@ class single_term_iterator final : public seek_term_iterator {
       : nullptr;
   }
 
-  virtual const bytes_ref& value() const {
+  virtual const bytes_ref& value() const override {
     return value_;
   }
 
@@ -3469,7 +3475,7 @@ void field_reader::prepare(
     index_in->seek(ptr);
   }
 
-  auto* enc = get_encryption(dir.attributes());
+  auto* enc = dir.attributes().encryption();
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > burst_trie::Version::MIN) {

@@ -198,9 +198,13 @@ void read_compact(
   }
 
   // try direct buffer access
-  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size, BufferHint::NORMAL);
+  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize, BufferHint::NORMAL);
 
-  if (!buf) {
+  uint64_t buff_size = 0;
+  if (buf) {
+    const byte_type* ptr = buf + buf_size;
+    buff_size = zvread<uint64_t>(ptr);
+  } else {
     irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
@@ -217,10 +221,11 @@ void read_compact(
     }
 
     buf = encode_buf.c_str();
+    buff_size = irs::read_zvlong(in);
   }
 
   // ensure that we have enough space to store decompressed data
-  decode_buf.resize(irs::read_zvlong(in) + MAX_DATA_BLOCK_SIZE);
+  decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
     buf, buf_size,
@@ -337,7 +342,7 @@ class index_block {
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         &format_traits::pack64,
-        out, stats.first, stats.second,
+        out, std::get<0>(stats), std::get<1>(stats),
         offsets_, block_size, buf);
 
       if (0 == offsets_[0] && bitpack::rl(bits)) {
@@ -395,11 +400,11 @@ class writer final : public irs::columnstore_writer {
   class column final : public irs::column_output {
    public:
     explicit column(writer& ctx, const irs::type_info& type,
-                    const compression::compressor::ptr& compressor,
+                    compression::compressor::ptr compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
         comp_type_(type),
-        comp_(compressor),
+        comp_(std::move(compressor)),
         cipher_(cipher),
         blocks_index_(*ctx.alloc_),
         block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
@@ -593,17 +598,16 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (version_ > Version::MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     const auto encrypt = irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
     UNUSED(encrypt);
   }
 
-  alloc_ = &directory_utils::get_allocator(dir);
-
   // noexcept block
   dir_ = &dir;
+  alloc_ = &dir.attributes().allocator();
   data_out_ = std::move(data_out);
   data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);
@@ -630,7 +634,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, info.compression(), compressor, cipher);
+  columns_.emplace_back(*this, info.compression(), std::move(compressor), cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -1644,7 +1648,7 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    decomp_ = decomp;
+    decomp_ = std::move(decomp);
   }
 
   bool encrypted() const noexcept { return encrypted_; }
@@ -1807,7 +1811,7 @@ class sparse_column final : public column {
   }
 
   virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -1999,7 +2003,7 @@ class dense_fixed_offset_column final : public column {
   }
 
   virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     size_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -2170,7 +2174,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
 
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -2384,7 +2388,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   encryption::stream::ptr cipher;
 
   if (version > writer::FORMAT_MIN) {
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *stream, enc, cipher)) {
       assert(cipher && cipher->block_size());
@@ -2461,7 +2465,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     }
 
     try {
-      column->read(*stream, buf, decomp);
+      column->read(*stream, buf, std::move(decomp));
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
 
