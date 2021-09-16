@@ -107,12 +107,11 @@ class concurrent_stack : private util::noncopyable {
 
   void push(node_type& new_node) noexcept {
     concurrent_node head = head_.load(std::memory_order_relaxed);
-    concurrent_node new_head;
+    concurrent_node new_head{&new_node};
 
     do {
       new_node.next.store(head.node, std::memory_order_relaxed);
 
-      new_head.node = &new_node;
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head,
                                           std::memory_order_release));
