@@ -52,13 +52,11 @@ TEST(classification_stream_test, test_load) {
     ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
-    auto* payload = irs::get<irs::payload>(*stream);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("tests", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }

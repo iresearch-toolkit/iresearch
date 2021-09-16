@@ -23,6 +23,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <store/store_utils.hpp>
 #include "classification_stream.hpp"
 
 #include "velocypack/Parser.h"
@@ -44,9 +45,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
           MODEL_LOCATION_PARAM_NAME.data());
         return false;
       }
-      auto ref = model_location_slice.stringRef();
-      std::string model_location = std::string{ref.data(), ref.length()};
-      options.model_location = model_location;
+      options.model_location = iresearch::get_string<std::string>(model_location_slice);
       return true;
     }
     default: {
@@ -218,13 +217,13 @@ bool classification_stream::reset(const string_ref& data) {
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   // Now classify token!
   std::vector<std::pair<float, std::string>> predictions{};
-  std::string s{data.c_str(), data.size()};
-  std::stringstream ss{s};
+
+  std::stringstream ss{};
+  ss << data;
   if (model_container->predictLine(ss, predictions, 1, 0.0)) {
     for (const auto& prediction : predictions) {
       term.value = bytes_ref(reinterpret_cast<const byte_type *>(prediction.second.c_str()), prediction.second.size());

@@ -61,7 +61,6 @@ class classification_stream final
     using attributes = std::tuple<
       increment,
       offset,
-      payload,
       term_attribute>;
 
     attributes attrs_;
