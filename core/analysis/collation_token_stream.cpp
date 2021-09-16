@@ -45,19 +45,31 @@ bool parse_vpack_options(
 
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
-      "Slice for collation_token_stream is not an object");
-    return false;
+      "Locale parameter is not specified or it is not an object '%s'",
+      LOCALE_PARAM_NAME.data());
   }
 
   try {
+
     auto locale_slice = slice.get(LOCALE_PARAM_NAME);
-    if (!locale_slice.isObject()) {
-      IR_FRMT_ERROR(
-        "Locale parameter '%s' is not specified or it is not an object",
-        LOCALE_PARAM_NAME.data());
-      return false;
+
+    switch (locale_slice.type()) {
+      case VPackValueType::String:
+      {
+        return icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
+                                                     options.locale, true);  // true - new format of locale string
+      }
+      case VPackValueType::Object:
+      {
+        return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale, &options.encoding);
+      }
+      [[fallthrough]];
+      default:
+        IR_FRMT_ERROR(
+          "Missing '%s' while constructing collation_token_stream"
+          "or value not a string or an object",
+          LOCALE_PARAM_NAME.data());
     }
-    return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale, &options.encoding);
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",

@@ -41,6 +41,8 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
                            Unicode* const unicode) {
 
   if (!locale_slice.isObject()) {
+    IR_FRMT_ERROR(
+      "Locale value is not specified or it is not an object");
     return false;
   }
 
@@ -113,10 +115,35 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
 
   locale = icu::Locale::createFromName(locale_name.c_str());
 
-  return true;
+  return !locale.isBogus();
 }
 
-bool locale_to_vpack(const icu::Locale& locale, VPackBuilder* const builder, const Unicode* unicode) {
+bool get_locale_from_str(string_ref locale_str,
+                         icu::Locale& locale,
+                         bool is_new_format) {
+
+  std::string locale_name;
+
+  // new format accept locale string including '@' and following items
+  if (is_new_format) {
+    locale_name.assign(locale_str.c_str(), locale_str.size());
+  } else { // include items before '@'
+    const char* pos = strchr(locale_str.c_str(), '@');
+    if (!pos) {
+      locale_name.assign(locale_str.c_str(), locale_str.size());
+    } else {
+      locale_name.assign(locale_str.c_str(), pos);
+    }
+  }
+
+  locale = icu::Locale::createFromName(locale_name.c_str());
+  return !locale.isBogus();
+}
+
+
+bool locale_to_vpack(const icu::Locale& locale,
+                     VPackBuilder* const builder,
+                     const Unicode* unicode) {
 
   VPackObjectBuilder object(builder);
   {

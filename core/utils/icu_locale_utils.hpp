@@ -39,6 +39,10 @@ bool get_locale_from_vpack(const VPackSlice slice,
                            icu::Locale& locale,
                            Unicode* const unicode = nullptr);
 
+bool get_locale_from_str(irs::string_ref locale_str,
+                         icu::Locale& locale,
+                         bool is_new_format);
+
 bool locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
                      const Unicode* unicode = nullptr);

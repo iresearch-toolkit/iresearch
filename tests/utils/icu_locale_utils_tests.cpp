@@ -104,6 +104,77 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
   }
 }
 
+TEST(icu_locale_utils_test_suite, get_locale_from_str) {
+
+  // new format. Keywords are considered
+  {
+    irs::string_ref locale_name = "de@collation=phonebook";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true));
+    irs::string_ref actual = locale.getName();
+    ASSERT_EQ(locale_name, actual);
+  }
+
+  // new format. Keywords are considered
+  {
+    irs::string_ref locale_name = "de_DE@collation=phonebook";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true));
+    irs::string_ref actual = locale.getName();
+    ASSERT_EQ(locale_name, actual);
+  }
+
+  // old format. Keywords are ignored
+  {
+    irs::string_ref locale_name = "de@collation=phonebook";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored
+  {
+    irs::string_ref locale_name = "de-DE@collation=phonebook";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored
+  {
+    irs::string_ref locale_name = "de-DE_phonebook";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored
+  {
+    irs::string_ref locale_name = "de-DE_phonebook@wrong=keywords";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // old format. Keywords are ignored
+  {
+    irs::string_ref locale_name = "";
+    icu::Locale locale;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false));
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "";
+    ASSERT_EQ(expected, actual);
+  }
+}
+
 TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
 
   {
