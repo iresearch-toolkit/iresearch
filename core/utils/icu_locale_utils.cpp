@@ -125,27 +125,25 @@ bool get_locale_from_str(string_ref locale_str,
                          std::string* encoding) {
 
   std::string locale_name;
-  const char* at_pos =
-      static_cast<const char*>(memchr(locale_str.c_str(), '@', locale_str.size())); // find pos of '@' symbol
-  const char* dot_pos =
-      static_cast<const char*>(memchr(locale_str.c_str(), '.', locale_str.size())); // find pos of '.' symbol
+  const char* at_pos = std::find(locale_str.begin(), locale_str.end(), '@'); // find pos of '@' symbol
+  const char* dot_pos = std::find(locale_str.begin(), locale_str.end(), '.'); // find pos of '.' symbol
 
   // extract locale name
   // new format accept locale string including '@' and following items
-  if (is_new_format || !at_pos) {
+  if (is_new_format || at_pos == locale_str.end()) {
     locale_name.assign(locale_str.begin(), locale_str.end());
   } else { // include items only before '@'
     locale_name.assign(locale_str.begin(), at_pos);
   }
 
   // extract encoding
-  if (!dot_pos) {
+  if (dot_pos == locale_str.end()) {
     if (unicode) {
       *unicode = Unicode::UTF8; // encoding is not specified. Set to default value
     }
   } else {
     std::string enc; // extracted encoding
-    if (at_pos && dot_pos < at_pos) { // '.' should be before '@'
+    if (at_pos != locale_str.end() && dot_pos < at_pos) { // '.' should be before '@'
       enc.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
     } else {
       enc.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
