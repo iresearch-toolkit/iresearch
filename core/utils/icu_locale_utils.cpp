@@ -125,8 +125,10 @@ bool get_locale_from_str(string_ref locale_str,
                          std::string* encoding) {
 
   std::string locale_name;
-  const char* at_pos = strchr(locale_str.c_str(), '@'); // find pos of '@' symbol
-  const char* dot_pos = strchr(locale_str.c_str(), '.'); // find pos of '.' symbol
+  const char* at_pos =
+      static_cast<const char*>(memchr(locale_str.c_str(), '@', locale_str.size())); // find pos of '@' symbol
+  const char* dot_pos =
+      static_cast<const char*>(memchr(locale_str.c_str(), '.', locale_str.size())); // find pos of '.' symbol
 
   // extract locale name
   // new format accept locale string including '@' and following items
