@@ -56,21 +56,22 @@ bool parse_vpack_options(
     switch (locale_slice.type()) {
       case VPackValueType::String:
       {
-        return icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
+         bool res = icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
                                                      options.locale,
                                                      false, // true - new format of locale string
-                                                     &options.encoding);
+                                                     &options.unicode);
+         if (res && options.unicode == icu_locale_utils::Unicode::UTF8) {
+           return true;
+         } else {
+           return false;
+         }
       }
       case VPackValueType::Object:
       {
-        bool res = icu_locale_utils::get_locale_from_vpack(locale_slice,
-                                                           options.locale,
-                                                           &options.encoding);
-        if (res && options.encoding == icu_locale_utils::Unicode::UTF8) {
-          return true;
-        } else {
-          return false;
-        }
+        return icu_locale_utils::get_locale_from_vpack(locale_slice,
+                                                       options.locale,
+                                                       &options.unicode);
+
       }
       [[fallthrough]];
       default:
@@ -118,7 +119,7 @@ bool make_vpack_config(
     VPackBuilder* builder) {
 
   VPackBuilder locale_builder;
-  icu_locale_utils::locale_to_vpack(options.locale, &locale_builder, &options.encoding);
+  icu_locale_utils::locale_to_vpack(options.locale, &locale_builder, &options.unicode);
 
   // locale
   VPackObjectBuilder locale_obj(builder);

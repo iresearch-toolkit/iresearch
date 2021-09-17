@@ -44,11 +44,11 @@ class collation_token_stream final
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
-    options_t() : locale("C"), encoding(icu_locale_utils::Unicode::UTF8) {
+    options_t() : locale("C"), unicode(icu_locale_utils::Unicode::UTF8) {
       locale.setToBogus();
     }
     icu::Locale locale;
-    icu_locale_utils::Unicode encoding;
+    icu_locale_utils::Unicode unicode;
   };
 
   static constexpr string_ref type_name() noexcept { 

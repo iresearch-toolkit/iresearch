@@ -272,6 +272,18 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     ASSERT_EQ(expected, actual);
   }
 
+  // try to break it
+  {
+    irs::string_ref locale_name = "@ru_De.utf-8";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "";
+    ASSERT_EQ(expected, actual);
+  }
+
   // get also encoding name
   {
     irs::string_ref locale_name = "ru_De.utf-8";
@@ -299,6 +311,49 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     ASSERT_EQ(expected, actual);
     ASSERT_EQ(encoding_name, "utf-32");
   }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "de-DE.utf-32@collation=phonebook";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE.utf-32@collation=phonebook";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-32");
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "de.UTF-8@phonebook";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de.UTF-8@phonebook";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-8");
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "de-DE.AsCiI@collation=phonebook";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE.AsCiI@collation=phonebook";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "ascii");
+  }
+
 
   // get also encoding name
   {

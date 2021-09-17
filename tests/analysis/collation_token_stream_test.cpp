@@ -64,7 +64,7 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
-      R"({"locale" : "de_DE.utf-16@collation=phonebook"})");
+      R"({"locale" : "de_DE.UTF-8@collation=phonebook"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -76,7 +76,9 @@ TEST(collation_token_stream_test, construct_from_str) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : 123}})"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "en.utf-16"})"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de-DE.ascii@phonebook"})"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de_DE.utf-32@collation=phonebook"})"));
   }
 }
 
@@ -149,6 +151,7 @@ TEST(collation_token_stream_test, construct_from_obj) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-32"}})"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : 123}})"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook", "encoding" : "ascii"}})"));
   }
 }
 
