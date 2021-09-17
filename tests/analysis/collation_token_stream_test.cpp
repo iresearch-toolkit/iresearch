@@ -462,7 +462,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   }
 
   // locale defined as object
-  // same variants, should be EQUAL
+  // same variants, but collation is ignored, because input as old string. should be NOT EQUAL
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
@@ -483,7 +483,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(data.size(), offset->end);
-      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_NE(get_collation_key(data), term->value);
       ASSERT_EQ(1, inc->value);
       ASSERT_FALSE(stream->next());
     }
@@ -660,7 +660,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   }
 
   // locale defined as string
-  // same variants, should be EQUAL
+  // same variants, but collation is ignored, because input as old string. should be NOT EQUAL
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
@@ -681,7 +681,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(data.size(), offset->end);
-      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_NE(get_collation_key(data), term->value);
       ASSERT_EQ(1, inc->value);
       ASSERT_FALSE(stream->next());
     }

@@ -45,8 +45,8 @@ bool parse_vpack_options(
 
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
-      "Locale parameter is not specified or it is not an object '%s'",
-      LOCALE_PARAM_NAME.data());
+      "Slice for collation_token_stream is not an object");
+    return false;
   }
 
   try {
@@ -58,18 +58,25 @@ bool parse_vpack_options(
       {
         return icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
                                                      options.locale,
-                                                     true,
-                                                     &options.encoding);  // true - new format of locale string
+                                                     false, // true - new format of locale string
+                                                     &options.encoding);
       }
       case VPackValueType::Object:
       {
-        return icu_locale_utils::get_locale_from_vpack(locale_slice, options.locale, &options.encoding);
+        bool res = icu_locale_utils::get_locale_from_vpack(locale_slice,
+                                                           options.locale,
+                                                           &options.encoding);
+        if (res && options.encoding == icu_locale_utils::Unicode::UTF8) {
+          return true;
+        } else {
+          return false;
+        }
       }
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
           "Missing '%s' while constructing collation_token_stream"
-          "or value not a string or an object",
+          "or value is not a string or an object",
           LOCALE_PARAM_NAME.data());
     }
   } catch(const VPackException& ex) {

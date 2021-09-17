@@ -104,7 +104,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
   }
 }
 
-TEST(icu_locale_utils_test_suite, get_locale_from_str) {
+TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
 
   // new format. Keywords are considered
   {
@@ -234,6 +234,112 @@ TEST(icu_locale_utils_test_suite, get_locale_from_str) {
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE_PHONEBOOK.utf-32";
     ASSERT_EQ(expected, actual);
+  }
+
+  // try to break it
+  {
+    irs::string_ref locale_name = "ru_RU@let.s.break.it";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "ru_RU@let.s.break.it";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // try to break it
+  {
+    irs::string_ref locale_name = "ru_RU@let.s.break.it";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "ru_RU";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // try to break it
+  {
+    irs::string_ref locale_name = "@ru_De.utf-8";
+    icu::Locale locale;
+    Unicode unicode;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "@ru_De.utf-8";
+    ASSERT_EQ(expected, actual);
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "ru_De.utf-8";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "ru_DE.utf-8";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-8");
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "de-DE_phonebook.utf-32";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de_DE_PHONEBOOK.utf-32";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-32");
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "de-DE_phonebook.ucs-2_utf8_ascii";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "ucs-2_utf8_ascii");
+  }
+
+  // Try to break it. get also encoding name
+  {
+    irs::string_ref locale_name = "de@DE._phon@ebook.ucs-2_utf8_.@scii..";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "_phon@ebook.ucs-2_utf8_.@scii..");
+  }
+
+  // Try to break it. get also encoding name
+  {
+    irs::string_ref locale_name = "de@DE._phon@ebook.ucs-2_utf8_.@scii..";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de@DE._phon@ebook.ucs-2_utf8_.@scii..";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "_phon@ebook.ucs-2_utf8_.@scii..");
   }
 }
 

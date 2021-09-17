@@ -121,12 +121,14 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
 bool get_locale_from_str(string_ref locale_str,
                          icu::Locale& locale,
                          bool is_new_format,
-                         Unicode* encoding) {
+                         Unicode* encoding,
+                         std::string* encoding_name) {
 
   std::string locale_name;
   const char* at_pos = strchr(locale_str.c_str(), '@'); // find pos of '@' symbol
   const char* dot_pos = strchr(locale_str.c_str(), '.'); // find pos of '.' symbol
 
+  // extract locale name
   // new format accept locale string including '@' and following items
   if (is_new_format || !at_pos) {
     locale_name.assign(locale_str.begin(), locale_str.end());
@@ -136,10 +138,12 @@ bool get_locale_from_str(string_ref locale_str,
 
   // extract encoding
   if (!dot_pos) {
-    *encoding = Unicode::UTF8; // encoding is not specified. Set to default value
+    if (encoding) {
+      *encoding = Unicode::UTF8; // encoding is not specified. Set to default value
+    }
   } else {
     std::string enc;
-    if (at_pos) {
+    if (at_pos && dot_pos < at_pos) { // '.' should be before '@'
       enc.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
     } else {
       enc.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
@@ -149,10 +153,17 @@ bool get_locale_from_str(string_ref locale_str,
     std::transform(enc.begin(), enc.end(), enc.begin(),
         [](unsigned char c){ return std::tolower(c); });
 
-    if (enc == "utf-8") {
-      *encoding = Unicode::UTF8;
-    } else {
-      *encoding = Unicode::NON_UTF8;
+    if (encoding_name) {
+      // assume that 'encoding_name' has enough memory for copying name of locale
+     *encoding_name = enc;
+    }
+
+    if (encoding) {
+      if (enc == "utf-8") {
+        *encoding = Unicode::UTF8;
+      } else {
+        *encoding = Unicode::NON_UTF8;
+      }
     }
   }
 
