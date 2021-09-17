@@ -64,9 +64,10 @@ class classification_stream final
       term_attribute>;
 
     attributes attrs_;
-    std::shared_ptr<fasttext::FastText> model_container;
-    const std::string& model_location;
-    bool term_eof_;
+    std::shared_ptr<fasttext::FastText> model_container_;
+    std::vector<std::pair<float, std::string>> predictions_;
+    std::vector<std::pair<float, std::string>>::iterator predictions_it_;
+    const std::string& model_location_;
 };
 
 class EmbeddingsModelLoader {

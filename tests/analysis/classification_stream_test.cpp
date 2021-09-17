@@ -49,6 +49,7 @@ TEST(classification_stream_test, test_load) {
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
+    ASSERT_FALSE(stream->next());
     ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
@@ -60,6 +61,69 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
+
+  // multi-word input
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    irs::string_ref data{"tests are interesting."};
+    auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
+    auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_FALSE(stream->next());
+    ASSERT_TRUE(stream->reset(data));
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(22, offset->end);
+    ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+
+  // Multi line input
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    irs::string_ref data{"tests are interesting.\nwhat about that?"};
+    auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
+    auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_FALSE(stream->next());
+    ASSERT_TRUE(stream->reset(data));
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(39, offset->end);
+    ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    irs::string_ref data{"karzai visits rival ' s stronghold , the afghan president makes a rare visit to the north just two weeks before the country ' s first presidential elections ."};
+    auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
+    auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_FALSE(stream->next());
+    ASSERT_TRUE(stream->reset(data));
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(158, offset->end);
+    ASSERT_EQ("__label__1", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
+
 }
 
 TEST(classification_stream_test, test_make_config_json) {

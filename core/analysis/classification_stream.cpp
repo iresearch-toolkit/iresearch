@@ -181,12 +181,14 @@ void EmbeddingsModelLoader::decrement_model_usage_count(const std::string& model
 
 classification_stream::classification_stream(const Options &options)
   : analyzer{irs::type<classification_stream>::get()},
-  model_container{EmbeddingsModelLoader::getInstance().get_model_and_increment_count(options.model_location)},
-  model_location{options.model_location} {}
+    model_container_{EmbeddingsModelLoader::getInstance().get_model_and_increment_count(options.model_location)},
+    model_location_{options.model_location},
+    predictions_{},
+    predictions_it_{predictions_.end()} {}
 
 
 classification_stream::~classification_stream() {
-  EmbeddingsModelLoader::getInstance().decrement_model_usage_count(model_location);
+  EmbeddingsModelLoader::getInstance().decrement_model_usage_count(model_location_);
 }
 
 void classification_stream::init() {
@@ -195,38 +197,30 @@ void classification_stream::init() {
 }
 
 bool classification_stream::next() {
-  if (term_eof_) {
+  if (predictions_it_ == predictions_.end()) {
     return false;
   }
 
-  term_eof_ = true;
+  auto& term = std::get<term_attribute>(attrs_);
+  term.value = bytes_ref::NIL; // clear the term value
+  term.value = bytes_ref(reinterpret_cast<const byte_type *>(predictions_it_->second.c_str()), predictions_it_->second.size());
+
+  ++predictions_it_;
 
   return true;
 }
 
 bool classification_stream::reset(const string_ref& data) {
-  // convert encoding to UTF-8
-  auto& term = std::get<term_attribute>(attrs_);
-
-  term.value = bytes_ref::NIL; // clear the term value
-  term_eof_ = true;
-
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  term_eof_ = false;
-
-  // Now classify token!
-  std::vector<std::pair<float, std::string>> predictions{};
+  predictions_.clear();
 
   std::stringstream ss{};
   ss << data;
-  if (model_container->predictLine(ss, predictions, 1, 0.0)) {
-    for (const auto& prediction : predictions) {
-      term.value = bytes_ref(reinterpret_cast<const byte_type *>(prediction.second.c_str()), prediction.second.size());
-    }
-  }
+  model_container_->predictLine(ss, predictions_, 1, 0.0);
+  predictions_it_ = predictions_.begin();
 
   return true;
 }
