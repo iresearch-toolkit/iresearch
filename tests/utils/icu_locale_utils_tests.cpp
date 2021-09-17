@@ -396,6 +396,49 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     ASSERT_EQ(expected, actual);
     ASSERT_EQ(encoding_name, "_phon@ebook.ucs-2_utf8_.@scii..");
   }
+
+  // get also encoding name. Default 'utf-8' value
+  {
+    irs::string_ref locale_name = "de";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-8");
+  }
+
+  // get also encoding name. Default 'utf-8' value
+  {
+    irs::string_ref locale_name = "de@collation=phonebook";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de@collation=phonebook";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-8");
+  }
+
+  // get also encoding name.
+  {
+    irs::string_ref locale_name = "de.utf-8";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "de.utf-8";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "utf-8");
+  }
+
 }
 
 TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {

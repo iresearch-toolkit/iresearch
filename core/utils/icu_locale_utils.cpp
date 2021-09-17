@@ -141,6 +141,11 @@ bool get_locale_from_str(string_ref locale_str,
     if (unicode) {
       *unicode = Unicode::UTF8; // encoding is not specified. Set to default value
     }
+
+    if (encoding) {
+      // assume that 'encoding_name' has enough memory for copying name of locale
+     *encoding = "utf-8";
+    }
   } else {
     std::string enc; // extracted encoding
     if (at_pos != locale_str.end() && dot_pos < at_pos) { // '.' should be before '@'
