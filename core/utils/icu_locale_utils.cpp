@@ -38,7 +38,7 @@ constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
 bool get_locale_from_vpack(const VPackSlice locale_slice,
                            icu::Locale& locale,
-                           Unicode* const unicode) {
+                           Unicode* unicode) {
 
   if (!locale_slice.isObject()) {
     IR_FRMT_ERROR(
@@ -144,7 +144,7 @@ bool get_locale_from_str(string_ref locale_str,
 
     if (encoding) {
       // assume that 'encoding_name' has enough memory for copying name of locale
-     *encoding = "utf-8";
+      *encoding = "utf-8";
     }
   } else {
     std::string enc; // extracted encoding

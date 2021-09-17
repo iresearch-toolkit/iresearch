@@ -37,13 +37,13 @@ enum class Unicode { UTF8, NON_UTF8 };
 
 bool get_locale_from_vpack(const VPackSlice slice,
                            icu::Locale& locale,
-                           Unicode* const unicode = nullptr);
+                           Unicode* unicode = nullptr);
 
 bool get_locale_from_str(irs::string_ref locale_str,
                          icu::Locale& locale,
                          bool is_new_format,
-                         Unicode* encoding = nullptr,
-                         std::string* = nullptr);
+                         Unicode* unicode = nullptr,
+                         std::string* encoding = nullptr);
 
 bool locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
