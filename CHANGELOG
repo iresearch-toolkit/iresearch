@@ -1,6 +1,11 @@
 master
 -------------------------
 
+* Fix threading related issues
+
+* Add "object" locale parsing for the `collation_token_stream` to support definig locale variant
+  and keywords
+
 v1.1 (2021-08-25)
 -------------------------
 
