@@ -82,12 +82,6 @@ class IRESEARCH_API utf8_path {
     return *this;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief IFF absolute(): same as utf8()
-  ///        IFF !absolute(): same as utf8_path(true) /= utf8()
-  //////////////////////////////////////////////////////////////////////////////
-  //std::string utf8_absolute() const;
-
   void clear();
 
  private:
@@ -96,6 +90,7 @@ class IRESEARCH_API utf8_path {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
+// need this operator to be closer to std::filesystem::path
 utf8_path operator/( const utf8_path& lhs, const utf8_path& rhs );
 
 }
