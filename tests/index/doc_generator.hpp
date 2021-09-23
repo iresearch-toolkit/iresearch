@@ -45,8 +45,6 @@ class token_stream;
 
 namespace tests {
 
-namespace fs = std::filesystem;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class ifield
 /// @brief base interface for all fields
