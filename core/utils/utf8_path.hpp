@@ -66,7 +66,7 @@ class IRESEARCH_API utf8_path {
   bool is_absolute(bool& result) const noexcept;
 
   // std::filesystem::path compliant version
-  bool utf8_path::is_absolute() const noexcept {
+  bool is_absolute() const noexcept {
     bool result;
     return is_absolute(result) && result;
   }
