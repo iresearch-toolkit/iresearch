@@ -53,8 +53,6 @@
 #include "utils/network_utils.hpp"
 #include "utils/string.hpp"
 
-namespace fs = std::filesystem;
-
 namespace {
 
 #ifdef _WIN32
@@ -295,7 +293,7 @@ bool verify_lock_file(const file_path_t file) {
   const size_t len = strlen(buf);
   if (!is_same_hostname(buf, len)) {
     IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'",
-                 buf, fs::path{file}.c_str());
+                 buf, utf8_path{file}.c_str());
     return true; // locked
   }
 
@@ -303,7 +301,7 @@ bool verify_lock_file(const file_path_t file) {
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
     IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'",
-                 pid, fs::path{file}.c_str());
+                 pid, utf8_path{file}.c_str());
     return true; // locked
   }
 
@@ -334,7 +332,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   if (INVALID_HANDLE_VALUE == fd) {
     IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d",
-                  fs::path{file}.c_str(), GetLastError());
+                  utf8_path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -349,7 +347,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminate 0
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  fs::path{file}.c_str(), GetLastError());
+                  utf8_path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -361,7 +359,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  fs::path{file}.c_str(), GetLastError());
+                  utf8_path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -372,7 +370,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
     IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ",
-                  fs::path{file}.c_str(), GetLastError());
+                  utf8_path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -644,7 +642,7 @@ bool exists(bool& result, const file_path_t file) noexcept {
 
   if (!result && ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
-                  errno, fs::path{file}.c_str());
+                  errno, utf8_path{file}.c_str());
   }
 
   return true;
@@ -664,7 +662,7 @@ bool exists_directory(bool& result, const file_path_t name) noexcept {
     #endif
   } else if (ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
-                  errno, fs::path{name}.c_str());
+                  errno, utf8_path{name}.c_str());
   }
 
   return true;
@@ -684,7 +682,7 @@ bool exists_file(bool& result, const file_path_t name) noexcept {
     #endif
   } else if (ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
-                  errno, fs::path{name}.c_str());
+                  errno, utf8_path{name}.c_str());
   }
 
   return true;
@@ -851,7 +849,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 
   if (!parts.dirname.empty()) {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
-    fs::path::string_type parent(parts.dirname);
+    utf8_path::string_type parent(parts.dirname);
     if (!mkdir(parent.c_str(), false)) { // intermediate path parts can exist, this is ok anyway
       return false;
     }
@@ -871,7 +869,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
           // failed to create directory  or directory exist, but we are asked to perform creation
 
           IR_FRMT_ERROR("Failed to create path: '%s', error %d",
-                        fs::path{path}.c_str(), GetLastError());
+                        utf8_path{path}.c_str(), GetLastError());
           return false;
         }
       }
@@ -889,7 +887,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
         // failed to create directory  or directory exist, but we are asked to perform creation
 
         IR_FRMT_ERROR("Failed to create path: '%s', error %d",
-                      fs::path{path}.c_str(), GetLastError());
+                      utf8_path{path}.c_str(), GetLastError());
 
         return false;
       }
@@ -978,7 +976,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
   }
 }
 
-bool read_cwd(std::basic_string<fs::path::value_type>& result) noexcept {
+bool read_cwd(std::basic_string<utf8_path::value_type>& result) noexcept {
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -1057,19 +1055,19 @@ bool read_cwd(std::basic_string<fs::path::value_type>& result) noexcept {
   return false;
 }
 
-void ensure_absolute(fs::path& path) {
+void ensure_absolute(utf8_path& path) {
   if (!path.is_absolute()) {
-    fs::path::string_type str;
+    utf8_path::string_type str;
     read_cwd(str);
 
-    path = fs::path{str} / path;
+    path = utf8_path{str} / path;
   }
 }
 
 bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
-    std::basic_string<fs::path::value_type> buf;
+    std::basic_string<utf8_path::value_type> buf;
 
     // must remove each directory entry recursively (ignore result, check final ::remove() instead)
     visit_directory(
@@ -1105,10 +1103,10 @@ bool remove(const file_path_t path) noexcept {
         const auto system_error = GetLastError();
         if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
           IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                        fs::path{path}.c_str(), system_error);
+                        utf8_path{path}.c_str(), system_error);
         } else {
           IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                        fs::path{path}.c_str(), system_error);
+                        utf8_path{path}.c_str(), system_error);
         }
         return false;
       }
@@ -1131,11 +1129,11 @@ bool remove(const file_path_t path) noexcept {
       const auto system_error = GetLastError();
       if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
         IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                      fs::path{path}.c_str(), system_error);
+                      utf8_path{path}.c_str(), system_error);
       }
       else {
         IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                      fs::path{path}.c_str(), system_error);
+                      utf8_path{path}.c_str(), system_error);
       }
 
       return false;
