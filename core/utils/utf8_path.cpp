@@ -31,23 +31,6 @@
 
 namespace {
 
-typedef irs::basic_string_ref<wchar_t> wstring_ref;
-
-/**
- * @param encoding the output encoding of the converter
- * @param forceUnicodeSystem force the internal system encoding to be unicode
- * @return the converter capable of outputing in the specified target encoding
- **/
-template<typename Internal>
-const std::codecvt<Internal, char, std::mbstate_t>& utf8_codecvt() {
-  // always use UTF-8 locale for reading/writing filesystem paths
-  // forceUnicodeSystem since using UCS2
-  static const auto utf8 =
-    irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true);
-
-  return irs::locale_utils::codecvt<Internal>(utf8);
-}
-
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wunused-function"
@@ -55,75 +38,6 @@ const std::codecvt<Internal, char, std::mbstate_t>& utf8_codecvt() {
 
 // use inline to avoid GCC warning
 inline bool append_path(std::string& buf, const irs::string_ref& value) {
-  buf.append(value.c_str(), value.size());
-
-  return true;
-}
-
-// use inline to avoid GCC warning
-inline bool append_path(std::string& buf, const wstring_ref& value) {
-  static auto& fs_cvt = utf8_codecvt<wchar_t>();
-  auto size = value.size() * 4; // same ratio as boost::filesystem
-  auto start = buf.size();
-
-  buf.resize(start + size); // allocate enough space for the converted value
-
-  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
-  const wchar_t* from_next;
-  char* to_next;
-  auto result = fs_cvt.out(
-    state,
-    value.c_str(),
-    value.c_str() + value.size(),
-    from_next,
-    const_cast<char*>(buf.c_str() + start),
-    const_cast<char*>(buf.c_str() + buf.size()),
-    to_next);
-
-  if (std::codecvt_base::ok != result) {
-    buf.resize(start); // resize to the original buffer size
-
-    return false;
-  }
-
-  buf.resize(to_next - &buf[0]); // resize to the appended value end
-
-  return true;
-}
-
-// use inline to avoid GCC warning
-inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
-  static auto& fs_cvt = utf8_codecvt<wchar_t>();
-  auto size = value.size() * 3; // same ratio as boost::filesystem
-  auto start = buf.size();
-
-  buf.resize(start + size); // allocate enough space for the converted value
-
-  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
-  const char* from_next;
-  wchar_t* to_next;
-  auto result = fs_cvt.in(
-    state,
-    value.c_str(),
-    value.c_str() + value.size(),
-    from_next,
-    const_cast<wchar_t*>(buf.c_str() + start),
-    const_cast<wchar_t*>(buf.c_str() + buf.size()),
-    to_next);
-
-  if (std::codecvt_base::ok != result) {
-    buf.resize(start); // resize to the original buffer size
-
-    return false;
-  }
-
-  buf.resize(to_next - &buf[0]); // resize to the appended value end
-
-  return true;
-}
-
-// use inline to avoid GCC warning
-inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
@@ -166,35 +80,6 @@ utf8_path::utf8_path(const irs::string_ref& utf8_path) {
   }
 }
 
-utf8_path::utf8_path(const wchar_t* ucs2_path)
-  : utf8_path(irs::basic_string_ref<wchar_t>(ucs2_path)) {
-}
-
-utf8_path::utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path) {
-  if (ucs2_path.null()) {
-    std::basic_string<native_char_t> buf;
-
-    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
-    if (irs::file_utils::read_cwd(buf)) {
-      *this += buf;
-    }
-
-    return;
-  }
-
-  if (!append_path(path_, ucs2_path)) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-}
-
-utf8_path::utf8_path(const std::wstring& ucs2_path) {
-  if (!append_path(path_, wstring_ref(ucs2_path))) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-}
-
 utf8_path& utf8_path::operator+=(const char* utf8_name) {
   return (*this) += irs::string_ref(utf8_name);
 }
@@ -210,28 +95,6 @@ utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
 
 utf8_path& utf8_path::operator+=(const string_ref& utf8_name) {
   if (!append_path(path_, utf8_name)) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-
-  return *this;
-}
-
-utf8_path& utf8_path::operator+=(const wchar_t* ucs2_name) {
-  return (*this) += irs::basic_string_ref<wchar_t>(ucs2_name);
-}
-
-utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name) {
-  if (!append_path(path_, ucs2_name)) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-
-  return *this;
-}
-
-utf8_path& utf8_path::operator+=(const std::wstring &ucs2_name) {
-  if (!append_path(path_, wstring_ref(ucs2_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
     throw io_error("path conversion failure");
   }
@@ -267,36 +130,6 @@ utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
   }
 
   return *this;
-}
-
-utf8_path& utf8_path::operator/=(const wchar_t* ucs2_name) {
-  return (*this) /= basic_string_ref<wchar_t>(ucs2_name);
-}
-
-utf8_path& utf8_path::operator/=(const basic_string_ref<wchar_t>& ucs2_name) {
-  if (!path_.empty()) {
-    path_.append(1, file_path_delimiter);
-  }
-
-  if (!append_path(path_, ucs2_name)) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-
-  return *this;
-}
-
-utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
-  if (!path_.empty()) {
-    path_.append(1, file_path_delimiter);
-  }
-
-  if (!append_path(path_, wstring_ref(ucs2_name))) {
-    // emulate boost::filesystem behaviour by throwing an exception
-    throw io_error("path conversion failure");
-  }
-
-return *this;
 }
 
 bool utf8_path::is_absolute(bool& result) const noexcept {

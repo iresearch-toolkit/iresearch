@@ -55,21 +55,12 @@ class IRESEARCH_API utf8_path {
   utf8_path(const char* utf8_path);
   utf8_path(const std::string& utf8_path);
   utf8_path(const irs::string_ref& utf8_path);
-  utf8_path(const wchar_t* utf8_path);
-  utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path);
-  utf8_path(const std::wstring& ucs2_path);
   utf8_path& operator+=(const char* utf8_name);
   utf8_path& operator+=(const std::string& utf8_name);
   utf8_path& operator+=(const irs::string_ref& utf8_name);
-  utf8_path& operator+=(const wchar_t* ucs2_name);
-  utf8_path& operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator+=(const std::wstring& ucs2_name);
   utf8_path& operator/=(const char* utf8_name);
   utf8_path& operator/=(const std::string& utf8_name);
   utf8_path& operator/=(const irs::string_ref& utf8_name);
-  utf8_path& operator/=(const wchar_t* ucs2_name);
-  utf8_path& operator/=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator/=(const std::wstring& ucs2_name);
 
   bool is_absolute(bool& result) const noexcept;
 
