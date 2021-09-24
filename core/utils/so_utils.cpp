@@ -25,8 +25,6 @@
 #include "utils/utf8_path.hpp"
 #include "so_utils.hpp"
 
-
-
 #if defined(_MSC_VER) // Microsoft compiler
   #define NOMINMAX
   #include <windows.h>

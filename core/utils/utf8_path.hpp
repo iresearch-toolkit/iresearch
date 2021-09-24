@@ -48,8 +48,8 @@ class IRESEARCH_API utf8_path {
 
   typedef std::function<bool(const native_char_t* name)> directory_visitor;
   typedef std::basic_string<native_char_t> native_str_t;
-  typedef std::basic_string<native_char_t> string_type; // to simmplify move to std::filesystem::path
-  typedef native_char_t value_type; // to simmplify move to std::filesystem::path
+  typedef std::basic_string<native_char_t> string_type; // to simplify move to std::filesystem::path
+  typedef native_char_t value_type; // to simplify move to std::filesystem::path
 
   utf8_path() = default;
   utf8_path(const char* utf8_path);
