@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -49,6 +49,7 @@
 #include "utils/utf8_utils.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/vpack_utils.hpp"
+#include "utils/icu_locale_utils.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -88,7 +89,6 @@ struct text_token_stream::state_t {
   };
 
   icu::UnicodeString data;
-  icu::Locale icu_locale;
   const options_t& options;
   const stopwords_t& stopwords;
   bstring term_buf;
@@ -103,15 +103,13 @@ struct text_token_stream::state_t {
   uint32_t end{};
 
   state_t(const options_t& opts, const stopwords_t& stopw)
-    : icu_locale("C"),
-      options(opts),
+    : options(opts),
       stopwords(stopw),
       normalizer{},
       stemmer(nullptr, &sb_stemmer_delete) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
   }
 
   bool is_search_ngram() const {
@@ -169,9 +167,8 @@ auto icu_cleanup = make_finally([]()noexcept->void{
 ////////////////////////////////////////////////////////////////////////////////
 bool get_stopwords(
     analysis::text_token_stream::stopwords_t& buf,
-    const std::locale& locale,
+    string_ref language,
     const string_ref& path = string_ref::NIL) {
-  auto language = locale_utils::language(locale);
   fs::path stopword_path;
 
   auto* custom_stopword_path = !path.null()
@@ -275,11 +272,11 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0) {
     // we have a custom path. let`s try loading
     // if we have stopwordsPath - do not  try default location. Nothing to do there anymore
-    return get_stopwords(buf, options.locale, options.stopwordsPath);
+    return get_stopwords(buf, options.icu_locale.getLanguage(), options.stopwordsPath);
   }
   else if (!options.explicit_stopwords_set && options.explicit_stopwords.empty()) {
     //  no stopwordsPath, explicit_stopwords empty and not marked as valid - load from defaults
-    return get_stopwords(buf, options.locale);
+    return get_stopwords(buf, options.icu_locale.getLanguage());
   }
 
   return true;
@@ -329,8 +326,8 @@ analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-    const std::locale& locale) {
-  const auto& cache_key = locale_utils::name(locale);
+    const icu::Locale& locale) {
+  const auto& cache_key = locale.getName();
   {
     auto lock = make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
@@ -346,11 +343,11 @@ analysis::analyzer::ptr construct(
   try {
     analysis::text_token_stream::options_t options;
     analysis::text_token_stream::stopwords_t stopwords;
-    options.locale = locale;
+    options.icu_locale = locale;
 
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
-        cache_key.c_str());
+        cache_key);
 
       return nullptr;
     }
@@ -358,7 +355,7 @@ analysis::analyzer::ptr construct(
     return construct(cache_key, std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s",
-      cache_key.c_str());
+      cache_key);
   }
 
   return nullptr;
@@ -366,7 +363,8 @@ analysis::analyzer::ptr construct(
 
 bool process_term(
     analysis::text_token_stream::state_t& state,
-    icu::UnicodeString const& data) {
+    icu::UnicodeString const& data,
+    const icu::Locale& icu_locale) {
   // ...........................................................................
   // normalize unicode
   // ...........................................................................
@@ -384,10 +382,10 @@ bool process_term(
   // ...........................................................................
   switch (state.options.case_convert) {
    case analysis::text_token_stream::options_t::case_convert_t::LOWER:
-    word.toLower(state.icu_locale); // inplace case-conversion
+    word.toLower(icu_locale); // inplace case-conversion
     break;
    case analysis::text_token_stream::options_t::case_convert_t::UPPER:
-    word.toUpper(state.icu_locale); // inplace case-conversion
+    word.toUpper(icu_locale); // inplace case-conversion
     break;
    default:
     {} // NOOP
@@ -464,7 +462,18 @@ bool parse_vpack_options(const VPackSlice slice,
                         analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);
+    //return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);
+
+      std::string encoding; // encoding name
+      bool res = icu_locale_utils::get_locale_from_str(
+            get_string<string_ref>(slice),
+            options.icu_locale,
+            false,
+            &options.unicode,
+            &encoding);
+      options.encoding = encoding;
+
+      return res;
   }
 
   if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
@@ -477,10 +486,15 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   try {
-    if (!locale_utils::icu_locale(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
-                                  options.locale)) {
-      return false;
-    }
+    std::string encoding; // encoding name
+    icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
+                                          options.icu_locale,
+                                          false,
+                                          &options.unicode,
+                                          &encoding);
+
+    options.encoding = encoding;
+
     if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
       auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
@@ -638,7 +652,7 @@ bool make_vpack_config(
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = locale_utils::name(options.locale);
+    const auto& locale_name = options.icu_locale.getName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -789,9 +803,9 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const string_ref& args) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)) {
-    return construct(locale);
+  icu::Locale icu_locale;
+  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false)) {
+    return construct(icu_locale);
   } else {
     return nullptr;
   }
@@ -878,7 +892,8 @@ text_token_stream::text_token_stream(
     const options_t& options,
     const stopwords_t& stopwords)
   : analyzer{ irs::type<text_token_stream>::get() },
-    state_{new state_t{options, stopwords}} {
+    state_{new state_t{options, stopwords}},
+    converter_(nullptr){
 }
 
 // -----------------------------------------------------------------------------
@@ -917,17 +932,6 @@ bool text_token_stream::reset(const string_ref& data) {
   offset.start = std::numeric_limits<uint32_t>::max();
   offset.end = std::numeric_limits<uint32_t>::max();
 
-  if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(
-      std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str()
-    );
-
-    if (state_->icu_locale.isBogus()) {
-      return false;
-    }
-  }
-
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   if (!state_->normalizer) {
@@ -960,7 +964,7 @@ bool text_token_stream::reset(const string_ref& data) {
   if (!state_->break_iterator) {
     // reusable object owned by *this
     state_->break_iterator.reset(
-      icu::BreakIterator::createWordInstance(state_->icu_locale, err));
+      icu::BreakIterator::createWordInstance(state_->options.icu_locale, err));
 
     if (!U_SUCCESS(err) || !state_->break_iterator) {
       state_->break_iterator.reset();
@@ -973,32 +977,28 @@ bool text_token_stream::reset(const string_ref& data) {
   if (state_->options.stemming && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
-      sb_stemmer_new(
-        std::string(locale_utils::language(state_->options.locale)).c_str(),
+      sb_stemmer_new(state_->options.icu_locale.getLanguage(),
         nullptr)); // defaults to utf-8
   }
 
   // ...........................................................................
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
-  std::string data_utf8;
-  string_ref data_utf8_ref;
-  if (locale_utils::is_utf8(state_->options.locale)) {
-    data_utf8_ref = data;
+
+  if (state_->options.unicode == icu_locale_utils::Unicode::UTF8) {
+    state_->data = icu::UnicodeString::fromUTF8(
+      icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
   } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-      return false; // UTF8 conversion failure
+    bool succes = icu_locale_utils::create_unicode_string(
+                                 state_->options.encoding.c_str(),
+                                 data,
+                                 state_->data,
+                                 converter_);
+
+    if (!succes) {
+      return false;
     }
-    data_utf8_ref = data_utf8;
   }
-
-  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-    return false; // ICU UnicodeString signatures can handle at most INT32_MAX
-  }
-
-  state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // tokenise the unicode data
@@ -1052,7 +1052,7 @@ bool text_token_stream::next_word() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (UWordBreak::UBRK_WORD_NONE == state_->break_iterator->getRuleStatus()
-        || !process_term(*state_, state_->data.tempSubString(start, end - start))) {
+        || !process_term(*state_, state_->data.tempSubString(start, end - start), state_->options.icu_locale)) {
       continue;
     }
 

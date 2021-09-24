@@ -29,6 +29,14 @@
 #include "shared.hpp"
 #include "string.hpp"
 
+#include "hash_utils.hpp"
+#include "map_utils.hpp"
+#include "object_pool.hpp"
+#include "numeric_utils.hpp"
+#include "error/error.hpp"
+
+#include <unicode/ucnv.h> // for UConverter
+
 namespace iresearch {
 namespace locale_utils {
 
@@ -64,6 +72,60 @@ const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
     std::locale const& locale
   );
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size of ICU object pools, arbitrary size
+////////////////////////////////////////////////////////////////////////////////
+const size_t POOL_SIZE = 8;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a thread-safe pool of ICU converters for a given encoding
+///        may hold nullptr on ICU converter instantiation failure
+////////////////////////////////////////////////////////////////////////////////
+class converter_pool {
+ public:
+  using ptr = std::shared_ptr<UConverter>;
+
+  converter_pool(std::string&& encoding)
+    : encoding_(std::move(encoding)),
+      pool_(POOL_SIZE) {
+  }
+
+  ptr get() { return pool_.emplace(encoding_).release(); }
+
+  const std::string& encoding() const noexcept { return encoding_; }
+
+ private:
+  struct converter_factory {
+    struct ucnv_deleter {
+      void operator()(UConverter* p) const noexcept {
+        ucnv_close(p);
+      }
+    };
+
+    using ptr = std::unique_ptr<UConverter, ucnv_deleter>;
+
+    static ptr make(const std::string& encoding) {
+      UErrorCode status = U_ZERO_ERROR;
+
+      ptr value{ucnv_open(encoding.c_str(), &status)};
+
+      return U_SUCCESS(status)
+        ? std::move(value)
+        : nullptr;
+    }
+  };
+
+  std::string encoding_;
+  irs::unbounded_object_pool_volatile<converter_factory> pool_;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @param encoding the converter encoding (null == system encoding)
+/// @return a converter for the specified encoding
+////////////////////////////////////////////////////////////////////////////////
+converter_pool& get_converter(const irs::string_ref& encoding);
 
 /**
  * @brief convert the input as per locale from an internal representation and

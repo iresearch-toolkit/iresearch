@@ -25,7 +25,6 @@
 
 #include "utils/string_utils.hpp"
 #include "utils/vpack_utils.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 
 namespace iresearch {
