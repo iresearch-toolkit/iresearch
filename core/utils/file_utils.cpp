@@ -57,8 +57,19 @@ namespace {
 
 #ifdef _WIN32
 
-  // workaround for path MAX_PATH
-  const std::basic_string<wchar_t> path_prefix(L"\\\\?\\");
+// workaround for path MAX_PATH
+const irs::utf8_path::string_type path_prefix(L"\\\\?\\");
+
+irs::utf8_path::string_type ensure_path_prefix(const irs::utf8_path::string_type& path) {
+  if (path.size() >= path_prefix.size() &&
+    !path.compare(0, path_prefix.size(), path_prefix)) {
+    return path;
+  } else {
+    auto res = path_prefix;
+    res.append(path);
+    return res;
+  }
+}
 
 #endif
 
@@ -68,7 +79,16 @@ namespace {
   const std::basic_string<char> path_separator("/");
 #endif
 
+
 inline int path_stats(file_stat_t& info, const file_path_t path) {
+
+#ifdef WIN32
+  if (wcslen(path) >= path_prefix.size() &&
+      !wcsncmp(path, path_prefix.c_str(), path_prefix.size())) {
+    path += path_prefix.size(); // skip prefix to avoid mix of slashes in prefixed path
+  } 
+#endif
+
   // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
   // MSVC2015/MSVC2017 treat '\' terminated paths properly
   #if defined(_MSC_VER) && _MSC_VER == 1800
@@ -877,10 +897,12 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
     }
 
     // workaround for path MAX_PATH
-    auto dirname = path_prefix + path;
+    auto dirname = utf8_path::string_type(path);
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
     std::replace(&dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter);
+    
+    dirname = ensure_path_prefix(dirname);
 
     if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
       if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
@@ -1115,11 +1137,13 @@ bool remove(const file_path_t path) noexcept {
     }
 
     // workaround for path MAX_PATH
-    auto fullpath = path_prefix + path;
+    auto fullpath = utf8_path::string_type(path);
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
     std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter);
-
+    
+    fullpath = ensure_path_prefix(fullpath);
+    
     bool result;
     auto res = exists_directory(result, path) && result
              ? ::RemoveDirectoryW(fullpath.c_str())
@@ -1168,10 +1192,11 @@ bool set_cwd(const file_path_t path) noexcept {
     }
 
     // workaround for path MAX_PATH
-    auto fullpath = path_prefix + path;
+    auto fullpath = utf8_path::string_type(path);
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
     std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter);
+    fullpath = ensure_path_prefix(fullpath);
 
     return 0 != SetCurrentDirectory(fullpath.c_str());
   #else

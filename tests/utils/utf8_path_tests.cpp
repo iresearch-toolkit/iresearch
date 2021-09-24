@@ -40,7 +40,7 @@ class utf8_path_tests: public test_base {
     // Code here will be called immediately after the constructor (right before each test).
 
     test_base::SetUp();
-    cwd_ = irs::utf8_path(true);
+    cwd_ = irs::current_path();
     irs::file_utils::mkdir(test_dir().c_str(), false); // ensure path exists
     irs::file_utils::set_cwd(test_dir().c_str()); // ensure all files/directories created in a valid place
   }
@@ -58,7 +58,7 @@ class utf8_path_tests: public test_base {
 TEST_F(utf8_path_tests, current) {
   // absolute path
   {
-    irs::utf8_path path(true);
+    auto path = irs::current_path();
     std::string directory("deleteme");
     std::string directory2("deleteme2");
     bool tmpBool;
@@ -68,14 +68,14 @@ TEST_F(utf8_path_tests, current) {
     #ifdef _WIN32
       wchar_t buf[_MAX_PATH];
       std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-      std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
+      //std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir() and returned by win32
     #else
       char buf[PATH_MAX];
       std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-      std::basic_string<char> prefix;
+      //std::basic_string<char> prefix;
     #endif
 
-    ASSERT_TRUE(current_dir == (prefix + path.native()));
+    ASSERT_TRUE(current_dir == path.native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
@@ -85,7 +85,7 @@ TEST_F(utf8_path_tests, current) {
     path /= directory;
     ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
     ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
-    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
+    ASSERT_TRUE(path.native() == irs::current_path().native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
@@ -95,7 +95,7 @@ TEST_F(utf8_path_tests, current) {
     path /= directory2;
     ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
     ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
-    ASSERT_TRUE(path.native() == irs::utf8_path(true).native());
+    ASSERT_TRUE(path.native() == irs::current_path().native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_file(tmpBool, path.c_str()) && !tmpBool);
@@ -166,32 +166,28 @@ TEST_F(utf8_path_tests, absolute) {
   // empty
   {
     irs::utf8_path path;
-    bool tmpBool;
-    ASSERT_TRUE(path.is_absolute(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.is_absolute());
   }
 
   // cwd
   {
-    irs::utf8_path path(true);
-    bool tmpBool;
-    ASSERT_TRUE(path.is_absolute(tmpBool) && tmpBool);
+    auto path = irs::current_path();
+    ASSERT_TRUE(path.is_absolute());
   }
 
   // relative
   {
     irs::utf8_path path;
-    bool tmpBool;
     path += "deleteme";
-    ASSERT_TRUE(path.is_absolute(tmpBool) && !tmpBool);
+    ASSERT_FALSE(path.is_absolute());
   }
 
   // absolute
   {
-    irs::utf8_path cwd(true);
+    auto cwd = irs::current_path();
     irs::utf8_path path;
-    bool tmpBool;
     path += cwd.native();
-    ASSERT_TRUE(path.is_absolute(tmpBool) && tmpBool);
+    ASSERT_TRUE(path.is_absolute());
   }
 }
 
@@ -206,18 +202,18 @@ TEST_F(utf8_path_tests, path) {
   std::string file1("deleteme");
   std::string file2(file1 + suffix);
   std::string dir1("deleteme.dir");
-  auto pwd_native = irs::utf8_path(true).native();
-  auto pwd_utf8 = irs::utf8_path(true).u8string();
-  auto file1_abs_native = (irs::utf8_path(true) /= file1).native();
-  auto file1f_abs_native = ((irs::utf8_path(true) += "/") += file1).native(); // abs file1 with forward slash
-  auto file1n_abs_native = ((irs::utf8_path(true) += native_path_sep) += file1).native(); // abs file1 with native slash
-  auto file1_abs_utf8 = (irs::utf8_path(true) /= file1).u8string();
-  auto file1f_abs_utf8 = ((irs::utf8_path(true) += "/") += file1).u8string(); // abs file1 with forward slash
-  auto file1n_abs_utf8 = ((irs::utf8_path(true) += native_path_sep) += file1).u8string(); // abs file1 with native slash
-  auto file2_abs_native = (irs::utf8_path(true) /= file2).native();
-  auto file2_abs_utf8 = (irs::utf8_path(true) /= file2).u8string();
-  auto dir_abs_native = (irs::utf8_path(true) /= dir1).native();
-  auto dir_abs_utf8 = (irs::utf8_path(true) /= dir1).u8string();
+  auto pwd_native = irs::current_path().native();
+  auto pwd_utf8 = irs::current_path().u8string();
+  auto file1_abs_native = (irs::current_path() /= file1).native();
+  auto file1f_abs_native = ((irs::current_path() += "/") += file1).native(); // abs file1 with forward slash
+  auto file1n_abs_native = ((irs::current_path() += native_path_sep) += file1).native(); // abs file1 with native slash
+  auto file1_abs_utf8 = (irs::current_path() /= file1).u8string();
+  auto file1f_abs_utf8 = ((irs::current_path() += "/") += file1).u8string(); // abs file1 with forward slash
+  auto file1n_abs_utf8 = ((irs::current_path() += native_path_sep) += file1).u8string(); // abs file1 with native slash
+  auto file2_abs_native = (irs::current_path() /= file2).native();
+  auto file2_abs_utf8 = (irs::current_path() /= file2).u8string();
+  auto dir_abs_native = (irs::current_path() /= dir1).native();
+  auto dir_abs_utf8 = (irs::current_path() /= dir1).u8string();
 
   // create file
   {
@@ -383,7 +379,7 @@ TEST_F(utf8_path_tests, file) {
   ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path.c_str()) && tmpUint == data.size() * 2);
 
   // assign test
-  irs::utf8_path other(true);
+  auto other = irs::current_path();
   other.assign(path.c_str());
   ASSERT_EQ(other.u8string(), path.u8string());
 
@@ -396,7 +392,7 @@ TEST_F(utf8_path_tests, directory) {
 
   // absolute path creation
   {
-    irs::utf8_path path(true);
+    auto path = irs::current_path();
     std::string directory("deletemeA");
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
@@ -450,8 +446,8 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2");
-    irs::utf8_path path1(true);
-    irs::utf8_path path2(true);
+    auto path1 = irs::current_path();
+    auto path2 = irs::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
@@ -599,8 +595,8 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2/deleteme3"); // explicitly use '/' and not native
-    irs::utf8_path path1(true);
-    irs::utf8_path path2(true);
+    auto path1 = irs::current_path();
+    auto path2 = irs::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
@@ -813,8 +809,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst0");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -851,8 +847,8 @@ void validate_move(bool src_abs, bool dst_abs) {
   {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst1");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -891,8 +887,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst2");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -931,8 +927,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme.file");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst3");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -978,8 +974,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string directory("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst4");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1018,8 +1014,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src5");
     std::string dst("deleteme.dst5");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1058,9 +1054,9 @@ void validate_move(bool src_abs, bool dst_abs) {
   {
     std::string src("deleteme.src6");
     std::string dst("deleteme.dst6");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1108,8 +1104,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src7");
     std::string dst("deleteme.dst7");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1150,8 +1146,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.src8");
     std::string dst("deleteme.dst8");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
     std::string dst_data("data");
 
     src_path/=src;
@@ -1206,10 +1202,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string dst_dir("deleteme.dst");
     std::string src("deleteme.src9");
     std::string dst("deleteme.dst9");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path src_path_expected(src_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path src_path_expected = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1264,8 +1260,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcA");
     std::string dst("deleteme.dstA");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1310,9 +1306,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string data("ABCdata123");
     std::string src("deleteme.srcB");
     std::string dst("deleteme.dstB");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
-    irs::utf8_path dst_path_expected(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path_expected = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1361,8 +1357,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcC");
     std::string dst("deleteme.dstC");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1410,8 +1406,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcD");
     std::string dst("deleteme.dstD");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;
@@ -1465,8 +1461,8 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcE");
     std::string dst("deleteme.dstE");
-    irs::utf8_path src_path(src_abs);
-    irs::utf8_path dst_path(dst_abs);
+    irs::utf8_path src_path = src_abs? irs::current_path() : irs::utf8_path();
+    irs::utf8_path dst_path = dst_abs? irs::current_path() : irs::utf8_path();
 
     src_path/=src;
     dst_path/=dst;

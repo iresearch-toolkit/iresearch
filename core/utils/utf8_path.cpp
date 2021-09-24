@@ -20,12 +20,14 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "utf8_path.hpp"
+
+#ifdef __APPLE__
 
 #include "file_utils.hpp"
 #include "locale_utils.hpp"
 #include "log.hpp"
 #include "error/error.hpp"
-#include "utf8_path.hpp"
 
 namespace {
 
@@ -134,17 +136,6 @@ inline bool append_path(std::wstring& buf, const wstring_ref& value) {
 } // namespace
 
 namespace iresearch {
-
-utf8_path::utf8_path(bool current_working_path /*= false*/) {
-  if (current_working_path) {
-    std::basic_string<native_char_t> buf;
-
-    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
-    if (irs::file_utils::read_cwd(buf)) {
-      *this += buf;
-    }
-  }
-}
 
 utf8_path::utf8_path(const char* utf8_path)
   : irs::utf8_path(irs::string_ref(utf8_path)) {
@@ -345,4 +336,21 @@ utf8_path operator/(const utf8_path& lhs, const utf8_path& rhs) {
   return left;
 }
 
+utf8_path current_path() {
+  std::basic_string<utf8_path::native_char_t> buf;
+  utf8_path cwd;
+  // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+  if (irs::file_utils::read_cwd(buf)) {
+    cwd += buf;
+  }
+  return cwd;
+}
+
 } // namespace iresearch
+#else
+namespace iresearch {
+utf8_path current_path() {
+  return std::filesystem::current_path();
+}
+} // namespace iresearch
+#endif

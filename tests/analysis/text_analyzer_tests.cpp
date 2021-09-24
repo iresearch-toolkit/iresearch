@@ -818,7 +818,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
 
   // no stopwords, but valid CWD
   auto reset_stopword_path = irs::make_finally(
-      [oldCWD = irs::utf8_path(true)]()noexcept{
+      [oldCWD = irs::current_path()]()noexcept{
     EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
   irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
@@ -898,7 +898,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
   auto reset_stopword_path = irs::make_finally(
-      [oldCWD = irs::utf8_path(true)]()noexcept{
+      [oldCWD = irs::current_path()]()noexcept{
     EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
   });
   irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
@@ -1003,7 +1003,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
   {
     auto reset_stopword_path = irs::make_finally(
-        [oldCWD = irs::utf8_path(true)]()noexcept{
+        [oldCWD = irs::current_path()]()noexcept{
       EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
     });
     irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());

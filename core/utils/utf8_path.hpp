@@ -24,6 +24,14 @@
 #ifndef IRESEARCH_UTF8_PATH_H
 #define IRESEARCH_UTF8_PATH_H
 
+#ifndef __APPLE__
+#include <filesystem>
+namespace iresearch {
+using utf8_path = std::filesystem::path;
+utf8_path current_path();
+}
+#else
+
 #include "string.hpp"
 
 #include <functional>
@@ -43,7 +51,7 @@ class IRESEARCH_API utf8_path {
   typedef std::basic_string<native_char_t> string_type; // to simmplify move to std::filesystem::path
   typedef native_char_t value_type; // to simmplify move to std::filesystem::path
 
-  utf8_path(bool current_working_path = false);
+  utf8_path() = default;
   utf8_path(const char* utf8_path);
   utf8_path(const std::string& utf8_path);
   utf8_path(const irs::string_ref& utf8_path);
@@ -93,6 +101,8 @@ class IRESEARCH_API utf8_path {
 // need this operator to be closer to std::filesystem::path
 utf8_path operator/( const utf8_path& lhs, const utf8_path& rhs );
 
-}
+utf8_path current_path();
 
+}
+#endif
 #endif
