@@ -31,10 +31,6 @@
 #include "velocypack/velocypack-aliases.h"
 #include "utils/locale_utils.hpp"
 
-namespace  {
-  using sting16_t = std::basic_string<UChar>;
-}
-
 namespace iresearch {
 namespace icu_locale_utils {
 
@@ -67,7 +63,12 @@ bool convert_to_utf16(string_ref orig_encoding,
   to.resize(from.size());
 
   UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
-  ucnv_toUChars(cvt->get().get(), (UChar*)to.data(), to.size(), (char*)from.c_str(), from.size(), &err_code);
+  ucnv_toUChars(cvt->get().get(),
+                (UChar*)to.data(),
+                to.size(),
+                (char*)from.c_str(),
+                from.size(),
+                &err_code);
 
   if (!U_SUCCESS(err_code)) {
     return false;
@@ -85,18 +86,19 @@ bool convert_from_utf16(string_ref orig_encoding,
     cvt = &locale_utils::get_converter(orig_encoding.c_str());
   }
 
-  // may be assert that 'from' str is utf-16?
-UCNV_GET_MAX_BYTES_FOR_STRING
+  auto to_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize(cvt->get().get()));
 
-  size_t cu_size = sizeof(*to.c_str()); // size of code unit
-  if (cu_size == 1) {
-    cu_size *= 2; // from 2bytes to 1bytes. Require more space
-  }
-
-  to.resize(from.size() * cu_size);
+  to.resize(to_size);
 
   UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
-  ucnv_fromUChars(cvt->get().get(), (char*)to.data(), to.size(),(UChar*)from.c_str(), from.size(), &err_code);
+  auto actual_size = ucnv_fromUChars(cvt->get().get(),
+                                     (char*)to.data(),
+                                     to.size(),
+                                     (UChar*)from.c_str(),
+                                     from.size(),
+                                     &err_code);
+
+  to.resize(actual_size);
 
   return U_SUCCESS(err_code);
 }
@@ -107,7 +109,7 @@ bool create_unicode_string(string_ref orig_encoding,
                            icu::UnicodeString& unicode_str,
                            locale_utils::converter_pool* cvt = nullptr) {
 
-  sting16_t to_str;
+  std::u16string to_str;
   bool res = convert_to_utf16(orig_encoding,
                               from,
                               to_str,

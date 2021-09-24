@@ -758,15 +758,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       testFunc(data, stream.get());
     }
   }
-
-  // ...........................................................................
-  // invalid
-  // ...........................................................................
-  {
-    // stopwords  should be set to empty - or default values will interfere with test data
-    auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
-    ASSERT_EQ(nullptr, stream);
-  }
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_fail_load_default_stopwords) {
@@ -1315,6 +1306,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.UTF-8");
+      options.encoding = "UTF-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
       options.min_gram_set = 4;
@@ -1348,6 +1341,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.UTF-8");
+      options.encoding = "UTF-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
       options.min_gram_set = 4;
