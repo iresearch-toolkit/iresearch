@@ -57,18 +57,22 @@ bool convert_to_utf16(string_ref orig_encoding,
                       locale_utils::converter_pool* cvt = nullptr) {
 
   if (!cvt) {
-    cvt = &locale_utils::get_converter(orig_encoding.c_str());
+    cvt = &locale_utils::get_converter(std::string(orig_encoding.c_str(), orig_encoding.size()).c_str());
   }
 
-  to.resize(from.size());
+  auto from_size = from.size() * sizeof(*from.c_str());
+  to.resize(from_size);
 
   UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
-  ucnv_toUChars(cvt->get().get(),
-                (UChar*)to.data(),
-                to.size(),
-                (char*)from.c_str(),
-                from.size(),
-                &err_code);
+  size_t actual_size = ucnv_toUChars(cvt->get().get(),
+                                    to.data(),
+                                    to.size(),
+                                    (const char*)from.c_str(),
+                                    from_size,
+                                    &err_code);
+
+
+  to.resize(actual_size);
 
   if (!U_SUCCESS(err_code)) {
     return false;
@@ -115,7 +119,7 @@ bool create_unicode_string(string_ref orig_encoding,
                               to_str,
                               cvt);
 
-  unicode_str = icu::UnicodeString(to_str.c_str(), to_str.size(), to_str.capacity());
+  unicode_str = icu::UnicodeString(to_str.data(), to_str.size());
 
   return res;
 }

@@ -69,7 +69,7 @@ class text_token_stream final
     bool preserve_original{}; // emit input data as a token
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
-    string_ref encoding;
+    std::string encoding;
     icu_locale_utils::Unicode unicode; // UTF-8 or NON_UTF-8
   };
 

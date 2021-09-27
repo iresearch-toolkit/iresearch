@@ -561,7 +561,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   // alternate locale. Initial encoding is utf-32
   {
-    std::basic_string<char32_t> sDataUTF32(U"\U00000054\U00000068\U00000065\U00000020\U0000006f\U0000006c\U00000064\U00000020\U0000006c\U00000061\U00000064\U00000079");
+    std::basic_string<char32_t> sDataUTF32(U"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
     std::string data;
     std::u16string udata;
 

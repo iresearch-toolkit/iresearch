@@ -327,7 +327,7 @@ analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
     const icu::Locale& locale) {
-  const auto& cache_key = locale.getName();
+  const auto cache_key = locale.getName();
   {
     auto lock = make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
@@ -363,8 +363,7 @@ analysis::analyzer::ptr construct(
 
 bool process_term(
     analysis::text_token_stream::state_t& state,
-    icu::UnicodeString const& data,
-    const icu::Locale& icu_locale) {
+    icu::UnicodeString const& data) {
   // ...........................................................................
   // normalize unicode
   // ...........................................................................
@@ -382,10 +381,10 @@ bool process_term(
   // ...........................................................................
   switch (state.options.case_convert) {
    case analysis::text_token_stream::options_t::case_convert_t::LOWER:
-    word.toLower(icu_locale); // inplace case-conversion
+    word.toLower(state.options.icu_locale); // inplace case-conversion
     break;
    case analysis::text_token_stream::options_t::case_convert_t::UPPER:
-    word.toUpper(icu_locale); // inplace case-conversion
+    word.toUpper(state.options.icu_locale); // inplace case-conversion
     break;
    default:
     {} // NOOP
@@ -487,11 +486,13 @@ bool parse_vpack_options(const VPackSlice slice,
 
   try {
     std::string encoding; // encoding name
-    icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
+    if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
                                           options.icu_locale,
                                           false,
                                           &options.unicode,
-                                          &encoding);
+                                          &encoding)) {
+      return false;
+    }
 
     options.encoding = encoding;
 
@@ -988,6 +989,8 @@ bool text_token_stream::reset(const string_ref& data) {
   if (state_->options.unicode == icu_locale_utils::Unicode::UTF8) {
     state_->data = icu::UnicodeString::fromUTF8(
       icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
+  } else if (std::string(state_->options.encoding) == std::string("utf-16")) {
+    state_->data = icu::UnicodeString((UChar*)data.c_str(), data.size(), data.size());
   } else {
     bool succes = icu_locale_utils::create_unicode_string(
                                  state_->options.encoding.c_str(),
@@ -1052,7 +1055,7 @@ bool text_token_stream::next_word() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (UWordBreak::UBRK_WORD_NONE == state_->break_iterator->getRuleStatus()
-        || !process_term(*state_, state_->data.tempSubString(start, end - start), state_->options.icu_locale)) {
+        || !process_term(*state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
