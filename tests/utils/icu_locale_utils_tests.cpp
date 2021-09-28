@@ -565,10 +565,13 @@ TEST(icu_locale_utils_test_suite, test_convert_to_utf16) {
     std::string data_koi8r("\xC5\xD6\xC9\xCB");
     std::u16string data_utf16;
 
-    auto& cvt = irs::locale_utils::get_converter("koi8-r");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_to_utf16("koi8-r", data_koi8r, data_utf16, &cvt));
     ASSERT_EQ(data_utf16, std::u16string(u"ежик"));
+
+    auto* actual_cvt = &irs::locale_utils::get_converter("koi8-r");
+    ASSERT_EQ(cvt, actual_cvt);
   }
 
   // from utf8 to utf16. Also get converter
@@ -576,10 +579,13 @@ TEST(icu_locale_utils_test_suite, test_convert_to_utf16) {
     std::string data_utf8("the old lady");
     std::u16string data_utf16;
 
-    auto& cvt = irs::locale_utils::get_converter("utf8");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_to_utf16("utf8", data_utf8, data_utf16, &cvt));
     ASSERT_EQ(data_utf16, std::u16string(u"the old lady"));
+
+    auto* actual_cvt = &irs::locale_utils::get_converter("utf8");
+    ASSERT_EQ(cvt, actual_cvt);
   }
 
   // from utf32 to utf16. Also get converter
@@ -587,10 +593,13 @@ TEST(icu_locale_utils_test_suite, test_convert_to_utf16) {
     std::u32string data_utf32(U"\U00000074\U00000068\U00000065\U00000020\U0000006f\U0000006c\U00000064\U00000020\U0000006c\U00000061\U00000064\U00000079");
     std::u16string data_utf16;
 
-    auto& cvt = irs::locale_utils::get_converter("utf32");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_to_utf16("utf32", data_utf32, data_utf16, &cvt));
     ASSERT_EQ(data_utf16, std::u16string(u"the old lady"));
+
+    // because we don't use converter for utf32
+    ASSERT_EQ(cvt, nullptr);
   }
 
   // wrong original encoding
@@ -656,10 +665,13 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
     std::u16string data_utf16(u"the old lady");
     std::string data_utf8;
 
-    auto& cvt = irs::locale_utils::get_converter("utf8");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_from_utf16("utf8", data_utf16, data_utf8, &cvt));
     ASSERT_EQ(data_utf8, std::string(u8"the old lady"));
+
+    auto* actual_cvt = &irs::locale_utils::get_converter("utf8");
+    ASSERT_EQ(cvt, actual_cvt);
   }
 
   // from utf16 to koi8-r. Also get converter
@@ -667,10 +679,13 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
     std::u16string data_utf16u(u"ежик");
     std::string data_koi8r;
 
-    auto& cvt = irs::locale_utils::get_converter("koi8-r");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_from_utf16("koi8-r", data_utf16u, data_koi8r, &cvt));
     ASSERT_EQ(data_koi8r, std::string("\xC5\xD6\xC9\xCB"));
+
+    auto* actual_cvt = &irs::locale_utils::get_converter("koi8-r");
+    ASSERT_EQ(cvt, actual_cvt);
   }
 
   // from utf16 to ascii. Also get converter
@@ -678,10 +693,13 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
     std::u16string data_utf16 = u"The old lady ";
     std::string data_ascii;
 
-    auto& cvt = irs::locale_utils::get_converter("ascii");
+    irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_from_utf16("ascii", data_utf16, data_ascii, &cvt));
     ASSERT_EQ(data_ascii, std::string("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20"));
+
+    auto* actual_cvt = &irs::locale_utils::get_converter("ascii");
+    ASSERT_EQ(cvt, actual_cvt);
   }
 
 
@@ -699,7 +717,7 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
     std::u32string data_utf16 = U"The old lady ";
     std::string data_ascii;
 
-    auto& cvt = irs::locale_utils::get_converter("ascii");
+    auto* cvt = &irs::locale_utils::get_converter("ascii");
 
     ASSERT_TRUE(convert_from_utf16("ascii", data_utf16, data_ascii, &cvt));
     ASSERT_NE(data_ascii, std::string("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20"));

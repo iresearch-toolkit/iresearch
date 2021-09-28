@@ -27,6 +27,7 @@
 #define IRESEARCH_TEXT_TOKEN_STREAM_H
 
 #include <absl/container/flat_hash_set.h>
+#include <unicode/locid.h>
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -35,7 +36,6 @@
 #include "utils/frozen_attributes.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/icu_locale_utils.hpp"
-#include <unicode/locid.h>
 
 namespace iresearch {
 namespace analysis {

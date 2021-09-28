@@ -56,7 +56,7 @@ template <typename From, typename To>
 bool convert_to_utf16(string_ref from_encoding,
                       const From& from, // other encoding
                       To& to, // utf16
-                      locale_utils::converter_pool* cvt = nullptr) {
+                      locale_utils::converter_pool** cvt = nullptr) {
 
   if (from_encoding == "utf16") { // attempt to convert from utf16 to utf16
     to.assign((UChar*)from.c_str(), from.size());
@@ -87,10 +87,24 @@ bool convert_to_utf16(string_ref from_encoding,
     return true;
   }
 
-  if (!cvt) {
-    cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
+  irs::locale_utils::converter_pool* curr_cvt = nullptr;
+
+  if ((cvt && !*cvt) || !cvt) {
+    // try to get converter for specified locale
+    curr_cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
+    if (!curr_cvt) {
+      // no such converter
+      return false;
+    }
+
+    if (cvt && !*cvt) {
+      *cvt = curr_cvt;
+    } else {
+      cvt = &curr_cvt;
+    }
   }
-  size_t actual_size = ucnv_toUChars(cvt->get().get(),
+
+  size_t actual_size = ucnv_toUChars((*cvt)->get().get(),
                                      to.data(),
                                      new_size,
                                      (const char*)from.c_str(),
@@ -110,7 +124,7 @@ template <typename From, typename To>
 bool convert_from_utf16(string_ref from_encoding,
                         const From& from, // utf16
                         To& to, // another encoding
-                        locale_utils::converter_pool* cvt = nullptr) {
+                        locale_utils::converter_pool** cvt = nullptr) {
 
 
   UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
@@ -138,13 +152,27 @@ bool convert_from_utf16(string_ref from_encoding,
     return true;
   }
 
-  if (!cvt) {
-    cvt = &locale_utils::get_converter(from_encoding.c_str());
+
+  irs::locale_utils::converter_pool* curr_cvt = nullptr;
+
+  if ((cvt && !*cvt) || !cvt) {
+    // try to get converter for specified locale
+    curr_cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
+    if (!curr_cvt) {
+      // no such converter
+      return false;
+    }
+
+    if (cvt && !*cvt) {
+      *cvt = curr_cvt;
+    } else {
+      cvt = &curr_cvt;
+    }
   }
 
-  auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize(cvt->get().get()));
+  auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize((*cvt)->get().get()));
   to.resize(new_size);
-  auto actual_size = ucnv_fromUChars(cvt->get().get(),
+  auto actual_size = ucnv_fromUChars((*cvt)->get().get(),
                                      (char*)to.data(),
                                      new_size,
                                      (UChar*)from.c_str(),
@@ -164,7 +192,7 @@ template <typename From>
 bool create_unicode_string(string_ref from_encoding,
                            const From& from,
                            icu::UnicodeString& unicode_str,
-                           locale_utils::converter_pool* cvt = nullptr) {
+                           locale_utils::converter_pool** cvt = nullptr) {
 
 
   std::u16string to_str;

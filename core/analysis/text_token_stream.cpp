@@ -168,7 +168,7 @@ bool get_stopwords(
     analysis::text_token_stream::stopwords_t& buf,
     string_ref language,
     const string_ref& path = string_ref::NIL) {
-  fs::path stopword_path;
+  utf8_path stopword_path;
 
   auto* custom_stopword_path = !path.null()
     ? path.c_str()
@@ -325,7 +325,7 @@ analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-    const icu::Locale& locale) {
+    const icu::Locale&& locale) {
   const auto cache_key = locale.getName();
   {
     auto lock = make_lock_guard(mutex);
@@ -460,18 +460,15 @@ bool parse_vpack_options(const VPackSlice slice,
                         analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    //return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);
-
-      std::string encoding; // encoding name
-      bool res = icu_locale_utils::get_locale_from_str(
-            get_string<string_ref>(slice),
-            options.icu_locale,
-            false,
-            &options.unicode,
-            &encoding);
-      options.encoding = encoding;
-
-      return res;
+    std::string encoding; // encoding name
+    bool res = icu_locale_utils::get_locale_from_str(
+                                  get_string<string_ref>(slice),
+                                  options.icu_locale,
+                                  false,
+                                  &options.unicode,
+                                  &encoding);
+    options.encoding = encoding;
+    return res;
   }
 
   if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
@@ -486,10 +483,10 @@ bool parse_vpack_options(const VPackSlice slice,
   try {
     std::string encoding; // encoding name
     if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
-                                          options.icu_locale,
-                                          false,
-                                          &options.unicode,
-                                          &encoding)) {
+                                               options.icu_locale,
+                                               false,
+                                               &options.unicode,
+                                               &encoding)) {
       return false;
     }
 
@@ -805,7 +802,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 analysis::analyzer::ptr make_text(const string_ref& args) {
   icu::Locale icu_locale;
   if (icu_locale_utils::get_locale_from_str(args, icu_locale, false)) {
-    return construct(icu_locale);
+    return construct(std::move(icu_locale));
   } else {
     return nullptr;
   }
@@ -982,20 +979,22 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // ...........................................................................
-  // convert encoding to UTF8 for use with ICU
+  // Create ICU UnicodeString
   // ...........................................................................
 
   if (state_->options.unicode == icu_locale_utils::Unicode::UTF8) {
     state_->data = icu::UnicodeString::fromUTF8(
       icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
   } else if (state_->options.encoding == "utf-16") {
-    state_->data = icu::UnicodeString((UChar*)data.c_str(), data.size(), data.size());
+    // utf-16 is base encoding for icu::UnicodeString
+    state_->data = icu::UnicodeString(reinterpret_cast<const UChar*>(data.c_str()),
+                                      data.size());
   } else {
     bool succes = icu_locale_utils::create_unicode_string(
                                  state_->options.encoding.c_str(),
                                  data,
                                  state_->data,
-                                 converter_);
+                                 &converter_);
 
     if (!succes) {
       return false;
