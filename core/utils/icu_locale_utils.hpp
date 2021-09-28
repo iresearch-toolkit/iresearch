@@ -53,10 +53,15 @@ bool locale_to_vpack(const icu::Locale& locale,
                      const Unicode* unicode = nullptr);
 
 template <typename From, typename To>
-bool convert_to_utf16(string_ref orig_encoding,
+bool convert_to_utf16(string_ref from_encoding,
                       const From& from, // other encoding
                       To& to, // utf16
                       locale_utils::converter_pool* cvt = nullptr) {
+
+  if (from_encoding == "utf16") { // attempt to convert from utf16 to utf16
+    to.assign((UChar*)from.c_str(), from.size());
+    return true;
+  }
 
   UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
   auto new_size = from.size() * sizeof(*from.c_str());
@@ -65,7 +70,7 @@ bool convert_to_utf16(string_ref orig_encoding,
   //// there is a special case for utf32 encoding, because 'ucnv_toUChars'
   //// working uncorrectly with such data. Same implementation is currently
   //// in 'locale_utils.cpp' file
-  if (orig_encoding == "utf32") {
+  if (from_encoding == "utf32") {
     int32_t dest_length;
     u_strFromUTF32(to.data(),
                    to.capacity(),
@@ -83,7 +88,7 @@ bool convert_to_utf16(string_ref orig_encoding,
   }
 
   if (!cvt) {
-    cvt = &locale_utils::get_converter(std::string(orig_encoding.c_str(), orig_encoding.size()).c_str());
+    cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
   }
   size_t actual_size = ucnv_toUChars(cvt->get().get(),
                                      to.data(),
@@ -102,7 +107,7 @@ bool convert_to_utf16(string_ref orig_encoding,
 }
 
 template <typename From, typename To>
-bool convert_from_utf16(string_ref orig_encoding,
+bool convert_from_utf16(string_ref from_encoding,
                         const From& from, // utf16
                         To& to, // another encoding
                         locale_utils::converter_pool* cvt = nullptr) {
@@ -113,7 +118,7 @@ bool convert_from_utf16(string_ref orig_encoding,
   //// there is a special case for utf32 encoding, because 'ucnv_fromUChars'
   //// working uncorrectly with such data. Same implementation is currently
   //// in 'locale_utils.cpp' file
-  if (orig_encoding == "utf32") {
+  if (from_encoding == "utf32") {
     auto new_size = from.size() * 2;
     to.resize(new_size);
 
@@ -134,7 +139,7 @@ bool convert_from_utf16(string_ref orig_encoding,
   }
 
   if (!cvt) {
-    cvt = &locale_utils::get_converter(orig_encoding.c_str());
+    cvt = &locale_utils::get_converter(from_encoding.c_str());
   }
 
   auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize(cvt->get().get()));
@@ -156,14 +161,14 @@ bool convert_from_utf16(string_ref orig_encoding,
 }
 
 template <typename From>
-bool create_unicode_string(string_ref orig_encoding,
+bool create_unicode_string(string_ref from_encoding,
                            const From& from,
                            icu::UnicodeString& unicode_str,
                            locale_utils::converter_pool* cvt = nullptr) {
 
 
   std::u16string to_str;
-  bool res = convert_to_utf16(orig_encoding,
+  bool res = convert_to_utf16(from_encoding,
                               from,
                               to_str,
                               cvt);
