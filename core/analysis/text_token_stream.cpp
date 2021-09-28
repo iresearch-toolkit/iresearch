@@ -989,7 +989,7 @@ bool text_token_stream::reset(const string_ref& data) {
   if (state_->options.unicode == icu_locale_utils::Unicode::UTF8) {
     state_->data = icu::UnicodeString::fromUTF8(
       icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
-  } else if (std::string(state_->options.encoding) == std::string("utf-16")) {
+  } else if (state_->options.encoding == "utf-16") {
     state_->data = icu::UnicodeString((UChar*)data.c_str(), data.size(), data.size());
   } else {
     bool succes = icu_locale_utils::create_unicode_string(

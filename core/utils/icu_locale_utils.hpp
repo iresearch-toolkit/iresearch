@@ -24,6 +24,8 @@
 #define ICU_LOCALE_UTILS_HPP
 
 #include <unicode/locid.h>
+#include <unicode/ucnv.h> // for UConverter
+#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 #include "string.hpp"
 #include "velocypack/Slice.h"
@@ -56,27 +58,45 @@ bool convert_to_utf16(string_ref orig_encoding,
                       To& to, // utf16
                       locale_utils::converter_pool* cvt = nullptr) {
 
+  UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
+  auto new_size = from.size() * sizeof(*from.c_str());
+  to.resize(new_size);
+
+  //// there is a special case for utf32 encoding, because 'ucnv_toUChars'
+  //// working uncorrectly with such data. Same implementation is currently
+  //// in 'locale_utils.cpp' file
+  if (orig_encoding == "utf32") {
+    int32_t dest_length;
+    u_strFromUTF32(to.data(),
+                   to.capacity(),
+                   &dest_length,
+                   (const UChar32*)from.c_str(),
+                   from.size(), &err_code);
+
+    if (!U_SUCCESS(err_code)) {
+      return false;
+    }
+
+    // resize to the actual size
+    to.resize(dest_length);
+    return true;
+  }
+
   if (!cvt) {
     cvt = &locale_utils::get_converter(std::string(orig_encoding.c_str(), orig_encoding.size()).c_str());
   }
-
-  auto from_size = from.size() * sizeof(*from.c_str());
-  to.resize(from_size);
-
-  UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
   size_t actual_size = ucnv_toUChars(cvt->get().get(),
-                                    to.data(),
-                                    to.size(),
-                                    (const char*)from.c_str(),
-                                    from_size,
-                                    &err_code);
-
-
-  to.resize(actual_size);
+                                     to.data(),
+                                     new_size,
+                                     (const char*)from.c_str(),
+                                     from.size(),
+                                     &err_code);
 
   if (!U_SUCCESS(err_code)) {
     return false;
   }
+  // resize to the actual size
+  to.resize(actual_size);
 
   return true;
 }
@@ -86,25 +106,53 @@ bool convert_from_utf16(string_ref orig_encoding,
                         const From& from, // utf16
                         To& to, // another encoding
                         locale_utils::converter_pool* cvt = nullptr) {
+
+
+  UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
+
+  //// there is a special case for utf32 encoding, because 'ucnv_fromUChars'
+  //// working uncorrectly with such data. Same implementation is currently
+  //// in 'locale_utils.cpp' file
+  if (orig_encoding == "utf32") {
+    auto new_size = from.size() * 2;
+    to.resize(new_size);
+
+    int32_t dest_length; // length of actual written symbols to 'to' str
+    u_strToUTF32((UChar32*)to.data(),
+                 to.capacity(),
+                 &dest_length,
+                 (const UChar*)from.c_str(),
+                 from.size(), &err_code);
+
+    if (!U_SUCCESS(err_code)) {
+      return false;
+    }
+
+    // resize to the actual size
+    to.resize(dest_length);
+    return true;
+  }
+
   if (!cvt) {
     cvt = &locale_utils::get_converter(orig_encoding.c_str());
   }
 
-  auto to_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize(cvt->get().get()));
-
-  to.resize(to_size);
-
-  UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
+  auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize(cvt->get().get()));
+  to.resize(new_size);
   auto actual_size = ucnv_fromUChars(cvt->get().get(),
                                      (char*)to.data(),
-                                     to.size(),
+                                     new_size,
                                      (UChar*)from.c_str(),
                                      from.size(),
                                      &err_code);
 
+  if (!U_SUCCESS(err_code)) {
+    return false;
+  }
+  // resize to the actual size
   to.resize(actual_size);
 
-  return U_SUCCESS(err_code);
+  return true;
 }
 
 template <typename From>
@@ -112,6 +160,7 @@ bool create_unicode_string(string_ref orig_encoding,
                            const From& from,
                            icu::UnicodeString& unicode_str,
                            locale_utils::converter_pool* cvt = nullptr) {
+
 
   std::u16string to_str;
   bool res = convert_to_utf16(orig_encoding,

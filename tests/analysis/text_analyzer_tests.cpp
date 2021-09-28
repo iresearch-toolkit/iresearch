@@ -38,6 +38,12 @@
 #include "utils/file_utils.hpp"
 #include "utils/icu_locale_utils.hpp"
 
+#include <unicode/coll.h> // for icu::Collator
+#include <unicode/decimfmt.h> // for icu::DecimalFormat
+#include <unicode/numfmt.h> // for icu::NumberFormat
+#include <unicode/ucnv.h> // for UConverter
+#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
+
 namespace tests {
 
 class TextAnalyzerParserTestSuite : public ::testing::Test {
@@ -561,18 +567,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   // alternate locale. Initial encoding is utf-32
   {
-    std::basic_string<char32_t> sDataUTF32(U"\U00000054\U00000068\U00000065\U00000020\U0000006f\U0000006c\U00000064\U00000020\U0000006c\U00000061\U00000064\U00000079");
+    std::u32string sDataUTF32(U"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
     std::string data;
     std::u16string udata;
-
-
-    UErrorCode myError = U_ZERO_ERROR;
-    UConverter *conv = ucnv_open("UTF-32", &myError);
-    udata.resize(sDataUTF32.size() * 2);
-    int32_t bytes = ucnv_toUChars(conv, (UChar*)udata.data(), udata.size(), (char*)sDataUTF32.c_str(), sDataUTF32.size() * 4, &myError);
-
-
-
 
     ASSERT_TRUE(irs::icu_locale_utils::convert_to_utf16("utf32",
                                                         sDataUTF32,
@@ -581,6 +578,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_TRUE(irs::icu_locale_utils::convert_from_utf16("utf8",
                                                           udata,
                                                           data));
+
+
+    std::u16string sDataUTF16(u"\u043f\u043e\u0020\u0432\u0435\u0447\u0435\u0440\u0430\u043c\u0020\u0435\u0436\u0438\u043a\u0020\u0445\u043e\u0434\u0438\u043b\u0020\u043a\u0020\u043c\u0435\u0434\u0432\u0435\u0436\u043e\u043d\u043a\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437\u0432\u0435\u0437\u0434\u044b");
+
+    std::u32string s32data;
+    ASSERT_TRUE(irs::icu_locale_utils::convert_from_utf16("utf32",
+                                                          sDataUTF16,
+                                                          s32data));
+
 
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
@@ -596,20 +602,23 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       std::string curr_token;
       ASSERT_TRUE(pStream->next());
-      curr_token = "\x74\x68\x65";
-
+      ASSERT_TRUE(irs::icu_locale_utils::convert_from_utf16("utf8",
+                                                            std::u16string(u"\u043F\u043E"),
+                                                            curr_token));
       ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(0, pOffset->start);
-      ASSERT_EQ(3, pOffset->end);
+      ASSERT_EQ(2, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      curr_token = "\x6F\x6C\x64";
-
+      ASSERT_TRUE(irs::icu_locale_utils::convert_from_utf16("utf8",
+                                                            std::u16string(u"\u0432\u0435\u0447\u0435\u0440\u0430\u043c"),
+                                                            curr_token));
       ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_TRUE(pStream->next());
-      curr_token = "\x6C\x61\x64\x69";
-
+      ASSERT_TRUE(irs::icu_locale_utils::convert_from_utf16("utf8",
+                                                            std::u16string(u"\u0435\u0436\u0438\u043A"),
+                                                            curr_token));
       ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_FALSE(pStream->next());
@@ -621,13 +630,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.unicode = irs::icu_locale_utils::Unicode::NON_UTF8;
       options.encoding = "utf32";
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
-      testFunc(irs::string_ref((char*)(sDataUTF32.c_str(), sDataUTF32.size())), &stream);
+      irs::string_ref d((char*)sDataUTF32.c_str(), sDataUTF32.size());
+      testFunc(d, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::string_ref((char*)(sDataUTF32.c_str(), sDataUTF32.size())), stream.get());
+      irs::string_ref d((char*)sDataUTF32.c_str(), sDataUTF32.size());
+      testFunc(d, stream.get());
     }
   }
 }
