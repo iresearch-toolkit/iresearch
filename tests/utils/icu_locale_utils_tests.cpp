@@ -112,7 +112,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     icu::Locale locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     ASSERT_EQ(locale_name, actual);
   }
@@ -158,7 +158,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     icu::Locale locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE";
     ASSERT_EQ(expected, actual);
@@ -170,7 +170,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     icu::Locale locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE_PHONEBOOK";
     ASSERT_EQ(expected, actual);
@@ -182,7 +182,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     icu::Locale locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de_DE_PHONEBOOK";
     ASSERT_EQ(expected, actual);
@@ -194,7 +194,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     icu::Locale locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, false, &unicode));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "";
     ASSERT_EQ(expected, actual);
@@ -354,6 +354,34 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     ASSERT_EQ(encoding_name, "ascii");
   }
 
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "C";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "c";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "ascii");
+  }
+
+  // get also encoding name
+  {
+    irs::string_ref locale_name = "en";
+    icu::Locale locale;
+    Unicode unicode;
+    std::string encoding_name;
+    ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
+    irs::string_ref actual = locale.getName();
+    irs::string_ref expected = "en";
+    ASSERT_EQ(expected, actual);
+    ASSERT_EQ(encoding_name, "ascii");
+  }
+
 
   // get also encoding name
   {
@@ -397,32 +425,32 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_str) {
     ASSERT_EQ(encoding_name, "_phon@ebook.ucs-2_utf8_.@scii..");
   }
 
-  // get also encoding name. Default 'utf-8' value
+  // get also encoding name. Default 'ascii' value
   {
     irs::string_ref locale_name = "de";
     icu::Locale locale;
     Unicode unicode;
     std::string encoding_name;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de";
     ASSERT_EQ(expected, actual);
-    ASSERT_EQ(encoding_name, "utf-8");
+    ASSERT_EQ(encoding_name, "ascii");
   }
 
-  // get also encoding name. Default 'utf-8' value
+  // get also encoding name. Default 'ascii' value
   {
     irs::string_ref locale_name = "de@collation=phonebook";
     icu::Locale locale;
     Unicode unicode;
     std::string encoding_name;
     ASSERT_TRUE(get_locale_from_str(locale_name, locale, true, &unicode, &encoding_name));
-    ASSERT_TRUE(unicode == Unicode::UTF8);
+    ASSERT_TRUE(unicode == Unicode::NON_UTF8);
     irs::string_ref actual = locale.getName();
     irs::string_ref expected = "de@collation=phonebook";
     ASSERT_EQ(expected, actual);
-    ASSERT_EQ(encoding_name, "utf-8");
+    ASSERT_EQ(encoding_name, "ascii");
   }
 
   // get also encoding name.
@@ -539,7 +567,7 @@ TEST(icu_locale_utils_test_suite, test_convert_to_utf16) {
     std::u16string data_utf16;
 
     ASSERT_TRUE(convert_to_utf16("koi8-r", data_koi8r, data_utf16));
-    ASSERT_EQ(data_utf16, std::u16string(u"ежик"));
+    ASSERT_EQ(data_utf16, std::u16string(u"\u0435\u0436\u0438\u043a"));
   }
 
   // from utf8 to utf16
@@ -568,7 +596,7 @@ TEST(icu_locale_utils_test_suite, test_convert_to_utf16) {
     irs::locale_utils::converter_pool* cvt = nullptr;
 
     ASSERT_TRUE(convert_to_utf16("koi8-r", data_koi8r, data_utf16, &cvt));
-    ASSERT_EQ(data_utf16, std::u16string(u"ежик"));
+    ASSERT_EQ(data_utf16, std::u16string(u"\u0435\u0436\u0438\u043a"));
 
     auto* actual_cvt = &irs::locale_utils::get_converter("koi8-r");
     ASSERT_EQ(cvt, actual_cvt);
@@ -635,7 +663,7 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
 
   // from utf16 to koi8-r
   {
-    std::u16string data_utf16u(u"ежик");
+    std::u16string data_utf16u(u"\u0435\u0436\u0438\u043a");
     std::string data_koi8r;
 
     ASSERT_TRUE(convert_from_utf16("koi8-r", data_utf16u, data_koi8r));
@@ -676,7 +704,7 @@ TEST(icu_locale_utils_test_suite, test_convert_from_utf16) {
 
   // from utf16 to koi8-r. Also get converter
   {
-    std::u16string data_utf16u(u"ежик");
+    std::u16string data_utf16u(u"\u0435\u0436\u0438\u043a");
     std::string data_koi8r;
 
     irs::locale_utils::converter_pool* cvt = nullptr;
@@ -772,6 +800,65 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
 
     icu::UnicodeString expected = icu::UnicodeString(data_ascii.c_str());
 
+    ASSERT_EQ(actual, expected);
+  }
+
+  // create Unicode string from utf8. Also get converter
+  {
+    std::string data_utf8("The old lady pulled her spectacles down and looked over them about the room");
+
+    icu::UnicodeString actual;
+    irs::locale_utils::converter_pool* cvt = nullptr;
+    ASSERT_TRUE(create_unicode_string("utf8", data_utf8, actual, &cvt));
+
+    icu::UnicodeString expected = icu::UnicodeString::fromUTF8(data_utf8);
+    auto* actual_cvt = &irs::locale_utils::get_converter("utf8");
+    ASSERT_EQ(cvt, actual_cvt);
+    ASSERT_EQ(actual, expected);
+  }
+
+  // create Unicode string from utf16. Also get converter
+  {
+    std::u16string data_utf16(u"The old lady pulled her spectacles down and looked over them about the room");
+
+    icu::UnicodeString actual;
+    irs::locale_utils::converter_pool* cvt = nullptr;
+    ASSERT_TRUE(create_unicode_string("utf16", data_utf16, actual, &cvt));
+
+    // utf16 is base for icu::UnicodeString
+    icu::UnicodeString expected(data_utf16.c_str(), data_utf16.size());
+
+    // because we don't do any conversion with utf-16 encoding
+    ASSERT_EQ(cvt, nullptr);
+    ASSERT_EQ(actual, expected);
+  }
+
+  // create Unicode string from utf32. Also get converter
+  {
+    std::u32string data_utf32(U"The old lady pulled her spectacles down and looked over them about the room");
+
+    icu::UnicodeString actual;
+    irs::locale_utils::converter_pool* cvt = nullptr;
+    ASSERT_TRUE(create_unicode_string("utf32", data_utf32, actual, &cvt));
+
+    icu::UnicodeString expected = icu::UnicodeString::fromUTF32((UChar32*)data_utf32.c_str(), data_utf32.size());
+
+    // because we don't use converter for conversion with utf-32
+    ASSERT_EQ(cvt, nullptr);
+    ASSERT_EQ(actual, expected);
+  }
+
+  // create Unicode string from ascii. Also get converter
+  {
+    std::string data_ascii("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20");
+
+    icu::UnicodeString actual;
+    irs::locale_utils::converter_pool* cvt = nullptr;
+    ASSERT_TRUE(create_unicode_string("ascii", data_ascii, actual, &cvt));
+
+    icu::UnicodeString expected = icu::UnicodeString(data_ascii.c_str());
+    auto* actual_cvt = &irs::locale_utils::get_converter("ascii");
+    ASSERT_EQ(cvt, actual_cvt);
     ASSERT_EQ(actual, expected);
   }
 }

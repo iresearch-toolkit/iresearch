@@ -48,7 +48,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   string_ref language;
   string_ref country;
   string_ref variant;
-  string_ref encoding;
+  std::string encoding = "ascii"; // default encoding
 
   auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
   if (!lang_slice.isString()) {
@@ -79,7 +79,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
     variant = get_string<string_ref>(variant_slice);
   }
 
-  if (locale_slice.hasKey(ENCODING_PARAM_NAME)) {
+  if (locale_slice.hasKey(ENCODING_PARAM_NAME)) { // encoding exists
     auto encoding_slice = locale_slice.get(ENCODING_PARAM_NAME);
     if (!encoding_slice.isString()) {
       IR_FRMT_ERROR(
@@ -87,12 +87,12 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
       return false;
     }
     encoding = get_string<string_ref>(encoding_slice);
-    std::string encoding_low;
-    encoding_low.resize(encoding.size());
 
-    std::transform(encoding.begin(), encoding.end(), encoding_low.begin(),
+    // transform encoding to lower case
+    std::transform(encoding.begin(), encoding.end(), encoding.begin(),
         [](unsigned char c){ return std::tolower(c); });
-    if (encoding_low != "utf-8") {
+
+    if (encoding != "utf-8") {
       IR_FRMT_ERROR(
         "Unsupported encoding parameter '%s'", encoding.c_str());
       return false;
@@ -100,7 +100,11 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   }
 
   if (unicode) {
-    *unicode = Unicode::UTF8;
+    if (encoding == "utf-8") {
+      *unicode = Unicode::UTF8;
+    } else {
+      *unicode = Unicode::NON_UTF8;
+    }
   }
 
   std::string locale_name(language.c_str(), language.size());
@@ -124,6 +128,7 @@ bool get_locale_from_str(string_ref locale_str,
                          std::string* encoding) {
 
   std::string locale_name;
+  std::string encoding_name = "ascii"; // default encoding
   const char* at_pos = std::find(locale_str.begin(), locale_str.end(), '@'); // find pos of '@' symbol
   const char* dot_pos = std::find(locale_str.begin(), locale_str.end(), '.'); // find pos of '.' symbol
 
@@ -136,38 +141,36 @@ bool get_locale_from_str(string_ref locale_str,
   }
 
   // extract encoding
-  if (dot_pos == locale_str.end()) {
+  if (dot_pos == locale_str.end()) { // encoding is not specified
     if (unicode) {
-      *unicode = Unicode::UTF8; // encoding is not specified. Set to default value
-    }
-
-    if (encoding) {
-      // assume that 'encoding_name' has enough memory for copying name of locale
-      *encoding = "utf-8";
+      *unicode = Unicode::NON_UTF8; // set to default value
     }
   } else {
-    std::string enc; // extracted encoding
+    encoding_name.clear();
     if (at_pos != locale_str.end() && dot_pos < at_pos) { // '.' should be before '@'
-      enc.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
+      encoding_name.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
     } else {
-      enc.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
+      encoding_name.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
     }
 
     // trasnform encoding to lower case
-    std::transform(enc.begin(), enc.end(), enc.begin(),
+    std::transform(encoding_name.begin(), encoding_name.end(), encoding_name.begin(),
         [](unsigned char c){ return std::tolower(c); });
+  }
 
-    if (encoding) {
-      // assume that 'encoding_name' has enough memory for copying name of locale
-     *encoding = enc;
-    }
+  // set 'encoding' value
+  if (encoding) {
+    // assume that 'encoding_name' has enough memory for copying name of locale
+    *encoding = encoding_name;
+  }
 
-    if (unicode) {
-      if (enc == "utf-8") {
-        *unicode = Unicode::UTF8;
-      } else {
-        *unicode = Unicode::NON_UTF8;
-      }
+  // set 'unicode' value
+  if (unicode) {
+    if (encoding_name == "utf-8" ||
+        encoding_name == "utf8") {
+      *unicode = Unicode::UTF8;
+    } else {
+      *unicode = Unicode::NON_UTF8;
     }
   }
 
