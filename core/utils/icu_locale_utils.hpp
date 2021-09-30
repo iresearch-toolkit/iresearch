@@ -59,7 +59,7 @@ bool convert_to_utf16(string_ref from_encoding,
                       locale_utils::converter_pool** cvt = nullptr) {
 
   if (from_encoding == "utf16") { // attempt to convert from utf16 to utf16
-    to.assign((UChar*)from.c_str(), from.size());
+    to.assign(reinterpret_cast<const UChar*>(from.c_str()), from.size());
     return true;
   }
 
@@ -75,7 +75,7 @@ bool convert_to_utf16(string_ref from_encoding,
     u_strFromUTF32(to.data(),
                    to.capacity(),
                    &dest_length,
-                   (const UChar32*)from.c_str(),
+                   reinterpret_cast<const UChar32*>(from.c_str()),
                    from.size(), &err_code);
 
     if (!U_SUCCESS(err_code)) {
@@ -91,7 +91,9 @@ bool convert_to_utf16(string_ref from_encoding,
 
   if ((cvt && !*cvt) || !cvt) {
     // try to get converter for specified locale
-    curr_cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
+    curr_cvt = &locale_utils::get_converter(
+                              std::string(from_encoding.c_str(), 
+                                          from_encoding.size()).c_str());
     if (!curr_cvt) {
       // no such converter
       return false;
@@ -107,7 +109,7 @@ bool convert_to_utf16(string_ref from_encoding,
   size_t actual_size = ucnv_toUChars((*cvt)->get().get(),
                                      to.data(),
                                      new_size,
-                                     (const char*)from.c_str(),
+                                     reinterpret_cast<const char*>(from.c_str()),
                                      from.size(),
                                      &err_code);
 
@@ -137,10 +139,10 @@ bool convert_from_utf16(string_ref from_encoding,
     to.resize(new_size);
 
     int32_t dest_length; // length of actual written symbols to 'to' str
-    u_strToUTF32((UChar32*)to.data(),
+    u_strToUTF32(reinterpret_cast<UChar32*>(to.data()),
                  to.capacity(),
                  &dest_length,
-                 (const UChar*)from.c_str(),
+                 reinterpret_cast<const UChar*>(from.c_str()),
                  from.size(), &err_code);
 
     if (!U_SUCCESS(err_code)) {
@@ -157,7 +159,9 @@ bool convert_from_utf16(string_ref from_encoding,
 
   if ((cvt && !*cvt) || !cvt) {
     // try to get converter for specified locale
-    curr_cvt = &locale_utils::get_converter(std::string(from_encoding.c_str(), from_encoding.size()).c_str());
+    curr_cvt = &locale_utils::get_converter(
+                              std::string(from_encoding.c_str(), 
+                                          from_encoding.size()).c_str());
     if (!curr_cvt) {
       // no such converter
       return false;
@@ -170,12 +174,13 @@ bool convert_from_utf16(string_ref from_encoding,
     }
   }
 
-  auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), ucnv_getMaxCharSize((*cvt)->get().get()));
+  auto new_size = UCNV_GET_MAX_BYTES_FOR_STRING(from.size(), 
+                                                ucnv_getMaxCharSize((*cvt)->get().get()));
   to.resize(new_size);
   auto actual_size = ucnv_fromUChars((*cvt)->get().get(),
-                                     (char*)to.data(),
+                                     reinterpret_cast<char*>(to.data()),
                                      new_size,
-                                     (UChar*)from.c_str(),
+                                     reinterpret_cast<const UChar*>(from.c_str()),
                                      from.size(),
                                      &err_code);
 

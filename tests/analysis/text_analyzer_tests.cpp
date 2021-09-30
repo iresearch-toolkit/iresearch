@@ -28,6 +28,12 @@
 #include <velocypack/velocypack-aliases.h>
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
+#include <unicode/coll.h> // for icu::Collator
+#include <unicode/decimfmt.h> // for icu::DecimalFormat
+#include <unicode/numfmt.h> // for icu::NumberFormat
+#include <unicode/ucnv.h> // for UConverter
+#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
+
 #include "analysis/text_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
@@ -37,11 +43,6 @@
 #include "utils/icu_locale_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-#include <unicode/coll.h> // for icu::Collator
-#include <unicode/decimfmt.h> // for icu::DecimalFormat
-#include <unicode/numfmt.h> // for icu::NumberFormat
-#include <unicode/ucnv.h> // for UConverter
-#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 namespace tests {
 

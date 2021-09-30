@@ -985,7 +985,8 @@ bool text_token_stream::reset(const string_ref& data) {
   if (state_->options.unicode == icu_locale_utils::Unicode::UTF8) {
     state_->data = icu::UnicodeString::fromUTF8(
       icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
-  } else if (state_->options.encoding == "utf-16") {
+  } else if (state_->options.encoding == "utf-16" || 
+            state_->options.encoding == "utf16") {
     // utf-16 is base encoding for icu::UnicodeString
     state_->data = icu::UnicodeString(reinterpret_cast<const UChar*>(data.c_str()),
                                       data.size());

@@ -92,7 +92,8 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
     std::transform(encoding.begin(), encoding.end(), encoding.begin(),
         [](unsigned char c){ return std::tolower(c); });
 
-    if (encoding != "utf-8") {
+    if (encoding != "utf-8" && 
+        encoding != "utf8") {
       IR_FRMT_ERROR(
         "Unsupported encoding parameter '%s'", encoding.c_str());
       return false;
@@ -100,7 +101,8 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   }
 
   if (unicode) {
-    if (encoding == "utf-8") {
+    if (encoding == "utf-8" ||
+        encoding == "utf8") {
       *unicode = Unicode::UTF8;
     } else {
       *unicode = Unicode::NON_UTF8;
