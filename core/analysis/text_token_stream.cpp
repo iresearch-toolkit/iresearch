@@ -325,7 +325,10 @@ analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-    icu::Locale&& locale) {
+    icu::Locale&& locale,
+    icu_locale_utils::Unicode* unicode = nullptr,
+    std::string* encoding = nullptr) {
+
   if (locale.isBogus()) {
     return nullptr;
   }
@@ -346,6 +349,17 @@ analysis::analyzer::ptr construct(
     analysis::text_token_stream::options_t options;
     analysis::text_token_stream::stopwords_t stopwords;
     options.icu_locale = locale;
+    if (encoding) {
+      options.encoding = *encoding;
+    } else {
+      options.encoding = "ascii";
+    }
+
+    if (unicode) {
+      options.unicode = *unicode;
+    } else {
+      options.unicode = icu_locale_utils::Unicode::NON_UTF8;
+    }
 
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
@@ -799,8 +813,11 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const string_ref& args) {
   icu::Locale icu_locale;
-  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false)) {
-    return construct(std::move(icu_locale));
+  icu_locale_utils::Unicode unicode;
+  std::string encoding;
+
+  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false, &unicode, &encoding)) {
+    return construct(std::move(icu_locale), &unicode, &encoding);
   } else {
     return nullptr;
   }
