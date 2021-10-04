@@ -57,10 +57,10 @@ bool convert_to_utf16(string_ref from_encoding,
                       std::basic_string<char16_t>& to, // utf16
                       locale_utils::converter_pool** cvt = nullptr);
 
-bool create_unicode_string(string_ref from_encoding,
-                           const string_ref& from,
-                           icu::UnicodeString& unicode_str,
-                           locale_utils::converter_pool** cvt = nullptr);
+bool create_unicode_string(const std::string& encoding,
+                           string_ref data,
+                           locale_utils::converter_pool** cvt,
+                           icu::UnicodeString& u_string);
 
 } // icu_locale_utils
 } // iresearch

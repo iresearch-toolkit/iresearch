@@ -27,6 +27,22 @@
 #include "utils/vpack_utils.hpp"
 #include "utils/log.hpp"
 
+namespace  {
+
+// function that removes all unnecessary chars from encoding name
+void normalize_encoding(std::string& encoding) {
+
+  auto* str = &encoding[0];
+  auto end = std::remove_if(
+    str, str + encoding.size(),
+    [](char x){ return !(('0' <= x && '9' >= x) || ('a' <= x && 'z' >= x)); }
+  );
+
+  encoding.assign(str, std::distance(str, end));
+}
+}
+
+
 namespace iresearch {
 namespace icu_locale_utils {
 
@@ -34,6 +50,13 @@ constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
 constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
 constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
+
+
+constexpr string_ref UTF_8  {"utf8"};
+constexpr string_ref UTF_16 {"utf16"};
+constexpr string_ref UTF_32 {"utf32"};
+constexpr string_ref ASCII  {"ascii"};
+
 
 bool get_locale_from_vpack(const VPackSlice locale_slice,
                            icu::Locale& locale,
@@ -48,7 +71,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   string_ref language;
   string_ref country;
   string_ref variant;
-  std::string encoding = "ascii"; // default encoding
+  std::string encoding(ASCII); // default encoding
 
   auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
   if (!lang_slice.isString()) {
@@ -89,11 +112,12 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
     encoding = get_string<string_ref>(encoding_slice);
 
     // transform encoding to lower case
-    std::transform(encoding.begin(), encoding.end(), encoding.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+    std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
 
-    if (encoding != "utf-8" && 
-        encoding != "utf8") {
+    // remove unwanted char from encoding name
+    normalize_encoding(encoding);
+
+    if (encoding != UTF_8) {
       IR_FRMT_ERROR(
         "Unsupported encoding parameter '%s'", encoding.c_str());
       return false;
@@ -101,8 +125,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   }
 
   if (unicode) {
-    if (encoding == "utf-8" ||
-        encoding == "utf8") {
+    if (encoding == UTF_8) {
       *unicode = Unicode::UTF8;
     } else {
       *unicode = Unicode::NON_UTF8;
@@ -130,7 +153,7 @@ bool get_locale_from_str(string_ref locale_str,
                          std::string* encoding) {
 
   std::string locale_name;
-  std::string encoding_name = "ascii"; // default encoding
+  std::string encoding_name(ASCII); // default encoding
   const char* at_pos = std::find(locale_str.begin(), locale_str.end(), '@'); // find pos of '@' symbol
   const char* dot_pos = std::find(locale_str.begin(), locale_str.end(), '.'); // find pos of '.' symbol
 
@@ -152,8 +175,9 @@ bool get_locale_from_str(string_ref locale_str,
     }
 
     // trasnform encoding to lower case
-    std::transform(encoding_name.begin(), encoding_name.end(), encoding_name.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+    std::transform(encoding_name.begin(), encoding_name.end(), encoding_name.begin(), ::tolower);
+
+    normalize_encoding(encoding_name);
   }
 
   // set 'encoding' value
@@ -164,8 +188,7 @@ bool get_locale_from_str(string_ref locale_str,
 
   // set 'unicode' value
   if (unicode) {
-    if (encoding_name == "utf-8" ||
-        encoding_name == "utf8") {
+    if (encoding_name == UTF_8) {
       *unicode = Unicode::UTF8;
     } else {
       *unicode = Unicode::NON_UTF8;
@@ -197,7 +220,7 @@ bool locale_to_vpack(const icu::Locale& locale,
     }
 
     if (unicode && *unicode == Unicode::UTF8) {
-      builder->add(ENCODING_PARAM_NAME, VPackValue("utf-8"));
+      builder->add(ENCODING_PARAM_NAME, VPackValue(UTF_8));
     }
   }
 
@@ -209,7 +232,7 @@ bool convert_to_utf16(string_ref from_encoding,
                       std::basic_string<char16_t>& to, // utf16
                       locale_utils::converter_pool** cvt) {
 
-  if (from_encoding == "utf16") { // attempt to convert from utf16 to utf16
+  if (from_encoding == UTF_16) { // attempt to convert from utf16 to utf16
     to.assign(reinterpret_cast<const char16_t*>(from.c_str()), from.size() / 2);
     return true;
   }
@@ -221,7 +244,7 @@ bool convert_to_utf16(string_ref from_encoding,
   //// there is a special case for utf32 encoding, because 'ucnv_toUChars'
   //// working uncorrectly with such data. Same implementation is currently
   //// in 'locale_utils.cpp' file
-  if (from_encoding == "utf32") {
+  if (from_encoding == UTF_32) {
     int32_t dest_length;
     u_strFromUTF32(to.data(),
                    to.capacity(),
@@ -272,21 +295,31 @@ bool convert_to_utf16(string_ref from_encoding,
   return true;
 }
 
-bool create_unicode_string(string_ref from_encoding,
-                           const string_ref& from,
-                           icu::UnicodeString& unicode_str,
-                           locale_utils::converter_pool** cvt) {
+bool create_unicode_string(const std::string& encoding,
+                           string_ref data,
+                           locale_utils::converter_pool** cvt,
+                           icu::UnicodeString& u_string) {
 
+  if (encoding == UTF_8) {
+    u_string = icu::UnicodeString::fromUTF8(
+      icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
+  } else if (encoding == UTF_16) {
+    // utf-16 is base encoding for icu::UnicodeString
+    u_string = icu::UnicodeString(reinterpret_cast<const UChar*>(data.c_str()),
+                                      data.size());
+  } else {
+    std::u16string to_str;
+    if (!convert_to_utf16(encoding,
+                          data,
+                          to_str,
+                          cvt)) {
+      return false;
+    }
 
-  std::u16string to_str;
-  bool res = convert_to_utf16(from_encoding,
-                              from,
-                              to_str,
-                              cvt);
+    u_string = icu::UnicodeString(to_str.data(), to_str.size());
+  }
 
-  unicode_str = icu::UnicodeString(to_str.data(), to_str.size());
-
-  return res;
+  return true;
 }
 
 } // icu_locale_utils

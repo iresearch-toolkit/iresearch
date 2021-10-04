@@ -804,21 +804,21 @@ TEST(collation_token_stream_test, normalize) {
     std::string config = R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-8"}})";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "variant" : "PHONEBOOK","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "variant" : "PHONEBOOK","encoding":"utf8"}})")->toString(), actual);
   }
 
   {
     std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf8"}})")->toString(), actual);
   }
 
   {
     std::string config = R"({ "locale" : {"language" : "de_DE", "321variant" : "phonebook", "encoding" : "utf-8"}})";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf-8"}})")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE","encoding":"utf8"}})")->toString(), actual);
   }
 
   {
@@ -829,6 +829,6 @@ TEST(collation_token_stream_test, normalize) {
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "collation", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "encoding":"utf-8"}})")->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : {"language" : "de", "country" : "DE", "encoding":"utf8"}})")->toString(), out_slice.toString());
   }
 }

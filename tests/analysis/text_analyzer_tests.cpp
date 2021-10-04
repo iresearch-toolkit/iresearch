@@ -104,6 +104,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 
   options.icu_locale = icu::Locale("C.UTF-8"); // utf8 encoding used bellow
   options.unicode = irs::icu_locale_utils::Unicode::UTF8;
+  options.encoding = "utf-8";
 
   std::string sDataUTF8 = "1,24 prosenttia";
 
@@ -276,6 +277,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::LOWER;
       options.icu_locale = icu::Locale("en_US.UTF-8");
+      options.encoding = "utf-8";
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -311,6 +313,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::UPPER;
       options.icu_locale = icu::Locale("en_US.UTF-8");
+      options.encoding = "utf-8";
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -347,6 +350,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::NONE;
       options.icu_locale = icu::Locale("en_US.UTF-8");
+      options.encoding = "utf-8";
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -394,6 +398,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.explicit_stopwords = { "a", "of", "and" };
+      options.encoding = "utf-8";
       options.icu_locale = icu::Locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
@@ -468,7 +473,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("ru_RU.UTF-16");
-      options.encoding = "utf-16";
+      options.encoding = "utf16";
       options.unicode = irs::icu_locale_utils::Unicode::NON_UTF8;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(irs::string_ref((char*)sDataUTF16.c_str(), sDataUTF16.size()), &stream);
