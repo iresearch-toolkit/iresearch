@@ -143,11 +143,7 @@ bool get_locale_from_str(string_ref locale_str,
   }
 
   // extract encoding
-  if (dot_pos == locale_str.end()) { // encoding is not specified
-    if (unicode) {
-      *unicode = Unicode::NON_UTF8; // set to default value
-    }
-  } else {
+  if (dot_pos != locale_str.end()) { // encoding is specified
     encoding_name.clear();
     if (at_pos != locale_str.end() && dot_pos < at_pos) { // '.' should be before '@'
       encoding_name.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
@@ -180,7 +176,6 @@ bool get_locale_from_str(string_ref locale_str,
   return !locale.isBogus();
 }
 
-
 bool locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
                      const Unicode* unicode) {
@@ -207,6 +202,91 @@ bool locale_to_vpack(const icu::Locale& locale,
   }
 
   return true;
+}
+
+bool convert_to_utf16(string_ref from_encoding,
+                      const string_ref& from, // other encoding
+                      std::basic_string<char16_t>& to, // utf16
+                      locale_utils::converter_pool** cvt) {
+
+  if (from_encoding == "utf16") { // attempt to convert from utf16 to utf16
+    to.assign(reinterpret_cast<const char16_t*>(from.c_str()), from.size() / 2);
+    return true;
+  }
+
+  UErrorCode err_code = UErrorCode::U_ZERO_ERROR;
+  auto new_size = from.size() * 2;
+  to.resize(new_size);
+
+  //// there is a special case for utf32 encoding, because 'ucnv_toUChars'
+  //// working uncorrectly with such data. Same implementation is currently
+  //// in 'locale_utils.cpp' file
+  if (from_encoding == "utf32") {
+    int32_t dest_length;
+    u_strFromUTF32(to.data(),
+                   to.capacity(),
+                   &dest_length,
+                   reinterpret_cast<const UChar32*>(from.c_str()),
+                   from.size() / 4, &err_code);
+
+    if (!U_SUCCESS(err_code)) {
+      return false;
+    }
+
+    // resize to the actual size
+    to.resize(dest_length);
+    return true;
+  }
+
+  irs::locale_utils::converter_pool* curr_cvt = nullptr;
+
+  if ((cvt && !*cvt) || !cvt) {
+    // try to get converter for specified locale
+    curr_cvt = &locale_utils::get_converter(from_encoding.c_str());
+
+    if (!curr_cvt) {
+      // no such converter
+      return false;
+    }
+
+    if (cvt && !*cvt) {
+      *cvt = curr_cvt;
+    } else {
+      cvt = &curr_cvt;
+    }
+  }
+
+  size_t actual_size = ucnv_toUChars((*cvt)->get().get(),
+                                     to.data(),
+                                     new_size,
+                                     from.c_str(),
+                                     from.size(),
+                                     &err_code);
+
+  if (!U_SUCCESS(err_code)) {
+    return false;
+  }
+  // resize to the actual size
+  to.resize(actual_size);
+
+  return true;
+}
+
+bool create_unicode_string(string_ref from_encoding,
+                           const string_ref& from,
+                           icu::UnicodeString& unicode_str,
+                           locale_utils::converter_pool** cvt) {
+
+
+  std::u16string to_str;
+  bool res = convert_to_utf16(from_encoding,
+                              from,
+                              to_str,
+                              cvt);
+
+  unicode_str = icu::UnicodeString(to_str.data(), to_str.size());
+
+  return res;
 }
 
 } // icu_locale_utils

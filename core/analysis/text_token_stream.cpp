@@ -325,12 +325,15 @@ analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-    const icu::Locale&& locale) {
-  const auto cache_key = locale.getName();
+    icu::Locale&& locale) {
+  if (locale.isBogus()) {
+    return nullptr;
+  }
+
   {
     auto lock = make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
-      make_hashed_ref(string_ref(cache_key)));
+      make_hashed_ref(string_ref(locale.getName())));
 
     if (itr != cached_state_by_key.end()) {
       return memory::make_unique<analysis::text_token_stream>(
@@ -346,15 +349,15 @@ analysis::analyzer::ptr construct(
 
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
-        cache_key);
+        options.icu_locale.getName());
 
       return nullptr;
     }
 
-    return construct(cache_key, std::move(options), std::move(stopwords));
+    return construct(options.icu_locale.getName(), std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s",
-      cache_key);
+      locale.getName());
   }
 
   return nullptr;
@@ -460,14 +463,12 @@ bool parse_vpack_options(const VPackSlice slice,
                         analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    std::string encoding; // encoding name
     bool res = icu_locale_utils::get_locale_from_str(
                                   get_string<string_ref>(slice),
                                   options.icu_locale,
                                   false,
                                   &options.unicode,
-                                  &encoding);
-    options.encoding = encoding;
+                                  &options.encoding);
     return res;
   }
 
@@ -481,16 +482,13 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   try {
-    std::string encoding; // encoding name
     if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
                                                options.icu_locale,
                                                false,
                                                &options.unicode,
-                                               &encoding)) {
+                                               &options.encoding)) {
       return false;
     }
-
-    options.encoding = encoding;
 
     if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
       auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
@@ -649,7 +647,7 @@ bool make_vpack_config(
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = options.icu_locale.getName();
+    const auto locale_name = options.icu_locale.getName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -991,13 +989,11 @@ bool text_token_stream::reset(const string_ref& data) {
     state_->data = icu::UnicodeString(reinterpret_cast<const UChar*>(data.c_str()),
                                       data.size());
   } else {
-    bool succes = icu_locale_utils::create_unicode_string(
+    if (!icu_locale_utils::create_unicode_string(
                                  state_->options.encoding.c_str(),
                                  data,
                                  state_->data,
-                                 &converter_);
-
-    if (!succes) {
+                                 &converter_)) {
       return false;
     }
   }
