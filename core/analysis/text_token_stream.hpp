@@ -23,8 +23,10 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
-#define IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
+#ifndef IRESEARCH_TEXT_TOKEN_STREAM_H
+#define IRESEARCH_TEXT_TOKEN_STREAM_H
+
+#include <absl/container/flat_hash_set.h>
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -39,7 +41,8 @@ class text_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  typedef std::unordered_set<std::string> stopwords_t;
+  using stopwords_t = absl::flat_hash_set<std::string>;
+
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
     // lowercase tokens, match original implementation
@@ -79,18 +82,21 @@ class text_token_stream final
   virtual bool reset(const string_ref& data) override;
 
  private:
-  bool next_word();
-  bool next_ngram();
-
- private:
   using attributes = std::tuple<
     increment,
     offset,
     term_attribute>;
 
-  std::shared_ptr<state_t> state_;
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
+
+  bool next_word();
+  bool next_ngram();
+
   bstring term_buf_; // buffer for value if value cannot be referenced directly
   attributes attrs_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
 };
 
 } // analysis

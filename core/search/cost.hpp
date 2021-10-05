@@ -43,7 +43,7 @@ class IRESEARCH_API cost final : public attribute {
     return "iresearch::cost";
   }
 
-  static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
+  static constexpr cost_t MAX = std::numeric_limits<cost_t>::max();
 
   cost() = default;
 

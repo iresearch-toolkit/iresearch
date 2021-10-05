@@ -49,5 +49,8 @@ tags
 # Qt Creator specific
 *.user
 
+# VS Code specific
+.vscode
+
 # Builds
 /build*/
