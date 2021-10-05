@@ -36,30 +36,23 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
-enum class Unicode { UTF8, NON_UTF8 };
+enum class Unicode { UTF8, UTF16, UTF32, NON_UTF };
 
 bool get_locale_from_vpack(const VPackSlice slice,
                            icu::Locale& locale,
-                           Unicode* unicode = nullptr);
+                           Unicode& unicode);
 
 bool get_locale_from_str(irs::string_ref locale_str,
                          icu::Locale& locale,
                          bool is_new_format,
-                         Unicode* unicode = nullptr,
-                         std::string* encoding = nullptr);
+                         Unicode& unicode);
 
 bool locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
                      const Unicode* unicode = nullptr);
 
-bool convert_to_utf16(string_ref from_encoding,
-                      const string_ref& from, // other encoding
-                      std::basic_string<char16_t>& to, // utf16
-                      locale_utils::converter_pool** cvt = nullptr);
-
-bool create_unicode_string(const std::string& encoding,
+bool create_unicode_string(const Unicode& unicode,
                            string_ref data,
-                           locale_utils::converter_pool** cvt,
                            icu::UnicodeString& u_string);
 
 } // icu_locale_utils

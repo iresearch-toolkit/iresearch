@@ -69,7 +69,6 @@ class text_token_stream final
     bool preserve_original{}; // emit input data as a token
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
-    std::string encoding;
     icu_locale_utils::Unicode unicode; // UTF-8 or NON_UTF-8
   };
 
@@ -105,7 +104,6 @@ class text_token_stream final
   bstring term_buf_; // buffer for value if value cannot be referenced directly
   attributes attrs_;
   std::unique_ptr<state_t, state_deleter_t> state_;
-  locale_utils::converter_pool* converter_;
 };
 
 } // analysis

@@ -40,6 +40,23 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "ru.koi8.r"})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({"locale" : "en-US"})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
       R"({"locale" : "en-US.utf-8"})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
@@ -49,14 +66,16 @@ TEST(collation_token_stream_test, construct_from_str) {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
       R"({"locale" : "de_DE_phonebook"})");
-    ASSERT_EQ(nullptr, stream);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
 
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
       R"({"locale" : "C"})");
-    ASSERT_EQ(nullptr, stream);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
 
   {
@@ -82,18 +101,48 @@ TEST(collation_token_stream_test, construct_from_str) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "en.utf-16"})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de-DE.ascii@phonebook"})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : "de_DE.utf-32@collation=phonebook"})"));
   }
 }
 
 TEST(collation_token_stream_test, construct_from_obj) {
   // json
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({ "locale": {"language" : "en", "country": "US"}})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
   {
     auto stream = irs::analysis::analyzers::get(
       "collation", irs::type<irs::text_format::json>::get(),
       R"({ "locale": {"language" : "en", "country": "US", "encoding" : "UTF-8"}})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({ "locale": {"language" : "en", "country": "US", "encoding" : "UTF8"}})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({ "locale": {"language" : "en", "country": "US", "encoding" : "uTf-8"}})");
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
+  }
+
+  {
+    auto stream = irs::analysis::analyzers::get(
+      "collation", irs::type<irs::text_format::json>::get(),
+      R"({ "locale": {"language" : "en", "country": "US", "encoding" : "koi8r"}})");
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::collation_token_stream>::id(), stream->type());
   }
@@ -155,9 +204,7 @@ TEST(collation_token_stream_test, construct_from_obj) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : "de_DE", "variant" : "_phonebook", "encoding" : "utf-32"}})"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale" : {"language" : 123}})"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("collation", irs::type<irs::text_format::json>::get(), R"({ "locale": {"language" : "en", "country": "US", "variant" : "phonebook", "encoding" : "ascii"}})"));
   }
 }
 

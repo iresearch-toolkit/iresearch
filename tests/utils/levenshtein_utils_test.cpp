@@ -135,6 +135,17 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
+    const irs::string_ref lhs = "η";
+    const irs::string_ref rhs = "τ";
+
+    std::vector<uint32_t> lhs_utf8, rhs_utf8;
+    irs::utf8_utils::utf8_to_utf32<false>(irs::ref_cast<irs::byte_type>(lhs), std::back_inserter(lhs_utf8));
+    irs::utf8_utils::utf8_to_utf32<false>(irs::ref_cast<irs::byte_type>(rhs), std::back_inserter(rhs_utf8));
+
+    ASSERT_EQ(1, irs::edit_distance(&lhs_utf8[0], lhs_utf8.size(), &rhs_utf8[0], rhs_utf8.size()));
+  }
+
+  {
     const irs::string_ref lhs = "\xD0\xBF\xD1\x83\xD1\x82\xD0\xB8\xD0\xBD";
     const irs::string_ref rhs = "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBB\xD0\xBE";
 

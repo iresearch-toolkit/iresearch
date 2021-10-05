@@ -56,22 +56,36 @@ bool parse_vpack_options(
     switch (locale_slice.type()) {
       case VPackValueType::String:
       {
-         bool res = icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
+         if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
                                                      options.locale,
                                                      false, // true - new format of locale string
-                                                     &options.unicode);
-         if (res && options.unicode == icu_locale_utils::Unicode::UTF8) {
-           return true;
-         } else {
+                                                     options.unicode)) {
            return false;
          }
+         // we support only utf8
+         if (options.unicode != icu_locale_utils::Unicode::UTF8) {
+           IR_FRMT_ERROR(
+             "Unsupported encoding parameter");
+            return false;
+         }
+
+         return true;
       }
       case VPackValueType::Object:
       {
-        return icu_locale_utils::get_locale_from_vpack(locale_slice,
+        if (!icu_locale_utils::get_locale_from_vpack(locale_slice,
                                                        options.locale,
-                                                       &options.unicode);
+                                                       options.unicode)) {
+          return false;
+        }
+        // we support only utf8
+        if (options.unicode != icu_locale_utils::Unicode::UTF8) {
+          IR_FRMT_ERROR(
+            "Unsupported encoding parameter");
+           return false;
+        }
 
+        return true;
       }
       [[fallthrough]];
       default:

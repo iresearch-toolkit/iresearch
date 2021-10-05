@@ -326,8 +326,7 @@ analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
     icu::Locale&& locale,
-    icu_locale_utils::Unicode* unicode = nullptr,
-    std::string* encoding = nullptr) {
+    icu_locale_utils::Unicode* unicode = nullptr) {
 
   if (locale.isBogus()) {
     return nullptr;
@@ -349,16 +348,11 @@ analysis::analyzer::ptr construct(
     analysis::text_token_stream::options_t options;
     analysis::text_token_stream::stopwords_t stopwords;
     options.icu_locale = locale;
-    if (encoding) {
-      options.encoding = *encoding;
-    } else {
-      options.encoding = "ascii";
-    }
 
     if (unicode) {
       options.unicode = *unicode;
     } else {
-      options.unicode = icu_locale_utils::Unicode::NON_UTF8;
+      options.unicode = icu_locale_utils::Unicode::UTF8;
     }
 
     if (!build_stopwords(options, stopwords)) {
@@ -481,8 +475,7 @@ bool parse_vpack_options(const VPackSlice slice,
                                   get_string<string_ref>(slice),
                                   options.icu_locale,
                                   false,
-                                  &options.unicode,
-                                  &options.encoding);
+                                  options.unicode);
     return res;
   }
 
@@ -499,8 +492,7 @@ bool parse_vpack_options(const VPackSlice slice,
     if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
                                                options.icu_locale,
                                                false,
-                                               &options.unicode,
-                                               &options.encoding)) {
+                                               options.unicode)) {
       return false;
     }
 
@@ -814,10 +806,9 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 analysis::analyzer::ptr make_text(const string_ref& args) {
   icu::Locale icu_locale;
   icu_locale_utils::Unicode unicode;
-  std::string encoding;
 
-  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false, &unicode, &encoding)) {
-    return construct(std::move(icu_locale), &unicode, &encoding);
+  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false, unicode)) {
+    return construct(std::move(icu_locale), &unicode);
   } else {
     return nullptr;
   }
@@ -904,8 +895,8 @@ text_token_stream::text_token_stream(
     const options_t& options,
     const stopwords_t& stopwords)
   : analyzer{ irs::type<text_token_stream>::get() },
-    state_{new state_t{options, stopwords}},
-    converter_(nullptr){
+    state_{new state_t{options, stopwords}}
+{
 }
 
 // -----------------------------------------------------------------------------
@@ -997,9 +988,8 @@ bool text_token_stream::reset(const string_ref& data) {
   // Create ICU UnicodeString
   // ...........................................................................
 
-  if (!icu_locale_utils::create_unicode_string(state_->options.encoding,
+  if (!icu_locale_utils::create_unicode_string(state_->options.unicode,
                                                data,
-                                               &converter_,
                                                state_->data)) {
     return false;
   }

@@ -104,7 +104,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 
   options.icu_locale = icu::Locale("C.UTF-8"); // utf8 encoding used bellow
   options.unicode = irs::icu_locale_utils::Unicode::UTF8;
-  options.encoding = "utf-8";
 
   std::string sDataUTF8 = "1,24 prosenttia";
 
@@ -148,7 +147,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     irs::analysis::text_token_stream::options_t options;
 
     options.icu_locale = icu::Locale("en_US.UTF-8");
-    options.encoding = "UTF-8";
     options.unicode = irs::icu_locale_utils::Unicode::UTF8;
 
     std::string data = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
@@ -237,7 +235,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "UTF-8";
       options.unicode = irs::icu_locale_utils::Unicode::UTF8;
 
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
@@ -277,7 +274,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::LOWER;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "utf-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -313,7 +310,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::UPPER;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "utf-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -350,7 +347,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::NONE;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "utf-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -398,7 +395,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.explicit_stopwords = { "a", "of", "and" };
-      options.encoding = "utf-8";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       options.icu_locale = icu::Locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
@@ -473,8 +470,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("ru_RU.UTF-16");
-      options.encoding = "utf16";
-      options.unicode = irs::icu_locale_utils::Unicode::NON_UTF8;
+      options.unicode = irs::icu_locale_utils::Unicode::UTF16;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(irs::string_ref((char*)sDataUTF16.c_str(), sDataUTF16.size()), &stream);
     }
@@ -483,65 +479,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), R"({"locale":"ru_RU.UTF-16", "stopwords":[]})");
       ASSERT_NE(nullptr, stream);
       testFunc(irs::string_ref((char*)sDataUTF16.c_str(), sDataUTF16.size()), stream.get());
-    }
-  }
-
-  // alternate locale. Initial encoding is ascii
-  {
-    std::string sDataAscii("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20");
-    std::string data;
-    std::u16string udata;
-
-    ASSERT_TRUE(irs::icu_locale_utils::convert_to_utf16("ascii",
-                                                        sDataAscii,
-                                                        udata));
-
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
-      ASSERT_TRUE(pStream->reset(data));
-
-      auto* pOffset = irs::get<irs::offset>(*pStream);
-      ASSERT_NE(nullptr, pOffset);
-      auto* pPayload = irs::get<irs::payload>(*pStream);
-      ASSERT_EQ(nullptr, pPayload);
-      auto* pValue = irs::get<irs::term_attribute>(*pStream);
-      ASSERT_NE(nullptr, pValue);
-      auto* pInc = irs::get<irs::increment>(*pStream);
-      ASSERT_NE(nullptr, pInc);
-
-      std::string curr_token;
-      ASSERT_TRUE(pStream->next());
-      curr_token = "\x74\x68\x65";
-
-      ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
-      ASSERT_EQ(1, pInc->value);
-      ASSERT_EQ(0, pOffset->start);
-      ASSERT_EQ(3, pOffset->end);
-      ASSERT_TRUE(pStream->next());
-      curr_token = "\x6F\x6C\x64";
-
-      ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
-      ASSERT_EQ(1, pInc->value);
-      ASSERT_TRUE(pStream->next());
-      curr_token = "\x6C\x61\x64\x69";
-
-      ASSERT_EQ(curr_token, std::string((char*)pValue->value.c_str(), pValue->value.size()));
-      ASSERT_EQ(1, pInc->value);
-      ASSERT_FALSE(pStream->next());
-    };
-
-    {
-      irs::analysis::text_token_stream::options_t options;
-      options.icu_locale = icu::Locale("en_US.ascii");
-      options.unicode = irs::icu_locale_utils::Unicode::NON_UTF8;
-      options.encoding = "ascii";
-      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
-      testFunc(sDataAscii, &stream);
-    }
-    {
-      // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.ascii\", \"stopwords\":[]}");
-      ASSERT_NE(nullptr, stream);
-      testFunc(sDataAscii, stream.get());
     }
   }
 
@@ -581,18 +518,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.utf32");
-      options.unicode = irs::icu_locale_utils::Unicode::NON_UTF8;
-      options.encoding = "utf32";
+      options.unicode = irs::icu_locale_utils::Unicode::UTF32;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
-      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size() * 4), &stream);
+      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size()), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
       irs::string_ref d((char*)sDataUTF32.c_str(), sDataUTF32.size());
-      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size() * 4), stream.get());
+      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size()), stream.get());
     }
   }
 }
@@ -1143,7 +1079,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "UTF-8";
       options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
@@ -1178,7 +1113,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.icu_locale = icu::Locale("en_US.UTF-8");
-      options.encoding = "UTF-8";
       options.unicode = irs::icu_locale_utils::Unicode::UTF8;
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
