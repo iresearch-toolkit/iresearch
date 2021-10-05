@@ -42,7 +42,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("de", "DE");
     ASSERT_EQ(actual_locale, expected_locale);
   }
@@ -53,7 +53,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("EN", "US", "phonebook");
     ASSERT_EQ(actual_locale, expected_locale);
   }
@@ -64,7 +64,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("de", "DE", "phonebook");
     ASSERT_NE(actual_locale, expected_locale);
   }
@@ -75,6 +75,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
+    ASSERT_EQ(unicode, Unicode::UTF16);
   }
 
   {
@@ -83,7 +84,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("en", "US", "pinyan");
     ASSERT_EQ(actual_locale, expected_locale);
   }
@@ -94,7 +95,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("en", NULL, "pinyan");
     ASSERT_EQ(actual_locale, expected_locale);
   }
@@ -105,7 +106,7 @@ TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
     icu::Locale actual_locale;
     Unicode unicode;
     ASSERT_TRUE(get_locale_from_vpack(vpack->slice(), actual_locale, unicode));
-
+    ASSERT_EQ(unicode, Unicode::UTF8);
     icu::Locale expected_locale("DE", NULL, NULL, "collation=phonebook");
     ASSERT_EQ(actual_locale, expected_locale);
   }
@@ -628,31 +629,3 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     ASSERT_TRUE(create_unicode_string(Unicode::UTF32, data_ascii, actual));
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -57,9 +57,9 @@ bool parse_vpack_options(
       case VPackValueType::String:
       {
          if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
-                                                     options.locale,
-                                                     false, // true - new format of locale string
-                                                     options.unicode)) {
+                                                    options.locale,
+                                                    false, // true - new format of locale string
+                                                    options.unicode)) {
            return false;
          }
          // we support only utf8
@@ -74,8 +74,8 @@ bool parse_vpack_options(
       case VPackValueType::Object:
       {
         if (!icu_locale_utils::get_locale_from_vpack(locale_slice,
-                                                       options.locale,
-                                                       options.unicode)) {
+                                                     options.locale,
+                                                     options.unicode)) {
           return false;
         }
         // we support only utf8

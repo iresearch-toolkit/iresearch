@@ -99,6 +99,83 @@ std::string system_encoding() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a thread-safe pool of ICU converters for a given encoding
+///        may hold nullptr on ICU converter instantiation failure
+////////////////////////////////////////////////////////////////////////////////
+class converter_pool : private irs::util::noncopyable {
+ public:
+  using ptr = std::shared_ptr<UConverter>;
+
+  converter_pool(std::string&& encoding)
+    : encoding_(std::move(encoding)),
+      pool_(POOL_SIZE) {
+  }
+
+  ptr get() { return pool_.emplace(encoding_).release(); }
+
+  const std::string& encoding() const noexcept { return encoding_; }
+
+ private:
+  struct converter_factory {
+    struct ucnv_deleter {
+      void operator()(UConverter* p) const noexcept {
+        ucnv_close(p);
+      }
+    };
+
+    using ptr = std::unique_ptr<UConverter, ucnv_deleter>;
+
+    static ptr make(const std::string& encoding) {
+      UErrorCode status = U_ZERO_ERROR;
+
+      ptr value{ucnv_open(encoding.c_str(), &status)};
+
+      return U_SUCCESS(status)
+        ? std::move(value)
+        : nullptr;
+    }
+  };
+
+  std::string encoding_;
+  irs::unbounded_object_pool_volatile<converter_factory> pool_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @param encoding the converter encoding (null == system encoding)
+/// @@return a converter for the specified encoding
+////////////////////////////////////////////////////////////////////////////////
+converter_pool& get_converter(const irs::string_ref& encoding) {
+  static std::mutex mutex;
+  static absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
+
+  auto key = encoding;
+  std::string tmp;
+
+  // use system encoding if encoding.null()
+  if (encoding.null()) {
+    tmp = system_encoding();
+    key = tmp;
+  } else {
+    tmp = static_cast<std::string>(key);
+  }
+
+  auto generator = [](
+      const irs::hashed_string_ref& key,
+      const converter_pool& pool) noexcept->irs::hashed_string_ref {
+    // reuse hash but point ref at value in pool
+    return irs::hashed_string_ref(key.hash(), pool.encoding());
+  };
+
+  auto lock = irs::make_lock_guard(mutex);
+
+  return irs::map_utils::try_emplace_update_key(
+    encodings,
+    generator,
+    irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
+    std::move(tmp)).first->second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief base implementation for converters between 'internal' representation
 ///        and an 'external' user-specified encoding (unicode internal)
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,16 +187,16 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
   typedef typename parent_t::intern_type intern_type;
   typedef typename parent_t::state_type state_type;
 
-  codecvtu_base(iresearch::locale_utils::converter_pool& converters)
+  codecvtu_base(converter_pool& converters)
     : contexts_(POOL_SIZE), converters_(converters) {}
 
  protected:
   struct context_t {
     using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
-    iresearch::locale_utils::converter_pool::ptr converter_;
+    converter_pool::ptr converter_;
 
-    static ptr make(iresearch::locale_utils::converter_pool& pool) {
+    static ptr make(converter_pool& pool) {
       auto ctx = irs::memory::make_unique<context_t>();
 
       ctx->converter_ = pool.get();
@@ -176,7 +253,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
 
  private:
   mutable context_pool contexts_;
-  iresearch::locale_utils::converter_pool& converters_;
+  converter_pool& converters_;
 };
 
 template<typename InternType>
@@ -228,7 +305,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
   MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
 
-  codecvt16_facet(iresearch::locale_utils::converter_pool& converters): codecvtu_base(converters) {}
+  codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -447,7 +524,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
   MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
 
-  codecvt32_facet(iresearch::locale_utils::converter_pool& converters): codecvtu_base(converters) {}
+  codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -801,7 +878,7 @@ std::codecvt_base::result codecvt32_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt8u_facet: public codecvtu_base<char> {
  public:
-  codecvt8u_facet(iresearch::locale_utils::converter_pool& converters): codecvtu_base(converters) {}
+  codecvt8u_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -1154,7 +1231,7 @@ std::codecvt_base::result codecvt8u_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
  public:
-  codecvtwu_facet(iresearch::locale_utils::converter_pool& pool): impl_(pool) {}
+  codecvtwu_facet(converter_pool& pool): impl_(pool) {}
 
   bool append(
       std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -1269,7 +1346,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
   typedef typename parent_t::intern_type intern_type;
   typedef typename parent_t::state_type state_type;
 
-  codecvt_base(iresearch::locale_utils::converter_pool& converters_int, iresearch::locale_utils::converter_pool& converters_ext)
+  codecvt_base(converter_pool& converters_int, converter_pool& converters_ext)
     : contexts_(POOL_SIZE),
       converters_ext_(converters_ext),
       converters_int_(converters_int) {
@@ -1279,10 +1356,10 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
   struct context_t {
     using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
-    iresearch::locale_utils::converter_pool::ptr converter_ext_;
-    iresearch::locale_utils::converter_pool::ptr converter_int_;
+    converter_pool::ptr converter_ext_;
+    converter_pool::ptr converter_int_;
 
-    static ptr make(iresearch::locale_utils::converter_pool& pool_int, iresearch::locale_utils::converter_pool& pool_ext) {
+    static ptr make(converter_pool& pool_int, converter_pool& pool_ext) {
       auto ctx = irs::memory::make_unique<context_t>();
 
       if (!ctx) {
@@ -1349,8 +1426,8 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
 
  private:
   mutable context_pool contexts_;
-  iresearch::locale_utils::converter_pool& converters_ext_;
-  iresearch::locale_utils::converter_pool& converters_int_;
+  converter_pool& converters_ext_;
+  converter_pool& converters_int_;
 };
 
 template<typename InternType>
@@ -1402,7 +1479,7 @@ class codecvt8_facet final: public codecvt_base<char> {
  public:
   MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
 
-  codecvt8_facet(iresearch::locale_utils::converter_pool& pool_int, iresearch::locale_utils::converter_pool& pool_ext)
+  codecvt8_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
 
@@ -1779,7 +1856,7 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
 
   MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
 
-  codecvtw_facet(iresearch::locale_utils::converter_pool& pool_int, iresearch::locale_utils::converter_pool& pool_ext)
+  codecvtw_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
 
@@ -3554,7 +3631,7 @@ const std::locale& get_locale(
   auto locale_info =
     irs::memory::make_unique<locale_info_facet>(std::move(info));
   auto* locale_info_ptr = locale_info.get();
-  auto& converter = iresearch::locale_utils::get_converter(locale_info->encoding());
+  auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
   locale = std::locale(
     locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
@@ -3578,7 +3655,7 @@ const std::locale& get_locale(
     locale = std::locale(locale, cvt8.release());
     locale = std::locale(locale, cvtw.release());
   } else {
-    auto& converter_int = iresearch::locale_utils::get_converter(system_encoding());
+    auto& converter_int = get_converter(system_encoding());
     auto cvt8 = irs::memory::make_unique<codecvt8_facet>(converter_int, converter);
     auto cvtw = irs::memory::make_unique<codecvtw_facet>(converter_int, converter);
 
@@ -3601,43 +3678,6 @@ const std::locale& get_locale(
 
 namespace iresearch {
 namespace locale_utils {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @param encoding the converter encoding (null == system encoding)
-/// @@return a converter for the specified encoding
-////////////////////////////////////////////////////////////////////////////////
-iresearch::locale_utils::converter_pool& get_converter(const irs::string_ref& encoding) {
-  static std::mutex mutex;
-  static absl::node_hash_map<irs::hashed_string_ref, iresearch::locale_utils::converter_pool> encodings;
-
-  auto key = encoding;
-  std::string tmp;
-
-  // use system encoding if encoding.null()
-  if (encoding.null()) {
-    tmp = system_encoding();
-    key = tmp;
-  } else {
-    tmp = static_cast<std::string>(key);
-  }
-
-  auto generator = [](
-      const irs::hashed_string_ref& key,
-      const iresearch::locale_utils::converter_pool& pool) noexcept->irs::hashed_string_ref {
-    // reuse hash but point ref at value in pool
-    return irs::hashed_string_ref(key.hash(), pool.encoding());
-  };
-
-  auto lock = irs::make_lock_guard(mutex);
-
-  return irs::map_utils::try_emplace_update_key(
-    encodings,
-    generator,
-    irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
-    std::move(tmp)).first->second;
-
-}
-
 
 #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
   // MSVC2013 does not properly export

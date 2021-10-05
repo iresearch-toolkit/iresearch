@@ -47,14 +47,11 @@ class text_token_stream final
   using stopwords_t = absl::flat_hash_set<std::string>;
 
   struct options_t {
-    options_t() {
-      icu_locale.setToBogus(); // set to uninitialized
-    }
     enum case_convert_t { LOWER, NONE, UPPER };
     // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    icu::Locale icu_locale {"C"};
+    icu::Locale icu_locale {"utf8"};
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
     size_t max_gram{};
@@ -69,7 +66,7 @@ class text_token_stream final
     bool preserve_original{}; // emit input data as a token
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
-    icu_locale_utils::Unicode unicode; // UTF-8 or NON_UTF-8
+    icu_locale_utils::Unicode unicode {icu_locale_utils::Unicode::UTF8}; // UTF8, UTF16 or UTF32
   };
 
   struct state_t;

@@ -109,16 +109,16 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
 
     // remove unwanted chars from encoding name
     normalize_encoding(encoding);
-
-    // set 'unicode' value
-    if (encoding == "utf8") {
-      unicode = Unicode::UTF8;
-    } else if (encoding == "utf16") {
-      unicode = Unicode::UTF16;
-    } else if (encoding == "utf32") {
-      unicode = Unicode::UTF32;
-    } // if none of three above, fallback to utf8
   }
+
+  // set 'unicode' value
+  if (encoding == "utf8") {
+    unicode = Unicode::UTF8;
+  } else if (encoding == "utf16") {
+    unicode = Unicode::UTF16;
+  } else if (encoding == "utf32") {
+    unicode = Unicode::UTF32;
+  } // if none of three above, fallback to utf8
 
   std::string locale_name(language.c_str(), language.size());
 
@@ -209,8 +209,9 @@ bool locale_to_vpack(const icu::Locale& locale,
         builder->add(ENCODING_PARAM_NAME, VPackValue("utf16"));
       } else if (*unicode == Unicode::UTF32) {
         builder->add(ENCODING_PARAM_NAME, VPackValue("utf32"));
+      } else {
+        return false;
       }
-      // else????
     }
   }
 
