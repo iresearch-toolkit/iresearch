@@ -48,7 +48,7 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // there is no Snowball stemmer for "C" locale
   {
     irs::analysis::text_token_stemming_stream::options_t opts;
-    opts.locale = icu::Locale{};
+    opts.locale = icu::Locale{"C"};
 
     irs::string_ref data("running");
     irs::analysis::text_token_stemming_stream stream(opts);

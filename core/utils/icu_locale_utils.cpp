@@ -243,6 +243,7 @@ bool to_unicode(Unicode unicode, string_ref data, icu::UnicodeString& out) {
       out = icu::UnicodeString::fromUTF8(
         icu::StringPiece(data.c_str(),
         static_cast<int32_t>(data.size())));
+      break;
     }
 
     case Unicode::UTF16: {
@@ -256,6 +257,7 @@ bool to_unicode(Unicode unicode, string_ref data, icu::UnicodeString& out) {
       out = icu::UnicodeString(
         reinterpret_cast<const UChar*>(data.c_str()),
         static_cast<int32_t>(data.size() / sizeof(UChar)));
+      break;
     }
 
     case Unicode::UTF32: {
@@ -268,6 +270,7 @@ bool to_unicode(Unicode unicode, string_ref data, icu::UnicodeString& out) {
       out = icu::UnicodeString::fromUTF32(
         reinterpret_cast<const UChar32*>(data.c_str()),
         static_cast<int32_t>(data.size() / sizeof(UChar32)));
+      break;
     }
   }
 
