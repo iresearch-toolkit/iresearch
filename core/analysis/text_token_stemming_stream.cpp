@@ -246,6 +246,7 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   auto& term = std::get<term_attribute>(attrs_);
 
   term.value = bytes_ref::NIL; // reset
+  term_eof_ = true;
 
   // convert to UTF8 for use with 'stemmer_'
   string_ref utf8_data{data};
@@ -257,8 +258,6 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
 
     utf8_data = tmp.toUTF8String(buf_);
   }
-
-  term_eof_ = true;
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;

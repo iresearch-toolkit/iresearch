@@ -410,8 +410,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   // alternate locale. Initial encoding is utf-16
   {
-    std::u16string sDataUTF16(u"\u043f\u043e\u0020\u0432\u0435\u0447\u0435\u0440\u0430\u043c\u0020\u0435\u0436\u0438\u043a\u0020\u0445\u043e\u0434\u0438\u043b\u0020\u043a\u0020\u043c\u0435\u0434\u0432\u0435\u0436\u043e\u043d\u043a\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437\u0432\u0435\u0437\u0434\u044b");
-    std::string data;
+    const std::u16string sDataUTF16(u"\u043f\u043e\u0020\u0432\u0435\u0447\u0435\u0440\u0430\u043c\u0020\u0435\u0436\u0438\u043a\u0020\u0445\u043e\u0434\u0438\u043b\u0020\u043a\u0020\u043c\u0435\u0434\u0432\u0435\u0436\u043e\u043d\u043a\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437\u0432\u0435\u0437\u0434\u044b");
+    const irs::string_ref data{ (char*)sDataUTF16.c_str(), sDataUTF16.size()*sizeof(char16_t) };
 
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
@@ -471,19 +471,20 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.locale = icu::Locale::createFromName("ru_RU.UTF-16");
       options.unicode = irs::icu_locale_utils::Unicode::UTF16;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
-      testFunc(irs::string_ref((char*)sDataUTF16.c_str(), sDataUTF16.size()), &stream);
+      testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), R"({"locale":"ru_RU.UTF-16", "stopwords":[]})");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::string_ref((char*)sDataUTF16.c_str(), sDataUTF16.size()), stream.get());
+      testFunc(data, stream.get());
     }
   }
 
   // alternate locale. Initial encoding is utf-32
   {
-    std::u32string sDataUTF32(U"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
+    const std::u32string sDataUTF32(U"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
+    const irs::string_ref data{ (char*)sDataUTF32.c_str(), sDataUTF32.size()*sizeof(char32_t) };
 
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
@@ -520,14 +521,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.unicode = irs::icu_locale_utils::Unicode::UTF32;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
-      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size()), &stream);
+      testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
+      auto stream = irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(),
+        "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      irs::string_ref d((char*)sDataUTF32.c_str(), sDataUTF32.size());
-      testFunc(irs::string_ref((char*)sDataUTF32.c_str(), sDataUTF32.size()), stream.get());
+      testFunc(data, stream.get());
     }
   }
 }
