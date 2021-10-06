@@ -1087,7 +1087,7 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void {
+  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void { // cppcheck-suppress *
     if (finished) {
       state_->set_ngram_finished();
     }

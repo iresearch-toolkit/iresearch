@@ -53,13 +53,14 @@ class single_instance_lock : public index_lock {
   }
 
   virtual bool lock() override {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(parent->llock_);
     return parent->locks_.insert(name).second;
   }
 
   virtual bool is_locked(bool& result) const noexcept override {
     try {
-      auto lock = make_lock_guard(parent->llock_);
+      auto lock_guard = make_lock_guard(parent->llock_);
 
       result = parent->locks_.find(name) != parent->locks_.end();
 
@@ -72,7 +73,7 @@ class single_instance_lock : public index_lock {
 
   virtual bool unlock() noexcept override{
     try {
-      auto lock = make_lock_guard(parent->llock_);
+      auto lock_guard = make_lock_guard(parent->llock_);
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
@@ -228,7 +229,8 @@ byte_type memory_index_input::read_byte() {
 }
 
 size_t memory_index_input::read_bytes(byte_type* b, size_t left) {  
-  const size_t length = left; // initial length
+  const size_t curr_length = left; // initial length
+  // cppcheck-suppress variableScope
   size_t copied;
   while (left) {
     if (begin_ >= end_) {
@@ -245,7 +247,7 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
     begin_ += copied;
     b += copied;
   }
-  return length - left;
+  return curr_length - left;
 }
 
 int16_t memory_index_input::read_short() {
@@ -287,6 +289,7 @@ uint64_t memory_index_input::read_vlong() {
 //////////////////////////////////////////////////////////////////////////////
 class checksum_memory_index_output final : public memory_index_output {
  public:
+  // cppcheck-suppress constParameter
   explicit checksum_memory_index_output(memory_file& file) noexcept
     : memory_index_output(file) {
     crc_begin_ = pos_;
@@ -316,6 +319,7 @@ class checksum_memory_index_output final : public memory_index_output {
   mutable crc32c crc_;
 }; // checksum_memory_index_output
 
+// cppcheck-suppress constParameter
 memory_index_output::memory_index_output(memory_file& file) noexcept
   : file_(file) {
   reset();
@@ -429,6 +433,7 @@ memory_directory::memory_directory(directory_attributes attrs)
 }
 
 memory_directory::~memory_directory() noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(flock_);
 
   files_.clear();
@@ -436,6 +441,7 @@ memory_directory::~memory_directory() noexcept {
 
 bool memory_directory::exists(
     bool& result, const std::string& name) const noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
   result = files_.find(name) != files_.end();
@@ -469,6 +475,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 
 bool memory_directory::length(
     uint64_t& result, const std::string& name) const noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
@@ -496,6 +503,7 @@ index_lock::ptr memory_directory::make_lock(
 bool memory_directory::mtime(
     std::time_t& result,
     const std::string& name) const noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
@@ -578,11 +586,13 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // take a snapshot of existing files in directory
   // to avoid potential recursive read locks in visitor
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_shared_lock(flock_);
 
     files.reserve(files_.size());
 
     for (auto& entry : files_) {
+      // cppcheck-suppress useStlAlgorithm
       files.emplace_back(entry.first);
     }
   }

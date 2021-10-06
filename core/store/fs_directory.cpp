@@ -385,7 +385,7 @@ class fs_index_input : public buffered_index_input {
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
   size_t pos_; // current input stream position
 }; // fs_index_input
-
+// cppcheck-suppress unknownMacro
 DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle)
 
 class pooled_fs_index_input final : public fs_index_input {

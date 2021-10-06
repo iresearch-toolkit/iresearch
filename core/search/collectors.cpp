@@ -66,13 +66,13 @@ namespace iresearch {
 
 field_collectors::field_collectors(const order::prepared& buckets)
   : collectors_base<field_collector_wrapper>(buckets.size(), buckets) {
-  auto begin = collectors_.begin();
+  auto curr_begin = collectors_.begin();
   for (auto& bucket : buckets) {
-    *begin = bucket.bucket->prepare_field_collector();
-    assert(*begin); // ensured by wrapper
-    ++begin;
+    *curr_begin = bucket.bucket->prepare_field_collector();
+    assert(*curr_begin); // ensured by wrapper
+    ++curr_begin;
   }
-  assert(begin == collectors_.end());
+  assert(curr_begin == collectors_.end());
 }
 
 void field_collectors::collect(const sub_reader& segment,
@@ -128,18 +128,18 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
   : collectors_base<term_collector_wrapper>(buckets.size()*size, buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-  auto begin = collectors_.begin();
-  auto end = collectors_.end();
-  for (; begin != end; ) {
+  auto curr_begin = collectors_.begin();
+  auto curr_end = collectors_.end();
+  for (; curr_begin != curr_end; ) {
     for (auto& entry: buckets) {
       assert(entry.bucket); // ensured by order::prepare
 
-      *begin = entry.bucket->prepare_term_collector();
-      assert(*begin); // ensured by wrapper
-      ++begin;
+      *curr_begin = entry.bucket->prepare_term_collector();
+      assert(*curr_begin); // ensured by wrapper
+      ++curr_begin;
     }
   }
-  assert(begin == collectors_.end());
+  assert(curr_begin == collectors_.end());
 }
 
 
@@ -181,10 +181,10 @@ void term_collectors::collect(
 
 
 size_t term_collectors::push_back() {
-  const size_t size = buckets_->size();
-  assert(0 == size || 0 == collectors_.size() % size);
+  const size_t curr_size = buckets_->size();
+  assert(0 == curr_size || 0 == collectors_.size() % curr_size);
 
-  switch (size) {
+  switch (curr_size) {
     case 0:
       return 0;
     case 1: {
@@ -202,8 +202,8 @@ size_t term_collectors::push_back() {
       return term_offset;
     }
     default: {
-      const auto term_offset = collectors_.size() / size;
-      collectors_.reserve(collectors_.size() + size);
+      const auto term_offset = collectors_.size() / curr_size;
+      collectors_.reserve(collectors_.size() + curr_size);
       for (auto& entry: (*buckets_)) {
         assert(entry.bucket); // ensured by order::prepare
         collectors_.emplace_back(entry.bucket->prepare_term_collector());
@@ -251,13 +251,13 @@ void term_collectors::finish(
     default: {
       term_idx *= bucket_count;
 
-      auto begin = field_collectors.begin();
+      auto curr_begin = field_collectors.begin();
       for (auto& bucket : (*buckets_)) {
         bucket.bucket->collect(
           stats_buf + bucket.stats_offset,
-          index, begin->get(),
+          index, curr_begin->get(),
           collectors_[term_idx++].get());
-        ++begin;
+        ++curr_begin;
       }
     } break;
   }

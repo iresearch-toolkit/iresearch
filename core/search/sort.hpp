@@ -107,6 +107,7 @@ class score_function : util::noncopyable {
   score_function(score_function&& rhs) noexcept;
   score_function& operator=(score_function&& rhs) noexcept;
 
+  // cppcheck-suppress CastIntegerToAddressAtReturn
   const byte_type* operator()() const {
     assert(func_);
     return func_(ctx_.get());

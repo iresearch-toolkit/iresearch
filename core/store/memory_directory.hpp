@@ -59,7 +59,7 @@ class IRESEARCH_API memory_file
   > raw_block_vector_t;
 
  public:
-  memory_file(const memory_allocator& alloc) noexcept
+  explicit memory_file(const memory_allocator& alloc) noexcept
     : raw_block_vector_t(alloc) {
     touch(meta_.mtime);
   }
@@ -87,6 +87,7 @@ class IRESEARCH_API memory_file
     return *this;
   }
 
+  // cppcheck-suppress shadowFunction
   size_t length() const noexcept {
     return len_;
   }

@@ -103,6 +103,7 @@ class IRESEARCH_API index_meta {
  public:
   struct IRESEARCH_API index_segment_t {
     index_segment_t() = default;
+    // cppcheck-suppress noExplicitConstructor
     index_segment_t(segment_meta&& meta);
     index_segment_t(const index_segment_t& other) = default;
     index_segment_t& operator=(const index_segment_t& other) = default;
@@ -150,12 +151,12 @@ class IRESEARCH_API index_meta {
 
   template<typename Visitor>
   bool visit_files(const Visitor& visitor) {
-    for (auto& segment : segments_) {
-      if (!visitor(segment.filename)) {
+    for (auto& curr_segment : segments_) {
+      if (!visitor(curr_segment.filename)) {
         return false;
       }
 
-      for (auto& file : segment.meta.files) {        
+      for (auto& file : curr_segment.meta.files) {
         if (!visitor(const_cast<std::string&>(file))) {
           return false;
         }
@@ -166,8 +167,8 @@ class IRESEARCH_API index_meta {
 
   template<typename Visitor>
   bool visit_segments(const Visitor& visitor) const {
-    for (auto& segment : segments_) {
-      if (!visitor(segment.filename, segment.meta)) {
+    for (auto& curr_segment : segments_) {
+      if (!visitor(curr_segment.filename, curr_segment.meta)) {
         return false;
       }
     }

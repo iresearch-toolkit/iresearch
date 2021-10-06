@@ -259,7 +259,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
+    explicit LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = ptr(link);
     }
 
@@ -280,7 +280,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
    private:
     friend class parse_context;
     irs::order order;
-    size_t nLimit;
+    size_t nLimit { 0 };
   };
   DEFINE_FACTORY_DEFAULT(RootNode)
 
@@ -407,7 +407,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     assert(src.children.size() == 2); // 2 - left and right side of operator
 
-    auto& left = find_node(src.children[0]);
+    const auto& left = find_node(src.children[0]);
     irs::bstring fieldBuf;
     {
       auto errorNodeId = eval(fieldBuf, left);
@@ -809,8 +809,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
     const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
   ) const {
-    auto& min_node = find_node(min_node_id);
-    auto& max_node = find_node(max_value_id);
+    const auto& min_node = find_node(min_node_id);
+    const auto& max_node = find_node(max_value_id);
     irs::iql::function_arg::fn_args_t args;
 
     args.reserve(2);

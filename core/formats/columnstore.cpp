@@ -308,7 +308,7 @@ class index_block {
       return CP_DENSE | CP_FIXED;
     }
 
-    const auto size = this->size();
+    const auto curr_size = this->size();
 
     ColumnProperty props = CP_SPARSE;
 
@@ -316,8 +316,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
-      assert(block_size >= size);
+      const auto block_size = math::ceil32(curr_size, packed::BLOCK_SIZE_32);
+      assert(block_size >= curr_size);
 
       assert(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
@@ -335,8 +335,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
-      assert(block_size >= size);
+      const auto block_size = math::ceil64(curr_size, packed::BLOCK_SIZE_64);
+      assert(block_size >= curr_size);
 
       assert(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
@@ -350,7 +350,7 @@ class index_block {
       }
     }
 
-    flushed_ += size;
+    flushed_ += curr_size;
 
     // reset pointers and clear data
     key_ = keys_;
@@ -383,7 +383,8 @@ class writer final : public irs::columnstore_writer {
 
   explicit writer(Version version) noexcept
     : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
-      version_(version) {
+      version_(version),
+      dir_(nullptr) {
     static_assert(
       2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
       "buffer is not big enough");
@@ -733,7 +734,7 @@ class sparse_block : util::noncopyable {
  private:
   struct ref {
     doc_id_t key{ doc_limits::eof() };
-    uint64_t offset;
+    uint64_t offset{ 0 };
   };
 
  public:
@@ -871,10 +872,10 @@ class sparse_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
+    bytes_ref curr_value;
 
     // visit first [begin;end-1) blocks
-    doc_id_t key;
+    doc_id_t key; // cppcheck-suppress variableScope
     size_t vbegin;
     auto begin = std::begin(index_);
     for (const auto end = end_-1; begin != end;) { // -1 for tail item
@@ -884,22 +885,22 @@ class sparse_block : util::noncopyable {
       ++begin;
 
       assert(begin->offset >= vbegin);
-      value = bytes_ref(
+      curr_value = bytes_ref(
         data_.c_str() + vbegin, // start
         begin->offset - vbegin); // length
 
-      if (!visitor(key, value)) {
+      if (!visitor(key, curr_value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= begin->offset);
-    value = bytes_ref(
+    curr_value = bytes_ref(
       data_.c_str() + begin->offset, // start
       data_.size() - begin->offset); // length
 
-    return visitor(begin->key, value);
+    return visitor(begin->key, curr_value);
   }
 
  private:
@@ -1045,10 +1046,10 @@ class dense_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref value;
+    bytes_ref curr_value;
 
     // visit first [begin;end-1) blocks
-    doc_id_t key = base_;
+    doc_id_t key = base_; // cppcheck-suppress variableScope
     size_t vbegin;
     auto begin = std::begin(index_);
     for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
@@ -1057,22 +1058,22 @@ class dense_block : util::noncopyable {
       ++begin;
 
       assert(*begin >= vbegin);
-      value = bytes_ref(
+      curr_value = bytes_ref(
         data_.c_str() + vbegin, // start
         *begin - vbegin); // length
 
-      if (!visitor(key, value)) {
+      if (!visitor(key, curr_value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= *begin);
-    value = bytes_ref(
+    curr_value = bytes_ref(
       data_.c_str() + *begin, // start
       data_.size() - *begin); // length
 
-    return visitor(key, value);
+    return visitor(key, curr_value);
   }
 
  private:
@@ -1085,7 +1086,7 @@ class dense_block : util::noncopyable {
   uint32_t index_[INDEX_BLOCK_SIZE];
   bstring data_;
   uint32_t* end_{ index_ };
-  doc_id_t base_{ };
+  doc_id_t base_{ 0 };
 }; // dense_block
 
 class dense_fixed_offset_block : util::noncopyable {
@@ -1219,25 +1220,25 @@ class dense_fixed_offset_block : util::noncopyable {
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
     assert(size_);
 
-    bytes_ref value;
+    bytes_ref curr_value;
 
     // visit first 'size_-1' blocks
     doc_id_t key = base_key_;
     size_t offset = base_offset_;
     for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      value = bytes_ref(data_.c_str() + offset, avg_length_);
-      if (!visitor(key, value)) {
+      curr_value = bytes_ref(data_.c_str() + offset, avg_length_);
+      if (!visitor(key, curr_value)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= offset);
-    value = bytes_ref(
+    curr_value = bytes_ref(
       data_.c_str() + offset, // start
       data_.size() - offset); // length
 
-    return visitor(key, value);
+    return visitor(key, curr_value);
   }
 
  private:
@@ -1511,7 +1512,7 @@ class read_context
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
     // add cache entry
-    auto& block = cache.emplace_back(std::forward<Args>(args)...);
+    auto& block {cache.emplace_back(std::forward<Args>(args)...)};
 
     try {
       load(block, decomp, decrypt, offset);
@@ -1925,8 +1926,8 @@ class sparse_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : key(std::move(other.key)), offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+      : key(std::move(other.key)), offset(std::move(other.offset)),
+        pblock{other.pblock.exchange(nullptr)} {  // no std::move(...) for std::atomic<...>
     }
 
     doc_id_t key; // min key in a block
@@ -2106,8 +2107,8 @@ class dense_fixed_offset_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : offset(std::move(other.offset)) {
-      pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
+      : offset(std::move(other.offset)),
+        pblock{ other.pblock.exchange(nullptr)} { // no std::move(...) for std::atomic<...>
     }
 
     uint64_t offset; // need to store base offset since blocks may not be located sequentially
@@ -2257,10 +2258,10 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
-      auto& value = std::get<document>(attrs_);
+      auto& curr_value = std::get<document>(attrs_);
 
       if (doc < min_) {
-        if (!doc_limits::valid(value.value)) {
+        if (!doc_limits::valid(curr_value.value)) {
           next();
         }
 
@@ -2270,20 +2271,20 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       min_ = doc;
       next();
 
-      return value.value;
+      return curr_value.value;
     }
 
     virtual bool next() noexcept override {
-      auto& value = std::get<document>(attrs_);
+      auto& curr_value = std::get<document>(attrs_);
 
       if (min_ > max_) {
-        value.value = doc_limits::eof();
+        curr_value.value = doc_limits::eof();
 
         return false;
       }
 
 
-      value.value = min_++;
+      curr_value.value = min_++;
 
       return true;
     }

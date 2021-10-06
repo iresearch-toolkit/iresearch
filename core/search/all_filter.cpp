@@ -52,7 +52,7 @@ class all_query final : public filter::prepared {
  private:
   bstring stats_;
 };
-
+// cppcheck-suppress unknownMacro
 DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() noexcept

@@ -280,7 +280,7 @@ class doc_iterator final : public irs::doc_iterator {
     freq_in_ = freq;
     posting_ = &posting;
 
-    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    const auto& ppos = std::get<attribute_ptr<position>>(attrs_);
 
     if (ppos.ptr && prox) {
       // reset positions only once,
@@ -435,7 +435,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
-    auto& value = std::get<document>(attrs_);
+    auto& curr_value = std::get<document>(attrs_);
 
     while (it_ != docs_.end()) {
       if (doc_limits::eof(it_->doc)) {
@@ -445,7 +445,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
       }
 
       auto& doc = *it_;
-      value.value = doc.doc;
+      curr_value.value = doc.doc;
       freq_.value = doc.freq;
 
       if (doc.cookie) {
@@ -458,7 +458,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
 
     }
 
-    value.value = doc_limits::eof();
+    curr_value.value = doc_limits::eof();
     freq_.value = 0;
     return false;
   }
@@ -671,6 +671,7 @@ class term_reader final : public irs::basic_term_reader,
                           private util::noncopyable {
  public:
   explicit term_reader(
+      // cppcheck-suppress constParameter
       fields_data::postings_ref_t& postings,
       const doc_map* docmap) noexcept
     : it_(postings, docmap) {

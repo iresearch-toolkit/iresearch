@@ -513,6 +513,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         return std::nullopt;
       };
 
+      // cppcheck-suppress syntaxError
       if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
         return std::move(func).value();
       }
