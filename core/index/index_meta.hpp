@@ -48,7 +48,8 @@ typedef std::shared_ptr<const format> format_ptr;
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // format_ptr
+// format_ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro 
 
 namespace iresearch {
 

@@ -139,8 +139,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 // --SECTION--                                by_column_existence implementation
 // -----------------------------------------------------------------------------
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(by_column_existence)
+
+DEFINE_FACTORY_DEFAULT(by_column_existence) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,

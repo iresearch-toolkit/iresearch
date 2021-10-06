@@ -303,7 +303,8 @@ std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
-  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+  // MSVC requires a static instance of an 'id' member
+  MSVC_ONLY(static std::locale::id id;) // cppcheck-suppress unknownMacro 
 
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 

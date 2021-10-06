@@ -657,28 +657,28 @@ automaton make_levenshtein_automaton(
 
       const size_t offset = transition.first ? transition.second + state.offset : 0;
       assert(transition.first*num_offsets + offset < transitions.size());
-      auto& to = transitions[transition.first*num_offsets + offset];
+      auto& curr_to = transitions[transition.first*num_offsets + offset];
 
       if (INVALID_STATE == transition.first) {
-        to = INVALID_STATE;
-      } else if (fst::kNoStateId == to) {
-        to = a.AddState();
+        curr_to = INVALID_STATE;
+      } else if (fst::kNoStateId == curr_to) {
+        curr_to = a.AddState();
 
         const auto distance = description.distance(transition.first, utf8_size - offset);
 
         if (distance <= description.max_distance()) {
-          a.SetFinal(to, {true, distance});
+          a.SetFinal(curr_to, {true, distance});
         }
 
-        stack.emplace_back(offset, transition.first, to);
+        stack.emplace_back(offset, transition.first, curr_to);
       }
 
-      if (chi && to != default_state) {
-        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
+      if (chi && curr_to != default_state) {
+        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), curr_to);
         ascii &= (entry.size == 1);
       } else {
-        assert(fst::kNoStateId == default_state || to == default_state);
-        default_state = to;
+        assert(fst::kNoStateId == default_state || curr_to == default_state);
+        default_state = curr_to;
       }
     }
 

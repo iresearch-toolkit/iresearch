@@ -541,8 +541,8 @@ void set_granular_term(by_granular_range_options::terms& boundary,
     boundary.emplace_back(term_attr->value);
   }
 }
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(by_granular_range)
+
+DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& index,

@@ -461,6 +461,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // segment_writer::ptr
+// segment_writer::ptr
+MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // cppcheck-suppress unknownMacro 
 
 #endif // IRESEARCH_SEGMENT_WRITER_H

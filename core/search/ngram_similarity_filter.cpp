@@ -466,8 +466,8 @@ class ngram_similarity_query : public filter::prepared {
 // -----------------------------------------------------------------------------
 // --SECTION--                                by_ngram_similarity implementation
 // -----------------------------------------------------------------------------
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(by_ngram_similarity)
+
+DEFINE_FACTORY_DEFAULT(by_ngram_similarity) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_ngram_similarity::prepare(
     const index_reader& rdr,

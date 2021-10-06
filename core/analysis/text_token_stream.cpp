@@ -82,8 +82,8 @@ namespace analysis {
 
 struct text_token_stream::state_t {
   struct ngram_state_t {
-    const byte_type* it; // iterator
-    uint32_t length{};
+    const byte_type* it{nullptr}; // iterator
+    uint32_t length{0};
   };
 
   icu::UnicodeString data;
@@ -663,6 +663,7 @@ bool make_vpack_config(
         // for simplifying comparison between properties we need deterministic order of stopwords
         sortedWords.reserve(options.explicit_stopwords.size());
         for (const auto& stopword : options.explicit_stopwords) {
+          // cppcheck-suppress useStlAlgorithm
           sortedWords.emplace_back(stopword);
         }
         std::sort(sortedWords.begin(), sortedWords.end());
@@ -894,6 +895,7 @@ text_token_stream::text_token_stream(
 }
 
 /*static*/ void text_token_stream::clear_cache() {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(::mutex);
   cached_state_by_key.clear();
 }
@@ -1087,7 +1089,8 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void { // cppcheck-suppress *
+  // cppcheck-suppress unreadVariable
+  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void { // cppcheck-suppress syntaxError
     if (finished) {
       state_->set_ngram_finished();
     }

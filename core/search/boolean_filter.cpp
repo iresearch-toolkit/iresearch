@@ -454,8 +454,7 @@ void boolean_filter::group_filters(
 // --SECTION--                                                              And
 // ----------------------------------------------------------------------------
 
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(And)
+DEFINE_FACTORY_DEFAULT(And) // cppcheck-suppress unknownMacro
 
 And::And() noexcept
   : boolean_filter(irs::type<And>::get()) {

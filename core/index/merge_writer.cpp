@@ -547,8 +547,7 @@ class compound_term_iterator : public term_iterator {
     // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept non-inlined
     // move constructor implementation, otherwise the move constructor is fully
     // optimized out (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87665)
-    // cppcheck-suppress unknownMacro
-    GCC8_12_OPTIMIZED_WORKAROUND(__attribute__((noinline)))
+    GCC8_12_OPTIMIZED_WORKAROUND(__attribute__((noinline)))// cppcheck-suppress unknownMacro
     term_iterator_t(term_iterator_t&& other) noexcept
       : first(std::move(other.first)), second(std::move(other.second)) {
     }

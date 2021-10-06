@@ -68,7 +68,7 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
 }
 
 namespace iresearch {
-MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 
 //////////////////////////////////////////////////////////////////////////////
@@ -160,7 +160,7 @@ class fs_lock : public index_lock {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
-  DEFINE_FACTORY_INLINE(index_output)
+  DEFINE_FACTORY_INLINE(index_output) // cppcheck-suppress unknownMacro
 
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
@@ -385,7 +385,7 @@ class fs_index_input : public buffered_index_input {
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
   size_t pos_; // current input stream position
 }; // fs_index_input
-// cppcheck-suppress unknownMacro
+
 DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle)
 
 class pooled_fs_index_input final : public fs_index_input {

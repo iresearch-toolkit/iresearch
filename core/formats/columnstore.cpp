@@ -383,8 +383,8 @@ class writer final : public irs::columnstore_writer {
 
   explicit writer(Version version) noexcept
     : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
-      version_(version),
-      dir_(nullptr) {
+      dir_(nullptr),
+      version_(version) {
     static_assert(
       2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
       "buffer is not big enough");
@@ -875,8 +875,8 @@ class sparse_block : util::noncopyable {
     bytes_ref curr_value;
 
     // visit first [begin;end-1) blocks
-    doc_id_t key; // cppcheck-suppress variableScope
-    size_t vbegin;
+    doc_id_t key;
+    size_t vbegin; // cppcheck-suppress variableScope
     auto begin = std::begin(index_);
     for (const auto end = end_-1; begin != end;) { // -1 for tail item
       key = begin->key;
@@ -915,6 +915,7 @@ class sparse_block : util::noncopyable {
   const ref* end_{ std::end(index_) };
 }; // sparse_block
 
+// cppcheck-suppress noConstructor
 class dense_block : util::noncopyable {
  public:
   class iterator {
@@ -1597,6 +1598,7 @@ const typename BlockRef::block_t& load_block(
     }
   }
 
+  // cppcheck-suppress invalidLifetime
   return *cached;
 }
 

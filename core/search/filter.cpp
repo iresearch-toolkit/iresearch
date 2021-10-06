@@ -60,8 +60,8 @@ filter::prepared::ptr filter::prepared::empty() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(irs::empty)
+
+DEFINE_FACTORY_DEFAULT(irs::empty) // cppcheck-suppress unknownMacro
 
 empty::empty() : filter(irs::type<empty>::get()) { }
 

@@ -991,7 +991,9 @@ void field_data::add_term_random_access(
       auto& last_start_cookie = *prox_stream_cookie;
 
       write_cookie(doc_out, start_cookie - last_start_cookie);
+      // cppcheck-suppress selfAssignment
       last_start_cookie = start_cookie; // update previous cookie
+      // cppcheck-suppress selfAssignment
       start_cookie = end_cookie; // update start cookie
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);

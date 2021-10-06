@@ -532,7 +532,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
     assert(lock.owns_lock());
     assert(active_ <= threads_.load());
 
-    if (const auto idle = threads_.load() - active_;
+    if (const auto idle = threads_.load() - active_; // cppcheck-suppress syntaxError
         (idle <= max_idle_ || (!queue_.empty() && threads_.load() == 1))) {
       if (const auto run_state = state.load();
           !queue_.empty() && State::ABORT != run_state) {
