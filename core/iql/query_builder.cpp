@@ -32,7 +32,6 @@
 #include "search/phrase_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
-#include "utils/locale_utils.hpp"
 #include "query_builder.hpp"
 
 namespace {
@@ -214,7 +213,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     const irs::string_ref value_ref(bValueNil ? irs::string_ref::NIL : irs::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
-      "text", irs::type<irs::text_format::text>::get(), irs::locale_utils::name(locale));
+      "text", irs::type<irs::text_format::text>::get(), locale.name());
 
     if (!tokens || !tokens->reset(value_ref)) {
       return false;

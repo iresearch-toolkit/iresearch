@@ -30,10 +30,7 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 #include "utils/hash_utils.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
-
-#include <unicode/locid.h> // for icu::Locale
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -66,20 +63,14 @@ namespace analysis {
 
 struct text_token_normalizing_stream::state_t {
   icu::UnicodeString data;
-  icu::Locale icu_locale;
   const options_t options;
   std::string term_buf; // used by reset()
   const icu::Normalizer2* normalizer; // reusable object owned by ICU
   std::unique_ptr<icu::Transliterator> transliterator;
 
   explicit state_t(const options_t& opts)
-    : icu_locale{"C"},
-      options{opts},
+    : options{opts},
       normalizer{} {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
-    icu_locale.setToBogus(); // set to uninitialized
   }
 };
 
@@ -96,10 +87,10 @@ constexpr VPackStringRef ACCENT_PARAM_NAME      {"accent"};
 
 constexpr frozen::unordered_map<
     string_ref,
-    analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
-  { "lower", analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
-  { "none", analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
-  { "upper", analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
+    analysis::text_token_normalizing_stream::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", analysis::text_token_normalizing_stream::LOWER },
+  { "none", analysis::text_token_normalizing_stream::NONE },
+  { "upper", analysis::text_token_normalizing_stream::UPPER },
 };
 
 
@@ -116,57 +107,61 @@ bool parse_vpack_options(
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
+        return icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice),
+                                                     options.locale,
+                                                     false,
+                                                     options.unicode); // required
       case VPackValueType::Object:
       {
-        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (!param_name_slice.isNone() && param_name_slice.isString()) {
-          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
+        if (!icu_locale_utils::get_locale_from_vpack(slice.get(LOCALE_PARAM_NAME),
+                                                     options.locale,
+                                                     false,
+                                                     options.unicode)) {
+          return false;
+        }
+
+        if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
+          auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME); // optional string enum
+
+          if (!case_convert_slice.isString()) {
+            IR_FRMT_WARN(
+              "Non-string value in '%s' while constructing "
+              "text_token_normalizing_stream from VPack arguments",
+              CASE_CONVERT_PARAM_NAME.data());
+
             return false;
           }
-          if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
-            auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
-            if (!case_convert_slice.isString()) {
-              IR_FRMT_WARN(
-                "Non-string value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                CASE_CONVERT_PARAM_NAME.data());
+          auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
 
-              return false;
-            }
+          if (itr == CASE_CONVERT_MAP.end()) {
+            IR_FRMT_WARN(
+              "Invalid value in '%s' while constructing "
+              "text_token_normalizing_stream from VPack arguments",
+              CASE_CONVERT_PARAM_NAME.data());
 
-            auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
-
-            if (itr == CASE_CONVERT_MAP.end()) {
-              IR_FRMT_WARN(
-                "Invalid value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                CASE_CONVERT_PARAM_NAME.data());
-
-              return false;
-            }
-
-            options.case_convert = itr->second;
+            return false;
           }
 
-          if (slice.hasKey(ACCENT_PARAM_NAME)) {
-            auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
-
-            if (!accent_slice.isBool()) {
-              IR_FRMT_WARN(
-                "Non-boolean value in '%s' while constructing "
-                "text_token_normalizing_stream from VPack arguments",
-                ACCENT_PARAM_NAME.data());
-
-              return false;
-            }
-
-            options.accent = accent_slice.getBool();
-          }
-
-          return true;
+          options.case_convert = itr->second;
         }
+
+        if (slice.hasKey(ACCENT_PARAM_NAME)) {
+          auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
+
+          if (!accent_slice.isBool()) {
+            IR_FRMT_WARN(
+              "Non-boolean value in '%s' while constructing "
+              "text_token_normalizing_stream from VPack arguments",
+              ACCENT_PARAM_NAME.data());
+
+            return false;
+          }
+
+          options.accent = accent_slice.getBool();
+        }
+
+        return true;
       }
       [[fallthrough]];
       default:
@@ -214,11 +209,10 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 bool make_vpack_config(
     const analysis::text_token_normalizing_stream::options_t& options,
     VPackBuilder* builder) {
-
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = locale_utils::name(options.locale);
+    const auto& locale_name = options.locale.getName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -268,8 +262,9 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
 analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
     analysis::text_token_normalizing_stream::options_t options;
+    icu_locale_utils::Unicode unicode;
 
-    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
+    if (icu_locale_utils::get_locale_from_str(args, options.locale, false, unicode)) {// interpret 'args' as a locale name
       return memory::make_unique<analysis::text_token_normalizing_stream>(
           std::move(options));
     }
@@ -285,9 +280,11 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 
 bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)){
-    definition = locale_utils::name(locale);
+  icu::Locale locale;
+  icu_locale_utils::Unicode unicode;
+
+  if (icu_locale_utils::get_locale_from_str(args, locale, false, unicode)) {
+    definition = locale.getName();
     return true;
   }
   return false;
@@ -384,17 +381,6 @@ bool text_token_normalizing_stream::next() {
 }
 
 bool text_token_normalizing_stream::reset(const string_ref& data) {
-  if (state_->icu_locale.isBogus()) {
-    state_->icu_locale = icu::Locale(
-      std::string(locale_utils::language(state_->options.locale)).c_str(),
-      std::string(locale_utils::country(state_->options.locale)).c_str()
-    );
-
-    if (state_->icu_locale.isBogus()) {
-      return false;
-    }
-  }
-
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   if (!state_->normalizer) {
@@ -427,24 +413,10 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
   // ...........................................................................
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
-  std::string data_utf8;
-  string_ref data_utf8_ref;
-  if (locale_utils::is_utf8(state_->options.locale)) {
-    data_utf8_ref = data;
-  } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-      return false; // UTF8 conversion failure
-    }
-    data_utf8_ref = data_utf8;
-  }
 
-  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-    return false; // ICU UnicodeString signatures can handle at most INT32_MAX
+  if (!icu_locale_utils::to_unicode(state_->options.unicode, data, state_->data)) {
+    return false;
   }
-
-  state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // normalize unicode
@@ -461,11 +433,11 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
   // case-convert unicode
   // ...........................................................................
   switch (state_->options.case_convert) {
-   case options_t::case_convert_t::LOWER:
-    term_icu.toLower(state_->icu_locale); // inplace case-conversion
+   case LOWER:
+    term_icu.toLower(state_->options.locale); // inplace case-conversion
     break;
-   case options_t::case_convert_t::UPPER:
-    term_icu.toUpper(state_->icu_locale); // inplace case-conversion
+   case UPPER:
+    term_icu.toUpper(state_->options.locale); // inplace case-conversion
     break;
    default:
     {} // NOOP

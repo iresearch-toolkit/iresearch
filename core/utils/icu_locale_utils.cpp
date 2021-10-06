@@ -29,31 +29,59 @@
 
 namespace  {
 
-// function that removes all unnecessary chars from encoding name
-void normalize_encoding(std::string& encoding) {
-
-  auto* str = &encoding[0];
-  auto end = std::remove_if(
-    str, str + encoding.size(),
-    [](char x){ return !(('0' <= x && '9' >= x) || ('a' <= x && 'z' >= x)); }
-  );
-
-  encoding.assign(str, std::distance(str, end));
-}
-}
-
-namespace iresearch {
-namespace icu_locale_utils {
+using irs::icu_locale_utils::Unicode;
 
 constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
 constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
 constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
 constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
 
+// function that removes all unnecessary chars from encoding name
+void normalize_encoding(std::string& encoding) {
+  auto* str = encoding.data();
+
+  auto end = std::remove_if(
+    str, str + encoding.size(),
+    [](char x){ return !(('0' <= x && '9' >= x) || ('a' <= x && 'z' >= x)); });
+
+  encoding.assign(str, std::distance(str, end));
+}
+
+constexpr std::string_view to_string(Unicode v) noexcept {
+  switch (v) {
+    case Unicode::UTF8:
+      return "utf8";
+    case Unicode::UTF16:
+      return "utf16";
+    case Unicode::UTF32:
+      return "utf32";
+  }
+}
+
+constexpr Unicode from_string(std::string_view str, Unicode fallback = Unicode::UTF8) noexcept {
+  if (to_string(Unicode::UTF8) == str) {
+    return Unicode::UTF8;
+  }
+
+  if (to_string(Unicode::UTF16) == str) {
+    return Unicode::UTF16;
+  }
+
+  if (to_string(Unicode::UTF32) == str) {
+    return Unicode::UTF32;
+  }
+
+  return fallback;
+}
+
+}
+
+namespace iresearch {
+namespace icu_locale_utils {
+
 bool get_locale_from_vpack(const VPackSlice locale_slice,
                            icu::Locale& locale,
                            Unicode& unicode) {
-
   if (!locale_slice.isObject()) {
     IR_FRMT_ERROR(
       "Locale value is not specified or it is not an object");
@@ -63,8 +91,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
   string_ref language;
   string_ref country;
   string_ref variant;
-  std::string encoding("utf8"); // default encoding
-  unicode = Unicode::UTF8; // set default encoding
+  std::string encoding;
 
   auto lang_slice = locale_slice.get(LANGUAGE_PARAM_NAME);
   if (!lang_slice.isString()) {
@@ -111,15 +138,6 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
     normalize_encoding(encoding);
   }
 
-  // set 'unicode' value
-  if (encoding == "utf8") {
-    unicode = Unicode::UTF8;
-  } else if (encoding == "utf16") {
-    unicode = Unicode::UTF16;
-  } else if (encoding == "utf32") {
-    unicode = Unicode::UTF32;
-  } // if none of three above, fallback to utf8
-
   std::string locale_name(language.c_str(), language.size());
 
   if (country.size() > 0) {
@@ -129,6 +147,7 @@ bool get_locale_from_vpack(const VPackSlice locale_slice,
     locale_name.append(variant.c_str(), variant.size());
   }
 
+  unicode = from_string(encoding);
   locale = icu::Locale::createFromName(locale_name.c_str());
 
   return !locale.isBogus();
@@ -138,10 +157,8 @@ bool get_locale_from_str(string_ref locale_str,
                          icu::Locale& locale,
                          bool is_new_format,
                          Unicode& unicode) {
-
   std::string locale_name;
-  std::string encoding_name("utf8"); // default encoding
-  unicode = Unicode::UTF8; // set default value
+  std::string encoding;
 
   const char* at_pos = std::find(locale_str.begin(), locale_str.end(), '@'); // find pos of '@' symbol
   const char* dot_pos = std::find(locale_str.begin(), locale_str.end(), '.'); // find pos of '.' symbol
@@ -156,39 +173,45 @@ bool get_locale_from_str(string_ref locale_str,
 
   // extract encoding
   if (dot_pos != locale_str.end()) { // encoding is specified
-    encoding_name.clear();
+    encoding.clear();
     if (at_pos != locale_str.end() && dot_pos < at_pos) { // '.' should be before '@'
-      encoding_name.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
+      encoding.assign(dot_pos + 1, at_pos); // encoding is located between '.' and '@' symbols
     } else {
-      encoding_name.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
+      encoding.assign(dot_pos + 1, locale_str.end()); // encoding is located between '.' and end of string
     }
 
     // trasnform encoding to lower case
-    std::transform(encoding_name.begin(), encoding_name.end(), encoding_name.begin(), ::tolower);
+    std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
 
-    normalize_encoding(encoding_name);
+    normalize_encoding(encoding);
   }
 
-  // set 'unicode' value
-  if (encoding_name == "utf8") {
-    unicode = Unicode::UTF8;
-  } else if (encoding_name == "utf16") {
-    unicode = Unicode::UTF16;
-  } else if (encoding_name == "utf32") {
-    unicode = Unicode::UTF32;
-  } // if none of three above, fallback to utf8
-
+  unicode = from_string(encoding);
   locale = icu::Locale::createFromName(locale_name.c_str());
+
   return !locale.isBogus();
 }
 
-bool locale_to_vpack(const icu::Locale& locale,
+bool get_locale_from_vpack(VPackSlice slice,
+                           icu::Locale& locale,
+                           bool is_new_format,
+                           Unicode& unicode) {
+  switch (slice.type()) {
+    case VPackValueType::String:
+      return icu_locale_utils::get_locale_from_str(
+        get_string<string_ref>(slice), locale, is_new_format, unicode);
+    case VPackValueType::Object:
+      return icu_locale_utils::get_locale_from_vpack(slice, locale, unicode);
+    default:
+      return false;
+  }
+}
+
+void locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
                      const Unicode* unicode) {
-
   VPackObjectBuilder object(builder);
   {
-
     const auto language = locale.getLanguage();
     builder->add(LANGUAGE_PARAM_NAME, VPackValue(language));
 
@@ -203,49 +226,51 @@ bool locale_to_vpack(const icu::Locale& locale,
     }
 
     if (unicode) {
-      if (*unicode == Unicode::UTF8) {
-        builder->add(ENCODING_PARAM_NAME, VPackValue("utf8"));
-      } else if (*unicode == Unicode::UTF16) {
-        builder->add(ENCODING_PARAM_NAME, VPackValue("utf16"));
-      } else if (*unicode == Unicode::UTF32) {
-        builder->add(ENCODING_PARAM_NAME, VPackValue("utf32"));
-      } else {
-        return false;
-      }
+      builder->add(ENCODING_PARAM_NAME, VPackValue(to_string(*unicode)));
     }
   }
-
-  return true;
 }
 
-bool create_unicode_string(const Unicode& unicode,
-                           string_ref data,
-                           icu::UnicodeString& u_string) {
-
+bool to_unicode(Unicode unicode, string_ref data, icu::UnicodeString& out) {
   switch(unicode) {
     case Unicode::UTF8: {
-      u_string = icu::UnicodeString::fromUTF8(
-        icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
-      break;
+      constexpr size_t MAX = std::numeric_limits<int32_t>::max();
+
+      if (data.size() > MAX) {
+        return false;
+      }
+
+      out = icu::UnicodeString::fromUTF8(
+        icu::StringPiece(data.c_str(),
+        static_cast<int32_t>(data.size())));
     }
 
     case Unicode::UTF16: {
+      constexpr size_t MAX = std::numeric_limits<int32_t>::max() * sizeof(UChar);
+
+      if (data.size() > MAX) {
+        return false;
+      }
+
       // utf-16 is base encoding for icu::UnicodeString
-      u_string = icu::UnicodeString(reinterpret_cast<const UChar*>(data.c_str()),
-                                    static_cast<int32_t>(data.size()));
-      break;
+      out = icu::UnicodeString(
+        reinterpret_cast<const UChar*>(data.c_str()),
+        static_cast<int32_t>(data.size() / sizeof(UChar)));
     }
 
     case Unicode::UTF32: {
-      u_string = icu::UnicodeString::fromUTF32(reinterpret_cast<const UChar32*>(data.c_str()),
-                                               static_cast<int32_t>(data.size()));
-      break;
-    }
+      constexpr size_t MAX = std::numeric_limits<int32_t>::max() * sizeof(UChar32);
 
-    case Unicode::NON_UTF: {
-      return false;
+      if (data.size() > MAX) {
+        return false;
+      }
+
+      out = icu::UnicodeString::fromUTF32(
+        reinterpret_cast<const UChar32*>(data.c_str()),
+        static_cast<int32_t>(data.size() / sizeof(UChar32)));
     }
   }
+
   return true;
 }
 

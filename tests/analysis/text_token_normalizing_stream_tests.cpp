@@ -24,21 +24,13 @@
 #include "analysis/text_token_normalizing_stream.hpp"
 
 #include "gtest/gtest.h"
-#include "utils/locale_utils.hpp"
+#include "utils/icu_locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
 namespace {
 
-class text_token_normalizing_stream_tests: public ::testing::Test {
-  virtual void SetUp() {
-    // Code here will be called immediately after the constructor (right before each test).
-  }
-
-  virtual void TearDown() {
-    // Code here will be called immediately after each test (right before the destructor).
-  }
-};
+class text_token_normalizing_stream_tests: public ::testing::Test { };
 
 } // namespace {
 
@@ -59,7 +51,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
   {
     options_t options;
 
-    options.locale = irs::locale_utils::locale("en.utf8");
+    options.locale = icu::Locale::createFromName("en.utf8");
 
     irs::string_ref data("rUnNiNg\xd0\x81");
     irs::analysis::text_token_normalizing_stream stream(options);
@@ -83,7 +75,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
   {
     options_t options;
 
-    options.locale = irs::locale_utils::locale("en.utf8");
+    options.locale = icu::Locale::createFromName("en.utf8");
     options.accent = false;
 
     irs::string_ref data("rUnNiNg\xd0\x81");
@@ -108,8 +100,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
   {
     options_t options;
 
-    options.locale = irs::locale_utils::locale("en.utf8");
-    options.case_convert = options_t::case_convert_t::LOWER;
+    options.locale = icu::Locale::createFromName("en.utf8");
+    options.case_convert = irs::analysis::text_token_normalizing_stream::LOWER;
 
     irs::string_ref data("rUnNiNg\xd0\x81");
     irs::string_ref expected("running\xd1\x91");
@@ -133,8 +125,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
   {
     options_t options;
 
-    options.locale = irs::locale_utils::locale("en.utf8");
-    options.case_convert = options_t::case_convert_t::UPPER;
+    options.locale = icu::Locale::createFromName("en.utf8");
+    options.case_convert = irs::analysis::text_token_normalizing_stream::UPPER;
 
     irs::string_ref data("rUnNiNg\xd1\x91");
     irs::string_ref expected("RUNNING\xd0\x81");
@@ -201,7 +193,9 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with UPPER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"upper\"}");
+    auto stream = irs::analysis::analyzers::get(
+      "norm", irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"upper\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -221,7 +215,9 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with LOWER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"lower\"}");
+    auto stream = irs::analysis::analyzers::get(
+      "norm", irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"lower\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -241,7 +237,9 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with NONE case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\", \"case\":\"none\"}");
+    auto stream = irs::analysis::analyzers::get(
+      "norm", irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"en\", \"case\":\"none\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -260,13 +258,11 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
 
   // remove accent 
   {
-    std::wstring unicodeData = L"\u00F6\u00F5";
-    
-    std::string data;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); 
-    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
-    
-    auto stream = irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
+    const std::string data = u8"\u00F6\u00F5";
+
+    auto stream = irs::analysis::analyzers::get(
+      "norm", irs::type<irs::text_format::json>::get(),
+      "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
    
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -279,10 +275,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(data.size(), offset->end);
     ASSERT_EQ(data, irs::ref_cast<char>(payload->value));
-
-    std::basic_string<wchar_t> unicodeTerm;
-    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(unicodeTerm, irs::ref_cast<char>(term->value), locale));
-    ASSERT_EQ(L"\u006F\u006F", unicodeTerm);
+    ASSERT_EQ(u8"\u006F\u006F", irs::ref_cast<char>(term->value));
     
     ASSERT_FALSE(stream->next());
   }

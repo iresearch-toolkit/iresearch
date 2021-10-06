@@ -24,7 +24,6 @@
 #include "analysis/text_token_stemming_stream.hpp"
 
 #include "gtest/gtest.h"
-#include "utils/locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -48,9 +47,11 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (locale irs::string_ref::NIL)
   // there is no Snowball stemmer for "C" locale
   {
+    irs::analysis::text_token_stemming_stream::options_t opts;
+    opts.locale = icu::Locale{};
+
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream(
-        irs::locale_utils::locale(irs::string_ref::NIL));
+    irs::analysis::text_token_stemming_stream stream(opts);
     ASSERT_EQ(irs::type<irs::analysis::text_token_stemming_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
@@ -70,8 +71,11 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (stemmer exists)
   {
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream(
-        irs::locale_utils::locale("en"));
+
+    irs::analysis::text_token_stemming_stream::options_t opts;
+    opts.locale = icu::Locale::createFromName("en");
+
+    irs::analysis::text_token_stemming_stream stream(opts);
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -91,8 +95,11 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // there is no Snowball stemmer for Chinese
   {
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream(
-        irs::locale_utils::locale("zh"));
+
+    irs::analysis::text_token_stemming_stream::options_t opts;
+    opts.locale = icu::Locale::createFromName("zh");
+
+    irs::analysis::text_token_stemming_stream stream(opts);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -115,7 +122,8 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
   // load jSON string
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("stem", irs::type<irs::text_format::json>::get(), "\"en\"");
+    auto stream = irs::analysis::analyzers::get(
+      "stem", irs::type<irs::text_format::json>::get(), "\"en\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -135,7 +143,8 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("stem", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\"}");
+    auto stream = irs::analysis::analyzers::get(
+      "stem", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));

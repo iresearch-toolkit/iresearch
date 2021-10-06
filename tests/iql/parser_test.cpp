@@ -25,7 +25,6 @@
 
 #include "iql/parser.hh"
 #include "iql/parser_context.hpp"
-#include "utils/locale_utils.hpp"
 
 namespace tests {
   class test_context: public iresearch::iql::parser_context {
@@ -375,9 +374,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
   }
 
   {
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string sData;
-    ASSERT_TRUE(irs::locale_utils::append_external(sData, irs::basic_string_ref<wchar_t>(L"\u041F\u043E==a"), locale));
+    std::string sData = u8"\u041F\u043E==a";
     test_context ctx(sData);
     parser parser(ctx);
 
@@ -398,8 +395,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
 
     ASSERT_EQ(pNode->SEQUENCE, pNode->type);
     std::basic_string<wchar_t> actual;
-    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(actual, pNode->sValue, locale));
-    ASSERT_EQ(L"\u041F\u043E", actual);
+    ASSERT_EQ(u8"\u041F\u043E", pNode->sValue);
   }
 
   // ...........................................................................

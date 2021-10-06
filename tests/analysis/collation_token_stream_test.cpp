@@ -27,7 +27,6 @@
 #include <unicode/locid.h>
 
 #include "tests_shared.hpp"
-#include "utils/locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 

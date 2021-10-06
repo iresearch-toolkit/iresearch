@@ -22,7 +22,6 @@
 
 #include "gtest/gtest.h"
 #include "utils/icu_locale_utils.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/misc.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -35,7 +34,6 @@ using namespace iresearch::icu_locale_utils;
 
 
 TEST(icu_locale_utils_test_suite, test_get_locale_from_vpack) {
-
   {
     std::string config = R"({"language" : "de", "country" : "DE"})";
     auto vpack = VPackParser::fromJson(config.c_str(), config.size());
@@ -456,7 +454,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("UK");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"uk","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -467,7 +465,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -478,7 +476,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE", "phonebook");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -489,7 +487,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE", NULL, "phonebook");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -500,7 +498,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE", NULL, "collation=phonebook");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -511,7 +509,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE", "pinyan", "collation=phonebook");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -522,7 +520,7 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     icu::Locale icu_locale("de", "DE", "pinyan", "phonebook");
     VPackBuilder builder;
     Unicode unicode = Unicode::UTF8;
-    ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
+    locale_to_vpack(icu_locale, &builder, &unicode);
 
     auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN_PHONEBOOK","encoding":"utf8"})");
     auto actual_config = builder.slice();
@@ -531,13 +529,12 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
 }
 
 TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
-
   // create Unicode string from utf8
   {
     std::string data_utf8("The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF8, data_utf8, actual));
+    ASSERT_TRUE(to_unicode(Unicode::UTF8, data_utf8, actual));
 
     icu::UnicodeString expected = icu::UnicodeString::fromUTF8(data_utf8);
 
@@ -549,7 +546,8 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     std::u16string data_utf16(u"The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF16, irs::string_ref((char*)data_utf16.c_str(), data_utf16.size()), actual));
+    ASSERT_TRUE(to_unicode(
+      Unicode::UTF16, irs::string_ref((char*)data_utf16.c_str(), data_utf16.size()), actual));
 
     // utf16 is base for icu::UnicodeString
     icu::UnicodeString expected(data_utf16.c_str(), data_utf16.size());
@@ -562,7 +560,8 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     std::u32string data_utf32(U"The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF32, irs::string_ref((char*)data_utf32.c_str(), data_utf32.size()), actual));
+    ASSERT_TRUE(to_unicode(
+      Unicode::UTF32, irs::string_ref((char*)data_utf32.c_str(), data_utf32.size()), actual));
 
     icu::UnicodeString expected = icu::UnicodeString::fromUTF32((UChar32*)data_utf32.c_str(), data_utf32.size());
 
@@ -574,7 +573,7 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     std::string data_utf8("The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF8, data_utf8, actual));
+    ASSERT_TRUE(to_unicode(Unicode::UTF8, data_utf8, actual));
 
     icu::UnicodeString expected = icu::UnicodeString::fromUTF8(data_utf8);
     ASSERT_EQ(actual, expected);
@@ -585,7 +584,8 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     std::u16string data_utf16(u"The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF16, irs::string_ref((char*)data_utf16.c_str(), data_utf16.size()), actual));
+    ASSERT_TRUE(to_unicode(
+      Unicode::UTF16, irs::string_ref((char*)data_utf16.c_str(), data_utf16.size()), actual));
 
     // utf16 is base for icu::UnicodeString
     icu::UnicodeString expected(data_utf16.c_str(), data_utf16.size());
@@ -598,34 +598,11 @@ TEST(icu_locale_utils_test_suite, test_create_unicode_string) {
     std::u32string data_utf32(U"The old lady pulled her spectacles down and looked over them about the room");
 
     icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF32, irs::string_ref((char*)data_utf32.c_str(), data_utf32.size()), actual));
+    ASSERT_TRUE(to_unicode(
+      Unicode::UTF32, irs::string_ref((char*)data_utf32.c_str(), data_utf32.size()), actual));
 
     icu::UnicodeString expected = icu::UnicodeString::fromUTF32((UChar32*)data_utf32.c_str(), data_utf32.size());
 
     ASSERT_EQ(actual, expected);
-  }
-
-  // create Unicode string from ascii.
-  {
-    std::string data_ascii("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20");
-
-    icu::UnicodeString actual;
-    ASSERT_FALSE(create_unicode_string(Unicode::NON_UTF, data_ascii, actual));
-  }
-
-  // Try to break. create Unicode string from ascii.
-  {
-    std::string data_ascii("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20");
-
-    icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF8, data_ascii, actual));
-  }
-
-  // Try to break. create Unicode string from ascii.
-  {
-    std::string data_ascii("\x54\x68\x65\x20\x6F\x6C\x64\x20\x6C\x61\x64\x79\x20");
-
-    icu::UnicodeString actual;
-    ASSERT_TRUE(create_unicode_string(Unicode::UTF32, data_ascii, actual));
   }
 }

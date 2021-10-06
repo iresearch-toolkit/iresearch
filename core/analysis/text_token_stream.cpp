@@ -40,7 +40,6 @@
 #include "velocypack/vpack.h"
 #include "libstemmer.h"
 #include "utils/hash_utils.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
@@ -106,9 +105,6 @@ struct text_token_stream::state_t {
       stopwords(stopw),
       normalizer{},
       stemmer(nullptr, &sb_stemmer_delete) {
-    // NOTE: use of the default constructor for Locale() or
-    //       use of Locale::createFromName(nullptr)
-    //       causes a memory leak with Boost 1.58, as detected by valgrind
   }
 
   bool is_search_ngram() const {
@@ -271,11 +267,11 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0) {
     // we have a custom path. let`s try loading
     // if we have stopwordsPath - do not  try default location. Nothing to do there anymore
-    return get_stopwords(buf, options.icu_locale.getLanguage(), options.stopwordsPath);
+    return get_stopwords(buf, options.locale.getLanguage(), options.stopwordsPath);
   }
   else if (!options.explicit_stopwords_set && options.explicit_stopwords.empty()) {
     //  no stopwordsPath, explicit_stopwords empty and not marked as valid - load from defaults
-    return get_stopwords(buf, options.icu_locale.getLanguage());
+    return get_stopwords(buf, options.locale.getLanguage());
   }
 
   return true;
@@ -327,7 +323,6 @@ analysis::analyzer::ptr construct(
 analysis::analyzer::ptr construct(
     icu::Locale&& locale,
     icu_locale_utils::Unicode* unicode = nullptr) {
-
   if (locale.isBogus()) {
     return nullptr;
   }
@@ -347,22 +342,20 @@ analysis::analyzer::ptr construct(
   try {
     analysis::text_token_stream::options_t options;
     analysis::text_token_stream::stopwords_t stopwords;
-    options.icu_locale = locale;
+    options.locale = locale;
 
     if (unicode) {
       options.unicode = *unicode;
-    } else {
-      options.unicode = icu_locale_utils::Unicode::UTF8;
     }
 
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
-        options.icu_locale.getName());
+        options.locale.getName());
 
       return nullptr;
     }
 
-    return construct(options.icu_locale.getName(), std::move(options), std::move(stopwords));
+    return construct(options.locale.getName(), std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s",
       locale.getName());
@@ -391,10 +384,10 @@ bool process_term(
   // ...........................................................................
   switch (state.options.case_convert) {
    case analysis::text_token_stream::options_t::case_convert_t::LOWER:
-    word.toLower(state.options.icu_locale); // inplace case-conversion
+    word.toLower(state.options.locale); // inplace case-conversion
     break;
    case analysis::text_token_stream::options_t::case_convert_t::UPPER:
-    word.toUpper(state.options.icu_locale); // inplace case-conversion
+    word.toUpper(state.options.locale); // inplace case-conversion
     break;
    default:
     {} // NOOP
@@ -469,11 +462,10 @@ const frozen::unordered_map<
 
 bool parse_vpack_options(const VPackSlice slice,
                         analysis::text_token_stream::options_t& options) {
-
   if (slice.isString()) {
     bool res = icu_locale_utils::get_locale_from_str(
                                   get_string<string_ref>(slice),
-                                  options.icu_locale,
+                                  options.locale,
                                   false,
                                   options.unicode);
     return res;
@@ -489,10 +481,10 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   try {
-    if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(slice.get(LOCALE_PARAM_NAME)),
-                                               options.icu_locale,
-                                               false,
-                                               options.unicode)) {
+    if (!icu_locale_utils::get_locale_from_vpack(slice.get(LOCALE_PARAM_NAME),
+                                                 options.locale,
+                                                 false,
+                                                 options.unicode)) {
       return false;
     }
 
@@ -653,7 +645,7 @@ bool make_vpack_config(
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto locale_name = options.icu_locale.getName();
+    const auto locale_name = options.locale.getName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -804,11 +796,11 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const string_ref& args) {
-  icu::Locale icu_locale;
+  icu::Locale locale;
   icu_locale_utils::Unicode unicode;
 
-  if (icu_locale_utils::get_locale_from_str(args, icu_locale, false, unicode)) {
-    return construct(std::move(icu_locale), &unicode);
+  if (icu_locale_utils::get_locale_from_str(args, locale, false, unicode)) {
+    return construct(std::move(locale), &unicode);
   } else {
     return nullptr;
   }
@@ -816,11 +808,14 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 
 bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)) {
-    definition = locale_utils::name(locale);
+  icu::Locale locale;
+  icu_locale_utils::Unicode unicode;
+
+  if (icu_locale_utils::get_locale_from_str(args, locale, false, unicode)) {
+    definition = locale.getName();
     return true;
   }
+
   return false;
 }
 
@@ -967,7 +962,7 @@ bool text_token_stream::reset(const string_ref& data) {
   if (!state_->break_iterator) {
     // reusable object owned by *this
     state_->break_iterator.reset(
-      icu::BreakIterator::createWordInstance(state_->options.icu_locale, err));
+      icu::BreakIterator::createWordInstance(state_->options.locale, err));
 
     if (!U_SUCCESS(err) || !state_->break_iterator) {
       state_->break_iterator.reset();
@@ -980,7 +975,7 @@ bool text_token_stream::reset(const string_ref& data) {
   if (state_->options.stemming && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
-      sb_stemmer_new(state_->options.icu_locale.getLanguage(),
+      sb_stemmer_new(state_->options.locale.getLanguage(),
         nullptr)); // defaults to utf-8
   }
 
@@ -988,9 +983,7 @@ bool text_token_stream::reset(const string_ref& data) {
   // Create ICU UnicodeString
   // ...........................................................................
 
-  if (!icu_locale_utils::create_unicode_string(state_->options.unicode,
-                                               data,
-                                               state_->data)) {
+  if (!icu_locale_utils::to_unicode(state_->options.unicode, data, state_->data)) {
     return false;
   }
 

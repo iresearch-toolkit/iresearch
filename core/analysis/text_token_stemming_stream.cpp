@@ -24,22 +24,19 @@
 #include "text_token_stemming_stream.hpp"
 
 #include "libstemmer.h"
-#include "unicode/locid.h"
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/locale_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
 namespace {
 
 using namespace irs;
 
-const VPackStringRef LOCALE_PARAM_NAME {"locale"};
+constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
-bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
-
+bool parse_vpack_options(const VPackSlice slice, irs::analysis::text_token_stemming_stream::options_t& opts) {
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string");
     return false;
@@ -48,18 +45,11 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return locale_utils::icu_locale(get_string<string_ref>(slice), locale);
+        return icu_locale_utils::get_locale_from_str(
+          get_string<string_ref>(slice), opts.locale, false, opts.unicode);
       case VPackValueType::Object:
-      {
-        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
-        if (!param_name_slice.isNone() &&
-            param_name_slice.isString()) {
-          string_ref param_name = get_string<string_ref>(param_name_slice);
-          return locale_utils::icu_locale(param_name, locale);
-        }
-      }
-
-      [[fallthrough]];
+        return icu_locale_utils::get_locale_from_vpack(
+          slice.get(LOCALE_PARAM_NAME), opts.locale, false, opts.unicode);
       default:
         IR_FRMT_ERROR(
           "Missing '%s' while constructing text_token_stemming_stream from "
@@ -82,9 +72,10 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  std::locale locale;
-  if (parse_vpack_options(slice, locale)) {
-    return memory::make_unique<analysis::text_token_stemming_stream>(locale);
+  analysis::text_token_stemming_stream::options_t opts;
+
+  if (parse_vpack_options(slice, opts)) {
+    return memory::make_unique<analysis::text_token_stemming_stream>(opts);
   } else {
     return nullptr;
   }
@@ -99,21 +90,21 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const std::locale& locale, VPackBuilder* builder) {
-
+bool make_vpack_config(const analysis::text_token_stemming_stream::options_t& opts, VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
-     // locale
-    const auto& locale_name = locale_utils::name(locale);
+    // locale
+    const auto* locale_name = opts.locale.getName();
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   }
   return true;
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  std::locale options;
-  if (parse_vpack_options(slice, options)) {
-    return make_vpack_config(options, builder);
+  analysis::text_token_stemming_stream::options_t opts;
+
+  if (parse_vpack_options(slice, opts)) {
+    return make_vpack_config(opts, builder);
   } else {
     return false;
   }
@@ -175,9 +166,10 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
-    std::locale locale;
-    if (locale_utils::icu_locale(args, locale)) {
-      return memory::make_unique<analysis::text_token_stemming_stream>(locale);
+    analysis::text_token_stemming_stream::options_t opts;
+
+    if (icu_locale_utils::get_locale_from_str(args, opts.locale, false, opts.unicode)) {
+      return memory::make_unique<analysis::text_token_stemming_stream>(opts);
     }
   } catch (...) {
     std::string err_msg = static_cast<std::string>(args);
@@ -190,9 +182,10 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
 }
 
 bool normalize_text_config(const string_ref& args, std::string& definition) {
-  std::locale locale;
-  if (locale_utils::icu_locale(args, locale)) {
-    definition = locale_utils::name(locale);
+  icu_locale_utils::Unicode unicode;
+  icu::Locale locale;
+  if (icu_locale_utils::get_locale_from_str(args, locale, false, unicode)) {
+    definition = locale.getName();
     return true;
   }
   return false;
@@ -210,10 +203,14 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
-text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
+void text_token_stemming_stream::stemmer_deleter::operator()(
+    sb_stemmer* p) const noexcept {
+  sb_stemmer_delete(p);
+}
+
+text_token_stemming_stream::text_token_stemming_stream(const options_t& options)
   : analyzer{irs::type<text_token_stemming_stream>::get()},
-    locale_{locale},
-    stemmer_{nullptr, &sb_stemmer_delete},
+    options_{options},
     term_eof_{true} {
 }
 
@@ -243,32 +240,25 @@ bool text_token_stemming_stream::next() {
 bool text_token_stemming_stream::reset(const string_ref& data) {
   if (!stemmer_) {
     stemmer_.reset(
-      sb_stemmer_new(
-        std::string(locale_utils::language(locale_)).c_str(),
-        nullptr)); // defaults to utf-8
+      sb_stemmer_new(options_.locale.getLanguage(), nullptr)); // defaults to utf-8
   }
 
   auto& term = std::get<term_attribute>(attrs_);
 
   term.value = bytes_ref::NIL; // reset
-  term_buf_.clear();
-  term_eof_ = true;
 
   // convert to UTF8 for use with 'stemmer_'
-  string_ref term_buf_ref;
-  if (locale_utils::is_utf8(locale_)) {
-    term_buf_ref = data;
-  } else {
-    // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!locale_utils::append_internal(term_buf_, data, locale_)) {
-      IR_FRMT_ERROR(
-        "Failed to parse UTF8 value from token");
-
+  string_ref utf8_data{data};
+  if (icu_locale_utils::Unicode::UTF8 != options_.unicode) {
+    icu::UnicodeString tmp;
+    if (!icu_locale_utils::to_unicode(options_.unicode, data, tmp)) {
       return false;
     }
 
-    term_buf_ref = term_buf_;
+    utf8_data = tmp.toUTF8String(buf_);
   }
+
+  term_eof_ = true;
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
@@ -280,21 +270,22 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   // ...........................................................................
   // find the token stem
   // ...........................................................................
+
   if (stemmer_) {
-    if (term_buf_ref.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
+    if (utf8_data.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
         std::numeric_limits<int>::max(), data.c_str());
-      term_buf_ref = {term_buf_ref, std::numeric_limits<int>::max() };
+      utf8_data = {utf8_data, std::numeric_limits<int>::max() };
     }
 
-    static_assert(sizeof(sb_symbol) == sizeof(char), "sizeof(sb_symbol) != sizeof(char)");
-    const auto* value = reinterpret_cast<sb_symbol const*>(term_buf_ref.c_str());
+    static_assert(sizeof(sb_symbol) == sizeof(char));
+    const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.c_str());
 
-    value = sb_stemmer_stem(stemmer_.get(), value, static_cast<int>(term_buf_ref.size()));
+    value = sb_stemmer_stem(stemmer_.get(), value, static_cast<int>(utf8_data.size()));
 
     if (value) {
-      static_assert(sizeof(byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
+      static_assert(sizeof(byte_type) == sizeof(sb_symbol));
       term.value = bytes_ref(reinterpret_cast<const byte_type*>(value),
                                    sb_stemmer_length(stemmer_.get()));
 
@@ -305,8 +296,9 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   // ...........................................................................
   // use the value of the unstemmed token
   // ...........................................................................
-  static_assert(sizeof(byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term.value = ref_cast<byte_type>(term_buf_);
+
+  static_assert(sizeof(byte_type) == sizeof(char));
+  term.value = ref_cast<byte_type>(utf8_data);
 
   return true;
 }

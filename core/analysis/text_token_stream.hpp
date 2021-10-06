@@ -34,7 +34,6 @@
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
@@ -51,10 +50,12 @@ class text_token_stream final
     // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    icu::Locale icu_locale {"utf8"};
+    icu::Locale locale;
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
     size_t max_gram{};
+    icu_locale_utils::Unicode unicode{icu_locale_utils::Unicode::UTF8};
+
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{};
     bool accent{}; // remove accents from letters, match original implementation
@@ -66,7 +67,10 @@ class text_token_stream final
     bool preserve_original{}; // emit input data as a token
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
-    icu_locale_utils::Unicode unicode {icu_locale_utils::Unicode::UTF8}; // UTF8, UTF16 or UTF32
+
+    options_t() {
+      locale.setToBogus();
+    }
   };
 
   struct state_t;

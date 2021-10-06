@@ -42,7 +42,6 @@ constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 bool parse_vpack_options(
     const VPackSlice slice,
     analysis::collation_token_stream::options_t& options) {
-
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
       "Slice for collation_token_stream is not an object");
@@ -50,50 +49,31 @@ bool parse_vpack_options(
   }
 
   try {
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
-    auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+    if (!locale_slice.isObject() && !locale_slice.isString()) {
+      IR_FRMT_ERROR(
+        "Missing '%s' while constructing collation_token_stream"
+        "or value is not a string or an object",
+        LOCALE_PARAM_NAME.data());
 
-    switch (locale_slice.type()) {
-      case VPackValueType::String:
-      {
-         if (!icu_locale_utils::get_locale_from_str(get_string<string_ref>(locale_slice),
-                                                    options.locale,
-                                                    false, // true - new format of locale string
-                                                    options.unicode)) {
-           return false;
-         }
-         // we support only utf8
-         if (options.unicode != icu_locale_utils::Unicode::UTF8) {
-           IR_FRMT_ERROR(
-             "Unsupported encoding parameter");
-            return false;
-         }
-
-         return true;
-      }
-      case VPackValueType::Object:
-      {
-        if (!icu_locale_utils::get_locale_from_vpack(locale_slice,
-                                                     options.locale,
-                                                     options.unicode)) {
-          return false;
-        }
-        // we support only utf8
-        if (options.unicode != icu_locale_utils::Unicode::UTF8) {
-          IR_FRMT_ERROR(
-            "Unsupported encoding parameter");
-           return false;
-        }
-
-        return true;
-      }
-      [[fallthrough]];
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing collation_token_stream"
-          "or value is not a string or an object",
-          LOCALE_PARAM_NAME.data());
+      return false;
     }
+
+    if (!icu_locale_utils::get_locale_from_vpack(locale_slice,
+                                                 options.locale,
+                                                 false, // true - new format of locale string
+                                                 options.unicode)) {
+      return false;
+    }
+
+    // we support only utf8
+    if (options.unicode != icu_locale_utils::Unicode::UTF8) {
+      IR_FRMT_ERROR("Unsupported encoding parameter");
+      return false;
+    }
+
+    return true;
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",
@@ -131,16 +111,8 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
-
-  VPackBuilder locale_builder;
-  icu_locale_utils::locale_to_vpack(options.locale, &locale_builder, &options.unicode);
-
-  // locale
-  VPackObjectBuilder locale_obj(builder);
-  {
-    builder->add(LOCALE_PARAM_NAME.data(), locale_builder.slice());
-  }
-
+  const auto locale_name = options.locale.getName();
+  builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   return true;
 }
 
@@ -223,8 +195,8 @@ struct collation_token_stream::state_t {
   std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
-  state_t(const options_t& opts) :
-      options(opts) {
+  state_t(const options_t& opts)
+    : options(opts) {
   }
 };
 

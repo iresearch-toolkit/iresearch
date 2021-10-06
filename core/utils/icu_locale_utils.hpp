@@ -24,36 +24,38 @@
 #define ICU_LOCALE_UTILS_HPP
 
 #include <unicode/locid.h>
-#include <unicode/ucnv.h> // for UConverter
-#include <unicode/ustring.h> // for u_strToUTF32, u_strToUTF8
 
 #include "string.hpp"
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/locale_utils.hpp"
 
 namespace iresearch {
 namespace icu_locale_utils {
 
-enum class Unicode { UTF8, UTF16, UTF32, NON_UTF };
+enum class Unicode { UTF8, UTF16, UTF32 };
 
 bool get_locale_from_vpack(const VPackSlice slice,
                            icu::Locale& locale,
                            Unicode& unicode);
 
-bool get_locale_from_str(irs::string_ref locale_str,
+bool get_locale_from_str(string_ref locale_str,
                          icu::Locale& locale,
                          bool is_new_format,
                          Unicode& unicode);
 
-bool locale_to_vpack(const icu::Locale& locale,
+bool get_locale_from_vpack(VPackSlice slice,
+                           icu::Locale& locale,
+                           bool is_new_format,
+                           Unicode& unicode);
+
+void locale_to_vpack(const icu::Locale& locale,
                      VPackBuilder* const builder,
                      const Unicode* unicode = nullptr);
 
-bool create_unicode_string(const Unicode& unicode,
-                           string_ref data,
-                           icu::UnicodeString& u_string);
+bool to_unicode(Unicode unicode,
+                string_ref data,
+                icu::UnicodeString& out);
 
 } // icu_locale_utils
 } // iresearch
