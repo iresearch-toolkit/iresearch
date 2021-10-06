@@ -56,6 +56,9 @@ constexpr std::string_view to_string(Unicode v) noexcept {
     case Unicode::UTF32:
       return "utf32";
   }
+
+  assert(false);
+  return "";
 }
 
 constexpr Unicode from_string(std::string_view str, Unicode fallback = Unicode::UTF8) noexcept {

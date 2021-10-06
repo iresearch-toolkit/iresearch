@@ -111,6 +111,8 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 bool make_vpack_config(
     const analysis::collation_token_stream::options_t& options,
     VPackBuilder* builder) {
+  VPackObjectBuilder object{builder};
+
   const auto locale_name = options.locale.getName();
   builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   return true;

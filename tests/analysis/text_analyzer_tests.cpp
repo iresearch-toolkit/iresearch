@@ -360,8 +360,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   // ignored words
   {
-   
-
     std::string data = " A thing of some KIND and ANoTher ";
  
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
