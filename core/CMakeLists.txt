@@ -168,7 +168,9 @@ set(IResearch_core_sources
   ./utils/memory.cpp
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
+  ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
+  ./utils/icu_locale_utils.cpp
   ./utils/log.cpp
   ./utils/result.cpp
   ./utils/so_utils.cpp

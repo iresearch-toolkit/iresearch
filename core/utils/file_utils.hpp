@@ -27,11 +27,11 @@
 #include <memory>
 #include <cstdio>
 #include <functional>
-#include <filesystem>
 #include <fcntl.h> // open/_wopen
 
 #include "shared.hpp"
 #include "string.hpp"
+#include "utils/utf8_path.hpp"
 
 #ifdef _WIN32  
   #include <tchar.h>
@@ -86,7 +86,7 @@
 #endif
 #endif
 
-using path_char_t = std::filesystem::path::value_type;
+using path_char_t = irs::utf8_path::value_type;
 #define file_path_t path_char_t*
 
 namespace iresearch {
@@ -167,7 +167,7 @@ path_parts_t path_parts(const file_path_t path) noexcept;
 
 bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
 
-void ensure_absolute(std::filesystem::path& path);
+void ensure_absolute(utf8_path& path);
 
 bool remove(const file_path_t path) noexcept;
 
