@@ -250,11 +250,8 @@ bool stemming_token_stream::reset(const string_ref& data) {
   string_ref utf8_data{data};
 
   if (stemmer_) {
-    if (utf8_data.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
-      IR_FRMT_WARN(
-        "Token size greater than the supported maximum size '%d', truncating token: %s",
-        std::numeric_limits<int>::max(), data.c_str());
-      utf8_data = { utf8_data, std::numeric_limits<int>::max() };
+    if (utf8_data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+      return false;
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char));
