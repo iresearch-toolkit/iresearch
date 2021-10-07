@@ -1311,8 +1311,7 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
       filename.c_str())};
   }
 
-  // cppcheck-suppress unreadVariable
-  [[maybe_unused]] const auto version =
+  [[maybe_unused]] const auto version = // cppcheck-suppress unreadVariable
     format_utils::check_header(
       *data_in,
       writer::DATA_FORMAT_NAME,
@@ -1330,7 +1329,6 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
   // the entire file. here we perform cheap
   // error detection which could recognize
   // some forms of corruption
-  // cppcheck-suppress unreadVariable
   [[maybe_unused]] const auto checksum = format_utils::read_checksum(*data_in);
 
   // noexcept
@@ -1352,7 +1350,6 @@ void reader::prepare_index(
 
   const auto checksum = format_utils::checksum(*index_in);
 
-  // cppcheck-suppress unreadVariable
   [[maybe_unused]] const auto version =
     format_utils::check_header(
       *index_in,

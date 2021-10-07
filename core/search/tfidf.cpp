@@ -437,11 +437,11 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         return std::nullopt;
       };
 
-      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) { // cppcheck-suppress syntaxError
+      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
         return std::move(func).value();
       }
 
-      if (auto func = prepare_norm_scorer([](){ return irs::norm(); }); func) { // cppcheck-suppress syntaxError
+      if (auto func = prepare_norm_scorer([](){ return irs::norm(); }); func) {
         return std::move(func).value();
       }
     }

@@ -671,8 +671,7 @@ class term_reader final : public irs::basic_term_reader,
                           private util::noncopyable {
  public:
   explicit term_reader(
-      // cppcheck-suppress constParameter
-      fields_data::postings_ref_t& postings,
+      fields_data::postings_ref_t& postings, // cppcheck-suppress constParameter
       const doc_map* docmap) noexcept
     : it_(postings, docmap) {
   }

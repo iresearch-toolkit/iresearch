@@ -289,7 +289,6 @@ uint64_t memory_index_input::read_vlong() {
 //////////////////////////////////////////////////////////////////////////////
 class checksum_memory_index_output final : public memory_index_output {
  public:
-  // cppcheck-suppress constParameter
   explicit checksum_memory_index_output(memory_file& file) noexcept
     : memory_index_output(file) {
     crc_begin_ = pos_;
@@ -319,7 +318,6 @@ class checksum_memory_index_output final : public memory_index_output {
   mutable crc32c crc_;
 }; // checksum_memory_index_output
 
-// cppcheck-suppress constParameter
 memory_index_output::memory_index_output(memory_file& file) noexcept
   : file_(file) {
   reset();

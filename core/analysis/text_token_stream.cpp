@@ -1090,7 +1090,7 @@ bool text_token_stream::next_ngram() {
 
   bool finished{};
   // cppcheck-suppress unreadVariable
-  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void { // cppcheck-suppress syntaxError
+  auto set_ngram_finished = make_finally([this, &finished]()noexcept->void {
     if (finished) {
       state_->set_ngram_finished();
     }

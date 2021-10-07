@@ -900,8 +900,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
 
   {
     // pending_segment_contexts_ may be asynchronously read
-    // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(mutex_);
+    auto lock = make_lock_guard(mutex_); // cppcheck-suppress unreadVariable
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context
@@ -935,7 +934,6 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
         */
       }
 
-      // cppcheck-suppress duplicateCondition
       if (segment.flush_ctx_ && this != segment.flush_ctx_) { pending_segment_contexts_.pop_back(); freelist_node = nullptr; } // FIXME TODO remove this condition once col_writer tail is writen correctly
     } else { // the segment is present in this flush_context 'pending_segment_contexts_'
       assert(pending_segment_contexts_.size() > segment.pending_segment_context_offset_);
@@ -1018,7 +1016,6 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(freelist_node);
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
-    // cppcheck-suppress unreadVariable
     auto segments_active_decrement =
       make_finally([&segments_active]()noexcept{ --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
 
@@ -1606,7 +1603,6 @@ index_writer::consolidation_result index_writer::consolidate(
               std::find_if(current_committed_meta->begin(),
                            current_committed_meta->end(),
                            [&candidate](const index_meta::index_segment_t& s) {
-                           // cppcheck-suppress useStlAlgorithm
                              return candidate->name == s.meta.name;} )) {
             // not all candidates are valid
             IR_FRMT_DEBUG(

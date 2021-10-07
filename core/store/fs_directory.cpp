@@ -68,7 +68,8 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
 }
 
 namespace iresearch {
-MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
+// cppcheck-suppress unknownMacro
+MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 
 //////////////////////////////////////////////////////////////////////////////

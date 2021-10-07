@@ -37,7 +37,8 @@
 namespace {
 using namespace irs;
 
-MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
+// cppcheck-suppress unknownMacro
+MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
     irs::index_meta& meta,
