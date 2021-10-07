@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#include <iostream>
+#include <functional>
 #include <sstream>
 #include <store/store_utils.hpp>
 #include "classification_stream.hpp"
@@ -58,7 +58,12 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
 }
 
 irs::analysis::analyzer::ptr construct(irs::analysis::classification_stream::Options& options) {
-  return irs::memory::make_unique<irs::analysis::classification_stream>(std::move(options));
+  auto load_model= [&options]() {
+    auto ft = std::make_shared<fasttext::FastText>();
+    ft->loadModel(options.model_location);
+    return ft;
+  };
+  return irs::memory::make_unique<irs::analysis::classification_stream>(load_model);
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -153,43 +158,11 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normaliz
 namespace iresearch {
 namespace analysis {
 
-std::shared_ptr<fasttext::FastText> EmbeddingsModelLoader::get_model_and_increment_count(const std::string& model_location) {
-  std::unique_lock<std::mutex> lock(this->map_mutex);
-  if (model_map.find(model_location) == this->model_map.end()) {
-    auto ft = iresearch::memory::make_shared<fasttext::FastText>();
-    ft->loadModel(model_location);
-    this->model_map[model_location] = std::move(ft);
-    this->model_usage_count[model_location] = 0;
-  }
-  this->model_usage_count[model_location] += 1;
-  return this->model_map.at(model_location);
-}
-
-void EmbeddingsModelLoader::decrement_model_usage_count(const std::string& model_location) {
-  std::unique_lock<std::mutex> lock(this->map_mutex);
-  if (this->model_map.find(model_location) == this->model_map.end()) {
-    // Something's gone horribly wrong here.
-    // TODO: Throw exception to escape invalid state
-  } else {
-    this->model_usage_count[model_location] -= 1;
-    if (this->model_usage_count[model_location] == 0) {
-      this->model_usage_count.erase(model_location);
-      this->model_map.erase(model_location);
-    }
-  }
-}
-
-classification_stream::classification_stream(const Options &options)
-  : analyzer{irs::type<classification_stream>::get()},
-    model_container_{EmbeddingsModelLoader::getInstance().get_model_and_increment_count(options.model_location)},
-    model_location_{options.model_location},
+classification_stream::classification_stream(std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
+: analyzer{irs::type<classification_stream>::get()},
+    model_container_{model_provider()},
     predictions_{},
     predictions_it_{predictions_.end()} {}
-
-
-classification_stream::~classification_stream() {
-  EmbeddingsModelLoader::getInstance().decrement_model_usage_count(model_location_);
-}
 
 void classification_stream::init() {
   REGISTER_ANALYZER_JSON(classification_stream, make_json, normalize_json_config);

@@ -34,8 +34,13 @@ TEST(classification_stream_test, consts) {
 
 TEST(classification_stream_test, load_model) {
   auto model_loc = test_base::resource("ag_news.bin").u8string();
-  irs::analysis::classification_stream::Options classification_options{model_loc};
-  ASSERT_NO_THROW(irs::analysis::classification_stream{std::move(classification_options)});
+  irs::analysis::classification_stream::Options options{model_loc};
+  auto load_model= [&options]() {
+    auto ft = std::make_shared<fasttext::FastText>();
+    ft->loadModel(options.model_location);
+    return ft;
+  };
+  ASSERT_NO_THROW(irs::analysis::classification_stream{load_model});
 }
 
 #endif
