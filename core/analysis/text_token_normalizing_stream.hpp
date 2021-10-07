@@ -44,18 +44,16 @@ class text_token_normalizing_stream final
 
   struct options_t {
     icu::Locale locale;
-    icu_locale_utils::Unicode unicode{icu_locale_utils::Unicode::UTF8};
     case_convert_t case_convert{case_convert_t::NONE}; // no extra normalization
     bool accent{true}; // no extra normalization
 
-    options_t() {
+    options_t() : locale{"C"} {
       locale.setToBogus();
     }
   };
 
   static constexpr string_ref type_name() noexcept { return "norm"; }
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& locale);
 
   explicit text_token_normalizing_stream(const options_t& options);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
