@@ -28,7 +28,6 @@
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -41,18 +40,17 @@ class collation_token_stream final
     private util::noncopyable {
  public:
   struct options_t {
-    options_t() {
+    icu::Locale locale;
+
+    options_t() : locale{"C"} {
       locale.setToBogus();
     }
-    icu::Locale locale;
-    icu_locale_utils::Unicode unicode{icu_locale_utils::Unicode::UTF8};
   };
 
   static constexpr string_ref type_name() noexcept { 
     return "collation";
   }
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& locale);
 
   explicit collation_token_stream(const options_t& options);
 

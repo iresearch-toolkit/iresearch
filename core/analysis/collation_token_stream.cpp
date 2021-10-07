@@ -31,13 +31,38 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "utils/vpack_utils.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace {
 
 using namespace irs;
 
 constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
+
+bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
+  if (!slice.isString()) {
+    IR_FRMT_WARN(
+      "Non-string value in '%s' while constructing "
+      "collation_token_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  const auto locale_name = get_string<std::string>(slice);
+
+  locale = icu::Locale::createCanonical(locale_name.c_str());
+
+  if (locale.isBogus()) {
+    IR_FRMT_WARN(
+      "Failed to instantiate locale from the supplied string '%s'"
+      "while constructing collation_token_stream from VPack arguments",
+      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  return true;
+}
 
 bool parse_vpack_options(
     const VPackSlice slice,
@@ -51,25 +76,16 @@ bool parse_vpack_options(
   try {
     const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
-    if (!locale_slice.isObject() && !locale_slice.isString()) {
+    if (!locale_slice.isString()) {
       IR_FRMT_ERROR(
         "Missing '%s' while constructing collation_token_stream"
-        "or value is not a string or an object",
+        "or value is not a string",
         LOCALE_PARAM_NAME.data());
 
       return false;
     }
 
-    if (!icu_locale_utils::get_locale_from_vpack(locale_slice,
-                                                 options.locale,
-                                                 false, // true - new format of locale string
-                                                 options.unicode)) {
-      return false;
-    }
-
-    // we support only utf8
-    if (options.unicode != icu_locale_utils::Unicode::UTF8) {
-      IR_FRMT_ERROR("Unsupported encoding parameter");
+    if (!locale_from_slice(locale_slice, options.locale)) {
       return false;
     }
 
@@ -213,11 +229,6 @@ void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexc
   delete p;
 }
 
-/*static*/ analyzer::ptr collation_token_stream::make(
-    const string_ref& locale) {
-  return make_json(locale);
-}
-
 collation_token_stream::collation_token_stream(
     const options_t& options)
   : analyzer{irs::type<collation_token_stream>::get()},
@@ -226,7 +237,6 @@ collation_token_stream::collation_token_stream(
 }
 
 bool collation_token_stream::reset(const string_ref& data) {
-
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
