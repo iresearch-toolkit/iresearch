@@ -24,10 +24,11 @@
 #ifndef IRESEARCH_TEXT_TOKEN_NORMALIZING_STREAM_H
 #define IRESEARCH_TEXT_TOKEN_NORMALIZING_STREAM_H
 
+#include <unicode/locid.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
 namespace analysis {

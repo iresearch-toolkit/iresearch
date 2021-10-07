@@ -24,7 +24,6 @@
 #include "analysis/text_token_normalizing_stream.hpp"
 
 #include "gtest/gtest.h"
-#include "utils/icu_locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 

@@ -24,10 +24,11 @@
 #ifndef IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
 #define IRESEARCH_TEXT_TOKEN_STEMMING_STREAM_H
 
+#include <unicode/locid.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 struct sb_stemmer; // forward declaration
 
@@ -46,7 +47,7 @@ class text_token_stemming_stream final
   struct options_t {
     icu::Locale locale;
 
-    options_t() {
+    options_t() : locale{"C"} {
       locale.setToBogus();
     }
   };

@@ -23,12 +23,12 @@
 
 #include "analysis/ngram_token_stream.hpp"
 
+#include <unicode/locid.h>
 #include <utf8.h>
 
 #include <sstream>
 
 #include "tests_shared.hpp"
-#include "utils/icu_locale_utils.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
