@@ -54,9 +54,9 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 
   if (locale.isBogus()) {
     IR_FRMT_WARN(
-      "Failed to instantiate locale from the supplied string '%s'"
+      "Failed to instantiate locale from the supplied string '%s' "
       "while constructing collation_token_stream from VPack arguments",
-      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+      locale_name.c_str());
 
     return false;
   }
@@ -68,8 +68,7 @@ bool parse_vpack_options(
     const VPackSlice slice,
     analysis::collation_token_stream::options_t& options) {
   if (!slice.isObject()) {
-    IR_FRMT_ERROR(
-      "Slice for collation_token_stream is not an object");
+    IR_FRMT_ERROR("Slice for collation_token_stream is not an object");
     return false;
   }
 

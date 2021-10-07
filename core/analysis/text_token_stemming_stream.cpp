@@ -58,7 +58,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     IR_FRMT_WARN(
       "Failed to instantiate locale from the supplied string '%s'"
       "while constructing text_token_stemming_stream from VPack arguments",
-      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+      locale_name.c_str());
 
     return false;
   }
@@ -73,19 +73,19 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::stemming_token_s
   }
 
   try {
-    switch (slice.type()) {
-      case VPackValueType::Object:
-        if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), opts.locale)) {
-          return false;
-        }
-        return true;
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing text_token_stemming_stream from "
-          "VPack arguments",
-          LOCALE_PARAM_NAME.data());
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+
+    if (locale_slice.isNone()) {
+      IR_FRMT_ERROR(
+        "Missing '%s' while constructing text_token_stemming_stream from "
+        "VPack arguments",
+        LOCALE_PARAM_NAME.data());
+
+      return true;
     }
-  } catch(const VPackException& ex) {
+
+    return locale_from_slice(locale_slice, opts.locale);
+  } catch (const std::exception& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing text_token_stemming_stream from VPack",
       ex.what());

@@ -454,7 +454,7 @@ bool locale_from_string(std::string locale_name, icu::Locale& locale) {
     IR_FRMT_WARN(
       "Failed to instantiate locale from the supplied string '%s'"
       "while constructing text_token_stream from VPack arguments",
-      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+      locale_name.c_str());
 
     return false;
   }

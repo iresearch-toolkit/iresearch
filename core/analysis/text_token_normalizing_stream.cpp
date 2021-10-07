@@ -109,7 +109,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     IR_FRMT_WARN(
       "Failed to instantiate locale from the supplied string '%s'"
       "while constructing text_token_normalizing_stream from VPack arguments",
-      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+      locale_name.c_str());
 
     return false;
   }
@@ -127,63 +127,61 @@ bool parse_vpack_options(
   }
 
   try {
-    switch (slice.type()) {
-      case VPackValueType::Object:
-      {
-        if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale)) {
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+
+    if (!locale_slice.isNone()) {
+      if (!locale_from_slice(locale_slice, options.locale)) {
+        return false;
+      }
+
+      if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
+        auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME); // optional string enum
+
+        if (!case_convert_slice.isString()) {
+          IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            CASE_CONVERT_PARAM_NAME.data());
+
           return false;
         }
 
-        if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
-          auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME); // optional string enum
+        auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
 
-          if (!case_convert_slice.isString()) {
-            IR_FRMT_WARN(
-              "Non-string value in '%s' while constructing "
-              "text_token_normalizing_stream from VPack arguments",
-              CASE_CONVERT_PARAM_NAME.data());
+        if (itr == CASE_CONVERT_MAP.end()) {
+          IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            CASE_CONVERT_PARAM_NAME.data());
 
-            return false;
-          }
-
-          auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
-
-          if (itr == CASE_CONVERT_MAP.end()) {
-            IR_FRMT_WARN(
-              "Invalid value in '%s' while constructing "
-              "text_token_normalizing_stream from VPack arguments",
-              CASE_CONVERT_PARAM_NAME.data());
-
-            return false;
-          }
-
-          options.case_convert = itr->second;
+          return false;
         }
 
-        if (slice.hasKey(ACCENT_PARAM_NAME)) {
-          auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
-
-          if (!accent_slice.isBool()) {
-            IR_FRMT_WARN(
-              "Non-boolean value in '%s' while constructing "
-              "text_token_normalizing_stream from VPack arguments",
-              ACCENT_PARAM_NAME.data());
-
-            return false;
-          }
-
-          options.accent = accent_slice.getBool();
-        }
-
-        return true;
+        options.case_convert = itr->second;
       }
-      [[fallthrough]];
-      default:
-        IR_FRMT_ERROR(
-          "Missing '%s' while constructing text_token_normalizing_stream "
-          "from VPack arguments",
-          LOCALE_PARAM_NAME.data());
+
+      if (slice.hasKey(ACCENT_PARAM_NAME)) {
+        auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
+
+        if (!accent_slice.isBool()) {
+          IR_FRMT_WARN(
+            "Non-boolean value in '%s' while constructing "
+            "text_token_normalizing_stream from VPack arguments",
+            ACCENT_PARAM_NAME.data());
+
+          return false;
+        }
+
+        options.accent = accent_slice.getBool();
+      }
+
+      return true;
     }
+
+    IR_FRMT_ERROR(
+      "Missing '%s' while constructing text_token_normalizing_stream "
+      "from VPack arguments",
+      LOCALE_PARAM_NAME.data());
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing text_token_normalizing_stream from VPack",
