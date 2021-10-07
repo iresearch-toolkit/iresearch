@@ -43,7 +43,7 @@ namespace {
 // by default no transformation is performed and value is treated verbatim
 const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const std::locale& locale,
+     const irs::string_ref& locale,
      const irs::string_ref& field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
@@ -78,7 +78,7 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const std::locale& locale,
+     const irs::string_ref& locale,
      const irs::string_ref& field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
@@ -113,7 +113,7 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const std::locale& locale,
+     const irs::string_ref& locale,
      const irs::string_ref& field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
@@ -148,7 +148,7 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const std::locale& locale,
+     const irs::string_ref& locale,
      const irs::string_ref& field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
@@ -196,13 +196,11 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
   };
 
 const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER =
-  [](
-    irs::iql::proxy_filter& root,
-    const std::locale& locale,
-    const irs::string_ref& field,
-    void* cookie,
-    const std::vector<irs::iql::function_arg>& args
-  )->bool {
+  [](irs::iql::proxy_filter& root,
+     const irs::string_ref& locale,
+     const irs::string_ref& field,
+     void* cookie,
+     const std::vector<irs::iql::function_arg>& args)->bool {
     irs::bstring value;
     bool bValueNil;
 
@@ -213,7 +211,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     const irs::string_ref value_ref(bValueNil ? irs::string_ref::NIL : irs::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
-      "text", irs::type<irs::text_format::text>::get(), locale.name());
+      "text", irs::type<irs::text_format::text>::get(), locale);
 
     if (!tokens || !tokens->reset(value_ref)) {
       return false;
@@ -287,11 +285,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
    public:
     parse_context(
       const std::string& sQuery,
-      const std::locale& locale,
+      const irs::string_ref& locale,
       void* cookie,
       const irs::iql::functions& functions,
-      const irs::iql::query_builder::branch_builders& branch_builders
-    );
+      const irs::iql::query_builder::branch_builders& branch_builders);
     irs::iql::query build();
     irs::iql::query buildError();
 
@@ -300,7 +297,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     static const irs::iql::parser::semantic_type UNKNOWN;
     const irs::iql::query_builder::branch_builders& m_branch_builders;
     void* m_cookie;
-    const std::locale& m_locale;
+    irs::string_ref m_locale;
 
     irs::iql::parser::semantic_type append_function_arg(
       irs::iql::function_arg::fn_args_t& buf,
@@ -351,7 +348,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   parse_context::parse_context(
     const std::string& sQuery,
-    const std::locale& locale,
+    const irs::string_ref& locale,
     void* cookie,
     const irs::iql::functions& functions,
     const irs::iql::query_builder::branch_builders& branch_builders
@@ -399,7 +396,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     node.boost(src.fBoost);
 
     if (query_node::NodeType::FUNCTION == src.type && src.pFnBoolean) {
-      return eval<irs::iql::boolean_function, std::locale, void*>(
+      return eval<irs::iql::boolean_function, irs::string_ref, void*>(
         node, function(*(src.pFnBoolean)), src.children, m_locale, m_cookie
       );
     }
@@ -592,23 +589,28 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       buf.emplace_back(
         std::move(fnArgs),
         [this, node_id](
-          irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
-        )->bool {
+            irs::iql::proxy_filter& node,
+            const irs::string_ref&,
+            void* const&,
+            const irs::iql::function_arg::fn_args_t& args)->bool {
           return args.empty() && SUCCESS == init(node.proxy<irs::Or>(), find_node(node_id));
         }
       );
       return SUCCESS;
      case query_node::NodeType::INTERSECTION:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
-      )->bool {
+          irs::iql::proxy_filter& node,
+          const irs::string_ref&, void* const&,
+          const irs::iql::function_arg::fn_args_t& args)->bool {
         return args.empty() && SUCCESS == init(node.proxy<irs::And>(), find_node(node_id));
       });
       return SUCCESS;
      case query_node::NodeType::BOOL_TRUE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
-      )->bool {
+          irs::iql::proxy_filter& node,
+          const irs::string_ref&,
+          void* const&,
+          const irs::iql::function_arg::fn_args_t& args)->bool {
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
           argNode.bNegated
@@ -634,11 +636,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       if (node.pFnBoolean) {
         if (node.bNegated) {
           auto fnBranchArg = [this, node_id](
-            irs::iql::proxy_filter& node,
-            const std::locale& locale,
-            void* const& cookie,
-            const std::vector<irs::iql::function_arg>& args
-          )->bool {
+              irs::iql::proxy_filter& node,
+              const irs::string_ref& locale,
+              void* const& cookie,
+              const std::vector<irs::iql::function_arg>& args)->bool {
             auto& argNode = find_node(node_id);
             return argNode.pFnBoolean && function(*(argNode.pFnBoolean))(
               node.proxy<irs::Not>().filter<irs::iql::proxy_filter>(), locale, cookie, args
@@ -675,8 +676,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
      case query_node::NodeType::EQUAL: // fall through
      case query_node::NodeType::LIKE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
-      )->bool {
+          irs::iql::proxy_filter& node,
+          const irs::string_ref&,
+          void* const&,
+          const irs::iql::function_arg::fn_args_t& args)->bool {
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
           argNode.bNegated
@@ -743,9 +746,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       break;
      case query_node::NodeType::FUNCTION:
       if (src.pFnSequence) {
-        auto errorNodeId = eval<irs::iql::sequence_function, std::locale, void*>(
-          buf, function(*(src.pFnSequence)), src.children, m_locale, m_cookie
-        );
+        auto errorNodeId = eval<irs::iql::sequence_function, irs::string_ref, void*>(
+          buf, function(*(src.pFnSequence)), src.children, m_locale, m_cookie);
 
         // on error terminate traversal
         if (SUCCESS != errorNodeId) {
@@ -776,7 +778,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
           return childId; // no order function
         }
 
-        auto errorNodeId = eval<irs::iql::order_function, std::locale, void*, bool>(
+        auto errorNodeId = eval<irs::iql::order_function, irs::string_ref, void*, bool>(
           node,
           function(*(childNode.pFnOrder)),
           childNode.children,
@@ -921,7 +923,7 @@ query_builder::query_builder(
 
 query query_builder::build(
   const std::string& query,
-  const std::locale& locale,
+  const irs::string_ref& locale,
   void* cookie /*= nullptr*/,
   proxy_filter* root /*= nullptr*/
 ) const {

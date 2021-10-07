@@ -196,11 +196,10 @@ using namespace irs::iql;
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   sequence_function::contextual_function_t fnNum = [](
-    sequence_function::contextual_buffer_t& buf,
-    const std::locale& locale,
-    void* cookie,
-    const sequence_function::contextual_function_args_t& args
-  )->bool {
+      sequence_function::contextual_buffer_t& buf,
+      const irs::string_ref& locale,
+      void* cookie,
+      const sequence_function::contextual_function_args_t& args)->bool {
     irs::bstring value;
     bool bValue;
 
@@ -230,7 +229,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    auto query = query_builder().build("name==A", std::locale::classic());
+    auto query = query_builder().build("name==A", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -255,7 +254,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
       { "#", seq_function },
     };
     functions functions(seq_functions);
-    auto query = query_builder(functions).build("seq==#(0)", std::locale::classic());
+    auto query = query_builder(functions).build("seq==#(0)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -280,7 +279,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    auto query = query_builder().build("name!=A", std::locale::classic());
+    auto query = query_builder().build("name!=A", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -307,7 +306,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    auto query = query_builder().build("name==A || name==B OR name==C", std::locale::classic());
+    auto query = query_builder().build("name==A || name==B OR name==C", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -336,7 +335,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
       { "#", seq_function },
     };
     functions functions(seq_functions);
-    auto query = query_builder(functions).build("name==A && seq==#(0) AND same==xyz", std::locale::classic());
+    auto query = query_builder(functions).build("name==A && seq==#(0) AND same==xyz", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -367,7 +366,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->values();
 
-    auto query = query_builder().build("name > M", std::locale::classic());
+    auto query = query_builder().build("name > M", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -405,7 +404,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->values();
 
-    auto query = query_builder().build("name >= M", std::locale::classic());
+    auto query = query_builder().build("name >= M", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -443,7 +442,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->values();
 
-    auto query = query_builder().build("name <= N", std::locale::classic());
+    auto query = query_builder().build("name <= N", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -481,7 +480,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->values();
 
-    auto query = query_builder().build("name < N", std::locale::classic());
+    auto query = query_builder().build("name < N", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -512,7 +511,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    auto query = query_builder().build("name==A limit 42", std::locale::classic());
+    auto query = query_builder().build("name==A limit 42", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_NE(nullptr, query.limit);
@@ -536,7 +535,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // invalid query
   {
-    auto query = query_builder().build("name==A bcd", std::locale::classic());
+    auto query = query_builder().build("name==A bcd", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -549,7 +548,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // valid query with missing dependencies (e.g. missing functions)
   {
-    auto query = query_builder().build("name(A)", std::locale::classic());
+    auto query = query_builder().build("name(A)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -564,14 +563,14 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     query_builder::branch_builder_function_t fnFail = [](
         boolean_function::contextual_buffer_t&,
-        const std::locale&,
+        const irs::string_ref&,
         const irs::string_ref&,
         void* /*cookie*/,
         const boolean_function::contextual_function_args_t&)->bool {
       return false;
     };
     query_builder::branch_builders builders(&fnFail, nullptr, nullptr, nullptr, nullptr);
-    auto query = query_builder(builders).build("name==(A, bcd)", std::locale::classic());
+    auto query = query_builder(builders).build("name==(A, bcd)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -596,7 +595,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   // default range builder functr ()
   {
     query_builder::branch_builders builders;
-    auto query = query_builder(builders).build("name==(A, C)", std::locale::classic());
+    auto query = query_builder(builders).build("name==(A, C)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -615,7 +614,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   // default range builder functr (]
   {
     query_builder::branch_builders builders;
-    auto query = query_builder(builders).build("name==(A, B]", std::locale::classic());
+    auto query = query_builder(builders).build("name==(A, B]", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -634,7 +633,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   // default range builder functr [)
   {
     query_builder::branch_builders builders;
-    auto query = query_builder(builders).build("name==[A, B)", std::locale::classic());
+    auto query = query_builder(builders).build("name==[A, B)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -653,7 +652,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   // default range builder functr []
   {
     query_builder::branch_builders builders;
-    auto query = query_builder(builders).build("name==[A, B]", std::locale::classic());
+    auto query = query_builder(builders).build("name==[A, B]", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -684,8 +683,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto analyzed_segment_values = column->values();
 
     query_builder::branch_builders builders;
-    std::locale locale("en"); // a locale that exists in tests
-    auto query = query_builder(builders).build("name~=B", locale);
+    auto query = query_builder(builders).build("name~=B", "en");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -707,7 +705,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
 
   query_builder::branch_builder_function_t fnFail = [](
       boolean_function::contextual_buffer_t&,
-      const std::locale&,
+      const irs::string_ref&,
       const irs::string_ref&,
       void* /*cookie*/,
       const boolean_function::contextual_function_args_t&)->bool {
@@ -716,7 +714,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   };
   query_builder::branch_builder_function_t fnEqual = [](
       boolean_function::contextual_buffer_t& node,
-      const std::locale& locale,
+      const irs::string_ref& locale,
       const irs::string_ref& field,
       void* cookie,
       const boolean_function::contextual_function_args_t& args)->bool {
@@ -739,7 +737,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   // custom range builder functr ()
   {
     query_builder::branch_builders builders(&fnEqual, &fnFail, &fnFail, &fnFail, &fnFail);
-    auto query = query_builder(builders).build("name==(A, B)", std::locale::classic());
+    auto query = query_builder(builders).build("name==(A, B)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -759,7 +757,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   // custom range builder functr (]
   {
     query_builder::branch_builders builders(&fnFail, &fnEqual, &fnFail, &fnFail, &fnFail);
-    auto query = query_builder(builders).build("name==(A, B]", std::locale::classic());
+    auto query = query_builder(builders).build("name==(A, B]", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -778,7 +776,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   // custom range builder functr [)
   {
     query_builder::branch_builders builders(&fnFail, &fnFail, &fnEqual, &fnFail, &fnFail);
-    auto query = query_builder(builders).build("name==[A, B)", std::locale::classic());
+    auto query = query_builder(builders).build("name==[A, B)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -797,7 +795,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   // custom range builder functr []
   {
     query_builder::branch_builders builders(&fnFail, &fnFail, &fnFail, &fnEqual, &fnFail);
-    auto query = query_builder(builders).build("name==[A, B]", std::locale::classic());
+    auto query = query_builder(builders).build("name==[A, B]", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -816,7 +814,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   // custom similar '~=' operator
   {
     query_builder::branch_builders builders(&fnFail, &fnFail, &fnFail, &fnFail, &fnEqual);
-    auto query = query_builder(builders).build("name~=A", std::locale::classic());
+    auto query = query_builder(builders).build("name~=A", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -835,11 +833,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
 
 TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   boolean_function::contextual_function_t fnEqual = [](
-    boolean_function::contextual_buffer_t& node,
-    const std::locale& locale,
-    void* cookie,
-    const boolean_function::contextual_function_args_t& args
-  )->bool {
+      boolean_function::contextual_buffer_t& node,
+      const irs::string_ref& locale,
+      void* cookie,
+      const boolean_function::contextual_function_args_t& args)->bool {
     irs::bstring field;
     irs::bstring value;
     bool bField;
@@ -868,7 +865,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
       { "~", bool_function },
     };
     functions functions(bool_functions);
-    auto query = query_builder(functions).build("~(name, A)", std::locale::classic());
+    auto query = query_builder(functions).build("~(name, A)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -897,7 +894,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
       { "~", bool_function },
     };
     functions functions(bool_functions);
-    auto query = query_builder(functions).build("!~(name, A)", std::locale::classic());
+    auto query = query_builder(functions).build("!~(name, A)", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -922,7 +919,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     irs::bytes_ref actual_value;
     boolean_function::contextual_function_t fnCplx = [](
       boolean_function::contextual_buffer_t& node,
-        const std::locale& locale,
+        const irs::string_ref& locale,
         void* cookie,
         const boolean_function::contextual_function_args_t& args)->bool {
       auto& root = node.proxy<irs::Or>();
@@ -950,7 +947,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
       { "expr", expr_function },
     };
     functions functions(bool_functions);
-    auto query = query_builder(functions).build("cplx(A, (name==C || name==D), expr(name, E))", std::locale::classic());
+    auto query = query_builder(functions).build("cplx(A, (name==C || name==D), expr(name, E))", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -979,7 +976,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
 
   sequence_function::contextual_function_t fnValue = [](
       sequence_function::contextual_buffer_t& buf,
-      const std::locale&,
+      const irs::string_ref&,
       void*,
       const sequence_function::contextual_function_args_t& /*args*/)->bool {
     irs::bytes_ref value(reinterpret_cast<const irs::byte_type*>("A"), 1);
@@ -999,7 +996,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
     sequence_function seq_function(fnValue);
     sequence_functions seq_functions = { { "valueA", seq_function } };
     functions functions(seq_functions);
-    auto query = query_builder(functions).build("name==valueA()", std::locale::classic());
+    auto query = query_builder(functions).build("name==valueA()", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
@@ -1024,7 +1021,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 /* FIXME field-value order is not yet supported by irs::search
   // order by sequence
   {
-    auto query = query_builder().build("name==A || name == B order seq desc", std::locale::classic());
+    auto query = query_builder().build("name==A || name == B order seq desc", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.order);
     ASSERT_EQ(nullptr, query.error);
@@ -1061,7 +1058,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       { "c", order_function },
     };
     functions functions(order_functions);
-    auto query = query_builder(functions).build("name==A || name == B order c() desc", std::locale::classic());
+    auto query = query_builder(functions).build("name==A || name == B order c() desc", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.order);
     ASSERT_EQ(nullptr, query.error);
@@ -1100,7 +1097,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     };
     order_function::contextual_function_t fnTest = [&direction](
         order_function::contextual_buffer_t& buf,
-        const std::locale& locale,
+        const irs::string_ref& locale,
         void* cookie,
         const bool& ascending,
         const order_function::contextual_function_args_t& args)->bool {
@@ -1129,7 +1126,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       { "e", sequence_function },
     };
     functions functions(sequence_functions, order_functions);
-    auto query = query_builder(functions).build("name==A order c() desc, d(e(), f) asc", std::locale::classic());
+    auto query = query_builder(functions).build("name==A order c() desc, d(e(), f) asc", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_NE(nullptr, query.order);
     ASSERT_EQ(nullptr, query.error);
@@ -1160,7 +1157,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 
   // non-existent function
   {
-    auto query = query_builder().build("name==A order b()", std::locale::classic());
+    auto query = query_builder().build("name==A order b()", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.order);
     ASSERT_NE(nullptr, query.error);
@@ -1182,7 +1179,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     order_function order_function(fnFail);
     order_functions order_functions = { { "b", order_function } };
     functions functions(order_functions);
-    auto query = query_builder(functions).build("name==A order b()", std::locale::classic());
+    auto query = query_builder(functions).build("name==A order b()", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.order);
     ASSERT_NE(nullptr, query.error);
@@ -1198,7 +1195,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
   {
     order_function::contextual_function_t fnFail = [](
         order_function::contextual_buffer_t&,
-        const std::locale&,
+        const irs::string_ref&,
         void*,
         const bool&,
         const order_function::contextual_function_args_t&)->bool {
@@ -1209,7 +1206,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       { "b", order_function },
     };
     functions functions(order_functions);
-    auto query = query_builder(functions).build("name==A order b()", std::locale::classic());
+    auto query = query_builder(functions).build("name==A order b()", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.order);
     ASSERT_NE(nullptr, query.error);
@@ -1230,7 +1227,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     };
     order_function::contextual_function_t fnTest = [](
         order_function::contextual_buffer_t&,
-        const std::locale& locale,
+        const irs::string_ref& locale,
         void* cookie,
         const bool&,
         const order_function::contextual_function_args_t& args)->bool {
@@ -1243,7 +1240,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     sequence_function sequence_function(fnFail);
     sequence_functions sequence_functions = { { "c", sequence_function }, };
     functions functions(sequence_functions, order_functions);
-    auto query = query_builder(functions).build("name==A order b(c())", std::locale::classic());
+    auto query = query_builder(functions).build("name==A order b(c())", "C");
     ASSERT_NE(nullptr, query.filter.get());
     ASSERT_EQ(nullptr, query.order);
     ASSERT_NE(nullptr, query.error);
