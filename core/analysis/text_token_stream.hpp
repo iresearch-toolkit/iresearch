@@ -34,7 +34,6 @@
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-#include "utils/icu_locale_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -45,8 +44,9 @@ class text_token_stream final
  public:
   using stopwords_t = absl::flat_hash_set<std::string>;
 
+  enum case_convert_t { LOWER, NONE, UPPER };
+
   struct options_t {
-    enum case_convert_t { LOWER, NONE, UPPER };
     // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
@@ -54,7 +54,6 @@ class text_token_stream final
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
     size_t max_gram{};
-    icu_locale_utils::Unicode unicode{icu_locale_utils::Unicode::UTF8};
 
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{};
@@ -68,7 +67,7 @@ class text_token_stream final
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
 
-    options_t() {
+    options_t() : locale{"C"} {
       locale.setToBogus();
     }
   };
