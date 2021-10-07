@@ -405,11 +405,10 @@ v2.4 or later
 used for compilation of the IQL (index query language) grammar
 
 ### [ICU](http://site.icu-project.org/download)
-used by locale_utils as a back-end for locale facets
-used by analysis::text_analyzer for parsing, transforming and tokenising string data
+used by analyzers for parsing, transforming and tokenising string data
 
 ### [Snowball](http://snowball.tartarus.org)
-used by analysis::text_analyzer for computing word stems (i.e. roots) for more flexible matching
+used by analyzers for computing word stems (i.e. roots) for more flexible matching
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)

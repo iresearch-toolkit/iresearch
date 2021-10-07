@@ -34,6 +34,9 @@ namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class collation_token_stream
+/// @brief an analyser capable of converting UTF-8 encoded input into a sortable
+///        token as per specified locale
+/// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class collation_token_stream final
   : public analyzer,

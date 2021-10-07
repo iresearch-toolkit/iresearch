@@ -36,9 +36,10 @@ namespace iresearch {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class text_token_stemming_stream
+/// @class stemming_token_stream
 /// @brief an analyser capable of stemming the text, treated as a single token,
 ///        for supported languages
+/// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class stemming_token_stream final
   : public analyzer,

@@ -34,8 +34,10 @@ namespace iresearch {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class normalizing_token_stream
 /// @brief an analyser capable of normalizing the text, treated as a single
 ///        token, i.e. case conversion and accent removal
+/// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class normalizing_token_stream final
   : public analyzer,
