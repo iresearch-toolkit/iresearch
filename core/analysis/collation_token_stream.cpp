@@ -73,7 +73,18 @@ bool parse_vpack_options(
   }
 
   try {
-    return locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale);
+    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
+
+    if (locale_slice.isNone()) {
+      IR_FRMT_ERROR(
+        "Missing '%s' while constructing collation_token_stream "
+        "from VPack arguments",
+        LOCALE_PARAM_NAME.data());
+
+      return false;
+    }
+
+    return locale_from_slice(locale_slice, options.locale);
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",
