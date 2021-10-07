@@ -81,7 +81,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::stemming_token_s
         "VPack arguments",
         LOCALE_PARAM_NAME.data());
 
-      return true;
+      return false;
     }
 
     return locale_from_slice(locale_slice, opts.locale);
