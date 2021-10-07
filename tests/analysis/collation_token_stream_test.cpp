@@ -809,7 +809,7 @@ TEST(collation_token_stream_test, normalize) {
   }
 
   {
-    std::string config = R"({ "locale" : "de_DE_PHONEBOOK" })";
+    std::string config = R"({ "locale" : "de_DE@collation=phonebook" })";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "collation", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE@collation=phonebook" })")->toString(), actual);
@@ -823,6 +823,6 @@ TEST(collation_token_stream_test, normalize) {
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "collation", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE@collation=phonebook"})")->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson(R"({ "locale" : "de_DE_PHONEBOOK"})")->toString(), out_slice.toString());
   }
 }
