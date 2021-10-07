@@ -29,7 +29,7 @@
 
 namespace {
 
-class text_token_normalizing_stream_tests: public ::testing::Test { };
+class normalizing_token_stream_tests: public ::testing::Test { };
 
 } // namespace {
 
@@ -39,12 +39,12 @@ class text_token_normalizing_stream_tests: public ::testing::Test { };
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(text_token_normalizing_stream_tests, consts) {
-  static_assert("norm" == irs::type<irs::analysis::text_token_normalizing_stream>::name());
+TEST_F(normalizing_token_stream_tests, consts) {
+  static_assert("norm" == irs::type<irs::analysis::normalizing_token_stream>::name());
 }
 
-TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
-  typedef irs::analysis::text_token_normalizing_stream::options_t options_t;
+TEST_F(normalizing_token_stream_tests, test_normalizing) {
+  typedef irs::analysis::normalizing_token_stream::options_t options_t;
 
   // test default normalization
   {
@@ -52,8 +52,8 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options.locale = icu::Locale::createFromName("en");
 
     irs::string_ref data("rUnNiNg\xd0\x81");
-    irs::analysis::text_token_normalizing_stream stream(options);
-    ASSERT_EQ(irs::type<irs::analysis::text_token_normalizing_stream>::id(), stream.type());
+    irs::analysis::normalizing_token_stream stream(options);
+    ASSERT_EQ(irs::type<irs::analysis::normalizing_token_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -78,7 +78,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
 
     irs::string_ref data("rUnNiNg\xd0\x81");
     irs::string_ref expected("rUnNiNg\xd0\x95");
-    irs::analysis::text_token_normalizing_stream stream(options);
+    irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -99,11 +99,11 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options_t options;
 
     options.locale = icu::Locale::createFromName("en.utf8");
-    options.case_convert = irs::analysis::text_token_normalizing_stream::LOWER;
+    options.case_convert = irs::analysis::normalizing_token_stream::LOWER;
 
     irs::string_ref data("rUnNiNg\xd0\x81");
     irs::string_ref expected("running\xd1\x91");
-    irs::analysis::text_token_normalizing_stream stream(options);
+    irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -124,11 +124,11 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
     options_t options;
 
     options.locale = icu::Locale::createFromName("en.utf8");
-    options.case_convert = irs::analysis::text_token_normalizing_stream::UPPER;
+    options.case_convert = irs::analysis::normalizing_token_stream::UPPER;
 
     irs::string_ref data("rUnNiNg\xd1\x91");
     irs::string_ref expected("RUNNING\xd0\x81");
-    irs::analysis::text_token_normalizing_stream stream(options);
+    irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -147,7 +147,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
 
 #endif // IRESEARCH_DLL
 
-TEST_F(text_token_normalizing_stream_tests, test_load) {
+TEST_F(normalizing_token_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("running");
@@ -291,7 +291,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   }
 }
 
-TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
+TEST_F(normalizing_token_stream_tests, test_make_config_json) {
   //with unknown parameter
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}";
@@ -370,13 +370,13 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   }
 }
 
-TEST_F(text_token_normalizing_stream_tests, test_make_config_text) {
+TEST_F(normalizing_token_stream_tests, test_make_config_text) {
   std::string config = "RU";
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::text>::get(), config));
 }
 
-TEST_F(text_token_normalizing_stream_tests, test_invalid_locale) {
+TEST_F(normalizing_token_stream_tests, test_invalid_locale) {
   auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"invalid12345.UTF-8\"}");
   ASSERT_EQ(nullptr, stream);

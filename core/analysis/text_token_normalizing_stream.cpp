@@ -51,7 +51,7 @@ namespace analysis {
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
-struct text_token_normalizing_stream::state_t {
+struct normalizing_token_stream::state_t {
   icu::UnicodeString data;
   icu::UnicodeString token;
   std::string term_buf;
@@ -78,10 +78,10 @@ constexpr VPackStringRef ACCENT_PARAM_NAME      {"accent"};
 
 constexpr frozen::unordered_map<
     string_ref,
-    analysis::text_token_normalizing_stream::case_convert_t, 3> CASE_CONVERT_MAP = {
-  { "lower", analysis::text_token_normalizing_stream::LOWER },
-  { "none", analysis::text_token_normalizing_stream::NONE },
-  { "upper", analysis::text_token_normalizing_stream::UPPER },
+    analysis::normalizing_token_stream::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", analysis::normalizing_token_stream::LOWER },
+  { "none", analysis::normalizing_token_stream::NONE },
+  { "upper", analysis::normalizing_token_stream::UPPER },
 };
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
@@ -119,7 +119,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 
 bool parse_vpack_options(
     const VPackSlice slice,
-    analysis::text_token_normalizing_stream::options_t& options) {
+    analysis::normalizing_token_stream::options_t& options) {
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
       "Slice for text_token_normalizing_stream is not an object");
@@ -202,9 +202,9 @@ bool parse_vpack_options(
 ///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  analysis::text_token_normalizing_stream::options_t options;
+  analysis::normalizing_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return memory::make_unique<analysis::text_token_normalizing_stream>(
+    return memory::make_unique<analysis::normalizing_token_stream>(
       std::move(options));
   } else {
     return nullptr;
@@ -221,7 +221,7 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const analysis::text_token_normalizing_stream::options_t& options,
+    const analysis::normalizing_token_stream::options_t& options,
     VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
@@ -252,7 +252,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  analysis::text_token_normalizing_stream::options_t options;
+  analysis::normalizing_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return make_vpack_config(options, builder);
   } else {
@@ -312,9 +312,9 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_JSON(analysis::text_token_normalizing_stream, make_json,
+REGISTER_ANALYZER_JSON(analysis::normalizing_token_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(analysis::normalizing_token_stream, make_vpack,
                        normalize_vpack_config);
 
 }
@@ -322,26 +322,26 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
-void text_token_normalizing_stream::state_deleter_t::operator()(
+void normalizing_token_stream::state_deleter_t::operator()(
     state_t* p) const noexcept {
   delete p;
 }
 
-text_token_normalizing_stream::text_token_normalizing_stream(
+normalizing_token_stream::normalizing_token_stream(
     const options_t& options)
-  : analyzer{irs::type<text_token_normalizing_stream>::get()},
+  : analyzer{irs::type<normalizing_token_stream>::get()},
     state_{new state_t{options}},
     term_eof_{true} {
 }
 
-/*static*/ void text_token_normalizing_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_normalizing_stream, make_json,
+/*static*/ void normalizing_token_stream::init() {
+  REGISTER_ANALYZER_JSON(normalizing_token_stream, make_json,
                          normalize_json_config); // match registration above
-  REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(normalizing_token_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 
-bool text_token_normalizing_stream::next() {
+bool normalizing_token_stream::next() {
   if (term_eof_) {
     return false;
   }
@@ -351,7 +351,7 @@ bool text_token_normalizing_stream::next() {
   return true;
 }
 
-bool text_token_normalizing_stream::reset(const string_ref& data) {
+bool normalizing_token_stream::reset(const string_ref& data) {
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 
   if (!state_->normalizer) {

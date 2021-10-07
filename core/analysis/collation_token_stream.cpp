@@ -74,18 +74,7 @@ bool parse_vpack_options(
   }
 
   try {
-    const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
-
-    if (!locale_slice.isString()) {
-      IR_FRMT_ERROR(
-        "Missing '%s' while constructing collation_token_stream"
-        "or value is not a string",
-        LOCALE_PARAM_NAME.data());
-
-      return false;
-    }
-
-    if (!locale_from_slice(locale_slice, options.locale)) {
+    if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale)) {
       return false;
     }
 

@@ -66,7 +66,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   return true;
 }
 
-bool parse_vpack_options(const VPackSlice slice, irs::analysis::text_token_stemming_stream::options_t& opts) {
+bool parse_vpack_options(const VPackSlice slice, irs::analysis::stemming_token_stream::options_t& opts) {
   if (!slice.isObject()) {
     IR_FRMT_ERROR("Slice for text_token_stemming_stream  is not an object");
     return false;
@@ -101,10 +101,10 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::text_token_stemm
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  analysis::text_token_stemming_stream::options_t opts;
+  analysis::stemming_token_stream::options_t opts;
 
   if (parse_vpack_options(slice, opts)) {
-    return memory::make_unique<analysis::text_token_stemming_stream>(opts);
+    return memory::make_unique<analysis::stemming_token_stream>(opts);
   } else {
     return nullptr;
   }
@@ -119,7 +119,7 @@ analysis::analyzer::ptr make_vpack(const string_ref& args) {
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const analysis::text_token_stemming_stream::options_t& opts, VPackBuilder* builder) {
+bool make_vpack_config(const analysis::stemming_token_stream::options_t& opts, VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
     // locale
@@ -130,7 +130,7 @@ bool make_vpack_config(const analysis::text_token_stemming_stream::options_t& op
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  analysis::text_token_stemming_stream::options_t opts;
+  analysis::stemming_token_stream::options_t opts;
 
   if (parse_vpack_options(slice, opts)) {
     return make_vpack_config(opts, builder);
@@ -191,9 +191,9 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_JSON(analysis::text_token_stemming_stream, make_json,
+REGISTER_ANALYZER_JSON(analysis::stemming_token_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
                        normalize_vpack_config);
 
 }
@@ -201,25 +201,25 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
-void text_token_stemming_stream::stemmer_deleter::operator()(
+void stemming_token_stream::stemmer_deleter::operator()(
     sb_stemmer* p) const noexcept {
   sb_stemmer_delete(p);
 }
 
-text_token_stemming_stream::text_token_stemming_stream(const options_t& options)
-  : analyzer{irs::type<text_token_stemming_stream>::get()},
+stemming_token_stream::stemming_token_stream(const options_t& options)
+  : analyzer{irs::type<stemming_token_stream>::get()},
     options_{options},
     term_eof_{true} {
 }
 
-/*static*/ void text_token_stemming_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json, 
+/*static*/ void stemming_token_stream::init() {
+  REGISTER_ANALYZER_JSON(stemming_token_stream, make_json,
                          normalize_json_config); // match registration above
-  REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 
-bool text_token_stemming_stream::next() {
+bool stemming_token_stream::next() {
   if (term_eof_) {
     return false;
   }
@@ -229,7 +229,7 @@ bool text_token_stemming_stream::next() {
   return true;
 }
 
-bool text_token_stemming_stream::reset(const string_ref& data) {
+bool stemming_token_stream::reset(const string_ref& data) {
   if (!stemmer_) {
     stemmer_.reset(
       sb_stemmer_new(options_.locale.getLanguage(), nullptr)); // defaults to utf-8
@@ -246,10 +246,7 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
-  // ...........................................................................
   // find the token stem
-  // ...........................................................................
-
   string_ref utf8_data{data};
 
   if (stemmer_) {
@@ -274,10 +271,7 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
     }
   }
 
-  // ...........................................................................
   // use the value of the unstemmed token
-  // ...........................................................................
-
   static_assert(sizeof(byte_type) == sizeof(char));
   term.value = ref_cast<byte_type>(utf8_data);
 

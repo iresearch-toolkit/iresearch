@@ -29,7 +29,7 @@
 
 namespace {
 
-class text_token_stemming_stream_tests: public ::testing::Test { };
+class stemming_token_stream_tests: public ::testing::Test { };
 
 } // namespace {
 
@@ -39,20 +39,20 @@ class text_token_stemming_stream_tests: public ::testing::Test { };
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(text_token_stemming_stream_tests, consts) {
-  static_assert("stem" == irs::type<irs::analysis::text_token_stemming_stream>::name());
+TEST_F(stemming_token_stream_tests, consts) {
+  static_assert("stem" == irs::type<irs::analysis::stemming_token_stream>::name());
 }
 
-TEST_F(text_token_stemming_stream_tests, test_stemming) {
+TEST_F(stemming_token_stream_tests, test_stemming) {
   // test stemming (locale irs::string_ref::NIL)
   // there is no Snowball stemmer for "C" locale
   {
-    irs::analysis::text_token_stemming_stream::options_t opts;
+    irs::analysis::stemming_token_stream::options_t opts;
     opts.locale = icu::Locale{"C"};
 
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream(opts);
-    ASSERT_EQ(irs::type<irs::analysis::text_token_stemming_stream>::id(), stream.type());
+    irs::analysis::stemming_token_stream stream(opts);
+    ASSERT_EQ(irs::type<irs::analysis::stemming_token_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -72,10 +72,10 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   {
     irs::string_ref data("running");
 
-    irs::analysis::text_token_stemming_stream::options_t opts;
+    irs::analysis::stemming_token_stream::options_t opts;
     opts.locale = icu::Locale::createFromName("en");
 
-    irs::analysis::text_token_stemming_stream stream(opts);
+    irs::analysis::stemming_token_stream stream(opts);
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -96,10 +96,10 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   {
     irs::string_ref data("running");
 
-    irs::analysis::text_token_stemming_stream::options_t opts;
+    irs::analysis::stemming_token_stream::options_t opts;
     opts.locale = icu::Locale::createFromName("zh");
 
-    irs::analysis::text_token_stemming_stream stream(opts);
+    irs::analysis::stemming_token_stream stream(opts);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -118,7 +118,7 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
 
 #endif // IRESEARCH_DLL
 
-TEST_F(text_token_stemming_stream_tests, test_load) {
+TEST_F(stemming_token_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("running");
@@ -171,7 +171,7 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
 }
 
 
-TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
+TEST_F(stemming_token_stream_tests, test_make_config_json) {
   //with unknown parameter
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
@@ -205,14 +205,14 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
   }
 }
 
-TEST_F(text_token_stemming_stream_tests, test_invalid_locale) {
+TEST_F(stemming_token_stream_tests, test_invalid_locale) {
   auto stream = irs::analysis::analyzers::get(
       "stem", irs::type<irs::text_format::json>::get(),
       "{\"locale\":\"invalid12345.UTF-8\"}");
   ASSERT_EQ(nullptr, stream);
 }
 
-TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
+TEST_F(stemming_token_stream_tests, test_make_config_text) {
   std::string config = "RU";
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::text>::get(), config));

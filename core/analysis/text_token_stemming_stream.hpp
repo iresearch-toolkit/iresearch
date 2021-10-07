@@ -40,7 +40,7 @@ namespace analysis {
 /// @brief an analyser capable of stemming the text, treated as a single token,
 ///        for supported languages
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stemming_stream final
+class stemming_token_stream final
   : public analyzer,
     private util::noncopyable {
  public:
@@ -55,7 +55,7 @@ class text_token_stemming_stream final
   static constexpr string_ref type_name() noexcept { return "stem"; }
   static void init(); // for trigering registration in a static build
 
-  explicit text_token_stemming_stream(const options_t& options);
+  explicit stemming_token_stream(const options_t& options);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
