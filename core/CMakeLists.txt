@@ -524,6 +524,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-classification-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-collation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stopwords-static>"
@@ -1184,6 +1185,51 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-static
   ${IResearch_TARGET_NAME}-static
 )
+
+################################################################################
+### analysis plugin: nearest neighbors
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+        SHARED
+        analysis/nearest_neighbors_stream.cpp
+        analysis/nearest_neighbors_stream.hpp
+        )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+        STATIC
+        analysis/nearest_neighbors_stream.cpp
+        )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+        PROPERTIES
+        PREFIX lib
+        IMPORT_PREFIX lib
+        OUTPUT_NAME analyzer-nearest-neighbors
+        DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+        COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+        CXX_VISIBILITY_PRESET hidden
+        )
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+        PROPERTIES
+        PREFIX lib
+        IMPORT_PREFIX lib
+        OUTPUT_NAME analyzer-nearest-neighbors-s
+        COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+        )
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+        ${IResearch_TARGET_NAME}-shared
+        )
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+        ${IResearch_TARGET_NAME}-static
+        )
 
 ################################################################################
 ### format plugin: format-1_0

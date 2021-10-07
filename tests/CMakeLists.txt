@@ -31,6 +31,7 @@ set(IReSearch_tests_sources
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/collation_token_stream_test.cpp
   ./analysis/classification_stream_test.cpp
+  ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
