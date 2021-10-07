@@ -36,20 +36,49 @@ using namespace irs;
 
 constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
+bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
+  if (!slice.isString()) {
+    IR_FRMT_WARN(
+      "Non-string value in '%s' while constructing "
+      "text_token_stemming_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  const auto locale_name = get_string<std::string>(slice);
+
+  locale = icu::Locale::createFromName(locale_name.c_str());
+
+  if (!locale.isBogus()) {
+    locale = icu::Locale{locale.getLanguage()};
+  }
+
+  if (locale.isBogus()) {
+    IR_FRMT_WARN(
+      "Failed to instantiate locale from the supplied string '%s'"
+      "while constructing text_token_stemming_stream from VPack arguments",
+      locale_name.c_str(), LOCALE_PARAM_NAME.data());
+
+    return false;
+  }
+
+  return true;
+}
+
 bool parse_vpack_options(const VPackSlice slice, irs::analysis::text_token_stemming_stream::options_t& opts) {
-  if (!slice.isObject() && !slice.isString()) {
-    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string");
+  if (!slice.isObject()) {
+    IR_FRMT_ERROR("Slice for text_token_stemming_stream  is not an object");
     return false;
   }
 
   try {
     switch (slice.type()) {
-      case VPackValueType::String:
-        return icu_locale_utils::get_locale_from_str(
-          get_string<string_ref>(slice), opts.locale, false, opts.unicode);
       case VPackValueType::Object:
-        return icu_locale_utils::get_locale_from_vpack(
-          slice.get(LOCALE_PARAM_NAME), opts.locale, false, opts.unicode);
+        if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), opts.locale)) {
+          return false;
+        }
+        return true;
       default:
         IR_FRMT_ERROR(
           "Missing '%s' while constructing text_token_stemming_stream from "
@@ -161,40 +190,9 @@ bool normalize_json_config(const string_ref& args, std::string& definition) {
   }
   return false;
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a language to use for stemming
-////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
-  try {
-    analysis::text_token_stemming_stream::options_t opts;
-
-    if (icu_locale_utils::get_locale_from_str(args, opts.locale, false, opts.unicode)) {
-      return memory::make_unique<analysis::text_token_stemming_stream>(opts);
-    }
-  } catch (...) {
-    std::string err_msg = static_cast<std::string>(args);
-    IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
-      err_msg.c_str());
-  }
-
-  return nullptr;
-}
-
-bool normalize_text_config(const string_ref& args, std::string& definition) {
-  icu_locale_utils::Unicode unicode;
-  icu::Locale locale;
-  if (icu_locale_utils::get_locale_from_str(args, locale, false, unicode)) {
-    definition = locale.getName();
-    return true;
-  }
-  return false;
-}
 
 REGISTER_ANALYZER_JSON(analysis::text_token_stemming_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(analysis::text_token_stemming_stream, make_text,
-                       normalize_text_config);
 REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
                        normalize_vpack_config);
 
@@ -217,14 +215,8 @@ text_token_stemming_stream::text_token_stemming_stream(const options_t& options)
 /*static*/ void text_token_stemming_stream::init() {
   REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json, 
                          normalize_json_config); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text,
-                         normalize_text_config); // match registration above
   REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
                          normalize_vpack_config); // match registration above
-}
-
-/*static*/ analyzer::ptr text_token_stemming_stream::make(const string_ref& locale) {
-  return make_text(locale);
 }
 
 bool text_token_stemming_stream::next() {
@@ -246,18 +238,6 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   auto& term = std::get<term_attribute>(attrs_);
 
   term.value = bytes_ref::NIL; // reset
-  term_eof_ = true;
-
-  // convert to UTF8 for use with 'stemmer_'
-  string_ref utf8_data{data};
-  if (icu_locale_utils::Unicode::UTF8 != options_.unicode) {
-    icu::UnicodeString tmp;
-    if (!icu_locale_utils::to_unicode(options_.unicode, data, tmp)) {
-      return false;
-    }
-
-    utf8_data = tmp.toUTF8String(buf_);
-  }
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
@@ -270,12 +250,14 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   // find the token stem
   // ...........................................................................
 
+  string_ref utf8_data{data};
+
   if (stemmer_) {
     if (utf8_data.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
         std::numeric_limits<int>::max(), data.c_str());
-      utf8_data = {utf8_data, std::numeric_limits<int>::max() };
+      utf8_data = { utf8_data, std::numeric_limits<int>::max() };
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char));
