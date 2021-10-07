@@ -165,4 +165,54 @@ int64_t bytes_ref_input::checksum(size_t offset) const {
   return crc.checksum();
 }
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                  string_ref_input implementation
+// ----------------------------------------------------------------------------
+
+string_ref_input::string_ref_input(const string_ref& ref)
+  : data_(ref), pos_(data_.begin()) {
+}
+
+size_t string_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
+  size = std::min(size, size_t(std::distance(pos_, data_.end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
+}
+
+size_t string_ref_input::read_bytes(size_t offset, byte_type* b, size_t size) noexcept {
+  if (offset < data_.size()) {
+    size = std::min(size, size_t(data_.size() - offset));
+    std::memcpy(b, data_.begin() + offset, sizeof(byte_type) * size);
+    pos_ = data_.begin() + offset + size;
+    return size;
+  }
+
+  pos_ = data_.end();
+  return 0;
+}
+
+// append to buf
+void string_ref_input::read_bytes(bstring& buf, size_t size) {
+  auto used = buf.size();
+
+  buf.resize(used + size);
+
+#ifdef IRESEARCH_DEBUG
+  const auto read = read_bytes(&(buf[0]) + used, size);
+  assert(read == size);
+  UNUSED(read);
+#else
+  read_bytes(&(buf[0]) + used, size);
+#endif // IRESEARCH_DEBUG
+}
+
+int64_t string_ref_input::checksum(size_t offset) const {
+  crc32c crc;
+
+  crc.process_block(pos_, std::min(pos_ + offset, data_.end()));
+
+  return crc.checksum();
+}
+
 }

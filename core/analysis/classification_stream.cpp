@@ -236,8 +236,9 @@ bool classification_stream::reset(const string_ref& data) {
 
   predictions_.clear();
 
-  std::stringstream ss{};
-  ss << data;
+  string_ref_input s_input{data};
+  input_buf buf{&s_input};
+  std::istream ss{&buf};
   model_container_->predictLine(ss, predictions_, top_k_, static_cast<float>(threshold_));
   predictions_it_ = predictions_.begin();
 

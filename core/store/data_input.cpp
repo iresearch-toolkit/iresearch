@@ -60,6 +60,7 @@ input_buf::int_type input_buf::underflow() {
 }
 
 input_buf::int_type input_buf::uflow() {
+  if (in_->eof()) return EOF;
   return traits_type::to_int_type(in_->read_byte());
 }
 
