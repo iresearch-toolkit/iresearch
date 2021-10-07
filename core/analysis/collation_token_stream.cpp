@@ -74,11 +74,7 @@ bool parse_vpack_options(
   }
 
   try {
-    if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale)) {
-      return false;
-    }
-
-    return true;
+    return locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale);
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing collation_token_stream from VPack",
