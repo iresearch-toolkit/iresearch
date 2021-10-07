@@ -360,6 +360,14 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU\",\"case\":\"upper\",\"accent\":true}")->toString(), actual);
   }
+
+  // non default values for accent and case
+  {
+    std::string config = "{\"locale\":\"de_DE@collation=phonebook\",\"case\":\"upper\",\"accent\":true}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"de_DE\",\"case\":\"upper\",\"accent\":true}")->toString(), actual);
+  }
 }
 
 TEST_F(text_token_normalizing_stream_tests, test_make_config_text) {

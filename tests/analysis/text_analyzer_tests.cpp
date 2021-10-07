@@ -900,6 +900,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"max\":2,\"preserveOriginal\":false}}")->toString(), actual);
   }
+
+  // without min (see above for without min, max, and preserveOriginal)
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8@collation=phonebook\",\"case\":\"lower\",\"stopwords\":[], \"edgeNgram\" : {\"max\":2,\"preserveOriginal\":false}}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"max\":2,\"preserveOriginal\":false}}")->toString(), actual);
+  }
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
