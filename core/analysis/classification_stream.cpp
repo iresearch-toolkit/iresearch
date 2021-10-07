@@ -124,18 +124,18 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing embeddings_classification_stream ");
+      IR_FRMT_ERROR("Null arguments while constructing classification_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str());
     return make_vpack(vpack->slice());
   } catch (const VPackException &ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing embeddings_classification_stream from JSON",
+      "Caught error '%s' while constructing classification_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing embeddings_classification_stream from JSON");
+      "Caught error while constructing classification_stream from JSON");
   }
   return nullptr;
 }
@@ -174,7 +174,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing embeddings_classification_stream ");
+      IR_FRMT_ERROR("Null arguments while normalizing classification_stream ");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str());
@@ -185,11 +185,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     }
   } catch(const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
+      "Caught error '%s' while normalizing classification_stream from JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while normalizing text_token_normalizing_stream from JSON");
+      "Caught error while normalizing classification_stream from JSON");
   }
   return false;
 }
