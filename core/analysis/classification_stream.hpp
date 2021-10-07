@@ -37,17 +37,25 @@ class classification_stream final
       private util::noncopyable {
   public:
     struct Options {
-      Options() : model_location{} {}
-      explicit Options(std::string& model_location) : model_location{model_location} {}
+      Options() : model_location{}, top_k{1}, threshold{0.0} {}
+      explicit Options(std::string& model_location) : model_location{model_location}, top_k{1}, threshold{0.0} {}
+      explicit Options(std::string& model_location, int32_t top_k) : model_location{model_location}, top_k{top_k}, threshold{0.0} {}
+      explicit Options(std::string& model_location, double threshold): model_location{model_location}, top_k{1}, threshold{threshold} {}
+      explicit Options(std::string& model_location, int32_t top_k, double threshold) :
+        model_location{model_location},
+        top_k{top_k},
+        threshold{threshold} {}
 
       std::string model_location;
+      int32_t top_k;
+      double threshold;
     };
 
     static constexpr string_ref type_name() noexcept { return "classification"; }
 
     static void init(); // for registration in a static build
 
-    explicit classification_stream(std::function<std::shared_ptr<fasttext::FastText>()> model_provider);
+    explicit classification_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider);
 
     virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::get_mutable(attrs_, type);
@@ -64,6 +72,8 @@ class classification_stream final
 
     attributes attrs_;
     std::shared_ptr<fasttext::FastText> model_container_;
+    int32_t top_k_;
+    double threshold_;
     std::vector<std::pair<float, std::string>> predictions_;
     std::vector<std::pair<float, std::string>>::iterator predictions_it_;
 };

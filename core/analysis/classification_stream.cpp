@@ -33,6 +33,8 @@
 namespace {
 
 constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
+constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
+constexpr VPackStringRef THRESHOLD_PARAM_NAME {"threshold"};
 
 bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_stream::Options& options, const char* action) {
   switch (slice.type()) {
@@ -46,6 +48,46 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
         return false;
       }
       options.model_location = iresearch::get_string<std::string>(model_location_slice);
+      auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
+      if (!top_k_slice.isNone()) {
+        if (!top_k_slice.isInteger()) {
+          IR_FRMT_ERROR(
+            "Invalid vpack while %s classification_stream from VPack arguments. %s value should be an integer.",
+            action,
+            TOP_K_PARAM_NAME.data());
+          return false;
+        }
+        auto top_k_wide = top_k_slice.getInt();
+        int32_t top_k_narrow = static_cast<int32_t>(top_k_wide);
+        if (top_k_wide != top_k_narrow) {
+          IR_FRMT_ERROR(
+            "Invalid value provided while %s classification_stream from VPack arguments. %s value should be an int32_t.",
+            action,
+            TOP_K_PARAM_NAME.data());
+          return false;
+        }
+        options.top_k = top_k_narrow;
+      }
+
+      auto threshold_slice = slice.get(THRESHOLD_PARAM_NAME);
+      if (!threshold_slice.isNone()) {
+        if (!threshold_slice.isNumber<double>()) {
+          IR_FRMT_ERROR(
+            "Invalid vpack while %s classification_stream from VPack arguments. %s value should be a double.",
+            action,
+            THRESHOLD_PARAM_NAME.data());
+          return false;
+        }
+        auto threshold = threshold_slice.getNumber<double>();
+        if (threshold < 0.0 || threshold > 1.0) {
+          IR_FRMT_ERROR(
+            "Invalid value provided while %s classification_stream from VPack arguments. %s value should be between 0.0 and 1.0 (inclusive).",
+            action,
+            TOP_K_PARAM_NAME.data());
+          return false;
+        }
+        options.threshold = threshold;
+      }
       return true;
     }
     default: {
@@ -63,7 +105,7 @@ irs::analysis::analyzer::ptr construct(irs::analysis::classification_stream::Opt
     ft->loadModel(options.model_location);
     return ft;
   };
-  return irs::memory::make_unique<irs::analysis::classification_stream>(load_model);
+  return irs::memory::make_unique<irs::analysis::classification_stream>(options, load_model);
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -104,6 +146,8 @@ bool make_vpack_config(
   VPackObjectBuilder object{builder};
   {
     builder->add(MODEL_LOCATION_PARAM_NAME, VPackValue(options.model_location));
+    builder->add(TOP_K_PARAM_NAME, VPackValue(options.top_k));
+    builder->add(THRESHOLD_PARAM_NAME, VPackValue(options.threshold));
   }
   return true;
 }
@@ -158,9 +202,11 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normaliz
 namespace iresearch {
 namespace analysis {
 
-classification_stream::classification_stream(std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
+classification_stream::classification_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
 : analyzer{irs::type<classification_stream>::get()},
     model_container_{model_provider()},
+    top_k_{options.top_k},
+    threshold_{options.threshold},
     predictions_{},
     predictions_it_{predictions_.end()} {}
 
@@ -192,7 +238,7 @@ bool classification_stream::reset(const string_ref& data) {
 
   std::stringstream ss{};
   ss << data;
-  model_container_->predictLine(ss, predictions_, 1, 0.0);
+  model_container_->predictLine(ss, predictions_, top_k_, static_cast<float>(threshold_));
   predictions_it_ = predictions_.begin();
 
   return true;

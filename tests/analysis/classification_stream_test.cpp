@@ -40,7 +40,7 @@ TEST(classification_stream_test, load_model) {
     ft->loadModel(options.model_location);
     return ft;
   };
-  ASSERT_NO_THROW(irs::analysis::classification_stream{load_model});
+  ASSERT_NO_THROW(irs::analysis::classification_stream(options, load_model));
 }
 
 #endif
@@ -136,7 +136,37 @@ TEST(classification_stream_test, test_make_config_json) {
   {
     auto model_loc = test_base::resource("ag_news.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
-    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\"}";
+    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "classification", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
+  }
+
+  // test top k
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.0}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "classification", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
+  }
+
+  // test threshold
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
+    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.1}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "classification", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
+  }
+
+  // test all 3 params
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1, \"top_k\": 2}";
+    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.1}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "classification", irs::type<irs::text_format::json>::get(), config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
@@ -146,7 +176,7 @@ TEST(classification_stream_test, test_make_config_json) {
   {
     auto model_loc = test_base::resource("ag_news.bin").u8string();
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
-    auto expected_conf = "{\"model_location\": \"" + model_loc + "\"}";
+    auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
     auto in_vpack = VPackParser::fromJson(config);
     std::string in_str;
     in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
