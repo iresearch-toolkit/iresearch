@@ -127,6 +127,7 @@ class IRESEARCH_API index_file_refs final {
   bool remove(const std::string& key) {
     return refs_.remove(key);
   }
+  // cppcheck-suppress shadowFunction
   counter_t& refs() noexcept {
     return refs_;
   }
