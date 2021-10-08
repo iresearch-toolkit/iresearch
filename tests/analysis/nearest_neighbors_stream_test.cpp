@@ -89,7 +89,29 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ("postseason", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
-}
+
+  // test longer string
+  {
+    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    irs::string_ref data{"sad postseason"};
+    auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_FALSE(stream->next());
+    ASSERT_TRUE(stream->reset(data));
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(14, offset->end);
+    ASSERT_EQ("135\\previously", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("108-", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }}
 
 TEST(nearest_neighbors_stream_test, test_make_config_json) {
   // random extra param
