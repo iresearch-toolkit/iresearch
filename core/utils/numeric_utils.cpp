@@ -140,11 +140,11 @@ typename EncodeTraits::type decode(const byte_type* in) {
 }
 
 inline int32_t make_sortable32(int32_t value) {
-  return value ^ ((signbit(value) * (-1)) & INT32_C(0x7FFFFFFF));
+  return value ^ ((value >> 31) & INT32_C(0x7FFFFFFF));
 }
 
 inline int64_t make_sortable64(int64_t value) {
-  return value ^ ((signbit(value) * (-1)) & INT64_C(0x7FFFFFFFFFFFFFFF));
+  return value ^ ((value >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 }
 
 size_t encode64(uint64_t value, byte_type* out, size_t shift /* = 0 */) {

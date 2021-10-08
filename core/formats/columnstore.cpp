@@ -1049,8 +1049,8 @@ class dense_block : util::noncopyable {
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
     bytes_ref curr_value;
 
-    // cppcheck-suppress variableScope
     doc_id_t key = base_; // visit first [begin;end-1) blocks
+    // cppcheck-suppress variableScope
     size_t vbegin;
     auto begin = std::begin(index_);
     for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item

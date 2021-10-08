@@ -1311,7 +1311,7 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
       filename.c_str())};
   }
 
-  [[maybe_unused]] const auto version = // cppcheck-suppress unreadVariable
+  [[maybe_unused]] const auto version =
     format_utils::check_header(
       *data_in,
       writer::DATA_FORMAT_NAME,

@@ -899,8 +899,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   auto flush_lock = make_unique_lock(ctx.flush_mutex_, std::defer_lock);
 
   {
-    // pending_segment_contexts_ may be asynchronously read
-    auto lock = make_lock_guard(mutex_); // cppcheck-suppress unreadVariable
+    // cppcheck-suppress unreadVariable
+    auto lock = make_lock_guard(mutex_); // pending_segment_contexts_ may be asynchronously read
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context

@@ -61,7 +61,6 @@ void visit(
 template<typename Collector>
 class terms_visitor {
  public:
-  // cppcheck-suppress constParameter
   explicit terms_visitor(Collector& collector) noexcept
     : collector_(collector) {
   }

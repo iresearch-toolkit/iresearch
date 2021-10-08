@@ -102,7 +102,6 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 // --SECTION--                                            by_term implementation
 // -----------------------------------------------------------------------------
-// cppcheck-suppress unknownMacro
 DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ void by_term::visit(

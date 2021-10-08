@@ -224,6 +224,7 @@ class parametric_states {
     bool operator()(const parametric_state& state) const noexcept {
       size_t seed = parametric_state_hash::seed();
       for (auto& pos: state) {
+        // cppcheck-suppress unreadVariable
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
