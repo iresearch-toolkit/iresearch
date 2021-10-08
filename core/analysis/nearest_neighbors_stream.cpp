@@ -218,7 +218,12 @@ bool nearest_neighbors_stream::reset(const string_ref& data) {
   input_buf buf{&s_input};
   std::istream ss{&buf};
 
-  neighbors_ = model_container_->getNN(data.c_str(), top_k_);
+  std::vector<int32_t> words, labels;
+  auto len{model_container_->getDictionary()->getLine(ss, words, labels)};
+  for (auto ind = 0; ind < len; ++ind) {
+    const auto word_neighbors{model_container_->getNN(model_container_->getDictionary()->getWord(words[ind]), top_k_)};
+    neighbors_.insert(neighbors_.end(), word_neighbors.begin(), word_neighbors.end());
+  }
   neighbors_it_ = neighbors_.begin();
 
   return true;

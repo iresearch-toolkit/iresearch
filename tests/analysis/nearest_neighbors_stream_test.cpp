@@ -107,9 +107,13 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(14, offset->end);
-    ASSERT_EQ("135\\previously", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("determined", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
-    ASSERT_EQ("108-", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("postseason", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("victory", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("determined", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }}
 
