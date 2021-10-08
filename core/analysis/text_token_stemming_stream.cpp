@@ -243,7 +243,6 @@ bool stemming_token_stream::reset(const string_ref& data) {
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   // find the token stem
