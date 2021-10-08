@@ -56,6 +56,7 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data));
@@ -63,7 +64,6 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -79,6 +79,7 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.reset(data));
@@ -86,7 +87,6 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("run", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -105,12 +105,12 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("running", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
@@ -130,12 +130,12 @@ TEST_F(stemming_token_stream_tests, test_load) {
 
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("run", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
@@ -159,12 +159,12 @@ TEST_F(stemming_token_stream_tests, test_load) {
 
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
     auto* term = irs::get<irs::term_attribute>(*stream);
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(payload->value));
     ASSERT_EQ("run", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }

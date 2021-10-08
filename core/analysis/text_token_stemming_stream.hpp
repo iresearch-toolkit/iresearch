@@ -71,7 +71,6 @@ class stemming_token_stream final
   using attributes = std::tuple<
     increment,
     offset,
-    payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
    attributes attrs_;
