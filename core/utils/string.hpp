@@ -172,15 +172,18 @@ class basic_string_ref {
 
   // Constructs a string reference object from a C string computing
   // the size with ``std::char_traits<Char>::length``.
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const char_type* s) noexcept
     : data_(s), size_(s ? traits_type::length(s) : 0) {
   }
 
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string<char_type>& s) noexcept
     : data_(s.c_str()), size_(s.size()) {
   }
 
   // Constructs a string reference object from a std::basic_string_view<Elem>
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
     : data_(str.data()), size_(str.size()) {
   }

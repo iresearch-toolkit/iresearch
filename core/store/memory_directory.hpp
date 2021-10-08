@@ -39,7 +39,7 @@
 namespace iresearch {
 
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector< // cppcheck-suppress unknownMacro
+MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
   memory_allocator::allocator_type::SIZE, // total number of levels
   8, // size of the first level 2^8
   memory_allocator::allocator_type
@@ -72,22 +72,21 @@ class IRESEARCH_API memory_file
   }
 
   memory_file& operator>>(data_output& out) {
-    auto length = len_;
+    auto curr_length = len_;
 
-    for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
+    for (size_t i = 0, count = buffer_count(); i < count && curr_length; ++i) {
       auto& buffer = get_buffer(i);
-      auto to_copy = (std::min)(length, buffer.size);
+      auto to_copy = (std::min)(curr_length, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
-      length -= to_copy;
+      curr_length -= to_copy;
     }
 
-    assert(!length); // everything copied
+    assert(!curr_length); // everything copied
 
     return *this;
   }
 
-  // cppcheck-suppress shadowFunction
   size_t length() const noexcept {
     return len_;
   }

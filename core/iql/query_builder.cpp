@@ -640,6 +640,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
             void* const& cookie,
             const std::vector<irs::iql::function_arg>& args
           )->bool {
+            // cppcheck-suppress constVariable
             auto& argNode = find_node(node_id);
             return argNode.pFnBoolean && function(*(argNode.pFnBoolean))(
               node.proxy<irs::Not>().filter<irs::iql::proxy_filter>(), locale, cookie, args

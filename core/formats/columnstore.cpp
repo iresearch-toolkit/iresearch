@@ -1510,6 +1510,7 @@ class read_context
 
   template<typename Block, typename... Args>
   Block& emplace_back(uint64_t offset, compression::decompressor* decomp, bool decrypt, Args&&... args) {
+    // cppcheck-suppress constVariable
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
 
     // add cache entry

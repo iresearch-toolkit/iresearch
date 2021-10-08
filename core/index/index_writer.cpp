@@ -899,7 +899,6 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   auto flush_lock = make_unique_lock(ctx.flush_mutex_, std::defer_lock);
 
   {
-    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(mutex_); // pending_segment_contexts_ may be asynchronously read
 
     // update pending_segment_context
@@ -1410,6 +1409,7 @@ uint64_t index_writer::buffered_docs() const {
   auto lock = make_lock_guard(ctx->mutex_);
 
   for (auto& entry: ctx->pending_segment_contexts_) {
+    // cppcheck-suppress useStlAlgorithm
     docs_in_ram += entry.segment_->buffered_docs_.load(); // reading segment_writer::docs_count() is not thread safe
   }
 

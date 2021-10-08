@@ -328,7 +328,7 @@ struct managed_deleter : util::noncopyable {
     return *this;
   }
 
-  void operator()(pointer p) noexcept {
+  void operator()(const pointer p) noexcept {
     assert(!ptr_ || p == ptr_);
     delete ptr_;
   }

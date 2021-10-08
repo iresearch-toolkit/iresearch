@@ -572,6 +572,7 @@ struct score_traits {
                   const byte_type* RESTRICT src) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
+    // cppcheck-suppress constVariable
     auto& casted_src = score_cast(src + offset);
 
     if (casted_dst < casted_src) {
@@ -932,19 +933,19 @@ class IRESEARCH_API order final {
         (*merge_func_)(bucket_, dst, src);
       }
 
-      FORCE_INLINE bool operator==(bulk_merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator==(const bulk_merge_f merge_func) const noexcept {
         return merge_func == bulk_merge_func_;
       }
 
-      FORCE_INLINE bool operator!=(bulk_merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator!=(const bulk_merge_f merge_func) const noexcept {
         return merge_func != bulk_merge_func_;
       }
 
-      FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator==(const merge_f merge_func) const noexcept {
         return merge_func == merge_func_;
       }
 
-      FORCE_INLINE bool operator!=(merge_f merge_func) const noexcept {
+      FORCE_INLINE bool operator!=(const merge_f merge_func) const noexcept {
         return merge_func != merge_func_;
       }
 

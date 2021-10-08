@@ -113,6 +113,8 @@ inline constexpr T ror(T value) noexcept{
   #pragma warning(disable : 4146)
 #endif
 
+// possible fix for cppcheck warnings:
+// return (-(uint32_t(v) >> 31)) ^ (uint32_t(v) << 1);
 inline constexpr uint32_t zig_zag_encode32(int32_t v) noexcept {
   return (v >> 31) ^ (uint32_t(v) << 1);
 }
@@ -121,6 +123,8 @@ inline constexpr int32_t zig_zag_decode32(uint32_t v) noexcept {
   return (v >> 1) ^ -(v & 1);
 }
 
+// possible fix for cppcheck warnings:
+// return (-(uint64_t(v) >> 63)) ^ (uint64_t(v) << 1);
 inline constexpr uint64_t zig_zag_encode64(int64_t v) noexcept {
   return (v >> 63) ^ (uint64_t(v) << 1);
 }

@@ -81,12 +81,14 @@ struct encode_traits<uint32_t> {
 #ifndef FLOAT_T_IS_DOUBLE_T
 template<>
 struct encode_traits<float_t> : encode_traits<uint32_t> {
+  // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0x20;
 }; // encode_traits
 #endif
 
 template<>
 struct encode_traits<double_t> : encode_traits<uint64_t> {
+  // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0xA0;
 }; // encode_traits
 
@@ -139,10 +141,14 @@ typename EncodeTraits::type decode(const byte_type* in) {
   return value;
 }
 
+// possible fix for cppcheck warnings:
+// return value ^ ( -(uint32_t(value) >> 31) & INT32_C(0x7FFFFFFF));
 inline int32_t make_sortable32(int32_t value) {
   return value ^ ((value >> 31) & INT32_C(0x7FFFFFFF));
 }
 
+// possible fix for cppcheck warnings:
+// return value ^ ( -(uint64_t(value) >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 inline int64_t make_sortable64(int64_t value) {
   return value ^ ((value >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 }
