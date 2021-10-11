@@ -637,7 +637,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         if (node.bNegated) {
           auto fnBranchArg = [this, node_id](
             irs::iql::proxy_filter& node,
-            const std::locale& locale,
+            const irs::string_ref& locale,
             void* const& cookie,
             const std::vector<irs::iql::function_arg>& args
           )->bool {
