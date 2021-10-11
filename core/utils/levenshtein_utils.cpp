@@ -103,7 +103,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return (lhs.transpose | !rhs.transpose)
+  return (lhs.transpose | (!rhs.transpose))
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -121,6 +121,7 @@ class parametric_state {
 
   bool emplace(const position& new_pos) {
     for (auto& pos : positions_) {
+      // cppcheck-suppress useStlAlgorithm
       if (subsumes(pos, new_pos)) {
         // nothing to do
         return false;
@@ -128,6 +129,7 @@ class parametric_state {
     }
 
     if (!positions_.empty()) {
+      // cppcheck-suppress shadowFunction
       for (auto begin = positions_.data(), end = positions_.data() + positions_.size(); begin != end; ) {
         if (subsumes(new_pos, *begin)) {
           // removed positions subsumed by new_pos
@@ -222,16 +224,17 @@ class parametric_states {
     }
 
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = parametric_state_hash::seed();
+      size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
+        // cppcheck-suppress unreadVariable
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
 
-        seed = irs::hash_combine(seed, hash);
+        value = irs::hash_combine(value, hash);
       }
-      return seed;
+      return value;
     }
 
     static const void* SEED;
@@ -297,6 +300,7 @@ void add_transition(
   to.clear();
   for (const auto& pos : from) {
     assert(pos.offset < irs::bits_required<decltype(cv)>());
+    // cppcheck-suppress shadowFunction
     const auto chi = cv >> pos.offset;
     add_elementary_transitions(to, pos, chi, max_distance, with_transpositions);
   }
@@ -421,6 +425,7 @@ std::vector<character> make_alphabet(
     begin->size = utf8_utils::utf32_to_utf8(c, begin->utf8);
 
     // evaluate characteristic vector
+    // cppcheck-suppress shadowFunction
     auto& chi = begin->chi;
     chi.reset(capacity);
     auto utf8_begin = word.begin();
@@ -630,9 +635,9 @@ automaton make_levenshtein_automaton(
   }
 
   // check if start state is final
-  const auto distance = description.distance(1, utf8_size);
-
-  if (distance <= description.max_distance()) {
+  // cppcheck-suppress syntaxError
+  if (const auto distance = description.distance(1, utf8_size);
+      distance <= description.max_distance()) {
     a.SetFinal(start_state, {true, distance});
   }
 
@@ -664,9 +669,9 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        const auto distance = description.distance(transition.first, utf8_size - offset);
-
-        if (distance <= description.max_distance()) {
+        // cppcheck-suppress syntaxError
+        if (const auto distance = description.distance(transition.first, utf8_size - offset);
+            distance <= description.max_distance()) {
           a.SetFinal(to, {true, distance});
         }
 
