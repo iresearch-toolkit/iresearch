@@ -61,6 +61,20 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     return false;
   }
 
+  // validate creation of icu::Collator
+    auto err = UErrorCode::U_ZERO_ERROR;
+    std::unique_ptr<icu::Collator> collator;
+    collator.reset(icu::Collator::createInstance(locale, err));
+
+    if (!U_SUCCESS(err) || !collator) {
+      IR_FRMT_ERROR(
+        "Failed to instantiate icu::Collator from locale '%s' "
+        "while constructing collation_token_stream from VPack arguments",
+        locale_name.c_str());
+
+      return false;
+    }
+
   return true;
 }
 
