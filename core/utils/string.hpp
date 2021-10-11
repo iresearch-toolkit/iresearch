@@ -39,7 +39,7 @@
 
 namespace std {
 
-#if defined(__GNUC__)
+#if defined(__clang__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtautological-pointer-compare"
 #endif
@@ -144,7 +144,7 @@ struct char_traits<::iresearch::byte_type> {
 }; // char_traits
 #endif
 
-#if defined(__GNUC__)
+#if defined(__clang__)
   #pragma GCC diagnostic pop
 #endif
 
