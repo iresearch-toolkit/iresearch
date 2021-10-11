@@ -556,9 +556,9 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3, 10
 - MSVC: 17 (VS 2015), 19 (VS 2017)
-- Apple Clang: 9
+- Apple Clang: 9-12
 
 ## License
 Copyright (c) 2017-2021 ArangoDB GmbH
