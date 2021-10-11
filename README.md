@@ -380,14 +380,6 @@ PATH enviroment variable, manual adjustment may be needed.
 #### (*nix) install notes:
 Shared version of libiresearch is used. Install IResearch before running Pyresearch.
 
-## Included 3rd party dependencies
-Code for all included 3rd party dependencies is located in the "external" directory.
-#### [MurMurHash](https://sites.google.com/site/murmurhash)
-used for fast computation of hashes for byte arrays
-#### [OpenFST](http://www.openfst.org/twiki/bin/view/FST/WebHome)
-used to generate very compact term dictionary prefix tries which can to be loaded
-in memory even for huge dictionaries
-
 ## External 3rd party dependencies
 External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
