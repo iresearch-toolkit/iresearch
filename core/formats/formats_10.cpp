@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -616,7 +616,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   skip_.prepare(
     MAX_SKIP_LEVELS,
     state.doc_count,
-    directory_utils::get_allocator(*state.dir));
+    state.dir->attributes().allocator());
 
   format_utils::write_header(
     out, TERMS_FORMAT_NAME,
@@ -2709,7 +2709,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (version_ > FORMAT_MIN) {
     bstring enc_header;
-    auto* enc = get_encryption(dir.attributes());
+    auto* enc = dir.attributes().encryption();
 
     if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
       assert(out_cipher_ && out_cipher_->block_size());
@@ -2824,7 +2824,7 @@ bool meta_reader::prepare(
     meta_writer::FORMAT_MAX);
 
   if (version > meta_writer::FORMAT_MIN) {
-    encryption* enc = get_encryption(dir.attributes());
+    encryption* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
       assert(in_cipher_ && in_cipher_->block_size());
@@ -3256,7 +3256,7 @@ class format10 : public irs::version10::format {
     return "1_0";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format10() noexcept : format10(irs::type<format10>::get()) { }
 
@@ -3382,7 +3382,7 @@ class format11 : public format10 {
     return "1_1";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format11() noexcept : format10(irs::type<format11>::get()) { }
 
@@ -3442,7 +3442,7 @@ class format12 : public format11 {
     return "1_2";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format12() noexcept : format11(irs::type<format12>::get()) { }
 
@@ -3480,7 +3480,7 @@ class format13 : public format12 {
     return "1_3";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format13() noexcept : format12(irs::type<format13>::get()) { }
 
@@ -3524,7 +3524,7 @@ class format14 : public format13 {
     return "1_4";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format14() noexcept : format13(irs::type<format14>::get()) { }
 
@@ -3624,7 +3624,7 @@ class format12simd final : public format12 {
     return "1_2simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format12simd() noexcept : format12(irs::type<format12simd>::get()) { }
 
@@ -3662,7 +3662,7 @@ class format13simd : public format13 {
     return "1_3simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format13simd() noexcept : format13(irs::type<format13simd>::get()) { }
 
@@ -3704,7 +3704,7 @@ class format14simd : public format13simd {
     return "1_4simd";
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
