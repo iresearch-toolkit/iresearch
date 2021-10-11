@@ -435,6 +435,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
+    // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
     while (it_ != docs_.end()) {

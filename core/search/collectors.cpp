@@ -254,6 +254,7 @@ void term_collectors::finish(
     default: {
       term_idx *= bucket_count;
 
+      // cppcheck-suppress shadowFunction
       auto begin = field_collectors.begin();
       for (auto& bucket : (*buckets_)) {
         bucket.bucket->collect(
