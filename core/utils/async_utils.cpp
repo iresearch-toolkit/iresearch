@@ -32,12 +32,6 @@
 
 using namespace std::chrono_literals;
 
-namespace {
-
-constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
-
-}
-
 namespace iresearch {
 namespace async_utils {
 
