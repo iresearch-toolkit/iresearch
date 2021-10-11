@@ -635,9 +635,9 @@ automaton make_levenshtein_automaton(
   }
 
   // check if start state is final
-  const auto distance = description.distance(1, utf8_size);
-
-  if (distance <= description.max_distance()) {
+  // cppcheck-suppress syntaxError
+  if (const auto distance = description.distance(1, utf8_size);
+      distance <= description.max_distance()) {
     a.SetFinal(start_state, {true, distance});
   }
 
@@ -669,8 +669,9 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        if (const auto distance = description.distance(transition.first, utf8_size - offset)
-            <= description.max_distance()) {
+        // cppcheck-suppress syntaxError
+        if (const auto distance = description.distance(transition.first, utf8_size - offset);
+            distance <= description.max_distance()) {
           a.SetFinal(to, {true, distance});
         }
 

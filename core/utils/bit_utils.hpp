@@ -113,33 +113,31 @@ inline constexpr T ror(T value) noexcept{
   #pragma warning(disable : 4146)
 #endif
 
-// possible fix for cppcheck warnings:
+// assert that signed right shift works as expected
+static_assert(static_cast<uint32_t>(INT32_C(-1) >> 31) == UINT32_C(0xFFFFFFFF));
+static_assert(static_cast<uint64_t>(INT64_C(-1) >> 63) == UINT64_C(0xFFFFFFFFFFFFFFFF));
+
+// possible fix:
 // return (-(uint32_t(v) >> 31)) ^ (uint32_t(v) << 1);
-inline constexpr uint32_t zig_zag_encode32(int32_t v) noexcept {
+constexpr uint32_t zig_zag_encode32(int32_t v) noexcept {
   // cppcheck-suppress 	shiftTooManyBitsSigned
   return (v >> 31) ^ (uint32_t(v) << 1);
 }
 
-inline constexpr int32_t zig_zag_decode32(uint32_t v) noexcept {
+constexpr int32_t zig_zag_decode32(uint32_t v) noexcept {
   return (v >> 1) ^ -(v & 1);
 }
 
-// assert that left shift for uint32_t works well
-static_assert(zig_zag_decode32(zig_zag_encode32(-1)) == -1);
-
-// possible fix for cppcheck warnings:
+// possible fix:
 // return (-(uint64_t(v) >> 63)) ^ (uint64_t(v) << 1);
-inline constexpr uint64_t zig_zag_encode64(int64_t v) noexcept {
+constexpr uint64_t zig_zag_encode64(int64_t v) noexcept {
   // cppcheck-suppress 	shiftTooManyBitsSigned
   return (v >> 63) ^ (uint64_t(v) << 1);
 }
 
-inline constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
+constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
   return (v >> 1) ^ -(v & 1);
 }
-
-// assert that left shift for uint64_t works well
-static_assert(zig_zag_decode64(zig_zag_encode64(-1)) == -1);
 
 #if defined(_MSC_VER)
   #pragma warning( pop )
