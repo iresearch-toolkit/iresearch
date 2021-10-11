@@ -28,7 +28,6 @@
 #include "utils/utf8_path.hpp"
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
@@ -37,7 +36,7 @@ namespace {
 
 using namespace irs;
 
-static constexpr size_t NUM_PAGES = 128;
+constexpr size_t NUM_PAGES = 128;
 constexpr size_t PAGE_SIZE = 4096;
 constexpr size_t PAGE_ALIGNEMNT = 4096;
 
@@ -355,16 +354,12 @@ class async_index_output final : public index_output {
     file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
   if (nullptr == handle) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, name, locale);
-
 #ifdef _WIN32
-    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
+    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                   GetLastError(), irs::utf8_path{name}.c_str());
 #else
-    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                  errno, irs::utf8_path{name}.c_str());
 #endif
 
     return nullptr;
@@ -514,14 +509,15 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 async_directory::async_directory(
-    const std::string& path,
+    std::string path,
+    directory_attributes attrs,
     size_t pool_size,
     size_t queue_size,
     unsigned flags)
-  : mmap_directory(path),
-    async_pool_(pool_size),
-    queue_size_(queue_size),
-    flags_(flags) {
+  : mmap_directory{std::move(path), std::move(attrs)},
+    async_pool_{pool_size},
+    queue_size_{queue_size},
+    flags_{flags} {
 }
 
 index_output::ptr async_directory::create(

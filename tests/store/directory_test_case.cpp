@@ -27,12 +27,13 @@
 #include "store/store_utils.hpp"
 #include "store/async_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/crc.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
+#include "utils/file_utils.hpp"
 
 #include <cstdio>
 #include <vector>
@@ -48,7 +49,7 @@ using namespace iresearch;
 // --SECTION--                                               directory_test_case
 // -----------------------------------------------------------------------------
 
-class directory_test_case : public tests::directory_test_case_base {
+class directory_test_case : public tests::directory_test_case_base<> {
  public:
   static void smoke_store(directory& dir) {
     const std::string names[]{
@@ -112,7 +113,7 @@ class directory_test_case : public tests::directory_test_case_base {
 
     // Read contents
     it = std::end(names);
-    bstring buf;
+    bstring buf, buf1;
 
     b = 1;
     for (const auto& name : names) {
@@ -146,153 +147,245 @@ class directory_test_case : public tests::directory_test_case_base {
       EXPECT_EQ(expected_length, reopened_file->length());
 
       const auto checksum = file->checksum(file->length());
+      ASSERT_EQ(0, file->file_pointer());
 
       {
         buf.resize(it->size());
-        auto read = file->read_bytes(&(buf[0]), it->size());
+        const auto read = file->read_bytes(buf.data(), it->size());
         ASSERT_EQ(read, it->size());
         ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
 
-        read = file->read_bytes(readbuf, sizeof readbuf);
-        ASSERT_EQ(read, sizeof readbuf);
-        ASSERT_TRUE(
-          std::all_of(std::begin(readbuf), std::end(readbuf),
-                      [b](auto v) { return b == v; })
-        );
-        ASSERT_EQ(b+1, file->read_byte());
-      }
-
-      {
-        buf.clear();
-        buf.resize(it->size());
-        auto read = dup_file->read_bytes(&(buf[0]), it->size());
-        ASSERT_EQ(read, it->size());
-        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
-
-        read = dup_file->read_bytes(readbuf, sizeof readbuf);
-        ASSERT_EQ(read, sizeof readbuf);
-        ASSERT_TRUE(
-          std::all_of(std::begin(readbuf), std::end(readbuf),
-                      [b](auto v) { return b == v; })
-        );
-        ASSERT_EQ(b+1, dup_file->read_byte());
-      }
-
-      {
-        buf.clear();
-        buf.resize(it->size());
-        auto read = reopened_file->read_bytes(&(buf[0]), it->size());
-        ASSERT_EQ(read, it->size());
-        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
-
-        read = reopened_file->read_bytes(readbuf, sizeof readbuf);
-        ASSERT_EQ(read, sizeof readbuf);
-        ASSERT_TRUE(
-          std::all_of(std::begin(readbuf), std::end(readbuf),
-                      [b](auto v) { return b == v; })
-        );
-        ASSERT_EQ(b+1, reopened_file->read_byte());
-      }
-
-      crc.process_bytes(buf.c_str(), buf.size());
-      crc.process_bytes(readbuf, sizeof readbuf);
-      crc.process_byte(b+1);
-      ++b;
-
-      EXPECT_TRUE(file->eof());
-      // check checksum
-      EXPECT_EQ(crc.checksum(), checksum);
-      // check that this is the end of the file
-      EXPECT_EQ(expected_length, file->file_pointer());
-    }
-
-    for (const auto& name : names) {
-      ASSERT_TRUE(dir.remove(name));
-      bool exists;
-      ASSERT_TRUE(dir.exists(exists, name) && !exists);
-    }
-
-    // Check files count
-    files.clear();
-    ASSERT_TRUE(dir.visit(list_files));
-    EXPECT_EQ(0, files.size());
-
-    // Try to open non existing input
-    ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
-
-    // Check locking logic
-    auto l = dir.make_lock("sample_lock");
-    ASSERT_FALSE(!l);
-    ASSERT_TRUE(l->lock());
-    bool locked;
-    ASSERT_TRUE(l->is_locked(locked) && locked);
-    ASSERT_TRUE(l->unlock());
-    ASSERT_TRUE(l->is_locked(locked) && !locked);
-
-    // Check read_bytes on empty file
-    {
-      byte_type buf[10];
-
-      // create file
-      {
-        auto out = dir.create("empty_file");
-        ASSERT_FALSE(!out);
-      }
-
-      // read from file
-      {
-        auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
-        ASSERT_FALSE(!in);
-
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(0, read);
-        } catch (const eof_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
+        // random access
+        {
+          const auto fp = file->file_pointer();
+          buf1.resize(it->size());
+          const auto read = file->read_bytes(fp - it->size(), buf1.data(), it->size());
+          ASSERT_EQ(read, it->size());
+          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf1);
+          ASSERT_EQ(fp, file->file_pointer());
         }
+
+        // failed direct buffer access doesn't move file pointer
+        {
+          const auto fp = file->file_pointer();
+          ASSERT_GT(file->length(), 1);
+          ASSERT_EQ(nullptr, file->read_buffer(file->length() - 1, file->length(), BufferHint::NORMAL));
+          ASSERT_EQ(fp, file->file_pointer());
+        }
+
+        // failed direct buffer access doesn't move file pointer
+        {
+          const auto fp = file->file_pointer();
+          auto cleanup = make_finally([fp, &file]() noexcept {
+            try {
+              file->seek(fp);
+            } catch (...) {
+              ASSERT_TRUE(false);
+            }
+          });
+
+          ASSERT_GT(file->length(), 1);
+          file->seek(file->length()-1);
+          ASSERT_EQ(nullptr, file->read_buffer(file->length(), BufferHint::NORMAL));
+          ASSERT_EQ(file->length()-1, file->file_pointer());
+        }
+
+        if (dynamic_cast<mmap_directory*>(&dir) ||
+            dynamic_cast<memory_directory*>(&dir) ||
+            dynamic_cast<fs_directory*>(&dir)) {
+          const auto fp = file->file_pointer();
+          auto cleanup = make_finally([fp, &file]() noexcept {
+            try {
+              file->seek(fp);
+            } catch (...) {
+              ASSERT_FALSE(true);
+            }
+          });
+
+          // sequential direct access
+          {
+            file->seek(0);
+            ASSERT_EQ(0, file->file_pointer());
+            const byte_type* internal_buf = file->read_buffer(1, BufferHint::NORMAL);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(1, file->file_pointer());
+            ASSERT_EQ(it->at(0), *internal_buf);
+          }
+
+          // random direct access
+          {
+            const byte_type* internal_buf = file->read_buffer(0, 1, BufferHint::NORMAL);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(1, file->file_pointer());
+            ASSERT_EQ(it->at(0), *internal_buf);
+          }
+        }
+
+        // mmap direct buffer access
+        if (dynamic_cast<mmap_directory*>(&dir)) {
+          const auto fp = file->file_pointer();
+
+          // sequential direct access
+          {
+            file->seek(fp - it->size());
+            const byte_type* internal_buf = file->read_buffer(
+              fp - it->size(), it->size(), BufferHint::PERSISTENT);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(file->file_pointer(), fp);
+            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+          }
+
+          {
+            file->seek(fp - it->size());
+            const byte_type* internal_buf = file->read_buffer(
+              fp - it->size(), it->size(), BufferHint::NORMAL);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(file->file_pointer(), fp);
+            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+          }
+
+          // random direct access
+          {
+            const byte_type* internal_buf = file->read_buffer(
+              fp - it->size(), it->size(), BufferHint::PERSISTENT);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(file->file_pointer(), fp);
+            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+          }
+
+          // random direct access
+          {
+            const byte_type* internal_buf = file->read_buffer(
+              fp - it->size(), it->size(), BufferHint::NORMAL);
+            ASSERT_NE(nullptr, internal_buf);
+            ASSERT_EQ(file->file_pointer(), fp);
+            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+          }
+        }
+
+        {
+          buf.clear();
+          buf.resize(it->size());
+          auto read = dup_file->read_bytes(&(buf[0]), it->size());
+          ASSERT_EQ(read, it->size());
+          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+          read = dup_file->read_bytes(readbuf, sizeof readbuf);
+          ASSERT_EQ(read, sizeof readbuf);
+          ASSERT_TRUE(
+            std::all_of(std::begin(readbuf), std::end(readbuf),
+                        [b](auto v) { return b == v; })
+          );
+          ASSERT_EQ(b+1, dup_file->read_byte());
+        }
+
+        {
+          buf.clear();
+          buf.resize(it->size());
+          auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+          ASSERT_EQ(read, it->size());
+          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+          read = reopened_file->read_bytes(readbuf, sizeof readbuf);
+          ASSERT_EQ(read, sizeof readbuf);
+          ASSERT_TRUE(
+            std::all_of(std::begin(readbuf), std::end(readbuf),
+                        [b](auto v) { return b == v; })
+          );
+          ASSERT_EQ(b+1, reopened_file->read_byte());
+        }
+
+        crc.process_bytes(buf.c_str(), buf.size());
+        crc.process_bytes(readbuf, sizeof readbuf);
+        crc.process_byte(b+1);
+        ++b;
+
+        EXPECT_TRUE(file->eof());
+        // check checksum
+        EXPECT_EQ(crc.checksum(), checksum);
+        // check that this is the end of the file
+        EXPECT_EQ(expected_length, file->file_pointer());
       }
 
-      ASSERT_TRUE(dir.remove("empty_file"));
-    }
-
-    // Check read_bytes after the end of file
-    {
-
-      // write to file
-      {
-        byte_type buf[1024]{};
-        auto out = dir.create("nonempty_file");
-        ASSERT_FALSE(!out);
-        out->write_bytes(buf, sizeof buf);
-        out->write_bytes(buf, sizeof buf);
-        out->write_bytes(buf, 691);
-        out->flush();
+      for (const auto& name : names) {
+        ASSERT_TRUE(dir.remove(name));
+        bool exists;
+        ASSERT_TRUE(dir.exists(exists, name) && !exists);
       }
 
-      // read from file
-      {
-        byte_type buf[1024 + 691]{}; // 1024 + 691 from above
-        auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
-        size_t expected = sizeof buf;
-        ASSERT_FALSE(!in);
-        ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
+      // Check files count
+      files.clear();
+      ASSERT_TRUE(dir.visit(list_files));
+      EXPECT_EQ(0, files.size());
 
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
+      // Try to open non existing input
+      ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
+
+      // Check locking logic
+      auto l = dir.make_lock("sample_lock");
+      ASSERT_FALSE(!l);
+      ASSERT_TRUE(l->lock());
+      bool locked;
+      ASSERT_TRUE(l->is_locked(locked) && locked);
+      ASSERT_TRUE(l->unlock());
+      ASSERT_TRUE(l->is_locked(locked) && !locked);
+
+      // empty file
+      {
+        byte_type buf[10];
+
+        // create file
+        {
+          auto out = dir.create("empty_file");
+          ASSERT_FALSE(!out);
+        }
+
+        {
+          auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
+          ASSERT_FALSE(!in);
+          ASSERT_TRUE(in->eof());
+
+          ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+          ASSERT_TRUE(in->eof());
+          ASSERT_EQ(0, in->checksum(0));
+          ASSERT_EQ(0, in->checksum(42));
+        }
+
+        ASSERT_TRUE(dir.remove("empty_file"));
+      }
+
+      // Check read_bytes after the end of file
+      {
+        // write to file
+        {
+          byte_type buf[1024]{};
+          auto out = dir.create("nonempty_file");
+          ASSERT_FALSE(!out);
+          out->write_bytes(buf, sizeof buf);
+          out->write_bytes(buf, sizeof buf);
+          out->write_bytes(buf, 691);
+          out->flush();
+        }
+
+        // read from file
+        {
+          byte_type buf[1024 + 691]{}; // 1024 + 691 from above
+          auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
+          ASSERT_FALSE(in->eof());
+          size_t expected = sizeof buf;
+          ASSERT_FALSE(!in);
+          ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
+
           expected = in->length() - sizeof buf; // 'sizeof buf' already read above
-          read = in->read_bytes(buf, sizeof buf);
+          const size_t read = in->read_bytes(buf, sizeof buf);
           ASSERT_EQ(expected, read);
-        } catch (const io_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
+          ASSERT_TRUE(in->eof());
+          ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+          ASSERT_TRUE(in->eof());
         }
-      }
 
-      ASSERT_TRUE(dir.remove("nonempty_file"));
+        ASSERT_TRUE(dir.remove("nonempty_file"));
+      }
     }
   }
 };
@@ -384,6 +477,13 @@ TEST_P(directory_test_case, rename) {
     bool res = true;
     ASSERT_TRUE(dir_->exists(res, "bar1"));
     ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->rename("foo1", "foo1"));
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
   }
 
   {
@@ -1294,16 +1394,15 @@ TEST_P(directory_test_case, directory_size) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(
-    &tests::async_directory,
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory
-  ),
-  tests::directory_test_case_base::to_string
+    &tests::directory<&tests::async_directory>,
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -1318,28 +1417,25 @@ class fs_directory_test : public test_base {
 
   virtual void SetUp() override {
     test_base::SetUp();
-    path_ = test_case_dir();
-    path_ /= name_;
+    path_ = test_case_dir() / name_;
 
-    ASSERT_TRUE(path_.mkdir(false));
-    dir_ = std::make_shared<fs_directory>(path_.utf8());
+    irs::file_utils::mkdir(path_.c_str(), false);
+    dir_ = std::make_shared<fs_directory>(path_);
   }
 
   virtual void TearDown() override {
     dir_ = nullptr;
-    ASSERT_TRUE(path_.remove());
+    irs::file_utils::remove(path_.c_str());
     test_base::TearDown();
   }
 
  protected:
-  static void check_files(const directory& dir, const utf8_path& path) {
+  static void check_files(const directory& dir, const irs::utf8_path& path) {
     const std::string file_name = "abcd";
 
     // create empty file
     {
-      auto file = path;
-
-      file /= file_name;
+      const auto file = path / file_name;
 
       std::ofstream f(file.native());
     }
@@ -1356,7 +1452,7 @@ class fs_directory_test : public test_base {
   }
 
   std::string name_;
-  utf8_path path_;
+  irs::utf8_path path_;
   std::shared_ptr<fs_directory> dir_;
 }; // fs_directory_test
 
@@ -1368,7 +1464,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
       char hostname[256] = {};
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
 
-      const std::string pid = std::to_string(integer_traits<int>::const_max);
+      const std::string pid = std::to_string(std::numeric_limits<int>::max());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));
@@ -1502,46 +1598,6 @@ TEST_F(fs_directory_test, orphaned_lock) {
   }
 }
 
-TEST_F(fs_directory_test, utf8_chars) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
-
-  name_ = path.utf8();
-  TearDown();
-
-  // create directory via iResearch functions
-  {
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, path_);
-  }
-}
-
-TEST_F(fs_directory_test, utf8_chars_native) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
-
-  name_ = path.utf8();
-  TearDown();
-
-  // create directory via native functions
-  {
-    #ifdef _WIN32
-      auto native_path = test_case_dir().native() + L'\\' + path.native();
-      ASSERT_EQ(0, _wmkdir(native_path.c_str()));
-    #else
-      auto native_path = test_case_dir().native() + '/' + path.utf8();
-      ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
-    #endif
-
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, native_path);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 fs_directory_test
 // -----------------------------------------------------------------------------
@@ -1550,18 +1606,13 @@ TEST(memory_directory_test, construct_check_allocator) {
   // default ctor
   {
     irs::memory_directory dir;
-    ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-    ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+    ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 
   // specify pool size
   {
-    irs::memory_directory dir(42);
-    auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-    ASSERT_NE(nullptr, alloc_attr);
-    ASSERT_NE(nullptr, *alloc_attr);
-    ASSERT_NE(alloc_attr->get(), &irs::memory_allocator::global()); // not a global allocator
-    ASSERT_EQ(alloc_attr->get(), &irs::directory_utils::get_allocator(dir));
+    irs::memory_directory dir{irs::directory_attributes{42}};
+    ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 }
 
@@ -1599,6 +1650,32 @@ TEST(memory_directory_test, file_reset_allocator) {
   ASSERT_EQ(256, buf1.size);
 
   ASSERT_NE(buf0.data, buf1.data);
+}
+
+TEST(memory_directory_test, rewrite) {
+  using namespace irs;
+
+  const string_ref str0{"quick brown fowx jumps over the lazy dog"};
+  const string_ref str1{"hund"};
+  const string_ref expected{"quick brown fowx jumps over the lazy hund"};
+  const bytes_ref payload0{ref_cast<byte_type>(str0)};
+  const bytes_ref payload1{ref_cast<byte_type>(str1)};
+
+  memory_output out{irs::memory_allocator::global()};
+  out.stream.write_bytes(payload0.c_str(), payload0.size());
+  ASSERT_EQ(payload0.size(), out.stream.file_pointer());
+  out.stream.seek(out.stream.file_pointer() - 3);
+  ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
+  out.stream.write_bytes(payload1.c_str(), payload1.size());
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
+  out.stream.flush();
+
+  memory_index_input in{out.file};
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), in.length());
+
+  std::string value(expected.size(), 0);
+  in.read_bytes(reinterpret_cast<irs::byte_type*>(value.data()), value.size());
+  ASSERT_EQ(expected, value);
 }
 
 }

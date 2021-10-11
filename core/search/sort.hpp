@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "index/index_features.hpp"
 #include "utils/attributes.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
@@ -362,9 +363,9 @@ class IRESEARCH_API sort {
       const term_collector* term) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief the features required for proper operation of this sort::prepared
+    /// @brief the index features required for proper operation of this sort::prepared
     ////////////////////////////////////////////////////////////////////////////////
-    virtual const flags& features() const = 0;
+    virtual IndexFeatures features() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics, one
@@ -714,14 +715,14 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store the score type (i.e. sizeof(score))
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> score_size() const noexcept override final {
     return std::make_pair(sizeof(score_t), alignof(score_t));
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store stats
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> stats_size() const noexcept override final {
     return std::make_pair(size_t(0), size_t(0));
   }
 }; // prepared_sort_base
@@ -972,7 +973,7 @@ class IRESEARCH_API order final {
     prepared(prepared&&) = default;
     prepared& operator=(prepared&&) = default;
 
-    const flags& features() const noexcept { return features_; }
+    IndexFeatures features() const noexcept { return index_features_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
@@ -1116,9 +1117,9 @@ class IRESEARCH_API order final {
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
-    flags features_;
     size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
+    IndexFeatures index_features_{ IndexFeatures::NONE };
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 

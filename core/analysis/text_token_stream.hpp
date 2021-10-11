@@ -23,8 +23,11 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
-#define IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
+#ifndef IRESEARCH_TEXT_TOKEN_STREAM_H
+#define IRESEARCH_TEXT_TOKEN_STREAM_H
+
+#include <absl/container/flat_hash_set.h>
+#include <unicode/locid.h>
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -35,20 +38,27 @@
 namespace iresearch {
 namespace analysis {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class text_token_stream
+/// @note expects UTF-8 encoded input
+////////////////////////////////////////////////////////////////////////////////
 class text_token_stream final
-  : public frozen_attributes<3, analyzer>,
+  : public analyzer,
     private util::noncopyable {
  public:
-  typedef std::unordered_set<std::string> stopwords_t;
+  using stopwords_t = absl::flat_hash_set<std::string>;
+
+  enum case_convert_t { LOWER, NONE, UPPER };
+
   struct options_t {
-    enum case_convert_t { LOWER, NONE, UPPER };
     // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    std::locale locale;
+    icu::Locale locale;
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
     size_t max_gram{};
+
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{};
     bool accent{}; // remove accents from letters, match original implementation
@@ -60,6 +70,10 @@ class text_token_stream final
     bool preserve_original{}; // emit input data as a token
     // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
+
+    options_t() : locale{"C"} {
+      locale.setToBogus();
+    }
   };
 
   struct state_t;
@@ -68,23 +82,32 @@ class text_token_stream final
 
   static constexpr string_ref type_name() noexcept { return "text"; }
   static void init(); // for triggering registration in a static build
-  static ptr make(const irs::string_ref& locale);
+  static ptr make(const string_ref& locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>;
+
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
+
   bool next_word();
   bool next_ngram();
 
- private:
-  std::shared_ptr<state_t> state_;
   bstring term_buf_; // buffer for value if value cannot be referenced directly
-  offset offs_;
-  increment inc_;
-  term_attribute term_;
+  attributes attrs_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
 };
 
 } // analysis

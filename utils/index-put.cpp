@@ -22,28 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-  #pragma warning(disable: 4101)
-  #pragma warning(disable: 4267)
+#pragma warning(disable: 4101)
+#pragma warning(disable: 4267)
 #endif
 
-  #include <cmdline.h>
+#include <cmdline.h>
+
+#include <frozen/unordered_set.h>
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4267)
-  #pragma warning(default: 4101)
+#pragma warning(default: 4267)
+#pragma warning(default: 4101)
 #endif
 
 #include <fstream>
 #include <memory>
 
 #if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
+#pragma warning(disable: 4229)
 #endif
 
-  #include <unicode/uclean.h> // for u_cleanup
+#include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4229)
+#pragma warning(default: 4229)
 #endif
 
 #include "common.hpp"
@@ -51,6 +53,7 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "index/index_writer.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
@@ -73,29 +76,36 @@ const std::string CONS_THR = "consolidation-threads";
 const std::string CPR = "commit-period";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
+const std::string ANALYZER_TYPE = "analyzer-type";
+const std::string ANALYZER_OPTIONS = "analyzer-options";
+const std::string SEGMENT_MEM_MAX = "segment-memory-max";
+const std::string CONSOLIDATION_INTERVAL = "consolidation-interval";
 
-typedef std::unique_ptr<std::string> ustringp;
+const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
+const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
 
-const std::string n_id = "id";
-const std::string n_title = "title";
-const std::string n_date = "date";
-const std::string n_timesecnum = "timesecnum";
-const std::string n_body = "body";
+constexpr size_t DEFAULT_SEGMENT_MEM_MAX = 1 << 28; // 256M
+constexpr size_t DEFAULT_CONSOLIDATION_INTERVAL_MSEC = 500;
 
-const irs::flags text_features{
-  irs::type<irs::frequency>::get(),
-  irs::type<irs::position>::get(),
-  irs::type<irs::offset>::get(),
-  irs::type<irs::norm>::get()
-};
+constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
+  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
-const irs::flags numeric_features{
-  irs::type<irs::granularity_prefix>::get()
-};
+
+// legacy formats supportd only variable length norms, i.e. "norm" feature
+constexpr frozen::unordered_set<irs::string_ref, 6> LEGACY_FORMATS{
+  "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3" };
+
+// norm features supported by old format
+constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{ irs::type<irs::norm>::id()  };
+// fixed length norm
+constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm2>::id()  };
+constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::id() };
 
 }
 
 struct Doc {
+  virtual ~Doc() = default;
+
   static std::atomic<uint64_t> next_id;
 
   /**
@@ -131,42 +141,54 @@ struct Doc {
   }
 
   struct Field {
-    const std::string& _name;
-    const irs::flags feats;
+    irs::string_ref _name;
+    const irs::features_t _features;
+    const irs::IndexFeatures _index_features;
 
-    Field(const std::string& n, const irs::flags& flags) 
-      : _name(n), feats(flags) {
+    Field(const irs::string_ref& n,
+          irs::IndexFeatures index_features,
+          const irs::features_t& flags)
+      : _name(n),
+        _features(flags),
+        _index_features(index_features) {
     }
 
-    const std::string& name() const {
+    irs::string_ref name() const noexcept {
       return _name;
     }
 
-    float_t boost() const {
-      return 1.0;
+    const irs::features_t& features() const noexcept {
+      return _features;
+    }
+
+    irs::IndexFeatures index_features() const noexcept {
+      return _index_features;
     }
 
     virtual irs::token_stream& get_tokens() const = 0;
 
-    const irs::flags& features() const {
-      return feats;
-    }
-
     virtual bool write(irs::data_output& out) const = 0;
 
-    virtual ~Field() {}
+    virtual ~Field() = default;
   };
 
   struct StringField : public Field {
     std::string f;
     mutable irs::string_token_stream _stream;
 
-    StringField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
+    StringField(
+        const irs::string_ref& n,
+        irs::IndexFeatures index_features,
+        const irs::features_t& flags)
+      : Field(n, index_features, flags) {
     }
 
-    StringField(const std::string& n, const irs::flags& flags, const std::string& a)
-      : Field(n, flags), f(a) {
+    StringField(
+        const irs::string_ref& n,
+        irs::IndexFeatures index_features,
+        const irs::features_t& flags,
+        const std::string& a)
+      : Field(n, index_features, flags), f(a) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -183,18 +205,14 @@ struct Doc {
   struct TextField : public Field {
     std::string f;
     mutable irs::analysis::analyzer::ptr stream;
-    static const std::string& aname;
-    static const std::string& aignore;
-    static constexpr auto aignore_format = irs::type<irs::text_format::json>::get();
 
-    TextField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
-      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
-    }
-
-    TextField(const std::string& n, const irs::flags& flags, std::string& a)
-      : Field(n, flags), f(a) {
-      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
+    TextField(
+        const irs::string_ref& n,
+        irs::IndexFeatures index_features,
+        const irs::features_t& flags,
+        irs::analysis::analyzer::ptr stream)
+      : Field(n, index_features, flags),
+        stream(std::move(stream)) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -212,12 +230,19 @@ struct Doc {
     mutable irs::numeric_token_stream stream;
     int64_t value;
 
-    NumericField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
+    NumericField(
+        const irs::string_ref& n,
+        irs::IndexFeatures index_features,
+        const irs::features_t& flags)
+      : Field(n, index_features, flags) {
     }
 
-    NumericField(const std::string& n, const irs::flags& flags, uint64_t v)
-      : Field(n, flags), value(v) {
+    NumericField(
+        const irs::string_ref& n,
+        irs::IndexFeatures index_features,
+        const irs::features_t& flags,
+        uint64_t v)
+      : Field(n, index_features, flags), value(v) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -240,67 +265,40 @@ struct Doc {
    * @param line
    * @return 
    */
-  virtual void fill(std::string* line) {
-    std::stringstream lineStream(*line);
-    std::string cell;
-
-    // id: uint64_t to string, base 36
-    uint64_t id = next_id++; // atomic fetch and get
-    char str[10];
-    itoa(id, str, 36);
-    char str2[10];
-    snprintf(str2, sizeof (str2), "%6s", str);
-    std::string s(str2);
-    std::replace(s.begin(), s.end(), ' ', '0');
-    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::type<irs::granularity_prefix>::get()}, s));
-    store.emplace_back(elements.back());
-
-    // title: string
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(std::make_shared<StringField>(n_title, irs::flags::empty_instance(), cell));
-
-    // date: string
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(std::make_shared<StringField>(n_date, irs::flags::empty_instance(), cell));
-    store.emplace_back(elements.back());
-
-    // +date: uint64_t
-    uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
-    elements.emplace_back(
-      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::type<irs::granularity_prefix>::get()}, t)
-    );
-
-    // body: text
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(
-      std::make_shared<TextField>(n_body, irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::norm>::get()}, cell)
-    );
-  }
+  virtual void fill(std::string* line) = 0;
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
-const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"] }");
-
+using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 
 struct WikiDoc : Doc {
-  WikiDoc() {
+  explicit WikiDoc(const analyzer_factory_f& analyzer_factory, const irs::features_t& text_features) {
     // id
-    elements.emplace_back(id = std::make_shared<StringField>(n_id, irs::flags::empty_instance()));
-    store.emplace_back(elements.back());
+    id = std::make_shared<StringField>("id", irs::IndexFeatures::NONE, irs::features_t{});
+    elements.emplace_back(id);
+    store.emplace_back(id);
 
     // title: string
-    elements.push_back(title = std::make_shared<StringField>(n_title, irs::flags::empty_instance()));
+    title = std::make_shared<StringField>("title", irs::IndexFeatures::NONE, irs::features_t{});
+    elements.push_back(title);
 
     // date: string
-    elements.push_back(date = std::make_shared<StringField>(n_date, irs::flags::empty_instance()));
-    store.push_back(elements.back());
+    date = std::make_shared<StringField>("date", irs::IndexFeatures::NONE, irs::features_t{});
+    elements.push_back(date);
+    store.push_back(date);
 
     // date: uint64_t
-    elements.push_back(ndate = std::make_shared<NumericField>(n_timesecnum, numeric_features));
+    ndate = std::make_shared<NumericField>(
+      "timesecnum", irs::IndexFeatures::NONE,
+      irs::features_t{ NUMERIC_FEATURES.data(), NUMERIC_FEATURES.size() });
+    elements.push_back(ndate);
 
     // body: text
-    elements.push_back(body = std::make_shared<TextField>(n_body, text_features));
+    body = std::make_shared<TextField>(
+      "body", TEXT_INDEX_FEATURES,
+      text_features,
+      analyzer_factory());
+    elements.push_back(body);
   }
 
   virtual void fill(std::string* line) {
@@ -341,12 +339,16 @@ int put(
     const std::string& path,
     const std::string& dir_type,
     const std::string& format,
+    const std::string& analyzer_type,
+    const std::string& analyzer_options,
     std::istream& stream,
     size_t lines_max,
     size_t indexer_threads,
     size_t consolidation_threads,
     size_t commit_interval_ms,
+    size_t consolidation_interval_ms,
     size_t batch_size,
+    size_t segment_mem_max,
     bool consolidate_all) {
   auto dir = create_directory(dir_type, path);
 
@@ -358,28 +360,66 @@ int put(
   auto codec = irs::formats::get(format);
 
   if (!codec) {
-    std::cerr << "Unable to find format of type '" << format<< "'" << std::endl;
+    std::cerr << "Unable to find format of type '" << format << "'" << std::endl;
     return 1;
   }
 
-  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
+  irs::features_t text_features{ TEXT_FEATURES.data(), TEXT_FEATURES.size() };
+  if (LEGACY_FORMATS.count(codec->type().name()) > 0) {
+    // legacy formats don't support pluggable features
+    text_features = { LEGACY_TEXT_FEATURES.data(), LEGACY_TEXT_FEATURES.size() };
+  }
+  analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options](){
+    irs::analysis::analyzer::ptr analyzer;
+
+    const auto res = irs::analysis::analyzers::get(
+      analyzer, analyzer_type,
+      irs::type<irs::text_format::json>::get(),
+      analyzer_options);
+
+    if (!res) {
+      std::cerr << "Unable to load an analyzer of type '" << analyzer_type
+                << "', error '" << res.c_str() << "'\n";
+    }
+
+    return analyzer;
+  };
+
+  if (!analyzer_factory()) {
+    return 1;
+  }
 
   indexer_threads = (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - consolidation_threads); // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
+  irs::index_writer::init_options opts;
+  opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  opts.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  opts.segment_pool_size = indexer_threads;
+  opts.segment_memory_max = segment_mem_max;
+  opts.feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+  };
+
+  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE, opts);
+
   irs::async_utils::thread_pool thread_pool(indexer_threads + consolidation_threads + 1); // +1 for commiter thread
 
   SCOPED_TIMER("Total Time");
-  std::cout << "Configuration: " << std::endl;
-  std::cout << INDEX_DIR << "=" << path << std::endl;
-  std::cout << DIR_TYPE << "=" << dir_type << std::endl;
-  std::cout << FORMAT << "=" << format << std::endl;
-  std::cout << MAX << "=" << lines_max << std::endl;
-  std::cout << THR << "=" << indexer_threads << std::endl;
-  std::cout << CONS_THR << "=" << consolidation_threads << std::endl;
-  std::cout << CPR << "=" << commit_interval_ms << std::endl;
-  std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
-  std::cout << CONSOLIDATE_ALL << "=" << consolidate_all << std::endl;
+  std::cout << "Configuration:\n"
+            << INDEX_DIR << "=" << path << '\n'
+            << DIR_TYPE << "=" << dir_type << '\n'
+            << FORMAT << "=" << format << '\n'
+            << MAX << "=" << lines_max << '\n'
+            << THR << "=" << indexer_threads << '\n'
+            << CONS_THR << "=" << consolidation_threads << '\n'
+            << CPR << "=" << commit_interval_ms << '\n'
+            << CONSOLIDATION_INTERVAL << "=" << consolidation_interval_ms << '\n'
+            << BATCH_SIZE << "=" << batch_size << '\n'
+            << CONSOLIDATE_ALL << "=" << consolidate_all << '\n'
+            << ANALYZER_TYPE << "=" << analyzer_type << '\n'
+            << ANALYZER_OPTIONS << "=" << analyzer_options << '\n'
+            << SEGMENT_MEM_MAX << "=" << segment_mem_max << '\n';
 
   struct {
     std::condition_variable cond_;
@@ -475,14 +515,14 @@ int put(
   auto policy = irs::index_utils::consolidation_policy(consolidation_options);
 
   for (size_t i = consolidation_threads; i; --i) {
-    thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
+    thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, consolidation_interval_ms, &writer]()->void {
       irs::set_thread_name("consolidater");
 
       while (!batch_provider.done_.load()) {
         {
           auto lock = irs::make_unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
-              consolidation_cv.wait_for(lock, std::chrono::seconds(5))) {
+              consolidation_cv.wait_for(lock, std::chrono::milliseconds(consolidation_interval_ms))) {
             continue;
           }
         }
@@ -503,11 +543,11 @@ int put(
 
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
-    thread_pool.run([&batch_provider, &writer]()->void {
+    thread_pool.run([text_features, &analyzer_factory, &batch_provider, &writer](){
       irs::set_thread_name("indexer");
 
       std::vector<std::string> buf;
-      WikiDoc doc;
+      WikiDoc doc(analyzer_factory, text_features);
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
@@ -578,21 +618,38 @@ int put(const cmdline::parser& args) {
   const auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
+  const auto analyzer_type = args.exist(ANALYZER_TYPE)
+    ? args.get<std::string>(ANALYZER_TYPE)
+    : DEFAULT_ANALYZER_TYPE;
+  const auto analyzer_options = args.exist(ANALYZER_TYPE)
+    ? args.get<std::string>(ANALYZER_OPTIONS)
+    : DEFAULT_ANALYZER_OPTIONS;
+  const auto segment_mem_max = args.exist(SEGMENT_MEM_MAX)
+    ? args.get<size_t>(SEGMENT_MEM_MAX)
+    : DEFAULT_SEGMENT_MEM_MAX;
+  const auto consolidation_internval_ms = args.exist(CONSOLIDATION_INTERVAL)
+    ? args.get<size_t>(CONSOLIDATION_INTERVAL)
+    : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
 
+  std::fstream fin;
+  std::istream* in;
   if (args.exist(INPUT)) {
     const auto& file = args.get<std::string>(INPUT);
-    std::fstream in(file, std::fstream::in);
+    fin.open(file, std::fstream::in);
 
-    if (!in) {
+    if (!fin) {
       return 1;
     }
 
-    return put(path, dir_type, format, in, lines_max, indexer_threads,
-               consolidation_threads, commit_interval_ms, batch_size, consolidate);
+    in = &fin;
+  } else {
+    in = &std::cin;
   }
 
-  return put(path, dir_type, format, std::cin, lines_max, indexer_threads, 
-             consolidation_threads, commit_interval_ms, batch_size, consolidate);
+  return put(path, dir_type, format, analyzer_type, analyzer_options,
+             *in, lines_max, indexer_threads, consolidation_threads,
+             commit_interval_ms, consolidation_internval_ms,
+             batch_size, segment_mem_max, consolidate);
 }
 
 int put(int argc, char* argv[]) {
@@ -609,6 +666,10 @@ int put(int argc, char* argv[]) {
   cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
   cmdput.add(CONS_THR, 0, "Number of consolidation threads", false, size_t(0));
   cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
+  cmdput.add(CONSOLIDATION_INTERVAL, 0, "Consolidation interval (msec)", false, DEFAULT_CONSOLIDATION_INTERVAL_MSEC);
+  cmdput.add(ANALYZER_TYPE, 0, "Text analyzer type", false, DEFAULT_ANALYZER_TYPE);
+  cmdput.add(ANALYZER_OPTIONS, 0, "Text analyzer options", false, DEFAULT_ANALYZER_OPTIONS);
+  cmdput.add(SEGMENT_MEM_MAX, 0, "Max size of per-segment in-memory buffer", false, DEFAULT_SEGMENT_MEM_MAX);
 
   cmdput.parse(argc, argv);
 

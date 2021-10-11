@@ -27,99 +27,80 @@
 #include "store/fs_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "utils/file_utils.hpp"
 
 namespace tests {
 
-std::pair<std::shared_ptr<irs::directory>, std::string> async_directory(const test_base* test) {
+std::shared_ptr<irs::directory> memory_directory(
+    const test_base* /*test*/,
+    irs::directory_attributes attrs) {
+  return std::make_shared<irs::memory_directory>(std::move(attrs));
+}
+
+std::shared_ptr<irs::directory> fs_directory(
+    const test_base* test,
+    irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir(false);
-
-    impl = std::shared_ptr<irs::async_directory>(
-      new irs::async_directory(dir.utf8()),
-      [dir](irs::fs_directory* p) {
-        dir.remove();
-        delete p;
-    });
-  }
-
-  return std::make_pair(impl, "async");
-}
-
-std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*) {
-  return std::make_pair(
-    std::make_shared<irs::memory_directory>(),
-    "memory"
-  );
-}
-
-std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    dir.mkdir(false);
+    irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::fs_directory>(
-      new irs::fs_directory(dir.utf8()),
+      new irs::fs_directory(dir, std::move(attrs)),
       [dir](irs::fs_directory* p) {
-        dir.remove();
+        irs::file_utils::remove(dir.c_str());
         delete p;
     });
   }
 
-  return std::make_pair(impl, "fs");
+  return impl;
 }
 
-std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test) {
+std::shared_ptr<irs::directory> async_directory(
+    const test_base* test,
+    irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir(false);
+    irs::file_utils::mkdir(dir.c_str(), false);
 
-    impl = std::shared_ptr<irs::mmap_directory>(
-      new irs::mmap_directory(dir.utf8()),
-      [dir](irs::mmap_directory* p) {
-        dir.remove();
+    impl = std::shared_ptr<irs::async_directory>(
+      new irs::async_directory(dir, std::move(attrs)),
+      [dir](irs::fs_directory* p) {
+        irs::file_utils::remove(dir.c_str());
         delete p;
     });
   }
 
-  return std::make_pair(impl, "mmap");
+  return impl;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          directory_test_case_base
-// -----------------------------------------------------------------------------
+std::shared_ptr<irs::directory> mmap_directory(
+    const test_base* test,
+    irs::directory_attributes attrs) {
+  std::shared_ptr<irs::directory> impl;
 
-/*static*/ std::string directory_test_case_base::to_string(
-    const testing::TestParamInfo<tests::dir_factory_f>& info
-) {
-  return (*info.param)(nullptr).second;
-}
+  if (test) {
+    auto dir = test->test_dir();
 
-void directory_test_case_base::SetUp() {
-  test_base::SetUp();
+    dir /= "index";
+    irs::file_utils::mkdir(dir.c_str(), false);
 
-  auto* factory = GetParam();
-  ASSERT_NE(nullptr, factory);
+    impl = std::shared_ptr<irs::mmap_directory>(
+      new irs::mmap_directory(dir, std::move(attrs)),
+      [dir](irs::mmap_directory* p) {
+        irs::file_utils::remove(dir.c_str());
+        delete p;
+    });
+  }
 
-  dir_ = (*factory)(this).first;
-  ASSERT_NE(nullptr, dir_);
-}
-
-void directory_test_case_base::TearDown() {
-  dir_ = nullptr;
-  test_base::TearDown();
+  return impl;
 }
 
 } // tests
