@@ -63,6 +63,19 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     return false;
   }
 
+  // validate creation of sb_stemmer
+  irs::analysis::stemming_token_stream::stemmer_ptr stemmer;
+  stemmer.reset(
+    sb_stemmer_new(locale.getLanguage(), nullptr)); // defaults to utf-8
+
+  if (!stemmer) {
+    IR_FRMT_ERROR(
+      "Failed to instantiate sb_stemmer from locale '%s' "
+      "while constructing stemming_token_stream from VPack arguments",
+      get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+    return false;
+  }
+
   return true;
 }
 

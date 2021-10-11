@@ -63,11 +63,15 @@ class stemming_token_stream final
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
- private:
+private:
   struct stemmer_deleter {
     void operator()(sb_stemmer*) const noexcept;
   };
 
+public:
+  using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
+
+ private:
   using attributes = std::tuple<
     increment,
     offset,
@@ -76,7 +80,7 @@ class stemming_token_stream final
    attributes attrs_;
    options_t options_;
    std::string buf_;
-   std::unique_ptr<sb_stemmer, stemmer_deleter> stemmer_;
+   stemmer_ptr stemmer_;
    bool term_eof_;
 };
 

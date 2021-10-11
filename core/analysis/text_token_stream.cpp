@@ -91,6 +91,8 @@ struct text_token_stream::state_t {
     }
   };
 
+  using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
+
   icu::UnicodeString data;
   icu::UnicodeString token;
   const options_t& options;
@@ -99,7 +101,7 @@ struct text_token_stream::state_t {
   std::string tmp_buf; // used by processTerm(...)
   std::unique_ptr<icu::BreakIterator> break_iterator;
   const icu::Normalizer2* normalizer; // reusable object owned by ICU
-  std::unique_ptr<sb_stemmer, stemmer_deleter> stemmer;
+  stemmer_ptr stemmer;
   std::unique_ptr<icu::Transliterator> transliterator;
   ngram_state_t ngram;
   bytes_ref term;
@@ -620,6 +622,59 @@ bool parse_vpack_options(const VPackSlice slice,
 
       if (options.min_gram_set && options.max_gram_set) {
         return options.min_gram <= options.max_gram;
+      }
+    }
+
+    // validate creation of icu::Normalizer2
+    auto err = UErrorCode::U_ZERO_ERROR;
+    auto normalizer = icu::Normalizer2::getNFCInstance(err);
+    if (!U_SUCCESS(err) || !normalizer) {
+      IR_FRMT_ERROR(
+        "Failed to instantiate icu::Normalizer2 from locale '%s' "
+        "while constructing text_token_stream from VPack arguments",
+        get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+      return false;
+    }
+
+    // validate creation of icu::Transliterator
+    const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
+    std::unique_ptr<icu::Transliterator> transliterator;
+
+    transliterator.reset(icu::Transliterator::createInstance(
+      collationRule, UTransDirection::UTRANS_FORWARD, err));
+
+    if (!U_SUCCESS(err) || !transliterator) {
+      IR_FRMT_ERROR(
+        "Failed to instantiate icu::Transliterator from locale '%s' "
+        "while constructing text_token_stream from VPack arguments",
+        get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+      return false;
+    }
+
+    // validate creation of icu::BreakIterator
+    std::unique_ptr<icu::BreakIterator> break_iterator;
+    break_iterator.reset(icu::BreakIterator::createWordInstance(options.locale, err));
+
+    if (!U_SUCCESS(err) || !break_iterator) {
+      IR_FRMT_ERROR(
+        "Failed to instantiate icu::BreakIterator from locale '%s' "
+        "while constructing text_token_stream from VPack arguments",
+        get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+      return false;
+    }
+
+    // validate creation of sb_stemmer
+    if (options.stemming) {
+      irs::analysis::text_token_stream::state_t::stemmer_ptr stemmer;
+      stemmer.reset(
+        sb_stemmer_new(options.locale.getLanguage(), nullptr)); // defaults to utf-8
+
+      if (!stemmer) {
+        IR_FRMT_ERROR(
+          "Failed to instantiate sb_stemmer from locale '%s' "
+          "while constructing text_token_stream from VPack arguments",
+          get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+        return false;
       }
     }
 
