@@ -128,7 +128,6 @@ class IRESEARCH_API index_file_refs final {
     return refs_.remove(key);
   }
 
-  // cppcheck-suppress shadowFunction
   counter_t& refs() noexcept { return refs_; }
 
  private:
