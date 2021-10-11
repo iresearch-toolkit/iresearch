@@ -72,17 +72,17 @@ class IRESEARCH_API memory_file
   }
 
   memory_file& operator>>(data_output& out) {
-    auto curr_length = len_;
+    auto len = len_;
 
-    for (size_t i = 0, count = buffer_count(); i < count && curr_length; ++i) {
+    for (size_t i = 0, count = buffer_count(); i < count && len; ++i) {
       auto& buffer = get_buffer(i);
-      auto to_copy = (std::min)(curr_length, buffer.size);
+      auto to_copy = (std::min)(len, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
-      curr_length -= to_copy;
+      len -= to_copy;
     }
 
-    assert(!curr_length); // everything copied
+    assert(!len); // everything copied
 
     return *this;
   }

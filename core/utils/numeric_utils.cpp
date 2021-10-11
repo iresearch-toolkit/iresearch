@@ -144,12 +144,14 @@ typename EncodeTraits::type decode(const byte_type* in) {
 // possible fix for cppcheck warnings:
 // return value ^ ( -(uint32_t(value) >> 31) & INT32_C(0x7FFFFFFF));
 inline int32_t make_sortable32(int32_t value) {
+  // cppcheck-suppress 	shiftTooManyBitsSigned
   return value ^ ((value >> 31) & INT32_C(0x7FFFFFFF));
 }
 
 // possible fix for cppcheck warnings:
 // return value ^ ( -(uint64_t(value) >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 inline int64_t make_sortable64(int64_t value) {
+  // cppcheck-suppress 	shiftTooManyBitsSigned
   return value ^ ((value >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 }
 

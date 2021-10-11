@@ -224,7 +224,7 @@ class parametric_states {
     }
 
     bool operator()(const parametric_state& state) const noexcept {
-      size_t curr_seed = parametric_state_hash::seed();
+      size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
         // cppcheck-suppress unreadVariable
         const size_t hash = absl::hash_internal::CityHashState::hash(
@@ -232,9 +232,9 @@ class parametric_states {
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
 
-        curr_seed = irs::hash_combine(curr_seed, hash);
+        value = irs::hash_combine(value, hash);
       }
-      return curr_seed;
+      return value;
     }
 
     static const void* SEED;
@@ -662,28 +662,27 @@ automaton make_levenshtein_automaton(
 
       const size_t offset = transition.first ? transition.second + state.offset : 0;
       assert(transition.first*num_offsets + offset < transitions.size());
-      auto& curr_to = transitions[transition.first*num_offsets + offset];
+      auto& to = transitions[transition.first*num_offsets + offset];
 
       if (INVALID_STATE == transition.first) {
-        curr_to = INVALID_STATE;
-      } else if (fst::kNoStateId == curr_to) {
-        curr_to = a.AddState();
+        to = INVALID_STATE;
+      } else if (fst::kNoStateId == to) {
+        to = a.AddState();
 
-        const auto curr_distance = description.distance(transition.first, utf8_size - offset);
-
-        if (curr_distance <= description.max_distance()) {
-          a.SetFinal(curr_to, {true, curr_distance});
+        if (const auto distance = description.distance(transition.first, utf8_size - offset)
+            <= description.max_distance()) {
+          a.SetFinal(to, {true, distance});
         }
 
-        stack.emplace_back(offset, transition.first, curr_to);
+        stack.emplace_back(offset, transition.first, to);
       }
 
-      if (chi && curr_to != default_state) {
-        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), curr_to);
+      if (chi && to != default_state) {
+        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
         ascii &= (entry.size == 1);
       } else {
-        assert(fst::kNoStateId == default_state || curr_to == default_state);
-        default_state = curr_to;
+        assert(fst::kNoStateId == default_state || to == default_state);
+        default_state = to;
       }
     }
 

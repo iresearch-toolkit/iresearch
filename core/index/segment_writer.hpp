@@ -357,12 +357,12 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto curr_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 
-    return store(curr_name, doc_id, field);
+    return store(field_name, doc_id, field);
   }
 
   template<typename Field>

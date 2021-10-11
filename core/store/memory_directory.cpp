@@ -229,9 +229,7 @@ byte_type memory_index_input::read_byte() {
 }
 
 size_t memory_index_input::read_bytes(byte_type* b, size_t left) {  
-  const size_t curr_length = left; // initial length
-  // cppcheck-suppress variableScope
-  size_t copied;
+  const size_t bytes_left = left; // initial length
   while (left) {
     if (begin_ >= end_) {
       if (eof()) {
@@ -240,14 +238,14 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
       switch_buffer(file_pointer());
     }
 
-    copied = std::min(size_t(std::distance(begin_, end_)), left);
+    size_t copied = std::min(size_t(std::distance(begin_, end_)), left);
     std::memcpy(b, begin_, sizeof(byte_type) * copied);
 
     left -= copied;
     begin_ += copied;
     b += copied;
   }
-  return curr_length - left;
+  return bytes_left - left;
 }
 
 int16_t memory_index_input::read_short() {

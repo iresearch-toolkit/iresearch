@@ -308,7 +308,7 @@ class index_block {
       return CP_DENSE | CP_FIXED;
     }
 
-    const auto curr_size = this->size();
+    const auto num_elements = this->size();
 
     ColumnProperty props = CP_SPARSE;
 
@@ -316,8 +316,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil32(curr_size, packed::BLOCK_SIZE_32);
-      assert(block_size >= curr_size);
+      const auto block_size = math::ceil32(num_elements, packed::BLOCK_SIZE_32);
+      assert(block_size >= num_elements);
 
       assert(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
@@ -335,8 +335,8 @@ class index_block {
     {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
-      const auto block_size = math::ceil64(curr_size, packed::BLOCK_SIZE_64);
-      assert(block_size >= curr_size);
+      const auto block_size = math::ceil64(num_elements, packed::BLOCK_SIZE_64);
+      assert(block_size >= num_elements);
 
       assert(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
@@ -350,7 +350,7 @@ class index_block {
       }
     }
 
-    flushed_ += curr_size;
+    flushed_ += num_elements;
 
     // reset pointers and clear data
     key_ = keys_;
@@ -872,35 +872,33 @@ class sparse_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref curr_value;
+    bytes_ref payload;
 
     // visit first [begin;end-1) blocks
-    doc_id_t key;
-    size_t vbegin; // cppcheck-suppress variableScope
     auto begin = std::begin(index_);
     for (const auto end = end_-1; begin != end;) { // -1 for tail item
-      key = begin->key;
-      vbegin = begin->offset;
+      const doc_id_t key = begin->key;
+      const size_t vbegin = begin->offset;
 
       ++begin;
 
       assert(begin->offset >= vbegin);
-      curr_value = bytes_ref(
+      payload = bytes_ref(
         data_.c_str() + vbegin, // start
         begin->offset - vbegin); // length
 
-      if (!visitor(key, curr_value)) {
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= begin->offset);
-    curr_value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + begin->offset, // start
       data_.size() - begin->offset); // length
 
-    return visitor(begin->key, curr_value);
+    return visitor(begin->key, payload);
   }
 
  private:
@@ -1047,34 +1045,32 @@ class dense_block : util::noncopyable {
   }
 
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
-    bytes_ref curr_value;
+    bytes_ref payload;
 
     doc_id_t key = base_; // visit first [begin;end-1) blocks
-    // cppcheck-suppress variableScope
-    size_t vbegin;
     auto begin = std::begin(index_);
     for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
-      vbegin = *begin;
+      size_t vbegin = *begin;
 
       ++begin;
 
       assert(*begin >= vbegin);
-      curr_value = bytes_ref(
+      payload = bytes_ref(
         data_.c_str() + vbegin, // start
         *begin - vbegin); // length
 
-      if (!visitor(key, curr_value)) {
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= *begin);
-    curr_value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + *begin, // start
       data_.size() - *begin); // length
 
-    return visitor(key, curr_value);
+    return visitor(key, payload);
   }
 
  private:
@@ -1221,25 +1217,25 @@ class dense_fixed_offset_block : util::noncopyable {
   bool visit(const columnstore_reader::values_reader_f& visitor) const {
     assert(size_);
 
-    bytes_ref curr_value;
+    bytes_ref payload;
 
     // visit first 'size_-1' blocks
     doc_id_t key = base_key_;
     size_t offset = base_offset_;
     for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      curr_value = bytes_ref(data_.c_str() + offset, avg_length_);
-      if (!visitor(key, curr_value)) {
+      payload = bytes_ref(data_.c_str() + offset, avg_length_);
+      if (!visitor(key, payload)) {
         return false;
       }
     }
 
     // visit tail block
     assert(data_.size() >= offset);
-    curr_value = bytes_ref(
+    payload = bytes_ref(
       data_.c_str() + offset, // start
       data_.size() - offset); // length
 
-    return visitor(key, curr_value);
+    return visitor(key, payload);
   }
 
  private:
@@ -2261,10 +2257,12 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
-      auto& curr_value = std::get<document>(attrs_);
+
+      // cppcheck-suppress shadowFunction
+      auto& value = std::get<document>(attrs_);
 
       if (doc < min_) {
-        if (!doc_limits::valid(curr_value.value)) {
+        if (!doc_limits::valid(value.value)) {
           next();
         }
 
@@ -2274,20 +2272,21 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       min_ = doc;
       next();
 
-      return curr_value.value;
+      return value.value;
     }
 
     virtual bool next() noexcept override {
-      auto& curr_value = std::get<document>(attrs_);
+      // cppcheck-suppress shadowFunction
+      auto& value = std::get<document>(attrs_);
 
       if (min_ > max_) {
-        curr_value.value = doc_limits::eof();
+        value.value = doc_limits::eof();
 
         return false;
       }
 
 
-      curr_value.value = min_++;
+      value.value = min_++;
 
       return true;
     }
