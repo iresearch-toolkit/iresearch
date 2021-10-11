@@ -982,7 +982,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // Create ICU UnicodeString
-  if (data.size() > std::numeric_limits<int32_t>::max()) {
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false;
   }
 
