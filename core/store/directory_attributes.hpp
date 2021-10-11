@@ -129,9 +129,7 @@ class IRESEARCH_API index_file_refs final {
   }
 
   // cppcheck-suppress shadowFunction
-  counter_t& refs() noexcept {
-    return refs_;
-  }
+  counter_t& refs() noexcept { return refs_; }
 
  private:
   counter_t refs_;
