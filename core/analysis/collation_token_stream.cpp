@@ -38,20 +38,6 @@ using namespace irs;
 
 constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
-bool init_from_locale(const icu::Locale& locale,
-                      std::unique_ptr<icu::Collator>& collator,
-                      UErrorCode& err) {
-
-  collator.reset(icu::Collator::createInstance(locale, err));
-  return collator != nullptr && U_SUCCESS(err);
-}
-
-bool init_from_locale(const icu::Locale& locale,
-                      std::unique_ptr<icu::Collator>& collator) {
-  UErrorCode err = UErrorCode::U_ZERO_ERROR;
-  return init_from_locale(locale, collator, err);
-}
-
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
     IR_FRMT_WARN(
@@ -76,18 +62,15 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   }
 
   // validate creation of icu::Collator
+  auto err = UErrorCode::U_ZERO_ERROR;
   std::unique_ptr<icu::Collator> collator;
-  UErrorCode error;
-  if (!init_from_locale(locale, collator, error)) {
-    IR_FRMT_WARN(
-      "Failed to instantiate icu::Collator from locale '%s' "
-      "while constructing collation_token_stream from VPack arguments",
-      locale_name.c_str());
-  }
-  if (error != 0) {
+  collator.reset(icu::Collator::createInstance(locale, err));
+
+  if (!U_SUCCESS(err) || !collator) {
     IR_FRMT_WARN(
       "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
-      locale_name.c_str(), u_errorName(error));
+      locale_name.c_str(), u_errorName(err));
+    return false;
   }
 
   return true;
@@ -262,7 +245,12 @@ collation_token_stream::collation_token_stream(
 
 bool collation_token_stream::reset(const string_ref& data) {
   if (!state_->collator) {
-    if (!init_from_locale(state_->options.locale, state_->collator)) {
+    auto err = UErrorCode::U_ZERO_ERROR;
+    state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
+
+    if (!U_SUCCESS(err) || !state_->collator) {
+      state_->collator.reset();
+
       return false;
     }
   }
