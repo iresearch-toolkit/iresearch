@@ -184,7 +184,7 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  byte_ref_iterator(const irs::bytes_ref& in)
+  explicit byte_ref_iterator(const irs::bytes_ref& in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
 
@@ -513,7 +513,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         return std::nullopt;
       };
 
-      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) { // cppcheck-suppress syntaxError
+      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
         return std::move(func).value();
       }
 
