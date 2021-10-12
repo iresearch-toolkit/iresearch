@@ -48,7 +48,7 @@ bool init_from_locale(const icu::Locale& locale,
 
 bool init_from_locale(const icu::Locale& locale,
                       std::unique_ptr<icu::Collator>& collator) {
-  UErrorCode err;
+  UErrorCode err = UErrorCode::U_ZERO_ERROR;
   return init_from_locale(locale, collator, err);
 }
 

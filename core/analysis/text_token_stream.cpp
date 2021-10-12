@@ -98,7 +98,7 @@ struct text_token_stream::state_t {
     const icu::Normalizer2* normalizer; // reusable object owned by ICU
     std::unique_ptr<icu::Transliterator> transliterator;
     std::unique_ptr<icu::BreakIterator> break_iterator;
-    irs::analysis::text_token_stream::state_t::stemmer_ptr stemmer;
+    stemmer_ptr stemmer;
   };
 
   icu::UnicodeString data;
@@ -688,7 +688,7 @@ bool parse_vpack_options(const VPackSlice slice,
         "while constructing text_token_stream from VPack arguments",
         get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
     }
-    if (error < 0) { // warning, not a error
+    if (error != 0) {
       IR_FRMT_WARN(
         "Warning while instantiation of text_token_stream from locale '%s' : '%s'",
         get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)), u_errorName(error));
