@@ -630,7 +630,6 @@ automaton make_levenshtein_automaton(
   }
 
   // check if start state is final
-  // cppcheck-suppress syntaxError
   if (const auto distance = description.distance(1, utf8_size);
       distance <= description.max_distance()) {
     a.SetFinal(start_state, {true, distance});
