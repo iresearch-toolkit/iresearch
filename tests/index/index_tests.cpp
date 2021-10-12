@@ -14135,14 +14135,12 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      tests::mmap_directory,
-      tests::memory_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_14_values
-  ),
-  tests::to_string
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_14_values),
+  index_test_case_14::to_string
 );
 
 INSTANTIATE_TEST_SUITE_P(
