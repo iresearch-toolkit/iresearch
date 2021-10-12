@@ -103,7 +103,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return (lhs.transpose | !rhs.transpose)
+  return (lhs.transpose | (!rhs.transpose))
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -222,16 +222,16 @@ class parametric_states {
     }
 
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = parametric_state_hash::seed();
+      size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
           size_t(pos.transpose));
 
-        seed = irs::hash_combine(seed, hash);
+        value = irs::hash_combine(value, hash);
       }
-      return seed;
+      return value;
     }
 
     static const void* SEED;
@@ -630,9 +630,9 @@ automaton make_levenshtein_automaton(
   }
 
   // check if start state is final
-  const auto distance = description.distance(1, utf8_size);
-
-  if (distance <= description.max_distance()) {
+  // cppcheck-suppress syntaxError
+  if (const auto distance = description.distance(1, utf8_size);
+      distance <= description.max_distance()) {
     a.SetFinal(start_state, {true, distance});
   }
 
@@ -664,9 +664,8 @@ automaton make_levenshtein_automaton(
       } else if (fst::kNoStateId == to) {
         to = a.AddState();
 
-        const auto distance = description.distance(transition.first, utf8_size - offset);
-
-        if (distance <= description.max_distance()) {
+        if (const auto distance = description.distance(transition.first, utf8_size - offset);
+            distance <= description.max_distance()) {
           a.SetFinal(to, {true, distance});
         }
 
