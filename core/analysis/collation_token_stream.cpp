@@ -66,7 +66,13 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   std::unique_ptr<icu::Collator> collator;
   collator.reset(icu::Collator::createInstance(locale, err));
 
-  if (!U_SUCCESS(err) || !collator) {
+  if (!collator) {
+    IR_FRMT_WARN(
+      "Can't instantiate icu::Collator from locale '%s'",
+      locale_name.c_str());
+    return false;
+  }
+  if (err != UErrorCode::U_ZERO_ERROR) {
     IR_FRMT_WARN(
       "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
       locale_name.c_str(), u_errorName(err));

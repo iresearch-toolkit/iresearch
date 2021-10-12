@@ -95,12 +95,13 @@ struct icu_objects {
 
 };
 
-struct text_token_stream::state_t : icu_objects{
+struct text_token_stream::state_t : icu_objects {
   struct ngram_state_t {
     const byte_type* it{nullptr}; // iterator
     uint32_t length{0};
   };
 
+  // indicates that 'icu_objects' struct initialized
   bool icu_inited{false};
   icu::UnicodeString data;
   icu::UnicodeString token;
@@ -446,23 +447,11 @@ const frozen::unordered_map<
   { "upper", analysis::text_token_stream::case_convert_t::UPPER },
 };
 
-bool init_from_locale(const analysis::text_token_stream::options_t& options,
+bool init_from_options(const analysis::text_token_stream::options_t& options,
                       analysis::icu_objects* objects,
                       bool print_errors) {
 
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
-
-  // lambda for printing warnings regarding to UErrorCode
-  auto error_printer = [&options, print_errors](UErrorCode& error) {
-    if (print_errors && !U_SUCCESS(error)) {
-      IR_FRMT_WARN(
-        "Warning while instantiation of text_token_stream from locale '%s' : '%s'",
-        options.locale.getName(), u_errorName(error));
-      return false;
-    }
-
-    return true;
-  };
 
   // reusable object owned by ICU
   objects->normalizer = icu::Normalizer2::getNFCInstance(err);
@@ -470,10 +459,16 @@ bool init_from_locale(const analysis::text_token_stream::options_t& options,
   if (!U_SUCCESS(err) || !objects->normalizer) {
     objects->normalizer = nullptr;
 
-    return error_printer(err);
+    if (print_errors) {
+      IR_FRMT_WARN(
+        "Warning while instantiation icu::Normalizer2 for text_token_stream from locale '%s' : '%s'",
+        options.locale.getName(), u_errorName(err));
+    }
+
+    return false;
   }
 
-  if (!options.accent && !objects->transliterator) {
+  if (!options.accent) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
@@ -484,24 +479,34 @@ bool init_from_locale(const analysis::text_token_stream::options_t& options,
     if (!U_SUCCESS(err) || !objects->transliterator) {
       objects->transliterator.reset();
 
-      return error_printer(err);
+      if (print_errors) {
+        IR_FRMT_WARN(
+          "Warning while instantiation icu::Transliterator for text_token_stream from locale '%s' : '%s'",
+          options.locale.getName(), u_errorName(err));
+      }
+
+      return false;
     }
   }
 
-  if (!objects->break_iterator) {
-    // reusable object owned by *this
-    objects->break_iterator.reset(
-      icu::BreakIterator::createWordInstance(options.locale, err));
+  // reusable object owned by *this
+  objects->break_iterator.reset(
+    icu::BreakIterator::createWordInstance(options.locale, err));
 
-    if (!U_SUCCESS(err) || !objects->break_iterator) {
-      objects->break_iterator.reset();
+  if (!U_SUCCESS(err) || !objects->break_iterator) {
+    objects->break_iterator.reset();
 
-      return error_printer(err);
+    if (print_errors) {
+      IR_FRMT_WARN(
+        "Warning while instantiation icu::BreakIterator for text_token_stream from locale '%s' : '%s'",
+        options.locale.getName(), u_errorName(err));
     }
+
+    return false;
   }
 
   // optional since not available for all locales
-  if (options.stemming && !objects->stemmer) {
+  if (options.stemming) {
     // reusable object owned by *this
     objects->stemmer.reset(
       sb_stemmer_new(options.locale.getLanguage(),
@@ -511,7 +516,6 @@ bool init_from_locale(const analysis::text_token_stream::options_t& options,
       IR_FRMT_WARN(
         "Can not create stemmer for text_token_stream from locale '%s'",
         options.locale.getName());
-      return false;
     }
   }
 
@@ -702,7 +706,7 @@ bool parse_vpack_options(const VPackSlice slice,
     }
 
     analysis::icu_objects obj;
-    init_from_locale(options, &obj, true);
+    init_from_options(options, &obj, true);
 
     return true;
   } catch(const VPackException& ex) {
@@ -1014,7 +1018,12 @@ bool text_token_stream::reset(const string_ref& data) {
   offset.start = std::numeric_limits<uint32_t>::max();
   offset.end = std::numeric_limits<uint32_t>::max();
 
-  init_from_locale(state_->options, state_.get(), false);
+  if (!state_->icu_inited) {
+    if (!init_from_options(state_->options, state_.get(), false)) {
+      return false;
+    }
+    state_->icu_inited = true;
+  }
 
   // Create ICU UnicodeString
   if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
