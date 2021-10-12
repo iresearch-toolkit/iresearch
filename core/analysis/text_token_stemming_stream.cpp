@@ -81,7 +81,6 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
       "Failed to instantiate sb_stemmer from locale '%s' "
       "while constructing stemming_token_stream from VPack arguments",
       locale_name.c_str());
-    return false;
   }
 
   return true;
