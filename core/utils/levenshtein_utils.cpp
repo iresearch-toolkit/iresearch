@@ -120,11 +120,10 @@ class parametric_state {
   }
 
   bool emplace(const position& new_pos) {
-    for (auto& pos : positions_) {
-      if (subsumes(pos, new_pos)) {
-        // nothing to do
-        return false;
-      }
+    if (std::any_of(std::begin(positions_), std::end(positions_),
+                    [&new_pos](auto& pos){ return subsumes(pos, new_pos); })) {
+      // nothing to do
+      return false;
     }
 
     if (!positions_.empty()) {
@@ -224,6 +223,7 @@ class parametric_states {
     bool operator()(const parametric_state& state) const noexcept {
       size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
+        // cppcheck-suppress unreadVariable
         const size_t hash = absl::hash_internal::CityHashState::hash(
           size_t(pos.offset) << 33  |
           size_t(pos.distance) << 1 |
