@@ -36,6 +36,16 @@ using namespace irs;
 
 constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
+bool init_from_locale(const icu::Locale& locale,
+                      irs::analysis::stemming_token_stream::stemmer_ptr& stemmer) {
+
+  // validate creation of sb_stemmer
+  stemmer.reset(
+    sb_stemmer_new(locale.getLanguage(), nullptr)); // defaults to utf-8
+
+  return stemmer != nullptr;
+}
+
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
     IR_FRMT_WARN(
@@ -65,14 +75,12 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 
   // validate creation of sb_stemmer
   irs::analysis::stemming_token_stream::stemmer_ptr stemmer;
-  stemmer.reset(
-    sb_stemmer_new(locale.getLanguage(), nullptr)); // defaults to utf-8
 
-  if (!stemmer) {
-    IR_FRMT_ERROR(
+  if (!init_from_locale(locale, stemmer)) {
+    IR_FRMT_WARN(
       "Failed to instantiate sb_stemmer from locale '%s' "
       "while constructing stemming_token_stream from VPack arguments",
-      get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
+      locale_name.c_str());
     return false;
   }
 
@@ -244,8 +252,7 @@ bool stemming_token_stream::next() {
 
 bool stemming_token_stream::reset(const string_ref& data) {
   if (!stemmer_) {
-    stemmer_.reset(
-      sb_stemmer_new(options_.locale.getLanguage(), nullptr)); // defaults to utf-8
+    init_from_locale(options_.locale, stemmer_);
   }
 
   auto& term = std::get<term_attribute>(attrs_);

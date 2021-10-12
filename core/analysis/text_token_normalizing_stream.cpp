@@ -175,32 +175,6 @@ bool parse_vpack_options(
         options.accent = accent_slice.getBool();
       }
 
-      // validate creation of icu::Normalizer2
-      auto err = UErrorCode::U_ZERO_ERROR;
-      auto normalizer = icu::Normalizer2::getNFCInstance(err);
-      if (!U_SUCCESS(err) || !normalizer) {
-        IR_FRMT_ERROR(
-          "Failed to instantiate icu::Normalizer2 from locale '%s' "
-          "while constructing text_token_stream from VPack arguments",
-          get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
-        return false;
-      }
-
-      // validate creation of icu::Transliterator
-      const icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
-      std::unique_ptr<icu::Transliterator> transliterator;
-
-      transliterator.reset(icu::Transliterator::createInstance(
-        collationRule, UTransDirection::UTRANS_FORWARD, err));
-
-      if (!U_SUCCESS(err) || !transliterator) {
-        IR_FRMT_ERROR(
-          "Failed to instantiate icu::Transliterator from locale '%s' "
-          "while constructing text_token_stream from VPack arguments",
-          get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)));
-        return false;
-      }
-
       return true;
     }
 
@@ -406,7 +380,7 @@ bool normalizing_token_stream::reset(const string_ref& data) {
   }
 
   // convert input string for use with ICU
-  if (data.size() > std::numeric_limits<int32_t>::max()) {
+  if (data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false;
   }
 
