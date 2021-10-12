@@ -14,7 +14,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Andrei Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"

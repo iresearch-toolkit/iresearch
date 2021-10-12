@@ -14157,6 +14157,29 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_14::to_string
 );
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+namespace {
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_15_values = ::testing::Values(tests::format_info{"1_5", "1_0"},
+                                                         tests::format_info{"1_5simd", "1_0"});
+#else
+const auto index_test_case_15_values = ::testing::Values(tests::format_info{"1_5", "1_0"});
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  index_test_15,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_15_values),
+  index_test_case_14::to_string
+);
+
 class index_test_case_10 : public tests::index_test_base { };
 
 TEST_P(index_test_case_10, commit_payload) {

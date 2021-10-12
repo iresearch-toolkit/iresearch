@@ -3518,8 +3518,6 @@ REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
 
 class format14 : public format13 {
  public:
-  using format_traits = ::format_traits<true, pos_limits::invalid()>;
-
   static constexpr string_ref type_name() noexcept {
     return "1_4";
   }
@@ -3527,9 +3525,6 @@ class format14 : public format13 {
   static ptr make();
 
   format14() noexcept : format13(irs::type<format14>::get()) { }
-
-  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
 
   virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
@@ -3543,15 +3538,6 @@ class format14 : public format13 {
 };
 
 const ::format14 FORMAT14_INSTANCE;
-
-irs::postings_writer::ptr format14::get_postings_writer(bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::WAND, consolidation);
-}
-
-irs::postings_reader::ptr format14::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
-}
 
 irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -3576,7 +3562,49 @@ columnstore_reader::ptr format14::get_columnstore_reader() const {
 REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                      format12sse
+// --SECTION--                                                         format15
+// ----------------------------------------------------------------------------
+
+class format15 : public format14 {
+ public:
+  using format_traits = ::format_traits<true, pos_limits::invalid()>;
+
+  static constexpr string_ref type_name() noexcept {
+    return "1_5";
+  }
+
+  static ptr make();
+
+  format15() noexcept : format14(irs::type<format15>::get()) { }
+
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
+
+ protected:
+  explicit format15(const irs::type_info& type) noexcept
+    : format14(type) {
+  }
+};
+
+const ::format15 FORMAT15_INSTANCE;
+
+irs::postings_writer::ptr format15::get_postings_writer(bool consolidation) const {
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::WAND, consolidation);
+}
+
+irs::postings_reader::ptr format15::get_postings_reader() const {
+  return memory::make_unique<::postings_reader<format_traits>>();
+}
+
+/*static*/ irs::format::ptr format15::make() {
+  return irs::format::ptr(irs::format::ptr(), &FORMAT15_INSTANCE);
+}
+
+REGISTER_FORMAT_MODULE(::format15, MODULE_NAME);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                     format12simd
 // ----------------------------------------------------------------------------
 
 #ifdef IRESEARCH_SSE2
@@ -3651,7 +3679,7 @@ REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                      format13sse
+// --SECTION--                                                     format13simd
 // ----------------------------------------------------------------------------
 
 class format13simd : public format13 {
@@ -3693,7 +3721,7 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
 REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                         format14
+// --SECTION--                                                     format14simd
 // ----------------------------------------------------------------------------
 
 class format14simd : public format13simd {
@@ -3708,9 +3736,6 @@ class format14simd : public format13simd {
 
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) { }
 
-  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
-
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override;
 
@@ -3723,15 +3748,6 @@ class format14simd : public format13simd {
 };
 
 const ::format14simd FORMAT14SIMD_INSTANCE;
-
-irs::postings_writer::ptr format14simd::get_postings_writer(bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::WAND_SSE, consolidation);
-}
-
-irs::postings_reader::ptr format14simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
-}
 
 irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -3755,6 +3771,48 @@ columnstore_reader::ptr format14simd::get_columnstore_reader() const {
 
 REGISTER_FORMAT_MODULE(::format14simd, MODULE_NAME);
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                     format15simd
+// ----------------------------------------------------------------------------
+
+class format15simd : public format14simd {
+ public:
+  using format_traits = format_traits_sse4<true, pos_limits::invalid()>;
+
+  static constexpr string_ref type_name() noexcept {
+    return "1_5simd";
+  }
+
+  static ptr make();
+
+  format15simd() noexcept : format14simd(irs::type<format15simd>::get()) { }
+
+  virtual irs::postings_writer::ptr get_postings_writer(bool consolidation) const override;
+  virtual irs::postings_reader::ptr get_postings_reader() const override;
+
+ protected:
+  explicit format15simd(const irs::type_info& type) noexcept
+    : format14simd(type) {
+  }
+};
+
+const ::format14simd FORMAT15SIMD_INSTANCE;
+
+irs::postings_writer::ptr format15simd::get_postings_writer(bool consolidation) const {
+  return memory::make_unique<::postings_writer<format_traits>>(
+    PostingsFormat::WAND_SSE, consolidation);
+}
+
+irs::postings_reader::ptr format15simd::get_postings_reader() const {
+  return memory::make_unique<::postings_reader<format_traits>>();
+}
+
+/*static*/ irs::format::ptr format15simd::make() {
+  return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
+}
+
+REGISTER_FORMAT_MODULE(::format15simd, MODULE_NAME);
+
 #endif // IRESEARCH_SSE2
 
 }
@@ -3769,10 +3827,12 @@ void init() {
   REGISTER_FORMAT(::format12);
   REGISTER_FORMAT(::format13);
   REGISTER_FORMAT(::format14);
+  REGISTER_FORMAT(::format15);
 #ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12simd);
   REGISTER_FORMAT(::format13simd);
   REGISTER_FORMAT(::format14simd);
+  REGISTER_FORMAT(::format15simd);
 #endif // IRESEARCH_SSE2
 #endif // IRESEARCH_DLL
 }

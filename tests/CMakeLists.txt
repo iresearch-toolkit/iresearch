@@ -170,6 +170,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_12_tests.cpp
   ./formats/formats_13_tests.cpp
   ./formats/formats_14_tests.cpp
+  ./formats/formats_15_tests.cpp
   ./iql/parser_test.cpp
 )
 

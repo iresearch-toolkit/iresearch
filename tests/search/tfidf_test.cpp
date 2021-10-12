@@ -1436,7 +1436,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::memory_directory>,
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_4")),
+    ::testing::Values("1_4", "1_5")),
   tfidf_test_case_14::to_string
 );
 
