@@ -213,7 +213,6 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
 
   decltype(queue_) empty;
   {
-    // cppcheck-suppress unreadVariable
     auto lock = make_unique_lock(shared_state_->lock);
 
     // wait for all threads to terminate
