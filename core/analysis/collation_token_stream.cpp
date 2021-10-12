@@ -72,10 +72,15 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
       locale_name.c_str());
     return false;
   }
+
+  // print warn message
   if (err != UErrorCode::U_ZERO_ERROR) {
     IR_FRMT_WARN(
       "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
       locale_name.c_str(), u_errorName(err));
+  }
+
+  if (!U_SUCCESS(err)) {
     return false;
   }
 
