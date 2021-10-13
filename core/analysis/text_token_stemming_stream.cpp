@@ -63,6 +63,16 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     return false;
   }
 
+  // validate creation of sb_stemmer
+  stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr); // defaults to utf-8
+
+  if (!stemmer) {
+    IR_FRMT_WARN(
+      "Failed to instantiate sb_stemmer from locale '%s' "
+      "while constructing stemming_token_stream from VPack arguments",
+      locale_name.c_str());
+  }
+
   return true;
 }
 
@@ -200,11 +210,6 @@ REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
 
 namespace iresearch {
 namespace analysis {
-
-void stemming_token_stream::stemmer_deleter::operator()(
-    sb_stemmer* p) const noexcept {
-  sb_stemmer_delete(p);
-}
 
 stemming_token_stream::stemming_token_stream(const options_t& options)
   : analyzer{irs::type<stemming_token_stream>::get()},

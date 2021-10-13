@@ -61,6 +61,29 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     return false;
   }
 
+  // validate creation of icu::Collator
+  auto err = UErrorCode::U_ZERO_ERROR;
+  std::unique_ptr<icu::Collator> collator;
+  collator.reset(icu::Collator::createInstance(locale, err));
+
+  if (!collator) {
+    IR_FRMT_WARN(
+      "Can't instantiate icu::Collator from locale '%s'",
+      locale_name.c_str());
+    return false;
+  }
+
+  // print warn message
+  if (err != UErrorCode::U_ZERO_ERROR) {
+    IR_FRMT_WARN(
+      "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
+      locale_name.c_str(), u_errorName(err));
+  }
+
+  if (!U_SUCCESS(err)) {
+    return false;
+  }
+
   return true;
 }
 
