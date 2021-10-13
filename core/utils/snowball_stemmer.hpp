@@ -20,37 +20,23 @@
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ICU_LOCALE_UTILS_HPP
-#define ICU_LOCALE_UTILS_HPP
+#ifndef SNOWBALL_STEMMER_H
+#define SNOWBALL_STEMMER_H
 
-#include <unicode/locid.h>
+#include <memory>
 
-#include "string.hpp"
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+struct sb_stemmer;
 
 namespace iresearch {
-namespace icu_locale_utils {
 
-enum class Unicode { UTF8, NON_UTF8 };
+struct stemmer_deleter {
+   void operator()(sb_stemmer* p) const noexcept;
+};
 
-bool get_locale_from_vpack(const VPackSlice slice,
-                           icu::Locale& locale,
-                           Unicode* unicode = nullptr);
+using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
 
-bool get_locale_from_str(irs::string_ref locale_str,
-                         icu::Locale& locale,
-                         bool is_new_format,
-                         Unicode* unicode = nullptr,
-                         std::string* encoding = nullptr);
+stemmer_ptr make_stemmer_ptr(const char * algorithm, const char * charenc);
 
-bool locale_to_vpack(const icu::Locale& locale,
-                     VPackBuilder* const builder,
-                     const Unicode* unicode = nullptr);
-
-} // icu_locale_utils
 } // iresearch
 
-
-#endif // ICU_LOCALE_UTILS_HPP
+#endif // SNOWBALL_STEMMER_H
