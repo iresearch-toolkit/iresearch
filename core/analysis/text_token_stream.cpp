@@ -38,7 +38,6 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-#include "libstemmer.h"
 #include "utils/hash_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/map_utils.hpp"
@@ -81,13 +80,12 @@ namespace analysis {
 // -----------------------------------------------------------------------------
 
 struct icu_objects {
-  icu_objects() : normalizer{nullptr} {}
-
   bool valid() const noexcept {
+    // 'break_iterator' indicates that 'icu_objects' struct initialized
     return nullptr != break_iterator;
   }
 
-  void clear() {
+  void clear() noexcept {
     transliterator.reset();
     break_iterator.reset();
     normalizer = nullptr;
@@ -96,7 +94,7 @@ struct icu_objects {
 
   std::unique_ptr<icu::Transliterator> transliterator;
   std::unique_ptr<icu::BreakIterator> break_iterator;
-  const icu::Normalizer2* normalizer; // reusable object owned by ICU
+  const icu::Normalizer2* normalizer{}; // reusable object owned by ICU
   stemmer_ptr stemmer;
 };
 
@@ -106,7 +104,6 @@ struct text_token_stream::state_t : icu_objects {
     uint32_t length{0};
   };
 
-  // indicates that 'icu_objects' struct initialized
   icu::UnicodeString data;
   icu::UnicodeString token;
   const options_t& options;
@@ -452,8 +449,8 @@ const frozen::unordered_map<
 };
 
 bool init_from_options(const analysis::text_token_stream::options_t& options,
-                      analysis::icu_objects* objects,
-                      bool print_errors) {
+                       analysis::icu_objects* objects,
+                       bool print_errors) {
 
   auto err = UErrorCode::U_ZERO_ERROR; // a value that passes the U_SUCCESS() test
 

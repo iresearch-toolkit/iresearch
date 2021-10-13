@@ -20,8 +20,8 @@
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef SNOWBALL_STEMMER_HPP
-#define SNOWBALL_STEMMER_HPP
+#ifndef SNOWBALL_STEMMER_H
+#define SNOWBALL_STEMMER_H
 
 #include <memory>
 
@@ -39,4 +39,4 @@ stemmer_ptr make_stemmer_ptr(const char * algorithm, const char * charenc);
 
 } // iresearch
 
-#endif // SNOWBALL_STEMMER_HPP
+#endif // SNOWBALL_STEMMER_H
