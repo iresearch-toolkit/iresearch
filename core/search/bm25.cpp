@@ -184,7 +184,7 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  byte_ref_iterator(const irs::bytes_ref& in)
+  explicit byte_ref_iterator(const irs::bytes_ref& in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
 
