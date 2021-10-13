@@ -1021,8 +1021,8 @@ bool text_token_stream::reset(const string_ref& data) {
   offset.end = std::numeric_limits<uint32_t>::max();
 
   if (!state_->valid() && !init_from_options(state_->options, state_.get(), false)) {
-      state_->clear();
-      return false;
+    state_->clear();
+    return false;
   }
 
   // Create ICU UnicodeString
