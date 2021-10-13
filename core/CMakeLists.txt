@@ -174,6 +174,7 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
+  ./utils/snowball_stemmer.cpp
   ${IResearch_core_os_specific_sources}
   ${IResearch_core_optimized_sources}
 )

@@ -64,9 +64,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   }
 
   // validate creation of sb_stemmer
-  irs::analysis::stemming_token_stream::stemmer_ptr stemmer;
-  stemmer.reset(
-    sb_stemmer_new(locale.getLanguage(), nullptr)); // defaults to utf-8
+  stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr); // defaults to utf-8
 
   if (!stemmer) {
     IR_FRMT_WARN(
@@ -212,11 +210,6 @@ REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
 
 namespace iresearch {
 namespace analysis {
-
-void stemming_token_stream::stemmer_deleter::operator()(
-    sb_stemmer* p) const noexcept {
-  sb_stemmer_delete(p);
-}
 
 stemming_token_stream::stemming_token_stream(const options_t& options)
   : analyzer{irs::type<stemming_token_stream>::get()},

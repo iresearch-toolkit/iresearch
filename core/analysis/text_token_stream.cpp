@@ -49,6 +49,7 @@
 #include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/vpack_utils.hpp"
+#include "utils/snowball_stemmer.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -82,17 +83,21 @@ namespace analysis {
 struct icu_objects {
   icu_objects() : normalizer{nullptr} {}
 
-  struct stemmer_deleter {
-    void operator()(sb_stemmer* p) const noexcept {
-      sb_stemmer_delete(p);
-    }
-  };
+  bool valid() const noexcept {
+    return nullptr != break_iterator;
+  }
+
+  void clear() {
+    transliterator.reset();
+    break_iterator.reset();
+    normalizer = nullptr;
+    stemmer.reset();
+  }
 
   std::unique_ptr<icu::Transliterator> transliterator;
   std::unique_ptr<icu::BreakIterator> break_iterator;
   const icu::Normalizer2* normalizer; // reusable object owned by ICU
-  std::unique_ptr<sb_stemmer, stemmer_deleter> stemmer;
-
+  stemmer_ptr stemmer;
 };
 
 struct text_token_stream::state_t : icu_objects {
@@ -102,7 +107,6 @@ struct text_token_stream::state_t : icu_objects {
   };
 
   // indicates that 'icu_objects' struct initialized
-  bool icu_inited{false};
   icu::UnicodeString data;
   icu::UnicodeString token;
   const options_t& options;
@@ -508,13 +512,11 @@ bool init_from_options(const analysis::text_token_stream::options_t& options,
   // optional since not available for all locales
   if (options.stemming) {
     // reusable object owned by *this
-    objects->stemmer.reset(
-      sb_stemmer_new(options.locale.getLanguage(),
-                     nullptr)); // defaults to utf-8
+    objects->stemmer = make_stemmer_ptr(options.locale.getLanguage(), nullptr); // defaults to utf-8
 
     if (!objects->stemmer && print_errors) {
       IR_FRMT_WARN(
-        "Can not create stemmer for text_token_stream from locale '%s'",
+        "Failed to create stemmer for text_token_stream from locale '%s'",
         options.locale.getName());
     }
   }
@@ -1018,11 +1020,9 @@ bool text_token_stream::reset(const string_ref& data) {
   offset.start = std::numeric_limits<uint32_t>::max();
   offset.end = std::numeric_limits<uint32_t>::max();
 
-  if (!state_->icu_inited) {
-    if (!init_from_options(state_->options, state_.get(), false)) {
+  if (!state_->valid() && !init_from_options(state_->options, state_.get(), false)) {
+      state_->clear();
       return false;
-    }
-    state_->icu_inited = true;
   }
 
   // Create ICU UnicodeString
