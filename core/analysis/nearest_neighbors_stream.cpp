@@ -184,9 +184,13 @@ namespace analysis {
 nearest_neighbors_stream::nearest_neighbors_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
   : analyzer{irs::type<nearest_neighbors_stream>::get()},
     model_container_{model_provider()},
-    top_k_{options.top_k},
     neighbors_{},
-    neighbors_it_{neighbors_.end()} {}
+    neighbors_it_{neighbors_.end()},
+    line_token_ids_{},
+    line_token_label_ids_{},
+    n_tokens_{0},
+    current_token_ind_{0},
+    top_k_{options.top_k} {}
 
 void nearest_neighbors_stream::init() {
   REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json, normalize_json_config);
@@ -195,11 +199,15 @@ void nearest_neighbors_stream::init() {
 
 bool nearest_neighbors_stream::next() {
   if (neighbors_it_ == neighbors_.end()) {
-    return false;
+    if (current_token_ind_ == n_tokens_) {
+      return false;
+    }
+    neighbors_ = model_container_->getNN(model_container_->getDictionary()->getWord(line_token_ids_[current_token_ind_]), top_k_);
+    neighbors_it_ = neighbors_.begin();
+    ++current_token_ind_;
   }
 
   auto& term = std::get<term_attribute>(attrs_);
-  term.value = bytes_ref::NIL; // clear the term value
   term.value = bytes_ref(reinterpret_cast<const byte_type *>(neighbors_it_->second.c_str()), neighbors_it_->second.size());
 
   ++neighbors_it_;
@@ -218,13 +226,8 @@ bool nearest_neighbors_stream::reset(const string_ref& data) {
   input_buf buf{&s_input};
   std::istream ss{&buf};
 
-  std::vector<int32_t> words, labels;
-  auto len{model_container_->getDictionary()->getLine(ss, words, labels)};
-  for (auto ind = 0; ind < len; ++ind) {
-    const auto word_neighbors{model_container_->getNN(model_container_->getDictionary()->getWord(words[ind]), top_k_)};
-    neighbors_.insert(neighbors_.end(), word_neighbors.begin(), word_neighbors.end());
-  }
-  neighbors_it_ = neighbors_.begin();
+  n_tokens_ = model_container_->getDictionary()->getLine(ss, line_token_ids_, line_token_label_ids_);
+  current_token_ind_ = 0;
 
   return true;
 }

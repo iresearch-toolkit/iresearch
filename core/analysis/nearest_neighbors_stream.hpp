@@ -68,7 +68,11 @@ class nearest_neighbors_stream final
     std::shared_ptr<fasttext::FastText> model_container_;
     std::vector<std::pair<float, std::string>> neighbors_;
     std::vector<std::pair<float, std::string>>::iterator neighbors_it_;
+    std::vector<int32_t> line_token_ids_;
+    std::vector<int32_t> line_token_label_ids_;
     attributes attrs_;
+    int32_t n_tokens_;
+    int32_t current_token_ind_;
     int32_t top_k_;
 };
 } // analysis
