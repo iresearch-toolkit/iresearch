@@ -2,11 +2,8 @@
  * This code is released under a BSD License.
  */
 #ifdef __SSE4_1__
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#include <sse2neon.h>
-#else
+
 #include <smmintrin.h>
-#endif
 #include "simdintegratedbitpacking.h"
 
 
