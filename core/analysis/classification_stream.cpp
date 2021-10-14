@@ -50,28 +50,20 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
       options.model_location = iresearch::get_string<std::string>(model_location_slice);
       auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
       if (!top_k_slice.isNone()) {
-        if (!top_k_slice.isInteger()) {
+        if (!top_k_slice.isNumber()) {
           IR_FRMT_ERROR(
             "Invalid vpack while %s classification_stream from VPack arguments. %s value should be an integer.",
             action,
             TOP_K_PARAM_NAME.data());
           return false;
         }
-        auto top_k_wide = top_k_slice.getInt();
-        int32_t top_k_narrow = static_cast<int32_t>(top_k_wide);
-        if (top_k_wide != top_k_narrow) {
-          IR_FRMT_ERROR(
-            "Invalid value provided while %s classification_stream from VPack arguments. %s value should be an int32_t.",
-            action,
-            TOP_K_PARAM_NAME.data());
-          return false;
-        }
-        options.top_k = top_k_narrow;
+        auto top_k = top_k_slice.getNumber<int32_t>();
+        options.top_k = top_k;
       }
 
       auto threshold_slice = slice.get(THRESHOLD_PARAM_NAME);
       if (!threshold_slice.isNone()) {
-        if (!threshold_slice.isNumber<double>()) {
+        if (!threshold_slice.isNumber()) {
           IR_FRMT_ERROR(
             "Invalid vpack while %s classification_stream from VPack arguments. %s value should be a double.",
             action,
@@ -99,7 +91,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
   return false;
 }
 
-irs::analysis::analyzer::ptr construct(irs::analysis::classification_stream::Options& options) {
+irs::analysis::analyzer::ptr construct(const irs::analysis::classification_stream::Options& options) {
   auto load_model= [&options]() {
     auto ft = std::make_shared<fasttext::FastText>();
     ft->loadModel(options.model_location);
@@ -202,7 +194,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normaliz
 namespace iresearch {
 namespace analysis {
 
-classification_stream::classification_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
+classification_stream::classification_stream(const Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider)
 : analyzer{irs::type<classification_stream>::get()},
     model_container_{model_provider()},
     top_k_{options.top_k},
@@ -221,7 +213,6 @@ bool classification_stream::next() {
   }
 
   auto& term = std::get<term_attribute>(attrs_);
-  term.value = bytes_ref::NIL; // clear the term value
   term.value = bytes_ref(reinterpret_cast<const byte_type *>(predictions_it_->second.c_str()), predictions_it_->second.size());
 
   ++predictions_it_;
