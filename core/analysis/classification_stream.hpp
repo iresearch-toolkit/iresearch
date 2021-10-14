@@ -55,7 +55,7 @@ class classification_stream final
 
     static void init(); // for registration in a static build
 
-    explicit classification_stream(const Options& options, std::function<std::shared_ptr<fasttext::FastText>()> model_provider);
+    explicit classification_stream(const Options& options, std::function<std::shared_ptr<fasttext::FastText>(const std::string&)> model_provider);
 
     virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::get_mutable(attrs_, type);
