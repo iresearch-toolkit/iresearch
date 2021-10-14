@@ -20,7 +20,6 @@
 /// @author Alex Geenen
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "analysis/fasttext_model_provider.hpp"
 #include "analysis/classification_stream.hpp"
 
 #include "tests_shared.hpp"
@@ -36,9 +35,9 @@ TEST(classification_stream_test, consts) {
 TEST(classification_stream_test, load_model) {
   auto model_loc = test_base::resource("model_cooking.bin").u8string();
   irs::analysis::classification_stream::Options options{model_loc};
-  auto load_model= [](const std::string& model_loc) {
+  auto load_model= [](std::string_view model_loc) {
     auto ft = std::make_shared<fasttext::FastText>();
-    ft->loadModel(model_loc);
+    ft->loadModel(static_cast<std::string>(model_loc));
     return ft;
   };
   ASSERT_NO_THROW(irs::analysis::classification_stream(options, load_model));

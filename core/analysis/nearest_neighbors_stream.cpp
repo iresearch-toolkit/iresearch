@@ -24,7 +24,6 @@
 #include <functional>
 #include <sstream>
 #include <store/store_utils.hpp>
-#include "fasttext_model_provider.hpp"
 #include "nearest_neighbors_stream.hpp"
 
 #include "velocypack/Parser.h"
@@ -35,6 +34,8 @@ namespace {
 
 constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
 constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
+
+std::atomic<irs::analysis::nearest_neighbors_stream::model_provider_f> model_provider{nullptr};
 
 bool parse_vpack_options(const VPackSlice slice, irs::analysis::nearest_neighbors_stream::Options& options, const char* action) {
   switch (slice.type()) {
@@ -81,15 +82,15 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::nearest_neighbor
 }
 
 irs::analysis::analyzer::ptr construct(irs::analysis::nearest_neighbors_stream::Options& options) {
-  if (irs::analysis::fasttext_model_provider == nullptr) {
-    auto load_model = [](const std::string& model_location) {
+  if (model_provider == nullptr) {
+    auto load_model = [](std::string_view model_loc) {
       auto ft = std::make_shared<fasttext::FastText>();
-      ft->loadModel(model_location);
+      ft->loadModel(static_cast<std::string>(model_loc));
       return ft;
     };
     return irs::memory::make_unique<irs::analysis::nearest_neighbors_stream>(options, load_model);
   }
-  return irs::memory::make_unique<irs::analysis::nearest_neighbors_stream>(options, irs::analysis::fasttext_model_provider);
+  return irs::memory::make_unique<irs::analysis::nearest_neighbors_stream>(options, model_provider);
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -185,7 +186,11 @@ REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json, norma
 namespace iresearch {
 namespace analysis {
 
-nearest_neighbors_stream::nearest_neighbors_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>(const std::string&)> model_provider)
+nearest_neighbors_stream::model_provider_f set_model_provider(nearest_neighbors_stream::model_provider_f provider) {
+  return model_provider.exchange(provider, std::memory_order_relaxed);
+}
+
+nearest_neighbors_stream::nearest_neighbors_stream(Options& options, nearest_neighbors_stream::model_provider_f model_provider)
   : analyzer{irs::type<nearest_neighbors_stream>::get()},
     model_container_{model_provider(options.model_location)},
     neighbors_{},

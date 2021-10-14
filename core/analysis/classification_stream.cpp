@@ -24,7 +24,6 @@
 #include <functional>
 #include <sstream>
 #include <store/store_utils.hpp>
-#include "fasttext_model_provider.hpp"
 #include "classification_stream.hpp"
 
 #include "velocypack/Parser.h"
@@ -36,6 +35,8 @@ namespace {
 constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
 constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
 constexpr VPackStringRef THRESHOLD_PARAM_NAME {"threshold"};
+
+std::atomic<irs::analysis::classification_stream::model_provider_f> model_provider{nullptr};
 
 bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_stream::Options& options, const char* action) {
   switch (slice.type()) {
@@ -93,15 +94,15 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
 }
 
 irs::analysis::analyzer::ptr construct(const irs::analysis::classification_stream::Options& options) {
-  if (irs::analysis::fasttext_model_provider == nullptr) {
-    auto load_model = [](const std::string& model_location) {
+  if (model_provider == nullptr) {
+    auto load_model = [](std::string_view model_location) {
       auto ft = std::make_shared<fasttext::FastText>();
-      ft->loadModel(model_location);
+      ft->loadModel(static_cast<std::string>(model_location));
       return ft;
     };
     return irs::memory::make_unique<irs::analysis::classification_stream>(options, load_model);
   }
-  return irs::memory::make_unique<irs::analysis::classification_stream>(options, irs::analysis::fasttext_model_provider);
+  return irs::memory::make_unique<irs::analysis::classification_stream>(options, model_provider);
 }
 
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -198,7 +199,11 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normaliz
 namespace iresearch {
 namespace analysis {
 
-classification_stream::classification_stream(const Options& options, std::function<std::shared_ptr<fasttext::FastText>(const std::string&)> model_provider)
+classification_stream::model_provider_f classification_stream::set_model_provider(model_provider_f provider) {
+  return model_provider.exchange(provider, std::memory_order_relaxed);
+}
+
+classification_stream::classification_stream(const Options& options, classification_stream::model_provider_f model_provider)
 : analyzer{irs::type<classification_stream>::get()},
     model_container_{model_provider(options.model_location)},
     top_k_{options.top_k},

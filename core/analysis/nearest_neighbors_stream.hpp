@@ -37,6 +37,10 @@ class nearest_neighbors_stream final
   : public analyzer,
     private util::noncopyable {
   public:
+    using model_provider_f = std::shared_ptr<fasttext::FastText>(*)(std::string_view);
+
+    static model_provider_f set_model_provider(model_provider_f provider);
+
     struct Options {
       Options() : model_location{}, top_k{1} {}
       explicit Options(std::string& model_location) : model_location{model_location}, top_k{1} {}
@@ -50,7 +54,7 @@ class nearest_neighbors_stream final
 
     static void init(); // for registration in a static build
 
-    explicit nearest_neighbors_stream(Options& options, std::function<std::shared_ptr<fasttext::FastText>(const std::string&)> model_provider);
+    explicit nearest_neighbors_stream(Options& options, model_provider_f model_provider);
 
     virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::get_mutable(attrs_, type);

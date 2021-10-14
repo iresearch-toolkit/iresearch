@@ -1149,7 +1149,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-classification-shared
   SHARED
         analysis/classification_stream.cpp
         analysis/classification_stream.hpp
-        analysis/fasttext_model_provider.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-shared)
@@ -1195,7 +1194,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
         SHARED
         analysis/nearest_neighbors_stream.cpp
         analysis/nearest_neighbors_stream.hpp
-        analysis/fasttext_model_provider.hpp
         )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared)
