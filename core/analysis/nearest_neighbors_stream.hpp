@@ -65,11 +65,11 @@ class nearest_neighbors_stream final
       offset,
       term_attribute>;
 
-    attributes attrs_;
     std::shared_ptr<fasttext::FastText> model_container_;
-    int32_t top_k_;
     std::vector<std::pair<float, std::string>> neighbors_;
     std::vector<std::pair<float, std::string>>::iterator neighbors_it_;
+    attributes attrs_;
+    int32_t top_k_;
 };
 } // analysis
 } // iresearch
