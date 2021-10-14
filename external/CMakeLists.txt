@@ -7,6 +7,26 @@ if (SUPPRESS_EXTERNAL_WARNINGS)
   endif ()
 endif()
 
+################################################################################
+### sse2neon
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-sse2neon
+  INTERFACE
+)
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
+  set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
+
+  target_include_directories(
+    ${IResearch_TARGET_NAME}-sse2neon
+    SYSTEM
+    INTERFACE ${SSE2NEON_ROOT}
+  )
+
+  include_directories(SSE2NEON_ROOT)
+endif()
 
 ################################################################################
 ### CmdLine library
