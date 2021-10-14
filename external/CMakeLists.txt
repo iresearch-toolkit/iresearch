@@ -25,7 +25,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
   set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
 
   target_include_directories(
-    ${IResearch_TARGET_NAME}-sse2neon
+    sse2neon
     SYSTEM
     INTERFACE ${SSE2NEON_ROOT}
   )
