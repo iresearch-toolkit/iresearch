@@ -8,13 +8,18 @@ if (SUPPRESS_EXTERNAL_WARNINGS)
 endif()
 
 ################################################################################
-### sse2neon
+### Highway library
 ################################################################################
 
-add_library(
-  ${IResearch_TARGET_NAME}-sse2neon
-  INTERFACE
-)
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(highway)
+
+################################################################################
+### sse2neon
+### need this after highway and before simdcomp
+################################################################################
+
+add_library(sse2neon INTERFACE)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
   set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
@@ -24,8 +29,6 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
     SYSTEM
     INTERFACE ${SSE2NEON_ROOT}
   )
-
-  include_directories(SSE2NEON_ROOT)
 endif()
 
 ################################################################################
@@ -169,13 +172,6 @@ if (NOT TARGET velocypack)
    message(FATAL_ERROR "VPACK_ROOT not set")
   endif()
 endif()
-
-################################################################################
-### Highway library
-################################################################################
-
-set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
-add_subdirectory(highway)
 
 ################################################################################
 ### Boost::Text library
