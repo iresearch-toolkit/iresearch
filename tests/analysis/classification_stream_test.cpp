@@ -33,7 +33,7 @@ TEST(classification_stream_test, consts) {
 }
 
 TEST(classification_stream_test, load_model) {
-  auto model_loc = test_base::resource("ag_news.bin").u8string();
+  auto model_loc = test_base::resource("model_cooking.bin").u8string();
   irs::analysis::classification_stream::Options options{model_loc};
   auto load_model= [&options]() {
     auto ft = std::make_shared<fasttext::FastText>();
@@ -48,8 +48,8 @@ TEST(classification_stream_test, load_model) {
 TEST(classification_stream_test, test_load) {
   // load json string
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
-    irs::string_ref data{"tests"};
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    irs::string_ref data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -62,15 +62,15 @@ TEST(classification_stream_test, test_load) {
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(6, offset->end);
+    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // multi-word input
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
-    irs::string_ref data{"tests are interesting."};
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    irs::string_ref data{"Why not put knives in the dishwasher?"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -83,15 +83,15 @@ TEST(classification_stream_test, test_load) {
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(22, offset->end);
-    ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(37, offset->end);
+    ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // Multi line input
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
-    irs::string_ref data{"tests are interesting.\nwhat about that?"};
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    irs::string_ref data{"Why not put knives in the dishwasher?\nOr one knife?"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -104,15 +104,16 @@ TEST(classification_stream_test, test_load) {
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(39, offset->end);
-    ASSERT_EQ("__label__4", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(51, offset->end);
+    ASSERT_EQ("__label__oil", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
+  // top 2 labels
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
-    irs::string_ref data{"karzai visits rival ' s stronghold , the afghan president makes a rare visit to the north just two weeks before the country ' s first presidential elections ."};
-    auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    irs::string_ref data{"Why not put knives in the dishwasher?"};
+    auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
@@ -124,8 +125,10 @@ TEST(classification_stream_test, test_load) {
 
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(158, offset->end);
-    ASSERT_EQ("__label__1", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(37, offset->end);
+    ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ("__label__oil", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -134,7 +137,7 @@ TEST(classification_stream_test, test_load) {
 TEST(classification_stream_test, test_make_config_json) {
   // random extra param
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
     std::string actual;
@@ -144,7 +147,7 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test top k
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.0}";
     std::string actual;
@@ -154,7 +157,7 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test threshold
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.1}";
     std::string actual;
@@ -164,7 +167,7 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test all 3 params
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1, \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.1}";
     std::string actual;
@@ -174,7 +177,7 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test VPack
   {
-    auto model_loc = test_base::resource("ag_news.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").u8string();
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
     auto in_vpack = VPackParser::fromJson(config);
