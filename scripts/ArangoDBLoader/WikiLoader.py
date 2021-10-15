@@ -26,10 +26,23 @@
 ################################################################################
 
 import sys
+import os
 import csv
 import ctypes
 import time
+from typing import Counter
+from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+
+script_path = os.getcwd() + "/ArangoDBLoader/python-arango"
+
+print(script_path)
+if script_path in sys.path:
+    print("oops, it's already in there.")
+else:
+    sys.path.insert(0, script_path)
+
 from arango import ArangoClient
+
 
 monthDecode = {
   "JAN":"01", "FEB":"02", "MAR":"03", "APR":"04",
@@ -69,7 +82,7 @@ def main():
   collection = sys.argv[3] # target collection
   database = sys.argv[2]  # target database
   line_limit = int(sys.argv[5]) # how many documents to upload
-  batch_size = 10000    # batch size for inserting into Arango
+  batch_size = 100    # batch size for inserting into Arango
   
   offset = 0
   if len(sys.argv) > 6:
@@ -86,6 +99,12 @@ def main():
   total = 0
   totaltimeNs = 0
   count = offset
+  registry = CollectorRegistry() # registry for Prometeushttps://github.com/iresearch-toolkit/iresearch
+  defaultLabelNames = ["engine", "branch", "platform"]
+
+  totalTimeMetric = Gauge('TotalTime', 'Execution time (microseconds)', registry=registry, labelnames=defaultLabelNames)
+  avgBatchTimeMetric = Gauge('AvgBatchTime', 'Average time for inserting batch', registry=registry, labelnames=defaultLabelNames)
+
   for row in reader:
     if offset > 0:
       offset = offset - 1
@@ -100,10 +119,15 @@ def main():
       # stop time
       took = (time.perf_counter_ns() - start)
       totaltimeNs += took
+      totalTimeMetric.labels("IResearch", "master", "linux").set(totaltimeNs / 1000000) # update metric value
+
       data.clear()
+      avgTime = (totaltimeNs/ (total/batch_size))/1000000
+      avgBatchTimeMetric.labels("IResearch", "master", "linux").set(avgTime) # update metric value
+
       print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
             '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' + 
-            str(took/1000000) + 'ms Avg:' + str( (totaltimeNs/ (total/batch_size))/1000000) + 'ms \n')
+            str(took/1000000) + 'ms Avg:' + str( avgTime ) + 'ms \n')
     total = total + 1
     if total >= line_limit:
       break
@@ -114,12 +138,20 @@ def main():
     wikipedia.insert_many(data)
     # stop time
     took = (time.perf_counter_ns() - start)
+
     totaltimeNs += took
+    totalTimeMetric.labels("IResearch", "master", "linux").set(totaltimeNs / 1000000) # update metric value
+
+    avgTime = (totaltimeNs/ (total/batch_size))/1000000
+    avgBatchTimeMetric.labels("IResearch", "master", "linux").set(avgTime) # update metric value
+
     print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
           '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' +
-          str(took/1000000) + 'ms Avg:' + str( (totaltimeNs/ (total/batch_size))/1000000) + 'ms \n')
+          str(took/1000000) + 'ms Avg:' + str( avgTime ) + 'ms \n')
   f.close()
 
+
+  push_to_gateway("http://grafana.arangodb.biz:9091", "benchmark-test", registry=registry)
   
 if __name__== "__main__":
   main()
