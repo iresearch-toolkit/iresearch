@@ -39,12 +39,13 @@ class nearest_neighbors_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  using model_provider_f = std::shared_ptr<fasttext::FastText>(*)(std::string_view);
+  using model_ptr = std::shared_ptr<fasttext::FastText>;
+  using model_provider_f = model_ptr(*)(std::string_view);
 
-  static model_provider_f set_model_provider(model_provider_f provider);
+  static model_provider_f set_model_provider(model_provider_f provider) noexcept;
 
   struct Options {
-    explicit Options(std::string model_location = "", int32_t top_k = 1)
+    explicit Options(std::string model_location = "", int32_t top_k = 1) noexcept
       : model_location{std::move(model_location)}, top_k{top_k} {
     }
 
@@ -56,7 +57,9 @@ class nearest_neighbors_stream final
 
   static void init(); // for registration in a static build
 
-  explicit nearest_neighbors_stream(Options& options, model_provider_f model_provider);
+  explicit nearest_neighbors_stream(
+    const Options& options,
+    model_ptr model_provider) noexcept;
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
@@ -71,7 +74,7 @@ class nearest_neighbors_stream final
     offset,
     term_attribute>;
 
-  std::shared_ptr<fasttext::FastText> model_container_;
+  std::shared_ptr<fasttext::FastText> model_;
   std::vector<std::pair<float, std::string>> neighbors_;
   std::vector<std::pair<float, std::string>>::iterator neighbors_it_;
   std::vector<int32_t> line_token_ids_;

@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alex Geenen
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H
@@ -38,12 +39,16 @@ class classification_stream final
     : public analyzer,
       private util::noncopyable {
  public:
-  using model_provider_f = std::shared_ptr<fasttext::FastText>(*)(std::string_view);
+  using model_ptr = std::shared_ptr<fasttext::FastText>;
+  using model_provider_f = model_ptr(*)(std::string_view);
 
-  static model_provider_f set_model_provider(model_provider_f provider);
+  static model_provider_f set_model_provider(model_provider_f provider) noexcept;
 
   struct Options {
-    explicit Options(std::string model_location = "", int32_t top_k = 1, double threshold = 0.0)
+    explicit Options(
+        std::string model_location = "",
+        int32_t top_k = 1,
+        double threshold = 0.0) noexcept
       : model_location{std::move(model_location)},
         threshold{threshold},
         top_k{top_k} {
@@ -58,7 +63,7 @@ class classification_stream final
 
   static void init(); // for registration in a static build
 
-  explicit classification_stream(const Options& options, model_provider_f model_provider);
+  explicit classification_stream(const Options& options, model_ptr mode) noexcept;
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
@@ -74,7 +79,7 @@ class classification_stream final
     term_attribute>;
 
   attributes attrs_;
-  std::shared_ptr<fasttext::FastText> model_container_;
+  model_ptr model_;
   std::vector<std::pair<float, std::string>> predictions_;
   std::vector<std::pair<float, std::string>>::iterator predictions_it_;
   double threshold_;

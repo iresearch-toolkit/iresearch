@@ -18,13 +18,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alex Geenen
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "classification_stream.hpp"
 
 #include <functional>
 #include <sstream>
-#include "fasttext.h"
+
+#include <fasttext.h>
 
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
@@ -34,13 +36,15 @@
 
 namespace {
 
+using namespace irs::analysis;
+
 constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
 constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
 constexpr VPackStringRef THRESHOLD_PARAM_NAME {"threshold"};
 
-std::atomic<irs::analysis::classification_stream::model_provider_f> model_provider{nullptr};
+std::atomic<classification_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 
-bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_stream::Options& options, const char* action) {
+bool parse_vpack_options(const VPackSlice slice, classification_stream::Options& options, const char* action) {
   switch (slice.type()) {
     case VPackValueType::Object: {
       auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
@@ -51,7 +55,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
           MODEL_LOCATION_PARAM_NAME.data());
         return false;
       }
-      options.model_location = iresearch::get_string<std::string>(model_location_slice);
+      options.model_location = irs::get_string<std::string>(model_location_slice);
       auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
       if (!top_k_slice.isNone()) {
         if (!top_k_slice.isNumber()) {
@@ -61,8 +65,17 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
             TOP_K_PARAM_NAME.data());
           return false;
         }
-        auto top_k = top_k_slice.getNumber<int32_t>();
-        options.top_k = top_k;
+        const auto top_k = top_k_slice.getNumber<size_t>();
+
+        if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+          IR_FRMT_ERROR(
+            "Invalid value provided while %s classification_stream from VPack arguments. %s value should be an int32_t.",
+            action,
+            TOP_K_PARAM_NAME.data());
+          return false;
+        }
+
+        options.top_k = static_cast<uint32_t>(top_k);
       }
 
       auto threshold_slice = slice.get(THRESHOLD_PARAM_NAME);
@@ -74,7 +87,7 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
             THRESHOLD_PARAM_NAME.data());
           return false;
         }
-        auto threshold = threshold_slice.getNumber<double>();
+        const auto threshold = threshold_slice.getNumber<double>();
         if (threshold < 0.0 || threshold > 1.0) {
           IR_FRMT_ERROR(
             "Invalid value provided while %s classification_stream from VPack arguments. %s value should be between 0.0 and 1.0 (inclusive).",
@@ -95,32 +108,51 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::classification_s
   return false;
 }
 
-irs::analysis::analyzer::ptr construct(const irs::analysis::classification_stream::Options& options) {
-  if (model_provider == nullptr) {
-    auto load_model = [](std::string_view model_location) {
-      auto ft = std::make_shared<fasttext::FastText>();
-      ft->loadModel(static_cast<std::string>(model_location));
-      return ft;
-    };
-    return irs::memory::make_unique<irs::analysis::classification_stream>(options, load_model);
+analyzer::ptr construct(const classification_stream::Options& options) {
+  auto model_provider = ::MODEL_PROVIDER.load(std::memory_order_relaxed);
+
+  classification_stream::model_ptr model;
+  if (model_provider) {
+    model = model_provider(options.model_location);
+  } else {
+    model = std::make_shared<fasttext::FastText>();
+
+    try {
+      model->loadModel(options.model_location);
+    } catch (const std::exception& e) {
+      IR_FRMT_ERROR(
+        "Failed to load fasttext classification model from '%s', error '%s'",
+        options.model_location.c_str(), e.what());
+      model = nullptr;
+    } catch (...) {
+      IR_FRMT_ERROR(
+        "Failed to load fasttext classification model from '%s'",
+        options.model_location.c_str());
+      model = nullptr;
+    }
   }
-  return irs::memory::make_unique<irs::analysis::classification_stream>(options, model_provider);
+
+  if (!model) {
+    return nullptr;
+  }
+
+  return irs::memory::make_unique<classification_stream>(options, std::move(model));
 }
 
-irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  irs::analysis::classification_stream::Options options{};
+analyzer::ptr make_vpack(const VPackSlice slice) {
+  classification_stream::Options options{};
   if (parse_vpack_options(slice, options, "constructing")) {
     return construct(options);
   }
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+analyzer::ptr make_vpack(const irs::string_ref& args) {
   VPackSlice slice{reinterpret_cast<const uint8_t*>(args.c_str())};
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing classification_stream ");
@@ -140,8 +172,8 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 }
 
 bool make_vpack_config(
-  const irs::analysis::classification_stream::Options& options,
-  VPackBuilder* builder) {
+    const classification_stream::Options& options,
+    VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
   {
     builder->add(MODEL_LOCATION_PARAM_NAME, VPackValue(options.model_location));
@@ -152,7 +184,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  irs::analysis::classification_stream::Options options{};
+  classification_stream::Options options{};
   if (parse_vpack_options(slice, options, "normalizing")) {
     return make_vpack_config(options, builder);
   }
@@ -201,22 +233,25 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json, normaliz
 namespace iresearch {
 namespace analysis {
 
-classification_stream::model_provider_f classification_stream::set_model_provider(model_provider_f provider) {
-  return model_provider.exchange(provider, std::memory_order_relaxed);
+/*static*/ void classification_stream::init() {
+  REGISTER_ANALYZER_JSON(classification_stream, make_json, normalize_json_config);
+  REGISTER_ANALYZER_VPACK(classification_stream, make_vpack, normalize_vpack_config);
 }
 
-classification_stream::classification_stream(const Options& options, classification_stream::model_provider_f model_provider)
-: analyzer{irs::type<classification_stream>::get()},
-    model_container_{model_provider(options.model_location)},
-    predictions_{},
+/*static*/ classification_stream::model_provider_f classification_stream::set_model_provider(
+    model_provider_f provider) noexcept {
+  return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
+}
+
+classification_stream::classification_stream(
+    const Options& options,
+    model_ptr model) noexcept
+  : analyzer{irs::type<classification_stream>::get()},
+    model_{std::move(model)},
     predictions_it_{predictions_.end()},
     threshold_{options.threshold},
     top_k_{options.top_k} {
-}
-
-void classification_stream::init() {
-  REGISTER_ANALYZER_JSON(classification_stream, make_json, normalize_json_config);
-  REGISTER_ANALYZER_VPACK(classification_stream, make_vpack, normalize_vpack_config);
+  assert(model_);
 }
 
 bool classification_stream::next() {
@@ -225,7 +260,9 @@ bool classification_stream::next() {
   }
 
   auto& term = std::get<term_attribute>(attrs_);
-  term.value = bytes_ref(reinterpret_cast<const byte_type *>(predictions_it_->second.c_str()), predictions_it_->second.size());
+  term.value = {
+    reinterpret_cast<const byte_type *>(predictions_it_->second.c_str()),
+    predictions_it_->second.size() };
 
   ++predictions_it_;
 
@@ -242,11 +279,11 @@ bool classification_stream::reset(const string_ref& data) {
   bytes_ref_input s_input{ref_cast<byte_type>(data)};
   input_buf buf{&s_input};
   std::istream ss{&buf};
-  model_container_->predictLine(ss, predictions_, top_k_, static_cast<float>(threshold_));
+  model_->predictLine(ss, predictions_, top_k_, static_cast<float>(threshold_));
   predictions_it_ = predictions_.begin();
 
   return true;
 }
 
-}
-}
+} // analysis
+} // iresearch

@@ -26,24 +26,9 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
-
 TEST(classification_stream_test, consts) {
   static_assert("classification" == irs::type<irs::analysis::classification_stream>::name());
 }
-
-TEST(classification_stream_test, load_model) {
-  auto model_loc = test_base::resource("model_cooking.bin").u8string();
-  irs::analysis::classification_stream::Options options{model_loc};
-  auto load_model= [](std::string_view model_loc) {
-    auto ft = std::make_shared<fasttext::FastText>();
-    ft->loadModel(static_cast<std::string>(model_loc));
-    return ft;
-  };
-  ASSERT_NO_THROW(irs::analysis::classification_stream(options, load_model));
-}
-
-#endif
 
 TEST(classification_stream_test, test_load) {
   // load json string

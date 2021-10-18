@@ -26,24 +26,9 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-#ifndef IRESEARCH_DLL
-
 TEST(nearest_neighbors_stream_test, consts) {
   static_assert("nearest_neighbors" == irs::type<irs::analysis::nearest_neighbors_stream>::name());
 }
-
-TEST(nearest_neighbors_stream_test, load_model) {
-  auto model_loc = test_base::resource("model_cooking.bin").u8string();
-  irs::analysis::nearest_neighbors_stream::Options options{model_loc};
-  auto load_model= [](std::string_view model_loc) {
-    auto ft = std::make_shared<fasttext::FastText>();
-    ft->loadModel(static_cast<std::string>(model_loc));
-    return ft;
-  };
-  ASSERT_NO_THROW(irs::analysis::nearest_neighbors_stream(options, load_model));
-}
-
-#endif
 
 TEST(nearest_neighbors_stream_test, test_load) {
   // load json string

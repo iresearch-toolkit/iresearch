@@ -1181,11 +1181,13 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-static
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-classification-shared
-  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INTERFACE_INCLUDE_DIRECTORIES>
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-classification-static
-  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
 )
 
 ################################################################################
@@ -1233,15 +1235,15 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
-  PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INTERFACE_INCLUDE_DIRECTORIES>
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
-  PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
 )
 
-get_target_property(hhh ${FASTTEXT_LIBRARY_STATIC} INCLUDE_DIRECTORIES)
-message(${hhh})
 
 ################################################################################
 ### format plugin: format-1_0
