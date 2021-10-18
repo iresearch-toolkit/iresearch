@@ -23,9 +23,6 @@
 
 #include "nearest_neighbors_stream.hpp"
 
-#include <functional>
-#include <sstream>
-
 #include <fasttext.h>
 
 #include "velocypack/Parser.h"
@@ -43,7 +40,7 @@ constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
 
 std::atomic<nearest_neighbors_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 
-bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::Options& options, const char* action) {
+bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::options& options, const char* action) {
   switch (slice.type()) {
     case VPackValueType::Object: {
       auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
@@ -86,28 +83,28 @@ bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::Optio
   return false;
 }
 
-analyzer::ptr construct(const nearest_neighbors_stream::Options& options) {
+analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
   auto model_provider = ::MODEL_PROVIDER.load(std::memory_order_relaxed);
 
   nearest_neighbors_stream::model_ptr model;
-  if (model_provider) {
-    model = model_provider(options.model_location);
-  } else {
-    model = std::make_shared<fasttext::FastText>();
 
-    try {
+  try {
+    if (model_provider) {
+      model = model_provider(options.model_location);
+    } else {
+      model = std::make_shared<fasttext::FastText>();
       model->loadModel(options.model_location);
-    } catch (const std::exception& e) {
-      IR_FRMT_ERROR(
-        "Failed to load fasttext kNN model from '%s', error '%s'",
-        options.model_location.c_str(), e.what());
-      model = nullptr;
-    } catch (...) {
-      IR_FRMT_ERROR(
-        "Failed to load fasttext kNN model from '%s'",
-        options.model_location.c_str());
-      model = nullptr;
     }
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR(
+      "Failed to load fasttext kNN model from '%s', error '%s'",
+      options.model_location.c_str(), e.what());
+    model = nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Failed to load fasttext kNN model from '%s'",
+      options.model_location.c_str());
+    model = nullptr;
   }
 
   if (!model) {
@@ -118,7 +115,7 @@ analyzer::ptr construct(const nearest_neighbors_stream::Options& options) {
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {
-  nearest_neighbors_stream::Options options{};
+  nearest_neighbors_stream::options options{};
   if (parse_vpack_options(slice, options, "constructing")) {
     return construct(options);
   }
@@ -150,7 +147,7 @@ analyzer::ptr make_json(const irs::string_ref& args) {
 }
 
 bool make_vpack_config(
-    const nearest_neighbors_stream::Options& options,
+    const nearest_neighbors_stream::options& options,
     VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
   {
@@ -161,7 +158,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  nearest_neighbors_stream::Options options{};
+  nearest_neighbors_stream::options options{};
   if (parse_vpack_options(slice, options, "normalizing")) {
     return make_vpack_config(options, builder);
   }
@@ -215,13 +212,13 @@ namespace analysis {
   REGISTER_ANALYZER_VPACK(nearest_neighbors_stream, make_vpack, normalize_vpack_config);
 }
 
-/*static*/ nearest_neighbors_stream::model_provider_f set_model_provider(
-    nearest_neighbors_stream::model_provider_f provider) noexcept {
+/*static*/ nearest_neighbors_stream::model_provider_f nearest_neighbors_stream::set_model_provider(
+    model_provider_f provider) noexcept {
   return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
 }
 
 nearest_neighbors_stream::nearest_neighbors_stream(
-    const Options& options,
+    const options& options,
     model_ptr model) noexcept
   : analyzer{irs::type<nearest_neighbors_stream>::get()},
     model_{std::move(model)},
@@ -246,6 +243,9 @@ bool nearest_neighbors_stream::next() {
   term.value = {
     reinterpret_cast<const byte_type *>(neighbors_it_->second.c_str()),
     neighbors_it_->second.size() };
+
+  auto& inc = std::get<increment>(attrs_);
+  inc.value = uint32_t(neighbors_it_ == neighbors_.begin());
 
   ++neighbors_it_;
 

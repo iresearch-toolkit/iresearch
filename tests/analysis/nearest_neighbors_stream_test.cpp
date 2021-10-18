@@ -18,16 +18,53 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alex Geenen
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "tests_shared.hpp"
 
 #include "analysis/nearest_neighbors_stream.hpp"
 
-#include "tests_shared.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
+namespace {
+
+std::string_view EXPECTED_MODEL;
+
+std::shared_ptr<fasttext::FastText> null_provider(std::string_view model) {
+  EXPECT_EQ(EXPECTED_MODEL, model);
+  return nullptr;
+}
+
+std::shared_ptr<fasttext::FastText> throwing_provider(std::string_view model) {
+  EXPECT_EQ(EXPECTED_MODEL, model);
+  throw std::exception();
+}
+
+}
+
 TEST(nearest_neighbors_stream_test, consts) {
   static_assert("nearest_neighbors" == irs::type<irs::analysis::nearest_neighbors_stream>::name());
+}
+
+TEST(nearest_neighbors_stream_test, test_custom_provider) {
+  const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+  EXPECTED_MODEL = model_loc;
+
+  const auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+
+  ASSERT_EQ(nullptr, irs::analysis::nearest_neighbors_stream::set_model_provider(&::null_provider));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
+                                                   irs::type<irs::text_format::json>::get(),
+                                                   input_json));
+
+  ASSERT_EQ(&::null_provider, irs::analysis::nearest_neighbors_stream::set_model_provider(&::throwing_provider));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
+                                                   irs::type<irs::text_format::json>::get(),
+                                                   input_json));
+
+  ASSERT_EQ(&::throwing_provider, irs::analysis::nearest_neighbors_stream::set_model_provider(nullptr));
 }
 
 TEST(nearest_neighbors_stream_test, test_load) {
@@ -43,15 +80,20 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
     auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
 
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
+    ASSERT_FALSE(stream->next());
   }
-
 
   {
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
@@ -61,17 +103,25 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
+    ASSERT_FALSE(stream->next());
     ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
     auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
 
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
     ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, inc->value);
     ASSERT_EQ("teach", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
 
@@ -87,18 +137,27 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
+    ASSERT_NE(nullptr, offset);
     auto* term = irs::get<irs::term_attribute>(*stream);
+    ASSERT_NE(nullptr, term);
+    auto* inc = irs::get<irs::increment>(*stream);
+    ASSERT_NE(nullptr, inc);
 
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(8, offset->end);
     ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, inc->value);
     ASSERT_EQ("teach", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
     ASSERT_EQ("tube\"", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, inc->value);
     ASSERT_EQ("\"breather", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }}
 

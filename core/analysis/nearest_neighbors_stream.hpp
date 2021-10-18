@@ -44,8 +44,8 @@ class nearest_neighbors_stream final
 
   static model_provider_f set_model_provider(model_provider_f provider) noexcept;
 
-  struct Options {
-    explicit Options(std::string model_location = "", int32_t top_k = 1) noexcept
+  struct options {
+    explicit options(std::string model_location = "", int32_t top_k = 1) noexcept
       : model_location{std::move(model_location)}, top_k{top_k} {
     }
 
@@ -58,7 +58,7 @@ class nearest_neighbors_stream final
   static void init(); // for registration in a static build
 
   explicit nearest_neighbors_stream(
-    const Options& options,
+    const options& options,
     model_ptr model_provider) noexcept;
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {

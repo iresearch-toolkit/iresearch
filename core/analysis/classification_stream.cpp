@@ -23,9 +23,6 @@
 
 #include "classification_stream.hpp"
 
-#include <functional>
-#include <sstream>
-
 #include <fasttext.h>
 
 #include "velocypack/Parser.h"
@@ -112,24 +109,24 @@ analyzer::ptr construct(const classification_stream::Options& options) {
   auto model_provider = ::MODEL_PROVIDER.load(std::memory_order_relaxed);
 
   classification_stream::model_ptr model;
-  if (model_provider) {
-    model = model_provider(options.model_location);
-  } else {
-    model = std::make_shared<fasttext::FastText>();
 
-    try {
+  try {
+    if (model_provider) {
+      model = model_provider(options.model_location);
+    } else {
+      model = std::make_shared<fasttext::FastText>();
       model->loadModel(options.model_location);
-    } catch (const std::exception& e) {
-      IR_FRMT_ERROR(
-        "Failed to load fasttext classification model from '%s', error '%s'",
-        options.model_location.c_str(), e.what());
-      model = nullptr;
-    } catch (...) {
-      IR_FRMT_ERROR(
-        "Failed to load fasttext classification model from '%s'",
-        options.model_location.c_str());
-      model = nullptr;
     }
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR(
+      "Failed to load fasttext classification model from '%s', error '%s'",
+      options.model_location.c_str(), e.what());
+    model = nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Failed to load fasttext classification model from '%s'",
+      options.model_location.c_str());
+    model = nullptr;
   }
 
   if (!model) {
@@ -264,6 +261,9 @@ bool classification_stream::next() {
     reinterpret_cast<const byte_type *>(predictions_it_->second.c_str()),
     predictions_it_->second.size() };
 
+  auto& inc = std::get<increment>(attrs_);
+  inc.value = uint32_t(predictions_it_ == predictions_.begin());
+
   ++predictions_it_;
 
   return true;
@@ -274,11 +274,10 @@ bool classification_stream::reset(const string_ref& data) {
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  predictions_.clear();
-
   bytes_ref_input s_input{ref_cast<byte_type>(data)};
   input_buf buf{&s_input};
   std::istream ss{&buf};
+  predictions_.clear();
   model_->predictLine(ss, predictions_, top_k_, static_cast<float>(threshold_));
   predictions_it_ = predictions_.begin();
 
