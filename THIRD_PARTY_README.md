@@ -90,7 +90,11 @@ number of components produced by third parties
     - Copyright: Jan Steemann
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: Binary JSON parser
-16. Title: sse2neon
+16. Title: Highway
+    - Copyright: Google Inc.
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: SIMD wrapper
+17. Title: sse2neon
     - Copyright: https://github.com/DLTcollab/sse2neon
     - License: [MIT license](https://opensource.org/licenses/MIT)
     - How it's used: Support ARM64 build by intrinsics coversion.
