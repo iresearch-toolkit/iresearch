@@ -41,45 +41,43 @@ constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
 std::atomic<nearest_neighbors_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 
 bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::options& options, const char* action) {
-  switch (slice.type()) {
-    case VPackValueType::Object: {
-      auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
-      if (!model_location_slice.isString() && !model_location_slice.isNone()) {
+  if (VPackValueType::Object == slice.type()) {
+    auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
+    if (!model_location_slice.isString() && !model_location_slice.isNone()) {
+      IR_FRMT_ERROR(
+        "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be a string.",
+        action,
+        MODEL_LOCATION_PARAM_NAME.data());
+      return false;
+    }
+    options.model_location = irs::get_string<std::string>(model_location_slice);
+    auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
+    if (!top_k_slice.isNone()) {
+      if (!top_k_slice.isNumber()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be a string.",
+          "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be an integer.",
           action,
-          MODEL_LOCATION_PARAM_NAME.data());
+          TOP_K_PARAM_NAME.data());
         return false;
       }
-      options.model_location = irs::get_string<std::string>(model_location_slice);
-      auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
-      if (!top_k_slice.isNone()) {
-        if (!top_k_slice.isNumber()) {
-          IR_FRMT_ERROR(
-            "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be an integer.",
-            action,
-            TOP_K_PARAM_NAME.data());
-          return false;
-        }
-        const auto top_k = top_k_slice.getNumber<size_t>();
-        if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-          IR_FRMT_ERROR(
-            "Invalid value provided while %s nearest_neighbors_stream from VPack arguments. %s value should be an int32_t.",
-            action,
-            TOP_K_PARAM_NAME.data());
-          return false;
-        }
-        options.top_k = static_cast<uint32_t>(top_k);
+      const auto top_k = top_k_slice.getNumber<size_t>();
+      if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+        IR_FRMT_ERROR(
+          "Invalid value provided while %s nearest_neighbors_stream from VPack arguments. %s value should be an int32_t.",
+          action,
+          TOP_K_PARAM_NAME.data());
+        return false;
       }
+      options.top_k = static_cast<uint32_t>(top_k);
+    }
 
-      return true;
-    }
-    default: {
-      IR_FRMT_ERROR(
-        "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. Object was expected.",
-        action);
-    }
+    return true;
   }
+
+  IR_FRMT_ERROR(
+    "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. Object was expected.",
+    action);
+
   return false;
 }
 
