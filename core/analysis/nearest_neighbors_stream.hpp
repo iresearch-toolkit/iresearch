@@ -18,8 +18,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alex Geenen
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
 
 #ifndef IRESEARCH_NEAREST_NEIGHBORS_STREAM_H
 #define IRESEARCH_NEAREST_NEIGHBORS_STREAM_H
