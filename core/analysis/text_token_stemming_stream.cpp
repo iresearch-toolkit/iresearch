@@ -23,7 +23,8 @@
 
 #include "text_token_stemming_stream.hpp"
 
-#include "libstemmer.h"
+#include <libstemmer.h>
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -63,8 +64,8 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     return false;
   }
 
-  // validate creation of sb_stemmer
-  stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr); // defaults to utf-8
+  // validate creation of sb_stemmer, defaults to utf-8
+  stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr);
 
   if (!stemmer) {
     IR_FRMT_WARN(
@@ -236,8 +237,8 @@ bool stemming_token_stream::next() {
 
 bool stemming_token_stream::reset(const string_ref& data) {
   if (!stemmer_) {
-    stemmer_.reset(
-      sb_stemmer_new(options_.locale.getLanguage(), nullptr)); // defaults to utf-8
+    // defaults to utf-8
+    stemmer_ = make_stemmer_ptr(options_.locale.getLanguage(), nullptr);
   }
 
   auto& term = std::get<term_attribute>(attrs_);
