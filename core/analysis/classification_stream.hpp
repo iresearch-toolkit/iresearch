@@ -23,11 +23,13 @@
 #ifndef IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H
 #define IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H
 
-#include "fasttext.h"
-
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
+
+namespace fasttext {
+class FastText;
+}
 
 namespace iresearch {
 namespace analysis {
@@ -35,52 +37,50 @@ namespace analysis {
 class classification_stream final
     : public analyzer,
       private util::noncopyable {
-  public:
-    using model_provider_f = std::shared_ptr<fasttext::FastText>(*)(std::string_view);
+ public:
+  using model_provider_f = std::shared_ptr<fasttext::FastText>(*)(std::string_view);
 
-    static model_provider_f set_model_provider(model_provider_f provider);
+  static model_provider_f set_model_provider(model_provider_f provider);
 
-    struct Options {
-      Options() : model_location{}, top_k{1}, threshold{0.0} {}
-      explicit Options(std::string& model_location) : model_location{model_location}, top_k{1}, threshold{0.0} {}
-      explicit Options(std::string& model_location, int32_t top_k) : model_location{model_location}, top_k{top_k}, threshold{0.0} {}
-      explicit Options(std::string& model_location, double threshold): model_location{model_location}, top_k{1}, threshold{threshold} {}
-      explicit Options(std::string& model_location, int32_t top_k, double threshold) :
-        model_location{model_location},
-        top_k{top_k},
-        threshold{threshold} {}
-
-      std::string model_location;
-      int32_t top_k;
-      double threshold;
-    };
-
-    static constexpr string_ref type_name() noexcept { return "classification"; }
-
-    static void init(); // for registration in a static build
-
-    explicit classification_stream(const Options& options, model_provider_f model_provider);
-
-    virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return irs::get_mutable(attrs_, type);
+  struct Options {
+    explicit Options(std::string model_location = "", int32_t top_k = 1, double threshold = 0.0)
+      : model_location{std::move(model_location)},
+        threshold{threshold},
+        top_k{top_k} {
     }
 
-    virtual bool next() override;
-    virtual bool reset(const string_ref& data) override;
+    std::string model_location;
+    double threshold;
+    int32_t top_k;
+  };
 
-  private:
-    using attributes = std::tuple<
-      increment,
-      offset,
-      term_attribute>;
+  static constexpr string_ref type_name() noexcept { return "classification"; }
 
-    attributes attrs_;
-    std::shared_ptr<fasttext::FastText> model_container_;
-    int32_t top_k_;
-    double threshold_;
-    std::vector<std::pair<float, std::string>> predictions_;
-    std::vector<std::pair<float, std::string>>::iterator predictions_it_;
+  static void init(); // for registration in a static build
+
+  explicit classification_stream(const Options& options, model_provider_f model_provider);
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  virtual bool next() override;
+  virtual bool reset(const string_ref& data) override;
+
+ private:
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>;
+
+  attributes attrs_;
+  std::shared_ptr<fasttext::FastText> model_container_;
+  std::vector<std::pair<float, std::string>> predictions_;
+  std::vector<std::pair<float, std::string>>::iterator predictions_it_;
+  double threshold_;
+  int32_t top_k_;
 };
+
 } // analysis
 } // iresearch
 

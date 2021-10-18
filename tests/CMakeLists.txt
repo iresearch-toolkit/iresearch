@@ -280,6 +280,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:fasttext-shared,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
@@ -297,6 +298,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:fasttext-static,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

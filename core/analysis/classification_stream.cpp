@@ -20,15 +20,17 @@
 /// @author Alex Geenen
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "classification_stream.hpp"
 
 #include <functional>
 #include <sstream>
-#include <store/store_utils.hpp>
-#include "classification_stream.hpp"
+#include "fasttext.h"
 
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
+
 #include "utils/vpack_utils.hpp"
+#include "store/store_utils.hpp"
 
 namespace {
 
@@ -206,10 +208,11 @@ classification_stream::model_provider_f classification_stream::set_model_provide
 classification_stream::classification_stream(const Options& options, classification_stream::model_provider_f model_provider)
 : analyzer{irs::type<classification_stream>::get()},
     model_container_{model_provider(options.model_location)},
-    top_k_{options.top_k},
-    threshold_{options.threshold},
     predictions_{},
-    predictions_it_{predictions_.end()} {}
+    predictions_it_{predictions_.end()},
+    threshold_{options.threshold},
+    top_k_{options.top_k} {
+}
 
 void classification_stream::init() {
   REGISTER_ANALYZER_JSON(classification_stream, make_json, normalize_json_config);

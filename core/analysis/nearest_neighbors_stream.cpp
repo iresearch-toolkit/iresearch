@@ -20,11 +20,12 @@
 /// @author Alex Geenen
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "nearest_neighbors_stream.hpp"
 
 #include <functional>
 #include <sstream>
 #include <store/store_utils.hpp>
-#include "nearest_neighbors_stream.hpp"
+#include "fasttext.h"
 
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
