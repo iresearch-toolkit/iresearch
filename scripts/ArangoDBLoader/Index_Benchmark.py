@@ -1,8 +1,3 @@
-# python script for loading IResearch benchmark dump of  Wikipedia into
-# ArangoDB database. Uses python-arango driver https://github.com/Joowani/python-arango
-# Data is loaded in form { title: 'XXXXX', body: 'XXXXXXXXXXXXX', 'count': XXXX, 'created':XXXX}.
-# DB server should be set up to run without authorization 
-
 ################################################################################
 ## DISCLAIMER
 ##
@@ -23,24 +18,15 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ##
 ## @author Andrei Lobov
+## @author Alexey Bakharew
 ################################################################################
 
 import sys
-import os
 import csv
 import ctypes
 import time
-from typing import Counter
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
-
-script_path = os.getcwd() + "/ArangoDBLoader/python-arango"
-
-if script_path in sys.path:
-    print("oops, it's already in there.")
-else:
-    sys.path.insert(0, script_path)
-
-from arango import ArangoClient
+from globals import *
 
 monthDecode = {
   "JAN":"01", "FEB":"02", "MAR":"03", "APR":"04",
@@ -63,32 +49,15 @@ def decodeDate(d):
    return year
  return d
 
-def delete_view(db, view_name):
-  for view in db.views():
-    if view["name"] == view_name:
-      db.delete_view(view_name)
-      break
-  return
 
+############################################
+### INDEX
+############################################
 
-def main():
-  if len(sys.argv) < 6:
-    print("Usage: host database collection data_file count [offset] Example: python WikiLoader.py 'http://localhost:8529' _system wikipedia benchmark.data 10000000")
-    return
-
+def do_index_benchmark(arango_instance, filename, line_limit, batch_size):
 
   # Override csv default 128k field size
   csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
-
-  # Initialize the client for ArangoDB.
-  client = ArangoClient(hosts=sys.argv[1])
-  
-  # Upload settings
-  filename = sys.argv[4] # data file
-  collection = sys.argv[3] # target collection
-  database = sys.argv[2]  # target database
-  line_limit = int(sys.argv[5]) # how many documents to upload
-  batch_size = 1000    # batch size for inserting into Arango
 
   # setting for views
   commitIntervalMsec = 2000 
@@ -96,69 +65,31 @@ def main():
   consolidationIntervalMsec = 1000
 
   offset = 0
-  if len(sys.argv) > 6:
-    offset = int(sys.argv[6])
-
-  ############################################
-  ###INDEX
-  ############################################
-
-  # we will create view for this collection before insertion
-  collection_index = collection + "_index"
-
-  # we will create view for this collection after insertion
-  collection_no_index = collection + "_no_index"
-
-  db = client.db(database)
-
-  if db.has_collection(collection_index):
-    db.delete_collection(collection_index)
-  wikipedia_index = db.create_collection(collection_index)
-
-  if db.has_collection(collection_no_index):
-    db.delete_collection(collection_no_index)
-  wikipedia_no_index = db.create_collection(collection_no_index)
-
-  # Create an analyzer.
-  db.create_analyzer(
-      name="delimiter_analyzer",
-      analyzer_type="delimiter",
-      properties={ "delimiter": ' ' },
-      features=[]
-      )
-
-  wiki_index_view = "wiki_index_view"
-
-  # create view for wikipedia_index collection
-  delete_view(db, wiki_index_view)
-
-  res = db.create_arangosearch_view(
-        name=wiki_index_view,
-        properties={"links":{
-                    collection_index: {
-                      "analyzers": ["identity", "delimiter_analyzer"],
-                      "fields":{
-                        "body": {}
-                      }}}}
-        )
+  if len(sys.argv) > 4:
+    offset = int(sys.argv[4])
 
   f = open(filename, mode ='r', encoding='utf-8', errors='replace')
   reader = csv.reader(f, delimiter='\t')
   data = []
   total = 0
+
   total_time_with_view_Ns = 0
   total_time_without_view_Ns = 0
 
   count = offset
+
   index_registry = CollectorRegistry() # index registry for Prometeus https://github.com/iresearch-toolkit/iresearch
   defaultIndexLabelNames = ["engine", "branch", "platform", "batch_size", "doc_count"]
-
   totalTimeMetric = Gauge('TotalTime', 'Execution time (microseconds)', registry=index_registry, labelnames=defaultIndexLabelNames)
   avgBatchTimeMetric = Gauge('AvgBatchTime', 'Average time for inserting batch', registry=index_registry, labelnames=defaultIndexLabelNames)
   indexingTimeMetric = Gauge('IndexTime', 'Time of indexing entire collection', registry=index_registry, labelnames=defaultIndexLabelNames)
 
-  for row in reader:
 
+  # this collections already initialized
+  wiki_coll_with_index = arango_instance.get_collection(arango_instance.COLLECTION_NAME_WITH_INDEX)
+  wiki_coll_without_index = arango_instance.get_collection(arango_instance.COLLECTION_NAME_WITHOUT_INDEX)
+
+  for row in reader:
     if offset > 0:
       offset = offset - 1
       continue
@@ -171,13 +102,13 @@ def main():
       # collection with view
       # start time
       start = time.perf_counter_ns()
-      wikipedia_index.insert_many(data)
+      wiki_coll_with_index.insert_many(data)
       # stop time
       took = (time.perf_counter_ns() - start)
       total_time_with_view_Ns += took
       totalTimeMetric.labels("IResearch", "master", "linux", str(batch_size), str(line_limit)).set(total_time_with_view_Ns / 1000000) # update metric value
       
-      wikipedia_no_index.insert_many(data)
+      wiki_coll_without_index.insert_many(data)
 
       data.clear()
       avgTime = (total_time_with_view_Ns/ (total/batch_size))/1000000
@@ -193,15 +124,13 @@ def main():
 
   f.close()
 
-  wiki_index_view_after = "wiki_index_view"
-  delete_view(db, wiki_index_view_after)
+  arango_instance.delete_view(arango_instance.VIEW_NAME_AFTER_INSERT)
   # create view 
-  # start time
   start = time.perf_counter_ns()
-  res = db.create_arangosearch_view(
-      name=wiki_index_view_after,
+  arango_instance.get_db().create_arangosearch_view(
+      name=arango_instance.VIEW_NAME_AFTER_INSERT,
       properties={"links":{
-                  collection_no_index: {
+                  arango_instance.COLLECTION_NAME_WITHOUT_INDEX: {
                     "analyzers": ["identity", "delimiter_analyzer"],
                     "fields":{
                       "body": {}
@@ -215,29 +144,3 @@ def main():
   # upload index stats to prometheus
   push_to_gateway("http://grafana.arangodb.biz:9091", "ArangoSearch-benchmark-index", registry=index_registry)
 
-
-############################################
-###SEARCH
-############################################
-
-  search_registry = CollectorRegistry() # search registry for Prometeus https://github.com/iresearch-toolkit/iresearch
-  defaultSearchLabelNames = ["engine", "branch", "platform", "search_query"]
-
-  memoryUasageMetric = Gauge('MemoryUsage', 'Used memory for searching', registry=search_registry, labelnames=defaultSearchLabelNames)
-  ExecTimeMetric = Gauge('ExecutionTime', 'Executed time for searching', registry=search_registry, labelnames=defaultSearchLabelNames)
-
-  # Execute an AQL query which returns a cursor object.
-  cursor = db.aql.execute(
-    'FOR doc IN {} SEARCH ANALYZER(doc.body == "Feminism", "delimiter_analyzer") return doc'.format(wiki_index_view),
-    count=True
-  )
-
-  memoryUasageMetric.labels("IResearch", "master", "linux", "search_delimiter").set(cursor.statistics()["peakMemoryUsage"]) # update metric value
-  ExecTimeMetric.labels("IResearch", "master", "linux", "search_delimiter").set(cursor.statistics()["execution_time"] * 1000) # update metric value
-
-  # upload search stats to prometheus
-  push_to_gateway("http://grafana.arangodb.biz:9091", "ArangoSearch-benchmark-search", registry=search_registry)
-
-
-if __name__== "__main__":
-  main()
