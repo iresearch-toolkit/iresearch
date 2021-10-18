@@ -35,14 +35,12 @@ from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
 script_path = os.getcwd() + "/ArangoDBLoader/python-arango"
 
-print(script_path)
 if script_path in sys.path:
     print("oops, it's already in there.")
 else:
     sys.path.insert(0, script_path)
 
 from arango import ArangoClient
-
 
 monthDecode = {
   "JAN":"01", "FEB":"02", "MAR":"03", "APR":"04",
@@ -82,28 +80,64 @@ def main():
   collection = sys.argv[3] # target collection
   database = sys.argv[2]  # target database
   line_limit = int(sys.argv[5]) # how many documents to upload
-  batch_size = 100    # batch size for inserting into Arango
-  
+  batch_size = 1000    # batch size for inserting into Arango
+  create_view = True # use indexing or not
+
+  # setting for views
+  commitIntervalMsec = 2000 
+  cleanupIntervalStep = 3
+  consolidationIntervalMsec = 1000
+
   offset = 0
   if len(sys.argv) > 6:
     offset = int(sys.argv[6])
 
+  ############################################
+  ###INDEX
+  ############################################
+
   db = client.db(database)
   if db.has_collection(collection):
-    wikipedia = db.collection(collection)
-  else:
-    wikipedia = db.create_collection(collection)
+    db.delete_collection(collection)
+
+  wikipedia = db.create_collection(collection)
+
+  # Create an analyzer.
+  db.create_analyzer(
+      name="delimiter_analyzer",
+      analyzer_type="delimiter",
+      properties={ "delimiter": ' ' },
+      features=[]
+      )
+
+  # create view for wikipedia collection
+  if create_view:
+    for view in db.views():
+      if view["name"] == "wiki_view":
+        db.delete_view('wiki_view')
+        break
+
+    res = db.create_arangosearch_view(
+          name='wiki_view',
+          properties={"links":{
+                      "wikipedia": {
+                        "analyzers": ["identity", "delimiter_analyzer"],
+                        "fields":{
+                          "body": {}
+                        }}}}
+          )
+
   f = open(filename, mode ='r', encoding='utf-8', errors='replace')
   reader = csv.reader(f, delimiter='\t')
   data = []
   total = 0
   totaltimeNs = 0
   count = offset
-  registry = CollectorRegistry() # registry for Prometeushttps://github.com/iresearch-toolkit/iresearch
-  defaultLabelNames = ["engine", "branch", "platform"]
+  index_registry = CollectorRegistry() # index registry for Prometeus https://github.com/iresearch-toolkit/iresearch
+  defaultIndexLabelNames = ["engine", "branch", "platform", "batch_size"]
 
-  totalTimeMetric = Gauge('TotalTime', 'Execution time (microseconds)', registry=registry, labelnames=defaultLabelNames)
-  avgBatchTimeMetric = Gauge('AvgBatchTime', 'Average time for inserting batch', registry=registry, labelnames=defaultLabelNames)
+  totalTimeMetric = Gauge('TotalTime', 'Execution time (microseconds)', registry=index_registry, labelnames=defaultIndexLabelNames)
+  avgBatchTimeMetric = Gauge('AvgBatchTime', 'Average time for inserting batch', registry=index_registry, labelnames=defaultIndexLabelNames)
 
   for row in reader:
     if offset > 0:
@@ -119,11 +153,11 @@ def main():
       # stop time
       took = (time.perf_counter_ns() - start)
       totaltimeNs += took
-      totalTimeMetric.labels("IResearch", "master", "linux").set(totaltimeNs / 1000000) # update metric value
+      totalTimeMetric.labels("IResearch", "master", "linux", str(batch_size)).set(totaltimeNs / 1000000) # update metric value
 
       data.clear()
       avgTime = (totaltimeNs/ (total/batch_size))/1000000
-      avgBatchTimeMetric.labels("IResearch", "master", "linux").set(avgTime) # update metric value
+      avgBatchTimeMetric.labels("IResearch", "master", "linux", str(batch_size)).set(avgTime) # update metric value
 
       print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
             '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' + 
@@ -140,18 +174,49 @@ def main():
     took = (time.perf_counter_ns() - start)
 
     totaltimeNs += took
-    totalTimeMetric.labels("IResearch", "master", "linux").set(totaltimeNs / 1000000) # update metric value
+    totalTimeMetric.labels("IResearch", "master", "linux", str(batch_size)).set(totaltimeNs / 1000000) # update metric value
 
     avgTime = (totaltimeNs/ (total/batch_size))/1000000
-    avgBatchTimeMetric.labels("IResearch", "master", "linux").set(avgTime) # update metric value
+    avgBatchTimeMetric.labels("IResearch", "master", "linux", str(batch_size)).set(avgTime) # update metric value
 
     print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
           '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' +
           str(took/1000000) + 'ms Avg:' + str( avgTime ) + 'ms \n')
   f.close()
 
+  # upload index stats to prometheus
+  push_to_gateway("http://grafana.arangodb.biz:9091", "ArangoSearch-benchmark-index", registry=index_registry)
 
-  push_to_gateway("http://grafana.arangodb.biz:9091", "benchmark-test", registry=registry)
+
+############################################
+###SEARCH
+############################################
+
+  search_registry = CollectorRegistry() # search registry for Prometeus https://github.com/iresearch-toolkit/iresearch
+  defaultSearchLabelNames = ["engine", "branch", "platform", "search_query"]
+
+  memoryUasageMetric = Gauge('MemoryUsage', 'Used memory for searching', registry=search_registry, labelnames=defaultSearchLabelNames)
+  ExecTimeMetric = Gauge('ExecutionTime', 'Executed time for searching', registry=search_registry, labelnames=defaultSearchLabelNames)
+
+  # Execute an AQL query which returns a cursor object.
+  cursor = db.aql.execute(
+    'FOR doc IN wiki_view SEARCH ANALYZER(doc.body == "Feminism", "delimiter_analyzer") return doc',
+    count=True
+  )
+
+  print(cursor.statistics())
+
+  memoryUasageMetric.labels("IResearch", "master", "linux", "search_delimiter").set(cursor.statistics()["peakMemoryUsage"]) # update metric valuecccccc
+  ExecTimeMetric.labels("IResearch", "master", "linux", "search_delimiter").set(cursor.statistics()["execution_time"]) # update metric value
+
+  # upload search stats to prometheus
+  push_to_gateway("http://grafana.arangodb.biz:9091", "ArangoSearch-benchmark-search", registry=search_registry)
+
+  # # Iterate through the result cursor
+  # for doc in cursor:
+  #   print(doc)
+
+  
   
 if __name__== "__main__":
   main()
