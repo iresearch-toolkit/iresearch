@@ -90,6 +90,10 @@ number of components produced by third parties
     - Copyright: Jan Steemann
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: Binary JSON parser
+15. Title: Highway
+    - Copyright: Google Inc.
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: SIMD wrapper
 ## Third Party Open Source Software licenses
 
 ### OpenFST
