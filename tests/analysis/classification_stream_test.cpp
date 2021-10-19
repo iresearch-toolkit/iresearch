@@ -51,7 +51,11 @@ TEST(classification_stream_test, consts) {
 TEST(classification_stream_test, test_load) {
   // load json string
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     irs::string_ref data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -78,7 +82,11 @@ TEST(classification_stream_test, test_load) {
 
   // multi-word input
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -102,11 +110,11 @@ TEST(classification_stream_test, test_load) {
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
 
-    ASSERT_TRUE(stream->reset("pizza pasta coca-cola"));
+    ASSERT_TRUE(stream->reset("pasta coca-cola"));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(21, offset->end);
+    ASSERT_EQ(15, offset->end);
     ASSERT_EQ("__label__pasta", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
@@ -114,9 +122,13 @@ TEST(classification_stream_test, test_load) {
 
   // Multi line input
   {
-    constexpr irs::string_ref data{"Why not put knives in the dishwasher?\nOr one knife?"};
+    constexpr irs::string_ref data{"Which baking dish is best to bake\na banana bread ?"};
 
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -134,17 +146,21 @@ TEST(classification_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(51, offset->end);
-    ASSERT_EQ("__label__oil", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(50, offset->end);
+    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
-
   // top 2 labels
   {
-    constexpr irs::string_ref data{"Why not put knives in the dishwasher?"};
+    constexpr irs::string_ref data{"Which baking dish is best to bake a banana bread ?"};
+    
 
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -162,20 +178,24 @@ TEST(classification_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(37, offset->end);
-    ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(50, offset->end);
+    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(37, offset->end);
+    ASSERT_EQ(50, offset->end);
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("__label__oil", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__bananas", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
 
   // failing cases
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
 
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("classification",
                                                      irs::type<irs::text_format::json>::get(),
@@ -211,7 +231,11 @@ TEST(classification_stream_test, test_load) {
 }
 
 TEST(classification_stream_test, test_custom_provider) {
-  const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#ifdef  WIN32
+    const auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
+    const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
   EXPECTED_MODEL = model_loc;
 
   const auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
@@ -232,7 +256,11 @@ TEST(classification_stream_test, test_custom_provider) {
 TEST(classification_stream_test, test_make_config_json) {
   // random extra param
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
     std::string actual;
@@ -242,7 +270,11 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test top k
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.0}";
     std::string actual;
@@ -252,7 +284,11 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test threshold
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.1}";
     std::string actual;
@@ -262,7 +298,11 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test all 3 params
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1, \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.1}";
     std::string actual;
@@ -272,7 +312,11 @@ TEST(classification_stream_test, test_make_config_json) {
 
   // test VPack
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
     auto in_vpack = VPackParser::fromJson(config);
@@ -287,7 +331,11 @@ TEST(classification_stream_test, test_make_config_json) {
   // failing cases
   {
     std::string out;
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
 
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
       out, "classification",
