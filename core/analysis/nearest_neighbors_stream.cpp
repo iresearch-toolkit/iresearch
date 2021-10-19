@@ -29,6 +29,7 @@
 #include "velocypack/Slice.h"
 
 #include "store/store_utils.hpp"
+#include "utils/fasttext_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
 namespace {
@@ -90,7 +91,7 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
     if (model_provider) {
       model = model_provider(options.model_location);
     } else {
-      auto new_model = std::make_shared<fasttext::FastText>();
+      auto new_model = std::make_shared<fasttext::ImmutableFastText>();
       new_model->loadModel(options.model_location);
 
       model = new_model;

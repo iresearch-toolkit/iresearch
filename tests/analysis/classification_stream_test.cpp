@@ -32,12 +32,12 @@ namespace {
 
 std::string_view EXPECTED_MODEL;
 
-std::shared_ptr<fasttext::FastText> null_provider(std::string_view model) {
+irs::analysis::classification_stream::model_ptr null_provider(std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   return nullptr;
 }
 
-std::shared_ptr<fasttext::FastText> throwing_provider(std::string_view model) {
+irs::analysis::classification_stream::model_ptr throwing_provider(std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   throw std::exception();
 }
