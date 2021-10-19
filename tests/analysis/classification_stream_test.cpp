@@ -79,14 +79,13 @@ TEST(classification_stream_test, test_load) {
   // multi-word input
   {
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
-    irs::string_ref data{"Why not put knives in the dishwasher?"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data));
+    ASSERT_TRUE(stream->reset("Why not put knives in the dishwasher?"));
 
     auto* offset = irs::get<irs::offset>(*stream);
     ASSERT_NE(nullptr, offset);
@@ -100,6 +99,15 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(37, offset->end);
     ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+    ASSERT_FALSE(stream->next());
+
+    ASSERT_TRUE(stream->reset("pizza pasta coca-cola"));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(21, offset->end);
+    ASSERT_EQ("__label__pasta", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }

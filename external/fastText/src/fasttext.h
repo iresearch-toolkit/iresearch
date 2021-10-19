@@ -59,7 +59,7 @@ class FastText {
       const DenseMatrix& wordVectors,
       const Vector& queryVec,
       int32_t k,
-      const std::set<std::string>& banSet) const;
+      const std::set<std::string>& banSet);
   void lazyComputeWordVectors();
   void printInfo(real, real, std::ostream&);
   std::shared_ptr<Matrix> getInputMatrixFromFile(const std::string&) const;

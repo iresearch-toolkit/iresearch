@@ -97,14 +97,12 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
   {
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
-    irs::string_ref data{"salt"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data));
 
     auto* offset = irs::get<irs::offset>(*stream);
     ASSERT_NE(nullptr, offset);
@@ -113,6 +111,7 @@ TEST(nearest_neighbors_stream_test, test_load) {
     auto* inc = irs::get<irs::increment>(*stream);
     ASSERT_NE(nullptr, inc);
 
+    ASSERT_TRUE(stream->reset("salt"));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
@@ -120,7 +119,23 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, inc->value);
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(4, offset->end);
     ASSERT_EQ("teach", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+    ASSERT_FALSE(stream->next());
+
+    ASSERT_TRUE(stream->reset("pizza"));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(1, inc->value);
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(5, offset->end);
+    ASSERT_EQ("\"prepared\"", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(5, offset->end);
+    ASSERT_EQ(0, inc->value);
+    ASSERT_EQ("tinfoil", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
