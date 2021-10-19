@@ -27,7 +27,7 @@
 
 namespace fasttext {
 
-class ImmutableFastText : public fasttext::FastText {
+class ImmutableFastText : public FastText {
  public:
   void loadModel(const std::string& filename) {
     FastText::loadModel(filename);
@@ -42,7 +42,15 @@ class ImmutableFastText : public fasttext::FastText {
     getWordVector(query, word);
 
     assert(wordVectors_);
-    return FastText::getNN(*wordVectors_, query, k, {word});
+    return getNN(*wordVectors_, query, k, {word});
+  }
+
+  std::vector<std::pair<real, std::string>> getNN(
+      const DenseMatrix& wordVectors,
+      const Vector& queryVec,
+      int32_t k,
+      const std::set<std::string>& banSet) const {
+    return FastText::getNN(wordVectors, queryVec, k, banSet);
   }
 }; // ImmutableFastText
 

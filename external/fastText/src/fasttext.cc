@@ -574,7 +574,7 @@ std::vector<std::pair<real, std::string>> FastText::getNN(
     const DenseMatrix& wordVectors,
     const Vector& query,
     int32_t k,
-    const std::set<std::string>& banSet) {
+    const std::set<std::string>& banSet) const {
   std::vector<std::pair<real, std::string>> heap;
 
   real queryNorm = query.norm();
