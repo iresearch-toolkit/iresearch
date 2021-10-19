@@ -226,6 +226,9 @@ nearest_neighbors_stream::nearest_neighbors_stream(
     current_token_ind_{0},
     top_k_{options.top_k} {
   assert(model_);
+
+  model_dict_ = model_->getDictionary();
+  assert(model_dict_);
 }
 
 bool nearest_neighbors_stream::next() {
@@ -233,7 +236,7 @@ bool nearest_neighbors_stream::next() {
     if (current_token_ind_ == n_tokens_) {
       return false;
     }
-    neighbors_ = model_->getNN(model_->getDictionary()->getWord(line_token_ids_[current_token_ind_]), top_k_);
+    neighbors_ = model_->getNN(model_dict_->getWord(line_token_ids_[current_token_ind_]), top_k_);
     neighbors_it_ = neighbors_.begin();
     ++current_token_ind_;
   }
@@ -260,7 +263,7 @@ bool nearest_neighbors_stream::reset(const string_ref& data) {
   input_buf buf{&s_input};
   std::istream ss{&buf};
 
-  n_tokens_ = model_->getDictionary()->getLine(ss, line_token_ids_, line_token_label_ids_);
+  n_tokens_ = model_dict_->getLine(ss, line_token_ids_, line_token_label_ids_);
   current_token_ind_ = 0;
 
   neighbors_.clear();
