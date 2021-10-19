@@ -30,6 +30,7 @@
 
 namespace fasttext {
 class ImmutableFastText;
+class Dictionary;
 }
 
 namespace iresearch {
@@ -75,6 +76,7 @@ class nearest_neighbors_stream final
     term_attribute>;
 
   model_ptr model_;
+  std::shared_ptr<const fasttext::Dictionary> model_dict_;
   std::vector<std::pair<float, std::string>> neighbors_;
   std::vector<std::pair<float, std::string>>::iterator neighbors_it_;
   std::vector<int32_t> line_token_ids_;
