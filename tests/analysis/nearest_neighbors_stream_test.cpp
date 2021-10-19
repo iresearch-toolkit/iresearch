@@ -49,7 +49,11 @@ TEST(nearest_neighbors_stream_test, consts) {
 }
 
 TEST(nearest_neighbors_stream_test, test_custom_provider) {
-  const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#ifdef  WIN32
+    const auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
+    const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
   EXPECTED_MODEL = model_loc;
 
   const auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
@@ -70,7 +74,11 @@ TEST(nearest_neighbors_stream_test, test_custom_provider) {
 TEST(nearest_neighbors_stream_test, test_load) {
   // load json string
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     irs::string_ref data{"salt"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
@@ -96,7 +104,11 @@ TEST(nearest_neighbors_stream_test, test_load) {
   }
 
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
 
@@ -142,7 +154,11 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
   // test longer string
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     irs::string_ref data{"salt oil"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
@@ -178,7 +194,11 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
   // failing cases
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
 
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
                                                      irs::type<irs::text_format::json>::get(),
@@ -208,7 +228,11 @@ TEST(nearest_neighbors_stream_test, test_load) {
 TEST(nearest_neighbors_stream_test, test_make_config_json) {
   // random extra param
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
     std::string actual;
@@ -218,7 +242,11 @@ TEST(nearest_neighbors_stream_test, test_make_config_json) {
 
   // test top k
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string actual;
@@ -228,7 +256,11 @@ TEST(nearest_neighbors_stream_test, test_make_config_json) {
 
   // test VPack
   {
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
     auto in_vpack = VPackParser::fromJson(config);
@@ -243,7 +275,11 @@ TEST(nearest_neighbors_stream_test, test_make_config_json) {
   // failing cases
   {
     std::string out;
+#ifdef  WIN32
+    auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#else
     auto model_loc = test_base::resource("model_cooking.bin").u8string();
+#endif
 
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
       out, "nearest_neighbors",
