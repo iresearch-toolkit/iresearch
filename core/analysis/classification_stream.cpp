@@ -112,19 +112,19 @@ analyzer::ptr construct(const classification_stream::Options& options) {
     if (model_provider) {
       model = model_provider(options.model_location);
     } else {
-      model = std::make_shared<fasttext::FastText>();
-      model->loadModel(options.model_location);
+      auto new_model = std::make_shared<fasttext::FastText>();
+      new_model->loadModel(options.model_location);
+
+      model = new_model;
     }
   } catch (const std::exception& e) {
     IR_FRMT_ERROR(
       "Failed to load fasttext classification model from '%s', error '%s'",
       options.model_location.c_str(), e.what());
-    model = nullptr;
   } catch (...) {
     IR_FRMT_ERROR(
       "Failed to load fasttext classification model from '%s'",
       options.model_location.c_str());
-    model = nullptr;
   }
 
   if (!model) {
