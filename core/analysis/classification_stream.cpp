@@ -44,7 +44,7 @@ std::atomic<classification_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 bool parse_vpack_options(const VPackSlice slice, classification_stream::Options& options, const char* action) {
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
-    if (!model_location_slice.isString() && !model_location_slice.isNone()) {
+    if (!model_location_slice.isString()) {
       IR_FRMT_ERROR(
         "Invalid vpack while %s classification_stream from VPack arguments. %s value should be a string.",
         action,

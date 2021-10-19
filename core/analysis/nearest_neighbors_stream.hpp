@@ -74,7 +74,7 @@ class nearest_neighbors_stream final
     offset,
     term_attribute>;
 
-  std::shared_ptr<fasttext::FastText> model_;
+  model_ptr model_;
   std::vector<std::pair<float, std::string>> neighbors_;
   std::vector<std::pair<float, std::string>>::iterator neighbors_it_;
   std::vector<int32_t> line_token_ids_;

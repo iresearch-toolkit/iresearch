@@ -43,7 +43,7 @@ std::atomic<nearest_neighbors_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::options& options, const char* action) {
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
-    if (!model_location_slice.isString() && !model_location_slice.isNone()) {
+    if (!model_location_slice.isString()) {
       IR_FRMT_ERROR(
         "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be a string.",
         action,
@@ -261,7 +261,9 @@ bool nearest_neighbors_stream::reset(const string_ref& data) {
 
   n_tokens_ = model_->getDictionary()->getLine(ss, line_token_ids_, line_token_label_ids_);
   current_token_ind_ = 0;
+
   neighbors_.clear();
+  neighbors_it_ = neighbors_.end();
 
   return true;
 }
