@@ -94,6 +94,10 @@ number of components produced by third parties
     - Copyright: Google Inc.
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: SIMD wrapper
+17. Title: FastText
+    - Copyright: Facebook Inc.
+    - License: [MIT license](https://opensource.org/licenses/MIT)
+    - How it's used: A library for efficient learning of word representations and sentence classification
 ## Third Party Open Source Software licenses
 
 ### OpenFST
