@@ -909,8 +909,11 @@ class column_iterator final : public irs::resettable_doc_iterator {
 ////////////////////////////////////////////////////////////////////////////////
 class column_reader final : public irs::columnstore_reader::column_reader {
  public:
-  virtual irs::columnstore_reader::values_reader_f values() const override {
+  explicit column_reader(const column_values& values) noexcept
+    : values_{&values} {
+  }
 
+  virtual irs::columnstore_reader::values_reader_f values() const override {
     auto moved_it = make_move_on_copy(this->iterator());
     auto* document = irs::get<irs::document>(*moved_it.value());
     if (!document || irs::doc_limits::eof(document->value)) {

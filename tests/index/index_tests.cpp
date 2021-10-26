@@ -7493,11 +7493,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
@@ -7640,7 +7640,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -7776,7 +7776,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -8076,7 +8076,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8161,10 +8161,10 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8277,10 +8277,10 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
@@ -8423,7 +8423,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   gen.reset();
   tests::index_t expected;
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     const auto* doc = gen.next();
     expected.back().insert(doc->indexed.begin(), doc->indexed.end());
     doc = gen.next();
@@ -8557,7 +8557,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8661,10 +8661,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8802,13 +8802,13 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8954,7 +8954,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -9083,7 +9083,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -9214,7 +9214,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -9510,7 +9510,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
 
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -9602,12 +9602,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -9760,9 +9760,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
@@ -9940,10 +9940,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11847,7 +11847,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11894,7 +11894,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11942,7 +11942,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11990,7 +11990,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -12115,7 +12115,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12170,7 +12170,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12226,7 +12226,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12282,7 +12282,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12347,7 +12347,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
@@ -12416,7 +12416,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
+    expected.emplace_back(writer->field_features());
     expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
